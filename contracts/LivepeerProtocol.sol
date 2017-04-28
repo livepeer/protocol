@@ -8,6 +8,9 @@ contract LivepeerProtocol {
     // Token address
     LivepeerToken public token;
 
+    // Truebit address
+    address public truebitAddress;
+
     /* Token constants */
     
     // 1 LPT == 10^18th units
@@ -62,11 +65,18 @@ contract LivepeerProtocol {
 
     // % of verifications you can fail before being slashed
     uint64 public verificationFailureThreshold;
+
+    struct transcoder {
+
+    }
     
     // Initialize protocol
     function LivepeerProtocol() {
         // Deploy new token contract
         token = new LivepeerToken();
+
+        // Set truebit address
+        truebitAddress = 0x647167a598171d06aecf0f5fa1daf3c5cc848df0;
 
         // Initialize parameters
         // Segment length of 2 seconds
