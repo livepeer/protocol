@@ -1,9 +1,9 @@
 pragma solidity ^0.4.8;
 
 import "./LivepeerToken.sol";
+import '../installed_contracts/zeppelin/contracts/SafeMath.sol';
 
-
-contract LivepeerProtocol {
+contract LivepeerProtocol is SafeMath {
 
     // Token address
     LivepeerToken public token;
@@ -66,9 +66,30 @@ contract LivepeerProtocol {
     // % of verifications you can fail before being slashed
     uint64 public verificationFailureThreshold;
 
-    struct transcoder {
+    // Represents a transcoder's current state
+    struct Transcoder {
+        address transcoder_address;    // The address of this transcoder.
+        bool active;                   // Is this transcoder active. Also will be false if uninitialized
 
+        // TODO: add all the state information about pricing, fee split, etc.
     }
+
+    // The various states a delegator can be in
+    enum DelegatorStatus { Inactive, Pending, Bonded, Unbonding }
+
+    // Represents a delegator's current state
+    struct Delegator {
+        address delegator_address;       // The ethereum address of this delegator
+        uint256 bonded_amount;           // The amount they have bonded
+        address transcoder_address;      // The ethereum address of the transcoder they are delgating towards
+        DelegatorStatus status;          // Their current state
+    }
+
+    // Keep track of the known transcoders and delegators
+    // Note: Casper style implementation would have us using arrays and bitmaps to index these
+    mapping (address => Delegator) public delegators;
+    mapping (address => Transcoder) public transcoders;
+
     
     // Initialize protocol
     function LivepeerProtocol() {
@@ -114,8 +135,72 @@ contract LivepeerProtocol {
         verificationFailureThreshold = 1;
         
         // Setup initial transcoder
+        address t_addr = 0xb7e5575ddb750db2722929905e790de65ef2c078;
+        transcoders[t_addr] =
+            Transcoder({transcoder_address: t_addr, active: true});
 
-        // Do initial token distribution
+        // Do initial token distribution - currently clearly fake, minting 3 LPT to the contract creator
+        token.mint(msg.sender, 300000);
+        
+    }
+
+    /**
+     * Delegate stake towards a specific address.
+     * @param _amount The amount of LPT to stake.
+     * @param _to The address of the transcoder to stake towards.
+     */
+    function bond(uint _amount, address _to) returns (bool) {
+        // Check if this is a valid transcoder who is active
+        if (transcoders[_to].active == false) {
+            throw;
+        }
+
+        // Transfer the token. This call throws if it fails.
+        token.transferFrom(msg.sender, this, _amount);
+        
+        // Update or create this delegator
+        Delegator del = delegators[msg.sender];
+        del.delegator_address = msg.sender;
+        del.transcoder_address = _to;
+        del.status = DelegatorStatus.Pending;
+        del.bonded_amount = SafeMath.safeAdd(del.bonded_amount, _amount);
+        delegators[msg.sender] = del;
+
+        return true;
+    }
+
+    /**
+     * Unbond your current stake. This will enter the unbonding phase for
+     * the unbondingPeriod.
+     */
+    function unbond() returns (bool) {
+        
+        return true;
+    }
+
+    /**
+     * Withdraws withdrawable funds back to the caller after unbonding period.
+     */
+    function withdraw() returns (bool) {
+
+        return true;
+    }
+
+    /**
+     * Active transcoders call this once per cycle when it is their turn.
+     * Distribute the token rewards to transcoder and delegates.
+     */
+    function reward() returns (bool) {
+
+        return true;
+    }
+
+    /**
+     * The sender is declaring themselves as a candidate for active transcoding.
+     */
+    function transcoder() returns (bool) {
+        transcoders[msg.sender] = Transcoder({transcoder_address: msg.sender, active: true});
+        return true;
     }
 }
 
