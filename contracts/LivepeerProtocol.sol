@@ -68,7 +68,7 @@ contract LivepeerProtocol is SafeMath {
 
     // Represents a transcoder's current state
     struct Transcoder {
-        address transcoder_address;    // The address of this transcoder.
+        address transcoderAddress;    // The address of this transcoder.
         bool active;                   // Is this transcoder active. Also will be false if uninitialized
 
         // TODO: add all the state information about pricing, fee split, etc.
@@ -79,9 +79,9 @@ contract LivepeerProtocol is SafeMath {
 
     // Represents a delegator's current state
     struct Delegator {
-        address delegator_address;       // The ethereum address of this delegator
-        uint256 bonded_amount;           // The amount they have bonded
-        address transcoder_address;      // The ethereum address of the transcoder they are delgating towards
+        address delegatorAddress;       // The ethereum address of this delegator
+        uint256 bondedAmount;           // The amount they have bonded
+        address transcoderAddress;      // The ethereum address of the transcoder they are delgating towards
         DelegatorStatus status;          // Their current state
     }
 
@@ -135,9 +135,9 @@ contract LivepeerProtocol is SafeMath {
         verificationFailureThreshold = 1;
         
         // Setup initial transcoder
-        address t_addr = 0xb7e5575ddb750db2722929905e790de65ef2c078;
-        transcoders[t_addr] =
-            Transcoder({transcoder_address: t_addr, active: true});
+        address tAddr = 0xb7e5575ddb750db2722929905e790de65ef2c078;
+        transcoders[tAddr] =
+            Transcoder({transcoderAddress: tAddr, active: true});
 
         // Do initial token distribution - currently clearly fake, minting 3 LPT to the contract creator
         token.mint(msg.sender, 300000);
@@ -160,10 +160,10 @@ contract LivepeerProtocol is SafeMath {
         
         // Update or create this delegator
         Delegator del = delegators[msg.sender];
-        del.delegator_address = msg.sender;
-        del.transcoder_address = _to;
+        del.delegatorAddress = msg.sender;
+        del.transcoderAddress = _to;
         del.status = DelegatorStatus.Pending;
-        del.bonded_amount = SafeMath.safeAdd(del.bonded_amount, _amount);
+        del.bondedAmount = SafeMath.safeAdd(del.bondedAmount, _amount);
         delegators[msg.sender] = del;
 
         return true;
@@ -199,7 +199,7 @@ contract LivepeerProtocol is SafeMath {
      * The sender is declaring themselves as a candidate for active transcoding.
      */
     function transcoder() returns (bool) {
-        transcoders[msg.sender] = Transcoder({transcoder_address: msg.sender, active: true});
+        transcoders[msg.sender] = Transcoder({transcoderAddress: msg.sender, active: true});
         return true;
     }
 }
