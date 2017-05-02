@@ -12,7 +12,7 @@ contract LivepeerProtocol is SafeMath {
     address public truebitAddress;
 
     /* Token constants */
-    
+
     // 1 LPT == 10^18th units
     uint8 decimals = 18;
 
@@ -20,7 +20,7 @@ contract LivepeerProtocol is SafeMath {
     uint256 public initialTokenSupply = 10000000 * (10 ** decimals);
 
     // Fixed inflation rate of 26%
-    uint8 public initialYearlyInflation = 26;                  
+    uint8 public initialYearlyInflation = 26;
 
     /* Protocol Parameters */
 
@@ -83,6 +83,8 @@ contract LivepeerProtocol is SafeMath {
         uint256 bonded_amount;           // The amount they have bonded
         address transcoder_address;      // The ethereum address of the transcoder they are delgating towards
         DelegatorStatus status;          // Their current state
+        uint256 withdraw_timestamp;      // The timestamp at which a delegator can withdraw
+        bool active;                     // Is this delegator active. Also will be false if uninitialized
     }
 
     // Keep track of the known transcoders and delegators
@@ -90,7 +92,6 @@ contract LivepeerProtocol is SafeMath {
     mapping (address => Delegator) public delegators;
     mapping (address => Transcoder) public transcoders;
 
-    
     // Initialize protocol
     function LivepeerProtocol() {
         // Deploy new token contract
@@ -133,15 +134,15 @@ contract LivepeerProtocol is SafeMath {
 
         // Fail no more than 1% of the time
         verificationFailureThreshold = 1;
-        
+
         // Setup initial transcoder
         address t_addr = 0xb7e5575ddb750db2722929905e790de65ef2c078;
         transcoders[t_addr] =
             Transcoder({transcoder_address: t_addr, active: true});
 
         // Do initial token distribution - currently clearly fake, minting 3 LPT to the contract creator
-        token.mint(msg.sender, 300000);
-        
+        token.mint(msg.sender, 3000000000000000000);
+
     }
 
     /**
@@ -151,19 +152,19 @@ contract LivepeerProtocol is SafeMath {
      */
     function bond(uint _amount, address _to) returns (bool) {
         // Check if this is a valid transcoder who is active
-        if (transcoders[_to].active == false) {
-            throw;
-        }
+        if (transcoders[_to].active == false) throw;
 
         // Transfer the token. This call throws if it fails.
         token.transferFrom(msg.sender, this, _amount);
-        
+
         // Update or create this delegator
         Delegator del = delegators[msg.sender];
         del.delegator_address = msg.sender;
         del.transcoder_address = _to;
         del.status = DelegatorStatus.Pending;
-        del.bonded_amount = SafeMath.safeAdd(del.bonded_amount, _amount);
+        del.bonded_amount = safeAdd(del.bonded_amount, _amount);
+        del.withdraw_timestamp = 0;
+        del.active = true;
         delegators[msg.sender] = del;
 
         return true;
@@ -174,7 +175,15 @@ contract LivepeerProtocol is SafeMath {
      * the unbondingPeriod.
      */
     function unbond() returns (bool) {
-        
+        // Check if this is an active delegator
+        if (delegators[msg.sender].active == false) throw;
+        // Check if delegator is in bonded status
+        if (delegators[msg.sender].status != DelegatorStatus.Bonded) throw;
+
+        // Transition to unbonding phase
+        delegators[msg.sender].status = DelegatorStatus.Unbonding;
+        delegators[msg.sender].withdraw_timestamp = block.timestamp + unbondingPeriod;
+
         return true;
     }
 
@@ -182,6 +191,15 @@ contract LivepeerProtocol is SafeMath {
      * Withdraws withdrawable funds back to the caller after unbonding period.
      */
     function withdraw() returns (bool) {
+        // Check if this is an active delegator
+        if (delegators[msg.sender].active == false) throw;
+        // Check if active delegator is in unbonding phase
+        if (delegators[msg.sender].status != DelegatorStatus.Unbonding) throw;
+        // Check if active delegator's unbonding period is over
+        if (block.timestamp < delegators[msg.sender].withdraw_timestamp) throw;
+
+        // Transfer token. This call throws if it fails.
+        token.transfer(msg.sender, delegators[msg.sender].bonded_amount);
 
         return true;
     }
@@ -203,4 +221,3 @@ contract LivepeerProtocol is SafeMath {
         return true;
     }
 }
-
