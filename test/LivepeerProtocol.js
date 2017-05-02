@@ -5,6 +5,12 @@ import { toSmallestUnits } from "../utils/bn_util";
 const LivepeerProtocol = artifacts.require("./LivepeerProtocol.sol");
 const LivepeerToken = artifacts.require("./LivepeerToken.sol");
 
+// Delegator status
+const INACTIVE = 0;
+const PENDING = 1;
+const BONDED = 2;
+const UNBONDING = 3;
+
 contract('LivepeerProtocol', function(accounts) {
     let rpc;
 
@@ -47,11 +53,8 @@ contract('LivepeerProtocol', function(accounts) {
         assert.equal(delegator[1].toNumber(), 1000, "bond with staked amount did not work");
         assert.equal(delegator[2], "0xb7e5575ddb750db2722929905e790de65ef2c078", "bond to transcoder did not work");
 
-        // Fast forward 1 round
-        await rpc.increaseTime(24 * 60 * 60);
-
-        // Next round
-        await instance.nextRound({from: accounts[0]});
+        let delegatorStatus = await instance.delegatorStatus.call(accounts[0]);
+        assert.equal(delegatorStatus, PENDING, "delegator did not transition to bonded");
 
         // Fast forward 1 round
         await rpc.increaseTime(24 * 60 * 60);
@@ -59,8 +62,14 @@ contract('LivepeerProtocol', function(accounts) {
         // Next round
         await instance.nextRound({from: accounts[0]});
 
-        // Finalize bond
-        await instance.finalizeBond({from: accounts[0]});
+        // Fast forward 1 round
+        await rpc.increaseTime(24 * 60 * 60);
+
+        // Next round
+        await instance.nextRound({from: accounts[0]});
+
+        delegatorStatus = await instance.delegatorStatus.call(accounts[0]);
+        assert.equal(delegatorStatus, BONDED, "delegator did not transition to bonded");
     });
 
     it("should allow updating and moving bonded stake", async function() {
@@ -88,9 +97,6 @@ contract('LivepeerProtocol', function(accounts) {
 
         // Next round
         await instance.nextRound({from: accounts[0]});
-
-        // Finalize bond
-        await instance.finalizeBond({from: accounts[0]});
 
         // Update bond
         await instance.bond(1000, "0xb7e5575ddb750db2722929905e790de65ef2c078", {from: accounts[0], gas: 4000000});
@@ -126,11 +132,11 @@ contract('LivepeerProtocol', function(accounts) {
         // Next round
         await instance.nextRound({from: accounts[0]});
 
-        // Finalize bond
-        await instance.finalizeBond({from: accounts[0]});
-
         // Unbond
         await instance.unbond({from: accounts[0]});
+
+        let delegatorStatus = await instance.delegatorStatus.call(accounts[0]);
+        assert.equal(delegatorStatus, UNBONDING, "delegator did not transition to unbonding");
 
         // Fast forward through unbounding period
         await rpc.increaseTime(10 * 24 * 60 * 60);
