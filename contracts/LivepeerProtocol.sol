@@ -30,22 +30,19 @@ contract LivepeerProtocol is SafeMath {
     // Number of active transcoders
     uint64 public n;
 
-    // Round length in seconds
-    uint64 public roundLength;
+    // Round length in blocks
+    uint256 public roundLength;
 
     // Current round
-    uint64 public currentRound;
-
-    // Mapping of round number with start timestamp of round
-    uint256[] public roundStartTimestamps;
+    uint256 public currentRound;
 
     // Number of times each transcoder is expected to call Reward() in a round
-    uint64 public cyclesPerRound;
+    uint256 public cyclesPerRound;
 
     // Time before the start of a round that the transcoders rates lock
     uint64 public rateLockDeadline;
 
-    // Time between unbonding and possible withdrawl
+    // Time between unbonding and possible withdrawl in rounds
     uint64 public unbondingPeriod;
 
     // Time that data must be guaranteed in storage for verification
@@ -85,9 +82,9 @@ contract LivepeerProtocol is SafeMath {
         address delegatorAddress;       // The ethereum address of this delegator
         uint256 bondedAmount;           // The amount they have bonded
         address transcoderAddress;      // The ethereum address of the transcoder they are delgating towards
-        uint64 roundStart;             // The round the delegator transitions to bonded phase
-        uint256 withdrawTimestamp;      // The timestamp at which a delegator can withdraw
-        bool active;                     // Is this delegator active. Also will be false if uninitialized
+        uint256 roundStart;             // The round the delegator transitions to bonded phase
+        uint256 withdrawRound;          // The round at which a delegator can withdraw
+        bool active;                    // Is this delegator active. Also will be false if uninitialized
     }
 
     // Keep track of the known transcoders and delegators
@@ -110,17 +107,21 @@ contract LivepeerProtocol is SafeMath {
         // Start with 1 transcoder for testing
         n = 1;
 
-        // Round length of 1 day, with transcoder expected to call reward every 10 minutes
-        currentRound = 0;
-        roundLength = 1 days;
-        roundStartTimestamps.push(block.timestamp);
-        cyclesPerRound = roundLength / 10 minutes;
+        // Round length of ~1 day assuming ~17 second block time on main net
+        // Current value is for testing purposes
+        roundLength = 20;
+        currentRound = block.number / roundLength;
+
+        // Transcoder expected to call reward every ~10 minutes assuming ~17 second block time on main net
+        // Current value is for testing purposes
+        cyclesPerRound = roundLength / 2;
 
         // Lock rate changes 2 hours before round
         rateLockDeadline = 2 hours;
 
-        // Unbond for 10 days
-        unbondingPeriod = 10 days;
+        // Unbond for ~10 days assuming ~17 second block time on main net
+        // Current value is for testing purposes
+        unbondingPeriod = 2;
 
         // Keep data in storage for 6 hours
         persistenceLength = 6 hours;
@@ -153,15 +154,15 @@ contract LivepeerProtocol is SafeMath {
         // Check if this is an active delegator
         if (delegators[_delegator].active == false) throw;
 
-        if (delegators[_delegator].withdrawTimestamp > 0) {
+        if (delegators[_delegator].withdrawRound > 0) {
             // Delegator called unbond()
             // In unbonding phase
             return DelegatorStatus.Unbonding;
-        } else if (delegators[_delegator].roundStart > currentRound) {
+        } else if (delegators[_delegator].roundStart > block.number / roundLength) {
             // Delegator round start is in the future
             // In pending phase
             return DelegatorStatus.Pending;
-        } else if (delegators[_delegator].roundStart <= currentRound) {
+        } else if (delegators[_delegator].roundStart <= block.number / roundLength) {
             // Delegator round start is now or in the past
             // In bonded phase
             return DelegatorStatus.Bonded;
@@ -191,13 +192,13 @@ contract LivepeerProtocol is SafeMath {
 
         if (del.active == false) {
             // Only set round start if creating delegator for first time
-            del.roundStart = currentRound + 2;
+            del.roundStart = (block.number / roundLength) + 2;
         }
 
         del.delegatorAddress = msg.sender;
         del.transcoderAddress = _to;
         del.bondedAmount = safeAdd(del.bondedAmount, _amount);
-        del.withdrawTimestamp = 0;
+        del.withdrawRound = 0;
         del.active = true;
         delegators[msg.sender] = del;
 
@@ -215,7 +216,7 @@ contract LivepeerProtocol is SafeMath {
         if (delegatorStatus(msg.sender) != DelegatorStatus.Bonded) throw;
 
         // Transition to unbonding phase
-        delegators[msg.sender].withdrawTimestamp = safeAdd(block.timestamp, unbondingPeriod);
+        delegators[msg.sender].withdrawRound = safeAdd(block.number / roundLength, unbondingPeriod);
 
         return true;
     }
@@ -226,10 +227,10 @@ contract LivepeerProtocol is SafeMath {
     function withdraw() returns (bool) {
         // Check if this is an active delegator
         if (delegators[msg.sender].active == false) throw;
-        // Check if active delegator is in unbonding phase
+         // Check if active delegator is in unbonding phase
         if (delegatorStatus(msg.sender) != DelegatorStatus.Unbonding) throw;
         // Check if active delegator's unbonding period is over
-        if (block.timestamp < delegators[msg.sender].withdrawTimestamp) throw;
+        if (block.number / roundLength < delegators[msg.sender].withdrawRound) throw;
 
         // Transfer token. This call throws if it fails.
         token.transfer(msg.sender, delegators[msg.sender].bondedAmount);
@@ -258,14 +259,13 @@ contract LivepeerProtocol is SafeMath {
     }
 
     /**
-     * Move to the next round
-     * Can only be called if the current round is over
+     * Called at the start of any round
      */
-    function nextRound() {
-        // Check if current round is over
-        if (block.timestamp < safeAdd(roundStartTimestamps[currentRound], roundLength)) throw;
+    function initializeRound(uint256 round) {
+        // Check that the round has started
+        if (round > block.number / roundLength || round != safeAdd(currentRound, 1)) throw;
 
-        currentRound += 1;
-        roundStartTimestamps.push(block.timestamp);
+        // Set the current round
+        currentRound = round;
     }
 }

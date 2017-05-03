@@ -11,18 +11,33 @@ const PENDING = 1;
 const BONDED = 2;
 const UNBONDING = 3;
 
+// Round length
+const ROUND_LENGTH = 20;
+
+// Unbonding period
+const UNBONDING_PERIOD = 2;
+
 contract('LivepeerProtocol', function(accounts) {
     let rpc;
+    let snapshotId;
 
     before(function() {
         rpc = new RPC(web3);
+    });
+
+    beforeEach("snapshot checkpoint to revert back to later", async function() {
+        snapshotId = await rpc.snapshot();
+    });
+
+    afterEach("revert back to snapshot checkpoint", async function() {
+        await rpc.revert(snapshotId);
     });
 
     it("should initialize correctly", async function() {
         const instance = await LivepeerProtocol.deployed();
 
         const unbondingPeriod = await instance.unbondingPeriod.call();
-        assert.equal(unbondingPeriod.toNumber(), 60*60*24*10, "unbonding period was not 10 days");
+        assert.equal(unbondingPeriod.toNumber(), UNBONDING_PERIOD, "unbonding period was not 10 blocks");
 
         const truebitAddress = await instance.truebitAddress.call();
         assert.equal(truebitAddress, "0x647167a598171d06aecf0f5fa1daf3c5cc848df0", "Truebit value was not set");
@@ -56,17 +71,8 @@ contract('LivepeerProtocol', function(accounts) {
         let delegatorStatus = await instance.delegatorStatus.call(accounts[0]);
         assert.equal(delegatorStatus, PENDING, "delegator did not transition to bonded");
 
-        // Fast forward 1 round
-        await rpc.increaseTime(24 * 60 * 60);
-
-        // Next round
-        await instance.nextRound({from: accounts[0]});
-
-        // Fast forward 1 round
-        await rpc.increaseTime(24 * 60 * 60);
-
-        // Next round
-        await instance.nextRound({from: accounts[0]});
+        // Fast forward 2 rounds
+        await rpc.wait(20, 2 * ROUND_LENGTH);
 
         delegatorStatus = await instance.delegatorStatus.call(accounts[0]);
         assert.equal(delegatorStatus, BONDED, "delegator did not transition to bonded");
@@ -86,17 +92,8 @@ contract('LivepeerProtocol', function(accounts) {
         // Bond
         await instance.bond(1000, "0xb7e5575ddb750db2722929905e790de65ef2c078", {from: accounts[0], gas: 4000000});
 
-        // Fast forward 1 round
-        await rpc.increaseTime(24 * 60 * 60);
-
-        // Next round
-        await instance.nextRound({from: accounts[0]});
-
-        // Fast forward 1 round
-        await rpc.increaseTime(24 * 60 * 60);
-
-        // Next round
-        await instance.nextRound({from: accounts[0]});
+        // Fast forward 2 rounds
+        await rpc.wait(20, 2 * ROUND_LENGTH);
 
         // Update bond
         await instance.bond(1000, "0xb7e5575ddb750db2722929905e790de65ef2c078", {from: accounts[0], gas: 4000000});
@@ -120,17 +117,8 @@ contract('LivepeerProtocol', function(accounts) {
         // Bond
         await instance.bond(1000, "0xb7e5575ddb750db2722929905e790de65ef2c078", {from: accounts[0], gas: 4000000});
 
-        // Fast forward 1 round
-        await rpc.increaseTime(24 * 60 * 60);
-
-        // Next round
-        await instance.nextRound({from: accounts[0]});
-
-        // Fast forward 1 round
-        await rpc.increaseTime(24 * 60 * 60);
-
-        // Next round
-        await instance.nextRound({from: accounts[0]});
+        // Fast forward 2 rounds
+        await rpc.wait(20, 2 * ROUND_LENGTH);
 
         // Unbond
         await instance.unbond({from: accounts[0]});
@@ -138,8 +126,8 @@ contract('LivepeerProtocol', function(accounts) {
         let delegatorStatus = await instance.delegatorStatus.call(accounts[0]);
         assert.equal(delegatorStatus, UNBONDING, "delegator did not transition to unbonding");
 
-        // Fast forward through unbounding period
-        await rpc.increaseTime(10 * 24 * 60 * 60);
+        // Fast forward through unbonding period
+        await rpc.wait(20, UNBONDING_PERIOD * ROUND_LENGTH);
 
         // Withdraw
         await instance.withdraw({from: accounts[0]});
