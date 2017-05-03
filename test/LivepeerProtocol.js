@@ -134,4 +134,33 @@ contract('LivepeerProtocol', function(accounts) {
         const balance = await lpt.balanceOf.call(accounts[0]);
         assert.equal(balance.toNumber(), toSmallestUnits(3), "withdrawing bonded tokens did not work");
     });
+
+    it("should allow unbonding and reject premature withdrawals", async function() {
+        const instance = await LivepeerProtocol.new({from: accounts[0]});
+        const lptAddress = await instance.token.call();
+        const lpt = await LivepeerToken.at(lptAddress);
+
+        // Approve token transfer
+        await lpt.approve(instance.address, 2000, {from: accounts[0]});
+
+        // Bond
+        await instance.bond(1000, "0xb7e5575ddb750db2722929905e790de65ef2c078", {from: accounts[0], gas: 4000000});
+
+        // Fast forward 2 rounds
+        await rpc.wait(20, 2 * ROUND_LENGTH);
+
+        // Unbond
+        await instance.unbond({from: accounts[0]});
+
+        // Withdraw
+        let threw = false;
+
+        try {
+            await instance.withdraw({from: accounts[0]});
+        } catch (err) {
+            threw = true;
+        }
+
+        assert.ok(threw, "premature withdraw did not throw");
+    });
 });
