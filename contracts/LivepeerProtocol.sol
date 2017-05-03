@@ -84,7 +84,7 @@ contract LivepeerProtocol is SafeMath {
         address transcoderAddress;      // The ethereum address of the transcoder they are delgating towards
         uint256 roundStart;             // The round the delegator transitions to bonded phase
         uint256 withdrawRound;          // The round at which a delegator can withdraw
-        bool active;                    // Is this delegator active. Also will be false if uninitialized
+        bool initialized;               // Is this delegator initialized
     }
 
     // Keep track of the known transcoders and delegators
@@ -151,8 +151,8 @@ contract LivepeerProtocol is SafeMath {
     }
 
     function delegatorStatus(address _delegator) constant returns (DelegatorStatus) {
-        // Check if this is an active delegator
-        if (delegators[_delegator].active == false) throw;
+        // Check if this is an initialized delegator
+        if (delegators[_delegator].initialized == false) throw;
 
         if (delegators[_delegator].withdrawRound > 0) {
             // Delegator called unbond()
@@ -190,7 +190,7 @@ contract LivepeerProtocol is SafeMath {
         // Update or create this delegator
         Delegator del = delegators[msg.sender];
 
-        if (del.active == false) {
+        if (del.initialized == false) {
             // Only set round start if creating delegator for first time
             del.roundStart = (block.number / roundLength) + 2;
         }
@@ -199,7 +199,7 @@ contract LivepeerProtocol is SafeMath {
         del.transcoderAddress = _to;
         del.bondedAmount = safeAdd(del.bondedAmount, _amount);
         del.withdrawRound = 0;
-        del.active = true;
+        del.initialized = true;
         delegators[msg.sender] = del;
 
         return true;
@@ -210,8 +210,8 @@ contract LivepeerProtocol is SafeMath {
      * the unbondingPeriod.
      */
     function unbond() returns (bool) {
-        // Check if this is an active delegator
-        if (delegators[msg.sender].active == false) throw;
+        // Check if this is an initialized delegator
+        if (delegators[msg.sender].initialized == false) throw;
         // Check if delegator is in bonded status
         if (delegatorStatus(msg.sender) != DelegatorStatus.Bonded) throw;
 
@@ -225,11 +225,11 @@ contract LivepeerProtocol is SafeMath {
      * Withdraws withdrawable funds back to the caller after unbonding period.
      */
     function withdraw() returns (bool) {
-        // Check if this is an active delegator
-        if (delegators[msg.sender].active == false) throw;
-         // Check if active delegator is in unbonding phase
+        // Check if this is an initialized delegator
+        if (delegators[msg.sender].initialized == false) throw;
+         // Check if delegator is in unbonding phase
         if (delegatorStatus(msg.sender) != DelegatorStatus.Unbonding) throw;
-        // Check if active delegator's unbonding period is over
+        // Check if delegator's unbonding period is over
         if (block.number / roundLength < delegators[msg.sender].withdrawRound) throw;
 
         // Transfer token. This call throws if it fails.
