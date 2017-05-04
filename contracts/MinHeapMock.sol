@@ -11,12 +11,24 @@ contract MinHeapMock {
         heap.init(_size);
     }
 
+    function contains(address _addr) constant returns (bool) {
+        return heap.contains(_addr);
+    }
+
     function insert(address _addr, uint _key) {
         heap.insert(_addr, _key);
     }
 
     function deleteMin() {
         heap.deleteMin();
+    }
+
+    function increaseKey(address _addr, uint _key) {
+        heap.increaseKey(_addr, _key);
+    }
+
+    function decreaseKey(address _addr, uint _key) {
+        heap.decreaseKey(_addr, _key);
     }
 
     function min() constant returns (address, uint) {
