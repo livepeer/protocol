@@ -19,8 +19,8 @@ contract MinHeapMock {
         heap.insert(_addr, _key);
     }
 
-    function deleteMin() {
-        heap.deleteMin();
+    function extractMin() {
+        heap.extractMin();
     }
 
     function increaseKey(address _addr, uint _key) {

@@ -1,7 +1,7 @@
 pragma solidity ^0.4.8;
 
 library MinHeap {
-    uint private constant MAX_NODES = 100;
+    uint private constant HARD_MAX = 100;
 
     struct Node {
         address value;
@@ -10,114 +10,199 @@ library MinHeap {
 
     struct Heap {
         Node[100] nodes;
-        mapping (address => uint) indicies;
+        mapping (address => uint) positions;
         mapping (address => bool) values;
         uint size;
         uint maxSize;
     }
 
+    /*
+     * Initialize heap by setting a max size
+     * @param _size Max size of heap
+     */
     function init(Heap storage self, uint _size) {
-        if (_size > MAX_NODES) throw;
-        if (_size < self.maxSize) throw;
+        // Check if size is less than hard max
+        if (_size > HARD_MAX) throw;
+        // Check if there is already a max size
+        if (self.maxSize > 0) throw;
 
         self.maxSize = _size;
     }
 
+    /*
+     * Checks if an address is in the heap
+     * @param _vallue Address value
+     */
     function contains(Heap storage self, address _value) constant returns (bool) {
         return self.values[_value];
     }
 
+    /*
+     * Returns the min node in the heap as a address, key pair
+     */
     function min(Heap storage self) constant returns (address, uint) {
         if (self.size == 0) throw;
 
         return (self.nodes[0].value, self.nodes[0].key);
     }
 
+    /*
+     * Inserts an adress and key as a node in the heap
+     * @param _value Address value
+     * @param _key Key for address
+     */
     function insert(Heap storage self, address _value, uint _key) {
+        // Check if heap is already full
         if (self.size == self.maxSize) throw;
 
+        // Update heap size
         self.size++;
+        // Create and set node
         self.nodes[self.size - 1] = Node(_value, _key);
-        self.indicies[_value] = self.size - 1;
+        // Update position of node
+        self.positions[_value] = self.size - 1;
+        // Update values contained in heap
         self.values[_value] = true;
 
+        // Sift up to maintain heap property
         siftUp(self, self.size - 1);
     }
 
-    function deleteMin(Heap storage self) {
+    /*
+     * Extract the min node from the heap
+     */
+    function extractMin(Heap storage self) {
+        // Check for empty heap
         if (self.size == 0) throw;
 
         deletePos(self, 0);
     }
 
+    /*
+     * Delete node at given position while maintaining heap property
+     * @param _pos Position of node
+     */
     function deletePos(Heap storage self, uint _pos) {
         if (self.size < _pos) throw;
 
+        // Update values contained in the heap
         self.values[self.nodes[_pos].value] = false;
 
+        // Set the last node of the heap to the current position
         self.nodes[_pos] = self.nodes[self.size - 1];
-        self.indicies[self.nodes[_pos].value] = _pos;
+        // Update position of the former last node of the heap
+        self.positions[self.nodes[_pos].value] = _pos;
+        // Delete the last node of the heap
         delete self.nodes[self.size - 1];
+        // Update heap size
         self.size--;
 
+        // Sift down to maintain heap property
         siftDown(self, _pos);
     }
 
+    /*
+     * Increases key for address in the heap while maintaing heap property
+     * @param _value Address value
+     * @param _key Increased key for address
+     */
     function increaseKey(Heap storage self, address _value, uint _key) {
-        uint pos = self.indicies[_value];
+        // Get position of address in heap
+        uint pos = self.positions[_value];
 
         if (self.size < pos) throw;
 
+        // Update key for address
         self.nodes[pos].key = _key;
 
+        // Sift down to maintain heap property
         siftDown(self, pos);
     }
 
+    /*
+     * Decreases key for address in the heap while maintaing heap property
+     * @param _value Address value
+     * @param _key Decreased key for address
+     */
     function decreaseKey(Heap storage self, address _value, uint _key) {
-        uint pos = self.indicies[_value];
+        // Get position of address in heap
+        uint pos = self.positions[_value];
 
         if (self.size < pos) throw;
 
+        // Update key for address
         self.nodes[pos].key = _key;
 
+        // Sift up to maintain heap property
         siftUp(self, pos);
     }
 
+    /*
+     * Sifts a node up the heap to its proper position such that the heap property is obeyed
+     * @param _pos Starting position of node
+     */
     function siftUp(Heap storage self, uint _pos) private {
-        Node memory start = self.nodes[_pos];
+        // Set current node to be node at starting position
+        Node memory curr = self.nodes[_pos];
 
-        while (_pos != 0 && start.key < self.nodes[_pos / 2].key) {
+        while (_pos > 0 && self.nodes[_pos / 2].key > curr.key) {
+            // Set parent as child
             self.nodes[_pos] = self.nodes[_pos / 2];
-            self.indicies[self.nodes[_pos].value] = _pos;
+            // Update position of parent
+            self.positions[self.nodes[_pos].value] = _pos;
+            // Set current position to be parent position
             _pos = _pos / 2;
         }
 
-        self.nodes[_pos] = start;
-        self.indicies[self.nodes[_pos].value] = _pos;
+        // Set current node at its new position in the heap
+        self.nodes[_pos] = curr;
+        // Update position of current node
+        self.positions[curr.value] = _pos;
     }
 
+    /*
+     * Sifts a node down the heap to its proper position such that the heap property is obeyed
+     * @param _pos Starting position of node
+     */
     function siftDown(Heap storage self, uint _pos) private {
-        Node memory start = self.nodes[_pos];
-
+        // Set current node to be node at starting position
+        Node memory curr = self.nodes[_pos];
+        // Flag for whether the heap property is obeyed
         bool isHeap = false;
-        uint sibling = _pos * 2;
+        // Set index of current smallest node to left child
+        uint smallest = _pos * 2;
 
-        while (sibling <= self.size - 1 && !isHeap) {
-            if (sibling != self.size - 1 && self.nodes[sibling + 1].key < self.nodes[sibling].key) {
-                sibling++;
+        // Sift until we obey the heap property
+        while (smallest < self.size && !isHeap) {
+            // Check if node is initialized by checking for an address
+            if (smallest < self.size && self.nodes[smallest + 1].value != address(0) && self.nodes[smallest + 1].key < self.nodes[smallest].key) {
+                // Update index of current smallest node to be right child
+                smallest++;
             }
 
-            if (self.nodes[sibling].key < start.key) {
-                self.nodes[_pos] = self.nodes[sibling];
-                self.indicies[self.nodes[_pos].value] = _pos;
-                _pos = sibling;
-                sibling = _pos * 2;
+            // Check if node is initialized by checking for an address
+            if (self.nodes[smallest].value != address(0) && self.nodes[smallest].key < curr.key) {
+                // One of the children is the smallest node
+                // Set the smallest node as the new parent
+                self.nodes[_pos] = self.nodes[smallest];
+                // Update position of child
+                self.positions[self.nodes[_pos].value] = _pos;
+                // Set current index to index of the smallest node
+                _pos = smallest;
+                // Set index of current smallest node to left child of the node at the new current index
+                smallest = _pos * 2;
             } else {
+                // If the current smallest node is already less than the starting node we are done
                 isHeap = true;
             }
-        }
 
-        self.nodes[_pos] = start;
-        self.indicies[self.nodes[_pos].value] = _pos;
+            // If we swapped:
+            // We set the former parent as the child of the new parent
+            // Else:
+            // This line just sets the current node at its original position
+            self.nodes[_pos] = curr;
+            // Update position of current node
+            self.positions[curr.value] = _pos;
+        }
     }
 }
