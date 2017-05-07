@@ -38,6 +38,14 @@ library MaxHeap {
     }
 
     /*
+     * Returns key for an address
+     * @param Address value
+     */
+    function getKey(Heap storage self, address _value) constant returns (uint256) {
+        return self.nodes[self.positions[_value]].key;
+    }
+
+    /*
      * Returns the max node in the heap as a address, key pair
      */
     function max(Heap storage self) constant returns (address, uint) {

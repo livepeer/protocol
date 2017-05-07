@@ -38,6 +38,14 @@ library MinHeap {
     }
 
     /*
+     * Returns the key for an address
+     * @param Address value
+     */
+    function getKey(Heap storage self, address _value) constant returns (uint256) {
+        return self.nodes[self.positions[_value]].key;
+    }
+
+    /*
      * Returns the min node in the heap as a address, key pair
      */
     function min(Heap storage self) constant returns (address, uint) {

@@ -45,11 +45,22 @@ contract('LivepeerProtocol', function(accounts) {
 
     it("should allow becoming a transcoder", async function() {
         const instance = await LivepeerProtocol.new({from: accounts[0]});
+        const lptAddress = await instance.token.call();
+        const lpt = await LivepeerToken.at(lptAddress);
 
-        await instance.transcoder({from: accounts[1]});
+        // Transfer tokens
+        await lpt.transfer(accounts[1], toSmallestUnits(1), {from: accounts[0]});
+
+        await instance.transcoder(2000, {from: accounts[1]});
 
         const transcoder = await instance.transcoders.call(accounts[1]);
         assert.equal(transcoder[0], accounts[1], "becoming a transcoder did not work");
+
+        const isActiveTranscoder = await instance.isActiveTranscoder(accounts[1]);
+        assert.isOk(isActiveTranscoder, "active transcoder pool did not update correctly");
+
+        const isCandidateTranscoder = await instance.isCandidateTranscoder("0xb7e5575ddb750db2722929905e790de65ef2c078");
+        assert.isOk(isCandidateTranscoder, "candidate transcoder pool did not update correctly");
     });
 
     it("should allow bonding", async function() {
@@ -71,6 +82,9 @@ contract('LivepeerProtocol', function(accounts) {
         let delegatorStatus = await instance.delegatorStatus.call(accounts[0]);
         assert.equal(delegatorStatus, PENDING, "delegator did not transition to bonded");
 
+        const isActiveTranscoder = await instance.isActiveTranscoder("0xb7e5575ddb750db2722929905e790de65ef2c078");
+        assert.isOk(isActiveTranscoder, "active transcoder pool did not update correctly");
+
         // Fast forward 2 rounds
         await rpc.wait(20, 2 * ROUND_LENGTH);
 
@@ -83,8 +97,8 @@ contract('LivepeerProtocol', function(accounts) {
         const lptAddress = await instance.token.call();
         const lpt = await LivepeerToken.at(lptAddress);
 
-        // Transcoder
-        await instance.transcoder({from: accounts[1]});
+        // Transfer tokens
+        await lpt.transfer(accounts[1], toSmallestUnits(1), {from: accounts[0]});
 
         // Approve token transfer
         await lpt.approve(instance.address, 2000, {from: accounts[0]});
@@ -92,8 +106,17 @@ contract('LivepeerProtocol', function(accounts) {
         // Bond
         await instance.bond(1000, "0xb7e5575ddb750db2722929905e790de65ef2c078", {from: accounts[0], gas: 4000000});
 
+        let isActiveTranscoder = await instance.isActiveTranscoder("0xb7e5575ddb750db2722929905e790de65ef2c078");
+        assert.isOk(isActiveTranscoder, "active transcoder pool did not update correctly after bonding");
+
         // Fast forward 2 rounds
         await rpc.wait(20, 2 * ROUND_LENGTH);
+
+        // Transcoder
+        await instance.transcoder(500, {from: accounts[1]});
+
+        let isCandidateTranscoder = await instance.isCandidateTranscoder(accounts[1]);
+        assert.isOk(isCandidateTranscoder, "candidate transcoder pool did not update correctly after transcoder registration");
 
         // Update bond
         await instance.bond(1000, "0xb7e5575ddb750db2722929905e790de65ef2c078", {from: accounts[0], gas: 4000000});
@@ -104,6 +127,15 @@ contract('LivepeerProtocol', function(accounts) {
         await instance.bond(0, accounts[1], {from: accounts[0], gas: 4000000});
         delegator = await instance.delegators.call(accounts[0]);
         assert.equal(delegator[2], accounts[1], "moving bonded stake did not work");
+
+        isActiveTranscoder = await instance.isActiveTranscoder(accounts[1]);
+        assert.isOk(isActiveTranscoder, "active transcoder pool did not update correctly after moving bond");
+
+        isActiveTranscoder = await instance.isActiveTranscoder("0xb7e5575ddb750db2722929905e790de65ef2c078");
+        assert.isNotOk(isActiveTranscoder, "active transcoder pool did not remove transcoder correctly after moving bond");
+
+        isCandidateTranscoder = await instance.isCandidateTranscoder("0xb7e5575ddb750db2722929905e790de65ef2c078");
+        assert.isOk(isCandidateTranscoder, "candidate transcoder pool did not update correctly after moving bond");
     });
 
     it("should allow unbonding and withdrawal", async function() {

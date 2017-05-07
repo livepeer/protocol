@@ -1,9 +1,13 @@
 pragma solidity ^0.4.8;
 
 import "./LivepeerToken.sol";
+import "./MinHeap.sol";
+import "./MaxHeap.sol";
 import '../installed_contracts/zeppelin/contracts/SafeMath.sol';
 
 contract LivepeerProtocol is SafeMath {
+    using MinHeap for MinHeap.Heap;
+    using MaxHeap for MaxHeap.Heap;
 
     // Token address
     LivepeerToken public token;
@@ -69,10 +73,14 @@ contract LivepeerProtocol is SafeMath {
     // Represents a transcoder's current state
     struct Transcoder {
         address transcoderAddress;    // The address of this transcoder.
-        bool active;                   // Is this transcoder active. Also will be false if uninitialized
+        uint256 bondedAmount;         // The amount they have bonded
+        bool active;                  // Is this transcoder active. Also will be false if uninitialized
 
         // TODO: add all the state information about pricing, fee split, etc.
     }
+
+    MinHeap.Heap public activeTranscoders;
+    MaxHeap.Heap public candidateTranscoders;
 
     // The various states a delegator can be in
     enum DelegatorStatus { Inactive, Pending, Bonded, Unbonding }
@@ -143,7 +151,13 @@ contract LivepeerProtocol is SafeMath {
         // Setup initial transcoder
         address tAddr = 0xb7e5575ddb750db2722929905e790de65ef2c078;
         transcoders[tAddr] =
-            Transcoder({transcoderAddress: tAddr, active: true});
+            Transcoder({transcoderAddress: tAddr, bondedAmount: 0, active: true});
+
+        // Initialize transcoder pools
+        activeTranscoders.init(n);
+        activeTranscoders.insert(tAddr, 0);
+
+        candidateTranscoders.init(n);
 
         // Do initial token distribution - currently clearly fake, minting 3 LPT to the contract creator
         token.mint(msg.sender, 3000000000000000000);
@@ -195,12 +209,20 @@ contract LivepeerProtocol is SafeMath {
             del.roundStart = (block.number / roundLength) + 2;
         }
 
+        if (del.transcoderAddress != address(0) && _to != del.transcoderAddress) {
+            // Decrease former transcoder cumulative stake
+            decreaseTranscoderStake(del.transcoderAddress, del.bondedAmount);
+        }
+
         del.delegatorAddress = msg.sender;
         del.transcoderAddress = _to;
         del.bondedAmount = safeAdd(del.bondedAmount, _amount);
         del.withdrawRound = 0;
         del.initialized = true;
         delegators[msg.sender] = del;
+
+        // Increase transcoder cumulative stake
+        increaseTranscoderStake(_to, _amount);
 
         return true;
     }
@@ -253,9 +275,113 @@ contract LivepeerProtocol is SafeMath {
     /**
      * The sender is declaring themselves as a candidate for active transcoding.
      */
-    function transcoder() returns (bool) {
-        transcoders[msg.sender] = Transcoder({transcoderAddress: msg.sender, active: true});
+    function transcoder(uint256 _amount) returns (bool) {
+        Transcoder t = transcoders[msg.sender];
+        t.transcoderAddress = msg.sender;
+        t.bondedAmount = safeAdd(t.bondedAmount, _amount);
+        t.active = true;
+        transcoders[msg.sender] = t;
+
+        // Increase transcoder cumulative stake
+        increaseTranscoderStake(msg.sender, _amount);
+
         return true;
+    }
+
+    function increaseTranscoderStake(address _transcoder, uint256 _amount) internal returns (bool) {
+        if (activeTranscoders.contains(_transcoder)) {
+            // Transcoder in active transcoder pool
+            // Increase key
+            activeTranscoders.increaseKey(_transcoder, safeAdd(activeTranscoders.getKey(_transcoder), _amount));
+        } else if (activeTranscoders.size < n) {
+            // Active transcoder pool is not full
+            // Transcoder is not in active transcoder pool
+            // Insert transcoder
+            activeTranscoders.insert(_transcoder, _amount);
+        } else {
+            if (candidateTranscoders.contains(_transcoder)) {
+                // Transcoder in candidate transcoder pool
+                // Increase key
+                candidateTranscoders.increaseKey(_transcoder, safeAdd(candidateTranscoders.getKey(_transcoder), _amount));
+            } else if (candidateTranscoders.size < n) {
+                // Candidate transcoder pool is not full
+                // Transcoder is not in candidate transcoder pool
+                // Insert transcoder
+                candidateTranscoders.insert(_transcoder, _amount);
+            } else {
+                // Candidate transcoder pool is full
+                throw;
+            }
+
+            // Get candidate transcoder with highest stake
+            var (maxT, maxStake) = candidateTranscoders.max();
+
+            if (_transcoder == maxT) {
+                // Transcoder with increased stake is now candidate transcoder with highest stake
+                // Get active transcoder with smallest stake
+                var (minT, minStake) = activeTranscoders.min();
+
+                if (maxStake > minStake) {
+                    // Transcoder with increased stake has greater stake than active transcoder with smallest stake
+                    // Remove active transcoder with smallest stake from active transcoder pool
+                    activeTranscoders.extractMin();
+                    // Add transcoder with increased stake to active transcoder pool
+                    activeTranscoders.insert(maxT, maxStake);
+                    // Remove transcoder with increased stake from candidate transcoder pool
+                    candidateTranscoders.extractMax();
+                    // Add active transcoder with smallest stake to candidate transcoder pool
+                    candidateTranscoders.insert(minT, minStake);
+                }
+            }
+        }
+
+        return true;
+    }
+
+    function decreaseTranscoderStake(address _transcoder, uint256 _amount) returns (bool) {
+        if (activeTranscoders.contains(_transcoder)) {
+            // Transcoder in active transcoder pool
+            // Decrease key
+            activeTranscoders.decreaseKey(_transcoder, safeSub(activeTranscoders.getKey(_transcoder), _amount));
+
+            // Get active transcoder with smallest stake
+            var (minT, minStake) = activeTranscoders.min();
+
+            if (candidateTranscoders.size > 0 && _transcoder == minT) {
+                // Transcoder with decreased stake is now active transcoder with smallest stake
+                // Get candidate transcoder with largest stake
+                var (maxT, maxStake) = candidateTranscoders.max();
+
+                if (minStake < maxStake) {
+                    // Transcoder with decreased stake has less stake than candidate transcoder with largest stake
+                    // Remove transcoder with decreased stake from active transcoder pool
+                    activeTranscoders.extractMin();
+                    // Add candidate transcoder with largest stake to active transcoder pool
+                    activeTranscoders.insert(maxT, maxStake);
+                    // Remove candidate transcoder with largest stake from candidate transcoder pool
+                    candidateTranscoders.extractMax();
+                    // Add transcoder with decreased stake to candidate transcoder pool
+                    candidateTranscoders.insert(minT, minStake);
+                }
+            }
+        } else if (candidateTranscoders.contains(_transcoder)) {
+            // Transcoder in candidate transcoder pool
+            // Decrease key
+            candidateTranscoders.decreaseKey(_transcoder, safeSub(candidateTranscoders.getKey(_transcoder), _amount));
+        } else {
+            // Transcoder not in either transcoder pool
+            throw;
+        }
+
+        return true;
+    }
+
+    function isActiveTranscoder(address _transcoder) constant returns (bool) {
+        return activeTranscoders.contains(_transcoder);
+    }
+
+    function isCandidateTranscoder(address _transcoder) constant returns (bool) {
+        return candidateTranscoders.contains(_transcoder);
     }
 
     /**
