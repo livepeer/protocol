@@ -55,6 +55,17 @@ contract("MinHeap", function(accounts) {
         assert.equal(minNode[1], 1, "heap did not update key correctly after inserting 4 nodes");
     });
 
+    it("should get key correctly", async function() {
+        const minHeapMock = await MinHeapMock.new();
+        await minHeapMock.init(10);
+
+        // Insert with key = 5
+        await minHeapMock.insert(accounts[0], 5);
+
+        const key = await minHeapMock.getKey(accounts[0]);
+        assert.equal(key, 5, "heap did not get key correctly");
+    });
+
     it("should extract min correctly", async function() {
         const minHeapMock = await MinHeapMock.new();
         await minHeapMock.init(10);
