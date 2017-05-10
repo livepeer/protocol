@@ -1,6 +1,6 @@
 const TranscoderPoolsMock = artifacts.require("./TranscoderPoolsMock.sol");
 
-contract("TranscoderPoolsMock", function(accounts) {
+contract("TranscoderPools", function(accounts) {
     it("should initialize correctly", async function() {
         const transcoderPoolsMock = await TranscoderPoolsMock.new();
 

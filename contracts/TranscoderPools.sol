@@ -12,42 +12,63 @@ library TranscoderPools {
         MaxHeap.Heap candidateTranscoders;
     }
 
+    /*
+     * Initializes transcoder pools with maximum sizes
+     * @param _activePoolSize Max size of active pool
+     * @param _candidatePoolSize Max size of candidate pool
+     */
     function init(TranscoderPools storage self, uint256 _activePoolSize, uint256 _candidatePoolSize) {
         self.activeTranscoders.init(_activePoolSize);
         self.candidateTranscoders.init(_candidatePoolSize);
     }
 
+    /*
+     * Checks if transcoder is in a pool
+     * @param _transcoder Address of transcoder
+     */
     function isInPools(TranscoderPools storage self, address _transcoder) constant returns (bool) {
         return self.activeTranscoders.ids[_transcoder] || self.candidateTranscoders.ids[_transcoder];
     }
 
+    /*
+     * Checks if transcoder is in active pool
+     * @param _transcoder Address of transcoder
+     */
     function isActiveTranscoder(TranscoderPools storage self, address _transcoder) constant returns (bool) {
         return self.activeTranscoders.ids[_transcoder];
     }
 
+    /*
+     * Checks if transcoder is in candidate pool
+     */
     function isCandidateTranscoder(TranscoderPools storage self, address _transcoder) constant returns (bool) {
         return self.candidateTranscoders.ids[_transcoder];
     }
 
-    function addTranscoder(TranscoderPools storage self, address _transcoder, uint256 _bondedAmount) {
+    /*
+     * Adds a transcoder to a pool. Throws if transcoder is already in a pool
+     * @param _transcoder Address of transcoder
+     * @param _amount The cumulative amount of LPT bonded to the transcoder
+     */
+    function addTranscoder(TranscoderPools storage self, address _transcoder, uint256 _amount) returns (bool) {
         // Check if transcoder is already in a pool
         if (self.activeTranscoders.ids[_transcoder] || self.candidateTranscoders.ids[_transcoder]) throw;
 
         if (!self.activeTranscoders.isFull()) {
             // Active transcoder pool is not full
             // Insert transcoder
-            self.activeTranscoders.insert(_transcoder, _bondedAmount);
+            self.activeTranscoders.insert(_transcoder, _amount);
         } else {
             // Active transcoder pool is full
 
             var (minActive, minActiveStake) = self.activeTranscoders.min();
 
-            if (_bondedAmount > minActiveStake) {
+            if (_amount > minActiveStake) {
                 // New transcoder stake is greater than stake of active transcoder with smallest stake
                 // Remove active transcoder with smallest stake from active transcoder pool
                 self.activeTranscoders.extractMin();
                 // Insert new transcoder into active transcoder pool
-                self.activeTranscoders.insert(_transcoder, _bondedAmount);
+                self.activeTranscoders.insert(_transcoder, _amount);
 
                 if (self.candidateTranscoders.isEmpty()) {
                     // Insert active transcoder with smallest stake into candidate pool
@@ -68,20 +89,27 @@ library TranscoderPools {
             } else if (!self.candidateTranscoders.isFull()) {
                 // Candidate transcoder pool is not full
                 // Insert transcoder
-                self.candidateTranscoders.insert(_transcoder, _bondedAmount);
+                self.candidateTranscoders.insert(_transcoder, _amount);
             } else {
                 // Cannot add transcoder if both pools are full
                 throw;
             }
         }
+
+        return true;
     }
 
-    function increaseTranscoderStake(TranscoderPools storage self, address _transcoder, uint256 _amount) {
-        if (self.activeTranscoders.contains(_transcoder)) {
+    /*
+     * Increases the cumulative stake of a transcoder in a pool
+     * @param _transcoder Address of transcoder
+     * @param _amount The amount of additional LPT to add to cumulative stake of transcoder
+     */
+    function increaseTranscoderStake(TranscoderPools storage self, address _transcoder, uint256 _amount) returns (bool) {
+        if (self.activeTranscoders.ids[_transcoder]) {
             // Transcoder in active transcoder pool
             // Increase key
             self.activeTranscoders.increaseKey(_transcoder, _amount);
-        } else if (self.candidateTranscoders.contains(_transcoder)) {
+        } else if (self.candidateTranscoders.ids[_transcoder]) {
             // Transcoder in candidate transcoder pool
             // Increase key
             self.candidateTranscoders.increaseKey(_transcoder, _amount);
@@ -110,9 +138,16 @@ library TranscoderPools {
             // Transcoder is in neither pool
             throw;
         }
+
+        return true;
     }
 
-    function decreaseTranscoderStake(TranscoderPools storage self, address _transcoder, uint256 _amount) {
+    /*
+     * Decreases the cumulative stake of a transcoder in a pool
+     * @param _transcoder Address of transcoder
+     * @param _amount The amount of LPT to subtract from the cumulative stake of transcoder
+     */
+    function decreaseTranscoderStake(TranscoderPools storage self, address _transcoder, uint256 _amount) returns (bool) {
         if (self.activeTranscoders.ids[_transcoder]) {
             // Transcoder in active transcoder pool
             // Decrease key
@@ -146,5 +181,7 @@ library TranscoderPools {
             // Transcoder not in either transcoder pool
             throw;
         }
+
+        return true;
     }
 }

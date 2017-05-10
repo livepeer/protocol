@@ -71,12 +71,13 @@ contract LivepeerProtocol is SafeMath {
     // Represents a transcoder's current state
     struct Transcoder {
         address transcoderAddress;    // The address of this transcoder.
-        uint256 bondedAmount;         // The amount they have bonded
+        uint256 bondedAmount;         // The amount they have bonded themselves
         bool active;                  // Is this transcoder active. Also will be false if uninitialized
 
         // TODO: add all the state information about pricing, fee split, etc.
     }
 
+    // Active and candidate transcoder pools
     TranscoderPools.TranscoderPools transcoderPools;
 
     // The various states a delegator can be in
@@ -145,13 +146,17 @@ contract LivepeerProtocol is SafeMath {
         // Fail no more than 1% of the time
         verificationFailureThreshold = 1;
 
-        // Initialize transcoder pools
+        // Initialize transcoder pools - size of candidate pool subject to change
         transcoderPools.init(n, n);
 
         // Do initial token distribution - currently clearly fake, minting 3 LPT to the contract creator
         token.mint(msg.sender, 3000000000000000000);
     }
 
+    /*
+     * Computes delegator status
+     * @param _delegator Address of delegator
+     */
     function delegatorStatus(address _delegator) constant returns (DelegatorStatus) {
         // Check if this is an initialized delegator
         if (delegators[_delegator].initialized == false) throw;
@@ -190,7 +195,7 @@ contract LivepeerProtocol is SafeMath {
         }
 
         // Amount to be staked to transcoder
-        uint256 stakeAmount = _amount;
+        uint256 stakeForTranscoder = _amount;
 
         if (transcoders[msg.sender].active == true && _to == msg.sender) {
             // Sender is a registered transcoder and is delegating to self
@@ -208,8 +213,8 @@ contract LivepeerProtocol is SafeMath {
             if (del.transcoderAddress != address(0) && _to != del.transcoderAddress) {
                 // Decrease former transcoder cumulative stake
                 transcoderPools.decreaseTranscoderStake(del.transcoderAddress, del.bondedAmount);
-                // Stake amount includes delegator's total bonded amount since it is moving it
-                stakeAmount = safeAdd(stakeAmount, del.bondedAmount);
+                // Stake amount includes delegator's total bonded amount since delegator is moving its bond
+                stakeForTranscoder = safeAdd(stakeForTranscoder, del.bondedAmount);
             }
 
             del.delegatorAddress = msg.sender;
@@ -222,11 +227,13 @@ contract LivepeerProtocol is SafeMath {
         }
 
         if (transcoderPools.isInPools(_to)) {
+            // Target transcoder is in a pool
             // Increase transcoder cumulative stake
-            transcoderPools.increaseTranscoderStake(_to, stakeAmount);
+            transcoderPools.increaseTranscoderStake(_to, stakeForTranscoder);
         } else {
+            // Target transcoder is not in a pool
             // Add transcoder
-            transcoderPools.addTranscoder(_to, stakeAmount);
+            transcoderPools.addTranscoder(_to, stakeForTranscoder);
         }
 
         return true;
@@ -292,10 +299,18 @@ contract LivepeerProtocol is SafeMath {
         return true;
     }
 
+    /*
+     * Checks if a transcoder is in active pool
+     * @param _transcoder Address of transcoder
+     */
     function isActiveTranscoder(address _transcoder) constant returns (bool) {
         return transcoderPools.activeTranscoders.ids[_transcoder];
     }
 
+    /*
+     * Checks if a transcoder is in candidate pool
+     * @param _transcoder Address of transcoder
+     */
     function isCandidateTranscoder(address _transcoder) constant returns (bool) {
         return transcoderPools.candidateTranscoders.ids[_transcoder];
     }
