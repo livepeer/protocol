@@ -55,6 +55,24 @@ contract("MinHeap", function(accounts) {
         assert.equal(minNode[1], 1, "heap did not update key correctly after inserting 4 nodes");
     });
 
+    it("should fail to insert for existing id", async function() {
+        const minHeapMock = await MinHeapMock.new();
+        await minHeapMock.init(10);
+
+        // Insert with key = 5
+        await minHeapMock.insert(accounts[0], 5);
+
+        let threw = false;
+
+        try {
+            await minHeapMock.insert(accounts[0], 3);
+        } catch (err) {
+            threw = true;
+        }
+
+        assert.isOk(threw, "heap did not throw for existing id");
+    });
+
     it("should get key correctly", async function() {
         const minHeapMock = await MinHeapMock.new();
         await minHeapMock.init(10);
@@ -64,6 +82,25 @@ contract("MinHeap", function(accounts) {
 
         const key = await minHeapMock.getKey(accounts[0]);
         assert.equal(key, 5, "heap did not get key correctly");
+
+    });
+
+    it("should fail to get key for non-existent id", async function() {
+        const minHeapMock = await MinHeapMock.new();
+        await minHeapMock.init(10);
+
+        // Insert with key = 5
+        await minHeapMock.insert(accounts[0], 5);
+
+        let threw = false;
+
+        try {
+            await minHeapMock.getKey(accounts[1]);
+        } catch (err) {
+            threw = true;
+        }
+
+        assert.isOk(threw, "heap did not fail to get key for non-existent id");
     });
 
     it("should extract min correctly", async function() {
@@ -116,6 +153,23 @@ contract("MinHeap", function(accounts) {
         assert.equal(minNode[1], 3, "heap did not increase key and update new min key");
     });
 
+    it("should fail to increase key for non-existent id", async function() {
+        const minHeapMock = await MinHeapMock.new();
+        await minHeapMock.init(10);
+
+        await minHeapMock.insert(accounts[0], 5);
+
+        let threw = false;
+
+        try {
+            await minHeapMock.increaseKey(accounts[1], 2);
+        } catch (err) {
+            threw = true;
+        }
+
+        assert.isOk(threw, "heap did not throw for non-existent id");
+    });
+
     it("should decrease key correctly", async function() {
         const minHeapMock = await MinHeapMock.new();
         await minHeapMock.init(10);
@@ -124,23 +178,56 @@ contract("MinHeap", function(accounts) {
         await minHeapMock.insert(accounts[1], 3);
         await minHeapMock.insert(accounts[2], 2);
 
-        await minHeapMock.decreaseKey(accounts[1], 1);
+        // Decrease key by 2
+        await minHeapMock.decreaseKey(accounts[1], 2);
 
         let minNode = await minHeapMock.min();
         assert.equal(minNode[0], accounts[1], "heap did not decrease key and update new min value");
         assert.equal(minNode[1], 1, "heap did not decrease key and update new min key");
+
+    });
+
+    it("should fail to decrease key for non-existent id", async function() {
+        const minHeapMock = await MinHeapMock.new();
+        await minHeapMock.init(10);
+
+        await minHeapMock.insert(accounts[0], 5);
+
+        let threw = false;
+
+        try {
+            await minHeapMock.decreaseKey(accounts[1], 2);
+        } catch (err) {
+            threw = true;
+        }
+
+        assert.isOk(threw, "heap did not throw for a non-existent id");
     });
 
     it("should check if it contains a value", async function() {
         const minHeapMock = await MinHeapMock.new();
         await minHeapMock.init(10);
 
+        let containsValue = await minHeapMock.contains(accounts[0]);
+        assert.isNotOk(containsValue, "heap did not return false for a value it does not contain after initialization");
+
         await minHeapMock.insert(accounts[0], 5);
 
-        let containsValue = await minHeapMock.contains(accounts[0]);
+        containsValue = await minHeapMock.contains(accounts[0]);
         assert.ok(containsValue, "heap did not return true for a value it contains");
 
         containsValue = await minHeapMock.contains(accounts[1]);
         assert.isNotOk(containsValue, "heap did not return false for a value it does not contain");
+    });
+
+    it("should check if it is full", async function() {
+        const minHeapMock = await MinHeapMock.new();
+        await minHeapMock.init(2);
+
+        await minHeapMock.insert(accounts[0], 5);
+        await minHeapMock.insert(accounts[1], 6);
+
+        const isFull = await minHeapMock.isFull();
+        assert.isOk(isFull, "is full did not return true for full heap");
     });
 });

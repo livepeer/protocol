@@ -1,19 +1,19 @@
 pragma solidity ^0.4.8;
 
 library MinHeap {
-    uint private constant HARD_MAX = 100;
-
     struct Node {
-        address value;
+        address id;
         uint key;
+        bool initialized;
     }
 
     struct Heap {
-        Node[100] nodes;
+        Node[] nodes;
         mapping (address => uint) positions;
-        mapping (address => bool) values;
+        mapping (address => bool) ids;
         uint size;
         uint maxSize;
+        bool initialized;
     }
 
     /*
@@ -21,56 +21,75 @@ library MinHeap {
      * @param _size Max size of heap
      */
     function init(Heap storage self, uint _size) {
-        // Check if size is less than hard max
-        if (_size > HARD_MAX) throw;
-        // Check if there is already a max size
-        if (self.maxSize > 0) throw;
+        // Check if heap is already initialized
+        if (self.initialized == true) throw;
 
         self.maxSize = _size;
+        self.initialized = true;
     }
 
     /*
-     * Checks if an address is in the heap
-     * @param _vallue Address value
+     * Checks if an id is in the heap
+     * @param _id Address id
      */
-    function contains(Heap storage self, address _value) constant returns (bool) {
-        return self.values[_value];
+    function contains(Heap storage self, address _id) constant returns (bool) {
+        return self.ids[_id];
     }
 
     /*
-     * Returns the key for an address
-     * @param Address value
+     * Checks if a heap is full
      */
-    function getKey(Heap storage self, address _value) constant returns (uint256) {
-        return self.nodes[self.positions[_value]].key;
+    function isFull(Heap storage self) constant returns (bool) {
+        return self.size == self.maxSize;
+    }
+
+    /*
+     * Checks if a heap is empty
+     */
+    function isEmpty(Heap storage self) constant returns (bool) {
+        return self.size == 0;
+    }
+
+    /*
+     * Returns the key for an id
+     * @param Address id
+     */
+    function getKey(Heap storage self, address _id) constant returns (uint) {
+        // Check if id is in the heap
+        if (self.ids[_id] == false) throw;
+
+        return self.nodes[self.positions[_id]].key;
     }
 
     /*
      * Returns the min node in the heap as a address, key pair
      */
     function min(Heap storage self) constant returns (address, uint) {
+        // Check if heap is empty
         if (self.size == 0) throw;
 
-        return (self.nodes[0].value, self.nodes[0].key);
+        return (self.nodes[0].id, self.nodes[0].key);
     }
 
     /*
      * Inserts an adress and key as a node in the heap
-     * @param _value Address value
+     * @param _id Address id
      * @param _key Key for address
      */
-    function insert(Heap storage self, address _value, uint _key) {
+    function insert(Heap storage self, address _id, uint _key) {
         // Check if heap is already full
         if (self.size == self.maxSize) throw;
+        // Check if id already in heap. Call increaseKey instead
+        if (self.ids[_id] == true) throw;
 
         // Update heap size
         self.size++;
         // Create and set node
-        self.nodes[self.size - 1] = Node(_value, _key);
+        self.nodes.push(Node(_id, _key, true));
         // Update position of node
-        self.positions[_value] = self.size - 1;
-        // Update values contained in heap
-        self.values[_value] = true;
+        self.positions[_id] = self.size - 1;
+        // Update ids contained in heap
+        self.ids[_id] = true;
 
         // Sift up to maintain heap property
         siftUp(self, self.size - 1);
@@ -93,13 +112,13 @@ library MinHeap {
     function deletePos(Heap storage self, uint _pos) {
         if (self.size < _pos) throw;
 
-        // Update values contained in the heap
-        self.values[self.nodes[_pos].value] = false;
+        // Update ids contained in the heap
+        self.ids[self.nodes[_pos].id] = false;
 
         // Set the last node of the heap to the current position
         self.nodes[_pos] = self.nodes[self.size - 1];
         // Update position of the former last node of the heap
-        self.positions[self.nodes[_pos].value] = _pos;
+        self.positions[self.nodes[_pos].id] = _pos;
         // Delete the last node of the heap
         delete self.nodes[self.size - 1];
         // Update heap size
@@ -110,36 +129,38 @@ library MinHeap {
     }
 
     /*
-     * Increases key for address in the heap while maintaing heap property
-     * @param _value Address value
-     * @param _key Increased key for address
+     * Increases key for id in the heap while maintaing heap property
+     * @param _id Address id
+     * @param _amount Amount to increase key by
      */
-    function increaseKey(Heap storage self, address _value, uint _key) {
-        // Get position of address in heap
-        uint pos = self.positions[_value];
+    function increaseKey(Heap storage self, address _id, uint _amount) {
+        // Check if id is in heap
+        if (self.ids[_id] == false) throw;
 
-        if (self.size < pos) throw;
+        // Get position of id in heap
+        uint pos = self.positions[_id];
 
         // Update key for address
-        self.nodes[pos].key = _key;
+        self.nodes[pos].key += _amount;
 
         // Sift down to maintain heap property
         siftDown(self, pos);
     }
 
     /*
-     * Decreases key for address in the heap while maintaing heap property
-     * @param _value Address value
-     * @param _key Decreased key for address
+     * Decreases key for id in the heap while maintaing heap property
+     * @param _id Address id
+     * @param _amount Amount to decrease key by
      */
-    function decreaseKey(Heap storage self, address _value, uint _key) {
-        // Get position of address in heap
-        uint pos = self.positions[_value];
+    function decreaseKey(Heap storage self, address _id, uint _amount) {
+        // Check if id is in heap
+        if (self.ids[_id] == false) throw;
 
-        if (self.size < pos) throw;
+        // Get position of address in heap
+        uint pos = self.positions[_id];
 
         // Update key for address
-        self.nodes[pos].key = _key;
+        self.nodes[pos].key -= _amount;
 
         // Sift up to maintain heap property
         siftUp(self, pos);
@@ -153,19 +174,19 @@ library MinHeap {
         // Set current node to be node at starting position
         Node memory curr = self.nodes[_pos];
 
-        while (_pos > 0 && self.nodes[_pos / 2].key > curr.key) {
+        while (_pos > 0 && self.nodes[(_pos - 1) / 2].key > curr.key) {
             // Set parent as child
-            self.nodes[_pos] = self.nodes[_pos / 2];
+            self.nodes[_pos] = self.nodes[(_pos - 1) / 2];
             // Update position of parent
-            self.positions[self.nodes[_pos].value] = _pos;
+            self.positions[self.nodes[_pos].id] = _pos;
             // Set current position to be parent position
-            _pos = _pos / 2;
+            _pos = (_pos - 1) / 2;
         }
 
         // Set current node at its new position in the heap
         self.nodes[_pos] = curr;
         // Update position of current node
-        self.positions[curr.value] = _pos;
+        self.positions[curr.id] = _pos;
     }
 
     /*
@@ -178,27 +199,27 @@ library MinHeap {
         // Flag for whether the heap property is obeyed
         bool isHeap = false;
         // Set index of current smallest node to left child
-        uint smallest = _pos * 2;
+        uint smallest = _pos * 2 + 1;
 
         // Sift until we obey the heap property
         while (smallest < self.size && !isHeap) {
             // Check if node is initialized by checking for an address
-            if (smallest < self.size && self.nodes[smallest + 1].value != address(0) && self.nodes[smallest + 1].key < self.nodes[smallest].key) {
+            if (smallest < self.size && self.nodes[smallest + 1].initialized && self.nodes[smallest + 1].key < self.nodes[smallest].key) {
                 // Update index of current smallest node to be right child
                 smallest++;
             }
 
             // Check if node is initialized by checking for an address
-            if (self.nodes[smallest].value != address(0) && self.nodes[smallest].key < curr.key) {
+            if (self.nodes[smallest].initialized && self.nodes[smallest].key < curr.key) {
                 // One of the children is the smallest node
                 // Set the smallest node as the new parent
                 self.nodes[_pos] = self.nodes[smallest];
                 // Update position of child
-                self.positions[self.nodes[_pos].value] = _pos;
+                self.positions[self.nodes[_pos].id] = _pos;
                 // Set current index to index of the smallest node
                 _pos = smallest;
                 // Set index of current smallest node to left child of the node at the new current index
-                smallest = _pos * 2;
+                smallest = _pos * 2 + 1;
             } else {
                 // If the current smallest node is already less than the starting node we are done
                 isHeap = true;
@@ -210,7 +231,7 @@ library MinHeap {
             // This line just sets the current node at its original position
             self.nodes[_pos] = curr;
             // Update position of current node
-            self.positions[curr.value] = _pos;
+            self.positions[curr.id] = _pos;
         }
     }
 }

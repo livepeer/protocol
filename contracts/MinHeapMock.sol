@@ -15,6 +15,10 @@ contract MinHeapMock {
         return heap.contains(_addr);
     }
 
+    function isFull() constant returns (bool) {
+        return heap.isFull();
+    }
+
     function getKey(address _addr) constant returns (uint256) {
         return heap.getKey(_addr);
     }
