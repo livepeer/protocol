@@ -210,13 +210,15 @@ contract LivepeerProtocol is SafeMath {
 
             if (del.initialized == false ||
                 (del.transcoderAddress != address(0) && transcoders[del.transcoderAddress].active == false)) {
-                // Only set round start if creating delegator for first time or if
+                // Set round start if creating delegator for first time or if
                 // delegator was bonded to an inactive transcoder
                 del.roundStart = (block.number / roundLength) + 2;
             }
 
             if (del.transcoderAddress != address(0) && _to != del.transcoderAddress) {
                 // Delegator is moving bond
+                // Set round start if delegator moves bond to another active transcoder
+                del.roundStart = (block.number / roundLength) + 2;
                 // Decrease former transcoder cumulative stake
                 transcoderPools.decreaseTranscoderStake(del.transcoderAddress, del.bondedAmount);
                 // Stake amount includes delegator's total bonded amount since delegator is moving its bond
@@ -320,6 +322,8 @@ contract LivepeerProtocol is SafeMath {
         transcoders[msg.sender].active = false;
         // Set withdraw round for delegators
         transcoders[msg.sender].delegatorWithdrawRound = safeAdd(block.number / roundLength, unbondingPeriod);
+        // Zero out bonded amount
+        transcoders[msg.sender].bondedAmount = 0;
         // Remove transcoder from pools
         transcoderPools.removeTranscoder(msg.sender);
     }

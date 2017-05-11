@@ -272,38 +272,58 @@ contract('LivepeerProtocol', function(accounts) {
         assert.ok(threw, "premature withdraw did not throw");
     });
 
-    it("should allow transcoder resignation", async function() {
-        const instance = await LivepeerProtocol.new({from: accounts[0]});
-        const lptaddress = await instance.token.call();
-        const lpt = await LivepeerToken.at(lptaddress);
+    describe("resignAsTranscoder", function() {
+        it("should throw if called by inactive transcoder", async function() {
+            const instance = await LivepeerProtocol.new({from: accounts[0]});
 
-        // transfer tokens
-        await lpt.transfer(accounts[1], toSmallestUnits(1), {from: accounts[0]});
+            let threw = false;
 
-        // register account 1 as transcoder 1
-        await instance.transcoder({from: accounts[1]});
+            try {
+                await instance.resignAsTranscoder({from: accounts[1]});
+            } catch (err) {
+                threw = true;
+            }
 
-        // approve token transfer for account 1
-        await lpt.approve(instance.address, 2000, {from: accounts[1]});
+            assert.isOk(threw, "resignAsTranscoder succeeded when it should have thrown");
+        });
 
-        // account 1 bonds to self as transcoder
-        await instance.bond(2000, accounts[1], {from: accounts[1]});
+        it("should update transcoder fields and remove transcoder from pools", async function() {
+            const instance = await LivepeerProtocol.new({from: accounts[0]});
+            const lptaddress = await instance.token.call();
+            const lpt = await LivepeerToken.at(lptaddress);
 
-        // approve token transfer
-        await lpt.approve(instance.address, 2000, {from: accounts[0]});
+            // transfer tokens
+            await lpt.transfer(accounts[1], toSmallestUnits(1), {from: accounts[0]});
 
-        // account 0 bonds to transcoder 1
-        await instance.bond(1000, accounts[1], {from: accounts[0]});
+            // register account 1 as transcoder 1
+            await instance.transcoder({from: accounts[1]});
 
-        // Transcoder 1 resigns
-        await instance.resignAsTranscoder({from: accounts[1]});
+            // approve token transfer for account 1
+            await lpt.approve(instance.address, 2000, {from: accounts[1]});
 
-        const delegatorStatus = await instance.delegatorStatus(accounts[0]);
-        assert.equal(delegatorStatus, UNBONDING, "resign as transcoder did not cause delegators to unbond");
+            // account 1 bonds to self as transcoder
+            await instance.bond(2000, accounts[1], {from: accounts[1]});
 
-        const isActiveTranscoder = await instance.isActiveTranscoder(accounts[1]);
-        assert.isNotOk(isActiveTranscoder, "resign as transcoder did not remove from active pool");
-        const isCandidateTranscoder = await instance.isActiveTranscoder(accounts[1]);
-        assert.isNotOk(isCandidateTranscoder, "resign as transcoder did not remove from candidate pool");
+            // approve token transfer
+            await lpt.approve(instance.address, 2000, {from: accounts[0]});
+
+            // account 0 bonds to transcoder 1
+            await instance.bond(1000, accounts[1], {from: accounts[0]});
+
+            // Transcoder 1 resigns
+            await instance.resignAsTranscoder({from: accounts[1]});
+
+            const transcoder = await instance.transcoders.call(accounts[1]);
+            assert.equal(transcoder[1], 0, "resignAsTranscoder did not zero out transcoder bonded amount");
+            const delegatorWithdrawRound = Math.floor(web3.eth.blockNumber / ROUND_LENGTH) + UNBONDING_PERIOD;
+            assert.equal(transcoder[2], delegatorWithdrawRound, "resignAsTranscoder did not set delegatorWithdrawRound");
+            assert.equal(transcoder[3], false, "resignAsTranscoder did not set transcoder as inactive");
+
+            const delegatorStatus = await instance.delegatorStatus(accounts[0]);
+            assert.equal(delegatorStatus, UNBONDING, "resignAsTranscoder did not cause delegators to unbond");
+
+            const isActiveTranscoder = await instance.isActiveTranscoder(accounts[1]);
+            assert.isNotOk(isActiveTranscoder, "resignAsTranscoder did not remove transcoder from active pool");
+        });
     });
 });
