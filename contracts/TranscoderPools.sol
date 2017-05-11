@@ -143,6 +143,34 @@ library TranscoderPools {
     }
 
     /*
+     * Removes transcoder from pools
+     * @param _transcoder Address of transcoder
+     */
+    function removeTranscoder(TranscoderPools storage self, address _transcoder) returns (bool) {
+        if (self.activeTranscoders.ids[_transcoder]) {
+            // Transcoder in active transcoder pool
+            // Remove transcoder from active pool
+            self.activeTranscoders.deleteId(_transcoder);
+
+            if (!self.candidateTranscoders.isEmpty()) {
+                // Promote the candidate transcoder with the greatest stake
+                var (maxCandidate, maxCandidateStake) = self.candidateTranscoders.max();
+                self.candidateTranscoders.extractMax();
+                self.activeTranscoders.insert(maxCandidate, maxCandidateStake);
+            }
+        } else if (self.activeTranscoders.ids[_transcoder]) {
+            // Transcoder in candidate transcoder pool
+            // Remove transcoder from candidate pool
+            self.candidateTranscoders.deleteId(_transcoder);
+        } else {
+            // Transcoder not in either pool
+            throw;
+        }
+
+        return true;
+    }
+
+    /*
      * Decreases the cumulative stake of a transcoder in a pool
      * @param _transcoder Address of transcoder
      * @param _amount The amount of LPT to subtract from the cumulative stake of transcoder

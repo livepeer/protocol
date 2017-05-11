@@ -31,6 +31,10 @@ contract TranscoderPoolsMock {
         transcoderPools.addTranscoder(_transcoder, _bondedAmount);
     }
 
+    function removeTranscoder(address _transcoder) {
+        transcoderPools.removeTranscoder(_transcoder);
+    }
+
     function increaseTranscoderStake(address _transcoder, uint256 _bondedAmount) {
         transcoderPools.increaseTranscoderStake(_transcoder, _bondedAmount);
     }

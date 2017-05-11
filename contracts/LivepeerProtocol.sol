@@ -70,9 +70,10 @@ contract LivepeerProtocol is SafeMath {
 
     // Represents a transcoder's current state
     struct Transcoder {
-        address transcoderAddress;    // The address of this transcoder.
-        uint256 bondedAmount;         // The amount they have bonded themselves
-        bool active;                  // Is this transcoder active. Also will be false if uninitialized
+        address transcoderAddress;      // The address of this transcoder.
+        uint256 bondedAmount;           // The amount they have bonded themselves
+        uint256 delegatorWithdrawRound; // The round at which delegators to this transcoder can withdraw if this transcoder resigns
+        bool active;                    // Is this transcoder active. Also will be false if uninitialized
 
         // TODO: add all the state information about pricing, fee split, etc.
     }
@@ -161,8 +162,10 @@ contract LivepeerProtocol is SafeMath {
         // Check if this is an initialized delegator
         if (delegators[_delegator].initialized == false) throw;
 
-        if (delegators[_delegator].withdrawRound > 0) {
-            // Delegator called unbond()
+        if (delegators[_delegator].withdrawRound > 0 ||
+            (delegators[_delegator].transcoderAddress != address(0)
+             && transcoders[delegators[_delegator].transcoderAddress].delegatorWithdrawRound > 0)) {
+            // Delegator called unbond() or transcoder resigned
             // In unbonding phase
             return DelegatorStatus.Unbonding;
         } else if (delegators[_delegator].roundStart > block.number / roundLength) {
@@ -205,12 +208,15 @@ contract LivepeerProtocol is SafeMath {
             // Update or create this delegator
             Delegator del = delegators[msg.sender];
 
-            if (del.initialized == false) {
-                // Only set round start if creating delegator for first time
+            if (del.initialized == false ||
+                (del.transcoderAddress != address(0) && transcoders[del.transcoderAddress].active == false)) {
+                // Only set round start if creating delegator for first time or if
+                // delegator was bonded to an inactive transcoder
                 del.roundStart = (block.number / roundLength) + 2;
             }
 
             if (del.transcoderAddress != address(0) && _to != del.transcoderAddress) {
+                // Delegator is moving bond
                 // Decrease former transcoder cumulative stake
                 transcoderPools.decreaseTranscoderStake(del.transcoderAddress, del.bondedAmount);
                 // Stake amount includes delegator's total bonded amount since delegator is moving its bond
@@ -263,14 +269,20 @@ contract LivepeerProtocol is SafeMath {
         if (delegators[msg.sender].initialized == false) throw;
          // Check if delegator is in unbonding phase
         if (delegatorStatus(msg.sender) != DelegatorStatus.Unbonding) throw;
-        // Check if delegator's unbonding period is over
-        if (block.number / roundLength < delegators[msg.sender].withdrawRound) throw;
+        // Check if delegator's unbonding period is over - initiated by unbond
+        if (delegators[msg.sender].withdrawRound > 0 && block.number / roundLength < delegators[msg.sender].withdrawRound) throw;
+        // Check if delegator's unbonding period is over - initiated by transcoder resignation
+        if (transcoders[delegators[msg.sender].transcoderAddress].delegatorWithdrawRound > 0
+            && block.number / roundLength < transcoders[delegators[msg.sender].transcoderAddress].delegatorWithdrawRound) throw;
 
         // Transfer token. This call throws if it fails.
         token.transfer(msg.sender, delegators[msg.sender].bondedAmount);
 
-        // Decrease transcoder cumulative stake
-        transcoderPools.decreaseTranscoderStake(delegators[msg.sender].transcoderAddress, delegators[msg.sender].bondedAmount);
+        if (transcoders[delegators[msg.sender].transcoderAddress].active == true) {
+            // Transcoder is still active
+            // Decrease transcoder cumulative stake
+            transcoderPools.decreaseTranscoderStake(delegators[msg.sender].transcoderAddress, delegators[msg.sender].bondedAmount);
+        }
 
         // Delete delegator
         delete delegators[msg.sender];
@@ -293,10 +305,23 @@ contract LivepeerProtocol is SafeMath {
     function transcoder() returns (bool) {
         Transcoder t = transcoders[msg.sender];
         t.transcoderAddress = msg.sender;
+        t.delegatorWithdrawRound = 0;
         t.active = true;
         transcoders[msg.sender] = t;
 
         return true;
+    }
+
+    function resignAsTranscoder() returns (bool) {
+        // Check if active transcoder
+        if (transcoders[msg.sender].active == false) throw;
+
+        // Go inactive
+        transcoders[msg.sender].active = false;
+        // Set withdraw round for delegators
+        transcoders[msg.sender].delegatorWithdrawRound = safeAdd(block.number / roundLength, unbondingPeriod);
+        // Remove transcoder from pools
+        transcoderPools.removeTranscoder(msg.sender);
     }
 
     /*
