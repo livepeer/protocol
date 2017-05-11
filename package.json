@@ -7,7 +7,8 @@
     "test": "test"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "docker run -d -p 8545:8545 --name testrpc wbuchwalter/testrpc && truffle test",
+    "posttest": "docker stop testrpc"
   },
   "repository": {
     "type": "git",
@@ -27,5 +28,9 @@
     "babel-preset-stage-3": "^6.24.1",
     "babel-register": "^6.24.1",
     "bignumber.js": "^4.0.1"
+  },
+  "dependencies": {
+    "truffle": "^3.2.2",
+    "web3": "^0.19.0"
   }
 }
