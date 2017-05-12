@@ -182,6 +182,27 @@ contract LivepeerProtocol is SafeMath {
         }
     }
 
+    /*
+     * Checks if delegator unbonding period is over
+     * @param _delegator Address of delegator
+     */
+    function unbondingPeriodOver(address _delegator) constant returns (bool) {
+        // Check if this is an initialized delegator
+        if (delegators[_delegator].initialized == false) throw;
+
+        if (delegators[_delegator].withdrawRound > 0) {
+            // Delegator called unbond()
+            return block.number / roundLength >= delegators[_delegator].withdrawRound;
+        } else if (delegators[_delegator].transcoderAddress != address(0)
+                   && transcoders[delegators[_delegator].transcoderAddress].delegatorWithdrawRound > 0) {
+            // Transcoder resigned
+            return block.number / roundLength >= transcoders[delegators[_delegator].transcoderAddress].delegatorWithdrawRound;
+        } else {
+            // Delegator not in unbonding state
+            return false;
+        }
+    }
+
     /**
      * Delegate stake towards a specific address.
      * @param _amount The amount of LPT to stake.
@@ -260,6 +281,9 @@ contract LivepeerProtocol is SafeMath {
         // Transition to unbonding phase
         delegators[msg.sender].withdrawRound = safeAdd(block.number / roundLength, unbondingPeriod);
 
+        // Decrease transcoder cumulative stake
+        transcoderPools.decreaseTranscoderStake(delegators[msg.sender].transcoderAddress, delegators[msg.sender].bondedAmount);
+
         return true;
     }
 
@@ -271,20 +295,11 @@ contract LivepeerProtocol is SafeMath {
         if (delegators[msg.sender].initialized == false) throw;
          // Check if delegator is in unbonding phase
         if (delegatorStatus(msg.sender) != DelegatorStatus.Unbonding) throw;
-        // Check if delegator's unbonding period is over - initiated by unbond
-        if (delegators[msg.sender].withdrawRound > 0 && block.number / roundLength < delegators[msg.sender].withdrawRound) throw;
-        // Check if delegator's unbonding period is over - initiated by transcoder resignation
-        if (transcoders[delegators[msg.sender].transcoderAddress].delegatorWithdrawRound > 0
-            && block.number / roundLength < transcoders[delegators[msg.sender].transcoderAddress].delegatorWithdrawRound) throw;
+        // Check if delegator's unbonding period is over
+        if (!unbondingPeriodOver(msg.sender)) throw;
 
         // Transfer token. This call throws if it fails.
         token.transfer(msg.sender, delegators[msg.sender].bondedAmount);
-
-        if (transcoders[delegators[msg.sender].transcoderAddress].active == true) {
-            // Transcoder is still active
-            // Decrease transcoder cumulative stake
-            transcoderPools.decreaseTranscoderStake(delegators[msg.sender].transcoderAddress, delegators[msg.sender].bondedAmount);
-        }
 
         // Delete delegator
         delete delegators[msg.sender];

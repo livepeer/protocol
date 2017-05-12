@@ -158,7 +158,7 @@ library TranscoderPools {
                 self.candidateTranscoders.extractMax();
                 self.activeTranscoders.insert(maxCandidate, maxCandidateStake);
             }
-        } else if (self.activeTranscoders.ids[_transcoder]) {
+        } else if (self.candidateTranscoders.ids[_transcoder]) {
             // Transcoder in candidate transcoder pool
             // Remove transcoder from candidate pool
             self.candidateTranscoders.deleteId(_transcoder);
