@@ -106,6 +106,17 @@ library MinHeap {
     }
 
     /*
+     * Delete node with id from heap
+     * @param _id Address id
+     */
+    function deleteId(Heap storage self, address _id) {
+        // Check if id is in heap
+        if (self.ids[_id] == false) throw;
+
+        deletePos(self, self.positions[_id]);
+    }
+
+    /*
      * Delete node at given position while maintaining heap property
      * @param _pos Position of node
      */

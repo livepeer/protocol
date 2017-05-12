@@ -91,6 +91,21 @@ contract("TranscoderPools", function(accounts) {
         assert.isOk(threw, "increase transcoder stake did not throw for non-existent transcoder");
     });
 
+    it("should remove a transcoder", async function() {
+        const transcoderPoolsMock = await TranscoderPoolsMock.new();
+
+        await transcoderPoolsMock.init(2, 2);
+
+        await transcoderPoolsMock.addTranscoder(accounts[0], 10);
+        await transcoderPoolsMock.addTranscoder(accounts[1], 15);
+        await transcoderPoolsMock.addTranscoder(accounts[2], 8);
+
+        await transcoderPoolsMock.removeTranscoder(accounts[1]);
+
+        let isActiveTranscoder = await transcoderPoolsMock.isActiveTranscoder(accounts[2]);
+        assert.isOk(isActiveTranscoder, "remove transcoder did not promote a candidate transcoder");
+    });
+
     it("should decrease transcoder stake", async function() {
         const transcoderPoolsMock = await TranscoderPoolsMock.new();
 

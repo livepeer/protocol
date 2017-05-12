@@ -39,6 +39,10 @@ contract MinHeapMock {
         heap.decreaseKey(_addr, _key);
     }
 
+    function deleteId(address _addr) {
+        heap.deleteId(_addr);
+    }
+
     function min() constant returns (address, uint) {
         return heap.min();
     }

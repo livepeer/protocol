@@ -169,6 +169,20 @@ contract("MaxHeap", function(accounts) {
         assert.isOk(threw, "heap did not throw for non-existent id");
     });
 
+    it("should delete an id correctly", async function() {
+        const maxHeapMock = await MaxHeapMock.new();
+        await maxHeapMock.init(10);
+
+        await maxHeapMock.insert(accounts[0], 2);
+        await maxHeapMock.insert(accounts[1], 3);
+        await maxHeapMock.insert(accounts[2], 5);
+
+        await maxHeapMock.deleteId(accounts[1]);
+
+        const currHeap = await maxHeapMock.heap.call();
+        assert.equal(currHeap[0], 2, "heap did not update size correctly after delete id");
+    });
+
     it("should decrease key correctly", async function() {
         const maxHeapMock = await MaxHeapMock.new();
         await maxHeapMock.init(10);

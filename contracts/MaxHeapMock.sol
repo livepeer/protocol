@@ -35,6 +35,10 @@ contract MaxHeapMock {
         heap.decreaseKey(_addr, _key);
     }
 
+    function deleteId(address _addr) {
+        heap.deleteId(_addr);
+    }
+
     function max() constant returns (address, uint) {
         return heap.max();
     }
