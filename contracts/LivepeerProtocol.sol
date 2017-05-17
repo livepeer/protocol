@@ -2,6 +2,7 @@ pragma solidity ^0.4.8;
 
 import "./LivepeerToken.sol";
 import "./TranscoderPools.sol";
+import "./Node.sol";
 import '../installed_contracts/zeppelin/contracts/SafeMath.sol';
 
 contract LivepeerProtocol is SafeMath {
@@ -98,6 +99,9 @@ contract LivepeerProtocol is SafeMath {
     // Note: Casper style implementation would have us using arrays and bitmaps to index these
     mapping (address => Delegator) public delegators;
     mapping (address => Transcoder) public transcoders;
+
+    Node.Node[] currentActiveTranscoders;
+    uint256 public currentActiveTranscodersSize;
 
     // Initialize protocol
     function LivepeerProtocol() {
@@ -362,11 +366,16 @@ contract LivepeerProtocol is SafeMath {
     /**
      * Called at the start of any round
      */
-    function initializeRound(uint256 round) {
-        // Check that the round has started
-        if (round > block.number / roundLength || round != safeAdd(currentRound, 1)) throw;
-
+    function initializeRound() {
         // Set the current round
-        currentRound = round;
+        currentRound = block.number / roundLength;
+
+        // Set current round active transcoders
+        currentActiveTranscoders = transcoderPools.activeTranscoders.nodes;
+        currentActiveTranscodersSize = transcoderPools.activeTranscoders.size;
+    }
+
+    function electCurrentActiveTranscoder() constant returns (address) {
+        return currentActiveTranscoders[uint(block.blockhash(block.number - 1)) % currentActiveTranscodersSize].id;
     }
 }

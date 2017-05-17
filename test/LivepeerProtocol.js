@@ -326,4 +326,81 @@ contract('LivepeerProtocol', function(accounts) {
             assert.isNotOk(isActiveTranscoder, "resignAsTranscoder did not remove transcoder from active pool");
         });
     });
+
+    describe("initializeRound", function() {
+        it("should set the current round active transcoders", async function() {
+            const instance = await LivepeerProtocol.new({from: accounts[0]});
+            const lptaddress = await instance.token.call();
+            const lpt = await LivepeerToken.at(lptaddress);
+
+            // Transfer tokens
+            await lpt.transfer(accounts[1], toSmallestUnits(1), {from: accounts[0]});
+
+            // Register account 1 as transcoder 1
+            await instance.transcoder({from: accounts[1]});
+
+            // Approve token transfer for account 1
+            await lpt.approve(instance.address, 2000, {from: accounts[1]});
+
+            // Account 1 bonds to self as transcoder
+            await instance.bond(2000, accounts[1], {from: accounts[1]});
+
+            await instance.initializeRound();
+
+            let elected = await instance.electCurrentActiveTranscoder();
+            assert.equal(elected, accounts[1], "initialize round did not set current round active transcoders");
+
+            // Transfer tokens
+            await lpt.transfer(accounts[2], toSmallestUnits(1), {from: accounts[0]});
+
+            // Register account 2 as transcoder 2
+            await instance.transcoder({from: accounts[2]});
+
+            // Approve token transfer for account 2
+            await lpt.approve(instance.address, 3000, {from: accounts[2]});
+
+            // Account 2 bonds to self as transcoder
+            await instance.bond(3000, accounts[2], {from: accounts[2]});
+
+            await instance.initializeRound();
+
+            elected = await instance.electCurrentActiveTranscoder();
+            assert.equal(elected, accounts[2], "initialize round did not set current round active transcoders after stake change");
+        });
+
+        it("should not change current transcoder set if initializeRound is not called", async function() {
+            const instance = await LivepeerProtocol.new({from: accounts[0]});
+            const lptaddress = await instance.token.call();
+            const lpt = await LivepeerToken.at(lptaddress);
+
+            // Transfer tokens
+            await lpt.transfer(accounts[1], toSmallestUnits(1), {from: accounts[0]});
+
+            // Register account 1 as transcoder 1
+            await instance.transcoder({from: accounts[1]});
+
+            // Approve token transfer for account 1
+            await lpt.approve(instance.address, 2000, {from: accounts[1]});
+
+            // Account 1 bonds to self as transcoder
+            await instance.bond(2000, accounts[1], {from: accounts[1]});
+
+            await instance.initializeRound();
+
+            // Transfer tokens
+            await lpt.transfer(accounts[2], toSmallestUnits(1), {from: accounts[0]});
+
+            // Register account 2 as transcoder 2
+            await instance.transcoder({from: accounts[2]});
+
+            // Approve token transfer for account 2
+            await lpt.approve(instance.address, 3000, {from: accounts[2]});
+
+            // Account 2 bonds to self as transcoder
+            await instance.bond(3000, accounts[2], {from: accounts[2]});
+
+            let elected = await instance.electCurrentActiveTranscoder();
+            assert.equal(elected, accounts[1], "current transcoder set changed without calling initializeRound");
+        });
+    });
 });

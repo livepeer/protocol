@@ -1,14 +1,10 @@
 pragma solidity ^0.4.8;
 
-library MaxHeap {
-    struct Node {
-        address id;
-        uint key;
-        bool initialized;
-    }
+import "./Node.sol";
 
+library MaxHeap {
     struct Heap {
-        Node[] nodes;
+        Node.Node[] nodes;
         mapping (address => uint) positions;
         mapping (address => bool) ids;
         uint size;
@@ -82,14 +78,22 @@ library MaxHeap {
         // Check if id already in heap
         if (self.ids[_id] == true) throw;
 
-        // Update heap size
-        self.size++;
         // Create and set node
-        self.nodes.push(Node(_id, _key, true));
+        if (self.nodes.length > self.size) {
+            // More array slots than actual heap size due to deletions
+            // Insert into existing array slot
+            self.nodes[self.size] = Node.Node(_id, _key, true);
+        } else {
+            // Insert into newly allocated array slot
+            self.nodes.push(Node.Node(_id, _key, true));
+        }
+        self.nodes.push(Node.Node(_id, _key, true));
         // Update position of node
         self.positions[_id] = self.size - 1;
         // Update ids contained in heap
         self.ids[_id] = true;
+        // Update heap size
+        self.size++;
 
         // Sift up to maintain heap property
         siftUp(self, self.size - 1);
@@ -181,7 +185,7 @@ library MaxHeap {
      */
     function siftUp(Heap storage self, uint _pos) private {
         // Set current node to be node at starting position
-        Node memory curr = self.nodes[_pos];
+        Node.Node memory curr = self.nodes[_pos];
 
         while (_pos > 0 && self.nodes[(_pos - 1) / 2].key < curr.key) {
             // Set parent as child
@@ -204,7 +208,7 @@ library MaxHeap {
      */
     function siftDown(Heap storage self, uint _pos) private {
         // Set current node to be node at starting position
-        Node memory curr = self.nodes[_pos];
+        Node.Node memory curr = self.nodes[_pos];
         // Flag for whether the heap property is obeyed
         bool isHeap = false;
         // Set index of current largest node to left child
