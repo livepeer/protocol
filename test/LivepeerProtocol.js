@@ -99,7 +99,7 @@ contract('LivepeerProtocol', function(accounts) {
         assert.equal(delegatorStatus, PENDING, "delegator did not transition to bonded");
 
         // Fast forward 2 rounds
-        await rpc.wait(20, 2 * ROUND_LENGTH);
+        await rpc.waitUntilNextRoundBlock(20, ROUND_LENGTH, 2);
 
         delegatorStatus = await instance.delegatorStatus.call(accounts[0]);
         assert.equal(delegatorStatus, BONDED, "delegator did not transition to bonded");
@@ -129,7 +129,7 @@ contract('LivepeerProtocol', function(accounts) {
         await instance.bond(1000, accounts[1], {from: accounts[0]});
 
         // Fast forward 2 rounds
-        await rpc.wait(20, 2 * ROUND_LENGTH);
+        await rpc.waitUntilNextRoundBlock(20, ROUND_LENGTH, 2);
 
         // Transfer tokens
         await lpt.transfer(accounts[2], toSmallestUnits(1), {from: accounts[0]});
@@ -208,7 +208,7 @@ contract('LivepeerProtocol', function(accounts) {
         assert.isOk(isCandidateTranscoder, "transcoder 2 has less stake than transcoder 2 and is not a candidate");
 
         // Fast forward 2 rounds
-        await rpc.wait(20, 2 * ROUND_LENGTH);
+        await rpc.waitUntilNextRoundBlock(20, ROUND_LENGTH, 2);
 
         // Account 0 unbonds
         await instance.unbond({from: accounts[0]});
@@ -217,7 +217,7 @@ contract('LivepeerProtocol', function(accounts) {
         assert.equal(delegatorStatus, UNBONDING, "delegator did not transition to unbonding");
 
         // Fast forward through unbonding period
-        await rpc.wait(20, UNBONDING_PERIOD * ROUND_LENGTH);
+        await rpc.waitUntilNextRoundBlock(20, ROUND_LENGTH, UNBONDING_PERIOD);
 
         // Account 0 withdraws
         await instance.withdraw({from: accounts[0]});
@@ -255,7 +255,7 @@ contract('LivepeerProtocol', function(accounts) {
         await instance.bond(1000, accounts[1], {from: accounts[0]});
 
         // Fast forward 2 rounds
-        await rpc.wait(20, 2 * ROUND_LENGTH);
+        await rpc.waitUntilNextRoundBlock(20, ROUND_LENGTH, 2);
 
         // Account 0 unbonds
         await instance.unbond({from: accounts[0]});
@@ -346,7 +346,7 @@ contract('LivepeerProtocol', function(accounts) {
             await instance.bond(2000, accounts[1], {from: accounts[1]});
 
             // Fast forward 1 round
-            await rpc.wait(20, ROUND_LENGTH);
+            await rpc.waitUntilNextRoundBlock(20, ROUND_LENGTH);
 
             await instance.initializeRound();
 
@@ -366,7 +366,7 @@ contract('LivepeerProtocol', function(accounts) {
             await instance.bond(3000, accounts[2], {from: accounts[2]});
 
             // Fast forward 1 rounds
-            await rpc.wait(20, ROUND_LENGTH);
+            await rpc.waitUntilNextRoundBlock(20, ROUND_LENGTH);
 
             await instance.initializeRound();
 
@@ -392,7 +392,7 @@ contract('LivepeerProtocol', function(accounts) {
             await instance.bond(2000, accounts[1], {from: accounts[1]});
 
             // Fast forward 1 round
-            await rpc.wait(20, ROUND_LENGTH);
+            await rpc.waitUntilNextRoundBlock(20, ROUND_LENGTH);
 
             await instance.initializeRound();
 
@@ -430,7 +430,7 @@ contract('LivepeerProtocol', function(accounts) {
             await instance.bond(2000, accounts[1], {from: accounts[1]});
 
             // Fast forward 1 round
-            await rpc.wait(20, ROUND_LENGTH);
+            await rpc.waitUntilNextRoundBlock(20, ROUND_LENGTH);
 
             await instance.initializeRound();
 

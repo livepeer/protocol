@@ -66,4 +66,29 @@ export default class RPC {
             asyncIterator();
         });
     }
+
+    nextRoundBlock(currentBlockNum, roundLength) {
+        if (roundLength === 0) {
+            return currentBlockNum;
+        }
+
+        const remainder = currentBlockNum % roundLength;
+
+        if (remainder === 0) {
+            return currentBlockNum;
+        }
+
+        return currentBlockNum + roundLength - remainder;
+    }
+
+    waitUntilNextRoundBlock(seconds = 20, roundLength, rounds = 1) {
+        return new Promise((resolve) => {
+            return this.web3.eth.getBlockNumber((e, blockNum) => {
+                resolve(blockNum);
+            });
+        }).then(blockNum => {
+            const additionalBlocks = (rounds - 1) * roundLength;
+            return this.waitUntilBlock(seconds, this.nextRoundBlock(blockNum, roundLength) + additionalBlocks);
+        });
+    }
 }
