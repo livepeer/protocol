@@ -101,7 +101,6 @@ contract LivepeerProtocol is SafeMath {
     mapping (address => Transcoder) public transcoders;
 
     Node.Node[] currentActiveTranscoders;
-    uint256 public currentActiveTranscodersSize;
 
     // Initialize protocol
     function LivepeerProtocol() {
@@ -333,6 +332,9 @@ contract LivepeerProtocol is SafeMath {
         return true;
     }
 
+    /*
+     * Remove the sender as a transcoder
+     */
     function resignAsTranscoder() returns (bool) {
         // Check if active transcoder
         if (transcoders[msg.sender].active == false) throw;
@@ -364,18 +366,26 @@ contract LivepeerProtocol is SafeMath {
     }
 
     /**
-     * Called at the start of any round
+     * Called once at the start of any round
      */
-    function initializeRound() {
+    function initializeRound() returns (bool) {
+        // Check if already called for the current round
+        // Will exit here to avoid large gas consumption if it has been called for the current round already
+        if (currentRound == block.number / roundLength) return false;
         // Set the current round
         currentRound = block.number / roundLength;
 
         // Set current round active transcoders
         currentActiveTranscoders = transcoderPools.activeTranscoders.nodes;
-        currentActiveTranscodersSize = transcoderPools.activeTranscoders.size;
+
+        return true;
     }
 
+    /*
+     * Pseudorandomly elect an active transcoder. Currently a placeholder
+     * TODO: take into account pricing, etc.
+     */
     function electCurrentActiveTranscoder() constant returns (address) {
-        return currentActiveTranscoders[uint(block.blockhash(block.number - 1)) % currentActiveTranscodersSize].id;
+        return currentActiveTranscoders[uint(block.blockhash(block.number - 1)) % currentActiveTranscoders.length].id;
     }
 }

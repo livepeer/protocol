@@ -7,7 +7,7 @@ contract("MinHeap", function(accounts) {
         await minHeapMock.init(10);
 
         const heap = await minHeapMock.heap.call();
-        assert.equal(heap[1], 10, "heap did not initialize with correct size");
+        assert.equal(heap[0], 10, "heap did not initialize with correct size");
     });
 
     it("should insert correctly", async function() {
@@ -17,8 +17,8 @@ contract("MinHeap", function(accounts) {
         // Insert with key = 5
         await minHeapMock.insert(accounts[0], 5);
 
-        let currHeap = await minHeapMock.heap.call();
-        assert.equal(currHeap[0], 1, "heap did not update size correctly after inserting 1 node");
+        let heapSize = await minHeapMock.size();
+        assert.equal(heapSize, 1, "heap did not update size correctly after inserting 1 node");
 
         let minNode = await minHeapMock.min();
         assert.equal(minNode[0], accounts[0], "heap did not update value correctly after inserting 1 node");
@@ -27,8 +27,8 @@ contract("MinHeap", function(accounts) {
         // Insert with key = 3
         await minHeapMock.insert(accounts[1], 3);
 
-        currHeap = await minHeapMock.heap.call();
-        assert.equal(currHeap[0], 2, "heap did not update size correctly after inserting 2 nodes");
+        heapSize = await minHeapMock.size();
+        assert.equal(heapSize, 2, "heap did not update size correctly after inserting 2 nodes");
 
         minNode = await minHeapMock.min();
         assert.equal(minNode[0], accounts[1], "heap did not update value correctly after inserting 2 nodes");
@@ -37,8 +37,8 @@ contract("MinHeap", function(accounts) {
         // Insert with key = 4
         await minHeapMock.insert(accounts[2], 4);
 
-        currHeap = await minHeapMock.heap.call();
-        assert.equal(currHeap[0], 3, "heap did not update size correctly after inserting 3 nodes");
+        heapSize = await minHeapMock.size();
+        assert.equal(heapSize, 3, "heap did not update size correctly after inserting 3 nodes");
 
         minNode = await minHeapMock.min();
         assert.equal(minNode[0], accounts[1], "heap did not update value correctly after inserting 3 nodes");
@@ -47,8 +47,8 @@ contract("MinHeap", function(accounts) {
         // Insert with key = 1
         await minHeapMock.insert(accounts[3], 1);
 
-        currHeap = await minHeapMock.heap.call();
-        assert.equal(currHeap[0], 4, "heap did not update size correctly after inserting 4 nodes");
+        heapSize = await minHeapMock.size();
+        assert.equal(heapSize, 4, "heap did not update size correctly after inserting 4 nodes");
 
         minNode = await minHeapMock.min();
         assert.equal(minNode[0], accounts[3], "heap did not update value correctly after inserting 4 nodes");
@@ -114,8 +114,8 @@ contract("MinHeap", function(accounts) {
         // Extract min
         await minHeapMock.extractMin();
 
-        let currHeap = await minHeapMock.heap.call();
-        assert.equal(currHeap[0], 2, "heap did not update size correctly after first extract min");
+        let heapSize = await minHeapMock.size();
+        assert.equal(heapSize, 2, "heap did not update size correctly after first extract min");
 
         let minNode = await minHeapMock.min();
         assert.equal(minNode[0], accounts[1], "heap did not update new min value after first extract min correctly");
@@ -124,8 +124,8 @@ contract("MinHeap", function(accounts) {
         // Extract min
         await minHeapMock.extractMin();
 
-        currHeap = await minHeapMock.heap.call();
-        assert.equal(currHeap[0], 1, "heap did not update size correctly after second extract min");
+        heapSize = await minHeapMock.size();
+        assert.equal(heapSize, 1, "heap did not update size correctly after second extract min");
 
         minNode = await minHeapMock.min();
         assert.equal(minNode[0], accounts[0], "heap did not update new min value after second extract min correctly");
@@ -134,8 +134,8 @@ contract("MinHeap", function(accounts) {
         // Extract min
         await minHeapMock.extractMin();
 
-        currHeap = await minHeapMock.heap.call();
-        assert.equal(currHeap[0], 0, "heap did not update size correctly after third extract min");
+        heapSize = await minHeapMock.size();
+        assert.equal(heapSize, 0, "heap did not update size correctly after third extract min");
     });
 
     it("should increase key correctly", async function() {
@@ -180,8 +180,8 @@ contract("MinHeap", function(accounts) {
 
         await minHeapMock.deleteId(accounts[1]);
 
-        const currHeap = await minHeapMock.heap.call();
-        assert.equal(currHeap[0], 2, "heap did not update size correctly after delete id");
+        const heapSize = await minHeapMock.size();
+        assert.equal(heapSize, 2, "heap did not update size correctly after delete id");
     });
 
     it("should decrease key correctly", async function() {
@@ -198,7 +198,6 @@ contract("MinHeap", function(accounts) {
         let minNode = await minHeapMock.min();
         assert.equal(minNode[0], accounts[1], "heap did not decrease key and update new min value");
         assert.equal(minNode[1], 1, "heap did not decrease key and update new min key");
-
     });
 
     it("should fail to decrease key for non-existent id", async function() {

@@ -345,6 +345,9 @@ contract('LivepeerProtocol', function(accounts) {
             // Account 1 bonds to self as transcoder
             await instance.bond(2000, accounts[1], {from: accounts[1]});
 
+            // Fast forward 1 round
+            await rpc.wait(20, ROUND_LENGTH);
+
             await instance.initializeRound();
 
             let elected = await instance.electCurrentActiveTranscoder();
@@ -361,6 +364,9 @@ contract('LivepeerProtocol', function(accounts) {
 
             // Account 2 bonds to self as transcoder
             await instance.bond(3000, accounts[2], {from: accounts[2]});
+
+            // Fast forward 1 rounds
+            await rpc.wait(20, ROUND_LENGTH);
 
             await instance.initializeRound();
 
@@ -385,6 +391,9 @@ contract('LivepeerProtocol', function(accounts) {
             // Account 1 bonds to self as transcoder
             await instance.bond(2000, accounts[1], {from: accounts[1]});
 
+            // Fast forward 1 round
+            await rpc.wait(20, ROUND_LENGTH);
+
             await instance.initializeRound();
 
             // Transfer tokens
@@ -399,8 +408,48 @@ contract('LivepeerProtocol', function(accounts) {
             // Account 2 bonds to self as transcoder
             await instance.bond(3000, accounts[2], {from: accounts[2]});
 
-            let elected = await instance.electCurrentActiveTranscoder();
+            const elected = await instance.electCurrentActiveTranscoder();
             assert.equal(elected, accounts[1], "current transcoder set changed without calling initializeRound");
+        });
+
+        it("should fail if current round is already initialized", async function() {
+            const instance = await LivepeerProtocol.new({from: accounts[0]});
+            const lptaddress = await instance.token.call();
+            const lpt = await LivepeerToken.at(lptaddress);
+
+            // Transfer tokens
+            await lpt.transfer(accounts[1], toSmallestUnits(1), {from: accounts[0]});
+
+            // Register account 1 as transcoder 1
+            await instance.transcoder({from: accounts[1]});
+
+            // Approve token transfer for account 1
+            await lpt.approve(instance.address, 2000, {from: accounts[1]});
+
+            // Account 1 bonds to self as transcoder
+            await instance.bond(2000, accounts[1], {from: accounts[1]});
+
+            // Fast forward 1 round
+            await rpc.wait(20, ROUND_LENGTH);
+
+            await instance.initializeRound();
+
+            // Transfer tokens
+            await lpt.transfer(accounts[2], toSmallestUnits(1), {from: accounts[0]});
+
+            // Register account 2 as transcoder 2
+            await instance.transcoder({from: accounts[2]});
+
+            // Approve token transfer for account 2
+            await lpt.approve(instance.address, 3000, {from: accounts[2]});
+
+            // Account 2 bonds to self as transcoder
+            await instance.bond(3000, accounts[2], {from: accounts[2]});
+
+            await instance.initializeRound();
+
+            const elected = await instance.electCurrentActiveTranscoder();
+            assert.equal(elected, accounts[1], "initialize round did not return early when it was already called for the current round");
         });
     });
 });
