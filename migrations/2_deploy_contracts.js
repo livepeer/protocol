@@ -6,8 +6,14 @@ var MinHeapMock = artifacts.require("./MinHeapMock.sol");
 var MaxHeapMock = artifacts.require("./MaxHeapMock.sol");
 var TranscoderPools = artifacts.require("./TranscoderPools.sol");
 var TranscoderPoolsMock = artifacts.require("./TranscoderPoolsMock.sol");
+var Node = artifacts.require("./Node.sol");
 
 module.exports = function(deployer) {
+    deployer.deploy(Node);
+    deployer.link(Node, MinHeap);
+    deployer.link(Node, MaxHeap);
+    deployer.link(Node, LivepeerProtocol);
+
     deployer.deploy(MinHeap);
     deployer.link(MinHeap, MinHeapMock);
     deployer.link(MinHeap, TranscoderPools);

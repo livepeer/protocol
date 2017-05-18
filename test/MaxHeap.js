@@ -7,7 +7,7 @@ contract("MaxHeap", function(accounts) {
         await maxHeapMock.init(10);
 
         const heap = await maxHeapMock.heap.call();
-        assert.equal(heap[1], 10, "heap did not initialize with correct size");
+        assert.equal(heap[0], 10, "heap did not initialize with correct size");
     });
 
     it("should insert correctly", async function() {
@@ -17,8 +17,8 @@ contract("MaxHeap", function(accounts) {
         // Insert with key = 3
         await maxHeapMock.insert(accounts[0], 3);
 
-        let currHeap = await maxHeapMock.heap.call();
-        assert.equal(currHeap[0], 1, "heap did not update size correctly after inserting 1 node");
+        let heapSize = await maxHeapMock.size();
+        assert.equal(heapSize, 1, "heap did not update size correctly after inserting 1 node");
 
         let maxNode = await maxHeapMock.max();
         assert.equal(maxNode[0], accounts[0], "heap did not update value correctly after inserting 1 node");
@@ -27,8 +27,8 @@ contract("MaxHeap", function(accounts) {
         // Insert with key = 5
         await maxHeapMock.insert(accounts[1], 5);
 
-        currHeap = await maxHeapMock.heap.call();
-        assert.equal(currHeap[0], 2, "heap did not update size correctly after inserting 2 nodes");
+        heapSize = await maxHeapMock.size();
+        assert.equal(heapSize, 2, "heap did not update size correctly after inserting 2 nodes");
 
         maxNode = await maxHeapMock.max();
         assert.equal(maxNode[0], accounts[1], "heap did not update value correctly after inserting 2 nodes");
@@ -37,8 +37,8 @@ contract("MaxHeap", function(accounts) {
         // Insert with key = 4
         await maxHeapMock.insert(accounts[2], 4);
 
-        currHeap = await maxHeapMock.heap.call();
-        assert.equal(currHeap[0], 3, "heap did not update size correctly after inserting 3 nodes");
+        heapSize = await maxHeapMock.size();
+        assert.equal(heapSize, 3, "heap did not update size correctly after inserting 3 nodes");
 
         maxNode = await maxHeapMock.max();
         assert.equal(maxNode[0], accounts[1], "heap did not update value correctly after inserting 3 nodes");
@@ -47,8 +47,8 @@ contract("MaxHeap", function(accounts) {
         // Insert with key = 6
         await maxHeapMock.insert(accounts[3], 6);
 
-        currHeap = await maxHeapMock.heap.call();
-        assert.equal(currHeap[0], 4, "heap did not update size correctly after inserting 4 nodes");
+        heapSize = await maxHeapMock.size();
+        assert.equal(heapSize, 4, "heap did not update size correctly after inserting 4 nodes");
 
         maxNode = await maxHeapMock.max();
         assert.equal(maxNode[0], accounts[3], "heap did not update value correctly after inserting 4 nodes");
@@ -113,8 +113,8 @@ contract("MaxHeap", function(accounts) {
         // Extract max
         await maxHeapMock.extractMax();
 
-        let currHeap = await maxHeapMock.heap.call();
-        assert.equal(currHeap[0], 2, "heap did not update size correctly after first extract max");
+        let heapSize = await maxHeapMock.size();
+        assert.equal(heapSize, 2, "heap did not update size correctly after first extract max");
 
         let maxNode = await maxHeapMock.max();
         assert.equal(maxNode[0], accounts[1], "heap did not update new max value after first extract max correctly");
@@ -123,8 +123,8 @@ contract("MaxHeap", function(accounts) {
         // Extract max
         await maxHeapMock.extractMax();
 
-        currHeap = await maxHeapMock.heap.call();
-        assert.equal(currHeap[0], 1, "heap did not update size correctly after second extract max");
+        heapSize = await maxHeapMock.size();
+        assert.equal(heapSize, 1, "heap did not update size correctly after second extract max");
 
         maxNode = await maxHeapMock.max();
         assert.equal(maxNode[0], accounts[0], "heap did not update new max value after second extract max correctly");
@@ -133,8 +133,8 @@ contract("MaxHeap", function(accounts) {
         // Extract max
         await maxHeapMock.extractMax();
 
-        currHeap = await maxHeapMock.heap.call();
-        assert.equal(currHeap[0], 0, "heap did not update size correctly after third extract max");
+        heapSize = await maxHeapMock.size();
+        assert.equal(heapSize, 0, "heap did not update size correctly after third extract max");
     });
 
     it("should increase key correctly", async function() {
@@ -179,8 +179,8 @@ contract("MaxHeap", function(accounts) {
 
         await maxHeapMock.deleteId(accounts[1]);
 
-        const currHeap = await maxHeapMock.heap.call();
-        assert.equal(currHeap[0], 2, "heap did not update size correctly after delete id");
+        const heapSize = await maxHeapMock.size();
+        assert.equal(heapSize, 2, "heap did not update size correctly after delete id");
     });
 
     it("should decrease key correctly", async function() {

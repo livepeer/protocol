@@ -2,6 +2,7 @@ pragma solidity ^0.4.8;
 
 import "./LivepeerToken.sol";
 import "./TranscoderPools.sol";
+import "./Node.sol";
 import '../installed_contracts/zeppelin/contracts/SafeMath.sol';
 
 contract LivepeerProtocol is SafeMath {
@@ -98,6 +99,8 @@ contract LivepeerProtocol is SafeMath {
     // Note: Casper style implementation would have us using arrays and bitmaps to index these
     mapping (address => Delegator) public delegators;
     mapping (address => Transcoder) public transcoders;
+
+    Node.Node[] currentActiveTranscoders;
 
     // Initialize protocol
     function LivepeerProtocol() {
@@ -329,6 +332,9 @@ contract LivepeerProtocol is SafeMath {
         return true;
     }
 
+    /*
+     * Remove the sender as a transcoder
+     */
     function resignAsTranscoder() returns (bool) {
         // Check if active transcoder
         if (transcoders[msg.sender].active == false) throw;
@@ -360,13 +366,26 @@ contract LivepeerProtocol is SafeMath {
     }
 
     /**
-     * Called at the start of any round
+     * Called once at the start of any round
      */
-    function initializeRound(uint256 round) {
-        // Check that the round has started
-        if (round > block.number / roundLength || round != safeAdd(currentRound, 1)) throw;
-
+    function initializeRound() returns (bool) {
+        // Check if already called for the current round
+        // Will exit here to avoid large gas consumption if it has been called for the current round already
+        if (currentRound == block.number / roundLength) return false;
         // Set the current round
-        currentRound = round;
+        currentRound = block.number / roundLength;
+
+        // Set current round active transcoders
+        currentActiveTranscoders = transcoderPools.activeTranscoders.nodes;
+
+        return true;
+    }
+
+    /*
+     * Pseudorandomly elect an active transcoder. Currently a placeholder
+     * TODO: take into account pricing, etc.
+     */
+    function electCurrentActiveTranscoder() constant returns (address) {
+        return currentActiveTranscoders[uint(block.blockhash(block.number - 1)) % currentActiveTranscoders.length].id;
     }
 }
