@@ -19,6 +19,10 @@ contract MaxHeapMock {
         return heap.getKey(_addr);
     }
 
+    function size() constant returns (uint256) {
+        return heap.size();
+    }
+
     function insert(address _addr, uint _key) {
         heap.insert(_addr, _key);
     }
