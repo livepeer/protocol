@@ -414,6 +414,10 @@ contract LivepeerProtocol is SafeMath {
         }
 
         for (uint256 i = 0; i < transcoderPools.activeTranscoders.nodes.length; i++) {
+            if (currentActiveTranscoders[i].initialized) {
+                // Set address of old node to not be present in current active transcoder set
+                isCurrentActiveTranscoder[currentActiveTranscoders[i].id] = false;
+            }
             // Copy node
             currentActiveTranscoders[i] = transcoderPools.activeTranscoders.nodes[i];
             // Set address of node to be present in current active transcoder set
@@ -467,6 +471,9 @@ contract LivepeerProtocol is SafeMath {
      * @param _transcoder Address of transcoder
      */
     function validRewardTimeWindow(address _transcoder) internal returns (bool) {
+        // Check if transcoder is present in current active transcoder set
+        if (!isCurrentActiveTranscoder[_transcoder]) throw;
+
         // Use index position of address in current active transcoder set as its place in the order for calling reward()
         uint256 transcoderIdx = currentActiveTranscoderPositions[_transcoder];
 
