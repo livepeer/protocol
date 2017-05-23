@@ -437,7 +437,7 @@ contract LivepeerProtocol is SafeMath {
      * Return start block of current round
      */
     function currentRoundStartBlock() constant returns (uint256) {
-        return currentRound * roundLength;
+        return (block.number / roundLength) * roundLength;
     }
 
     /*
