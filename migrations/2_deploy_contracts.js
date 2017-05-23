@@ -29,5 +29,5 @@ module.exports = function(deployer) {
     deployer.deploy(LivepeerToken);
     deployer.link(LivepeerToken, LivepeerProtocol);
     deployer.link(TranscoderPools, LivepeerProtocol);
-    deployer.deploy(LivepeerProtocol);
+    deployer.deploy(LivepeerProtocol, 1, 50, 2);
 };
