@@ -74,6 +74,8 @@ contract LivepeerProtocol is SafeMath {
         address transcoderAddress;      // The address of this transcoder.
         uint256 bondedAmount;           // The amount they have bonded themselves
         uint256 delegatorWithdrawRound; // The round at which delegators to this transcoder can withdraw if this transcoder resigns
+        uint256 rewardRound;            // Last round that the transcoder called reward()
+        uint256 rewardCycle;            // Last cycle of the last round that the transcoder called reward()
         bool active;                    // Is this transcoder active. Also will be false if uninitialized
 
         // TODO: add all the state information about pricing, fee split, etc.
@@ -100,10 +102,15 @@ contract LivepeerProtocol is SafeMath {
     mapping (address => Delegator) public delegators;
     mapping (address => Transcoder) public transcoders;
 
+    // Current active transcoders for current round
     Node.Node[] currentActiveTranscoders;
+    // Mapping to track which addresses are in the current active transcoder set
+    mapping (address => bool) isCurrentActiveTranscoder;
+    // Mapping to track the index position of an address in the current active transcoder set
+    mapping (address => uint256) currentActiveTranscoderPositions;
 
     // Initialize protocol
-    function LivepeerProtocol() {
+    function LivepeerProtocol(uint64 _n, uint256 _roundLength, uint256 _cyclesPerRound) {
         // Deploy new token contract
         token = new LivepeerToken();
 
@@ -114,17 +121,18 @@ contract LivepeerProtocol is SafeMath {
         // Segment length of 2 seconds
         t = 2;
 
-        // Start with 1 transcoder for testing
-        n = 1;
+        // Start with provided number of transcoders parameter
+        // Current value is for testing purposes
+        n = _n;
 
         // Round length of ~1 day assuming ~17 second block time on main net
         // Current value is for testing purposes
-        roundLength = 20;
+        roundLength = _roundLength;
         currentRound = block.number / roundLength;
 
         // Transcoder expected to call reward every ~10 minutes assuming ~17 second block time on main net
         // Current value is for testing purposes
-        cyclesPerRound = roundLength / 2;
+        cyclesPerRound = _cyclesPerRound;
 
         // Lock rate changes 2 hours before round
         rateLockDeadline = 2 hours;
@@ -315,6 +323,21 @@ contract LivepeerProtocol is SafeMath {
      * Distribute the token rewards to transcoder and delegates.
      */
     function reward() returns (bool) {
+        // Check if in current round active transcoder set
+        if (!isCurrentActiveTranscoder[msg.sender]) throw;
+
+        // Check if already called for current cycle
+        if (transcoders[msg.sender].rewardRound == block.number / roundLength && transcoders[msg.sender].rewardCycle == cycleNum()) throw;
+
+        // Check if in a valid transcoder reward time window
+        if (!validRewardTimeWindow(msg.sender)) throw;
+
+        // Set last round that transcoder called reward()
+        transcoders[msg.sender].rewardRound = block.number / roundLength;
+        // Set last cycle of last round that transcoder called reward()
+        transcoders[msg.sender].rewardCycle = cycleNum();
+
+        // Reward calculation
 
         return true;
     }
@@ -376,7 +399,32 @@ contract LivepeerProtocol is SafeMath {
         currentRound = block.number / roundLength;
 
         // Set current round active transcoders
-        currentActiveTranscoders = transcoderPools.activeTranscoders.nodes;
+        setCurrentActiveTranscoders();
+
+        return true;
+    }
+
+    /*
+     * Set current active transcoder set for the current round
+     */
+    function setCurrentActiveTranscoders() internal returns (bool) {
+        if (currentActiveTranscoders.length != transcoderPools.activeTranscoders.nodes.length) {
+            // Set length of array if it has not already been set
+            currentActiveTranscoders.length = transcoderPools.activeTranscoders.nodes.length;
+        }
+
+        for (uint256 i = 0; i < transcoderPools.activeTranscoders.nodes.length; i++) {
+            if (currentActiveTranscoders[i].initialized) {
+                // Set address of old node to not be present in current active transcoder set
+                isCurrentActiveTranscoder[currentActiveTranscoders[i].id] = false;
+            }
+            // Copy node
+            currentActiveTranscoders[i] = transcoderPools.activeTranscoders.nodes[i];
+            // Set address of node to be present in current active transcoder set
+            isCurrentActiveTranscoder[currentActiveTranscoders[i].id] = true;
+            // Set index position of node in current active transcoder set
+            currentActiveTranscoderPositions[currentActiveTranscoders[i].id] = i;
+        }
 
         return true;
     }
@@ -387,5 +435,53 @@ contract LivepeerProtocol is SafeMath {
      */
     function electCurrentActiveTranscoder() constant returns (address) {
         return currentActiveTranscoders[uint(block.blockhash(block.number - 1)) % currentActiveTranscoders.length].id;
+    }
+
+    /*
+     * Return start block of current round
+     */
+    function currentRoundStartBlock() constant returns (uint256) {
+        return (block.number / roundLength) * roundLength;
+    }
+
+    /*
+     * Return length in blocks of a time window for calling reward()
+     */
+    function rewardTimeWindowLength() constant returns (uint256) {
+        return roundLength / (n * cyclesPerRound);
+    }
+
+    /*
+     * Return length in blocks of a cycle
+     */
+    function cycleLength() constant returns (uint256) {
+        return rewardTimeWindowLength() * n;
+    }
+
+    /*
+     * Return number of cycles since the start of the round
+     */
+    function cycleNum() constant returns (uint256) {
+        return (block.number - currentRoundStartBlock()) / cycleLength();
+    }
+
+    /*
+     * Checks if a transcoder is calling reward() in the correct range of blocks
+     * for its time window
+     * @param _transcoder Address of transcoder
+     */
+    function validRewardTimeWindow(address _transcoder) internal returns (bool) {
+        // Check if transcoder is present in current active transcoder set
+        if (!isCurrentActiveTranscoder[_transcoder]) throw;
+
+        // Use index position of address in current active transcoder set as its place in the order for calling reward()
+        uint256 transcoderIdx = currentActiveTranscoderPositions[_transcoder];
+
+        // Compute start block of reward time window for this cycle
+        uint256 rewardTimeWindowStartBlock = currentRoundStartBlock() + (cycleNum() * cycleLength()) + (transcoderIdx * rewardTimeWindowLength());
+        // Compute end block of reward time window for this cycle
+        uint256 rewardTimeWindowEndBlock = rewardTimeWindowStartBlock + rewardTimeWindowLength();
+
+        return block.number >= rewardTimeWindowStartBlock && block.number < rewardTimeWindowEndBlock;
     }
 }

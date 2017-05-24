@@ -67,28 +67,28 @@ export default class RPC {
         });
     }
 
-    nextRoundBlock(currentBlockNum, roundLength) {
-        if (roundLength === 0) {
+    nextBlockMultiple(currentBlockNum, blockMultiple) {
+        if (blockMultiple === 0) {
             return currentBlockNum;
         }
 
-        const remainder = currentBlockNum % roundLength;
+        const remainder = currentBlockNum % blockMultiple;
 
         if (remainder === 0) {
             return currentBlockNum;
         }
 
-        return currentBlockNum + roundLength - remainder;
+        return currentBlockNum + blockMultiple - remainder;
     }
 
-    waitUntilNextRoundBlock(seconds = 20, roundLength, rounds = 1) {
+    waitUntilNextBlockMultiple(seconds = 20, blockMultiple, multiples = 1) {
         return new Promise((resolve) => {
             return this.web3.eth.getBlockNumber((e, blockNum) => {
                 resolve(blockNum);
             });
         }).then(blockNum => {
-            const additionalBlocks = (rounds - 1) * roundLength;
-            return this.waitUntilBlock(seconds, this.nextRoundBlock(blockNum, roundLength) + additionalBlocks);
+            const additionalBlocks = (multiples - 1) * blockMultiple;
+            return this.waitUntilBlock(seconds, this.nextBlockMultiple(blockNum, blockMultiple) + additionalBlocks);
         });
     }
 }
