@@ -55,7 +55,7 @@ contract('LivepeerProtocol', function(accounts) {
         await lpt.transfer(accounts[1], toSmallestUnits(1), {from: accounts[0]});
 
         // Register account 1 as transcoder 1
-        await instance.transcoder({from: accounts[1]});
+        await instance.transcoder(10, {from: accounts[1]});
 
         const transcoder = await instance.transcoders.call(accounts[1]);
         assert.equal(transcoder[0], accounts[1], "becoming a transcoder did not work");
@@ -79,7 +79,7 @@ contract('LivepeerProtocol', function(accounts) {
         await lpt.transfer(accounts[1], toSmallestUnits(1), {from: accounts[0]});
 
         // Register account 1 as transcoder 1
-        await instance.transcoder({from: accounts[1]});
+        await instance.transcoder(10, {from: accounts[1]});
 
         // Approve token transfer for account 1
         await lpt.approve(instance.address, 2000, {from: accounts[1]});
@@ -117,7 +117,7 @@ contract('LivepeerProtocol', function(accounts) {
         await lpt.transfer(accounts[1], toSmallestUnits(1), {from: accounts[0]});
 
         // Register account 1 as transcoder 1
-        await instance.transcoder({from: accounts[1]});
+        await instance.transcoder(10, {from: accounts[1]});
 
         // Approve token transfer for account 1
         await lpt.approve(instance.address, 2000, {from: accounts[1]});
@@ -138,7 +138,7 @@ contract('LivepeerProtocol', function(accounts) {
         await lpt.transfer(accounts[2], toSmallestUnits(1), {from: accounts[0]});
 
         // Register account 2 as transcoder 2
-        await instance.transcoder({from: accounts[2]});
+        await instance.transcoder(10, {from: accounts[2]});
 
         // Approve token transfer for account 2
         await lpt.approve(instance.address, 500, {from: accounts[2]});
@@ -178,7 +178,7 @@ contract('LivepeerProtocol', function(accounts) {
         await lpt.transfer(accounts[1], toSmallestUnits(1), {from: accounts[0]});
 
         // Register account 1 as transcoder 1
-        await instance.transcoder({from: accounts[1]});
+        await instance.transcoder(10, {from: accounts[1]});
 
         // Approve token transfer for account 1
         await lpt.approve(instance.address, 1500, {from: accounts[1]});
@@ -196,7 +196,7 @@ contract('LivepeerProtocol', function(accounts) {
         await lpt.transfer(accounts[2], toSmallestUnits(1), {from: accounts[0]});
 
         // Register account 2 as transcoder 2
-        await instance.transcoder({from: accounts[2]});
+        await instance.transcoder(10, {from: accounts[2]});
 
         // Approve token transfer for account 2
         await lpt.approve(instance.address, 2000, {from: accounts[2]});
@@ -243,7 +243,7 @@ contract('LivepeerProtocol', function(accounts) {
         await lpt.transfer(accounts[1], toSmallestUnits(1), {from: accounts[0]});
 
         // register account 1 as transcoder 1
-        await instance.transcoder({from: accounts[1]});
+        await instance.transcoder(10, {from: accounts[1]});
 
         // approve token transfer for account 1
         await lpt.approve(instance.address, 2000, {from: accounts[1]});
@@ -299,7 +299,7 @@ contract('LivepeerProtocol', function(accounts) {
             await lpt.transfer(accounts[1], toSmallestUnits(1), {from: accounts[0]});
 
             // register account 1 as transcoder 1
-            await instance.transcoder({from: accounts[1]});
+            await instance.transcoder(10, {from: accounts[1]});
 
             // approve token transfer for account 1
             await lpt.approve(instance.address, 2000, {from: accounts[1]});
@@ -340,7 +340,7 @@ contract('LivepeerProtocol', function(accounts) {
             await lpt.transfer(accounts[1], toSmallestUnits(1), {from: accounts[0]});
 
             // Register account 1 as transcoder 1
-            await instance.transcoder({from: accounts[1]});
+            await instance.transcoder(10, {from: accounts[1]});
 
             // Approve token transfer for account 1
             await lpt.approve(instance.address, 2000, {from: accounts[1]});
@@ -360,7 +360,7 @@ contract('LivepeerProtocol', function(accounts) {
             await lpt.transfer(accounts[2], toSmallestUnits(1), {from: accounts[0]});
 
             // Register account 2 as transcoder 2
-            await instance.transcoder({from: accounts[2]});
+            await instance.transcoder(10, {from: accounts[2]});
 
             // Approve token transfer for account 2
             await lpt.approve(instance.address, 3000, {from: accounts[2]});
@@ -386,7 +386,7 @@ contract('LivepeerProtocol', function(accounts) {
             await lpt.transfer(accounts[1], toSmallestUnits(1), {from: accounts[0]});
 
             // Register account 1 as transcoder 1
-            await instance.transcoder({from: accounts[1]});
+            await instance.transcoder(10, {from: accounts[1]});
 
             // Approve token transfer for account 1
             await lpt.approve(instance.address, 2000, {from: accounts[1]});
@@ -403,7 +403,7 @@ contract('LivepeerProtocol', function(accounts) {
             await lpt.transfer(accounts[2], toSmallestUnits(1), {from: accounts[0]});
 
             // Register account 2 as transcoder 2
-            await instance.transcoder({from: accounts[2]});
+            await instance.transcoder(10, {from: accounts[2]});
 
             // Approve token transfer for account 2
             await lpt.approve(instance.address, 3000, {from: accounts[2]});
@@ -424,7 +424,7 @@ contract('LivepeerProtocol', function(accounts) {
             await lpt.transfer(accounts[1], toSmallestUnits(1), {from: accounts[0]});
 
             // Register account 1 as transcoder 1
-            await instance.transcoder({from: accounts[1]});
+            await instance.transcoder(10, {from: accounts[1]});
 
             // Approve token transfer for account 1
             await lpt.approve(instance.address, 2000, {from: accounts[1]});
@@ -441,7 +441,7 @@ contract('LivepeerProtocol', function(accounts) {
             await lpt.transfer(accounts[2], toSmallestUnits(1), {from: accounts[0]});
 
             // Register account 2 as transcoder 2
-            await instance.transcoder({from: accounts[2]});
+            await instance.transcoder(10, {from: accounts[2]});
 
             // Approve token transfer for account 2
             await lpt.approve(instance.address, 3000, {from: accounts[2]});
@@ -466,7 +466,7 @@ contract('LivepeerProtocol', function(accounts) {
             await lpt.transfer(accounts[1], toSmallestUnits(1), {from: accounts[0]});
 
             // Register account 1 as transcoder 1
-            await instance.transcoder({from: accounts[1]});
+            await instance.transcoder(10, {from: accounts[1]});
 
             // Approve token transfer for account 1
             await lpt.approve(instance.address, 2000, {from: accounts[1]});
@@ -477,26 +477,90 @@ contract('LivepeerProtocol', function(accounts) {
             // Transfer tokens
             await lpt.transfer(accounts[2], toSmallestUnits(1), {from: accounts[0]});
 
-            // Register account 2 as transcoder 2
-            await instance.transcoder({from: accounts[2]});
-
             // Approve token transfer for account 2
             await lpt.approve(instance.address, 3000, {from: accounts[2]});
 
-            // Account 2 bonds to self as transcoder
-            await instance.bond(3000, accounts[2], {from: accounts[2]});
+            // Account 2 bonds to transcoder 1
+            await instance.bond(3000, accounts[1], {from: accounts[2]});
+
+            // Transfer tokens
+            await lpt.transfer(accounts[3], toSmallestUnits(1), {from: accounts[0]});
+
+            // Approve token transfer for account 3
+            await lpt.approve(instance.address, 2000, {from: accounts[3]});
+
+            // Account 3 bonds to transcoder 1
+            await instance.bond(2000, accounts[1], {from: accounts[3]});
 
             // Fast forward 1 round
             await rpc.waitUntilNextBlockMultiple(20, ROUND_LENGTH);
 
             await instance.initializeRound();
 
+            // Transcoder 1 calls reward
             await instance.reward({from: accounts[1]});
 
-            // Fast forward 1 time window
-            await rpc.waitUntilNextBlockMultiple(20, ROUND_LENGTH / (2 * CYCLES_PER_ROUND));
+            const mintedTokensPerReward = await instance.mintedTokensPerReward();
 
-            await instance.reward({from: accounts[2]});
+            let delegator1 = await instance.delegators.call(accounts[2]);
+            const initialDelegator1Stake = delegator1[1];
+
+            let transcoder = await instance.transcoders.call(accounts[1]);
+            let initialTranscoderStake = transcoder[1];
+
+            let initialCumulativeTranscoderStake = await instance.transcoderStake(accounts[1]);
+
+            // Account 2 unbonds and updates stakes with rewards
+            await instance.unbond({from: accounts[2]});
+
+            delegator1 = await instance.delegators.call(accounts[2]);
+            const updatedDelegator1Stake = delegator1[1];
+
+            assert.equal(updatedDelegator1Stake.minus(initialDelegator1Stake).toNumber(),
+                         mintedTokensPerReward.times(3000).dividedBy(2000 + 2000 + 3000).times(.9).floor(),
+                         "delegator 1 unbond did not update delegator 1 stake with rewards correctly");
+
+            transcoder = await instance.transcoders.call(accounts[1]);
+            let updatedTranscoderStake = transcoder[1];
+
+            assert.equal(updatedTranscoderStake.minus(initialTranscoderStake).toNumber(),
+                         mintedTokensPerReward.times(3000).dividedBy(2000 + 2000 + 3000).times(.1).floor().toNumber(),
+                         "delegator 1 unbond did not update transcoder stake with rewards correctly");
+
+            let updatedCumulativeTranscoderStake = await instance.transcoderStake(accounts[1]);
+
+            assert.equal(updatedCumulativeTranscoderStake.toNumber(),
+                         initialCumulativeTranscoderStake.plus(mintedTokensPerReward.times(3000).dividedBy(7000).floor()).minus(updatedDelegator1Stake),
+                         "delegator 1 unbond did not update transcoder cumulative stake with rewards correctly");
+
+            let delegator2 = await instance.delegators.call(accounts[3]);
+            const initialDelegator2Stake = delegator2[1];
+
+            initialTranscoderStake = updatedTranscoderStake;
+            initialCumulativeTranscoderStake = updatedCumulativeTranscoderStake;
+
+            // Account 3 unbonds and updates stakes with rewards
+            await instance.unbond({from: accounts[3]});
+
+            delegator2 = await instance.delegators.call(accounts[3]);
+            const updatedDelegator2Stake = delegator2[1];
+
+            assert.equal(updatedDelegator2Stake.minus(initialDelegator2Stake),
+                         mintedTokensPerReward.times(2000).dividedBy(2000 + 2000 + 3000).times(.9).floor().toNumber(),
+                         "delegator 2 unbond did not update delegator 2 stake with rewards correctly");
+
+            transcoder = await instance.transcoders.call(accounts[1]);
+            updatedTranscoderStake = transcoder[1];
+
+            assert.equal(updatedTranscoderStake.minus(initialTranscoderStake),
+                         mintedTokensPerReward.times(2000).dividedBy(2000 + 2000 + 3000).times(.1).floor().toNumber(),
+                         "delegator 2 unbond did not update transcoder stake with rewards correctly");
+
+            updatedCumulativeTranscoderStake = await instance.transcoderStake(accounts[1]);
+
+            assert.equal(updatedCumulativeTranscoderStake.toNumber(),
+                         initialCumulativeTranscoderStake.plus(mintedTokensPerReward.times(2000).dividedBy(7000).floor()).minus(updatedDelegator2Stake),
+                         "delegator 2 unbond did not update transcoder cumulative stake with rewards correctly");
         });
 
         it("should fail if an active transcoder already called reward during the current cycle for the round", async function() {
@@ -508,7 +572,7 @@ contract('LivepeerProtocol', function(accounts) {
             await lpt.transfer(accounts[1], toSmallestUnits(1), {from: accounts[0]});
 
             // Register account 1 as transcoder 1
-            await instance.transcoder({from: accounts[1]});
+            await instance.transcoder(10, {from: accounts[1]});
 
             // Approve token transfer for account 1
             await lpt.approve(instance.address, 2000, {from: accounts[1]});
@@ -543,7 +607,7 @@ contract('LivepeerProtocol', function(accounts) {
             await lpt.transfer(accounts[1], toSmallestUnits(1), {from: accounts[0]});
 
             // Register account 1 as transcoder 1
-            await instance.transcoder({from: accounts[1]});
+            await instance.transcoder(10, {from: accounts[1]});
 
             // Approve token transfer for account 1
             await lpt.approve(instance.address, 2000, {from: accounts[1]});
@@ -555,7 +619,7 @@ contract('LivepeerProtocol', function(accounts) {
             await lpt.transfer(accounts[2], toSmallestUnits(1), {from: accounts[0]});
 
             // Register account 2 as transcoder 2
-            await instance.transcoder({from: accounts[2]});
+            await instance.transcoder(10, {from: accounts[2]});
 
             // Approve token transfer for account 2
             await lpt.approve(instance.address, 3000, {from: accounts[2]});

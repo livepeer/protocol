@@ -212,4 +212,21 @@ library TranscoderPools {
 
         return true;
     }
+
+    /*
+     * Return cumulative stake of transcoder
+     * @param _transcoder Address of transcoder
+     */
+    function transcoderStake(TranscoderPools storage self, address _transcoder) constant returns (uint256) {
+        if (self.activeTranscoders.ids[_transcoder]) {
+            // Transcoder in active pool
+            return self.activeTranscoders.getKey(_transcoder);
+        } else if (self.candidateTranscoders.ids[_transcoder]) {
+            // Transcoder in candidate pool
+            return self.candidateTranscoders.getKey(_transcoder);
+        } else {
+            // Transcoder not in either pool
+            throw;
+        }
+    }
 }
