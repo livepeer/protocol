@@ -93,12 +93,13 @@ contract LivepeerProtocol is SafeMath {
 
     // Represents a delegator's current state
     struct Delegator {
-        address delegatorAddress;       // The ethereum address of this delegator
-        uint256 bondedAmount;           // The amount they have bonded
-        address transcoderAddress;      // The ethereum address of the transcoder they are delgating towards
-        uint256 roundStart;             // The round the delegator transitions to bonded phase
-        uint256 withdrawRound;          // The round at which a delegator can withdraw
-        bool initialized;               // Is this delegator initialized
+        address delegatorAddress;          // The ethereum address of this delegator
+        uint256 bondedAmount;              // The amount they have bonded
+        address transcoderAddress;         // The ethereum address of the transcoder they are delgating towards
+        uint256 roundStart;                // The round the delegator transitions to bonded phase
+        uint256 withdrawRound;             // The round at which a delegator can withdraw
+        uint256 lastStateTransitionRound;  // The last round the delegator transitioned states
+        bool initialized;                  // Is this delegator initialized
     }
 
     // Keep track of the known transcoders and delegators
@@ -122,8 +123,9 @@ contract LivepeerProtocol is SafeMath {
     modifier updateStakesWithRewards() {
         // Check if delegator bonded to a transcoder
         if (delegators[msg.sender].initialized && delegators[msg.sender].transcoderAddress != address(0)) {
-            // Iterate from round that delegator last bonded to a transcoder to current round
-            for (uint256 i = delegators[msg.sender].roundStart; i <= block.number / roundLength; i++) {
+            // Iterate from round that delegator last transitioned states to current round
+            // If the delegator is bonded to a transcoder, it has been bonded to the transcoder since lastStateTransitionRound
+            for (uint256 i = delegators[msg.sender].lastStateTransitionRound; i <= block.number / roundLength; i++) {
                 uint256[2] rewardMultiplier = rewardMultiplierPerTranscoderAndRound[delegators[msg.sender].transcoderAddress][i];
 
                 // Check if transcoder has a reward multiplier for this round (total minted tokens for round > 0)
@@ -141,6 +143,8 @@ contract LivepeerProtocol is SafeMath {
                     delegators[msg.sender].bondedAmount = safeAdd(delegators[msg.sender].bondedAmount, tokenReward - transcoderRewardShare);
                 }
             }
+
+            delegators[msg.sender].lastStateTransitionRound = block.number / roundLength;
         }
         _;
     }
