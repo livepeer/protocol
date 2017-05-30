@@ -46,29 +46,60 @@ contract('LivepeerProtocol', function(accounts) {
         assert.equal(truebitAddress, "0x647167a598171d06aecf0f5fa1daf3c5cc848df0", "Truebit value was not set");
     });
 
-    it("should allow becoming a transcoder", async function() {
-        const instance = await LivepeerProtocol.new(1, ROUND_LENGTH, CYCLES_PER_ROUND, {from: accounts[0]});
-        const lptAddress = await instance.token.call();
-        const lpt = await LivepeerToken.at(lptAddress);
+    describe("transcoder", function() {
+        it("should allow becoming a transcoder", async function() {
+            const instance = await LivepeerProtocol.new(1, ROUND_LENGTH, CYCLES_PER_ROUND, {from: accounts[0]});
+            const lptAddress = await instance.token.call();
+            const lpt = await LivepeerToken.at(lptAddress);
 
-        // Transfer tokens
-        await lpt.transfer(accounts[1], toSmallestUnits(1), {from: accounts[0]});
+            // Transfer tokens
+            await lpt.transfer(accounts[1], toSmallestUnits(1), {from: accounts[0]});
 
-        // Register account 1 as transcoder 1
-        await instance.transcoder(10, {from: accounts[1]});
+            // Register account 1 as transcoder 1
+            await instance.transcoder(10, {from: accounts[1]});
 
-        const transcoder = await instance.transcoders.call(accounts[1]);
-        assert.equal(transcoder[0], accounts[1], "becoming a transcoder did not work");
+            const transcoder = await instance.transcoders.call(accounts[1]);
+            assert.equal(transcoder[0], accounts[1], "becoming a transcoder did not work");
 
-        // Approve token transfer for account 1
-        await lpt.approve(instance.address, 2000, {from: accounts[1]});
+            // Approve token transfer for account 1
+            await lpt.approve(instance.address, 2000, {from: accounts[1]});
 
-        // Account 1 bonds to self as transcoder
-        await instance.bond(2000, accounts[1], {from: accounts[1]});
+            // Account 1 bonds to self as transcoder
+            await instance.bond(2000, accounts[1], {from: accounts[1]});
 
-        const isActiveTranscoder = await instance.isActiveTranscoder(accounts[1]);
-        assert.isOk(isActiveTranscoder, "active transcoder pool did not update correctly");
+            const isActiveTranscoder = await instance.isActiveTranscoder(accounts[1]);
+            assert.isOk(isActiveTranscoder, "active transcoder pool did not update correctly");
+        });
+
+        it("should fail for blockRewardCut less than 0", async function() {
+            const instance = await LivepeerProtocol.new(1, ROUND_LENGTH, CYCLES_PER_ROUND, {from: accounts[0]});
+
+            let threw = false;
+
+            try {
+                await instance.transcoder(-1, {from: accounts[1]});
+            } catch (err) {
+                threw = true;
+            }
+
+            assert.isOk(threw, "transcoder registration did not throw for blockRewardCut less than 0");
+        });
+
+        it("should fail for blockRewardCut greater than 100", async function() {
+            const instance = await LivepeerProtocol.new(1, ROUND_LENGTH, CYCLES_PER_ROUND, {from: accounts[0]});
+
+            let threw = false;
+
+            try {
+                await instance.transcoder(101, {from: accounts[1]});
+            } catch (err) {
+                threw = true;
+            }
+
+            assert.isOk(threw, "transcoder registration did not throw for blockRewardCut greater than 100");
+        });
     });
+
 
     it("should allow bonding", async function() {
         const instance = await LivepeerProtocol.new(1, ROUND_LENGTH, CYCLES_PER_ROUND, {from: accounts[0]});
@@ -462,6 +493,10 @@ contract('LivepeerProtocol', function(accounts) {
             const lptaddress = await instance.token.call();
             const lpt = await LivepeerToken.at(lptaddress);
 
+            const a1Stake = 2000;
+            const a2Stake = 3000;
+            const a3Stake = 2000;
+
             // Transfer tokens
             await lpt.transfer(accounts[1], toSmallestUnits(1), {from: accounts[0]});
 
@@ -469,28 +504,28 @@ contract('LivepeerProtocol', function(accounts) {
             await instance.transcoder(10, {from: accounts[1]});
 
             // Approve token transfer for account 1
-            await lpt.approve(instance.address, 2000, {from: accounts[1]});
+            await lpt.approve(instance.address, a1Stake, {from: accounts[1]});
 
             // Account 1 bonds to self as transcoder
-            await instance.bond(2000, accounts[1], {from: accounts[1]});
+            await instance.bond(a1Stake, accounts[1], {from: accounts[1]});
 
             // Transfer tokens
             await lpt.transfer(accounts[2], toSmallestUnits(1), {from: accounts[0]});
 
             // Approve token transfer for account 2
-            await lpt.approve(instance.address, 3000, {from: accounts[2]});
+            await lpt.approve(instance.address, a2Stake, {from: accounts[2]});
 
             // Account 2 bonds to transcoder 1
-            await instance.bond(3000, accounts[1], {from: accounts[2]});
+            await instance.bond(a2Stake, accounts[1], {from: accounts[2]});
 
             // Transfer tokens
             await lpt.transfer(accounts[3], toSmallestUnits(1), {from: accounts[0]});
 
             // Approve token transfer for account 3
-            await lpt.approve(instance.address, 2000, {from: accounts[3]});
+            await lpt.approve(instance.address, a3Stake, {from: accounts[3]});
 
             // Account 3 bonds to transcoder 1
-            await instance.bond(2000, accounts[1], {from: accounts[3]});
+            await instance.bond(a3Stake, accounts[1], {from: accounts[3]});
 
             // Fast forward 1 round
             await rpc.waitUntilNextBlockMultiple(20, ROUND_LENGTH);
@@ -499,10 +534,18 @@ contract('LivepeerProtocol', function(accounts) {
 
             const initialTokenSupply = await lpt.totalSupply.call();
 
+            const initialTotalTranscoderStake = await instance.transcoderTotalStake(accounts[1]);
+
             // Transcoder 1 calls reward
             await instance.reward({from: accounts[1]});
 
             const mintedTokensPerReward = await instance.mintedTokensPerReward();
+
+            const updatedTotalTranscoderStake = await instance.transcoderTotalStake(accounts[1]);
+
+            assert.equal(updatedTotalTranscoderStake.minus(initialTotalTranscoderStake),
+                         mintedTokensPerReward.toNumber(),
+                         "reward did not update total bonded transcoder stake correctly");
 
             const updatedTokenSupply = await lpt.totalSupply.call();
             assert.equal(updatedTokenSupply.minus(initialTokenSupply).toNumber(), mintedTokensPerReward, "reward did not mint the correct number of tokens");
@@ -513,36 +556,27 @@ contract('LivepeerProtocol', function(accounts) {
             let transcoder = await instance.transcoders.call(accounts[1]);
             let initialTranscoderStake = transcoder[1];
 
-            let initialCumulativeTranscoderStake = await instance.transcoderStake(accounts[1]);
-
             // Account 2 unbonds and updates stakes with rewards
             await instance.unbond({from: accounts[2]});
 
             delegator1 = await instance.delegators.call(accounts[2]);
             const updatedDelegator1Stake = delegator1[1];
 
-            assert.equal(updatedDelegator1Stake.minus(initialDelegator1Stake).toNumber(),
-                         mintedTokensPerReward.times(3000).dividedBy(2000 + 2000 + 3000).times(.9).floor(),
+            assert.equal(updatedDelegator1Stake.minus(initialDelegator1Stake),
+                         mintedTokensPerReward.times(a2Stake).dividedBy(a1Stake + a2Stake + a3Stake).times(.9).floor().toNumber(),
                          "delegator 1 unbond did not update delegator 1 stake with rewards correctly");
 
             transcoder = await instance.transcoders.call(accounts[1]);
             let updatedTranscoderStake = transcoder[1];
 
-            assert.equal(updatedTranscoderStake.minus(initialTranscoderStake).toNumber(),
-                         mintedTokensPerReward.times(3000).dividedBy(2000 + 2000 + 3000).times(.1).floor().toNumber(),
+            assert.equal(updatedTranscoderStake.minus(initialTranscoderStake),
+                         mintedTokensPerReward.times(a2Stake).dividedBy(a1Stake + a2Stake + a3Stake).times(.1).floor().toNumber(),
                          "delegator 1 unbond did not update transcoder stake with rewards correctly");
-
-            let updatedCumulativeTranscoderStake = await instance.transcoderStake(accounts[1]);
-
-            assert.equal(updatedCumulativeTranscoderStake.toNumber(),
-                         initialCumulativeTranscoderStake.plus(mintedTokensPerReward.times(3000).dividedBy(2000 + 2000 + 3000).floor()).minus(updatedDelegator1Stake),
-                         "delegator 1 unbond did not update transcoder cumulative stake with rewards correctly");
 
             let delegator2 = await instance.delegators.call(accounts[3]);
             const initialDelegator2Stake = delegator2[1];
 
             initialTranscoderStake = updatedTranscoderStake;
-            initialCumulativeTranscoderStake = updatedCumulativeTranscoderStake;
 
             // Account 3 unbonds and updates stakes with rewards
             await instance.unbond({from: accounts[3]});
@@ -551,21 +585,15 @@ contract('LivepeerProtocol', function(accounts) {
             const updatedDelegator2Stake = delegator2[1];
 
             assert.equal(updatedDelegator2Stake.minus(initialDelegator2Stake),
-                         mintedTokensPerReward.times(2000).dividedBy(2000 + 2000 + 3000).times(.9).floor().toNumber(),
+                         mintedTokensPerReward.times(a3Stake).dividedBy(a1Stake + a2Stake + a3Stake).times(.9).floor().toNumber(),
                          "delegator 2 unbond did not update delegator 2 stake with rewards correctly");
 
             transcoder = await instance.transcoders.call(accounts[1]);
             updatedTranscoderStake = transcoder[1];
 
             assert.equal(updatedTranscoderStake.minus(initialTranscoderStake),
-                         mintedTokensPerReward.times(2000).dividedBy(2000 + 2000 + 3000).times(.1).floor().toNumber(),
+                         mintedTokensPerReward.times(a3Stake).dividedBy(a1Stake + a2Stake + a3Stake).times(.1).floor().toNumber(),
                          "delegator 2 unbond did not update transcoder stake with rewards correctly");
-
-            updatedCumulativeTranscoderStake = await instance.transcoderStake(accounts[1]);
-
-            assert.equal(updatedCumulativeTranscoderStake.toNumber(),
-                         initialCumulativeTranscoderStake.plus(mintedTokensPerReward.times(2000).dividedBy(2000 + 2000 + 3000).floor()).minus(updatedDelegator2Stake),
-                         "delegator 2 unbond did not update transcoder cumulative stake with rewards correctly");
         });
 
         it("should fail if an active transcoder already called reward during the current cycle for the round", async function() {
@@ -646,6 +674,91 @@ contract('LivepeerProtocol', function(accounts) {
             }
 
             assert.isOk(threw, "reward did not throw when called by a transcoder when it is not its turn");
+        });
+    });
+
+    describe("delegatorStake", function() {
+        it("should return correct delegator stake updated with rewards since last state transition", async function() {
+            const instance = await LivepeerProtocol.new(2, ROUND_LENGTH, CYCLES_PER_ROUND, {from: accounts[0]});
+            const lptaddress = await instance.token.call();
+            const lpt = await LivepeerToken.at(lptaddress);
+
+            const a1Stake = 2000;
+            const a2Stake = 3000;
+
+            // Transfer tokens
+            await lpt.transfer(accounts[1], toSmallestUnits(1), {from: accounts[0]});
+
+            // Register account 1 as transcoder 1
+            await instance.transcoder(10, {from: accounts[1]});
+
+            // Approve token transfer for account 1
+            await lpt.approve(instance.address, a1Stake, {from: accounts[1]});
+
+            // Account 1 bonds to self as transcoder
+            await instance.bond(a1Stake, accounts[1], {from: accounts[1]});
+
+            // Transfer tokens
+            await lpt.transfer(accounts[2], toSmallestUnits(1), {from: accounts[0]});
+
+            // Approve token transfer for account 2
+            await lpt.approve(instance.address, a2Stake, {from: accounts[2]});
+
+            // Account 2 bonds to transcoder 1
+            await instance.bond(a2Stake, accounts[1], {from: accounts[2]});
+
+            // Fast forward 1 round
+            await rpc.waitUntilNextBlockMultiple(20, ROUND_LENGTH);
+
+            await instance.initializeRound();
+
+            // Transcoder 1 calls reward
+            await instance.reward({from: accounts[1]});
+
+            const mintedTokensPerReward = await instance.mintedTokensPerReward();
+
+            const delegatorStake = await instance.delegatorStake(accounts[2]);
+            assert.equal(delegatorStake,
+                         mintedTokensPerReward.times(a2Stake).dividedBy(a1Stake + a2Stake).times(.9).floor().plus(a2Stake).toNumber(),
+                         "did not return delegator stake updated with rewards since last state transition");
+        });
+
+        it("should return correct delegator if there are no reward updates", async function() {
+            const instance = await LivepeerProtocol.new(2, ROUND_LENGTH, CYCLES_PER_ROUND, {from: accounts[0]});
+            const lptaddress = await instance.token.call();
+            const lpt = await LivepeerToken.at(lptaddress);
+
+            const a1Stake = 2000;
+            const a2Stake = 3000;
+
+            // Transfer tokens
+            await lpt.transfer(accounts[1], toSmallestUnits(1), {from: accounts[0]});
+
+            // Register account 1 as transcoder 1
+            await instance.transcoder(10, {from: accounts[1]});
+
+            // Approve token transfer for account 1
+            await lpt.approve(instance.address, a1Stake, {from: accounts[1]});
+
+            // Account 1 bonds to self as transcoder
+            await instance.bond(a1Stake, accounts[1], {from: accounts[1]});
+
+            // Transfer tokens
+            await lpt.transfer(accounts[2], toSmallestUnits(1), {from: accounts[0]});
+
+            // Approve token transfer for account 2
+            await lpt.approve(instance.address, a2Stake, {from: accounts[2]});
+
+            // Account 2 bonds to transcoder 1
+            await instance.bond(a2Stake, accounts[1], {from: accounts[2]});
+
+            // Fast forward 1 round
+            await rpc.waitUntilNextBlockMultiple(20, ROUND_LENGTH);
+
+            await instance.initializeRound();
+
+            const delegatorStake = await instance.delegatorStake(accounts[2]);
+            assert.equal(delegatorStake, a2Stake, "did not return correct delegator stake if there were no reward updates");
         });
     });
 });
