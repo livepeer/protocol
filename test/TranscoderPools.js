@@ -141,4 +141,45 @@ contract("TranscoderPools", function(accounts) {
 
         assert.isOk(threw, "decrease transcoder stake did not throw for non-existent transcoder");
     });
+
+    describe("transcoderStake", function() {
+        it("should return take for an existing transcoder in the active pool", async function() {
+            const transcoderPoolsMock = await TranscoderPoolsMock.new();
+
+            await transcoderPoolsMock.init(10, 10);
+
+            await transcoderPoolsMock.addTranscoder(accounts[0], 10);
+
+            const stake = await transcoderPoolsMock.transcoderStake(accounts[0]);
+            assert.equal(stake, 10, "did not return correct stake for transcoder in active pool");
+        });
+
+        it("should return stake for an existing transcoder in the candidate pool", async function() {
+            const transcoderPoolsMock = await TranscoderPoolsMock.new();
+
+            await transcoderPoolsMock.init(1, 1);
+
+            await transcoderPoolsMock.addTranscoder(accounts[0], 10);
+            await transcoderPoolsMock.addTranscoder(accounts[1], 5);
+
+            const stake = await transcoderPoolsMock.transcoderStake(accounts[1]);
+            assert.equal(stake, 5, "did not return correct stake for transcoder in candidate pool");
+        });
+
+        it("should fail for a transcoder not in either pool", async function() {
+            const transcoderPoolsMock = await TranscoderPoolsMock.new();
+
+            await transcoderPoolsMock.init(1, 1);
+
+            let threw = false;
+
+            try {
+                await transcoderPoolsMock.transcoderStake(accounts[1]);
+            } catch (err) {
+                threw = true;
+            }
+
+            assert.isOk(threw,  "did not throw for a transcoder not in either pool");
+        });
+    });
 });

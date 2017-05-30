@@ -118,6 +118,7 @@ contract LivepeerProtocol is SafeMath {
     // rewardMultiplier[1] -> transcoder's cumulative stake for round
     mapping (address => mapping (uint256 => uint256[2])) public rewardMultiplierPerTranscoderAndRound;
 
+    // Update delegator and transcoder stake with rewards from past rounds when a delegator calls bond() or unbond()
     modifier updateStakesWithRewards() {
         // Check if delegator bonded to a transcoder
         if (delegators[msg.sender].initialized && delegators[msg.sender].transcoderAddress != address(0)) {
@@ -125,19 +126,19 @@ contract LivepeerProtocol is SafeMath {
             for (uint256 i = delegators[msg.sender].roundStart; i <= block.number / roundLength; i++) {
                 uint256[2] rewardMultiplier = rewardMultiplierPerTranscoderAndRound[delegators[msg.sender].transcoderAddress][i];
 
-                // Check if transcoder has a reward multiplier for this round
+                // Check if transcoder has a reward multiplier for this round (total minted tokens for round > 0)
                 if (rewardMultiplier[0] > 0) {
-                    // Calculate delegator's share of reward using reward multiplier
-                    uint256 delegatorReward = (rewardMultiplier[0] * delegators[msg.sender].bondedAmount) / rewardMultiplier[1];
+                    // Calculate delegator's token reward reward multiplier
+                    uint256 tokenReward = (rewardMultiplier[0] * delegators[msg.sender].bondedAmount) / rewardMultiplier[1];
                     // Calculate transcoder's share of reward
-                    uint256 transcoderReward = (delegatorReward * transcoders[delegators[msg.sender].transcoderAddress].blockRewardCut) / 100;
+                    uint256 transcoderRewardShare = (tokenReward * transcoders[delegators[msg.sender].transcoderAddress].blockRewardCut) / 100;
 
-                    // Update transcoder stake
-                    transcoders[delegators[msg.sender].transcoderAddress].bondedAmount = safeAdd(transcoders[delegators[msg.sender].transcoderAddress].bondedAmount, transcoderReward);
-                    // Update transcoder cumulative stake
-                    transcoderPools.increaseTranscoderStake(delegators[msg.sender].transcoderAddress, delegatorReward);
-                    // Update delegator stake
-                    delegators[msg.sender].bondedAmount = safeAdd(delegators[msg.sender].bondedAmount, delegatorReward - transcoderReward);
+                    // Update transcoder stake with transcoder share of reward
+                    transcoders[delegators[msg.sender].transcoderAddress].bondedAmount = safeAdd(transcoders[delegators[msg.sender].transcoderAddress].bondedAmount, transcoderRewardShare);
+                    // Update transcoder cumulative stake with delegator's total token reward (delegator's share + transcoder's share)
+                    transcoderPools.increaseTranscoderStake(delegators[msg.sender].transcoderAddress, tokenReward);
+                    // Update delegator stake with delegator's share of reward
+                    delegators[msg.sender].bondedAmount = safeAdd(delegators[msg.sender].bondedAmount, tokenReward - transcoderRewardShare);
                 }
             }
         }
@@ -380,13 +381,13 @@ contract LivepeerProtocol is SafeMath {
         uint256 mintedTokens = mintedTokensPerReward();
         // Mint token reward and allocate to this protocol contract
         token.mint(this, mintedTokens);
-        // Update minted tokens for the current cycle of the current round
+        // Add minted tokens for the current cycle of the current round to reward multipler numerator
         uint256[2] rewardMultiplier = rewardMultiplierPerTranscoderAndRound[msg.sender][block.number / roundLength];
         rewardMultiplier[0] = safeAdd(rewardMultiplier[0], mintedTokens);
 
         if (cycleNum() == 0) {
             // First cycle of current round
-            // Update transcoder stake for the current cycle of the current round
+            // Set transcoder cumulative stake for current round as denominator of reward multiplier for current round
             rewardMultiplier[1] = currentActiveTranscoders[currentActiveTranscoderPositions[msg.sender]].key;
         }
 
@@ -546,6 +547,10 @@ contract LivepeerProtocol is SafeMath {
         return block.number >= rewardTimeWindowStartBlock && block.number < rewardTimeWindowEndBlock;
     }
 
+    /*
+     * Returns cumulative stake for a transcoder
+     * @param _transcoder Address of transcoder
+     */
     function transcoderStake(address _transcoder) constant returns (uint256) {
         return transcoderPools.transcoderStake(_transcoder);
     }

@@ -42,4 +42,8 @@ contract TranscoderPoolsMock {
     function decreaseTranscoderStake(address _transcoder, uint256 _amount) {
         transcoderPools.decreaseTranscoderStake(_transcoder, _amount);
     }
+
+    function transcoderStake(address _transcoder) constant returns (uint256) {
+        return transcoderPools.transcoderStake(_transcoder);
+    }
 }

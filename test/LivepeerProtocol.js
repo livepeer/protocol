@@ -497,10 +497,15 @@ contract('LivepeerProtocol', function(accounts) {
 
             await instance.initializeRound();
 
+            const initialTokenSupply = await lpt.totalSupply.call();
+
             // Transcoder 1 calls reward
             await instance.reward({from: accounts[1]});
 
             const mintedTokensPerReward = await instance.mintedTokensPerReward();
+
+            const updatedTokenSupply = await lpt.totalSupply.call();
+            assert.equal(updatedTokenSupply.minus(initialTokenSupply).toNumber(), mintedTokensPerReward, "reward did not mint the correct number of tokens");
 
             let delegator1 = await instance.delegators.call(accounts[2]);
             const initialDelegator1Stake = delegator1[1];
@@ -530,7 +535,7 @@ contract('LivepeerProtocol', function(accounts) {
             let updatedCumulativeTranscoderStake = await instance.transcoderStake(accounts[1]);
 
             assert.equal(updatedCumulativeTranscoderStake.toNumber(),
-                         initialCumulativeTranscoderStake.plus(mintedTokensPerReward.times(3000).dividedBy(7000).floor()).minus(updatedDelegator1Stake),
+                         initialCumulativeTranscoderStake.plus(mintedTokensPerReward.times(3000).dividedBy(2000 + 2000 + 3000).floor()).minus(updatedDelegator1Stake),
                          "delegator 1 unbond did not update transcoder cumulative stake with rewards correctly");
 
             let delegator2 = await instance.delegators.call(accounts[3]);
@@ -559,7 +564,7 @@ contract('LivepeerProtocol', function(accounts) {
             updatedCumulativeTranscoderStake = await instance.transcoderStake(accounts[1]);
 
             assert.equal(updatedCumulativeTranscoderStake.toNumber(),
-                         initialCumulativeTranscoderStake.plus(mintedTokensPerReward.times(2000).dividedBy(7000).floor()).minus(updatedDelegator2Stake),
+                         initialCumulativeTranscoderStake.plus(mintedTokensPerReward.times(2000).dividedBy(2000 + 2000 + 3000).floor()).minus(updatedDelegator2Stake),
                          "delegator 2 unbond did not update transcoder cumulative stake with rewards correctly");
         });
 
