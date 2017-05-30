@@ -143,9 +143,10 @@ contract LivepeerProtocol is SafeMath {
                     delegators[msg.sender].bondedAmount = safeAdd(delegators[msg.sender].bondedAmount, tokenReward - transcoderRewardShare);
                 }
             }
-
-            delegators[msg.sender].lastStateTransitionRound = block.number / roundLength;
         }
+
+        delegators[msg.sender].lastStateTransitionRound = block.number / roundLength;
+
         _;
     }
 
