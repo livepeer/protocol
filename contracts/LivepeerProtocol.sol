@@ -385,8 +385,8 @@ contract LivepeerProtocol is SafeMath {
         uint256[2] rewardMultiplier = rewardMultiplierPerTranscoderAndRound[msg.sender][block.number / roundLength];
         rewardMultiplier[0] = safeAdd(rewardMultiplier[0], mintedTokens);
 
-        if (cycleNum() == 0) {
-            // First cycle of current round
+        if (cycleNum() == 0 || rewardMultiplier[1] == 0) {
+            // First cycle of current round or reward multiplier denominator has not been set yet
             // Set transcoder cumulative stake for current round as denominator of reward multiplier for current round
             rewardMultiplier[1] = currentActiveTranscoders[currentActiveTranscoderPositions[msg.sender]].key;
         }
