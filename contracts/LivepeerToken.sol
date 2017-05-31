@@ -12,10 +12,9 @@ contract LivepeerToken is MintableToken {
     uint8 public decimals = 18;
     string public symbol = "LPT";
     string public version = "0.1";
-    uint64 public initialSupply = 10000;
 
     function LivepeerToken() {
-        mint(msg.sender, initialSupply);        
+
     }
 
     /* Don't accept random ETH sent to this contract */

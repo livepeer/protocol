@@ -39,7 +39,12 @@ contract('LivepeerToken', function(accounts) {
         const lpt = await LivepeerToken.new();
 
         const balance0 = await lpt.balanceOf.call(accounts[0]);
-        assert.equal(balance0.valueOf(), 10000, "10000 wasn't in the first account");
+        assert.equal(balance0.valueOf(), 0, "0 wasn't in the first account");
+
+        await lpt.mint(accounts[0], 10000);
+
+        const balance01 = await lpt.balanceOf.call(accounts[0]);
+        assert.equal(balance01.valueOf(), 10000, "10000 wasn't in the first account");
 
         await lpt.mint(accounts[1], 25);
 
