@@ -19,7 +19,8 @@ contract LivepeerProtocol is SafeMath {
     // Start with 10M tokens. 1 LPT == 10^18th units
     uint256 public initialTokenSupply = 10000000 * (10 ** 18);
 
-    // Fixed inflation rate of 26%
+    // Upper bound inflation rate
+    // Initially fixed at 26%
     uint8 public initialYearlyInflation = 26;
 
     /* Protocol Parameters */
@@ -112,7 +113,7 @@ contract LivepeerProtocol is SafeMath {
     mapping (address => uint256) currentActiveTranscoderPositions;
 
     // Mapping to track transcoder's reward multiplier for a round
-    // rewardMultiplier[0] -> total minted tokens for round
+    // rewardMultiplier[0] -> total delegator token rewards for a round (minus transcoder share)
     // rewardMultiplier[1] -> transcoder's cumulative stake for round
     mapping (address => mapping (uint256 => uint256[2])) public rewardMultiplierPerTranscoderAndRound;
 
