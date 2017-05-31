@@ -536,6 +536,9 @@ contract('LivepeerProtocol', function(accounts) {
 
             const initialTotalTranscoderStake = await instance.transcoderTotalStake(accounts[1]);
 
+            let transcoder = await instance.transcoders.call(accounts[1]);
+            const initialTranscoderStake = transcoder[1];
+
             // Transcoder 1 calls reward
             await instance.reward({from: accounts[1]});
 
@@ -547,14 +550,18 @@ contract('LivepeerProtocol', function(accounts) {
                          mintedTokensPerReward.toNumber(),
                          "reward did not update total bonded transcoder stake correctly");
 
+            transcoder = await instance.transcoders.call(accounts[1]);
+            const updatedTranscoderStake = transcoder[1];
+
+            assert.equal(updatedTranscoderStake.minus(initialTranscoderStake),
+                         mintedTokensPerReward.times(.1).floor().toNumber(),
+                         "reward did not update transcoder stake correctly");
+
             const updatedTokenSupply = await lpt.totalSupply.call();
             assert.equal(updatedTokenSupply.minus(initialTokenSupply).toNumber(), mintedTokensPerReward, "reward did not mint the correct number of tokens");
 
             let delegator1 = await instance.delegators.call(accounts[2]);
             const initialDelegator1Stake = delegator1[1];
-
-            let transcoder = await instance.transcoders.call(accounts[1]);
-            let initialTranscoderStake = transcoder[1];
 
             // Account 2 unbonds and updates stakes with rewards
             await instance.unbond({from: accounts[2]});
@@ -566,17 +573,8 @@ contract('LivepeerProtocol', function(accounts) {
                          mintedTokensPerReward.times(a2Stake).dividedBy(a1Stake + a2Stake + a3Stake).times(.9).floor().toNumber(),
                          "delegator 1 unbond did not update delegator 1 stake with rewards correctly");
 
-            transcoder = await instance.transcoders.call(accounts[1]);
-            let updatedTranscoderStake = transcoder[1];
-
-            assert.equal(updatedTranscoderStake.minus(initialTranscoderStake),
-                         mintedTokensPerReward.times(a2Stake).dividedBy(a1Stake + a2Stake + a3Stake).times(.1).floor().toNumber(),
-                         "delegator 1 unbond did not update transcoder stake with rewards correctly");
-
             let delegator2 = await instance.delegators.call(accounts[3]);
             const initialDelegator2Stake = delegator2[1];
-
-            initialTranscoderStake = updatedTranscoderStake;
 
             // Account 3 unbonds and updates stakes with rewards
             await instance.unbond({from: accounts[3]});
@@ -587,13 +585,6 @@ contract('LivepeerProtocol', function(accounts) {
             assert.equal(updatedDelegator2Stake.minus(initialDelegator2Stake),
                          mintedTokensPerReward.times(a3Stake).dividedBy(a1Stake + a2Stake + a3Stake).times(.9).floor().toNumber(),
                          "delegator 2 unbond did not update delegator 2 stake with rewards correctly");
-
-            transcoder = await instance.transcoders.call(accounts[1]);
-            updatedTranscoderStake = transcoder[1];
-
-            assert.equal(updatedTranscoderStake.minus(initialTranscoderStake),
-                         mintedTokensPerReward.times(a3Stake).dividedBy(a1Stake + a2Stake + a3Stake).times(.1).floor().toNumber(),
-                         "delegator 2 unbond did not update transcoder stake with rewards correctly");
         });
 
         it("should fail if an active transcoder already called reward during the current cycle for the round", async function() {

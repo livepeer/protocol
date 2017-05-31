@@ -120,14 +120,9 @@ contract LivepeerProtocol is SafeMath {
     modifier updateStakesWithRewards() {
         if (delegators[msg.sender].initialized && delegators[msg.sender].transcoderAddress != address(0)) {
             uint256 rewards = delegatorRewards(msg.sender);
-            // Compute transcoder share of rewards
-            uint256 transcoderRewardShare = (rewards * transcoders[delegators[msg.sender].transcoderAddress].blockRewardCut) / 100;
-
-            // Update transcoder stake with share of rewards
-            transcoders[delegators[msg.sender].transcoderAddress].bondedAmount = safeAdd(transcoders[delegators[msg.sender].transcoderAddress].bondedAmount, transcoderRewardShare);
 
             // Update delegator stake with share of rewards
-            delegators[msg.sender].bondedAmount = safeAdd(delegators[msg.sender].bondedAmount, rewards - transcoderRewardShare);
+            delegators[msg.sender].bondedAmount = safeAdd(delegators[msg.sender].bondedAmount, rewards);
         }
 
         delegators[msg.sender].lastStateTransitionRound = block.number / roundLength;
@@ -369,11 +364,16 @@ contract LivepeerProtocol is SafeMath {
         // Reward calculation
         // Calculate number of tokens to mint
         uint256 mintedTokens = mintedTokensPerReward();
+
         // Mint token reward and allocate to this protocol contract
         token.mint(this, mintedTokens);
-        // Add minted tokens for the current cycle of the current round to reward multipler numerator
+
+        // Compute transcoder share of minted tokens
+        uint256 transcoderRewardShare = (mintedTokens * transcoders[msg.sender].blockRewardCut) / 100;
+
+        // Add reminaing rewards (after transcoder share) for the current cycle of the current round to reward multiplier numerator
         uint256[2] rewardMultiplier = rewardMultiplierPerTranscoderAndRound[msg.sender][block.number / roundLength];
-        rewardMultiplier[0] = safeAdd(rewardMultiplier[0], mintedTokens);
+        rewardMultiplier[0] = safeAdd(rewardMultiplier[0], mintedTokens - transcoderRewardShare);
 
         if (cycleNum() == 0 || rewardMultiplier[1] == 0) {
             // First cycle of current round or reward multiplier denominator has not been set yet
@@ -382,6 +382,9 @@ contract LivepeerProtocol is SafeMath {
         }
 
         rewardMultiplierPerTranscoderAndRound[msg.sender][block.number / roundLength] = rewardMultiplier;
+
+        // Update transcoder stake with share of minted tokens
+        transcoders[msg.sender].bondedAmount = safeAdd(transcoders[msg.sender].bondedAmount, transcoderRewardShare);
 
         // Update transcoder total bonded stake with minted tokens
         transcoderPools.increaseTranscoderStake(msg.sender, mintedTokens);
@@ -570,10 +573,7 @@ contract LivepeerProtocol is SafeMath {
         // Check for valid delegator
         if (!delegators[_delegator].initialized) throw;
 
-        // Compute delegator share of rewards
-        uint256 delegatorRewardShare = (delegatorRewards(_delegator) * (100 - transcoders[delegators[_delegator].transcoderAddress].blockRewardCut)) / 100;
-
-        return delegators[_delegator].bondedAmount + delegatorRewardShare;
+        return delegators[_delegator].bondedAmount + delegatorRewards(_delegator);
     }
 
     /*
@@ -592,10 +592,10 @@ contract LivepeerProtocol is SafeMath {
 
                 // Check if transcoder has a reward multiplier for this round (total minted tokens for round > 0)
                 if (rewardMultiplier[0] > 0) {
-                    // Calculate delegator's token reward reward multiplier
-                    uint256 tokenReward = (rewardMultiplier[0] * delegators[_delegator].bondedAmount) / rewardMultiplier[1];
+                    // Calculate delegator's share of reward
+                    uint256 delegatorShare = (rewardMultiplier[0] * delegators[_delegator].bondedAmount) / rewardMultiplier[1];
 
-                    rewards = safeAdd(rewards, tokenReward);
+                    rewards = safeAdd(rewards, delegatorShare);
                 }
             }
         }
