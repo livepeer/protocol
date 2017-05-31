@@ -1,6 +1,6 @@
 # Livepeer Protocol Dev Roadmap
 
-The goal is to Implement the full Livepeer protocol as specified in the [Whitepaper](http://github.com/livepeer/wiki/blob/master/WHITEPAPER.md) and associated wiki pages. The majority of the implementation will be done in Solidity as Ethereum Smart Contracts. It's vital that these be
+The goal is to implement the full Livepeer protocol as specified in the [Whitepaper](http://github.com/livepeer/wiki/blob/master/WHITEPAPER.md) and associated wiki pages. The majority of the implementation will be done in Solidity as Ethereum Smart Contracts. It's vital that these be
 
 - correct
 - thoroughly tested
@@ -10,6 +10,8 @@ While difficult to modularize the protocol itself, since the parts are pretty in
 
 ## Milestones
 
+### MintableToken
+
 - Livepeer Token
 - Protocol Smart Contract with protocol parameters and initializer
 - Bonding/Unbonding
@@ -18,18 +20,24 @@ While difficult to modularize the protocol itself, since the parts are pretty in
 
 At this point nodes in the network could presumably go through the full process of delegation, transcoder election, and reward function invocation. Essentially this would be the MVP for stake based token distribution without slashing.
 
+### Jobs
+
 - Transcode availability function
 - Job function and assignment
 - EndJob and transcoding claims
-- Truebit verification as a black box
+- Truebit verification interface as a black box
 
 At this point nodes could participate in sending jobs to the chain and having them assigned to transcoders who perform and claim them. This data could be used in the Reward function.
+
+### Verification
 
 - Slashing conditions
 - Actual truebit integration
 - Reward function finalization
 
 Now the protocol should work.
+
+### Extensability
 
 - Governance
 
@@ -44,3 +52,5 @@ Now the protocol should work.
 [King of the Ether Throne Contract Safety Checklist](https://www.kingoftheether.com/contract-safety-checklist.html)
 
 [Consensys smart contract best practices](https://github.com/ConsenSys/smart-contract-best-practices)
+
+[Zeppelin security audits](https://medium.com/zeppelin-blog) - Audits of several popular smart contracts performed by Zeppelin.
