@@ -1,8 +1,11 @@
 pragma solidity ^0.4.8;
 
 import "./Node.sol";
+import "../installed_contracts/zeppelin/contracts/SafeMath.sol";
 
 library MaxHeap {
+    using SafeMath for uint256;
+
     struct Heap {
         Node.Node[] nodes;
         mapping (address => uint) positions;
@@ -153,7 +156,7 @@ library MaxHeap {
         uint pos = self.positions[_id];
 
         // Update key for address
-        self.nodes[pos].key += _amount;
+        self.nodes[pos].key = self.nodes[pos].key.add(_amount);
 
         // Sift up to maintain heap property
         siftUp(self, pos);
@@ -171,7 +174,7 @@ library MaxHeap {
         uint pos = self.positions[_id];
 
         // Update key for address
-        self.nodes[pos].key -= _amount;
+        self.nodes[pos].key = self.nodes[pos].key.sub(_amount);
 
         // Sift down to maintain heap property
         siftDown(self, pos);

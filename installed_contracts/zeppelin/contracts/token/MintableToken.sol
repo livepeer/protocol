@@ -1,8 +1,8 @@
 pragma solidity ^0.4.8;
 
+
 import './StandardToken.sol';
 import '../ownership/Ownable.sol';
-import '../SafeMath.sol';
 
 
 
@@ -29,8 +29,8 @@ contract MintableToken is StandardToken, Ownable {
   }
 
   function mint(address _to, uint _amount) onlyOwner canMint returns (bool) {
-      totalSupply = SafeMath.safeAdd(totalSupply, _amount);
-      balances[_to] = SafeMath.safeAdd(balances[_to], _amount);
+    totalSupply = totalSupply.add(_amount);
+    balances[_to] = balances[_to].add(_amount);
     Mint(_to, _amount);
     return true;
   }
