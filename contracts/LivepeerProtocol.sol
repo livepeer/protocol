@@ -132,6 +132,12 @@ contract LivepeerProtocol {
         _;
     }
 
+    // Check if current round initialized
+    modifier currentRoundInitialized() {
+        if (lastInitializedRound != currentRound()) throw;
+        _;
+    }
+
     // Initialize protocol
     function LivepeerProtocol(uint64 _n, uint256 _roundLength, uint256 _cyclesPerRound) {
         // Deploy new token contract
@@ -248,7 +254,7 @@ contract LivepeerProtocol {
      * @param _amount The amount of LPT to stake.
      * @param _to The address of the transcoder to stake towards.
      */
-    function bond(uint _amount, address _to) updateStakesWithRewards returns (bool) {
+    function bond(uint _amount, address _to) currentRoundInitialized updateStakesWithRewards returns (bool) {
         // Check if this is a valid transcoder who is active
         if (transcoders[_to].active == false) throw;
 
@@ -312,7 +318,7 @@ contract LivepeerProtocol {
      * Unbond your current stake. This will enter the unbonding phase for
      * the unbondingPeriod.
      */
-    function unbond() updateStakesWithRewards returns (bool) {
+    function unbond() currentRoundInitialized updateStakesWithRewards returns (bool) {
         // Check if this is an initialized delegator
         if (delegators[msg.sender].initialized == false) throw;
         // Check if delegator is in bonded status
@@ -330,7 +336,7 @@ contract LivepeerProtocol {
     /**
      * Withdraws withdrawable funds back to the caller after unbonding period.
      */
-    function withdraw() returns (bool) {
+    function withdraw() currentRoundInitialized returns (bool) {
         // Check if this is an initialized delegator
         if (delegators[msg.sender].initialized == false) throw;
          // Check if delegator is in unbonding phase
@@ -351,7 +357,7 @@ contract LivepeerProtocol {
      * Active transcoders call this once per cycle when it is their turn.
      * Distribute the token rewards to transcoder and delegates.
      */
-    function reward() returns (bool) {
+    function reward() currentRoundInitialized returns (bool) {
         // Check if in current round active transcoder set
         if (!isCurrentActiveTranscoder[msg.sender]) throw;
 
@@ -407,7 +413,7 @@ contract LivepeerProtocol {
     /**
      * The sender is declaring themselves as a candidate for active transcoding.
      */
-    function transcoder(uint8 _blockRewardCut) returns (bool) {
+    function transcoder(uint8 _blockRewardCut) currentRoundInitialized returns (bool) {
         // Check for valid blockRewardCut
         if (_blockRewardCut < 0 || _blockRewardCut > 100) throw;
 
@@ -426,7 +432,7 @@ contract LivepeerProtocol {
     /*
      * Remove the sender as a transcoder
      */
-    function resignAsTranscoder() returns (bool) {
+    function resignAsTranscoder() currentRoundInitialized returns (bool) {
         // Check if active transcoder
         if (transcoders[msg.sender].active == false) throw;
 

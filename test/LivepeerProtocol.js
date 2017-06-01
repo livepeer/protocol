@@ -30,6 +30,9 @@ contract('LivepeerProtocol', function(accounts) {
 
     beforeEach("snapshot checkpoint to revert back to later", async function() {
         snapshotId = await rpc.snapshot();
+
+        // Start at the beginning of a round
+        await rpc.waitUntilNextBlockMultiple(20, ROUND_LENGTH);
     });
 
     afterEach("revert back to snapshot checkpoint", async function() {
@@ -162,8 +165,17 @@ contract('LivepeerProtocol', function(accounts) {
         // Account 0 bonds to transcoder 1
         await instance.bond(1000, accounts[1], {from: accounts[0]});
 
-        // Fast forward 2 rounds
-        await rpc.waitUntilNextBlockMultiple(20, ROUND_LENGTH, 2);
+        // Fast forward 1 round
+        await rpc.waitUntilNextBlockMultiple(20, ROUND_LENGTH);
+
+        // Initialize round
+        await instance.initializeRound();
+
+        // Fast forward 1 round
+        await rpc.waitUntilNextBlockMultiple(20, ROUND_LENGTH);
+
+        // Initialize round
+        await instance.initializeRound();
 
         // Transfer tokens
         await lpt.transfer(accounts[2], toSmallestUnits(1), {from: accounts[0]});
@@ -241,8 +253,17 @@ contract('LivepeerProtocol', function(accounts) {
         let isCandidateTranscoder = await instance.isCandidateTranscoder(accounts[2]);
         assert.isOk(isCandidateTranscoder, "transcoder 2 has less stake than transcoder 2 and is not a candidate");
 
-        // Fast forward 2 rounds
-        await rpc.waitUntilNextBlockMultiple(20, ROUND_LENGTH, 2);
+        // Fast forward 1 round
+        await rpc.waitUntilNextBlockMultiple(20, ROUND_LENGTH);
+
+        // Initialize round
+        await instance.initializeRound();
+
+        // Fast forward 1 round
+        await rpc.waitUntilNextBlockMultiple(20, ROUND_LENGTH);
+
+        // Initialize round
+        await instance.initializeRound();
 
         // Account 0 unbonds
         await instance.unbond({from: accounts[0]});
@@ -250,8 +271,17 @@ contract('LivepeerProtocol', function(accounts) {
         const delegatorStatus = await instance.delegatorStatus.call(accounts[0]);
         assert.equal(delegatorStatus, UNBONDING, "delegator did not transition to unbonding");
 
-        // Fast forward through unbonding period
-        await rpc.waitUntilNextBlockMultiple(20, ROUND_LENGTH, UNBONDING_PERIOD);
+        // Fast forward 1 round
+        await rpc.waitUntilNextBlockMultiple(20, ROUND_LENGTH);
+
+        // Initialize round
+        await instance.initializeRound();
+
+        // Fast forward 1 round
+        await rpc.waitUntilNextBlockMultiple(20, ROUND_LENGTH);
+
+        // Initialize round
+        await instance.initializeRound();
 
         // Account 0 withdraws
         await instance.withdraw({from: accounts[0]});
@@ -288,8 +318,17 @@ contract('LivepeerProtocol', function(accounts) {
         // account 0 bonds to transcoder 1
         await instance.bond(1000, accounts[1], {from: accounts[0]});
 
-        // Fast forward 2 rounds
-        await rpc.waitUntilNextBlockMultiple(20, ROUND_LENGTH, 2);
+        // Fast forward 1 round
+        await rpc.waitUntilNextBlockMultiple(20, ROUND_LENGTH);
+
+        // Initialize round
+        await instance.initializeRound();
+
+        // Fast forward 1 round
+        await rpc.waitUntilNextBlockMultiple(20, ROUND_LENGTH);
+
+        // Initialize round
+        await instance.initializeRound();
 
         // Account 0 unbonds
         await instance.unbond({from: accounts[0]});
@@ -665,6 +704,50 @@ contract('LivepeerProtocol', function(accounts) {
             }
 
             assert.isOk(threw, "reward did not throw when called by a transcoder when it is not its turn");
+        });
+
+        it("should fail if current round is not initialized", async function() {
+            const instance = await LivepeerProtocol.new(2, ROUND_LENGTH, CYCLES_PER_ROUND, {from: accounts[0]});
+            const lptaddress = await instance.token.call();
+            const lpt = await LivepeerToken.at(lptaddress);
+
+            const a1Stake = 2000;
+            const a2Stake = 3000;
+
+            // Transfer tokens
+            await lpt.transfer(accounts[1], toSmallestUnits(1), {from: accounts[0]});
+
+            // Register account 1 as transcoder 1
+            await instance.transcoder(10, {from: accounts[1]});
+
+            // Approve token transfer for account 1
+            await lpt.approve(instance.address, a1Stake, {from: accounts[1]});
+
+            // Account 1 bonds to self as transcoder
+            await instance.bond(a1Stake, accounts[1], {from: accounts[1]});
+
+            // Transfer tokens
+            await lpt.transfer(accounts[2], toSmallestUnits(1), {from: accounts[0]});
+
+            // Approve token transfer for account 2
+            await lpt.approve(instance.address, a2Stake, {from: accounts[2]});
+
+            // Account 2 bonds to transcoder 1
+            await instance.bond(a2Stake, accounts[1], {from: accounts[2]});
+
+            // Fast forward 1 round
+            await rpc.waitUntilNextBlockMultiple(20, ROUND_LENGTH);
+
+            let threw = false;
+
+            try {
+                await instance.reward({from: accounts[2]});
+            } catch (err) {
+                threw = true;
+            }
+
+
+            assert.isOk(threw, "reward did not throw when current round was not initialized");
         });
     });
 
