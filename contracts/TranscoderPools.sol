@@ -74,7 +74,7 @@ library TranscoderPools {
                     // Insert active transcoder with smallest stake into candidate pool
                     self.candidateTranscoders.insert(minActive, minActiveStake);
                 } else {
-                    var (maxCandidate, maxCandidateStake) = self.candidateTranscoders.max();
+                    var (, maxCandidateStake) = self.candidateTranscoders.max();
 
                     if (minActiveStake >= maxCandidateStake) {
                         // Stake of former active transcoder with smallest stake greater than

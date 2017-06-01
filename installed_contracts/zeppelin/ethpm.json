@@ -18,14 +18,20 @@
     "./contracts/DayLimit.sol",
     "./contracts/LimitBalance.sol",
     "./contracts/MultisigWallet.sol",
+    "./contracts/ReentrancyGuard.sol",
     "./contracts/SafeMath.sol",
-    "./contracts/lifecycle/Killable.sol",
+    "./contracts/lifecycle/Destructible.sol",
     "./contracts/lifecycle/Migrations.sol",
     "./contracts/lifecycle/Pausable.sol",
+    "./contracts/lifecycle/TokenDestructible.sol",
     "./contracts/ownership/Claimable.sol",
     "./contracts/ownership/Contactable.sol",
     "./contracts/ownership/DelayedClaimable.sol",
+    "./contracts/ownership/HasNoContracts.sol",
+    "./contracts/ownership/HasNoEther.sol",
+    "./contracts/ownership/HasNoTokens.sol",
     "./contracts/ownership/Multisig.sol",
+    "./contracts/ownership/NoOwner.sol",
     "./contracts/ownership/Ownable.sol",
     "./contracts/ownership/Shareable.sol",
     "./contracts/payment/PullPayment.sol",
@@ -33,6 +39,9 @@
     "./contracts/token/CrowdsaleToken.sol",
     "./contracts/token/ERC20.sol",
     "./contracts/token/ERC20Basic.sol",
+    "./contracts/token/LimitedTransferToken.sol",
+    "./contracts/token/MintableToken.sol",
+    "./contracts/token/PausableToken.sol",
     "./contracts/token/SimpleToken.sol",
     "./contracts/token/StandardToken.sol",
     "./contracts/token/VestedToken.sol"
@@ -40,5 +49,5 @@
   "dependencies": {},
   "manifest_version": 1,
   "package_name": "zeppelin",
-  "version": "1.0.4"
+  "version": "1.0.5"
 }

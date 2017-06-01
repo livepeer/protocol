@@ -5,7 +5,8 @@ import "./TranscoderPools.sol";
 import "./Node.sol";
 import '../installed_contracts/zeppelin/contracts/SafeMath.sol';
 
-contract LivepeerProtocol is SafeMath {
+contract LivepeerProtocol {
+    using SafeMath for uint256;
     using TranscoderPools for TranscoderPools.TranscoderPools;
 
     // Token address
@@ -37,8 +38,8 @@ contract LivepeerProtocol is SafeMath {
     // Round length in blocks
     uint256 public roundLength;
 
-    // Current round
-    uint256 public currentRound;
+    // Last initialized round. After first round, this is the last round during which initializeRound() called
+    uint256 public lastInitializedRound;
 
     // Number of times each transcoder is expected to call Reward() in a round
     uint256 public cyclesPerRound;
@@ -123,10 +124,10 @@ contract LivepeerProtocol is SafeMath {
             uint256 rewards = delegatorRewards(msg.sender);
 
             // Update delegator stake with share of rewards
-            delegators[msg.sender].bondedAmount = safeAdd(delegators[msg.sender].bondedAmount, rewards);
+            delegators[msg.sender].bondedAmount = delegators[msg.sender].bondedAmount.add(rewards);
         }
 
-        delegators[msg.sender].lastStateTransitionRound = block.number / roundLength;
+        delegators[msg.sender].lastStateTransitionRound = currentRound();
 
         _;
     }
@@ -153,7 +154,9 @@ contract LivepeerProtocol is SafeMath {
         // Round length of ~1 day assuming ~17 second block time on main net
         // Current value is for testing purposes
         roundLength = _roundLength;
-        currentRound = block.number / roundLength;
+
+        // Set last initialized round as current round
+        lastInitializedRound = currentRound();
 
         // Transcoder expected to call reward every ~10 minutes assuming ~17 second block time on main net
         // Current value is for testing purposes
@@ -176,6 +179,7 @@ contract LivepeerProtocol is SafeMath {
         failedVerificationSlashAmount = 5;
         missedRewardSlashAmount = 3;
         missedVerificationSlashAmount = 10;
+
 
         // Expect transcoders to be 90% competitive
         competitivenessTolerance = 90;
@@ -204,11 +208,11 @@ contract LivepeerProtocol is SafeMath {
             // Delegator called unbond() or transcoder resigned
             // In unbonding phase
             return DelegatorStatus.Unbonding;
-        } else if (delegators[_delegator].roundStart > block.number / roundLength) {
+        } else if (delegators[_delegator].roundStart > currentRound()) {
             // Delegator round start is in the future
             // In pending phase
             return DelegatorStatus.Pending;
-        } else if (delegators[_delegator].roundStart <= block.number / roundLength) {
+        } else if (delegators[_delegator].roundStart <= currentRound()) {
             // Delegator round start is now or in the past
             // In bonded phase
             return DelegatorStatus.Bonded;
@@ -228,11 +232,11 @@ contract LivepeerProtocol is SafeMath {
 
         if (delegators[_delegator].withdrawRound > 0) {
             // Delegator called unbond()
-            return block.number / roundLength >= delegators[_delegator].withdrawRound;
+            return currentRound() >= delegators[_delegator].withdrawRound;
         } else if (delegators[_delegator].transcoderAddress != address(0)
                    && transcoders[delegators[_delegator].transcoderAddress].delegatorWithdrawRound > 0) {
             // Transcoder resigned
-            return block.number / roundLength >= transcoders[delegators[_delegator].transcoderAddress].delegatorWithdrawRound;
+            return currentRound() >= transcoders[delegators[_delegator].transcoderAddress].delegatorWithdrawRound;
         } else {
             // Delegator not in unbonding state
             return false;
@@ -259,7 +263,7 @@ contract LivepeerProtocol is SafeMath {
 
         if (transcoders[msg.sender].active == true && _to == msg.sender) {
             // Sender is a registered transcoder and is delegating to self
-            transcoders[msg.sender].bondedAmount = safeAdd(transcoders[msg.sender].bondedAmount, _amount);
+            transcoders[msg.sender].bondedAmount = transcoders[msg.sender].bondedAmount.add(_amount);
         } else {
             // Sender is not a registered transcoder
             // Update or create this delegator
@@ -269,22 +273,22 @@ contract LivepeerProtocol is SafeMath {
                 (del.transcoderAddress != address(0) && transcoders[del.transcoderAddress].active == false)) {
                 // Set round start if creating delegator for first time or if
                 // delegator was bonded to an inactive transcoder
-                del.roundStart = (block.number / roundLength) + 1;
+                del.roundStart = currentRound().add(1);
             }
 
             if (del.transcoderAddress != address(0) && _to != del.transcoderAddress) {
                 // Delegator is moving bond
                 // Set round start if delegator moves bond to another active transcoder
-                del.roundStart = (block.number / roundLength) + 1;
+                del.roundStart = currentRound().add(1);
                 // Decrease former transcoder cumulative stake
                 transcoderPools.decreaseTranscoderStake(del.transcoderAddress, del.bondedAmount);
                 // Stake amount includes delegator's total bonded amount since delegator is moving its bond
-                stakeForTranscoder = safeAdd(stakeForTranscoder, del.bondedAmount);
+                stakeForTranscoder = stakeForTranscoder.add(del.bondedAmount);
             }
 
             del.delegatorAddress = msg.sender;
             del.transcoderAddress = _to;
-            del.bondedAmount = safeAdd(del.bondedAmount, _amount);
+            del.bondedAmount = del.bondedAmount.add(_amount);
             del.withdrawRound = 0;
             del.initialized = true;
             delegators[msg.sender] = del;
@@ -315,7 +319,7 @@ contract LivepeerProtocol is SafeMath {
         if (delegatorStatus(msg.sender) != DelegatorStatus.Bonded) throw;
 
         // Transition to unbonding phase
-        delegators[msg.sender].withdrawRound = safeAdd(block.number / roundLength, unbondingPeriod);
+        delegators[msg.sender].withdrawRound = currentRound().add(unbondingPeriod);
 
         // Decrease transcoder cumulative stake
         transcoderPools.decreaseTranscoderStake(delegators[msg.sender].transcoderAddress, delegators[msg.sender].bondedAmount);
@@ -352,13 +356,13 @@ contract LivepeerProtocol is SafeMath {
         if (!isCurrentActiveTranscoder[msg.sender]) throw;
 
         // Check if already called for current cycle
-        if (transcoders[msg.sender].rewardRound == block.number / roundLength && transcoders[msg.sender].rewardCycle == cycleNum()) throw;
+        if (transcoders[msg.sender].rewardRound == currentRound() && transcoders[msg.sender].rewardCycle == cycleNum()) throw;
 
         // Check if in a valid transcoder reward time window
         if (!validRewardTimeWindow(msg.sender)) throw;
 
         // Set last round that transcoder called reward()
-        transcoders[msg.sender].rewardRound = block.number / roundLength;
+        transcoders[msg.sender].rewardRound = currentRound();
         // Set last cycle of last round that transcoder called reward()
         transcoders[msg.sender].rewardCycle = cycleNum();
 
@@ -370,11 +374,11 @@ contract LivepeerProtocol is SafeMath {
         token.mint(this, mintedTokens);
 
         // Compute transcoder share of minted tokens
-        uint256 transcoderRewardShare = (mintedTokens * transcoders[msg.sender].blockRewardCut) / 100;
+        uint256 transcoderRewardShare = mintedTokens.mul(transcoders[msg.sender].blockRewardCut).div(100);
 
         // Add reminaing rewards (after transcoder share) for the current cycle of the current round to reward multiplier numerator
-        uint256[2] rewardMultiplier = rewardMultiplierPerTranscoderAndRound[msg.sender][block.number / roundLength];
-        rewardMultiplier[0] = safeAdd(rewardMultiplier[0], mintedTokens - transcoderRewardShare);
+        uint256[2] rewardMultiplier = rewardMultiplierPerTranscoderAndRound[msg.sender][currentRound()];
+        rewardMultiplier[0] = rewardMultiplier[0].add(mintedTokens.sub(transcoderRewardShare));
 
         if (cycleNum() == 0 || rewardMultiplier[1] == 0) {
             // First cycle of current round or reward multiplier denominator has not been set yet
@@ -382,10 +386,10 @@ contract LivepeerProtocol is SafeMath {
             rewardMultiplier[1] = currentActiveTranscoderTotalStake(msg.sender);
         }
 
-        rewardMultiplierPerTranscoderAndRound[msg.sender][block.number / roundLength] = rewardMultiplier;
+        rewardMultiplierPerTranscoderAndRound[msg.sender][currentRound()] = rewardMultiplier;
 
         // Update transcoder stake with share of minted tokens
-        transcoders[msg.sender].bondedAmount = safeAdd(transcoders[msg.sender].bondedAmount, transcoderRewardShare);
+        transcoders[msg.sender].bondedAmount = transcoders[msg.sender].bondedAmount.add(transcoderRewardShare);
 
         // Update transcoder total bonded stake with minted tokens
         transcoderPools.increaseTranscoderStake(msg.sender, mintedTokens);
@@ -394,8 +398,10 @@ contract LivepeerProtocol is SafeMath {
     }
 
     function mintedTokensPerReward() constant returns (uint256) {
-        uint256 rewardsPerYear = ((365 * 24 * 60 * 60) / blockTime / roundLength) * cyclesPerRound * n;
-        return ((initialTokenSupply * initialYearlyInflation) / 100) / rewardsPerYear;
+        uint256 secondsInYear = 1 years;
+        uint256 rewardsPerYear = secondsInYear.div(blockTime).div(roundLength).mul(cyclesPerRound).mul(n);
+
+        return initialTokenSupply.mul(initialYearlyInflation).div(100).div(rewardsPerYear);
     }
 
     /**
@@ -427,7 +433,7 @@ contract LivepeerProtocol is SafeMath {
         // Go inactive
         transcoders[msg.sender].active = false;
         // Set withdraw round for delegators
-        transcoders[msg.sender].delegatorWithdrawRound = safeAdd(block.number / roundLength, unbondingPeriod);
+        transcoders[msg.sender].delegatorWithdrawRound = currentRound().add(unbondingPeriod);
         // Zero out bonded amount
         transcoders[msg.sender].bondedAmount = 0;
         // Remove transcoder from pools
@@ -456,9 +462,9 @@ contract LivepeerProtocol is SafeMath {
     function initializeRound() returns (bool) {
         // Check if already called for the current round
         // Will exit here to avoid large gas consumption if it has been called for the current round already
-        if (currentRound == block.number / roundLength) return false;
-        // Set the current round
-        currentRound = block.number / roundLength;
+        if (lastInitializedRound == currentRound()) return false;
+        // Set current round as initialized
+        lastInitializedRound = currentRound();
 
         // Set current round active transcoders
         setCurrentActiveTranscoders();
@@ -496,35 +502,42 @@ contract LivepeerProtocol is SafeMath {
      * TODO: take into account pricing, etc.
      */
     function electCurrentActiveTranscoder() constant returns (address) {
-        return currentActiveTranscoders[uint(block.blockhash(block.number - 1)) % currentActiveTranscoders.length].id;
+        return currentActiveTranscoders[uint(block.blockhash(block.number.sub(1))) % currentActiveTranscoders.length].id;
+    }
+
+    /*
+     * Return current round
+     */
+    function currentRound() constant returns (uint256) {
+        return block.number / roundLength;
     }
 
     /*
      * Return start block of current round
      */
     function currentRoundStartBlock() constant returns (uint256) {
-        return (block.number / roundLength) * roundLength;
+        return currentRound().mul(roundLength);
     }
 
     /*
      * Return length in blocks of a time window for calling reward()
      */
     function rewardTimeWindowLength() constant returns (uint256) {
-        return roundLength / (n * cyclesPerRound);
+        return roundLength.div(cyclesPerRound.mul(n));
     }
 
     /*
      * Return length in blocks of a cycle
      */
     function cycleLength() constant returns (uint256) {
-        return rewardTimeWindowLength() * n;
+        return rewardTimeWindowLength().mul(n);
     }
 
     /*
      * Return number of cycles since the start of the round
      */
     function cycleNum() constant returns (uint256) {
-        return (block.number - currentRoundStartBlock()) / cycleLength();
+        return block.number.sub(currentRoundStartBlock()).div(cycleLength());
     }
 
     /*
@@ -540,9 +553,9 @@ contract LivepeerProtocol is SafeMath {
         uint256 transcoderIdx = currentActiveTranscoderPositions[_transcoder];
 
         // Compute start block of reward time window for this cycle
-        uint256 rewardTimeWindowStartBlock = currentRoundStartBlock() + (cycleNum() * cycleLength()) + (transcoderIdx * rewardTimeWindowLength());
+        uint256 rewardTimeWindowStartBlock = currentRoundStartBlock().add(cycleNum().mul(cycleLength())).add(transcoderIdx.mul(rewardTimeWindowLength()));
         // Compute end block of reward time window for this cycle
-        uint256 rewardTimeWindowEndBlock = rewardTimeWindowStartBlock + rewardTimeWindowLength();
+        uint256 rewardTimeWindowEndBlock = rewardTimeWindowStartBlock.add(rewardTimeWindowLength());
 
         return block.number >= rewardTimeWindowStartBlock && block.number < rewardTimeWindowEndBlock;
     }
@@ -574,7 +587,7 @@ contract LivepeerProtocol is SafeMath {
         // Check for valid delegator
         if (!delegators[_delegator].initialized) throw;
 
-        return delegators[_delegator].bondedAmount + delegatorRewards(_delegator);
+        return delegators[_delegator].bondedAmount.add(delegatorRewards(_delegator));
     }
 
     /*
@@ -588,15 +601,15 @@ contract LivepeerProtocol is SafeMath {
         if (delegators[_delegator].transcoderAddress != address(0)) {
             // Iterate from round that delegator last transitioned states to current round
             // If the delegator is bonded to a transcoder, it has been bonded to the transcoder since lastStateTransitionRound
-            for (uint256 i = delegators[_delegator].lastStateTransitionRound; i <= block.number / roundLength; i++) {
+            for (uint256 i = delegators[_delegator].lastStateTransitionRound; i <= currentRound(); i++) {
                 uint256[2] rewardMultiplier = rewardMultiplierPerTranscoderAndRound[delegators[_delegator].transcoderAddress][i];
 
                 // Check if transcoder has a reward multiplier for this round (total minted tokens for round > 0)
                 if (rewardMultiplier[0] > 0) {
                     // Calculate delegator's share of reward
-                    uint256 delegatorShare = (rewardMultiplier[0] * delegators[_delegator].bondedAmount) / rewardMultiplier[1];
+                    uint256 delegatorShare = rewardMultiplier[0].mul(delegators[_delegator].bondedAmount).div(rewardMultiplier[1]);
 
-                    rewards = safeAdd(rewards, delegatorShare);
+                    rewards = rewards.add(delegatorShare);
                 }
             }
         }

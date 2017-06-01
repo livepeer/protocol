@@ -2,9 +2,9 @@ pragma solidity ^0.4.8;
 
 
 import "./StandardToken.sol";
+import "./LimitedTransferToken.sol";
 
-
-contract VestedToken is StandardToken {
+contract VestedToken is StandardToken, LimitedTransferToken {
   struct TokenGrant {
     address granter;
     uint256 value;
@@ -14,19 +14,6 @@ contract VestedToken is StandardToken {
   }
 
   mapping (address => TokenGrant[]) public grants;
-
-  modifier canTransfer(address _sender, uint _value) {
-    if (_value > transferableTokens(_sender, uint64(now))) throw;
-    _;
-  }
-
-  function transfer(address _to, uint _value) canTransfer(msg.sender, _value) returns (bool success) {
-    return super.transfer(_to, _value);
-  }
-
-  function transferFrom(address _from, address _to, uint _value) canTransfer(_from, _value) returns (bool success) {
-    return super.transferFrom(_from, _to, _value);
-  }
 
   function grantVestedTokens(
     address _to,
@@ -65,8 +52,8 @@ contract VestedToken is StandardToken {
     grants[_holder][_grantId] = grants[_holder][grants[_holder].length - 1];
     grants[_holder].length -= 1;
 
-    balances[msg.sender] = safeAdd(balances[msg.sender], nonVested);
-    balances[_holder] = safeSub(balances[_holder], nonVested);
+    balances[msg.sender] = balances[msg.sender].add(nonVested);
+    balances[_holder] = balances[_holder].sub(nonVested);
     Transfer(_holder, msg.sender, nonVested);
   }
 
@@ -107,37 +94,37 @@ contract VestedToken is StandardToken {
     if (time < cliff) {
       return 0;
     }
-    if (time > vesting) {
+    if (time >= vesting) {
       return tokens;
     }
 
-    uint256 cliffTokens = safeDiv(safeMul(tokens, safeSub(cliff, start)), safeSub(vesting, start));
+    uint256 cliffTokens = tokens.mul(cliff.sub(start)).div(vesting.sub(start));
     vestedTokens = cliffTokens;
 
-    uint256 vestingTokens = safeSub(tokens, cliffTokens);
+    uint256 vestingTokens = tokens.sub(cliffTokens);
 
-    vestedTokens = safeAdd(vestedTokens, safeDiv(safeMul(vestingTokens, safeSub(time, cliff)), safeSub(vesting, start)));
+    vestedTokens = vestedTokens.add(vestingTokens.mul(time.sub(cliff)).div(vesting.sub(cliff)));
   }
 
   function nonVestedTokens(TokenGrant grant, uint64 time) private constant returns (uint256) {
-    return safeSub(grant.value, vestedTokens(grant, time));
+    return grant.value.sub(vestedTokens(grant, time));
   }
 
   function lastTokenIsTransferableDate(address holder) constant public returns (uint64 date) {
     date = uint64(now);
     uint256 grantIndex = grants[holder].length;
     for (uint256 i = 0; i < grantIndex; i++) {
-      date = max64(grants[holder][i].vesting, date);
+      date = SafeMath.max64(grants[holder][i].vesting, date);
     }
   }
 
   function transferableTokens(address holder, uint64 time) constant public returns (uint256 nonVested) {
     uint256 grantIndex = grants[holder].length;
-
     for (uint256 i = 0; i < grantIndex; i++) {
-      nonVested = safeAdd(nonVested, nonVestedTokens(grants[holder][i], time));
+      uint256 current = nonVestedTokens(grants[holder][i], time);
+      nonVested = nonVested.add(current);
     }
 
-    return safeSub(balances[holder], nonVested);
+    return SafeMath.min256(balances[holder].sub(nonVested), super.transferableTokens(holder, time));
   }
 }
