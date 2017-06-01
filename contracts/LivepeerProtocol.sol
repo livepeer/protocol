@@ -504,16 +504,19 @@ contract LivepeerProtocol {
             }
             // Copy node
             currentActiveTranscoders[i] = transcoderPools.activeTranscoders.nodes[i];
+
+            address currentActiveTranscoder = currentActiveTranscoders[i].id;
+
             // Set address of node to be present in current active transcoder set
-            isCurrentActiveTranscoder[currentActiveTranscoders[i].id] = true;
+            isCurrentActiveTranscoder[currentActiveTranscoder] = true;
             // Set index position of node in current active transcoder set
-            currentActiveTranscoderPositions[currentActiveTranscoders[i].id] = i;
+            currentActiveTranscoderPositions[currentActiveTranscoder] = i;
             // Set pending blockRewardCut as actual value
-            transcoders[currentActiveTranscoders[i].id].blockRewardCut = transcoders[currentActiveTranscoders[i].id].pendingBlockRewardCut;
+            transcoders[currentActiveTranscoder].blockRewardCut = transcoders[currentActiveTranscoder].pendingBlockRewardCut;
             // Set pending feeShare as actual value
-            transcoders[currentActiveTranscoders[i].id].feeShare = transcoders[currentActiveTranscoders[i].id].pendingFeeShare;
+            transcoders[currentActiveTranscoder].feeShare = transcoders[currentActiveTranscoder].pendingFeeShare;
             // Set pending pricePerSegment as actual value
-            transcoders[currentActiveTranscoders[i].id].pricePerSegment = transcoders[currentActiveTranscoders[i].id].pendingPricePerSegment;
+            transcoders[currentActiveTranscoder].pricePerSegment = transcoders[currentActiveTranscoder].pendingPricePerSegment;
         }
 
         return true;
