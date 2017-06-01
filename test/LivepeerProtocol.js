@@ -20,6 +20,15 @@ const CYCLES_PER_ROUND = 2;
 // Unbonding period
 const UNBONDING_PERIOD = 2;
 
+// Block reward cut
+const BLOCK_REWARD_CUT = 10;
+
+// Fee share
+const FEE_SHARE = 5;
+
+// Price per segment
+const PRICE_PER_SEGMENT = 100;
+
 contract('LivepeerProtocol', function(accounts) {
     let rpc;
     let snapshotId;
@@ -59,7 +68,7 @@ contract('LivepeerProtocol', function(accounts) {
             await lpt.transfer(accounts[1], toSmallestUnits(1), {from: accounts[0]});
 
             // Register account 1 as transcoder 1
-            await instance.transcoder(10, {from: accounts[1]});
+            await instance.transcoder(BLOCK_REWARD_CUT, FEE_SHARE, PRICE_PER_SEGMENT, {from: accounts[1]});
 
             const transcoder = await instance.transcoders.call(accounts[1]);
             assert.equal(transcoder[0], accounts[1], "becoming a transcoder did not work");
@@ -74,13 +83,31 @@ contract('LivepeerProtocol', function(accounts) {
             assert.isOk(isActiveTranscoder, "active transcoder pool did not update correctly");
         });
 
+        it("should not set pending transcoder information values as current transcoder information values before start of new round", async function() {
+            const instance = await LivepeerProtocol.new(1, ROUND_LENGTH, CYCLES_PER_ROUND, {from: accounts[0]});
+
+            // Register account 1 as transcoder 1
+            await instance.transcoder(BLOCK_REWARD_CUT, FEE_SHARE, PRICE_PER_SEGMENT, {from: accounts[1]});
+
+            const transcoder = await instance.transcoders.call(accounts[1]);
+
+            const blockRewardCut = transcoder[5];
+            assert.equal(blockRewardCut, 0, "transcoder registration did not set current blockRewardCut correctly");
+
+            const feeShare = transcoder[6];
+            assert.equal(feeShare, 0, "transcoder registration did not set current feeShare correctly");
+
+            const pricePerSegment = transcoder[7];
+            assert.equal(pricePerSegment, 0, "transcoder registration did not set current pricePerSegment correctly");
+        });
+
         it("should fail for blockRewardCut less than 0", async function() {
             const instance = await LivepeerProtocol.new(1, ROUND_LENGTH, CYCLES_PER_ROUND, {from: accounts[0]});
 
             let threw = false;
 
             try {
-                await instance.transcoder(-1, {from: accounts[1]});
+                await instance.transcoder(-1, FEE_SHARE, PRICE_PER_SEGMENT, {from: accounts[1]});
             } catch (err) {
                 threw = true;
             }
@@ -94,12 +121,40 @@ contract('LivepeerProtocol', function(accounts) {
             let threw = false;
 
             try {
-                await instance.transcoder(101, {from: accounts[1]});
+                await instance.transcoder(101, FEE_SHARE, PRICE_PER_SEGMENT, {from: accounts[1]});
             } catch (err) {
                 threw = true;
             }
 
             assert.isOk(threw, "transcoder registration did not throw for blockRewardCut greater than 100");
+        });
+
+        it("should fail for feeShare less than 0", async function() {
+            const instance = await LivepeerProtocol.new(1, ROUND_LENGTH, CYCLES_PER_ROUND, {from: accounts[0]});
+
+            let threw = false;
+
+            try {
+                await instance.transcoder(BLOCK_REWARD_CUT, -1, PRICE_PER_SEGMENT, {from: accounts[1]});
+            } catch (err) {
+                threw = true;
+            }
+
+            assert.isOk(threw, "transcoder registration did not throw for feeShare less than 0");
+        });
+
+        it("should fail for feeShare greater than 100", async function() {
+            const instance = await LivepeerProtocol.new(1, ROUND_LENGTH, CYCLES_PER_ROUND, {from: accounts[0]});
+
+            let threw = false;
+
+            try {
+                await instance.transcoder(BLOCK_REWARD_CUT, 101, PRICE_PER_SEGMENT, {from: accounts[1]});
+            } catch (err) {
+                threw = true;
+            }
+
+            assert.isOk(threw, "transcoder registration did not throw for feeShare greater than 100");
         });
     });
 
@@ -113,7 +168,7 @@ contract('LivepeerProtocol', function(accounts) {
         await lpt.transfer(accounts[1], toSmallestUnits(1), {from: accounts[0]});
 
         // Register account 1 as transcoder 1
-        await instance.transcoder(10, {from: accounts[1]});
+        await instance.transcoder(BLOCK_REWARD_CUT, FEE_SHARE, PRICE_PER_SEGMENT, {from: accounts[1]});
 
         // Approve token transfer for account 1
         await lpt.approve(instance.address, 2000, {from: accounts[1]});
@@ -151,7 +206,7 @@ contract('LivepeerProtocol', function(accounts) {
         await lpt.transfer(accounts[1], toSmallestUnits(1), {from: accounts[0]});
 
         // Register account 1 as transcoder 1
-        await instance.transcoder(10, {from: accounts[1]});
+        await instance.transcoder(BLOCK_REWARD_CUT, FEE_SHARE, PRICE_PER_SEGMENT, {from: accounts[1]});
 
         // Approve token transfer for account 1
         await lpt.approve(instance.address, 2000, {from: accounts[1]});
@@ -181,7 +236,7 @@ contract('LivepeerProtocol', function(accounts) {
         await lpt.transfer(accounts[2], toSmallestUnits(1), {from: accounts[0]});
 
         // Register account 2 as transcoder 2
-        await instance.transcoder(10, {from: accounts[2]});
+        await instance.transcoder(BLOCK_REWARD_CUT, FEE_SHARE, PRICE_PER_SEGMENT, {from: accounts[2]});
 
         // Approve token transfer for account 2
         await lpt.approve(instance.address, 500, {from: accounts[2]});
@@ -221,7 +276,7 @@ contract('LivepeerProtocol', function(accounts) {
         await lpt.transfer(accounts[1], toSmallestUnits(1), {from: accounts[0]});
 
         // Register account 1 as transcoder 1
-        await instance.transcoder(10, {from: accounts[1]});
+        await instance.transcoder(BLOCK_REWARD_CUT, FEE_SHARE, PRICE_PER_SEGMENT, {from: accounts[1]});
 
         // Approve token transfer for account 1
         await lpt.approve(instance.address, 1500, {from: accounts[1]});
@@ -239,7 +294,7 @@ contract('LivepeerProtocol', function(accounts) {
         await lpt.transfer(accounts[2], toSmallestUnits(1), {from: accounts[0]});
 
         // Register account 2 as transcoder 2
-        await instance.transcoder(10, {from: accounts[2]});
+        await instance.transcoder(BLOCK_REWARD_CUT, FEE_SHARE, PRICE_PER_SEGMENT, {from: accounts[2]});
 
         // Approve token transfer for account 2
         await lpt.approve(instance.address, 2000, {from: accounts[2]});
@@ -304,7 +359,7 @@ contract('LivepeerProtocol', function(accounts) {
         await lpt.transfer(accounts[1], toSmallestUnits(1), {from: accounts[0]});
 
         // register account 1 as transcoder 1
-        await instance.transcoder(10, {from: accounts[1]});
+        await instance.transcoder(BLOCK_REWARD_CUT, FEE_SHARE, PRICE_PER_SEGMENT, {from: accounts[1]});
 
         // approve token transfer for account 1
         await lpt.approve(instance.address, 2000, {from: accounts[1]});
@@ -369,7 +424,7 @@ contract('LivepeerProtocol', function(accounts) {
             await lpt.transfer(accounts[1], toSmallestUnits(1), {from: accounts[0]});
 
             // register account 1 as transcoder 1
-            await instance.transcoder(10, {from: accounts[1]});
+            await instance.transcoder(BLOCK_REWARD_CUT, FEE_SHARE, PRICE_PER_SEGMENT, {from: accounts[1]});
 
             // approve token transfer for account 1
             await lpt.approve(instance.address, 2000, {from: accounts[1]});
@@ -410,7 +465,7 @@ contract('LivepeerProtocol', function(accounts) {
             await lpt.transfer(accounts[1], toSmallestUnits(1), {from: accounts[0]});
 
             // Register account 1 as transcoder 1
-            await instance.transcoder(10, {from: accounts[1]});
+            await instance.transcoder(BLOCK_REWARD_CUT, FEE_SHARE, PRICE_PER_SEGMENT, {from: accounts[1]});
 
             // Approve token transfer for account 1
             await lpt.approve(instance.address, 2000, {from: accounts[1]});
@@ -430,7 +485,7 @@ contract('LivepeerProtocol', function(accounts) {
             await lpt.transfer(accounts[2], toSmallestUnits(1), {from: accounts[0]});
 
             // Register account 2 as transcoder 2
-            await instance.transcoder(10, {from: accounts[2]});
+            await instance.transcoder(BLOCK_REWARD_CUT, FEE_SHARE, PRICE_PER_SEGMENT, {from: accounts[2]});
 
             // Approve token transfer for account 2
             await lpt.approve(instance.address, 3000, {from: accounts[2]});
@@ -456,7 +511,7 @@ contract('LivepeerProtocol', function(accounts) {
             await lpt.transfer(accounts[1], toSmallestUnits(1), {from: accounts[0]});
 
             // Register account 1 as transcoder 1
-            await instance.transcoder(10, {from: accounts[1]});
+            await instance.transcoder(BLOCK_REWARD_CUT, FEE_SHARE, PRICE_PER_SEGMENT, {from: accounts[1]});
 
             // Approve token transfer for account 1
             await lpt.approve(instance.address, 2000, {from: accounts[1]});
@@ -473,7 +528,7 @@ contract('LivepeerProtocol', function(accounts) {
             await lpt.transfer(accounts[2], toSmallestUnits(1), {from: accounts[0]});
 
             // Register account 2 as transcoder 2
-            await instance.transcoder(10, {from: accounts[2]});
+            await instance.transcoder(BLOCK_REWARD_CUT, FEE_SHARE, PRICE_PER_SEGMENT, {from: accounts[2]});
 
             // Approve token transfer for account 2
             await lpt.approve(instance.address, 3000, {from: accounts[2]});
@@ -494,7 +549,7 @@ contract('LivepeerProtocol', function(accounts) {
             await lpt.transfer(accounts[1], toSmallestUnits(1), {from: accounts[0]});
 
             // Register account 1 as transcoder 1
-            await instance.transcoder(10, {from: accounts[1]});
+            await instance.transcoder(BLOCK_REWARD_CUT, FEE_SHARE, PRICE_PER_SEGMENT, {from: accounts[1]});
 
             // Approve token transfer for account 1
             await lpt.approve(instance.address, 2000, {from: accounts[1]});
@@ -511,7 +566,7 @@ contract('LivepeerProtocol', function(accounts) {
             await lpt.transfer(accounts[2], toSmallestUnits(1), {from: accounts[0]});
 
             // Register account 2 as transcoder 2
-            await instance.transcoder(10, {from: accounts[2]});
+            await instance.transcoder(BLOCK_REWARD_CUT, FEE_SHARE, PRICE_PER_SEGMENT, {from: accounts[2]});
 
             // Approve token transfer for account 2
             await lpt.approve(instance.address, 3000, {from: accounts[2]});
@@ -523,6 +578,40 @@ contract('LivepeerProtocol', function(accounts) {
 
             const elected = await instance.electCurrentActiveTranscoder();
             assert.equal(elected, accounts[1], "initialize round did not return early when it was already called for the current round");
+        });
+
+        it("should set the pending transcoder information as the actual transcoder information values", async function() {
+            const instance = await LivepeerProtocol.new(1, ROUND_LENGTH, CYCLES_PER_ROUND, {from: accounts[0]});
+            const lptaddress = await instance.token.call();
+            const lpt = await LivepeerToken.at(lptaddress);
+
+            // Transfer tokens
+            await lpt.transfer(accounts[1], toSmallestUnits(1), {from: accounts[0]});
+
+            // Register account 1 as transcoder 1
+            await instance.transcoder(BLOCK_REWARD_CUT, FEE_SHARE, PRICE_PER_SEGMENT, {from: accounts[1]});
+
+            // Approve token transfer for account 1
+            await lpt.approve(instance.address, 2000, {from: accounts[1]});
+
+            // Account 1 bonds to self as transcoder
+            await instance.bond(2000, accounts[1], {from: accounts[1]});
+
+            // Fast forward 1 round
+            await rpc.waitUntilNextBlockMultiple(20, ROUND_LENGTH);
+
+            await instance.initializeRound();
+
+            const transcoder = await instance.transcoders.call(accounts[1]);
+
+            const blockRewardCut = transcoder[5];
+            assert.equal(blockRewardCut, BLOCK_REWARD_CUT, "initialize round did not set pending blockRewardCut as current blockRewardCut");
+
+            const feeShare = transcoder[6];
+            assert.equal(feeShare, FEE_SHARE, "initialize round did not set pending feeShare as current feeShare");
+
+            const pricePerSegment = transcoder[7];
+            assert.equal(pricePerSegment, PRICE_PER_SEGMENT, "initialize round did not set pending pricePerSegment as current pricePerSegment");
         });
     });
 
@@ -540,7 +629,7 @@ contract('LivepeerProtocol', function(accounts) {
             await lpt.transfer(accounts[1], toSmallestUnits(1), {from: accounts[0]});
 
             // Register account 1 as transcoder 1
-            await instance.transcoder(10, {from: accounts[1]});
+            await instance.transcoder(BLOCK_REWARD_CUT, FEE_SHARE, PRICE_PER_SEGMENT, {from: accounts[1]});
 
             // Approve token transfer for account 1
             await lpt.approve(instance.address, a1Stake, {from: accounts[1]});
@@ -635,7 +724,7 @@ contract('LivepeerProtocol', function(accounts) {
             await lpt.transfer(accounts[1], toSmallestUnits(1), {from: accounts[0]});
 
             // Register account 1 as transcoder 1
-            await instance.transcoder(10, {from: accounts[1]});
+            await instance.transcoder(BLOCK_REWARD_CUT, FEE_SHARE, PRICE_PER_SEGMENT, {from: accounts[1]});
 
             // Approve token transfer for account 1
             await lpt.approve(instance.address, 2000, {from: accounts[1]});
@@ -670,7 +759,7 @@ contract('LivepeerProtocol', function(accounts) {
             await lpt.transfer(accounts[1], toSmallestUnits(1), {from: accounts[0]});
 
             // Register account 1 as transcoder 1
-            await instance.transcoder(10, {from: accounts[1]});
+            await instance.transcoder(BLOCK_REWARD_CUT, FEE_SHARE, PRICE_PER_SEGMENT, {from: accounts[1]});
 
             // Approve token transfer for account 1
             await lpt.approve(instance.address, 2000, {from: accounts[1]});
@@ -682,7 +771,7 @@ contract('LivepeerProtocol', function(accounts) {
             await lpt.transfer(accounts[2], toSmallestUnits(1), {from: accounts[0]});
 
             // Register account 2 as transcoder 2
-            await instance.transcoder(10, {from: accounts[2]});
+            await instance.transcoder(BLOCK_REWARD_CUT, FEE_SHARE, PRICE_PER_SEGMENT, {from: accounts[2]});
 
             // Approve token transfer for account 2
             await lpt.approve(instance.address, 3000, {from: accounts[2]});
@@ -718,7 +807,7 @@ contract('LivepeerProtocol', function(accounts) {
             await lpt.transfer(accounts[1], toSmallestUnits(1), {from: accounts[0]});
 
             // Register account 1 as transcoder 1
-            await instance.transcoder(10, {from: accounts[1]});
+            await instance.transcoder(BLOCK_REWARD_CUT, FEE_SHARE, PRICE_PER_SEGMENT, {from: accounts[1]});
 
             // Approve token transfer for account 1
             await lpt.approve(instance.address, a1Stake, {from: accounts[1]});
@@ -764,7 +853,7 @@ contract('LivepeerProtocol', function(accounts) {
             await lpt.transfer(accounts[1], toSmallestUnits(1), {from: accounts[0]});
 
             // Register account 1 as transcoder 1
-            await instance.transcoder(10, {from: accounts[1]});
+            await instance.transcoder(BLOCK_REWARD_CUT, FEE_SHARE, PRICE_PER_SEGMENT, {from: accounts[1]});
 
             // Approve token transfer for account 1
             await lpt.approve(instance.address, a1Stake, {from: accounts[1]});
@@ -809,7 +898,7 @@ contract('LivepeerProtocol', function(accounts) {
             await lpt.transfer(accounts[1], toSmallestUnits(1), {from: accounts[0]});
 
             // Register account 1 as transcoder 1
-            await instance.transcoder(10, {from: accounts[1]});
+            await instance.transcoder(BLOCK_REWARD_CUT, FEE_SHARE, PRICE_PER_SEGMENT, {from: accounts[1]});
 
             // Approve token transfer for account 1
             await lpt.approve(instance.address, a1Stake, {from: accounts[1]});
