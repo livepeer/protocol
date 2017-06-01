@@ -79,9 +79,12 @@ contract LivepeerProtocol {
         uint256 rewardRound;            // Last round that the transcoder called reward()
         uint256 rewardCycle;            // Last cycle of the last round that the transcoder called reward()
         uint8 blockRewardCut;           // Percentage of token reward that delegators pay the transcoder
+        uint8 feeShare;                 // Percentage of fees from broadcasting jobs that transcoder will share with delegators
+        uint256 pricePerSegment;        // Lowest price transcoder is willing to accept for a job. Denominated in LPT base units
+        uint8 pendingBlockRewardCut;    // Pending value for blockRewardCut to be set at the beginning of a new round
+        uint8 pendingFeeShare;          // Pending value for feeShare to be set at the beginning of a new round
+        uint256 pendingPricePerSegment; // Pending value for pricePerSegment to be set at the beginning of a new round
         bool active;                    // Is this transcoder active. Also will be false if uninitialized
-
-        // TODO: add all the state information about pricing, fee split, etc.
     }
 
     // Active and candidate transcoder pools
@@ -413,16 +416,23 @@ contract LivepeerProtocol {
     /**
      * The sender is declaring themselves as a candidate for active transcoding.
      */
-    function transcoder(uint8 _blockRewardCut) currentRoundInitialized returns (bool) {
+    function transcoder(uint8 _blockRewardCut, uint8 _feeShare, uint256 _pricePerSegment) currentRoundInitialized returns (bool) {
         // Check for valid blockRewardCut
         if (_blockRewardCut < 0 || _blockRewardCut > 100) throw;
+        // Check for valid feeShare
+        if (_feeShare < 0 || _feeShare > 100) throw;
 
         Transcoder t = transcoders[msg.sender];
         t.transcoderAddress = msg.sender;
         t.delegatorWithdrawRound = 0;
         t.rewardRound = 0;
         t.rewardCycle = 0;
-        t.blockRewardCut = _blockRewardCut;
+
+        // Set pending transcoding pricing information
+        t.pendingBlockRewardCut = _blockRewardCut;
+        t.pendingFeeShare = _feeShare;
+        t.pendingPricePerSegment = _pricePerSegment;
+
         t.active = true;
         transcoders[msg.sender] = t;
 
@@ -494,10 +504,19 @@ contract LivepeerProtocol {
             }
             // Copy node
             currentActiveTranscoders[i] = transcoderPools.activeTranscoders.nodes[i];
+
+            address currentActiveTranscoder = currentActiveTranscoders[i].id;
+
             // Set address of node to be present in current active transcoder set
-            isCurrentActiveTranscoder[currentActiveTranscoders[i].id] = true;
+            isCurrentActiveTranscoder[currentActiveTranscoder] = true;
             // Set index position of node in current active transcoder set
-            currentActiveTranscoderPositions[currentActiveTranscoders[i].id] = i;
+            currentActiveTranscoderPositions[currentActiveTranscoder] = i;
+            // Set pending blockRewardCut as actual value
+            transcoders[currentActiveTranscoder].blockRewardCut = transcoders[currentActiveTranscoder].pendingBlockRewardCut;
+            // Set pending feeShare as actual value
+            transcoders[currentActiveTranscoder].feeShare = transcoders[currentActiveTranscoder].pendingFeeShare;
+            // Set pending pricePerSegment as actual value
+            transcoders[currentActiveTranscoder].pricePerSegment = transcoders[currentActiveTranscoder].pendingPricePerSegment;
         }
 
         return true;
