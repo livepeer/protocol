@@ -122,7 +122,7 @@ contract LivepeerProtocol {
     mapping (address => mapping (uint256 => uint256[2])) public rewardMultiplierPerTranscoderAndRound;
 
     // The various states a job can be in
-    enum JobStatus { Inactive, Active, Ended, ClaimsProvided, Verified }
+    enum JobStatus { Inactive, Unclaimed, Claimed, Verified }
 
     // Represents a transcoding job
     struct Job {
@@ -550,7 +550,7 @@ contract LivepeerProtocol {
         // Check if there is an elected current active transcoder
         if (electedTranscoder == address(0)) throw;
 
-        jobs.push(Job(jobs.length - 1, _streamId, _transcodingOptions, _maxPricePerSegment, msg.sender, electedTranscoder, JobStatus.Active));
+        jobs.push(Job(jobs.length - 1, _streamId, _transcodingOptions, _maxPricePerSegment, msg.sender, electedTranscoder, JobStatus.Unclaimed));
 
         return true;
     }
