@@ -176,7 +176,6 @@ contract LivepeerProtocol {
         // Set block time to 1 second for testing purposes
         blockTime = 1;
 
-
         // Round length of ~1 day assuming ~17 second block time on main net
         // Current value is for testing purposes
         roundLength = _roundLength;
