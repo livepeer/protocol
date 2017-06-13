@@ -31,9 +31,7 @@ const PRICE_PER_SEGMENT = 100;
 
 // Job status
 const JOB_INACTIVE = 0;
-const JOB_UNCLAIMED = 1;
-const JOB_CLAIMED = 2;
-const JOB_VERIFIED = 3;
+const JOB_ACTIVE = 1;
 
 contract('LivepeerProtocol', function(accounts) {
     let rpc;
@@ -966,7 +964,7 @@ contract('LivepeerProtocol', function(accounts) {
             assert.equal(job[3], 200, "job did not set the max price per segment correctly");
             assert.equal(job[4], accounts[2], "job did not set the broadcaster address correctly");
             assert.equal(job[5], accounts[1], "job did not set the transcoder address correctly");
-            assert.equal(job[6], JOB_UNCLAIMED, "job did not set status correctly");
+            assert.equal(job[6], 0, "job did not set end block correctly");
         });
 
         it("should fail if there are no available transcoders charging an acceptable price per segment", async function() {
@@ -1023,6 +1021,172 @@ contract('LivepeerProtocol', function(accounts) {
             }
 
             assert.isOk(threw, "job did not throw when there are no available transcoders");
+        });
+    });
+
+    describe("endJob", function() {
+        it("should set the end block for a job when called by the job's broadcaster", async function() {
+            const instance = await LivepeerProtocol.new(2, ROUND_LENGTH, CYCLES_PER_ROUND, {from: accounts[0]});
+            const lptaddress = await instance.token.call();
+            const lpt = await LivepeerToken.at(lptaddress);
+
+            const a1Stake = 2000;
+
+            // Transfer tokens
+            await lpt.transfer(accounts[1], toSmallestUnits(1), {from: accounts[0]});
+
+            // Register account 1 as transcoder 1
+            await instance.transcoder(BLOCK_REWARD_CUT, FEE_SHARE, PRICE_PER_SEGMENT, {from: accounts[1]});
+
+            // Approve token transfer for account 1
+            await lpt.approve(instance.address, a1Stake, {from: accounts[1]});
+
+            // Account 1 bonds to self as transcoder
+            await instance.bond(a1Stake, accounts[1], {from: accounts[1]});
+
+            // Fast forward 1 round
+            await rpc.waitUntilNextBlockMultiple(20, ROUND_LENGTH);
+
+            await instance.initializeRound();
+
+            // Account 2 creates a job
+            await instance.job(1, "0x1", 200, {from: accounts[2]});
+
+            // Account 2 ends the job
+            await instance.endJob(0, {from: accounts[2]});
+
+            const callEndJobBlock = web3.eth.blockNumber;
+
+            const job = await instance.getJob(0);
+            assert.equal(job[6], callEndJobBlock + 10, "endJob did not set the end block for the job correctly");
+
+            // Fast forward 10 blocks
+            await rpc.wait(20, 10);
+
+            const jobStatus = await instance.jobStatus(0);
+            assert.equal(jobStatus, JOB_INACTIVE, "job did not become inactive when the current block is greater than or equal to the job's end block");
+        });
+
+        it("should set the end block for a job when called by the job's transcoder", async function() {
+            const instance = await LivepeerProtocol.new(2, ROUND_LENGTH, CYCLES_PER_ROUND, {from: accounts[0]});
+            const lptaddress = await instance.token.call();
+            const lpt = await LivepeerToken.at(lptaddress);
+
+            const a1Stake = 2000;
+
+            // Transfer tokens
+            await lpt.transfer(accounts[1], toSmallestUnits(1), {from: accounts[0]});
+
+            // Register account 1 as transcoder 1
+            await instance.transcoder(BLOCK_REWARD_CUT, FEE_SHARE, PRICE_PER_SEGMENT, {from: accounts[1]});
+
+            // Approve token transfer for account 1
+            await lpt.approve(instance.address, a1Stake, {from: accounts[1]});
+
+            // Account 1 bonds to self as transcoder
+            await instance.bond(a1Stake, accounts[1], {from: accounts[1]});
+
+            // Fast forward 1 round
+            await rpc.waitUntilNextBlockMultiple(20, ROUND_LENGTH);
+
+            await instance.initializeRound();
+
+            // Account 2 creates a job
+            await instance.job(1, "0x1", 200, {from: accounts[2]});
+
+            // Account 2 ends the job
+            await instance.endJob(0, {from: accounts[1]});
+
+            const callEndJobBlock = web3.eth.blockNumber;
+
+            const job = await instance.getJob(0);
+            assert.equal(job[6], callEndJobBlock + 10, "endJob did not set the end block for the job correctly");
+
+            // Fast forward 10 blocks
+            await rpc.wait(20, 10);
+
+            const jobStatus = await instance.jobStatus(0);
+            assert.equal(jobStatus, JOB_INACTIVE, "job did not become inactive when the current block is greater than or equal to the job's end block");
+        });
+
+        it("should fail if called by an address that is not a broadcaster or transcoder", async function() {
+            const instance = await LivepeerProtocol.new(2, ROUND_LENGTH, CYCLES_PER_ROUND, {from: accounts[0]});
+            const lptaddress = await instance.token.call();
+            const lpt = await LivepeerToken.at(lptaddress);
+
+            const a1Stake = 2000;
+
+            // Transfer tokens
+            await lpt.transfer(accounts[1], toSmallestUnits(1), {from: accounts[0]});
+
+            // Register account 1 as transcoder 1
+            await instance.transcoder(BLOCK_REWARD_CUT, FEE_SHARE, PRICE_PER_SEGMENT, {from: accounts[1]});
+
+            // Approve token transfer for account 1
+            await lpt.approve(instance.address, a1Stake, {from: accounts[1]});
+
+            // Account 1 bonds to self as transcoder
+            await instance.bond(a1Stake, accounts[1], {from: accounts[1]});
+
+            // Fast forward 1 round
+            await rpc.waitUntilNextBlockMultiple(20, ROUND_LENGTH);
+
+            await instance.initializeRound();
+
+            // Account 2 creates a job
+            await instance.job(1, "0x1", 200, {from: accounts[2]});
+
+            let threw = false;
+
+            try {
+                // Account 3 ends the job
+                await instance.endJob(0, {from: accounts[3]});
+            } catch (err) {
+                threw = true;
+            }
+
+            assert.isOk(threw, "endJob did not throw when called by an address that is not a broadcaster or transcoder");
+        });
+
+        it("should fail if the job already has an end block", async function() {
+            const instance = await LivepeerProtocol.new(2, ROUND_LENGTH, CYCLES_PER_ROUND, {from: accounts[0]});
+            const lptaddress = await instance.token.call();
+            const lpt = await LivepeerToken.at(lptaddress);
+
+            const a1Stake = 2000;
+
+            // Transfer tokens
+            await lpt.transfer(accounts[1], toSmallestUnits(1), {from: accounts[0]});
+
+            // Register account 1 as transcoder 1
+            await instance.transcoder(BLOCK_REWARD_CUT, FEE_SHARE, PRICE_PER_SEGMENT, {from: accounts[1]});
+
+            // Approve token transfer for account 1
+            await lpt.approve(instance.address, a1Stake, {from: accounts[1]});
+
+            // Account 1 bonds to self as transcoder
+            await instance.bond(a1Stake, accounts[1], {from: accounts[1]});
+
+            // Fast forward 1 round
+            await rpc.waitUntilNextBlockMultiple(20, ROUND_LENGTH);
+
+            await instance.initializeRound();
+
+            // Account 2 creates a job
+            await instance.job(1, "0x1", 200, {from: accounts[2]});
+
+            // Account 2 ends the job
+            await instance.endJob(0, {from: accounts[2]});
+
+            let threw = false;
+
+            try {
+                await instance.endJob(0, {from: accounts[2]});
+            } catch (err) {
+                threw = true;
+            }
+
+            assert.isOk(threw, "endJob did not throw when called for a job that already has an end block");
         });
     });
 });

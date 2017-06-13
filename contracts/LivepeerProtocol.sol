@@ -122,17 +122,17 @@ contract LivepeerProtocol {
     mapping (address => mapping (uint256 => uint256[2])) public rewardMultiplierPerTranscoderAndRound;
 
     // The various states a job can be in
-    enum JobStatus { Inactive, Unclaimed, Claimed, Verified }
+    enum JobStatus { Inactive, Active }
 
     // Represents a transcoding job
     struct Job {
         uint256 jobId;                     // Unique identifer for job
-        uint256 streamId;                  // Unique identifier for stream
+        uint256 streamId;                  // Unique identifier for stream. TODO: change to more semantically proper type when we settle on a streamId representation in the system
         bytes32 transcodingOptions;        // Options used for transcoding
         uint256 maxPricePerSegment;        // Max price (in LPT base units) per segment of a stream
         address broadcasterAddress;        // Address of broadcaster that requestes a transcoding job
         address transcoderAddress;         // Address of transcoder selected for the job
-        JobStatus status;                  // State that job is in
+        uint256 endBlock;                  // Block at which the job is ended and considered inactive
     }
 
     Job[] jobs;
@@ -175,6 +175,7 @@ contract LivepeerProtocol {
 
         // Set block time to 1 second for testing purposes
         blockTime = 1;
+
 
         // Round length of ~1 day assuming ~17 second block time on main net
         // Current value is for testing purposes
@@ -550,19 +551,49 @@ contract LivepeerProtocol {
         // Check if there is an elected current active transcoder
         if (electedTranscoder == address(0)) throw;
 
-        jobs.push(Job(jobs.length - 1, _streamId, _transcodingOptions, _maxPricePerSegment, msg.sender, electedTranscoder, JobStatus.Unclaimed));
+        jobs.push(Job(jobs.length - 1, _streamId, _transcodingOptions, _maxPricePerSegment, msg.sender, electedTranscoder, 0));
 
         return true;
+    }
+
+    /*
+     * Computes the status of a job
+     * @param _jobId Job identifier
+     */
+    function jobStatus(uint256 _jobId) constant returns (JobStatus) {
+        if (jobs[_jobId].endBlock > 0 && jobs[_jobId].endBlock <= block.number) {
+            // A job is inactive if its end block is set and the current block is greater than or equal to the job's end block
+            return JobStatus.Inactive;
+        } else {
+            // A job is active if the current block is less than the job's termination block
+            return JobStatus.Active;
+        }
     }
 
     /*
      * Return a job
      * @param _jobId Job identifier
      */
-    function getJob(uint256 _jobId) constant returns (uint256, uint256, bytes32, uint256, address, address, JobStatus) {
+    function getJob(uint256 _jobId) constant returns (uint256, uint256, bytes32, uint256, address, address, uint256) {
         Job job = jobs[_jobId];
 
-        return (job.jobId, job.streamId, job.transcodingOptions, job.maxPricePerSegment, job.broadcasterAddress, job.transcoderAddress, job.status);
+        return (job.jobId, job.streamId, job.transcodingOptions, job.maxPricePerSegment, job.broadcasterAddress, job.transcoderAddress, job.endBlock);
+    }
+
+    /*
+     * End a job. Can be called by either a broadcaster or transcoder of a job
+     */
+    function endJob(uint256 _jobId) returns (bool) {
+        // Check if job exists
+        if (_jobId < 0 || _jobId >= jobs.length) throw;
+        // Check if job already has an end block
+        if (jobs[_jobId].endBlock > 0) throw;
+        // Check if called by either broadcaster or transcoder
+        if (msg.sender != jobs[_jobId].broadcasterAddress && msg.sender != jobs[_jobId].transcoderAddress) throw;
+
+        // Set set end block for job to be in 10 blocks
+        // Note: this is a placeholder value and subject to change
+        jobs[_jobId].endBlock = block.number + 10;
     }
 
     /*
@@ -570,18 +601,26 @@ contract LivepeerProtocol {
      * @param _maxPricePerSegment Max price (in LPT base units) per segment of a stream
      */
     function electCurrentActiveTranscoder(uint256 _maxPricePerSegment) constant returns (address) {
-        // Compute a random index to select a transcoder
-        uint256 randIdx = uint256(block.blockhash(block.number.sub(1))) % currentActiveTranscoders.length;
+        // Create array to store available transcoders charging an acceptable price per segment
+        address[] memory availableTranscoders = new address[](currentActiveTranscoders.length);
+        // Keep track of the actual number of available transcoders
+        uint256 numAvailableTranscoders = 0;
 
         for (uint256 i = 0; i < currentActiveTranscoders.length; i++) {
-            // Find randomly selected transcoder and check if it has an acceptable price per segment
-            if (i == randIdx && transcoders[currentActiveTranscoders[i].id].pricePerSegment <= _maxPricePerSegment) {
-                return currentActiveTranscoders[i].id;
+            // If a transcoders charges an acceptable price per segment add it to the array of available transcoders
+            if (transcoders[currentActiveTranscoders[i].id].pricePerSegment <= _maxPricePerSegment) {
+                availableTranscoders[numAvailableTranscoders] = currentActiveTranscoders[i].id;
+                numAvailableTranscoders++;
             }
         }
 
-        // There is no currently available transcoder that charges a price per segment less than or equal to the max price per segment for a job
-        return address(0);
+        if (numAvailableTranscoders == 0) {
+            // There is no currently available transcoder that charges a price per segment less than or equal to the max price per segment for a job
+            return address(0);
+        } else {
+            // Pseudorandomly select an available transcoder that charges an acceptable price per segment
+            return availableTranscoders[uint256(block.blockhash(block.number.sub(1))) % numAvailableTranscoders];
+        }
     }
 
     /*
