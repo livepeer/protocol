@@ -33,6 +33,9 @@ const PRICE_PER_SEGMENT = 100;
 const JOB_INACTIVE = 0;
 const JOB_ACTIVE = 1;
 
+// Job ending period
+const JOB_ENDING_PERIOD = 100;
+
 contract('LivepeerProtocol', function(accounts) {
     let rpc;
     let snapshotId;
@@ -1058,10 +1061,10 @@ contract('LivepeerProtocol', function(accounts) {
             const callEndJobBlock = web3.eth.blockNumber;
 
             const job = await instance.getJob(0);
-            assert.equal(job[6], callEndJobBlock + 10, "endJob did not set the end block for the job correctly");
+            assert.equal(job[6], callEndJobBlock + JOB_ENDING_PERIOD, "endJob did not set the end block for the job correctly");
 
-            // Fast forward 10 blocks
-            await rpc.wait(20, 10);
+            // Fast forward through job ending period
+            await rpc.wait(20, JOB_ENDING_PERIOD);
 
             const jobStatus = await instance.jobStatus(0);
             assert.equal(jobStatus, JOB_INACTIVE, "job did not become inactive when the current block is greater than or equal to the job's end block");
@@ -1100,10 +1103,10 @@ contract('LivepeerProtocol', function(accounts) {
             const callEndJobBlock = web3.eth.blockNumber;
 
             const job = await instance.getJob(0);
-            assert.equal(job[6], callEndJobBlock + 10, "endJob did not set the end block for the job correctly");
+            assert.equal(job[6], callEndJobBlock + JOB_ENDING_PERIOD, "endJob did not set the end block for the job correctly");
 
-            // Fast forward 10 blocks
-            await rpc.wait(20, 10);
+            // Fast forward through job ending period
+            await rpc.wait(20, JOB_ENDING_PERIOD);
 
             const jobStatus = await instance.jobStatus(0);
             assert.equal(jobStatus, JOB_INACTIVE, "job did not become inactive when the current block is greater than or equal to the job's end block");

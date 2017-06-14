@@ -71,6 +71,9 @@ contract LivepeerProtocol {
     // % of verifications you can fail before being slashed
     uint64 public verificationFailureThreshold;
 
+    // Time between when endJob() is called for a job and when the job is considered inactive. Denominated in blocks
+    uint256 public jobEndingPeriod;
+
     // Represents a transcoder's current state
     struct Transcoder {
         address transcoderAddress;      // The address of this transcoder.
@@ -211,6 +214,9 @@ contract LivepeerProtocol {
 
         // Fail no more than 1% of the time
         verificationFailureThreshold = 1;
+
+        // A job becomes inactive 100 blocks after endJob() is called
+        jobEndingPeriod = 100;
 
         // Initialize transcoder pools - size of candidate pool subject to change
         transcoderPools.init(n, n);
@@ -583,16 +589,13 @@ contract LivepeerProtocol {
      * End a job. Can be called by either a broadcaster or transcoder of a job
      */
     function endJob(uint256 _jobId) returns (bool) {
-        // Check if job exists
-        if (_jobId < 0 || _jobId >= jobs.length) throw;
         // Check if job already has an end block
         if (jobs[_jobId].endBlock > 0) throw;
         // Check if called by either broadcaster or transcoder
         if (msg.sender != jobs[_jobId].broadcasterAddress && msg.sender != jobs[_jobId].transcoderAddress) throw;
 
-        // Set set end block for job to be in 10 blocks
-        // Note: this is a placeholder value and subject to change
-        jobs[_jobId].endBlock = block.number + 10;
+        // Set set end block for job
+        jobs[_jobId].endBlock = block.number + jobEndingPeriod;
     }
 
     /*
