@@ -539,6 +539,10 @@ contract LivepeerProtocol {
         return true;
     }
 
+    /*
+     * Return status of job
+     * @param _jobId Job identifier
+     */
     function jobStatus(uint256 _jobId) constant returns (TranscodeJobs.JobStatus) {
         return jobs.jobStatus(_jobId);
     }
@@ -567,12 +571,28 @@ contract LivepeerProtocol {
     }
 
     /*
+     * Return a job's work details
+     * @param _jobId Job identifier
+     */
+    function getJobWorkDetails(uint256 _jobId) constant returns (uint256, uint256, bytes32) {
+        return jobs.getJobWorkDetails(_jobId);
+    }
+
+    /*
      * End a job. Can be called by either a broadcaster or transcoder of a job
+     * @param _jobId Job identifier
      */
     function endJob(uint256 _jobId) returns (bool) {
         return jobs.endJob(_jobId, jobEndingPeriod);
     }
 
+    /*
+     * Submit transcode claims for a range of segments
+     * @param _jobId Job identifier
+     * @param _startSegmentSequenceNumber First segment in the range of transcoded segments
+     * @param _endSegmentSequenceNumber Second segment in the range of transcoded segments
+     * @param _transcodeClaimRoot Merkle root of transcode claims for the range of segments
+     */
     function claimWork(uint256 _jobId, uint256 _startSegmentSequenceNumber, uint256 _endSegmentSequenceNumber, bytes32 _transcodeClaimsRoot) returns (bool) {
         return jobs.claimWork(_jobId, _startSegmentSequenceNumber, _endSegmentSequenceNumber, _transcodeClaimsRoot, verificationPeriod);
     }

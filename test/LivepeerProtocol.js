@@ -1194,4 +1194,194 @@ contract('LivepeerProtocol', function(accounts) {
             assert.isOk(threw, "endJob did not throw when called for a job that already has an end block");
         });
     });
+
+    describe("claimWork", function() {
+        it("should submit transcode claims for a range of segments", async function() {
+            const instance = await LivepeerProtocol.new(2, ROUND_LENGTH, CYCLES_PER_ROUND, {from: accounts[0]});
+            const lptaddress = await instance.token.call();
+            const lpt = await LivepeerToken.at(lptaddress);
+
+            const a1Stake = 2000;
+
+            // Transfer tokens
+            await lpt.transfer(accounts[1], toSmallestUnits(1), {from: accounts[0]});
+
+            // Register account 1 as transcoder 1
+            await instance.transcoder(BLOCK_REWARD_CUT, FEE_SHARE, PRICE_PER_SEGMENT, {from: accounts[1]});
+
+            // Approve token transfer for account 1
+            await lpt.approve(instance.address, a1Stake, {from: accounts[1]});
+
+            // Account 1 bonds to self as transcoder
+            await instance.bond(a1Stake, accounts[1], {from: accounts[1]});
+
+            // Fast forward 1 round
+            await rpc.waitUntilNextBlockMultiple(20, ROUND_LENGTH);
+
+            await instance.initializeRound();
+
+            // Account 2 creates a transcoder job
+            await instance.job(1, "0x1", 200, {from: accounts[2]});
+
+            // Account 1 claims work
+            // Use fake Merkle root
+            await instance.claimWork(0, 0, 10, "0x1", {from: accounts[1]});
+
+            const workDetails = await instance.getJobWorkDetails(0);
+            assert.equal(workDetails[0], 0, "claim work did not set the start segment of the last segment range claimed correctly");
+            assert.equal(workDetails[1], 10, "claim work did not set the end segment of the last segment range claimed correctly");
+            assert.equal(workDetails[2], "0x1000000000000000000000000000000000000000000000000000000000000000", "claim work did not set the last transcode claim root correctly");
+        });
+
+        it("should fail if the job is inactive", async function() {
+            const instance = await LivepeerProtocol.new(2, ROUND_LENGTH, CYCLES_PER_ROUND, {from: accounts[0]});
+            const lptaddress = await instance.token.call();
+            const lpt = await LivepeerToken.at(lptaddress);
+
+            const a1Stake = 2000;
+
+            // Transfer tokens
+            await lpt.transfer(accounts[1], toSmallestUnits(1), {from: accounts[0]});
+
+            // Register account 1 as transcoder 1
+            await instance.transcoder(BLOCK_REWARD_CUT, FEE_SHARE, PRICE_PER_SEGMENT, {from: accounts[1]});
+
+            // Approve token transfer for account 1
+            await lpt.approve(instance.address, a1Stake, {from: accounts[1]});
+
+            // Account 1 bonds to self as transcoder
+            await instance.bond(a1Stake, accounts[1], {from: accounts[1]});
+
+            // Fast forward 1 round
+            await rpc.waitUntilNextBlockMultiple(20, ROUND_LENGTH);
+
+            await instance.initializeRound();
+
+            // Account 2 creates a job
+            await instance.job(1, "0x1", 200, {from: accounts[2]});
+
+            // Account 2 ends the job
+            await instance.endJob(0, {from: accounts[1]});
+
+            // Fast forward through job ending period
+            await rpc.wait(20, JOB_ENDING_PERIOD);
+
+            let threw = false;
+
+            try {
+                await instance.claimWork(0, 0, 10, "0x1", {from: accounts[1]});
+            } catch (err) {
+                threw = true;
+            }
+
+            assert.isOk(threw, "claim work did not throw when called for an inactive job");
+        });
+
+        it("should fail if the sender is not the assigned transcoder for the job", async function() {
+            const instance = await LivepeerProtocol.new(2, ROUND_LENGTH, CYCLES_PER_ROUND, {from: accounts[0]});
+            const lptaddress = await instance.token.call();
+            const lpt = await LivepeerToken.at(lptaddress);
+
+            const a1Stake = 2000;
+
+            // Transfer tokens
+            await lpt.transfer(accounts[1], toSmallestUnits(1), {from: accounts[0]});
+
+            // Register account 1 as transcoder 1
+            await instance.transcoder(BLOCK_REWARD_CUT, FEE_SHARE, PRICE_PER_SEGMENT, {from: accounts[1]});
+
+            // Approve token transfer for account 1
+            await lpt.approve(instance.address, a1Stake, {from: accounts[1]});
+
+            // Account 1 bonds to self as transcoder
+            await instance.bond(a1Stake, accounts[1], {from: accounts[1]});
+
+            // Fast forward 1 round
+            await rpc.waitUntilNextBlockMultiple(20, ROUND_LENGTH);
+
+            await instance.initializeRound();
+
+            // Account 2 creates a job
+            await instance.job(1, "0x1", 200, {from: accounts[2]});
+
+            let threw = false;
+
+            try {
+                // Account 3 claims work
+                await instance.claimWork(0, 0, 10, "0x1", {from: accounts[3]});
+            } catch (err) {
+                threw = true;
+            }
+
+            assert.isOk(threw, "claim work did not throw when called by a sender that is not the assigned transcoder for the job");
+        });
+
+        it("shoud fail if the previous verification period is not over", async function() {
+            const instance = await LivepeerProtocol.new(2, ROUND_LENGTH, CYCLES_PER_ROUND, {from: accounts[0]});
+            const lptaddress = await instance.token.call();
+            const lpt = await LivepeerToken.at(lptaddress);
+
+            const a1Stake = 2000;
+
+            // Transfer tokens
+            await lpt.transfer(accounts[1], toSmallestUnits(1), {from: accounts[0]});
+
+            // Register account 1 as transcoder 1
+            await instance.transcoder(BLOCK_REWARD_CUT, FEE_SHARE, PRICE_PER_SEGMENT, {from: accounts[1]});
+
+            // Approve token transfer for account 1
+            await lpt.approve(instance.address, a1Stake, {from: accounts[1]});
+
+            // Account 1 bonds to self as transcoder
+            await instance.bond(a1Stake, accounts[1], {from: accounts[1]});
+
+            // Fast forward 1 round
+            await rpc.waitUntilNextBlockMultiple(20, ROUND_LENGTH);
+
+            await instance.initializeRound();
+
+            // Account 2 creates a job
+            await instance.job(1, "0x1", 200, {from: accounts[2]});
+
+            // Account 2 claims work
+            await instance.claimWork(0, 0, 10, "0x1", {from: accounts[1]});
+
+            let threw = false;
+
+            try {
+                // Account 2 claims work again
+                await instance.claimWork(0, 11, 20, "0x2", {from: accounts[1]});
+            } catch (err) {
+                threw = true;
+            }
+
+            assert.isOk(threw, "claim work did not throw when the previous verification is not over");
+        });
+    });
+
+    describe("verify", function() {
+        it("should verify a transcode claim", async function() {
+
+        });
+
+        it("should fail if the job is inactive", async function() {
+
+        });
+
+        it("should fail if the sender is not the assigned transcoder for the job", async function() {
+
+        });
+
+        it("should fail if the segment is not eligible for verification", async function() {
+
+        });
+
+        it("should fail if the segment was not signed by the broadcaster for the job", async function() {
+
+        });
+
+        it("should fail if the transcode claim is not included in the last submitted Merkle root of transcode claims", async function() {
+
+        });
+    });
 });

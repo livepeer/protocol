@@ -4,6 +4,7 @@ import "./ECVerify.sol";
 import "./MerkleProof.sol";
 
 library TranscodeJobs {
+    // Represents a transcode job
     struct Job {
         uint256 jobId;                        // Unique identifer for job
         uint256 streamId;                     // Unique identifier for stream. TODO: change to more semantically proper type when we settle on a streamId representation in the system
@@ -18,6 +19,7 @@ library TranscodeJobs {
         bytes32[] transcodeClaimsRoots;       // Transcode claim Merkle roots submitted by calls to claimWork()
     }
 
+    // Represents a list of transcode jobs
     struct Jobs {
         mapping (uint256 => Job) jobs;
         uint256 numJobs;
@@ -50,7 +52,28 @@ library TranscodeJobs {
     function getJob(Jobs storage self, uint256 _jobId) constant returns (uint256, uint256, bytes32, uint256, address, address, uint256, uint256, uint256) {
         Job job = self.jobs[_jobId];
 
-        return (job.jobId, job.streamId, job.transcodingOptions, job.maxPricePerSegment, job.broadcasterAddress, job.transcoderAddress, job.endBlock, job.lastClaimedWorkBlock, job.endVerificationBlock);
+        return (job.jobId,
+                job.streamId,
+                job.transcodingOptions,
+                job.maxPricePerSegment,
+                job.broadcasterAddress,
+                job.transcoderAddress,
+                job.endBlock,
+                job.lastClaimedWorkBlock,
+                job.endVerificationBlock
+                );
+    }
+
+    function getJobWorkDetails(Jobs storage self, uint256 _jobId) constant returns (uint256, uint256, bytes32) {
+        Job job = self.jobs[_jobId];
+
+        bytes32 lastTranscodeClaimRoot = 0x0;
+
+        if (job.transcodeClaimsRoots.length > 0) {
+            lastTranscodeClaimRoot = job.transcodeClaimsRoots[job.transcodeClaimsRoots.length - 1];
+        }
+
+        return (job.lastClaimedSegmentRange[0], job.lastClaimedSegmentRange[1], lastTranscodeClaimRoot);
     }
 
     function endJob(Jobs storage self, uint256 _jobId, uint256 _jobEndingPeriod) returns (bool) {
@@ -99,6 +122,12 @@ library TranscodeJobs {
         return true;
     }
 
+    /*
+     * Computes whether a segment is eligible for verification based on the last call to claimWork()
+     * @param _jobId Job identifier
+     * @param _segmentSequenceNumber Sequence number of segment in stream
+     * @param _verificationRate Rate at which a particular segment should be verified
+     */
     function shouldVerifySegment(Jobs storage self, uint256 _jobId, uint256 _segmentSequenceNumber, uint64 _verificationRate) internal constant returns (bool) {
         // Check if segment is in last claimed segment range
         if (_segmentSequenceNumber < self.jobs[_jobId].lastClaimedSegmentRange[0] || _segmentSequenceNumber > self.jobs[_jobId].lastClaimedSegmentRange[1]) return false;
