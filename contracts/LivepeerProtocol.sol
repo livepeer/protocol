@@ -3,6 +3,8 @@ pragma solidity ^0.4.8;
 import "./LivepeerToken.sol";
 import "./TranscoderPools.sol";
 import "./Node.sol";
+import "./ECVerify.sol";
+import "./MerkleProof.sol";
 import '../installed_contracts/zeppelin/contracts/SafeMath.sol';
 
 contract LivepeerProtocol {
@@ -74,6 +76,9 @@ contract LivepeerProtocol {
     // Time between when endJob() is called for a job and when the job is considered inactive. Denominated in blocks
     uint256 public jobEndingPeriod;
 
+    // Time after a transcoder calls claimWork() that it has to complete verification of claimed work
+    uint256 public verificationPeriod;
+
     // Represents a transcoder's current state
     struct Transcoder {
         address transcoderAddress;      // The address of this transcoder.
@@ -136,9 +141,14 @@ contract LivepeerProtocol {
         address broadcasterAddress;        // Address of broadcaster that requestes a transcoding job
         address transcoderAddress;         // Address of transcoder selected for the job
         uint256 endBlock;                  // Block at which the job is ended and considered inactive
+        uint256[2] lastClaimedSegmentRange;
+        uint256 lastClaimedWorkBlock;
+        uint256 endVerificationBlock;
+        bytes32[] transcodeClaimsRoots;
     }
 
-    Job[] jobs;
+    mapping (uint256 => Job) jobs;
+    uint256 public numJobs;
 
     // Update delegator and transcoder stake with rewards from past rounds when a delegator calls bond() or unbond()
     modifier updateStakesWithRewards() {
@@ -217,6 +227,9 @@ contract LivepeerProtocol {
 
         // A job becomes inactive 100 blocks after endJob() is called
         jobEndingPeriod = 100;
+
+        // A transcoder has 100 blocks for verification after claiming work
+        verificationPeriod = 100;
 
         // Initialize transcoder pools - size of candidate pool subject to change
         transcoderPools.init(n, n);
@@ -556,7 +569,14 @@ contract LivepeerProtocol {
         // Check if there is an elected current active transcoder
         if (electedTranscoder == address(0)) throw;
 
-        jobs.push(Job(jobs.length - 1, _streamId, _transcodingOptions, _maxPricePerSegment, msg.sender, electedTranscoder, 0));
+        jobs[numJobs].jobId = numJobs;
+        jobs[numJobs].streamId = _streamId;
+        jobs[numJobs].transcodingOptions = _transcodingOptions;
+        jobs[numJobs].maxPricePerSegment = _maxPricePerSegment;
+        jobs[numJobs].broadcasterAddress = msg.sender;
+        jobs[numJobs].transcoderAddress = electedTranscoder;
+
+        numJobs++;
 
         return true;
     }
@@ -579,10 +599,10 @@ contract LivepeerProtocol {
      * Return a job
      * @param _jobId Job identifier
      */
-    function getJob(uint256 _jobId) constant returns (uint256, uint256, bytes32, uint256, address, address, uint256) {
+    function getJob(uint256 _jobId) constant returns (uint256, uint256, bytes32, uint256, address, address, uint256, uint256, uint256) {
         Job job = jobs[_jobId];
 
-        return (job.jobId, job.streamId, job.transcodingOptions, job.maxPricePerSegment, job.broadcasterAddress, job.transcoderAddress, job.endBlock);
+        return (job.jobId, job.streamId, job.transcodingOptions, job.maxPricePerSegment, job.broadcasterAddress, job.transcoderAddress, job.endBlock, job.lastClaimedWorkBlock, job.endVerificationBlock);
     }
 
     /*
@@ -596,6 +616,62 @@ contract LivepeerProtocol {
 
         // Set set end block for job
         jobs[_jobId].endBlock = block.number + jobEndingPeriod;
+    }
+
+    function claimWork(uint256 _jobId, uint256 _startSegmentSequenceNumber, uint256 _endSegmentSequenceNumber, bytes32 _transcodeClaimsRoot) returns (bool) {
+        // Check if job is active
+        if (jobStatus(_jobId) != JobStatus.Active) throw;
+        // Check if sender is assigned transcoder
+        if (jobs[_jobId].transcoderAddress != msg.sender) throw;
+        // Check if previous verification period over
+        if (block.number < jobs[_jobId].endVerificationBlock) throw;
+
+        jobs[_jobId].lastClaimedSegmentRange[0] = _startSegmentSequenceNumber;
+        jobs[_jobId].lastClaimedSegmentRange[1] = _endSegmentSequenceNumber;
+        jobs[_jobId].lastClaimedWorkBlock = block.number;
+        jobs[_jobId].endVerificationBlock = block.number + verificationPeriod;
+        jobs[_jobId].transcodeClaimsRoots.push(_transcodeClaimsRoot);
+
+        return true;
+    }
+
+    function shouldVerifySegment(uint256 _jobId, uint256 _segmentSequenceNumber) returns (bool) {
+        // Check if segment is in last claimed segment range
+        if (_segmentSequenceNumber < jobs[_jobId].lastClaimedSegmentRange[0] || _segmentSequenceNumber > jobs[_jobId].lastClaimedSegmentRange[1]) return false;
+
+        if (uint256(sha3(jobs[_jobId].lastClaimedWorkBlock, block.blockhash(jobs[_jobId].lastClaimedWorkBlock), _segmentSequenceNumber)) % verificationRate == 0) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    /*
+     * Provide proof of transcoding a segment
+     * @param _jobId Job identifier
+     * @param _segmentSequenceNumber Segment sequence number in stream
+     * @param _dataHash Segment data hash. Used to retrieve segment data from Swarm
+     * @param _transcodedDataHash Transcoded segment data hash. Used to retrieve transcoded segment data from Swarm
+     * @param _broadcasterSig Broadcaster's signature over segment
+     * @param _proof Merkle proof for the signed transcode claim
+     */
+    function verify(uint256 _jobId, uint256 _segmentSequenceNumber, bytes32 _dataHash, bytes32 _transcodedDataHash, bytes _broadcasterSig, bytes _proof) returns (bool) {
+        // Check if job is active
+        if (jobStatus(_jobId) != JobStatus.Active) throw;
+        // Check if sender is the assigned transcoder
+        if (jobs[_jobId].transcoderAddress == msg.sender) throw;
+        // Check if segment is eligible for verification
+        if (!shouldVerifySegment(_jobId, _segmentSequenceNumber)) throw;
+        // Check if segment was signed by broadcaster
+        if (!ECVerify.ecverify(sha3(jobs[_jobId].streamId, _segmentSequenceNumber, _dataHash), _broadcasterSig, jobs[_jobId].broadcasterAddress)) throw;
+        /* // Check if transcode claim is included in the Merkle root submitted during the last call to claimWork() */
+        if (!MerkleProof.verifyProof(_proof,
+                                     jobs[_jobId].transcodeClaimsRoots[jobs[_jobId].transcodeClaimsRoots.length - 1],
+                                     sha3(jobs[_jobId].streamId, _segmentSequenceNumber, _dataHash, _transcodedDataHash, _broadcasterSig))) throw;
+
+        // TODO: Invoke transcoding verification process
+
+        return true;
     }
 
     /*

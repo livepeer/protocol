@@ -968,6 +968,8 @@ contract('LivepeerProtocol', function(accounts) {
             assert.equal(job[4], accounts[2], "job did not set the broadcaster address correctly");
             assert.equal(job[5], accounts[1], "job did not set the transcoder address correctly");
             assert.equal(job[6], 0, "job did not set end block correctly");
+            assert.equal(job[7], 0, "job did not set last claimed work block correctly");
+            assert.equal(job[8], 0, "job did not set end verification block correctly");
         });
 
         it("should fail if there are no available transcoders charging an acceptable price per segment", async function() {
