@@ -90,9 +90,13 @@ library ECVerify {
         return safer_ecrecover(hash, v, r, s);
     }
 
-    function ecverify(bytes32 hash, bytes sig, address signer) returns (bool) {
+    function ecverify(bytes32 hash, bytes sig, address signer) constant returns (bool) {
         bool ret;
         address addr;
+
+        /* bytes memory prefix = "\x19Ethereum Signed Message:\n32"; */
+        /* bytes32 prefixedHash = sha3(prefix, hash); */
+
         (ret, addr) = ecrecovery(hash, sig);
         return ret == true && addr == signer;
     }

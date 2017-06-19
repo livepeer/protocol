@@ -1,6 +1,9 @@
 import BigNumber from "bignumber.js";
 import RPC from "../utils/rpc";
 import { toSmallestUnits } from "../utils/bn_util";
+import { soliditySha3 } from "../utils/soliditySha3";
+import MerkleTree from "../utils/merkleTree";
+import utils from "ethereumjs-util";
 
 const LivepeerProtocol = artifacts.require("./LivepeerProtocol.sol");
 const LivepeerToken = artifacts.require("./LivepeerToken.sol");
@@ -1361,7 +1364,74 @@ contract('LivepeerProtocol', function(accounts) {
 
     describe("verify", function() {
         it("should verify a transcode claim", async function() {
+            const instance = await LivepeerProtocol.new(2, ROUND_LENGTH, CYCLES_PER_ROUND, {from: accounts[0]});
+            const lptaddress = await instance.token.call();
+            const lpt = await LivepeerToken.at(lptaddress);
 
+            const a1Stake = 2000;
+
+            // Transfer tokens
+            await lpt.transfer(accounts[1], toSmallestUnits(1), {from: accounts[0]});
+
+            // Register account 1 as transcoder 1
+            await instance.transcoder(BLOCK_REWARD_CUT, FEE_SHARE, PRICE_PER_SEGMENT, {from: accounts[1]});
+
+            // Approve token transfer for account 1
+            await lpt.approve(instance.address, a1Stake, {from: accounts[1]});
+
+            // Account 1 bonds to self as transcoder
+            await instance.bond(a1Stake, accounts[1], {from: accounts[1]});
+
+            // Fast forward 1 round
+            await rpc.waitUntilNextBlockMultiple(20, ROUND_LENGTH);
+
+            await instance.initializeRound();
+
+            // Account 2 creates a transcoder job
+            await instance.job(1, "0x1", 200, {from: accounts[2]});
+
+            // Segment data hashes
+            const d0 = "0x80084bf2fba02475726feb2cab2d8215eab14bc6bdd8bfb2c8151257032ecd8b";
+            const d1 = "0xb039179a8a4ce2c252aa6f2f25798251c19b75fc1508d9d511a191e0487d64a7";
+            const d2 = "0x263ab762270d3b73d3e2cddf9acc893bb6bd41110347e5d5e4bd1d3c128ea90a";
+            const d3 = "0x4ce8765e720c576f6f5a34ca380b3de5f0912e6e3cc5355542c363891e54594b";
+
+            // Segment hashes (streamId, segmentSequenceNumber, dataHash)
+            const s0 = soliditySha3(1, 0, d0);
+            const s1 = soliditySha3(1, 1, d1);
+            const s2 = soliditySha3(1, 2, d2);
+            const s3 = soliditySha3(1, 3, d3);
+
+            // Broadcaster signatures over segments
+            const bSig0 = await web3.eth.sign(accounts[2], "0x" + s0.toString("hex"));
+            const bSig1 = await web3.eth.sign(accounts[2], "0x" + s1.toString("hex"));
+            const bSig2 = await web3.eth.sign(accounts[2], "0x" + s2.toString("hex"));
+            const bSig3 = await web3.eth.sign(accounts[2], "0x" + s3.toString("hex"));
+
+            // Transcoded data hashes
+            const tD0 = "0x42538602949f370aa331d2c07a1ee7ff26caac9cc676288f94b82eb2188b8465";
+            const tD1 = "0xa0b37b8bfae8e71330bd8e278e4a45ca916d00475dd8b85e9352533454c9fec8";
+            const tD2 = "0x9f2898da52dedaca29f05bcac0c8e43e4b9f7cb5707c14cc3f35a567232cec7c";
+            const tD3 = "0x5a082c81a7e4d5833ee20bd67d2f4d736f679da33e4bebd3838217cb27bec1d3";
+
+            // Transcode claims
+            const tClaim0 = soliditySha3(1, 0, d0, tD0, bSig0);
+            const tClaim1 = soliditySha3(1, 1, d1, tD1, bSig1);
+            const tClaim2 = soliditySha3(1, 2, d2, tD2, bSig2);
+            const tClaim3 = soliditySha3(1, 3, d3, tD3, bSig3);
+
+            // Generate Merkle root
+            const merkleTree = new MerkleTree([tClaim0, tClaim1, tClaim2, tClaim3]);
+            const root = merkleTree.getHexRoot();
+
+            // Account 1 claims work
+            await instance.claimWork(0, 0, 3, root, {from: accounts[1]});
+
+            // Get Merkle proof
+            const proof = merkleTree.getHexProof(tClaim2);
+
+            // Account 1 calls verify
+            await instance.verify(0, 2, d2, tD2, bSig2, proof, {from: accounts[1]});
         });
 
         it("should fail if the job is inactive", async function() {
