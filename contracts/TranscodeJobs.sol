@@ -115,9 +115,9 @@ library TranscodeJobs {
         // Check if segment was signed by broadcaster
         if (!ECVerify.ecverify(sha3(self.jobs[_jobId].streamId, _segmentSequenceNumber, _dataHash), _broadcasterSig, self.jobs[_jobId].broadcasterAddress)) return false;
         // Check if transcode claim is included in the Merkle root submitted during the last call to claimWork()
-        /* if (!MerkleProof.verifyProof(_proof, */
-        /*                              self.jobs[_jobId].transcodeClaimsRoots[self.jobs[_jobId].transcodeClaimsRoots.length - 1], */
-        /*                              sha3(self.jobs[_jobId].streamId, _segmentSequenceNumber, _dataHash, _transcodedDataHash, _broadcasterSig))) return false; */
+        if (!MerkleProof.verifyProof(_proof,
+                                     self.jobs[_jobId].transcodeClaimsRoots[self.jobs[_jobId].transcodeClaimsRoots.length - 1],
+                                     sha3(self.jobs[_jobId].streamId, _segmentSequenceNumber, _dataHash, _transcodedDataHash, _broadcasterSig))) return false;
 
         return true;
     }
