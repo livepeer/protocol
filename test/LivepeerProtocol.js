@@ -1528,10 +1528,6 @@ contract('LivepeerProtocol', function(accounts) {
             assert.isOk(threw, "verify did not throw when sender is not the assigned transcoder for the job");
         });
 
-        it("should fail if the segment is not eligible for verification", async function() {
-
-        });
-
         it("should fail if the segment was not signed by the broadcaster for the job", async function() {
             const instance = await LivepeerProtocol.new(2, ROUND_LENGTH, CYCLES_PER_ROUND, {from: accounts[0]});
             const lptaddress = await instance.token.call();

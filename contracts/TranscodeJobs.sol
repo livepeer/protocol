@@ -82,7 +82,7 @@ library TranscodeJobs {
         // Check if called by either broadcaster or transcoder
         if (msg.sender != self.jobs[_jobId].broadcasterAddress && msg.sender != self.jobs[_jobId].transcoderAddress) throw;
 
-        // Set set end block for job
+        // Set end block for job
         self.jobs[_jobId].endBlock = block.number + _jobEndingPeriod;
 
         return true;
@@ -111,7 +111,13 @@ library TranscodeJobs {
         // Check if sender is the assigned transcoder
         if (self.jobs[_jobId].transcoderAddress != msg.sender) return false;
         // Check if segment is eligible for verification
-        if (!shouldVerifySegment(self, _jobId, _segmentSequenceNumber, _verificationRate)) return false;
+        if (!shouldVerifySegment(_segmentSequenceNumber,
+                                 self.jobs[_jobId].lastClaimedSegmentRange[0],
+                                 self.jobs[_jobId].lastClaimedSegmentRange[1],
+                                 self.jobs[_jobId].lastClaimedWorkBlock,
+                                 block.blockhash(self.jobs[_jobId].lastClaimedWorkBlock),
+                                 _verificationRate
+                                 )) return false;
         // Check if segment was signed by broadcaster
         if (!ECVerify.ecverify(sha3(self.jobs[_jobId].streamId, _segmentSequenceNumber, _dataHash), _broadcasterSig, self.jobs[_jobId].broadcasterAddress)) return false;
         // Check if transcode claim is included in the Merkle root submitted during the last call to claimWork()
@@ -128,11 +134,16 @@ library TranscodeJobs {
      * @param _segmentSequenceNumber Sequence number of segment in stream
      * @param _verificationRate Rate at which a particular segment should be verified
      */
-    function shouldVerifySegment(Jobs storage self, uint256 _jobId, uint256 _segmentSequenceNumber, uint64 _verificationRate) internal constant returns (bool) {
+    function shouldVerifySegment(uint256 _segmentSequenceNumber,
+                                  uint256 _startSegmentSequenceNumber,
+                                  uint256 _endSegmentSequenceNumber,
+                                  uint256 _lastClaimedWorkBlock,
+                                  bytes32 _lastClaimedWorkBlockHash,
+                                  uint64 _verificationRate) constant returns (bool) {
         // Check if segment is in last claimed segment range
-        if (_segmentSequenceNumber < self.jobs[_jobId].lastClaimedSegmentRange[0] || _segmentSequenceNumber > self.jobs[_jobId].lastClaimedSegmentRange[1]) return false;
+        if (_segmentSequenceNumber < _startSegmentSequenceNumber || _segmentSequenceNumber > _endSegmentSequenceNumber) return false;
 
-        if (uint256(sha3(self.jobs[_jobId].lastClaimedWorkBlock, block.blockhash(self.jobs[_jobId].lastClaimedWorkBlock), _segmentSequenceNumber)) % _verificationRate == 0) {
+        if (uint256(sha3(_lastClaimedWorkBlock, _lastClaimedWorkBlockHash, _segmentSequenceNumber)) % _verificationRate == 0) {
             return true;
         } else {
             return false;
