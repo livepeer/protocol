@@ -1430,10 +1430,10 @@ contract('LivepeerProtocol', function(accounts) {
             await instance.claimWork(0, 0, 3, root, {from: accounts[1]});
 
             // Get Merkle proof
-            const proof = merkleTree.getHexProof(tClaim2);
+            const proof = merkleTree.getHexProof(tClaim0);
 
             // Account 1 calls verify
-            await instance.verify(0, 2, utils.bufferToHex(d2), utils.bufferToHex(tD2), utils.bufferToHex(bSig2), proof, {from: accounts[1]});
+            await instance.verify(0, 0, utils.bufferToHex(d0), utils.bufferToHex(tD0), utils.bufferToHex(bSig0), proof, {from: accounts[1]});
         });
 
         it("should fail if the job is inactive", async function() {

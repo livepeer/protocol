@@ -192,8 +192,9 @@ contract LivepeerProtocol {
         // Keep data in storage for 6 hours
         persistenceLength = 6 hours;
 
-        // Verify 1/500 segments
-        verificationRate = 500;
+        // Verify all segments.
+        // TODO: This is a test value. We will need to provide a realistic default value
+        verificationRate = 1;
 
         // Slash percentages
         failedVerificationSlashAmount = 5;

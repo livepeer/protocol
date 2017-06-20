@@ -111,7 +111,7 @@ library TranscodeJobs {
         // Check if sender is the assigned transcoder
         if (self.jobs[_jobId].transcoderAddress != msg.sender) return false;
         // Check if segment is eligible for verification
-        /* if (!shouldVerifySegment(self, _jobId, _segmentSequenceNumber, _verificationRate)) return false; */
+        if (!shouldVerifySegment(self, _jobId, _segmentSequenceNumber, _verificationRate)) return false;
         // Check if segment was signed by broadcaster
         if (!ECVerify.ecverify(sha3(self.jobs[_jobId].streamId, _segmentSequenceNumber, _dataHash), _broadcasterSig, self.jobs[_jobId].broadcasterAddress)) return false;
         // Check if transcode claim is included in the Merkle root submitted during the last call to claimWork()
