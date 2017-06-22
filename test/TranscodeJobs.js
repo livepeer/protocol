@@ -19,6 +19,8 @@ contract('TranscodeJobs', function(accounts) {
             const verificationRate = 4;
 
             // Find an eligible segment
+            // Iteratively hash the last claimed work block number and blockhash with numbers starting from 0
+            // until we find a output hash such that hash % 4 == 0
             let hash = abi.soliditySHA3(["uint256", "bytes", "uint256"], [blockNum, Buffer.from(blockHash.slice(2), "hex"), segNum]).toString("hex");
             let hashNum = new BigNumber(hash, 16);
             let res = hashNum.mod(verificationRate);
@@ -58,6 +60,8 @@ contract('TranscodeJobs', function(accounts) {
             const verificationRate = 4;
 
             // Find an ineligble segment
+            // Iteratively hash the last claimed work block number and blockhash with numbers starting from 0
+            // until we find a output hash such that hash % 4 != 0
             let hash = abi.soliditySHA3(["uint256", "bytes", "uint256"], [blockNum, Buffer.from(blockHash.slice(2), "hex"), segNum]).toString("hex");
             let hashNum = new BigNumber(hash, 16);
             let res = hashNum.mod(verificationRate);

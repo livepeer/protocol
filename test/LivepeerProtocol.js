@@ -39,6 +39,9 @@ const JOB_ACTIVE = 1;
 // Job ending period
 const JOB_ENDING_PERIOD = 100;
 
+// Verification period
+const VERIFICATION_PERIOD = 100;
+
 contract('LivepeerProtocol', function(accounts) {
     let rpc;
     let snapshotId;
@@ -971,8 +974,6 @@ contract('LivepeerProtocol', function(accounts) {
             assert.equal(job[4], accounts[2], "job did not set the broadcaster address correctly");
             assert.equal(job[5], accounts[1], "job did not set the transcoder address correctly");
             assert.equal(job[6], 0, "job did not set end block correctly");
-            assert.equal(job[7], 0, "job did not set last claimed work block correctly");
-            assert.equal(job[8], 0, "job did not set end verification block correctly");
         });
 
         it("should fail if there are no available transcoders charging an acceptable price per segment", async function() {
@@ -1230,10 +1231,14 @@ contract('LivepeerProtocol', function(accounts) {
             // Use fake Merkle root
             await instance.claimWork(0, 0, 10, "0x1", {from: accounts[1]});
 
-            const workDetails = await instance.getJobWorkDetails(0);
-            assert.equal(workDetails[0], 0, "claim work did not set the start segment of the last segment range claimed correctly");
-            assert.equal(workDetails[1], 10, "claim work did not set the end segment of the last segment range claimed correctly");
-            assert.equal(workDetails[2], "0x1000000000000000000000000000000000000000000000000000000000000000", "claim work did not set the last transcode claim root correctly");
+            const claimWorkBlock = web3.eth.blockNumber;
+
+            const transcodeClaimsDetails = await instance.getJobTranscodeClaimsDetails(0);
+            assert.equal(transcodeClaimsDetails[0], claimWorkBlock, "claim work did not set the last claimed work block correctly");
+            assert.equal(transcodeClaimsDetails[1], claimWorkBlock + VERIFICATION_PERIOD, "claim work did not set the end verification block correctly");
+            assert.equal(transcodeClaimsDetails[2], 0, "claim work did not set the start segment of the last segment range claimed correctly");
+            assert.equal(transcodeClaimsDetails[3], 10, "claim work did not set the end segment of the last segment range claimed correctly");
+            assert.equal(transcodeClaimsDetails[4], "0x1000000000000000000000000000000000000000000000000000000000000000", "claim work did not set the last transcode claim root correctly");
         });
 
         it("should fail if the job is inactive", async function() {
@@ -1432,8 +1437,16 @@ contract('LivepeerProtocol', function(accounts) {
             // Get Merkle proof
             const proof = merkleTree.getHexProof(tClaim0);
 
-            // Account 1 calls verify
-            await instance.verify(0, 0, utils.bufferToHex(d0), utils.bufferToHex(tD0), utils.bufferToHex(bSig0), proof, {from: accounts[1]});
+            let threw = false;
+
+            try {
+                // Account 1 calls verify
+                await instance.verify(0, 0, utils.bufferToHex(d0), utils.bufferToHex(tD0), utils.bufferToHex(bSig0), proof, {from: accounts[1]});
+            } catch (err) {
+                threw = true;
+            }
+
+            assert.isNotOk(threw, "verify threw when the transcode claim verification was successful");
         });
 
         it("should fail if the job is inactive", async function() {
@@ -1682,6 +1695,7 @@ contract('LivepeerProtocol', function(accounts) {
 
             try {
                 // Account 1 calls verify
+                // This should fail because bSig3 is submitted instead of bSig2 which is part of the transcode claim tClaim2 being verified
                 await instance.verify(0, 2, utils.bufferToHex(d2), utils.bufferToHex(tD2), utils.bufferToHex(bSig3), proof, {from: accounts[1]});
             } catch (err) {
                 threw = true;

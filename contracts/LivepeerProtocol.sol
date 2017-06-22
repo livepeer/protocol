@@ -567,16 +567,16 @@ contract LivepeerProtocol {
      * Return a job
      * @param _jobId Job identifier
      */
-    function getJob(uint256 _jobId) constant returns (uint256, uint256, bytes32, uint256, address, address, uint256, uint256, uint256) {
+    function getJob(uint256 _jobId) constant returns (uint256, uint256, bytes32, uint256, address, address, uint256) {
         return jobs.getJob(_jobId);
     }
 
     /*
-     * Return a job's work details
+     * Return a job's transcode claims details
      * @param _jobId Job identifier
      */
-    function getJobWorkDetails(uint256 _jobId) constant returns (uint256, uint256, bytes32) {
-        return jobs.getJobWorkDetails(_jobId);
+    function getJobTranscodeClaimsDetails(uint256 _jobId) constant returns (uint256, uint256, uint256, uint256, bytes32) {
+        return jobs.getJobTranscodeClaimsDetails(_jobId);
     }
 
     /*
@@ -600,6 +600,7 @@ contract LivepeerProtocol {
 
     /*
      * Provide proof of transcoding a segment
+     * TODO: This might have to be payable when we implement the transcoding verification process using a solution such as Oraclize or Truebit
      * @param _jobId Job identifier
      * @param _segmentSequenceNumber Segment sequence number in stream
      * @param _dataHash Segment data hash. Used to retrieve segment data from Swarm
@@ -608,7 +609,7 @@ contract LivepeerProtocol {
      * @param _proof Merkle proof for the signed transcode claim
      */
     function verify(uint256 _jobId, uint256 _segmentSequenceNumber, bytes32 _dataHash, bytes32 _transcodedDataHash, bytes _broadcasterSig, bytes _proof) returns (bool) {
-        if (!jobs.verify(_jobId, _segmentSequenceNumber, _dataHash, _transcodedDataHash, _broadcasterSig, _proof, verificationRate)) throw;
+        if (!jobs.validateTranscoderClaim(_jobId, _segmentSequenceNumber, _dataHash, _transcodedDataHash, _broadcasterSig, _proof, verificationRate)) throw;
 
         // TODO: Invoke transcoding verification process
 
