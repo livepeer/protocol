@@ -1,6 +1,9 @@
 import BigNumber from "bignumber.js";
 import RPC from "../utils/rpc";
 import { toSmallestUnits } from "../utils/bn_util";
+import MerkleTree from "../utils/merkleTree";
+import abi from "ethereumjs-abi";
+import utils from "ethereumjs-util";
 
 const LivepeerProtocol = artifacts.require("./LivepeerProtocol.sol");
 const LivepeerToken = artifacts.require("./LivepeerToken.sol");
@@ -35,6 +38,9 @@ const JOB_ACTIVE = 1;
 
 // Job ending period
 const JOB_ENDING_PERIOD = 100;
+
+// Verification period
+const VERIFICATION_PERIOD = 100;
 
 contract('LivepeerProtocol', function(accounts) {
     let rpc;
@@ -1190,6 +1196,512 @@ contract('LivepeerProtocol', function(accounts) {
             }
 
             assert.isOk(threw, "endJob did not throw when called for a job that already has an end block");
+        });
+    });
+
+    describe("claimWork", function() {
+        it("should submit transcode claims for a range of segments", async function() {
+            const instance = await LivepeerProtocol.new(2, ROUND_LENGTH, CYCLES_PER_ROUND, {from: accounts[0]});
+            const lptaddress = await instance.token.call();
+            const lpt = await LivepeerToken.at(lptaddress);
+
+            const a1Stake = 2000;
+
+            // Transfer tokens
+            await lpt.transfer(accounts[1], toSmallestUnits(1), {from: accounts[0]});
+
+            // Register account 1 as transcoder 1
+            await instance.transcoder(BLOCK_REWARD_CUT, FEE_SHARE, PRICE_PER_SEGMENT, {from: accounts[1]});
+
+            // Approve token transfer for account 1
+            await lpt.approve(instance.address, a1Stake, {from: accounts[1]});
+
+            // Account 1 bonds to self as transcoder
+            await instance.bond(a1Stake, accounts[1], {from: accounts[1]});
+
+            // Fast forward 1 round
+            await rpc.waitUntilNextBlockMultiple(20, ROUND_LENGTH);
+
+            await instance.initializeRound();
+
+            // Account 2 creates a transcoder job
+            await instance.job(1, "0x1", 200, {from: accounts[2]});
+
+            // Account 1 claims work
+            // Use fake Merkle root
+            await instance.claimWork(0, 0, 10, "0x1", {from: accounts[1]});
+
+            const claimWorkBlock = web3.eth.blockNumber;
+
+            const transcodeClaimsDetails = await instance.getJobTranscodeClaimsDetails(0);
+            assert.equal(transcodeClaimsDetails[0], claimWorkBlock, "claim work did not set the last claimed work block correctly");
+            assert.equal(transcodeClaimsDetails[1], claimWorkBlock + VERIFICATION_PERIOD, "claim work did not set the end verification block correctly");
+            assert.equal(transcodeClaimsDetails[2], 0, "claim work did not set the start segment of the last segment range claimed correctly");
+            assert.equal(transcodeClaimsDetails[3], 10, "claim work did not set the end segment of the last segment range claimed correctly");
+            assert.equal(transcodeClaimsDetails[4], "0x1000000000000000000000000000000000000000000000000000000000000000", "claim work did not set the last transcode claim root correctly");
+        });
+
+        it("should fail if the job is inactive", async function() {
+            const instance = await LivepeerProtocol.new(2, ROUND_LENGTH, CYCLES_PER_ROUND, {from: accounts[0]});
+            const lptaddress = await instance.token.call();
+            const lpt = await LivepeerToken.at(lptaddress);
+
+            const a1Stake = 2000;
+
+            // Transfer tokens
+            await lpt.transfer(accounts[1], toSmallestUnits(1), {from: accounts[0]});
+
+            // Register account 1 as transcoder 1
+            await instance.transcoder(BLOCK_REWARD_CUT, FEE_SHARE, PRICE_PER_SEGMENT, {from: accounts[1]});
+
+            // Approve token transfer for account 1
+            await lpt.approve(instance.address, a1Stake, {from: accounts[1]});
+
+            // Account 1 bonds to self as transcoder
+            await instance.bond(a1Stake, accounts[1], {from: accounts[1]});
+
+            // Fast forward 1 round
+            await rpc.waitUntilNextBlockMultiple(20, ROUND_LENGTH);
+
+            await instance.initializeRound();
+
+            // Account 2 creates a job
+            await instance.job(1, "0x1", 200, {from: accounts[2]});
+
+            // Account 2 ends the job
+            await instance.endJob(0, {from: accounts[1]});
+
+            // Fast forward through job ending period
+            await rpc.wait(20, JOB_ENDING_PERIOD);
+
+            let threw = false;
+
+            try {
+                await instance.claimWork(0, 0, 10, "0x1", {from: accounts[1]});
+            } catch (err) {
+                threw = true;
+            }
+
+            assert.isOk(threw, "claim work did not throw when called for an inactive job");
+        });
+
+        it("should fail if the sender is not the assigned transcoder for the job", async function() {
+            const instance = await LivepeerProtocol.new(2, ROUND_LENGTH, CYCLES_PER_ROUND, {from: accounts[0]});
+            const lptaddress = await instance.token.call();
+            const lpt = await LivepeerToken.at(lptaddress);
+
+            const a1Stake = 2000;
+
+            // Transfer tokens
+            await lpt.transfer(accounts[1], toSmallestUnits(1), {from: accounts[0]});
+
+            // Register account 1 as transcoder 1
+            await instance.transcoder(BLOCK_REWARD_CUT, FEE_SHARE, PRICE_PER_SEGMENT, {from: accounts[1]});
+
+            // Approve token transfer for account 1
+            await lpt.approve(instance.address, a1Stake, {from: accounts[1]});
+
+            // Account 1 bonds to self as transcoder
+            await instance.bond(a1Stake, accounts[1], {from: accounts[1]});
+
+            // Fast forward 1 round
+            await rpc.waitUntilNextBlockMultiple(20, ROUND_LENGTH);
+
+            await instance.initializeRound();
+
+            // Account 2 creates a job
+            await instance.job(1, "0x1", 200, {from: accounts[2]});
+
+            let threw = false;
+
+            try {
+                // Account 3 claims work
+                await instance.claimWork(0, 0, 10, "0x1", {from: accounts[3]});
+            } catch (err) {
+                threw = true;
+            }
+
+            assert.isOk(threw, "claim work did not throw when called by a sender that is not the assigned transcoder for the job");
+        });
+
+        it("shoud fail if the previous verification period is not over", async function() {
+            const instance = await LivepeerProtocol.new(2, ROUND_LENGTH, CYCLES_PER_ROUND, {from: accounts[0]});
+            const lptaddress = await instance.token.call();
+            const lpt = await LivepeerToken.at(lptaddress);
+
+            const a1Stake = 2000;
+
+            // Transfer tokens
+            await lpt.transfer(accounts[1], toSmallestUnits(1), {from: accounts[0]});
+
+            // Register account 1 as transcoder 1
+            await instance.transcoder(BLOCK_REWARD_CUT, FEE_SHARE, PRICE_PER_SEGMENT, {from: accounts[1]});
+
+            // Approve token transfer for account 1
+            await lpt.approve(instance.address, a1Stake, {from: accounts[1]});
+
+            // Account 1 bonds to self as transcoder
+            await instance.bond(a1Stake, accounts[1], {from: accounts[1]});
+
+            // Fast forward 1 round
+            await rpc.waitUntilNextBlockMultiple(20, ROUND_LENGTH);
+
+            await instance.initializeRound();
+
+            // Account 2 creates a job
+            await instance.job(1, "0x1", 200, {from: accounts[2]});
+
+            // Account 2 claims work
+            await instance.claimWork(0, 0, 10, "0x1", {from: accounts[1]});
+
+            let threw = false;
+
+            try {
+                // Account 2 claims work again
+                await instance.claimWork(0, 11, 20, "0x2", {from: accounts[1]});
+            } catch (err) {
+                threw = true;
+            }
+
+            assert.isOk(threw, "claim work did not throw when the previous verification is not over");
+        });
+    });
+
+    describe("verify", function() {
+        it("should verify a transcode claim", async function() {
+            const instance = await LivepeerProtocol.new(2, ROUND_LENGTH, CYCLES_PER_ROUND, {from: accounts[0]});
+            const lptaddress = await instance.token.call();
+            const lpt = await LivepeerToken.at(lptaddress);
+
+            const a1Stake = 2000;
+
+            // Transfer tokens
+            await lpt.transfer(accounts[1], toSmallestUnits(1), {from: accounts[0]});
+
+            // Register account 1 as transcoder 1
+            await instance.transcoder(BLOCK_REWARD_CUT, FEE_SHARE, PRICE_PER_SEGMENT, {from: accounts[1]});
+
+            // Approve token transfer for account 1
+            await lpt.approve(instance.address, a1Stake, {from: accounts[1]});
+
+            // Account 1 bonds to self as transcoder
+            await instance.bond(a1Stake, accounts[1], {from: accounts[1]});
+
+            // Fast forward 1 round
+            await rpc.waitUntilNextBlockMultiple(20, ROUND_LENGTH);
+
+            await instance.initializeRound();
+
+            const streamId = 1;
+
+            // Account 2 creates a transcoder job
+            await instance.job(streamId, "0x1", 200, {from: accounts[2]});
+
+            // Segment data hashes
+            const d0 = Buffer.from("80084bf2fba02475726feb2cab2d8215eab14bc6bdd8bfb2c8151257032ecd8b", "hex");
+            const d1 = Buffer.from("b039179a8a4ce2c252aa6f2f25798251c19b75fc1508d9d511a191e0487d64a7", "hex");
+            const d2 = Buffer.from("263ab762270d3b73d3e2cddf9acc893bb6bd41110347e5d5e4bd1d3c128ea90a", "hex");
+            const d3 = Buffer.from("4ce8765e720c576f6f5a34ca380b3de5f0912e6e3cc5355542c363891e54594b", "hex");
+
+            // Segment hashes (streamId, segmentSequenceNumber, dataHash)
+            const s0 = abi.soliditySHA3(["uint256", "uint256", "bytes"], [streamId, 0, d0]);
+            const s1 = abi.soliditySHA3(["uint256", "uint256", "bytes"], [streamId, 1, d1]);
+            const s2 = abi.soliditySHA3(["uint256", "uint256", "bytes"], [streamId, 2, d2]);
+            const s3 = abi.soliditySHA3(["uint256", "uint256", "bytes"], [streamId, 3, d3]);
+
+            // Broadcaster signatures over segments
+            const bSig0 = utils.toBuffer(await web3.eth.sign(accounts[2], utils.bufferToHex(s0)));
+            const bSig1 = utils.toBuffer(await web3.eth.sign(accounts[2], utils.bufferToHex(s1)));
+            const bSig2 = utils.toBuffer(await web3.eth.sign(accounts[2], utils.bufferToHex(s2)));
+            const bSig3 = utils.toBuffer(await web3.eth.sign(accounts[2], utils.bufferToHex(s3)));
+
+            // Transcoded data hashes
+            const tD0 = Buffer.from("42538602949f370aa331d2c07a1ee7ff26caac9cc676288f94b82eb2188b8465", "hex");
+            const tD1 = Buffer.from("a0b37b8bfae8e71330bd8e278e4a45ca916d00475dd8b85e9352533454c9fec8", "hex");
+            const tD2 = Buffer.from("9f2898da52dedaca29f05bcac0c8e43e4b9f7cb5707c14cc3f35a567232cec7c", "hex");
+            const tD3 = Buffer.from("5a082c81a7e4d5833ee20bd67d2f4d736f679da33e4bebd3838217cb27bec1d3", "hex");
+
+            // Transcode claims
+            const tClaim0 = abi.soliditySHA3(["uint256", "uint256", "bytes", "bytes", "bytes"], [streamId, 0, d0, tD0, bSig0]);
+            const tClaim1 = abi.soliditySHA3(["uint256", "uint256", "bytes", "bytes", "bytes"], [streamId, 1, d1, tD1, bSig1]);
+            const tClaim2 = abi.soliditySHA3(["uint256", "uint256", "bytes", "bytes", "bytes"], [streamId, 2, d2, tD2, bSig2]);
+            const tClaim3 = abi.soliditySHA3(["uint256", "uint256", "bytes", "bytes", "bytes"], [streamId, 3, d3, tD3, bSig3]);
+
+            // Generate Merkle root
+            const merkleTree = new MerkleTree([tClaim0, tClaim1, tClaim2, tClaim3]);
+            const root = merkleTree.getHexRoot();
+
+            // Account 1 claims work
+            await instance.claimWork(0, 0, 3, root, {from: accounts[1]});
+
+            // Get Merkle proof
+            const proof = merkleTree.getHexProof(tClaim0);
+
+            let threw = false;
+
+            try {
+                // Account 1 calls verify
+                await instance.verify(0, 0, utils.bufferToHex(d0), utils.bufferToHex(tD0), utils.bufferToHex(bSig0), proof, {from: accounts[1]});
+            } catch (err) {
+                threw = true;
+            }
+
+            assert.isNotOk(threw, "verify threw when the transcode claim verification was successful");
+        });
+
+        it("should fail if the job is inactive", async function() {
+            const instance = await LivepeerProtocol.new(2, ROUND_LENGTH, CYCLES_PER_ROUND, {from: accounts[0]});
+            const lptaddress = await instance.token.call();
+            const lpt = await LivepeerToken.at(lptaddress);
+
+            const a1Stake = 2000;
+
+            // Transfer tokens
+            await lpt.transfer(accounts[1], toSmallestUnits(1), {from: accounts[0]});
+
+            // Register account 1 as transcoder 1
+            await instance.transcoder(BLOCK_REWARD_CUT, FEE_SHARE, PRICE_PER_SEGMENT, {from: accounts[1]});
+
+            // Approve token transfer for account 1
+            await lpt.approve(instance.address, a1Stake, {from: accounts[1]});
+
+            // Account 1 bonds to self as transcoder
+            await instance.bond(a1Stake, accounts[1], {from: accounts[1]});
+
+            // Fast forward 1 round
+            await rpc.waitUntilNextBlockMultiple(20, ROUND_LENGTH);
+
+            await instance.initializeRound();
+
+            // Account 2 creates a job
+            await instance.job(1, "0x1", 200, {from: accounts[2]});
+
+            // Account 1 claims work
+            await instance.claimWork(0, 0, 3, "0x1", {from: accounts[1]});
+
+            // Account 2 ends the job
+            await instance.endJob(0, {from: accounts[2]});
+
+            // Fast forward through job ending period
+            await rpc.wait(20, JOB_ENDING_PERIOD);
+
+            let threw = false;
+
+            try {
+                // Account 1 calls verify
+                // Fake param data
+                await instance.verify(0, 2, "0x1", "0x2", "0x3", "0x4", {from: accounts[1]});
+            } catch (err) {
+                threw = true;
+            }
+
+            assert.isOk(threw, "verify did not throw for an inactive job");
+        });
+
+        it("should fail if the sender is not the assigned transcoder for the job", async function() {
+            const instance = await LivepeerProtocol.new(2, ROUND_LENGTH, CYCLES_PER_ROUND, {from: accounts[0]});
+            const lptaddress = await instance.token.call();
+            const lpt = await LivepeerToken.at(lptaddress);
+
+            const a1Stake = 2000;
+
+            // Transfer tokens
+            await lpt.transfer(accounts[1], toSmallestUnits(1), {from: accounts[0]});
+
+            // Register account 1 as transcoder 1
+            await instance.transcoder(BLOCK_REWARD_CUT, FEE_SHARE, PRICE_PER_SEGMENT, {from: accounts[1]});
+
+            // Approve token transfer for account 1
+            await lpt.approve(instance.address, a1Stake, {from: accounts[1]});
+
+            // Account 1 bonds to self as transcoder
+            await instance.bond(a1Stake, accounts[1], {from: accounts[1]});
+
+            // Fast forward 1 round
+            await rpc.waitUntilNextBlockMultiple(20, ROUND_LENGTH);
+
+            await instance.initializeRound();
+
+            // Account 2 creates a job
+            await instance.job(1, "0x1", 200, {from: accounts[2]});
+
+            // Account 1 claims work
+            await instance.claimWork(0, 0, 3, "0x1", {from: accounts[1]});
+
+            let threw = false;
+
+            try {
+                // Account 3 calls verify
+                // Fake param data
+                await instance.verify(0, 2, "0x1", "0x2", "0x3", "0x4", {from: accounts[3]});
+            } catch (err) {
+                threw = true;
+            }
+
+            assert.isOk(threw, "verify did not throw when sender is not the assigned transcoder for the job");
+        });
+
+        it("should fail if the segment was not signed by the broadcaster for the job", async function() {
+            const instance = await LivepeerProtocol.new(2, ROUND_LENGTH, CYCLES_PER_ROUND, {from: accounts[0]});
+            const lptaddress = await instance.token.call();
+            const lpt = await LivepeerToken.at(lptaddress);
+
+            const a1Stake = 2000;
+
+            // Transfer tokens
+            await lpt.transfer(accounts[1], toSmallestUnits(1), {from: accounts[0]});
+
+            // Register account 1 as transcoder 1
+            await instance.transcoder(BLOCK_REWARD_CUT, FEE_SHARE, PRICE_PER_SEGMENT, {from: accounts[1]});
+
+            // Approve token transfer for account 1
+            await lpt.approve(instance.address, a1Stake, {from: accounts[1]});
+
+            // Account 1 bonds to self as transcoder
+            await instance.bond(a1Stake, accounts[1], {from: accounts[1]});
+
+            // Fast forward 1 round
+            await rpc.waitUntilNextBlockMultiple(20, ROUND_LENGTH);
+
+            await instance.initializeRound();
+
+            const streamId = 1;
+
+            // Account 2 creates a transcoder job
+            await instance.job(streamId, "0x1", 200, {from: accounts[2]});
+
+            // Segment data hashes
+            const d0 = Buffer.from("80084bf2fba02475726feb2cab2d8215eab14bc6bdd8bfb2c8151257032ecd8b", "hex");
+            const d1 = Buffer.from("b039179a8a4ce2c252aa6f2f25798251c19b75fc1508d9d511a191e0487d64a7", "hex");
+            const d2 = Buffer.from("263ab762270d3b73d3e2cddf9acc893bb6bd41110347e5d5e4bd1d3c128ea90a", "hex");
+            const d3 = Buffer.from("4ce8765e720c576f6f5a34ca380b3de5f0912e6e3cc5355542c363891e54594b", "hex");
+
+            // Segment hashes (streamId, segmentSequenceNumber, dataHash)
+            const s0 = abi.soliditySHA3(["uint256", "uint256", "bytes"], [streamId, 0, d0]);
+            const s1 = abi.soliditySHA3(["uint256", "uint256", "bytes"], [streamId, 1, d1]);
+            const s2 = abi.soliditySHA3(["uint256", "uint256", "bytes"], [streamId, 2, d2]);
+            const s3 = abi.soliditySHA3(["uint256", "uint256", "bytes"], [streamId, 3, d3]);
+
+            // Non-broadcaster (account 3) signatures over segments
+            const bSig0 = utils.toBuffer(await web3.eth.sign(accounts[3], utils.bufferToHex(s0)));
+            const bSig1 = utils.toBuffer(await web3.eth.sign(accounts[3], utils.bufferToHex(s1)));
+            const bSig2 = utils.toBuffer(await web3.eth.sign(accounts[3], utils.bufferToHex(s2)));
+            const bSig3 = utils.toBuffer(await web3.eth.sign(accounts[3], utils.bufferToHex(s3)));
+
+            // Transcoded data hashes
+            const tD0 = Buffer.from("42538602949f370aa331d2c07a1ee7ff26caac9cc676288f94b82eb2188b8465", "hex");
+            const tD1 = Buffer.from("a0b37b8bfae8e71330bd8e278e4a45ca916d00475dd8b85e9352533454c9fec8", "hex");
+            const tD2 = Buffer.from("9f2898da52dedaca29f05bcac0c8e43e4b9f7cb5707c14cc3f35a567232cec7c", "hex");
+            const tD3 = Buffer.from("5a082c81a7e4d5833ee20bd67d2f4d736f679da33e4bebd3838217cb27bec1d3", "hex");
+
+            // Transcode claims
+            const tClaim0 = abi.soliditySHA3(["uint256", "uint256", "bytes", "bytes", "bytes"], [streamId, 0, d0, tD0, bSig0]);
+            const tClaim1 = abi.soliditySHA3(["uint256", "uint256", "bytes", "bytes", "bytes"], [streamId, 1, d1, tD1, bSig1]);
+            const tClaim2 = abi.soliditySHA3(["uint256", "uint256", "bytes", "bytes", "bytes"], [streamId, 2, d2, tD2, bSig2]);
+            const tClaim3 = abi.soliditySHA3(["uint256", "uint256", "bytes", "bytes", "bytes"], [streamId, 3, d3, tD3, bSig3]);
+
+            // Generate Merkle root
+            const merkleTree = new MerkleTree([tClaim0, tClaim1, tClaim2, tClaim3]);
+            const root = merkleTree.getHexRoot();
+
+            // Account 1 claims work
+            await instance.claimWork(0, 0, 3, root, {from: accounts[1]});
+
+            // Get Merkle proof
+            const proof = merkleTree.getHexProof(tClaim2);
+
+            let threw = false;
+
+            try {
+                // Account 1 calls verify
+                await instance.verify(0, 2, utils.bufferToHex(d2), utils.bufferToHex(tD2), utils.bufferToHex(bSig2), proof, {from: accounts[1]});
+            } catch (err) {
+                threw = true;
+            }
+
+            assert.isOk(threw, "verify did not throw when segment was not signed by the broadcaster for the job");
+        });
+
+        it("should fail if the transcode claim is not included in the last submitted Merkle root of transcode claims", async function() {
+            const instance = await LivepeerProtocol.new(2, ROUND_LENGTH, CYCLES_PER_ROUND, {from: accounts[0]});
+            const lptaddress = await instance.token.call();
+            const lpt = await LivepeerToken.at(lptaddress);
+
+            const a1Stake = 2000;
+
+            // Transfer tokens
+            await lpt.transfer(accounts[1], toSmallestUnits(1), {from: accounts[0]});
+
+            // Register account 1 as transcoder 1
+            await instance.transcoder(BLOCK_REWARD_CUT, FEE_SHARE, PRICE_PER_SEGMENT, {from: accounts[1]});
+
+            // Approve token transfer for account 1
+            await lpt.approve(instance.address, a1Stake, {from: accounts[1]});
+
+            // Account 1 bonds to self as transcoder
+            await instance.bond(a1Stake, accounts[1], {from: accounts[1]});
+
+            // Fast forward 1 round
+            await rpc.waitUntilNextBlockMultiple(20, ROUND_LENGTH);
+
+            await instance.initializeRound();
+
+            const streamId = 1;
+
+            // Account 2 creates a transcoder job
+            await instance.job(streamId, "0x1", 200, {from: accounts[2]});
+
+            // Segment data hashes
+            const d0 = Buffer.from("80084bf2fba02475726feb2cab2d8215eab14bc6bdd8bfb2c8151257032ecd8b", "hex");
+            const d1 = Buffer.from("b039179a8a4ce2c252aa6f2f25798251c19b75fc1508d9d511a191e0487d64a7", "hex");
+            const d2 = Buffer.from("263ab762270d3b73d3e2cddf9acc893bb6bd41110347e5d5e4bd1d3c128ea90a", "hex");
+            const d3 = Buffer.from("4ce8765e720c576f6f5a34ca380b3de5f0912e6e3cc5355542c363891e54594b", "hex");
+
+            // Segment hashes (streamId, segmentSequenceNumber, dataHash)
+            const s0 = abi.soliditySHA3(["uint256", "uint256", "bytes"], [streamId, 0, d0]);
+            const s1 = abi.soliditySHA3(["uint256", "uint256", "bytes"], [streamId, 1, d1]);
+            const s2 = abi.soliditySHA3(["uint256", "uint256", "bytes"], [streamId, 2, d2]);
+            const s3 = abi.soliditySHA3(["uint256", "uint256", "bytes"], [streamId, 3, d3]);
+
+            // Broadcaster signatures over segments
+            const bSig0 = utils.toBuffer(await web3.eth.sign(accounts[3], utils.bufferToHex(s0)));
+            const bSig1 = utils.toBuffer(await web3.eth.sign(accounts[3], utils.bufferToHex(s1)));
+            const bSig2 = utils.toBuffer(await web3.eth.sign(accounts[3], utils.bufferToHex(s2)));
+            const bSig3 = utils.toBuffer(await web3.eth.sign(accounts[3], utils.bufferToHex(s3)));
+
+            // Transcoded data hashes
+            const tD0 = Buffer.from("42538602949f370aa331d2c07a1ee7ff26caac9cc676288f94b82eb2188b8465", "hex");
+            const tD1 = Buffer.from("a0b37b8bfae8e71330bd8e278e4a45ca916d00475dd8b85e9352533454c9fec8", "hex");
+            const tD2 = Buffer.from("9f2898da52dedaca29f05bcac0c8e43e4b9f7cb5707c14cc3f35a567232cec7c", "hex");
+            const tD3 = Buffer.from("5a082c81a7e4d5833ee20bd67d2f4d736f679da33e4bebd3838217cb27bec1d3", "hex");
+
+            // Transcode claims
+            const tClaim0 = abi.soliditySHA3(["uint256", "uint256", "bytes", "bytes", "bytes"], [streamId, 0, d0, tD0, bSig0]);
+            const tClaim1 = abi.soliditySHA3(["uint256", "uint256", "bytes", "bytes", "bytes"], [streamId, 1, d1, tD1, bSig1]);
+            const tClaim2 = abi.soliditySHA3(["uint256", "uint256", "bytes", "bytes", "bytes"], [streamId, 2, d2, tD2, bSig2]);
+            const tClaim3 = abi.soliditySHA3(["uint256", "uint256", "bytes", "bytes", "bytes"], [streamId, 3, d3, tD3, bSig3]);
+
+            // Generate Merkle root
+            const merkleTree = new MerkleTree([tClaim0, tClaim1, tClaim2, tClaim3]);
+            const root = merkleTree.getHexRoot();
+
+            // Account 1 claims work
+            await instance.claimWork(0, 0, 3, root, {from: accounts[1]});
+
+            // Get Merkle proof
+            const proof = merkleTree.getHexProof(tClaim2);
+
+            let threw = false;
+
+            try {
+                // Account 1 calls verify
+                // This should fail because bSig3 is submitted instead of bSig2 which is part of the transcode claim tClaim2 being verified
+                await instance.verify(0, 2, utils.bufferToHex(d2), utils.bufferToHex(tD2), utils.bufferToHex(bSig3), proof, {from: accounts[1]});
+            } catch (err) {
+                threw = true;
+            }
+
+            assert.isOk(threw, "verify did not throw when transcode claim was not included in last submitted Merkle root of transcode claims");
         });
     });
 });

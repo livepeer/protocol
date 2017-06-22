@@ -27,7 +27,9 @@
     "babel-preset-stage-2": "^6.24.1",
     "babel-preset-stage-3": "^6.24.1",
     "babel-register": "^6.24.1",
-    "bignumber.js": "^4.0.1"
+    "bignumber.js": "^4.0.1",
+    "ethereumjs-abi": "^0.6.4",
+    "ethereumjs-util": "^5.1.2"
   },
   "dependencies": {
     "truffle": "^3.2.2",

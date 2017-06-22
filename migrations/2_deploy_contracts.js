@@ -7,6 +7,9 @@ var MaxHeapMock = artifacts.require("./MaxHeapMock.sol");
 var TranscoderPools = artifacts.require("./TranscoderPools.sol");
 var TranscoderPoolsMock = artifacts.require("./TranscoderPoolsMock.sol");
 var Node = artifacts.require("./Node.sol");
+var ECVerify = artifacts.require("./ECVerify.sol");
+var MerkleProof = artifacts.require("./MerkleProof.sol");
+var TranscodeJobs = artifacts.require("./TranscodeJobs.sol");
 
 module.exports = function(deployer) {
     deployer.deploy(Node);
@@ -23,8 +26,16 @@ module.exports = function(deployer) {
     deployer.link(MaxHeap, TranscoderPools);
 
     deployer.deploy(TranscoderPools);
-
     deployer.link(TranscoderPools, TranscoderPoolsMock);
+
+    deployer.deploy(ECVerify);
+    deployer.link(ECVerify, TranscodeJobs);
+
+    deployer.deploy(MerkleProof);
+    deployer.link(MerkleProof, TranscodeJobs);
+
+    deployer.deploy(TranscodeJobs);
+    deployer.link(TranscodeJobs, LivepeerProtocol);
 
     deployer.deploy(LivepeerToken);
     deployer.link(LivepeerToken, LivepeerProtocol);
