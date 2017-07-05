@@ -7,7 +7,7 @@ library TranscodeJobs {
     // Represents a transcode job
     struct Job {
         uint256 jobId;                        // Unique identifer for job
-        uint256 streamId;                     // Unique identifier for stream. TODO: change to more semantically proper type when we settle on a streamId representation in the system
+        string streamId;                      // Unique identifier for stream.
         bytes32 transcodingOptions;           // Options used for transcoding
         uint256 maxPricePerSegment;           // Max price (in LPT base units) per segment of a stream
         address broadcasterAddress;           // Address of broadcaster that requestes a transcoding job
@@ -27,6 +27,9 @@ library TranscodeJobs {
 
     // States that a job can be in
     enum JobStatus { Inactive, Active }
+
+    // Events
+    event NewJob(address indexed transcoder, address indexed broadcaster);
 
     /*
      * Compute status of job
@@ -54,7 +57,7 @@ library TranscodeJobs {
      * @param _maxPricePerSegment Max price (in LPT base units) to pay for transcoding a segment of a stream
      * @param _electedTranscoder Address of elected transcoder for the new job
      */
-    function newJob(Jobs storage self, uint256 _streamId, bytes32 _transcodingOptions, uint256 _maxPricePerSegment, address _electedTranscoder) returns (bool) {
+    function newJob(Jobs storage self, string _streamId, bytes32 _transcodingOptions, uint256 _maxPricePerSegment, address _electedTranscoder) returns (bool) {
         self.jobs[self.numJobs].jobId = self.numJobs;
         self.jobs[self.numJobs].streamId = _streamId;
         self.jobs[self.numJobs].transcodingOptions = _transcodingOptions;
@@ -62,6 +65,8 @@ library TranscodeJobs {
         self.jobs[self.numJobs].broadcasterAddress = msg.sender;
         self.jobs[self.numJobs].transcoderAddress = _electedTranscoder;
         self.numJobs++;
+
+        NewJob(_electedTranscoder, msg.sender);
 
         // TODO: Validation on _transcodingOptions
 
@@ -71,17 +76,17 @@ library TranscodeJobs {
     /*
      * Return a job
      * Note: this function does not return all the fields for a job. See comment for getJobTranscodeClaimsDetails() for an explanation
+     * streamId is retrieved separately in the LivepeerProtocol contract because external calls in contracts cannot return dynamic types
      * @param self Jobs struct storage receiver
      * @param _jobId Job identifier
      */
-    function getJob(Jobs storage self, uint256 _jobId) constant returns (uint256, uint256, bytes32, uint256, address, address, uint256) {
+    function getJob(Jobs storage self, uint256 _jobId) constant returns (uint256, bytes32, uint256, address, address, uint256) {
         // Check for valid job id
         if (_jobId >= self.numJobs) throw;
 
         Job job = self.jobs[_jobId];
 
         return (job.jobId,
-                job.streamId,
                 job.transcodingOptions,
                 job.maxPricePerSegment,
                 job.broadcasterAddress,
@@ -235,7 +240,7 @@ library TranscodeJobs {
      * @param _segmentSequenceNumber Segment sequence number in stream
      * @param _dataHash Segment data hash
      */
-    function segmentHash(uint256 _streamId, uint256 _segmentSequenceNumber, bytes32 _dataHash) internal constant returns (bytes32) {
+    function segmentHash(string _streamId, uint256 _segmentSequenceNumber, bytes32 _dataHash) internal constant returns (bytes32) {
         return keccak256(_streamId, _segmentSequenceNumber, _dataHash);
     }
 
@@ -247,7 +252,7 @@ library TranscodeJobs {
      * @param _transcodedDataHash Transcoded segment data hash
      * @param _broadcasterSig Broadcaster's signature over segment
      */
-    function transcodeClaimHash(uint256 _streamId, uint256 _segmentSequenceNumber, bytes32 _dataHash, bytes32 _transcodedDataHash, bytes _broadcasterSig) internal constant returns (bytes32) {
+    function transcodeClaimHash(string _streamId, uint256 _segmentSequenceNumber, bytes32 _dataHash, bytes32 _transcodedDataHash, bytes _broadcasterSig) internal constant returns (bytes32) {
         return keccak256(_streamId, _segmentSequenceNumber, _dataHash, _transcodedDataHash, _broadcasterSig);
     }
 }

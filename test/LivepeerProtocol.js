@@ -968,12 +968,11 @@ contract('LivepeerProtocol', function(accounts) {
 
             const job = await instance.getJob(0);
             assert.equal(job[0], 0, "job did not set the job id correctly");
-            assert.equal(job[1], 1, "job did not set the stream id correctly");
-            assert.equal(job[2], "0x1000000000000000000000000000000000000000000000000000000000000000", "job did not set the transcoding options correctly");
-            assert.equal(job[3], 200, "job did not set the max price per segment correctly");
-            assert.equal(job[4], accounts[2], "job did not set the broadcaster address correctly");
-            assert.equal(job[5], accounts[1], "job did not set the transcoder address correctly");
-            assert.equal(job[6], 0, "job did not set end block correctly");
+            assert.equal(job[1], "0x1000000000000000000000000000000000000000000000000000000000000000", "job did not set the transcoding options correctly");
+            assert.equal(job[2], 200, "job did not set the max price per segment correctly");
+            assert.equal(job[3], accounts[2], "job did not set the broadcaster address correctly");
+            assert.equal(job[4], accounts[1], "job did not set the transcoder address correctly");
+            assert.equal(job[5], 0, "job did not set end block correctly");
         });
 
         it("should fail if there are no available transcoders charging an acceptable price per segment", async function() {
@@ -1067,7 +1066,7 @@ contract('LivepeerProtocol', function(accounts) {
             const callEndJobBlock = web3.eth.blockNumber;
 
             const job = await instance.getJob(0);
-            assert.equal(job[6], callEndJobBlock + JOB_ENDING_PERIOD, "endJob did not set the end block for the job correctly");
+            assert.equal(job[5], callEndJobBlock + JOB_ENDING_PERIOD, "endJob did not set the end block for the job correctly");
 
             // Fast forward through job ending period
             await rpc.wait(20, JOB_ENDING_PERIOD);
@@ -1109,7 +1108,7 @@ contract('LivepeerProtocol', function(accounts) {
             const callEndJobBlock = web3.eth.blockNumber;
 
             const job = await instance.getJob(0);
-            assert.equal(job[6], callEndJobBlock + JOB_ENDING_PERIOD, "endJob did not set the end block for the job correctly");
+            assert.equal(job[5], callEndJobBlock + JOB_ENDING_PERIOD, "endJob did not set the end block for the job correctly");
 
             // Fast forward through job ending period
             await rpc.wait(20, JOB_ENDING_PERIOD);
@@ -1392,7 +1391,7 @@ contract('LivepeerProtocol', function(accounts) {
 
             await instance.initializeRound();
 
-            const streamId = 1;
+            const streamId = "1";
 
             // Account 2 creates a transcoder job
             await instance.job(streamId, "0x1", 200, {from: accounts[2]});
@@ -1404,10 +1403,10 @@ contract('LivepeerProtocol', function(accounts) {
             const d3 = Buffer.from("4ce8765e720c576f6f5a34ca380b3de5f0912e6e3cc5355542c363891e54594b", "hex");
 
             // Segment hashes (streamId, segmentSequenceNumber, dataHash)
-            const s0 = abi.soliditySHA3(["uint256", "uint256", "bytes"], [streamId, 0, d0]);
-            const s1 = abi.soliditySHA3(["uint256", "uint256", "bytes"], [streamId, 1, d1]);
-            const s2 = abi.soliditySHA3(["uint256", "uint256", "bytes"], [streamId, 2, d2]);
-            const s3 = abi.soliditySHA3(["uint256", "uint256", "bytes"], [streamId, 3, d3]);
+            const s0 = abi.soliditySHA3(["string", "uint256", "bytes"], [streamId, 0, d0]);
+            const s1 = abi.soliditySHA3(["string", "uint256", "bytes"], [streamId, 1, d1]);
+            const s2 = abi.soliditySHA3(["string", "uint256", "bytes"], [streamId, 2, d2]);
+            const s3 = abi.soliditySHA3(["string", "uint256", "bytes"], [streamId, 3, d3]);
 
             // Broadcaster signatures over segments
             const bSig0 = utils.toBuffer(await web3.eth.sign(accounts[2], utils.bufferToHex(s0)));
@@ -1422,10 +1421,10 @@ contract('LivepeerProtocol', function(accounts) {
             const tD3 = Buffer.from("5a082c81a7e4d5833ee20bd67d2f4d736f679da33e4bebd3838217cb27bec1d3", "hex");
 
             // Transcode claims
-            const tClaim0 = abi.soliditySHA3(["uint256", "uint256", "bytes", "bytes", "bytes"], [streamId, 0, d0, tD0, bSig0]);
-            const tClaim1 = abi.soliditySHA3(["uint256", "uint256", "bytes", "bytes", "bytes"], [streamId, 1, d1, tD1, bSig1]);
-            const tClaim2 = abi.soliditySHA3(["uint256", "uint256", "bytes", "bytes", "bytes"], [streamId, 2, d2, tD2, bSig2]);
-            const tClaim3 = abi.soliditySHA3(["uint256", "uint256", "bytes", "bytes", "bytes"], [streamId, 3, d3, tD3, bSig3]);
+            const tClaim0 = abi.soliditySHA3(["string", "uint256", "bytes", "bytes", "bytes"], [streamId, 0, d0, tD0, bSig0]);
+            const tClaim1 = abi.soliditySHA3(["string", "uint256", "bytes", "bytes", "bytes"], [streamId, 1, d1, tD1, bSig1]);
+            const tClaim2 = abi.soliditySHA3(["string", "uint256", "bytes", "bytes", "bytes"], [streamId, 2, d2, tD2, bSig2]);
+            const tClaim3 = abi.soliditySHA3(["string", "uint256", "bytes", "bytes", "bytes"], [streamId, 3, d3, tD3, bSig3]);
 
             // Generate Merkle root
             const merkleTree = new MerkleTree([tClaim0, tClaim1, tClaim2, tClaim3]);
@@ -1565,7 +1564,7 @@ contract('LivepeerProtocol', function(accounts) {
 
             await instance.initializeRound();
 
-            const streamId = 1;
+            const streamId = "1";
 
             // Account 2 creates a transcoder job
             await instance.job(streamId, "0x1", 200, {from: accounts[2]});
@@ -1577,10 +1576,10 @@ contract('LivepeerProtocol', function(accounts) {
             const d3 = Buffer.from("4ce8765e720c576f6f5a34ca380b3de5f0912e6e3cc5355542c363891e54594b", "hex");
 
             // Segment hashes (streamId, segmentSequenceNumber, dataHash)
-            const s0 = abi.soliditySHA3(["uint256", "uint256", "bytes"], [streamId, 0, d0]);
-            const s1 = abi.soliditySHA3(["uint256", "uint256", "bytes"], [streamId, 1, d1]);
-            const s2 = abi.soliditySHA3(["uint256", "uint256", "bytes"], [streamId, 2, d2]);
-            const s3 = abi.soliditySHA3(["uint256", "uint256", "bytes"], [streamId, 3, d3]);
+            const s0 = abi.soliditySHA3(["string", "uint256", "bytes"], [streamId, 0, d0]);
+            const s1 = abi.soliditySHA3(["string", "uint256", "bytes"], [streamId, 1, d1]);
+            const s2 = abi.soliditySHA3(["string", "uint256", "bytes"], [streamId, 2, d2]);
+            const s3 = abi.soliditySHA3(["string", "uint256", "bytes"], [streamId, 3, d3]);
 
             // Non-broadcaster (account 3) signatures over segments
             const bSig0 = utils.toBuffer(await web3.eth.sign(accounts[3], utils.bufferToHex(s0)));
@@ -1595,10 +1594,10 @@ contract('LivepeerProtocol', function(accounts) {
             const tD3 = Buffer.from("5a082c81a7e4d5833ee20bd67d2f4d736f679da33e4bebd3838217cb27bec1d3", "hex");
 
             // Transcode claims
-            const tClaim0 = abi.soliditySHA3(["uint256", "uint256", "bytes", "bytes", "bytes"], [streamId, 0, d0, tD0, bSig0]);
-            const tClaim1 = abi.soliditySHA3(["uint256", "uint256", "bytes", "bytes", "bytes"], [streamId, 1, d1, tD1, bSig1]);
-            const tClaim2 = abi.soliditySHA3(["uint256", "uint256", "bytes", "bytes", "bytes"], [streamId, 2, d2, tD2, bSig2]);
-            const tClaim3 = abi.soliditySHA3(["uint256", "uint256", "bytes", "bytes", "bytes"], [streamId, 3, d3, tD3, bSig3]);
+            const tClaim0 = abi.soliditySHA3(["string", "uint256", "bytes", "bytes", "bytes"], [streamId, 0, d0, tD0, bSig0]);
+            const tClaim1 = abi.soliditySHA3(["string", "uint256", "bytes", "bytes", "bytes"], [streamId, 1, d1, tD1, bSig1]);
+            const tClaim2 = abi.soliditySHA3(["string", "uint256", "bytes", "bytes", "bytes"], [streamId, 2, d2, tD2, bSig2]);
+            const tClaim3 = abi.soliditySHA3(["string", "uint256", "bytes", "bytes", "bytes"], [streamId, 3, d3, tD3, bSig3]);
 
             // Generate Merkle root
             const merkleTree = new MerkleTree([tClaim0, tClaim1, tClaim2, tClaim3]);
@@ -1646,7 +1645,7 @@ contract('LivepeerProtocol', function(accounts) {
 
             await instance.initializeRound();
 
-            const streamId = 1;
+            const streamId = "1";
 
             // Account 2 creates a transcoder job
             await instance.job(streamId, "0x1", 200, {from: accounts[2]});
@@ -1658,10 +1657,10 @@ contract('LivepeerProtocol', function(accounts) {
             const d3 = Buffer.from("4ce8765e720c576f6f5a34ca380b3de5f0912e6e3cc5355542c363891e54594b", "hex");
 
             // Segment hashes (streamId, segmentSequenceNumber, dataHash)
-            const s0 = abi.soliditySHA3(["uint256", "uint256", "bytes"], [streamId, 0, d0]);
-            const s1 = abi.soliditySHA3(["uint256", "uint256", "bytes"], [streamId, 1, d1]);
-            const s2 = abi.soliditySHA3(["uint256", "uint256", "bytes"], [streamId, 2, d2]);
-            const s3 = abi.soliditySHA3(["uint256", "uint256", "bytes"], [streamId, 3, d3]);
+            const s0 = abi.soliditySHA3(["string", "uint256", "bytes"], [streamId, 0, d0]);
+            const s1 = abi.soliditySHA3(["string", "uint256", "bytes"], [streamId, 1, d1]);
+            const s2 = abi.soliditySHA3(["string", "uint256", "bytes"], [streamId, 2, d2]);
+            const s3 = abi.soliditySHA3(["string", "uint256", "bytes"], [streamId, 3, d3]);
 
             // Broadcaster signatures over segments
             const bSig0 = utils.toBuffer(await web3.eth.sign(accounts[3], utils.bufferToHex(s0)));
@@ -1676,10 +1675,10 @@ contract('LivepeerProtocol', function(accounts) {
             const tD3 = Buffer.from("5a082c81a7e4d5833ee20bd67d2f4d736f679da33e4bebd3838217cb27bec1d3", "hex");
 
             // Transcode claims
-            const tClaim0 = abi.soliditySHA3(["uint256", "uint256", "bytes", "bytes", "bytes"], [streamId, 0, d0, tD0, bSig0]);
-            const tClaim1 = abi.soliditySHA3(["uint256", "uint256", "bytes", "bytes", "bytes"], [streamId, 1, d1, tD1, bSig1]);
-            const tClaim2 = abi.soliditySHA3(["uint256", "uint256", "bytes", "bytes", "bytes"], [streamId, 2, d2, tD2, bSig2]);
-            const tClaim3 = abi.soliditySHA3(["uint256", "uint256", "bytes", "bytes", "bytes"], [streamId, 3, d3, tD3, bSig3]);
+            const tClaim0 = abi.soliditySHA3(["string", "uint256", "bytes", "bytes", "bytes"], [streamId, 0, d0, tD0, bSig0]);
+            const tClaim1 = abi.soliditySHA3(["string", "uint256", "bytes", "bytes", "bytes"], [streamId, 1, d1, tD1, bSig1]);
+            const tClaim2 = abi.soliditySHA3(["string", "uint256", "bytes", "bytes", "bytes"], [streamId, 2, d2, tD2, bSig2]);
+            const tClaim3 = abi.soliditySHA3(["string", "uint256", "bytes", "bytes", "bytes"], [streamId, 3, d3, tD3, bSig3]);
 
             // Generate Merkle root
             const merkleTree = new MerkleTree([tClaim0, tClaim1, tClaim2, tClaim3]);
