@@ -152,6 +152,9 @@ contract LivepeerProtocol {
         _;
     }
 
+    // Events
+    event NewJob(address indexed transcoder, address indexed broadcaster);
+
     // Initialize protocol
     function LivepeerProtocol(uint64 _n, uint256 _roundLength, uint256 _cyclesPerRound) {
         // Deploy new token contract
@@ -379,12 +382,6 @@ contract LivepeerProtocol {
      * Distribute the token rewards to transcoder and delegates.
      */
     function reward() currentRoundInitialized returns (bool) {
-        // Check if in current round active transcoder set
-        if (!isCurrentActiveTranscoder[msg.sender]) throw;
-
-        // Check if already called for current cycle
-        if (transcoders[msg.sender].rewardRound == currentRound() && transcoders[msg.sender].rewardCycle == cycleNum()) throw;
-
         // Check if in a valid transcoder reward time window
         if (!validRewardTimeWindow(msg.sender)) throw;
 
@@ -554,7 +551,7 @@ contract LivepeerProtocol {
      * @param _transcodingOptions Output bitrates, formats, encodings
      * @param _maxPricePerSegment Max price (in LPT base units) to pay for transcoding a segment of a stream
      */
-    function job(uint256 _streamId, bytes32 _transcodingOptions, uint256 _maxPricePerSegment) returns (bool) {
+    function job(string _streamId, bytes32 _transcodingOptions, uint256 _maxPricePerSegment) returns (bool) {
         address electedTranscoder = electCurrentActiveTranscoder(_maxPricePerSegment);
 
         // Check if there is an elected current active transcoder
@@ -564,10 +561,10 @@ contract LivepeerProtocol {
     }
 
     /*
-     * Return a job
+     * Return a job. TODO: retrieve streamId
      * @param _jobId Job identifier
      */
-    function getJob(uint256 _jobId) constant returns (uint256, uint256, bytes32, uint256, address, address, uint256) {
+    function getJob(uint256 _jobId) constant returns (uint256, bytes32, uint256, address, address, uint256) {
         return jobs.getJob(_jobId);
     }
 
@@ -683,9 +680,11 @@ contract LivepeerProtocol {
      * for its time window
      * @param _transcoder Address of transcoder
      */
-    function validRewardTimeWindow(address _transcoder) internal constant returns (bool) {
+    function validRewardTimeWindow(address _transcoder) constant returns (bool) {
         // Check if transcoder is present in current active transcoder set
-        if (!isCurrentActiveTranscoder[_transcoder]) throw;
+        if (!isCurrentActiveTranscoder[_transcoder]) return false;
+        // Check if already called for current cycle
+        if (transcoders[_transcoder].rewardRound == currentRound() && transcoders[_transcoder].rewardCycle == cycleNum()) return false;
 
         // Use index position of address in current active transcoder set as its place in the order for calling reward()
         uint256 transcoderIdx = currentActiveTranscoderPositions[_transcoder];
