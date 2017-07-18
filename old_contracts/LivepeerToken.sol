@@ -1,4 +1,4 @@
-pragma solidity ^0.4.11;
+pragma solidity ^0.4.8;
 
 import '../installed_contracts/zeppelin/contracts/token/MintableToken.sol';
 import '../installed_contracts/zeppelin/contracts/ownership/Ownable.sol';
