@@ -397,9 +397,9 @@ contract BondingManager is IBondingManager, Controllable {
         uint256 currentRound = roundsManager().currentRound();
         uint256 cycleNum = roundsManager().cycleNum();
 
-        // Set last round that transcoder called reward()
+        /* // Set last round that transcoder called reward() */
         transcoders[msg.sender].rewardRound = currentRound;
-        // Set last cycle of last round that transcoder called reward()
+        /* // Set last cycle of last round that transcoder called reward() */
         transcoders[msg.sender].rewardCycle = cycleNum;
 
         // Reward calculation

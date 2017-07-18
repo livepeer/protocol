@@ -29,7 +29,7 @@ library TranscodeJobs {
     enum JobStatus { Inactive, Active }
 
     // Events
-    event NewJob(address indexed transcoder, address indexed broadcaster);
+    event NewJob(address indexed transcoder, address indexed broadcaster, uint256 jobId);
 
     /*
      * Compute status of job
@@ -64,9 +64,10 @@ library TranscodeJobs {
         self.jobs[self.numJobs].maxPricePerSegment = _maxPricePerSegment;
         self.jobs[self.numJobs].broadcasterAddress = msg.sender;
         self.jobs[self.numJobs].transcoderAddress = _electedTranscoder;
-        self.numJobs++;
 
-        NewJob(_electedTranscoder, msg.sender);
+        NewJob(_electedTranscoder, msg.sender, self.numJobs);
+
+        self.numJobs++;
 
         // TODO: Validation on _transcodingOptions
 

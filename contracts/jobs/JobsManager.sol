@@ -25,7 +25,7 @@ contract JobsManager is IJobsManager, Controllable {
     TranscodeJobs.Jobs jobs;
 
     // Events
-    event NewJob(address indexed transcoder, address indexed broadcaster);
+    event NewJob(address indexed transcoder, address indexed broadcaster, uint256 jobId);
 
     function JobsManager() {
         // Verify all segments.
