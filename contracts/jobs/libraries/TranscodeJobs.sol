@@ -8,7 +8,7 @@ library TranscodeJobs {
     struct Job {
         uint256 jobId;                        // Unique identifer for job
         string streamId;                      // Unique identifier for stream.
-        bytes32 transcodingOptions;           // Options used for transcoding
+        string transcodingOptions;            // Options used for transcoding
         uint256 maxPricePerSegment;           // Max price (in LPT base units) per segment of a stream
         address broadcasterAddress;           // Address of broadcaster that requestes a transcoding job
         address transcoderAddress;            // Address of transcoder selected for the job
@@ -57,7 +57,7 @@ library TranscodeJobs {
      * @param _maxPricePerSegment Max price (in LPT base units) to pay for transcoding a segment of a stream
      * @param _electedTranscoder Address of elected transcoder for the new job
      */
-    function newJob(Jobs storage self, string _streamId, bytes32 _transcodingOptions, uint256 _maxPricePerSegment, address _electedTranscoder) returns (bool) {
+    function newJob(Jobs storage self, string _streamId, string _transcodingOptions, uint256 _maxPricePerSegment, address _electedTranscoder) returns (bool) {
         self.jobs[self.numJobs].jobId = self.numJobs;
         self.jobs[self.numJobs].streamId = _streamId;
         self.jobs[self.numJobs].transcodingOptions = _transcodingOptions;
@@ -81,14 +81,13 @@ library TranscodeJobs {
      * @param self Jobs struct storage receiver
      * @param _jobId Job identifier
      */
-    function getJob(Jobs storage self, uint256 _jobId) constant returns (uint256, bytes32, uint256, address, address, uint256) {
+    function getJobDetails(Jobs storage self, uint256 _jobId) constant returns (uint256, uint256, address, address, uint256) {
         // Check for valid job id
         if (_jobId >= self.numJobs) throw;
 
         Job job = self.jobs[_jobId];
 
         return (job.jobId,
-                job.transcodingOptions,
                 job.maxPricePerSegment,
                 job.broadcasterAddress,
                 job.transcoderAddress,

@@ -67,9 +67,9 @@ contract BondingManager is IBondingManager, Controllable {
     // Current active transcoders for current round
     Node.Node[] activeTranscoders;
     // Mapping to track which addresses are in the current active transcoder set
-    mapping (address => bool) isActiveTranscoder;
+    mapping (address => bool) public isActiveTranscoder;
     // Mapping to track the index position of an address in the current active transcoder set
-    mapping (address => uint256) activeTranscoderPositions;
+    mapping (address => uint256) public activeTranscoderPositions;
 
     // Mapping to track transcoder's reward multiplier for a round
     // rewardMultiplier[0] -> total delegator token rewards for a round (minus transcoder share)
@@ -242,6 +242,9 @@ contract BondingManager is IBondingManager, Controllable {
         // Decrease transcoder cumulative stake
         transcoderPools.decreaseTranscoderStake(delegators[msg.sender].transcoderAddress, delegators[msg.sender].bondedAmount);
 
+        // No longer bonded to anyone
+        delegators[msg.sender].transcoderAddress = address(0x0);
+
         return true;
     }
 
@@ -412,7 +415,7 @@ contract BondingManager is IBondingManager, Controllable {
         // Compute transcoder share of minted tokens
         uint256 transcoderRewardShare = mintedTokens.mul(transcoders[msg.sender].blockRewardCut).div(100);
 
-        // Add reminaing rewards (after transcoder share) for the current cycle of the current round to reward multiplier numerator
+        // Add remaining rewards (after transcoder share) for the current cycle of the current round to reward multiplier numerator
         uint256[2] rewardMultiplier = rewardMultiplierPerTranscoderAndRound[msg.sender][currentRound];
         rewardMultiplier[0] = rewardMultiplier[0].add(mintedTokens.sub(transcoderRewardShare));
 

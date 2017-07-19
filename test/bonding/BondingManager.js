@@ -15,11 +15,8 @@ contract("BondingManager", accounts => {
     let token
     let bondingManager
 
-    before(async () => {
+    const setup = async () => {
         rpc = new RPC(web3)
-    })
-
-    beforeEach(async () => {
         // Start at new round
         await rpc.waitUntilNextBlockMultiple(20, ROUND_LENGTH)
 
@@ -37,9 +34,13 @@ contract("BondingManager", accounts => {
         await protocol.setRegistryContract(roundsManagerKey, roundsManager.address)
         await roundsManager.initialize(protocol.address)
         await bondingManager.initialize(protocol.address)
-    })
+    }
 
     describe("transcoder", () => {
+        beforeEach(async () => {
+            await setup()
+        })
+
         it("should create a new transcoder", async () => {
             const blockRewardCut = 10
             const feeShare = 5
@@ -71,13 +72,17 @@ contract("BondingManager", accounts => {
     })
 
     describe("resignAsTranscoder", () => {
-        it("should set a transcoder as inactive", async () => {
+        beforeEach(async () => {
+            await setup()
+
             const blockRewardCut = 10
             const feeShare = 5
             const pricePerSegment = 100
 
             await bondingManager.transcoder(blockRewardCut, feeShare, pricePerSegment, {from: accounts[0]})
+        })
 
+        it("should set a transcoder as inactive", async () => {
             await bondingManager.resignAsTranscoder({from: accounts[0]})
 
             const transcoder = await bondingManager.transcoders.call(accounts[0])
@@ -85,12 +90,6 @@ contract("BondingManager", accounts => {
         })
 
         it("should set delegator withdraw round", async () => {
-            const blockRewardCut = 10
-            const feeShare = 5
-            const pricePerSegment = 100
-
-            await bondingManager.transcoder(blockRewardCut, feeShare, pricePerSegment, {from: accounts[0]})
-
             await bondingManager.resignAsTranscoder({from: accounts[0]})
 
             const blockNum = web3.eth.blockNumber
@@ -101,14 +100,20 @@ contract("BondingManager", accounts => {
     })
 
     describe("bond", () => {
-        it("can bond stake towards self as transcoder", async () => {
+        beforeEach(async () => {
+            await setup()
+
             const blockRewardCut = 10
             const feeShare = 5
             const pricePerSegment = 100
 
             // Account 0 => transcoder
             await bondingManager.transcoder(blockRewardCut, feeShare, pricePerSegment, {from: accounts[0]})
+            // Account 1 => transcoder
+            await bondingManager.transcoder(blockRewardCut, feeShare, pricePerSegment, {from: accounts[1]})
+        })
 
+        it("can bond stake towards self as transcoder", async () => {
             // Account 0 bonds to self as transcoder
             await token.approve(bondingManager.address, 2000, {from: accounts[0]})
             await bondingManager.bond(2000, accounts[0], {from: accounts[0]})
@@ -118,51 +123,28 @@ contract("BondingManager", accounts => {
         })
 
         it("can bond stake towards a transcoder as delegator", async () => {
-            const blockRewardCut = 10
-            const feeShare = 5
-            const pricePerSegment = 100
+            // Account 2 bonds to Account 0
+            await token.transfer(accounts[2], 2000, {from: accounts[0]})
+            await token.approve(bondingManager.address, 2000, {from: accounts[2]})
+            await bondingManager.bond(2000, accounts[0], {from: accounts[2]})
 
-            // Account 0 => transcoder
-            await bondingManager.transcoder(blockRewardCut, feeShare, pricePerSegment, {from: accounts[0]})
-
-            // Account 1 bonds to Account 0
-            await token.transfer(accounts[1], 2000, {from: accounts[0]})
-            await token.approve(bondingManager.address, 2000, {from: accounts[1]})
-            await bondingManager.bond(2000, accounts[0], {from: accounts[1]})
-
-            const delegator = await bondingManager.delegators.call(accounts[1])
+            const delegator = await bondingManager.delegators.call(accounts[2])
             assert.equal(delegator[1], 2000, "bonded amount incorrect")
             assert.equal(delegator[2], accounts[0], "transcoder address incorrect")
         })
 
         it("can increase stake towards a transcoder as delegator", async () => {
-            const blockRewardCut = 10
-            const feeShare = 5
-            const pricePerSegment = 100
+            // Account 2 bonds to Account 0
+            await token.transfer(accounts[2], 4000, {from: accounts[0]})
+            await token.approve(bondingManager.address, 4000, {from: accounts[2]})
+            await bondingManager.bond(2000, accounts[0], {from: accounts[2]})
+            await bondingManager.bond(2000, accounts[0], {from: accounts[2]})
 
-            // Account 0 => transcoder
-            await bondingManager.transcoder(blockRewardCut, feeShare, pricePerSegment, {from: accounts[0]})
-
-            // Account 1 bonds to Account 0
-            await token.transfer(accounts[1], 4000, {from: accounts[0]})
-            await token.approve(bondingManager.address, 4000, {from: accounts[1]})
-            await bondingManager.bond(2000, accounts[0], {from: accounts[1]})
-            await bondingManager.bond(2000, accounts[0], {from: accounts[1]})
-
-            const delegator = await bondingManager.delegators.call(accounts[1])
+            const delegator = await bondingManager.delegators.call(accounts[2])
             assert.equal(delegator[1], 4000, "bonded amount incorrect")
         })
 
         it("can move stake to another transcoder as delegator", async () => {
-            const blockRewardCut = 10
-            const feeShare = 5
-            const pricePerSegment = 100
-
-            // Account 0 => transcoder
-            await bondingManager.transcoder(blockRewardCut, feeShare, pricePerSegment, {from: accounts[0]})
-            // Account 1 => transcoder
-            await bondingManager.transcoder(blockRewardCut, feeShare, pricePerSegment, {from: accounts[1]})
-
             // Account 2 bonds to Account 0
             await token.transfer(accounts[2], 2000, {from: accounts[0]})
             await token.approve(bondingManager.address, 2000, {from: accounts[2]})

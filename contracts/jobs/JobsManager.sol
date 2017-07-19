@@ -51,13 +51,45 @@ contract JobsManager is IJobsManager, Controllable {
      * @param _transcodingOptions Output bitrates, formats, encodings
      * @param _maxPricePerSegment Max price (in LPT base units) to pay for transcoding a segment of a stream
      */
-    function job(string _streamId, bytes32 _transcodingOptions, uint256 _maxPricePerSegment) returns (bool) {
+    function job(string _streamId, string _transcodingOptions, uint256 _maxPricePerSegment) returns (bool) {
         address electedTranscoder = bondingManager().electActiveTranscoder(_maxPricePerSegment);
 
         // Check if there is an elected current active transcoder
         if (electedTranscoder == address(0)) throw;
 
         return jobs.newJob(_streamId, _transcodingOptions, _maxPricePerSegment, electedTranscoder);
+    }
+
+    /*
+     * @dev Return job details
+     * @param _jobId Job identifier
+     */
+    function getJobDetails(uint256 _jobId) constant returns (uint256, uint256, address, address, uint256) {
+        return jobs.getJobDetails(_jobId);
+    }
+
+    /*
+     * @dev Return stream id for job
+     * @param _jobId Job identifier
+     */
+    function getJobStreamId(uint256 _jobId) constant returns (string) {
+        return jobs.jobs[_jobId].streamId;
+    }
+
+    /*
+     * @dev Return transcoding options for job
+     * @param _jobId Job identifier
+     */
+    function getJobTranscodingOptions(uint256 _jobId) constant returns (string) {
+        return jobs.jobs[_jobId].transcodingOptions;
+    }
+
+    /*
+     * @dev Return transcode claims details for a job
+     * @param _jobId Job identifier
+     */
+    function getJobTranscodeClaimsDetails(uint256 _jobId) constant returns (uint256, uint256, uint256, uint256, bytes32) {
+        return jobs.getJobTranscodeClaimsDetails(_jobId);
     }
 
     /*
@@ -79,7 +111,7 @@ contract JobsManager is IJobsManager, Controllable {
         return jobs.claimWork(_jobId, _startSegmentSequenceNumber, _endSegmentSequenceNumber, _transcodeClaimsRoot, verificationPeriod);
     }
 
- /*
+    /*
      * @dev Provide proof of transcoding a segment
      * TODO: This might have to be payable when we implement the transcoding verification process using a solution such as Oraclize or Truebit
      * @param _jobId Job identifier
