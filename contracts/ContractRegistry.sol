@@ -1,5 +1,8 @@
 pragma solidity ^0.4.11;
 
+/*
+ * @title Registry mapping keys (hash of contract name) with contract addresses
+ */
 contract ContractRegistry {
     mapping (bytes32 => address) registry;
 

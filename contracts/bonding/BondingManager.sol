@@ -330,7 +330,7 @@ contract BondingManager is IBondingManager, Controllable {
     /*
      * @dev Set active transcoder set for the current round
      */
-    function setActiveTranscoders() roundsManagerOnly public returns (bool) {
+    function setActiveTranscoders() roundsManagerOnly external returns (bool) {
         if (activeTranscoders.length != transcoderPools.candidateTranscoders.nodes.length) {
             // Set length of array if it has not already been set
             activeTranscoders.length = transcoderPools.candidateTranscoders.nodes.length;

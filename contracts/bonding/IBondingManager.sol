@@ -12,9 +12,9 @@ contract IBondingManager {
     function unbond() external returns (bool);
     function withdraw() external returns (bool);
     function reward() external returns (bool);
+    function setActiveTranscoders() external returns (bool);
 
     // Public functions
-    function setActiveTranscoders() public returns (bool);
     function electActiveTranscoder(uint256 _maxPricePerSegment) public constant returns (address);
     function activeTranscoderTotalStake(address _transcoder) public constant returns (uint256);
     function transcoderTotalStake(address _transcoder) public constant returns (uint256);
