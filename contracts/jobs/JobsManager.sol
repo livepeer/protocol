@@ -39,7 +39,10 @@ contract JobsManager is IJobsManager, Controllable {
         verificationPeriod = 100;
     }
 
-    function bondingManager() constant returns (IBondingManager) {
+    /*
+     * @dev Returns BondingManager
+     */
+    function bondingManager() internal constant returns (IBondingManager) {
         LivepeerProtocol protocol = LivepeerProtocol(controller);
 
         return IBondingManager(protocol.getRegistryContract(protocol.bondingManagerKey()));
@@ -51,7 +54,7 @@ contract JobsManager is IJobsManager, Controllable {
      * @param _transcodingOptions Output bitrates, formats, encodings
      * @param _maxPricePerSegment Max price (in LPT base units) to pay for transcoding a segment of a stream
      */
-    function job(string _streamId, string _transcodingOptions, uint256 _maxPricePerSegment) returns (bool) {
+    function job(string _streamId, string _transcodingOptions, uint256 _maxPricePerSegment) external returns (bool) {
         address electedTranscoder = bondingManager().electActiveTranscoder(_maxPricePerSegment);
 
         // Check if there is an elected current active transcoder
@@ -64,7 +67,7 @@ contract JobsManager is IJobsManager, Controllable {
      * @dev Return job details
      * @param _jobId Job identifier
      */
-    function getJobDetails(uint256 _jobId) constant returns (uint256, uint256, address, address, uint256) {
+    function getJobDetails(uint256 _jobId) public constant returns (uint256, uint256, address, address, uint256) {
         return jobs.getJobDetails(_jobId);
     }
 
@@ -72,7 +75,7 @@ contract JobsManager is IJobsManager, Controllable {
      * @dev Return stream id for job
      * @param _jobId Job identifier
      */
-    function getJobStreamId(uint256 _jobId) constant returns (string) {
+    function getJobStreamId(uint256 _jobId) public constant returns (string) {
         return jobs.jobs[_jobId].streamId;
     }
 
@@ -80,7 +83,7 @@ contract JobsManager is IJobsManager, Controllable {
      * @dev Return transcoding options for job
      * @param _jobId Job identifier
      */
-    function getJobTranscodingOptions(uint256 _jobId) constant returns (string) {
+    function getJobTranscodingOptions(uint256 _jobId) public constant returns (string) {
         return jobs.jobs[_jobId].transcodingOptions;
     }
 
@@ -88,7 +91,7 @@ contract JobsManager is IJobsManager, Controllable {
      * @dev Return transcode claims details for a job
      * @param _jobId Job identifier
      */
-    function getJobTranscodeClaimsDetails(uint256 _jobId) constant returns (uint256, uint256, uint256, uint256, bytes32) {
+    function getJobTranscodeClaimsDetails(uint256 _jobId) public constant returns (uint256, uint256, uint256, uint256, bytes32) {
         return jobs.getJobTranscodeClaimsDetails(_jobId);
     }
 
@@ -96,7 +99,7 @@ contract JobsManager is IJobsManager, Controllable {
      * @dev End a job. Can be called by either a broadcaster or transcoder of a job
      * @param _jobId Job identifier
      */
-    function endJob(uint256 _jobId) returns (bool) {
+    function endJob(uint256 _jobId) external returns (bool) {
         return jobs.endJob(_jobId, jobEndingPeriod);
     }
 
@@ -107,7 +110,7 @@ contract JobsManager is IJobsManager, Controllable {
      * @param _endSegmentSequenceNumber Second segment in the range of transcoded segments
      * @param _transcodeClaimRoot Merkle root of transcode claims for the range of segments
      */
-    function claimWork(uint256 _jobId, uint256 _startSegmentSequenceNumber, uint256 _endSegmentSequenceNumber, bytes32 _transcodeClaimsRoot) returns (bool) {
+    function claimWork(uint256 _jobId, uint256 _startSegmentSequenceNumber, uint256 _endSegmentSequenceNumber, bytes32 _transcodeClaimsRoot) external returns (bool) {
         return jobs.claimWork(_jobId, _startSegmentSequenceNumber, _endSegmentSequenceNumber, _transcodeClaimsRoot, verificationPeriod);
     }
 
@@ -121,7 +124,7 @@ contract JobsManager is IJobsManager, Controllable {
      * @param _broadcasterSig Broadcaster's signature over segment
      * @param _proof Merkle proof for the signed transcode claim
      */
-    function verify(uint256 _jobId, uint256 _segmentSequenceNumber, bytes32 _dataHash, bytes32 _transcodedDataHash, bytes _broadcasterSig, bytes _proof) returns (bool) {
+    function verify(uint256 _jobId, uint256 _segmentSequenceNumber, bytes32 _dataHash, bytes32 _transcodedDataHash, bytes _broadcasterSig, bytes _proof) external returns (bool) {
         if (!jobs.validateTranscoderClaim(_jobId, _segmentSequenceNumber, _dataHash, _transcodedDataHash, _broadcasterSig, _proof, verificationRate)) throw;
 
         // TODO: Invoke transcoding verification process

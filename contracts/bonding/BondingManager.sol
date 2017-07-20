@@ -76,6 +76,12 @@ contract BondingManager is IBondingManager, Controllable {
     // rewardMultiplier[1] -> transcoder's cumulative stake for round
     mapping (address => mapping (uint256 => uint256[2])) public rewardMultiplierPerTranscoderAndRound;
 
+    // Only the RoundsManager can call
+    modifier roundsManagerOnly() {
+        if (msg.sender != address(roundsManager())) throw;
+        _;
+    }
+
     /*
      * @dev BondingManager constructor. Sets a pre-existing address for the LivepeerToken contract
      * @param _token LivepeerToken contract address
@@ -94,7 +100,7 @@ contract BondingManager is IBondingManager, Controllable {
     /*
      * @dev Return rounds manager contract
      */
-    function roundsManager() constant returns (IRoundsManager) {
+    function roundsManager() internal constant returns (IRoundsManager) {
         LivepeerProtocol protocol = LivepeerProtocol(controller);
 
         return IRoundsManager(protocol.getRegistryContract(protocol.roundsManagerKey()));
@@ -108,7 +114,7 @@ contract BondingManager is IBondingManager, Controllable {
      * @param _feeShare Percentage of fees from broadcasting jobs that transcoder will share with delegators
      * @param _pricePerSegment Lowest price transcoder is willing to accept for a job. Denominated in LPT base units
      */
-    function transcoder(uint8 _blockRewardCut, uint8 _feeShare, uint256 _pricePerSegment) returns (bool) {
+    function transcoder(uint8 _blockRewardCut, uint8 _feeShare, uint256 _pricePerSegment) external returns (bool) {
         // Check if current round is initialized
         if (!roundsManager().currentRoundInitialized()) throw;
         // Check for valid blockRewardCut
@@ -133,7 +139,7 @@ contract BondingManager is IBondingManager, Controllable {
     /*
      * @dev Remove the sender as a transcoder
      */
-    function resignAsTranscoder() returns (bool) {
+    function resignAsTranscoder() external returns (bool) {
         // Check if current round is initialized
         if (!roundsManager().currentRoundInitialized()) throw;
         // Check if active transcoder
@@ -157,7 +163,7 @@ contract BondingManager is IBondingManager, Controllable {
      * @param _amount The amount of LPT to stake.
      * @param _to The address of the transcoder to stake towards.
      */
-    function bond(uint _amount, address _to) returns (bool) {
+    function bond(uint _amount, address _to) external returns (bool) {
         // Check if current round is initialized
         if (!roundsManager().currentRoundInitialized()) throw;
         // Check if this is a valid transcoder who is active
@@ -225,7 +231,7 @@ contract BondingManager is IBondingManager, Controllable {
      * @dev Unbond your current stake. You will enter the unbonding phase for
      * the unbondingPeriod.
      */
-    function unbond() returns (bool) {
+    function unbond() external returns (bool) {
         // Check if current round is initialized
         if (!roundsManager().currentRoundInitialized()) throw;
         // Check if this is an initialized delegator
@@ -251,7 +257,7 @@ contract BondingManager is IBondingManager, Controllable {
     /**
      * @dev Withdraws withdrawable funds back to the caller after unbonding period.
      */
-    function withdraw() returns (bool) {
+    function withdraw() external returns (bool) {
         // Check if current round is initialized
         if (!roundsManager().currentRoundInitialized()) throw;
         // Check if this is an initialized delegator
@@ -274,7 +280,7 @@ contract BondingManager is IBondingManager, Controllable {
      * @dev Computes delegator status
      * @param _delegator Address of delegator
      */
-    function delegatorStatus(address _delegator) constant returns (DelegatorStatus) {
+    function delegatorStatus(address _delegator) public constant returns (DelegatorStatus) {
         // Check if this is an initialized delegator
         if (delegators[_delegator].initialized == false) throw;
 
@@ -302,7 +308,7 @@ contract BondingManager is IBondingManager, Controllable {
      * @dev Checks if delegator unbonding period is over
      * @param _delegator Address of delegator
      */
-    function unbondingPeriodOver(address _delegator) constant returns (bool) {
+    function unbondingPeriodOver(address _delegator) public constant returns (bool) {
         // Check if this is an initialized delegator
         if (delegators[_delegator].initialized == false) throw;
 
@@ -324,10 +330,7 @@ contract BondingManager is IBondingManager, Controllable {
     /*
      * @dev Set active transcoder set for the current round
      */
-    function setActiveTranscoders() returns (bool) {
-        // Check if sender is RoundsManager
-        if (msg.sender != address(roundsManager())) throw;
-
+    function setActiveTranscoders() roundsManagerOnly public returns (bool) {
         if (activeTranscoders.length != transcoderPools.candidateTranscoders.nodes.length) {
             // Set length of array if it has not already been set
             activeTranscoders.length = transcoderPools.candidateTranscoders.nodes.length;
@@ -362,7 +365,7 @@ contract BondingManager is IBondingManager, Controllable {
      * @dev Pseudorandomly elect a currently active transcoder that charges a price per segment less than or equal to the max price per segment for a job
      * @param _maxPricePerSegment Max price (in LPT base units) per segment of a stream
      */
-    function electActiveTranscoder(uint256 _maxPricePerSegment) constant returns (address) {
+    function electActiveTranscoder(uint256 _maxPricePerSegment) public constant returns (address) {
         // Create array to store available transcoders charging an acceptable price per segment
         address[] memory availableTranscoders = new address[](activeTranscoders.length);
         // Keep track of the actual number of available transcoders
@@ -391,7 +394,7 @@ contract BondingManager is IBondingManager, Controllable {
      * @dev Distribute the token rewards to transcoder and delegates.
      * Active transcoders call this once per cycle when it is their turn.
      */
-    function reward() returns (bool) {
+    function reward() external returns (bool) {
         // Check if current round is initialized
         if (!roundsManager().currentRoundInitialized()) throw;
         // Check if in a valid transcoder reward time window
@@ -439,7 +442,7 @@ contract BondingManager is IBondingManager, Controllable {
     /*
      * @dev Return number of minted tokens for a reward call
      */
-    function mintedTokensPerReward() constant returns (uint256) {
+    function mintedTokensPerReward() public constant returns (uint256) {
         return initialTokenSupply.mul(initialYearlyInflation).div(100).div(roundsManager().rewardCallsPerYear());
     }
 
@@ -447,7 +450,7 @@ contract BondingManager is IBondingManager, Controllable {
      * @dev Check if transcoder is calling reward in correct range of blocks for its time window
      * @param _transcoder Address of transcoder
      */
-    function validRewardCall(address _transcoder) constant returns (bool) {
+    function validRewardCall(address _transcoder) public constant returns (bool) {
         // Check if transcoder is in active set
         if (!isActiveTranscoder[_transcoder]) return false;
         // Check if already called for current cycle
@@ -480,7 +483,7 @@ contract BondingManager is IBondingManager, Controllable {
      * @dev Returns total bonded stake for an active transcoder
      * @param _transcoder Address of a transcoder
      */
-    function activeTranscoderTotalStake(address _transcoder) constant returns (uint256) {
+    function activeTranscoderTotalStake(address _transcoder) public constant returns (uint256) {
         // Check if current active transcoder
         if (!isActiveTranscoder[_transcoder]) throw;
 
@@ -491,7 +494,7 @@ contract BondingManager is IBondingManager, Controllable {
      * @dev Returns total bonded stake for a transcoder
      * @param _transcoder Address of transcoder
      */
-    function transcoderTotalStake(address _transcoder) constant returns (uint256) {
+    function transcoderTotalStake(address _transcoder) public constant returns (uint256) {
         return transcoderPools.transcoderStake(_transcoder);
     }
 
@@ -499,7 +502,7 @@ contract BondingManager is IBondingManager, Controllable {
      * @dev Returns bonded stake for a delegator. Accounts for rewards since last state transition
      * @param _delegator Address of delegator
      */
-    function delegatorStake(address _delegator) constant returns (uint256) {
+    function delegatorStake(address _delegator) public constant returns (uint256) {
         // Check for valid delegator
         if (!delegators[_delegator].initialized) throw;
 
@@ -510,7 +513,7 @@ contract BondingManager is IBondingManager, Controllable {
      * @dev Computes rewards for a delegator since last state transition
      * @param _delegator Address of delegator
      */
-    function delegatorRewards(address _delegator) internal constant returns (uint256) {
+    function delegatorRewards(address _delegator) public constant returns (uint256) {
         uint256 rewards = 0;
 
         // Check if delegator bonded to a transcoder

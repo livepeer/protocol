@@ -13,9 +13,7 @@ contract LivepeerToken is MintableToken {
     string public symbol = "LPT";
     string public version = "0.1";
 
-    function LivepeerToken() {
-
-    }
+    function LivepeerToken() {}
 
     /* Don't accept random ETH sent to this contract */
     function () {

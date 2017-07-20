@@ -41,7 +41,7 @@ contract RoundsManager is IRoundsManager, Controllable {
     /*
      * @dev Return BondingManager contract (interface)
      */
-    function bondingManager() constant returns (IBondingManager) {
+    function bondingManager() internal constant returns (IBondingManager) {
         LivepeerProtocol protocol = LivepeerProtocol(controller);
 
         return IBondingManager(protocol.getRegistryContract(protocol.bondingManagerKey()));
@@ -50,42 +50,42 @@ contract RoundsManager is IRoundsManager, Controllable {
     /*
      * @dev Return current round
      */
-    function currentRound() constant returns (uint256) {
+    function currentRound() public constant returns (uint256) {
         return block.number / roundLength;
     }
 
     /*
      * @dev Return start block of current round
      */
-    function currentRoundStartBlock() constant returns (uint256) {
+    function currentRoundStartBlock() public constant returns (uint256) {
         return currentRound().mul(roundLength);
     }
 
     /*
      * @dev Return length in blocks of a time window for calling reward
      */
-    function rewardTimeWindowLength() constant returns (uint256) {
+    function rewardTimeWindowLength() public constant returns (uint256) {
         return roundLength.div(cyclesPerRound.mul(numActiveTranscoders));
     }
 
     /*
      * @dev Return length in blocks of a cycle
      */
-    function cycleLength() constant returns (uint256) {
+    function cycleLength() public constant returns (uint256) {
         return rewardTimeWindowLength().mul(numActiveTranscoders);
     }
 
     /*
      * @dev Return number of cycles since the start of round
      */
-    function cycleNum() constant returns (uint256) {
+    function cycleNum() public constant returns (uint256) {
         return block.number.sub(currentRoundStartBlock()).div(cycleLength());
     }
 
     /*
      * @dev Return number of reward calls per year
      */
-    function rewardCallsPerYear() constant returns (uint256) {
+    function rewardCallsPerYear() public constant returns (uint256) {
         uint256 secondsInYear = 1 years;
         return secondsInYear.div(blockTime).div(roundLength).mul(cyclesPerRound).mul(numActiveTranscoders);
     }
@@ -94,7 +94,7 @@ contract RoundsManager is IRoundsManager, Controllable {
      * @dev Checks if a time window is valid
      * @param _timeWindowIdx Index of time window
      */
-    function validRewardTimeWindow(uint256 _timeWindowIdx) constant returns (bool) {
+    function validRewardTimeWindow(uint256 _timeWindowIdx) public constant returns (bool) {
         // Compute start block of reward time window for this cycle
         uint256 rewardTimeWindowStartBlock = currentRoundStartBlock().add(cycleNum().mul(cycleLength())).add(_timeWindowIdx.mul(rewardTimeWindowLength()));
         // Compute end block of reward time window for this cycle
@@ -106,14 +106,14 @@ contract RoundsManager is IRoundsManager, Controllable {
     /*
      * @dev Check if current round is initialized i.e. block.number / roundLength == lastInitializedRound
      */
-    function currentRoundInitialized() constant returns (bool)  {
+    function currentRoundInitialized() public constant returns (bool)  {
         return lastInitializedRound == currentRound();
     }
 
     /*
      * @dev Initialize the current round. Called once at the start of any round
      */
-    function initializeRound() returns (bool) {
+    function initializeRound() external returns (bool) {
         // Check if already called for the current round
         // Will exit here to avoid large gas consumption if it has been called for the current round already
         if (lastInitializedRound == currentRound()) return false;

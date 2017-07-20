@@ -9,17 +9,17 @@ contract LivepeerProtocol is ContractRegistry, Ownable {
     bytes32 public constant bondingManagerKey = keccak256(0x00, 0x02);
     bytes32 public constant jobsManagerKey = keccak256(0x00, 0x03);
 
-    function getRegistryContract(bytes32 _key) constant returns (address) {
+    function getRegistryContract(bytes32 _key) public constant returns (address) {
         return registryGet(_key);
     }
 
-    function setRegistryContract(bytes32 _key, address _contract) onlyOwner returns (bool) {
+    function setRegistryContract(bytes32 _key, address _contract) onlyOwner public returns (bool) {
         return registrySet(_key, _contract);
     }
 
     // CONTROLLER ADMIN
 
-    function updateController(bytes32 _key, address _controller) onlyOwner returns (bool) {
+    function updateController(bytes32 _key, address _controller) onlyOwner public returns (bool) {
         // Check if key is in registry
         if (!registryContains(_key)) throw;
 

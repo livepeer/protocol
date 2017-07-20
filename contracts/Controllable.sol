@@ -16,7 +16,7 @@ contract Controllable is Ownable {
      * @dev Initialize a controllable contract with its controller
      * @param _controller Controller contract address
      */
-    function initialize(address _controller) onlyOwner returns (bool) {
+    function initialize(address _controller) onlyOwner public returns (bool) {
         // Check if contract already has a controller
         if (controller != address(0x0)) throw;
 
@@ -29,7 +29,7 @@ contract Controllable is Ownable {
      * @dev Set controller contract. Only callable by current controller
      * @param _controller Controller contract address
      */
-    function setController(address _controller) onlyController returns (bool) {
+    function setController(address _controller) onlyController public returns (bool) {
         controller = _controller;
 
         return true;
