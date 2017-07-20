@@ -7,14 +7,18 @@ var RoundsManager = artifacts.require("RoundsManager")
 
 const ROUND_LENGTH = 50
 const CYCLES_PER_ROUND = 2
+const CYCLE_LENGTH = 25
 const NUM_ACTIVE_TRANSCODERS = 1
 
 contract("RoundsManager", accounts => {
     let rpc
+    let snapshotId
     let roundsManager
 
-    beforeEach(async() => {
+    const setup = async () => {
         rpc = new RPC(web3)
+        snapshotId = await rpc.snapshot()
+
         roundsManager = await RoundsManager.new()
 
         const protocol = await LivepeerProtocol.new()
@@ -27,6 +31,18 @@ contract("RoundsManager", accounts => {
         await protocol.setRegistryContract(roundsManagerKey, roundsManager.address)
         await roundsManager.initialize(protocol.address)
         await bondingManager.initialize(protocol.address)
+    }
+
+    const teardown = async () => {
+        await rpc.revert(snapshotId)
+    }
+
+    beforeEach(async () => {
+        await setup()
+    })
+
+    afterEach(async () => {
+        await teardown()
     })
 
     describe("currentRound", () => {
@@ -52,6 +68,35 @@ contract("RoundsManager", accounts => {
             const numCalls = Math.floor((365 * 24 * 60 * 60) / ROUND_LENGTH) * CYCLES_PER_ROUND * NUM_ACTIVE_TRANSCODERS
 
             assert.equal(await roundsManager.rewardCallsPerYear(), numCalls, "reward calls per year is incorrect")
+        })
+    })
+
+    describe("validRewardTimeWindow", () => {
+        it("returns true during time window of first cycle", async () => {
+            // Fast forward to next round
+            await rpc.waitUntilNextBlockMultiple(20, ROUND_LENGTH)
+
+            // Checking if it is the time window 0
+            const timeWindowIdx = 0
+            assert.isOk(await roundsManager.validRewardTimeWindow(timeWindowIdx), "valid time window but returned false")
+        })
+
+        it("returns true during time window of second cycle", async () => {
+            // Fast forward to next cycle
+            await rpc.waitUntilNextBlockMultiple(20, CYCLE_LENGTH)
+
+            // Checking if it is the time window 0
+            const timeWindowIdx = 0
+            assert.isOk(await roundsManager.validRewardTimeWindow(timeWindowIdx), "valid time window but returned false")
+        })
+
+        it("returns false if it is not the right time window", async () => {
+            // Fast foward to next round
+            await rpc.waitUntilNextBlockMultiple(20, ROUND_LENGTH)
+
+            // Checking if it is the time window 1
+            const timeWindowIdx = 1
+            assert.isNotOk(await roundsManager.validRewardTimeWindow(timeWindowIdx), "invalid time window but returned true")
         })
     })
 

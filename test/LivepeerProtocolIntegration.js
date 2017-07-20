@@ -16,10 +16,49 @@ const NUM_ACTIVE_TRANSCODERS = 1;
 
 contract("LivepeerProtocolIntegration", accounts => {
     let rpc
+    let snapshotId
     let token
     let bondingManager
     let roundsManager
     let jobsManager
+
+    const setup = async () => {
+        rpc = new RPC(web3)
+        snapshotId = await rpc.snapshot()
+
+        // Start at new round
+        await rpc.waitUntilNextBlockMultiple(20, ROUND_LENGTH)
+
+        token = await LivepeerToken.new()
+        // Initial token distribution
+        token.mint(accounts[0], 3000000000000000000, {from: accounts[0]})
+        token.transfer(accounts[1], 500, {from: accounts[0]})
+        token.transfer(accounts[2], 500, {from: accounts[0]})
+        token.transfer(accounts[3], 500, {from: accounts[0]})
+
+        bondingManager = await BondingManager.new(token.address, NUM_ACTIVE_TRANSCODERS)
+        // Set BondingManager as token owner
+        token.transferOwnership(bondingManager.address, {from: accounts[0]})
+
+        roundsManager = await RoundsManager.new()
+        jobsManager = await JobsManager.new()
+
+        const protocol = await LivepeerProtocol.new()
+        const bondingManagerKey = await protocol.bondingManagerKey.call()
+        const roundsManagerKey = await protocol.roundsManagerKey.call()
+        const jobsManagerKey = await protocol.jobsManagerKey.call()
+
+        await protocol.setRegistryContract(bondingManagerKey, bondingManager.address)
+        await protocol.setRegistryContract(roundsManagerKey, roundsManager.address)
+        await protocol.setRegistryContract(jobsManagerKey, jobsManager.address)
+        await bondingManager.initialize(protocol.address)
+        await roundsManager.initialize(protocol.address)
+        await jobsManager.initialize(protocol.address)
+    }
+
+    const teardown = async () => {
+        await rpc.revert(snapshotId)
+    }
 
     describe("reward flow", () => {
         const stake1 = 100
@@ -27,36 +66,11 @@ contract("LivepeerProtocolIntegration", accounts => {
         const stake3 = 100
 
         before(async () => {
-            rpc = new RPC(web3)
+            await setup()
+        })
 
-            // Start at new round
-            await rpc.waitUntilNextBlockMultiple(20, ROUND_LENGTH)
-
-            token = await LivepeerToken.new()
-            // Initial token distribution
-            token.mint(accounts[0], 3000000000000000000, {from: accounts[0]})
-            token.transfer(accounts[1], 500, {from: accounts[0]})
-            token.transfer(accounts[2], 500, {from: accounts[0]})
-            token.transfer(accounts[3], 500, {from: accounts[0]})
-
-            bondingManager = await BondingManager.new(token.address, NUM_ACTIVE_TRANSCODERS)
-            // Set BondingManager as token owner
-            token.transferOwnership(bondingManager.address, {from: accounts[0]})
-
-            roundsManager = await RoundsManager.new()
-            jobsManager = await JobsManager.new()
-
-            const protocol = await LivepeerProtocol.new()
-            const bondingManagerKey = await protocol.bondingManagerKey.call()
-            const roundsManagerKey = await protocol.roundsManagerKey.call()
-            const jobsManagerKey = await protocol.jobsManagerKey.call()
-
-            await protocol.setRegistryContract(bondingManagerKey, bondingManager.address)
-            await protocol.setRegistryContract(roundsManagerKey, roundsManager.address)
-            await protocol.setRegistryContract(jobsManagerKey, jobsManager.address)
-            await bondingManager.initialize(protocol.address)
-            await roundsManager.initialize(protocol.address)
-            await jobsManager.initialize(protocol.address)
+        after(async () => {
+            await teardown()
         })
 
         it("transcoder should register and delegators should bond to it", async () => {
@@ -167,34 +181,11 @@ contract("LivepeerProtocolIntegration", accounts => {
         const maxPricePerSegment = 100
 
         before(async () => {
-            rpc = new RPC(web3)
+            await setup()
+        })
 
-            // Start at new round
-            await rpc.waitUntilNextBlockMultiple(20, ROUND_LENGTH)
-
-            token = await LivepeerToken.new()
-            // Initial token distribution
-            token.mint(accounts[0], 3000000000000000000, {from: accounts[0]})
-            token.transfer(accounts[1], 500, {from: accounts[0]})
-
-            bondingManager = await BondingManager.new(token.address, NUM_ACTIVE_TRANSCODERS)
-            // Set BondingManager as token owner
-            token.transferOwnership(bondingManager.address, {from: accounts[0]})
-
-            roundsManager = await RoundsManager.new()
-            jobsManager = await JobsManager.new()
-
-            const protocol = await LivepeerProtocol.new()
-            const bondingManagerKey = await protocol.bondingManagerKey.call()
-            const roundsManagerKey = await protocol.roundsManagerKey.call()
-            const jobsManagerKey = await protocol.jobsManagerKey.call()
-
-            await protocol.setRegistryContract(bondingManagerKey, bondingManager.address)
-            await protocol.setRegistryContract(roundsManagerKey, roundsManager.address)
-            await protocol.setRegistryContract(jobsManagerKey, jobsManager.address)
-            await bondingManager.initialize(protocol.address)
-            await roundsManager.initialize(protocol.address)
-            await jobsManager.initialize(protocol.address)
+        after(async () => {
+            await teardown()
         })
 
         it("transcoder should register and delegators should bond to it", async () => {

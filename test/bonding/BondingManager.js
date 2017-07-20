@@ -12,11 +12,14 @@ const NUM_ACTIVE_TRANSCODERS = 1
 
 contract("BondingManager", accounts => {
     let rpc
+    let snapshotId
     let token
     let bondingManager
 
     const setup = async () => {
         rpc = new RPC(web3)
+        snapshotId = await rpc.snapshot()
+
         // Start at new round
         await rpc.waitUntilNextBlockMultiple(20, ROUND_LENGTH)
 
@@ -36,9 +39,17 @@ contract("BondingManager", accounts => {
         await bondingManager.initialize(protocol.address)
     }
 
+    const teardown = async () => {
+        await rpc.revert(snapshotId)
+    }
+
     describe("transcoder", () => {
         beforeEach(async () => {
             await setup()
+        })
+
+        afterEach(async () => {
+            await teardown()
         })
 
         it("should create a new transcoder", async () => {
@@ -82,6 +93,10 @@ contract("BondingManager", accounts => {
             await bondingManager.transcoder(blockRewardCut, feeShare, pricePerSegment, {from: accounts[0]})
         })
 
+        afterEach(async () => {
+            await teardown()
+        })
+
         it("should set a transcoder as inactive", async () => {
             await bondingManager.resignAsTranscoder({from: accounts[0]})
 
@@ -111,6 +126,10 @@ contract("BondingManager", accounts => {
             await bondingManager.transcoder(blockRewardCut, feeShare, pricePerSegment, {from: accounts[0]})
             // Account 1 => transcoder
             await bondingManager.transcoder(blockRewardCut, feeShare, pricePerSegment, {from: accounts[1]})
+        })
+
+        afterEach(async () => {
+            await teardown()
         })
 
         it("can bond stake towards self as transcoder", async () => {
@@ -154,6 +173,27 @@ contract("BondingManager", accounts => {
 
             const delegator = await bondingManager.delegators.call(accounts[2])
             assert.equal(delegator[2], accounts[1], "transcoder address incorrect")
+        })
+    })
+
+    describe("setActiveTranscoders", async () => {
+        before(async () => {
+            await setup()
+
+            const blockRewardCut = 10
+            const feeShare = 5
+            const pricePerSegment = 100
+
+            // Account 0 => transcoder
+            await bondingManager.transcoder(blockRewardCut, feeShare, pricePerSegment, {from: accounts[0]})
+        })
+
+        after(async () => {
+            await teardown()
+        })
+
+        it("should throw if sender is not RoundsManager", async () => {
+            await expectThrow(bondingManager.setActiveTranscoders({from: accounts[0]}))
         })
     })
 })
