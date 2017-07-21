@@ -16,7 +16,6 @@ const NUM_ACTIVE_TRANSCODERS = 1;
 
 contract("LivepeerProtocolIntegration", accounts => {
     let rpc
-    let snapshotId
     let token
     let bondingManager
     let roundsManager
@@ -24,7 +23,6 @@ contract("LivepeerProtocolIntegration", accounts => {
 
     const setup = async () => {
         rpc = new RPC(web3)
-        snapshotId = await rpc.snapshot()
 
         // Start at new round
         await rpc.waitUntilNextBlockMultiple(20, ROUND_LENGTH)
@@ -56,10 +54,6 @@ contract("LivepeerProtocolIntegration", accounts => {
         await jobsManager.initialize(protocol.address)
     }
 
-    const teardown = async () => {
-        await rpc.revert(snapshotId)
-    }
-
     describe("reward flow", () => {
         const stake1 = 100
         const stake2 = 100
@@ -67,10 +61,6 @@ contract("LivepeerProtocolIntegration", accounts => {
 
         before(async () => {
             await setup()
-        })
-
-        after(async () => {
-            await teardown()
         })
 
         it("transcoder should register and delegators should bond to it", async () => {
@@ -182,10 +172,6 @@ contract("LivepeerProtocolIntegration", accounts => {
 
         before(async () => {
             await setup()
-        })
-
-        after(async () => {
-            await teardown()
         })
 
         it("transcoder should register and delegators should bond to it", async () => {

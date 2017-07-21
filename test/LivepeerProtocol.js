@@ -15,25 +15,15 @@ contract("LivepeerProtocol", accounts => {
 
     let protocol
     let rpc
-    let snapshotId
 
     const setup = async () => {
         rpc = new RPC(web3)
-        snapshotId = await rpc.snapshot()
         protocol = await LivepeerProtocol.new()
     }
 
-    const teardown = async () => {
-        await rpc.revert(snapshotId)
-    }
-
     describe("setRegistryContract", () => {
-        beforeEach(async () => {
+        before(async () => {
             await setup()
-        })
-
-        afterEach(async () => {
-            await teardown()
         })
 
         it("should set a registry contract", async () => {
@@ -44,19 +34,13 @@ contract("LivepeerProtocol", accounts => {
 
             assert.equal(await protocol.getRegistryContract(roundsManagerKey), roundsManager.address, "did not set registry contract address correctly")
         })
-
-        it("should throw if contract is not controllable", async () => {
-            const randomKey = "0x123"
-
-            await expectThrow(protocol.setRegistryContract(randomKey, accounts[3]))
-        })
     })
 
     describe("updateController", () => {
         let roundsManager
         let roundsManagerKey
 
-        beforeEach(async () => {
+        before(async () => {
             await setup()
 
             roundsManager = await RoundsManager.new()
@@ -66,8 +50,11 @@ contract("LivepeerProtocol", accounts => {
             await roundsManager.initialize(protocol.address)
         })
 
-        afterEach(async () => {
-            await teardown()
+        it("should throw for invalid key", async () => {
+            const randomAddress = "0x0000000000000000000000000000000000001234"
+            const invalidKey = "0x123"
+
+            await expectThrow(protocol.updateController(invalidKey, randomAddress))
         })
 
         it("should update a registry contract's controller", async () => {
@@ -77,13 +64,6 @@ contract("LivepeerProtocol", accounts => {
 
             const controller = await roundsManager.controller.call()
             assert.equal(controller, randomAddress, "controller for registry contract incorrect")
-        })
-
-        it("should throw for invalid key", async () => {
-            const randomAddress = "0x0000000000000000000000000000000000001234"
-            const invalidKey = "0x123"
-
-            await expectThrow(protocol.updateController(invalidKey, randomAddress))
         })
     })
 })

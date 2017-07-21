@@ -3,9 +3,6 @@ pragma solidity ^0.4.11;
 import "../installed_contracts/zeppelin/contracts/ownership/Ownable.sol";
 
 contract Controllable is Ownable {
-    // Constant used to check if this contract or any contract derived from it is controllable
-    bool constant public isControllable = true;
-
     // Controller contract
     address public controller;
 

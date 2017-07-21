@@ -12,12 +12,10 @@ const NUM_ACTIVE_TRANSCODERS = 1
 
 contract("RoundsManager", accounts => {
     let rpc
-    let snapshotId
     let roundsManager
 
     const setup = async () => {
         rpc = new RPC(web3)
-        snapshotId = await rpc.snapshot()
 
         roundsManager = await RoundsManager.new()
 
@@ -33,16 +31,8 @@ contract("RoundsManager", accounts => {
         await bondingManager.initialize(protocol.address)
     }
 
-    const teardown = async () => {
-        await rpc.revert(snapshotId)
-    }
-
     beforeEach(async () => {
         await setup()
-    })
-
-    afterEach(async () => {
-        await teardown()
     })
 
     describe("currentRound", () => {

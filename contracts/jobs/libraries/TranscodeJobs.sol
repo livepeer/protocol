@@ -4,6 +4,9 @@ import "./ECVerify.sol";
 import "./MerkleProof.sol";
 
 library TranscodeJobs {
+    // Prefix hashed with message hash when a signature is produced by the eth_sign RPC call
+    string constant personalHashPrefix = "\u0019Ethereum Signed Message:\n32";
+
     // Represents a transcode job
     struct Job {
         uint256 jobId;                        // Unique identifer for job
@@ -198,7 +201,7 @@ library TranscodeJobs {
                                  _verificationRate
                                  )) return false;
         // Check if segment was signed by broadcaster
-        if (!ECVerify.ecverify(segmentHash(self.jobs[_jobId].streamId, _segmentSequenceNumber, _dataHash),
+        if (!ECVerify.ecverify(personalSegmentHash(self.jobs[_jobId].streamId, _segmentSequenceNumber, _dataHash),
                                _broadcasterSig,
                                self.jobs[_jobId].broadcasterAddress)) return false;
         // Check if transcode claim is included in the Merkle root submitted during the last call to claimWork()
@@ -242,6 +245,18 @@ library TranscodeJobs {
      */
     function segmentHash(string _streamId, uint256 _segmentSequenceNumber, bytes32 _dataHash) internal constant returns (bytes32) {
         return keccak256(_streamId, _segmentSequenceNumber, _dataHash);
+    }
+
+    /*
+     * @dev Compute the personal segment hash of a segment. Hashes the concatentation of the personal hash prefix and the segment hash
+     * @param _streamId Stream identifier
+     * @param _segmentSequenceNumber Segment sequence number in stream
+     * @param _dataHash Segment data hash
+     */
+    function personalSegmentHash(string _streamId, uint256 _segmentSequenceNumber, bytes32 _dataHash) internal constant returns (bytes32) {
+        bytes memory prefixBytes = bytes(personalHashPrefix);
+
+        return keccak256(prefixBytes, segmentHash(_streamId, _segmentSequenceNumber, _dataHash));
     }
 
     /*

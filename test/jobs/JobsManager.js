@@ -17,7 +17,6 @@ const JOB_ENDING_PERIOD = 100
 
 contract("JobsManager", accounts => {
     let rpc
-    let snapshotId
     let token
     let bondingManager
     let roundsManager
@@ -25,7 +24,6 @@ contract("JobsManager", accounts => {
 
     const setup = async () => {
         rpc = new RPC(web3)
-        snapshotId = await rpc.snapshot()
 
         // Start at new round
         await rpc.waitUntilNextBlockMultiple(20, ROUND_LENGTH)
@@ -55,12 +53,8 @@ contract("JobsManager", accounts => {
         await jobsManager.initialize(protocol.address)
     }
 
-    const teardown = async () => {
-        await rpc.revert(snapshotId)
-    }
-
     describe("job", () => {
-        beforeEach(async () => {
+        before(async () => {
             await setup()
 
             const blockRewardCut = 10
@@ -74,24 +68,7 @@ contract("JobsManager", accounts => {
             await bondingManager.bond(100, accounts[0], {from: accounts[1]})
         })
 
-        afterEach(async () => {
-            await teardown()
-        })
-
         it("should create a new job", async () => {
-            // Fast foward to next round
-            await rpc.waitUntilNextBlockMultiple(20, ROUND_LENGTH)
-            await roundsManager.initializeRound({from: accounts[0]})
-
-            const streamId = "1"
-            const dummyTranscodingOptions = "0x123"
-            const maxPricePerSegment = 100
-
-            // Account 2 creates job
-            await jobsManager.job(streamId, dummyTranscodingOptions, maxPricePerSegment, {from: accounts[2]})
-        })
-
-        it("should fire a NewJob event with job id and elected transcoder", async () => {
             // Fast foward to next round
             await rpc.waitUntilNextBlockMultiple(20, ROUND_LENGTH)
             await roundsManager.initializeRound({from: accounts[0]})
@@ -115,7 +92,7 @@ contract("JobsManager", accounts => {
     })
 
     describe("claimWork", () => {
-        beforeEach(async () => {
+        before(async () => {
             await setup()
 
             const blockRewardCut = 10
@@ -149,25 +126,6 @@ contract("JobsManager", accounts => {
             await rpc.wait(20, JOB_ENDING_PERIOD)
         })
 
-        afterEach(async () => {
-            await teardown()
-        })
-
-        it("should set transcode claims details for job", async () => {
-            const jobId = 0
-            const dummyTranscodeClaimsRoot = "0x1000000000000000000000000000000000000000000000000000000000000000"
-            // Account 0 claims work
-            await jobsManager.claimWork(jobId, 0, 10, dummyTranscodeClaimsRoot, {from: accounts[0]})
-
-            const claimWorkBlock = web3.eth.blockNumber
-            const transcodeClaimsDetails = await jobsManager.getJobTranscodeClaimsDetails(jobId)
-            assert.equal(transcodeClaimsDetails[0], claimWorkBlock, "last claimed work block incorrect")
-            assert.equal(transcodeClaimsDetails[1], claimWorkBlock + VERIFICATION_PERIOD,"end verification block incorrect")
-            assert.equal(transcodeClaimsDetails[2], 0, "start segment sequence number incorrect")
-            assert.equal(transcodeClaimsDetails[3], 10, "end segment sequence number incorrect")
-            assert.equal(transcodeClaimsDetails[4], dummyTranscodeClaimsRoot, "transcode claims root incorrect")
-        })
-
         it("should throw for invalid job id", async () => {
             const jobId = 2
             const dummyTranscodeClaimsRoot = "0x1000000000000000000000000000000000000000000000000000000000000000"
@@ -189,12 +147,24 @@ contract("JobsManager", accounts => {
             await expectThrow(jobsManager.claimWork(jobId, 0, 10, dummyTranscodeClaimsRoot, {from: accounts[3]}))
         })
 
-        it("should throw if previous verification period is not over", async () => {
+        it("should set transcode claims details for job", async () => {
             const jobId = 0
             const dummyTranscodeClaimsRoot = "0x1000000000000000000000000000000000000000000000000000000000000000"
             // Account 0 claims work
             await jobsManager.claimWork(jobId, 0, 10, dummyTranscodeClaimsRoot, {from: accounts[0]})
 
+            const claimWorkBlock = web3.eth.blockNumber
+            const transcodeClaimsDetails = await jobsManager.getJobTranscodeClaimsDetails(jobId)
+            assert.equal(transcodeClaimsDetails[0], claimWorkBlock, "last claimed work block incorrect")
+            assert.equal(transcodeClaimsDetails[1], claimWorkBlock + VERIFICATION_PERIOD,"end verification block incorrect")
+            assert.equal(transcodeClaimsDetails[2], 0, "start segment sequence number incorrect")
+            assert.equal(transcodeClaimsDetails[3], 10, "end segment sequence number incorrect")
+            assert.equal(transcodeClaimsDetails[4], dummyTranscodeClaimsRoot, "transcode claims root incorrect")
+        })
+
+        it("should throw if previous verification period is not over", async () => {
+            const jobId = 0
+            const dummyTranscodeClaimsRoot = "0x1000000000000000000000000000000000000000000000000000000000000000"
             // Account 0 claims work again
             await expectThrow(jobsManager.claimWork(jobId, 11, 20, dummyTranscodeClaimsRoot, {from: accounts[0]}))
         })
@@ -238,7 +208,7 @@ contract("JobsManager", accounts => {
         let root
         let proof
 
-        beforeEach(async () => {
+        before(async () => {
             await setup()
 
             const blockRewardCut = 10
@@ -267,10 +237,10 @@ contract("JobsManager", accounts => {
             // Fast foward through job ending period
             await rpc.wait(20, JOB_ENDING_PERIOD)
 
-            bSig0 = utils.toBuffer(await web3.eth.sign(accounts[2], utils.bufferToHex(s0)));
-            bSig1 = utils.toBuffer(await web3.eth.sign(accounts[2], utils.bufferToHex(s1)));
-            bSig2 = utils.toBuffer(await web3.eth.sign(accounts[2], utils.bufferToHex(s2)));
-            bSig3 = utils.toBuffer(await web3.eth.sign(accounts[2], utils.bufferToHex(s3)));
+            bSig0 = utils.toBuffer(web3.eth.sign(accounts[2], utils.bufferToHex(s0)));
+            bSig1 = utils.toBuffer(web3.eth.sign(accounts[2], utils.bufferToHex(s1)));
+            bSig2 = utils.toBuffer(web3.eth.sign(accounts[2], utils.bufferToHex(s2)));
+            bSig3 = utils.toBuffer(web3.eth.sign(accounts[2], utils.bufferToHex(s3)));
 
             tClaim0 = abi.soliditySHA3(["string", "uint256", "bytes", "bytes", "bytes"], [streamId, 0, d0, tD0, bSig0]);
             tClaim1 = abi.soliditySHA3(["string", "uint256", "bytes", "bytes", "bytes"], [streamId, 1, d1, tD1, bSig1]);
@@ -284,17 +254,6 @@ contract("JobsManager", accounts => {
 
             // Account 0 (transcoder) claims work for job 0
             await jobsManager.claimWork(0, 0, 3, root, {from: accounts[0]})
-        })
-
-        afterEach(async () => {
-            await teardown()
-        })
-
-        it("should not throw with valid parameters", async () => {
-            const jobId = 0
-            const segmentSequenceNumber = 0
-            // Account 0 calls verify with job 0
-            await jobsManager.verify(jobId, segmentSequenceNumber, utils.bufferToHex(d0), utils.bufferToHex(tD0), utils.bufferToHex(bSig0), proof, {from: accounts[0]})
         })
 
         it("should throw for invalid job id", async () => {
@@ -325,16 +284,19 @@ contract("JobsManager", accounts => {
             await expectThrow(jobsManager.verify(jobId, segmentSequenceNumber, utils.bufferToHex(d0), utils.bufferToHex(tD0), utils.bufferToHex(bSig0), proof, {from: accounts[0]}))
         })
 
-        it("should throw if segment not signed by broadcaster of job", async () => {
-
-        })
-
         it("should throw if submitted Merkle proof is invalid", async () => {
             const jobId = 0
             const segmentSequenceNumber = 0
             // Account 0 calls verify with job 0
             // This should fail because bSig3 is submitted instead of bSig0 which is part of the transcode claim tClaim0 being verified
             await expectThrow(jobsManager.verify(jobId, segmentSequenceNumber, utils.bufferToHex(d0), utils.bufferToHex(tD0), utils.bufferToHex(bSig3), proof, {from: accounts[0]}))
+        })
+
+        it("should not throw with valid parameters", async () => {
+            const jobId = 0
+            const segmentSequenceNumber = 0
+            // Account 0 calls verify with job 0
+            await jobsManager.verify(jobId, segmentSequenceNumber, utils.bufferToHex(d0), utils.bufferToHex(tD0), utils.bufferToHex(bSig0), proof, {from: accounts[0]})
         })
     })
 
@@ -362,10 +324,6 @@ contract("JobsManager", accounts => {
 
             // Account 2 creates job
             await jobsManager.job(streamId, dummyTranscodingOptions, maxPricePerSegment, {from: accounts[2]})
-        })
-
-        after(async () => {
-            await teardown()
         })
 
         describe("getJobDetails", () => {
