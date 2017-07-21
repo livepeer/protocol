@@ -1,4 +1,4 @@
-pragma solidity ^0.4.8;
+pragma solidity ^0.4.11;
 
 import '../installed_contracts/zeppelin/contracts/token/MintableToken.sol';
 import '../installed_contracts/zeppelin/contracts/ownership/Ownable.sol';
@@ -13,9 +13,7 @@ contract LivepeerToken is MintableToken {
     string public symbol = "LPT";
     string public version = "0.1";
 
-    function LivepeerToken() {
-
-    }
+    function LivepeerToken() {}
 
     /* Don't accept random ETH sent to this contract */
     function () {

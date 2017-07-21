@@ -7,7 +7,7 @@
     "test": "test"
   },
   "scripts": {
-    "test": "docker run -d -p 8545:8545 --name testrpc wbuchwalter/testrpc && truffle test",
+    "test": "docker run -d -p 8545:8545 --name testrpc yondon/testrpc && truffle test",
     "posttest": "docker stop testrpc"
   },
   "repository": {
@@ -33,7 +33,6 @@
   },
   "dependencies": {
     "mkdirp": "^0.5.1",
-    "truffle": "^3.2.2",
-    "web3": "^0.19.0"
+    "truffle": "^3.2.2"
   }
 }

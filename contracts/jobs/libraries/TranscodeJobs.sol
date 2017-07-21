@@ -1,14 +1,17 @@
-pragma solidity ^0.4.8;
+pragma solidity ^0.4.11;
 
 import "./ECVerify.sol";
 import "./MerkleProof.sol";
 
 library TranscodeJobs {
+    // Prefix hashed with message hash when a signature is produced by the eth_sign RPC call
+    string constant personalHashPrefix = "\u0019Ethereum Signed Message:\n32";
+
     // Represents a transcode job
     struct Job {
         uint256 jobId;                        // Unique identifer for job
         string streamId;                      // Unique identifier for stream.
-        bytes32 transcodingOptions;           // Options used for transcoding
+        string transcodingOptions;            // Options used for transcoding
         uint256 maxPricePerSegment;           // Max price (in LPT base units) per segment of a stream
         address broadcasterAddress;           // Address of broadcaster that requestes a transcoding job
         address transcoderAddress;            // Address of transcoder selected for the job
@@ -29,7 +32,7 @@ library TranscodeJobs {
     enum JobStatus { Inactive, Active }
 
     // Events
-    event NewJob(address indexed transcoder, address indexed broadcaster);
+    event NewJob(address indexed transcoder, address indexed broadcaster, uint256 jobId);
 
     /*
      * Compute status of job
@@ -57,16 +60,17 @@ library TranscodeJobs {
      * @param _maxPricePerSegment Max price (in LPT base units) to pay for transcoding a segment of a stream
      * @param _electedTranscoder Address of elected transcoder for the new job
      */
-    function newJob(Jobs storage self, string _streamId, bytes32 _transcodingOptions, uint256 _maxPricePerSegment, address _electedTranscoder) returns (bool) {
+    function newJob(Jobs storage self, string _streamId, string _transcodingOptions, uint256 _maxPricePerSegment, address _electedTranscoder) returns (bool) {
         self.jobs[self.numJobs].jobId = self.numJobs;
         self.jobs[self.numJobs].streamId = _streamId;
         self.jobs[self.numJobs].transcodingOptions = _transcodingOptions;
         self.jobs[self.numJobs].maxPricePerSegment = _maxPricePerSegment;
         self.jobs[self.numJobs].broadcasterAddress = msg.sender;
         self.jobs[self.numJobs].transcoderAddress = _electedTranscoder;
-        self.numJobs++;
 
-        NewJob(_electedTranscoder, msg.sender);
+        NewJob(_electedTranscoder, msg.sender, self.numJobs);
+
+        self.numJobs++;
 
         // TODO: Validation on _transcodingOptions
 
@@ -80,14 +84,13 @@ library TranscodeJobs {
      * @param self Jobs struct storage receiver
      * @param _jobId Job identifier
      */
-    function getJob(Jobs storage self, uint256 _jobId) constant returns (uint256, bytes32, uint256, address, address, uint256) {
+    function getJobDetails(Jobs storage self, uint256 _jobId) constant returns (uint256, uint256, address, address, uint256) {
         // Check for valid job id
         if (_jobId >= self.numJobs) throw;
 
         Job job = self.jobs[_jobId];
 
         return (job.jobId,
-                job.transcodingOptions,
                 job.maxPricePerSegment,
                 job.broadcasterAddress,
                 job.transcoderAddress,
@@ -198,7 +201,7 @@ library TranscodeJobs {
                                  _verificationRate
                                  )) return false;
         // Check if segment was signed by broadcaster
-        if (!ECVerify.ecverify(segmentHash(self.jobs[_jobId].streamId, _segmentSequenceNumber, _dataHash),
+        if (!ECVerify.ecverify(personalSegmentHash(self.jobs[_jobId].streamId, _segmentSequenceNumber, _dataHash),
                                _broadcasterSig,
                                self.jobs[_jobId].broadcasterAddress)) return false;
         // Check if transcode claim is included in the Merkle root submitted during the last call to claimWork()
@@ -242,6 +245,18 @@ library TranscodeJobs {
      */
     function segmentHash(string _streamId, uint256 _segmentSequenceNumber, bytes32 _dataHash) internal constant returns (bytes32) {
         return keccak256(_streamId, _segmentSequenceNumber, _dataHash);
+    }
+
+    /*
+     * @dev Compute the personal segment hash of a segment. Hashes the concatentation of the personal hash prefix and the segment hash
+     * @param _streamId Stream identifier
+     * @param _segmentSequenceNumber Segment sequence number in stream
+     * @param _dataHash Segment data hash
+     */
+    function personalSegmentHash(string _streamId, uint256 _segmentSequenceNumber, bytes32 _dataHash) internal constant returns (bytes32) {
+        bytes memory prefixBytes = bytes(personalHashPrefix);
+
+        return keccak256(prefixBytes, segmentHash(_streamId, _segmentSequenceNumber, _dataHash));
     }
 
     /*

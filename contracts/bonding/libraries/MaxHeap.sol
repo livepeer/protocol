@@ -1,7 +1,8 @@
-pragma solidity ^0.4.8;
+pragma solidity ^0.4.11;
 
 import "./Node.sol";
-import "../installed_contracts/zeppelin/contracts/SafeMath.sol";
+
+import "../../../installed_contracts/zeppelin/contracts/SafeMath.sol";
 
 library MaxHeap {
     using SafeMath for uint256;

@@ -1,4 +1,4 @@
-pragma solidity ^0.4.8;
+pragma solidity ^0.4.11;
 
 //
 // The new assembly support in Solidity makes writing helpers easy.
