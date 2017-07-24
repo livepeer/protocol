@@ -9,6 +9,7 @@ var LivepeerToken = artifacts.require("LivepeerToken")
 var BondingManager = artifacts.require("BondingManager")
 var RoundsManager = artifacts.require("RoundsManager")
 var JobsManager = artifacts.require("JobsManager")
+var IdentityVerifier = artifacts.require("IdentityVerifier")
 
 const ROUND_LENGTH = 50
 const CYCLE_LENGTH = 25
@@ -39,7 +40,9 @@ contract("LivepeerProtocolIntegration", accounts => {
         token.transferOwnership(bondingManager.address, {from: accounts[0]})
 
         roundsManager = await RoundsManager.new()
-        jobsManager = await JobsManager.new()
+
+        const verifier = await IdentityVerifier.new()
+        jobsManager = await JobsManager.new(verifier.address)
 
         const protocol = await LivepeerProtocol.new()
         const bondingManagerKey = await protocol.bondingManagerKey.call()

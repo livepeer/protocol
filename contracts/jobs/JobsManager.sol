@@ -149,6 +149,12 @@ contract JobsManager is IJobsManager, Verifiable, Controllable {
         return true;
     }
 
+    /*
+     * @dev Callback function that receives the results of transcoding verification
+     * @param _jobId Job identifier
+     * @param _segmentSequenceNumber Segment being verified for job
+     * @param _result Boolean result of whether verification succeeded or not
+     */
     function receiveVerification(uint256 _jobId, uint256 _segmentSequenceNumber, bool _result) onlyVerifier external returns (bool) {
         // TODO: Check if result matches transcoded data hash
 
