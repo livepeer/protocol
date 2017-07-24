@@ -4,10 +4,15 @@ import "./IJobsManager.sol";
 import "../Controllable.sol";
 import "../LivepeerProtocol.sol";
 import "../bonding/IBondingManager.sol";
+import "../verification/Verifiable.sol";
+import "../verification/Verifier.sol";
 import "./libraries/TranscodeJobs.sol";
 
-contract JobsManager is IJobsManager, Controllable {
+contract JobsManager is IJobsManager, Verifiable, Controllable {
     using TranscodeJobs for TranscodeJobs.Jobs;
+
+    // Verifier address
+    Verifier public verifier;
 
     // % of segments to be verified. 1 / verificationRate == % to be verified
     uint64 public verificationRate;
@@ -24,10 +29,19 @@ contract JobsManager is IJobsManager, Controllable {
     // Transcoding jobs
     TranscodeJobs.Jobs jobs;
 
+    // Check if sender is Verifier contract
+    modifier onlyVerifier() {
+        if (msg.sender != address(verifier)) throw;
+        _;
+    }
+
     // Events
     event NewJob(address indexed transcoder, address indexed broadcaster, uint256 jobId);
 
-    function JobsManager() {
+    function JobsManager(address _verifier) {
+        // Set Verifier address
+        verifier = Verifier(_verifier);
+
         // Verify all segments.
         // TODO: This is a test value. We will need to provide a realistic default value
         verificationRate = 1;
@@ -127,7 +141,16 @@ contract JobsManager is IJobsManager, Controllable {
     function verify(uint256 _jobId, uint256 _segmentSequenceNumber, bytes32 _dataHash, bytes32 _transcodedDataHash, bytes _broadcasterSig, bytes _proof) external returns (bool) {
         if (!jobs.validateTranscoderClaim(_jobId, _segmentSequenceNumber, _dataHash, _transcodedDataHash, _broadcasterSig, _proof, verificationRate)) throw;
 
-        // TODO: Invoke transcoding verification process
+        // TODO: use a real verification code hash
+        bytes32 verificationCodeHash = 0x2222;
+        // Invoke transcoding verification. This is async and will result in a callback to receiveVerification() which is implemented by this contract
+        verifier.verify(_jobId, _segmentSequenceNumber, verificationCodeHash, _transcodedDataHash, this);
+
+        return true;
+    }
+
+    function receiveVerification(uint256 _jobId, uint256 _segmentSequenceNumber, bool _result) onlyVerifier external returns (bool) {
+        // TODO: Check if result matches transcoded data hash
 
         return true;
     }
