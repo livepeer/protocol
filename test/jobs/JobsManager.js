@@ -9,6 +9,7 @@ var LivepeerToken = artifacts.require("LivepeerToken")
 var BondingManager = artifacts.require("BondingManager")
 var RoundsManager = artifacts.require("RoundsManager")
 var JobsManager = artifacts.require("JobsManager")
+var IdentityVerifier = artifacts.require("IdentityVerifier")
 
 const ROUND_LENGTH = 50
 const NUM_ACTIVE_TRANSCODERS = 1
@@ -38,7 +39,9 @@ contract("JobsManager", accounts => {
         token.transferOwnership(bondingManager.address, {from: accounts[0]})
 
         roundsManager = await RoundsManager.new()
-        jobsManager = await JobsManager.new()
+
+        const verifier = await IdentityVerifier.new()
+        jobsManager = await JobsManager.new(verifier.address)
 
         const protocol = await LivepeerProtocol.new()
         const bondingManagerKey = await protocol.bondingManagerKey.call()
@@ -284,6 +287,15 @@ contract("JobsManager", accounts => {
             await expectThrow(jobsManager.verify(jobId, segmentSequenceNumber, utils.bufferToHex(d0), utils.bufferToHex(tD0), utils.bufferToHex(bSig0), proof, {from: accounts[0]}))
         })
 
+        it("should throw if segment not signed by broadcaster", async () => {
+            const jobId = 0
+            const segmentSequenceNumber = 0
+            const badBSig0 = utils.toBuffer(web3.eth.sign(accounts[3], utils.bufferToHex(s0)));
+            // Account 0 calls verify with job 0
+            // This should fail because badBSig0 is signed by Account 3 and not the broadcaster Account 2
+            await expectThrow(jobsManager.verify(jobId, segmentSequenceNumber, utils.bufferToHex(d0), utils.bufferToHex(tD0), utils.bufferToHex(badBSig0), proof, {from: accounts[0]}))
+        })
+
         it("should throw if submitted Merkle proof is invalid", async () => {
             const jobId = 0
             const segmentSequenceNumber = 0
@@ -297,6 +309,21 @@ contract("JobsManager", accounts => {
             const segmentSequenceNumber = 0
             // Account 0 calls verify with job 0
             await jobsManager.verify(jobId, segmentSequenceNumber, utils.bufferToHex(d0), utils.bufferToHex(tD0), utils.bufferToHex(bSig0), proof, {from: accounts[0]})
+        })
+    })
+
+    describe("receiveVerification", () => {
+        before(async () => {
+            await setup()
+        })
+
+        it("should throw if sender is not Verifier", async () => {
+            const jobId = 0
+            const segmentSequenceNumber = 0
+            const result = true
+
+            // Account 0 (not Verifier) calls receiveVerification
+            await expectThrow(jobsManager.receiveVerification(jobId, segmentSequenceNumber, result, {from: accounts[0]}))
         })
     })
 

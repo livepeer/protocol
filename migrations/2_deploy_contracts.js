@@ -8,6 +8,7 @@ var TranscodeJobs = artifacts.require("TranscodeJobs")
 var BondingManager = artifacts.require("BondingManager")
 var RoundsManager = artifacts.require("RoundsManager")
 var JobsManager = artifacts.require("JobsManager")
+var IdentityVerifier = artifacts.require("IdentityVerifier")
 var LivepeerToken = artifacts.require("LivepeerToken");
 var LivepeerProtocol = artifacts.require("LivepeerProtocol");
 
@@ -38,7 +39,10 @@ module.exports = function(deployer) {
         deployer.deploy(BondingManager, LivepeerToken.address)
     })
 
-    deployer.deploy(LivepeerProtocol)
-    deployer.deploy(JobsManager)
+    deployer.deploy(IdentityVerifier).then(() => {
+        deployer.deploy(JobsManager, IdentityVerifier.address)
+    })
+
     deployer.deploy(RoundsManager)
+    deployer.deploy(LivepeerProtocol)
 };
