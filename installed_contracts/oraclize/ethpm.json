@@ -1,0 +1,18 @@
+{
+  "authors": [
+    "Oraclize Ltd <info@oraclize.it>"
+  ],
+  "license": "MIT",
+  "description": "Ethereum Oraclize API",
+  "keywords": [
+    "oracles"
+  ],
+  "links": {},
+  "sources": [
+    "./contracts/usingOraclize.sol"
+  ],
+  "dependencies": {},
+  "manifest_version": 1,
+  "package_name": "oraclize",
+  "version": "1.0.6"
+}

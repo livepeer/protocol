@@ -138,13 +138,13 @@ contract JobsManager is IJobsManager, Verifiable, Controllable {
      * @param _broadcasterSig Broadcaster's signature over segment
      * @param _proof Merkle proof for the signed transcode claim
      */
-    function verify(uint256 _jobId, uint256 _segmentSequenceNumber, bytes32 _dataHash, bytes32 _transcodedDataHash, bytes _broadcasterSig, bytes _proof) external returns (bool) {
+    function verify(uint256 _jobId, uint256 _segmentSequenceNumber, bytes32 _dataHash, bytes32 _transcodedDataHash, bytes _broadcasterSig, bytes _proof) payable external returns (bool) {
         if (!jobs.validateTranscoderClaim(_jobId, _segmentSequenceNumber, _dataHash, _transcodedDataHash, _broadcasterSig, _proof, verificationRate)) throw;
 
         // TODO: use a real verification code hash
         bytes32 verificationCodeHash = 0x2222;
         // Invoke transcoding verification. This is async and will result in a callback to receiveVerification() which is implemented by this contract
-        verifier.verify(_jobId, _segmentSequenceNumber, verificationCodeHash, _transcodedDataHash, this);
+        verifier.verify(_jobId, _segmentSequenceNumber, verificationCodeHash, _dataHash, _transcodedDataHash, this);
 
         return true;
     }

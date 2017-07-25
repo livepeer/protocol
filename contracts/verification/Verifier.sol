@@ -6,5 +6,5 @@ pragma solidity ^0.4.11;
  */
 contract Verifier {
     // External functions
-    function verify(uint256 _jobId, uint256 _segmentSequenceNumber, bytes32 _code, bytes32 _transcodedDataHash, address _callbackContract) external returns (bool);
+    function verify(uint256 _jobId, uint256 _segmentSequenceNumber, bytes32 _code, bytes32 _dataHash, bytes32 _transcodedDataHash, address _callbackContract) payable external returns (bool);
 }
