@@ -4,12 +4,12 @@ import MerkleTree from "../../utils/merkleTree"
 import abi from "ethereumjs-abi"
 import utils from "ethereumjs-util"
 
-var LivepeerProtocol = artifacts.require("LivepeerProtocol")
-var LivepeerToken = artifacts.require("LivepeerToken")
-var BondingManager = artifacts.require("BondingManager")
-var RoundsManager = artifacts.require("RoundsManager")
-var JobsManager = artifacts.require("JobsManager")
-var IdentityVerifier = artifacts.require("IdentityVerifier")
+const LivepeerProtocol = artifacts.require("LivepeerProtocol")
+const LivepeerToken = artifacts.require("LivepeerToken")
+const BondingManager = artifacts.require("BondingManager")
+const RoundsManager = artifacts.require("RoundsManager")
+const JobsManager = artifacts.require("JobsManager")
+const IdentityVerifier = artifacts.require("IdentityVerifier")
 
 const ROUND_LENGTH = 50
 const NUM_ACTIVE_TRANSCODERS = 1

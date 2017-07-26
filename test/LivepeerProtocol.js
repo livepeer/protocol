@@ -1,8 +1,8 @@
 import RPC from "../utils/rpc"
 import expectThrow from "./helpers/expectThrow"
 
-var LivepeerProtocol = artifacts.require("LivepeerProtocol")
-var RoundsManager = artifacts.require("RoundsManager")
+const LivepeerProtocol = artifacts.require("LivepeerProtocol")
+const RoundsManager = artifacts.require("RoundsManager")
 
 contract("LivepeerProtocol", accounts => {
     describe("constructor", () => {

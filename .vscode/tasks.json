@@ -8,7 +8,11 @@
             "script": "lint",
             "problemMatcher": [
                 "$eslint-stylish"
-            ]
+            ],
+            "presentation": {
+                "reveal": "never",
+                "panel": "shared"
+            }
         }
     ]
 }

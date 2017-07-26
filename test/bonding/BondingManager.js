@@ -1,10 +1,10 @@
 import RPC from "../../utils/rpc"
 import expectThrow from "../helpers/expectThrow"
 
-var LivepeerProtocol = artifacts.require("LivepeerProtocol")
-var LivepeerToken = artifacts.require("LivepeerToken")
-var BondingManager = artifacts.require("BondingManager")
-var RoundsManager = artifacts.require("RoundsManager")
+const LivepeerProtocol = artifacts.require("LivepeerProtocol")
+const LivepeerToken = artifacts.require("LivepeerToken")
+const BondingManager = artifacts.require("BondingManager")
+const RoundsManager = artifacts.require("RoundsManager")
 
 const ROUND_LENGTH = 50
 const UNBONDING_PERIOD = 2
