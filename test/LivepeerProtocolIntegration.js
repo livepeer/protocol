@@ -1,5 +1,4 @@
 import RPC from "../utils/rpc"
-import expectThrow from "./helpers/expectThrow"
 import MerkleTree from "../utils/merkleTree"
 import abi from "ethereumjs-abi"
 import utils from "ethereumjs-util"

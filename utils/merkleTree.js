@@ -1,4 +1,4 @@
-import { sha3 } from "ethereumjs-util";
+import {sha3} from "ethereumjs-util";
 
 export default class MerkleTree {
   constructor(elements) {
@@ -47,8 +47,8 @@ export default class MerkleTree {
   }
 
   combinedHash(first, second) {
-    if (!first) { return second; }
-    if (!second) { return first; }
+    if (!first) {return second;}
+    if (!second) {return first;}
 
     return sha3(this.sortAndConcat(first, second));
   }

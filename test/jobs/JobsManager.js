@@ -159,7 +159,7 @@ contract("JobsManager", accounts => {
             const claimWorkBlock = web3.eth.blockNumber
             const transcodeClaimsDetails = await jobsManager.getJobTranscodeClaimsDetails(jobId)
             assert.equal(transcodeClaimsDetails[0], claimWorkBlock, "last claimed work block incorrect")
-            assert.equal(transcodeClaimsDetails[1], claimWorkBlock + VERIFICATION_PERIOD,"end verification block incorrect")
+            assert.equal(transcodeClaimsDetails[1], claimWorkBlock + VERIFICATION_PERIOD, "end verification block incorrect")
             assert.equal(transcodeClaimsDetails[2], 0, "start segment sequence number incorrect")
             assert.equal(transcodeClaimsDetails[3], 10, "end segment sequence number incorrect")
             assert.equal(transcodeClaimsDetails[4], dummyTranscodeClaimsRoot, "transcode claims root incorrect")
