@@ -1,4 +1,3 @@
-import RPC from "../utils/rpc"
 import expectThrow from "./helpers/expectThrow"
 
 const LivepeerProtocol = artifacts.require("LivepeerProtocol")
@@ -14,10 +13,8 @@ contract("LivepeerProtocol", accounts => {
     })
 
     let protocol
-    let rpc
 
     const setup = async () => {
-        rpc = new RPC(web3)
         protocol = await LivepeerProtocol.new()
     }
 
