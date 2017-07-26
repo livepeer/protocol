@@ -7,7 +7,7 @@ export default class RPC {
         const req = {
             jsonrpc: "2.0",
             method: method,
-            id: new Date().getTime()
+            id: new Date().getTime(),
         };
 
         if (arg) req.params = arg;
@@ -16,7 +16,7 @@ export default class RPC {
             this.web3.currentProvider.sendAsync(req, (err, result) => {
                 if (err) {
                     reject(err);
-                } else if (result && result.error){
+                } else if (result && result.error) {
                     reject(new Error("RPC Error: " + (result.error.message || result.error)));
                 } else {
                     resolve(result);
@@ -43,24 +43,24 @@ export default class RPC {
     // Wait a number of blocks using evm_mine and evm_increaseTime
     // https://github.com/DigixGlobal/tempo
     wait(seconds = 20, blocks = 1) {
-        return new Promise((resolve) => {
-            return this.web3.eth.getBlock('latest', (e, { number }) => {
+        return new Promise(resolve => {
+            return this.web3.eth.getBlock("latest", (e, {number}) => {
                 resolve(blocks + number);
             });
-        }).then((targetBlock) => {
+        }).then(targetBlock => {
             return this.waitUntilBlock(seconds, targetBlock);
         });
     }
 
     waitUntilBlock(seconds, targetBlock) {
-        return new Promise((resolve) => {
+        return new Promise(resolve => {
             const asyncIterator = () => {
-                return this.web3.eth.getBlock('latest', (e, { number }) => {
+                return this.web3.eth.getBlock("latest", (e, {number}) => {
                     if (number >= targetBlock - 1) {
-                        return this.sendAsync('evm_increaseTime', [seconds])
-                            .then(() => this.sendAsync('evm_mine')).then(resolve);
+                        return this.sendAsync("evm_increaseTime", [seconds])
+                            .then(() => this.sendAsync("evm_mine")).then(resolve);
                     }
-                    return this.sendAsync('evm_mine').then(asyncIterator);
+                    return this.sendAsync("evm_mine").then(asyncIterator);
                 });
             };
             asyncIterator();
@@ -82,7 +82,7 @@ export default class RPC {
     }
 
     waitUntilNextBlockMultiple(seconds = 20, blockMultiple, multiples = 1) {
-        return new Promise((resolve) => {
+        return new Promise(resolve => {
             return this.web3.eth.getBlockNumber((e, blockNum) => {
                 resolve(blockNum);
             });
