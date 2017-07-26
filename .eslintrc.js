@@ -9,7 +9,7 @@ module.exports = {
 		"max-len": "off",
 		"new-cap": ["error", {"capIsNewExceptions": ["NewJob"]}],
 		"require-jsdoc": "off",
-		"semi": "off",
+		"semi": ["error", "never"],
 		"quotes": ["error", "double"],
 	}
 };

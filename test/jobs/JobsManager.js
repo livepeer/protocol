@@ -179,22 +179,22 @@ contract("JobsManager", accounts => {
         const maxPricePerSegment = 100
 
         // Segment data hashes
-        const d0 = Buffer.from("80084bf2fba02475726feb2cab2d8215eab14bc6bdd8bfb2c8151257032ecd8b", "hex");
-        const d1 = Buffer.from("b039179a8a4ce2c252aa6f2f25798251c19b75fc1508d9d511a191e0487d64a7", "hex");
-        const d2 = Buffer.from("263ab762270d3b73d3e2cddf9acc893bb6bd41110347e5d5e4bd1d3c128ea90a", "hex");
-        const d3 = Buffer.from("4ce8765e720c576f6f5a34ca380b3de5f0912e6e3cc5355542c363891e54594b", "hex");
+        const d0 = Buffer.from("80084bf2fba02475726feb2cab2d8215eab14bc6bdd8bfb2c8151257032ecd8b", "hex")
+        const d1 = Buffer.from("b039179a8a4ce2c252aa6f2f25798251c19b75fc1508d9d511a191e0487d64a7", "hex")
+        const d2 = Buffer.from("263ab762270d3b73d3e2cddf9acc893bb6bd41110347e5d5e4bd1d3c128ea90a", "hex")
+        const d3 = Buffer.from("4ce8765e720c576f6f5a34ca380b3de5f0912e6e3cc5355542c363891e54594b", "hex")
 
         // Segment hashes (streamId, segmentSequenceNumber, dataHash)
-        const s0 = abi.soliditySHA3(["string", "uint256", "bytes"], [streamId, 0, d0]);
-        const s1 = abi.soliditySHA3(["string", "uint256", "bytes"], [streamId, 1, d1]);
-        const s2 = abi.soliditySHA3(["string", "uint256", "bytes"], [streamId, 2, d2]);
-        const s3 = abi.soliditySHA3(["string", "uint256", "bytes"], [streamId, 3, d3]);
+        const s0 = abi.soliditySHA3(["string", "uint256", "bytes"], [streamId, 0, d0])
+        const s1 = abi.soliditySHA3(["string", "uint256", "bytes"], [streamId, 1, d1])
+        const s2 = abi.soliditySHA3(["string", "uint256", "bytes"], [streamId, 2, d2])
+        const s3 = abi.soliditySHA3(["string", "uint256", "bytes"], [streamId, 3, d3])
 
         // Transcoded data hashes
-        const tD0 = Buffer.from("42538602949f370aa331d2c07a1ee7ff26caac9cc676288f94b82eb2188b8465", "hex");
-        const tD1 = Buffer.from("a0b37b8bfae8e71330bd8e278e4a45ca916d00475dd8b85e9352533454c9fec8", "hex");
-        const tD2 = Buffer.from("9f2898da52dedaca29f05bcac0c8e43e4b9f7cb5707c14cc3f35a567232cec7c", "hex");
-        const tD3 = Buffer.from("5a082c81a7e4d5833ee20bd67d2f4d736f679da33e4bebd3838217cb27bec1d3", "hex");
+        const tD0 = Buffer.from("42538602949f370aa331d2c07a1ee7ff26caac9cc676288f94b82eb2188b8465", "hex")
+        const tD1 = Buffer.from("a0b37b8bfae8e71330bd8e278e4a45ca916d00475dd8b85e9352533454c9fec8", "hex")
+        const tD2 = Buffer.from("9f2898da52dedaca29f05bcac0c8e43e4b9f7cb5707c14cc3f35a567232cec7c", "hex")
+        const tD3 = Buffer.from("5a082c81a7e4d5833ee20bd67d2f4d736f679da33e4bebd3838217cb27bec1d3", "hex")
 
         // Broadcaster signatures over segments
         let bSig0
@@ -240,15 +240,15 @@ contract("JobsManager", accounts => {
             // Fast foward through job ending period
             await rpc.wait(20, JOB_ENDING_PERIOD)
 
-            bSig0 = utils.toBuffer(web3.eth.sign(accounts[2], utils.bufferToHex(s0)));
-            bSig1 = utils.toBuffer(web3.eth.sign(accounts[2], utils.bufferToHex(s1)));
-            bSig2 = utils.toBuffer(web3.eth.sign(accounts[2], utils.bufferToHex(s2)));
-            bSig3 = utils.toBuffer(web3.eth.sign(accounts[2], utils.bufferToHex(s3)));
+            bSig0 = utils.toBuffer(web3.eth.sign(accounts[2], utils.bufferToHex(s0)))
+            bSig1 = utils.toBuffer(web3.eth.sign(accounts[2], utils.bufferToHex(s1)))
+            bSig2 = utils.toBuffer(web3.eth.sign(accounts[2], utils.bufferToHex(s2)))
+            bSig3 = utils.toBuffer(web3.eth.sign(accounts[2], utils.bufferToHex(s3)))
 
-            tClaim0 = abi.soliditySHA3(["string", "uint256", "bytes", "bytes", "bytes"], [streamId, 0, d0, tD0, bSig0]);
-            tClaim1 = abi.soliditySHA3(["string", "uint256", "bytes", "bytes", "bytes"], [streamId, 1, d1, tD1, bSig1]);
-            tClaim2 = abi.soliditySHA3(["string", "uint256", "bytes", "bytes", "bytes"], [streamId, 2, d2, tD2, bSig2]);
-            tClaim3 = abi.soliditySHA3(["string", "uint256", "bytes", "bytes", "bytes"], [streamId, 3, d3, tD3, bSig3]);
+            tClaim0 = abi.soliditySHA3(["string", "uint256", "bytes", "bytes", "bytes"], [streamId, 0, d0, tD0, bSig0])
+            tClaim1 = abi.soliditySHA3(["string", "uint256", "bytes", "bytes", "bytes"], [streamId, 1, d1, tD1, bSig1])
+            tClaim2 = abi.soliditySHA3(["string", "uint256", "bytes", "bytes", "bytes"], [streamId, 2, d2, tD2, bSig2])
+            tClaim3 = abi.soliditySHA3(["string", "uint256", "bytes", "bytes", "bytes"], [streamId, 3, d3, tD3, bSig3])
 
             // Generate Merkle root
             const merkleTree = new MerkleTree([tClaim0, tClaim1, tClaim2, tClaim3])
@@ -290,7 +290,7 @@ contract("JobsManager", accounts => {
         it("should throw if segment not signed by broadcaster", async () => {
             const jobId = 0
             const segmentSequenceNumber = 0
-            const badBSig0 = utils.toBuffer(web3.eth.sign(accounts[3], utils.bufferToHex(s0)));
+            const badBSig0 = utils.toBuffer(web3.eth.sign(accounts[3], utils.bufferToHex(s0)))
             // Account 0 calls verify with job 0
             // This should fail because badBSig0 is signed by Account 3 and not the broadcaster Account 2
             await expectThrow(jobsManager.verify(jobId, segmentSequenceNumber, utils.bufferToHex(d0), utils.bufferToHex(tD0), utils.bufferToHex(badBSig0), proof, {from: accounts[0]}))

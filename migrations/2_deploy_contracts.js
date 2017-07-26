@@ -1,16 +1,16 @@
 const Node = artifacts.require("Node")
-const MinHeap = artifacts.require("MinHeap");
-const MaxHeap = artifacts.require("MaxHeap");
+const MinHeap = artifacts.require("MinHeap")
+const MaxHeap = artifacts.require("MaxHeap")
 const TranscoderPools = artifacts.require("TranscoderPools")
-const ECVerify = artifacts.require("ECVerify");
+const ECVerify = artifacts.require("ECVerify")
 const MerkleProof = artifacts.require("MerkleProof")
 const TranscodeJobs = artifacts.require("TranscodeJobs")
 const BondingManager = artifacts.require("BondingManager")
 const RoundsManager = artifacts.require("RoundsManager")
 const JobsManager = artifacts.require("JobsManager")
 const IdentityVerifier = artifacts.require("IdentityVerifier")
-const LivepeerToken = artifacts.require("LivepeerToken");
-const LivepeerProtocol = artifacts.require("LivepeerProtocol");
+const LivepeerToken = artifacts.require("LivepeerToken")
+const LivepeerProtocol = artifacts.require("LivepeerProtocol")
 
 module.exports = function(deployer) {
     deployer.deploy(Node)
@@ -45,4 +45,4 @@ module.exports = function(deployer) {
 
     deployer.deploy(RoundsManager)
     deployer.deploy(LivepeerProtocol)
-};
+}
