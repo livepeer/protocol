@@ -1,9 +1,9 @@
 import RPC from "../../utils/rpc"
 
-var LivepeerProtocol = artifacts.require("LivepeerProtocol")
-var LivepeerToken = artifacts.require("LivepeerToken")
-var BondingManager = artifacts.require("BondingManager")
-var RoundsManager = artifacts.require("RoundsManager")
+const LivepeerProtocol = artifacts.require("LivepeerProtocol")
+const LivepeerToken = artifacts.require("LivepeerToken")
+const BondingManager = artifacts.require("BondingManager")
+const RoundsManager = artifacts.require("RoundsManager")
 
 const ROUND_LENGTH = 50
 const CYCLES_PER_ROUND = 2

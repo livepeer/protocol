@@ -1,8 +1,7 @@
-import RPC from "../utils/rpc"
 import expectThrow from "./helpers/expectThrow"
 
-var LivepeerProtocol = artifacts.require("LivepeerProtocol")
-var RoundsManager = artifacts.require("RoundsManager")
+const LivepeerProtocol = artifacts.require("LivepeerProtocol")
+const RoundsManager = artifacts.require("RoundsManager")
 
 contract("LivepeerProtocol", accounts => {
     describe("constructor", () => {
@@ -14,10 +13,8 @@ contract("LivepeerProtocol", accounts => {
     })
 
     let protocol
-    let rpc
 
     const setup = async () => {
-        rpc = new RPC(web3)
         protocol = await LivepeerProtocol.new()
     }
 
