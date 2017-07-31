@@ -179,13 +179,14 @@ library TranscodeJobs {
      * @param _proof Merkle proof for the signed transcode claim
      * @param _verificationRate % of segments to be verified
      */
-    function validateTranscoderClaim(Jobs storage self,
+    function validateTranscodeClaim(Jobs storage self,
                                      uint256 _jobId,
                                      uint256 _segmentSequenceNumber,
-                                     bytes32 _dataHash, bytes32 _transcodedDataHash,
+                                     string _dataHash,
+                                     string _transcodedDataHash,
                                      bytes _broadcasterSig,
                                      bytes _proof,
-                                     uint64 _verificationRate) constant returns (bool) {
+                                     uint64 _verificationRate) internal constant returns (bool) {
         // Check for valid job id
         if (_jobId >= self.numJobs) throw;
         // Check if job is active
@@ -198,8 +199,7 @@ library TranscodeJobs {
                                  self.jobs[_jobId].lastClaimedSegmentRange[1],
                                  self.jobs[_jobId].lastClaimedWorkBlock,
                                  block.blockhash(self.jobs[_jobId].lastClaimedWorkBlock),
-                                 _verificationRate
-                                 )) return false;
+                                 _verificationRate)) return false;
         // Check if segment was signed by broadcaster
         if (!ECVerify.ecverify(personalSegmentHash(self.jobs[_jobId].streamId, _segmentSequenceNumber, _dataHash),
                                _broadcasterSig,
@@ -243,7 +243,7 @@ library TranscodeJobs {
      * @param _segmentSequenceNumber Segment sequence number in stream
      * @param _dataHash Segment data hash
      */
-    function segmentHash(string _streamId, uint256 _segmentSequenceNumber, bytes32 _dataHash) internal constant returns (bytes32) {
+    function segmentHash(string _streamId, uint256 _segmentSequenceNumber, string _dataHash) constant returns (bytes32) {
         return keccak256(_streamId, _segmentSequenceNumber, _dataHash);
     }
 
@@ -253,7 +253,7 @@ library TranscodeJobs {
      * @param _segmentSequenceNumber Segment sequence number in stream
      * @param _dataHash Segment data hash
      */
-    function personalSegmentHash(string _streamId, uint256 _segmentSequenceNumber, bytes32 _dataHash) internal constant returns (bytes32) {
+    function personalSegmentHash(string _streamId, uint256 _segmentSequenceNumber, string _dataHash) constant returns (bytes32) {
         bytes memory prefixBytes = bytes(personalHashPrefix);
 
         return keccak256(prefixBytes, segmentHash(_streamId, _segmentSequenceNumber, _dataHash));
@@ -267,7 +267,7 @@ library TranscodeJobs {
      * @param _transcodedDataHash Transcoded segment data hash
      * @param _broadcasterSig Broadcaster's signature over segment
      */
-    function transcodeClaimHash(string _streamId, uint256 _segmentSequenceNumber, bytes32 _dataHash, bytes32 _transcodedDataHash, bytes _broadcasterSig) internal constant returns (bytes32) {
+    function transcodeClaimHash(string _streamId, uint256 _segmentSequenceNumber, string _dataHash, string _transcodedDataHash, bytes _broadcasterSig) constant returns (bytes32) {
         return keccak256(_streamId, _segmentSequenceNumber, _dataHash, _transcodedDataHash, _broadcasterSig);
     }
 }

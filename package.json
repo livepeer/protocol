@@ -29,7 +29,7 @@
     "babel-register": "^6.24.1",
     "bignumber.js": "^4.0.1",
     "ethereumjs-abi": "^0.6.4",
-    "ethereumjs-util": "^5.1.2"
+    "ethereumjs-util": "^5.1.2",
   },
   "dependencies": {
     "mkdirp": "^0.5.1",

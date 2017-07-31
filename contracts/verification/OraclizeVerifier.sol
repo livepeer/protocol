@@ -9,11 +9,11 @@ import "../../installed_contracts/oraclize/contracts/usingOraclize.sol";
  * @title Verifier contract that uses Oraclize for off-chain computation
  */
 contract OraclizeVerifier is Verifier, usingOraclize {
+
     // Stores parameters for an Oraclize query
     struct OraclizeQuery {
         uint256 jobId;
         uint256 segmentSequenceNumber;
-        bytes32 transcodedDataHash;
         address callbackContract;
     }
 
@@ -35,7 +35,11 @@ contract OraclizeVerifier is Verifier, usingOraclize {
     function OraclizeVerifier() {
         // OAR used for testing purposes
         OAR = OraclizeAddrResolverI(0x6f485C8BF6fc43eA212E93BBF8ce046C7f1cb475);
+        // Set Oraclize proof
+        oraclize_setProof(proofType_TLSNotary | proofStorage_IPFS);
     }
+
+    event OraclizeCallback(uint256 indexed jobId, uint256 indexed segmentSequenceNumber, bytes proof, bool result);
 
     /*
      * @dev Verify implementation that creates an Oraclize computation query
@@ -46,14 +50,13 @@ contract OraclizeVerifier is Verifier, usingOraclize {
      * @param _transcodedDataHash Content-addressed storage hash of transcoded input data of segment
      * @param _callbackContract Address of Verifiable contract to call back
      */
-    function verify(uint256 _jobId, uint256 _segmentSequenceNumber, bytes32 _code, bytes32 _dataHash, bytes32 _transcodedDataHash, address _callbackContract) payable sufficientOraclizeFunds external returns (bool) {
+    function verify(uint256 _jobId, uint256 _segmentSequenceNumber, string _code, string _dataHash, string _transcodedDataHash, address _callbackContract) payable sufficientOraclizeFunds external returns (bool) {
         // Create Oraclize query
-        bytes32 queryId = oraclize_query("computation", [bytes32ToStr(_code), bytes32ToStr(_dataHash)]);
+        bytes32 queryId = oraclize_query("computation", [_code, _dataHash, _transcodedDataHash], 3000000);
 
         // Store Oraclize query parameters
         oraclizeQueries[queryId].jobId = _jobId;
         oraclizeQueries[queryId].segmentSequenceNumber = _segmentSequenceNumber;
-        oraclizeQueries[queryId].transcodedDataHash = _transcodedDataHash;
         oraclizeQueries[queryId].callbackContract = _callbackContract;
 
         return true;
@@ -64,62 +67,21 @@ contract OraclizeVerifier is Verifier, usingOraclize {
      * @param _queryId Oraclize query identifier
      * @param _result Result of Oraclize computation
      */
-    function __callback(bytes32 _queryId, string _result) onlyOraclize {
+    function __callback(bytes32 _queryId, string _result, bytes _proof) onlyOraclize {
         OraclizeQuery memory oc = oraclizeQueries[_queryId];
 
         // Check if transcoded data hash returned by Oraclize matches originally submitted transcoded data hash
-        if (oc.transcodedDataHash == strToBytes32(_result)) {
+        if (strCompare("true", _result) == 0) {
             // Notify callback contract of successful verification
             if (!Verifiable(oc.callbackContract).receiveVerification(oc.jobId, oc.segmentSequenceNumber, true)) throw;
+            OraclizeCallback(oc.jobId, oc.segmentSequenceNumber, _proof, true);
         } else {
             // Notify callback contract of failed verification
             if (!Verifiable(oc.callbackContract).receiveVerification(oc.jobId, oc.segmentSequenceNumber, false)) throw;
+            OraclizeCallback(oc.jobId, oc.segmentSequenceNumber, _proof, false);
         }
 
         // Remove Oraclize query
         delete oraclizeQueries[_queryId];
-    }
-
-    /*
-     * @dev Convert a string to bytes32
-     * @param _source Source string for conversion
-     */
-    function strToBytes32(string _source) public constant returns (bytes32) {
-        // Check if string is 32 bytes
-        if (bytes(_source).length != 32) throw;
-
-        bytes32 result;
-
-        // Load 32 bytes from source string
-        assembly {
-            result := mload(add(_source, 32))
-        }
-
-        return result;
-    }
-
-    /*
-     * @dev Convert a bytes32 to a string
-     * @param _source Source bytes32 for conversion
-     */
-    function bytes32ToStr(bytes32 _source) public constant returns (string) {
-        bytes memory bytesStr = new bytes(32);
-
-        uint256 charCount = 0;
-        for (uint256 i = 0; i < 32; i++) {
-            byte char = byte(bytes32(uint256(_source) * 2 ** (8 * i)));
-
-            if (char != 0) {
-                bytesStr[charCount] = char;
-                charCount++;
-            }
-        }
-
-        bytes memory bytesStrTrimmed = new bytes(charCount);
-        for (i = 0; i < charCount; i++) {
-            bytesStrTrimmed[i] = bytesStr[i];
-        }
-
-        return string(bytesStrTrimmed);
     }
 }

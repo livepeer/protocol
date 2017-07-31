@@ -28,9 +28,11 @@ module.exports = function(deployer) {
 
     deployer.deploy(ECVerify)
     deployer.link(ECVerify, TranscodeJobs)
+    deployer.link(ECVerify, JobsManager)
 
     deployer.deploy(MerkleProof)
     deployer.link(MerkleProof, TranscodeJobs)
+    deployer.link(MerkleProof, JobsManager)
 
     deployer.deploy(TranscodeJobs)
     deployer.link(TranscodeJobs, JobsManager)

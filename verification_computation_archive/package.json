@@ -1,0 +1,20 @@
+{
+  "name": "verificationCodeArchive",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "ethereumjs-util": "^5.1.2",
+    "multihashes": "^0.4.5"
+  },
+  "devDependencies": {
+    "ipfs-api": "^14.1.1",
+    "shelljs": "^0.7.8"
+  }
+}
