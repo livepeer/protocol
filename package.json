@@ -32,7 +32,7 @@
     "eslint": "^4.3.0",
     "eslint-config-google": "^0.9.1",
     "ethereumjs-abi": "^0.6.4",
-    "ethereumjs-util": "^5.1.2",
+    "ethereumjs-util": "^5.1.2"
   },
   "dependencies": {
     "mkdirp": "^0.5.1",

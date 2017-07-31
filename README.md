@@ -32,6 +32,23 @@ testrpc
 truffle test
 ```
 
+Tests involving verification via Oraclize require [ethereum-bridge](https://github.com/oraclize/ethereum-bridge)
+
+```
+# Start testrpc
+testrpc
+
+# Start ethereum-bridge in another console window
+git clone https://github.com/oraclize/ethereum-bridge.git
+cd ethereum-bridge
+npm install
+node bridge -H localhost:8545 -a 9 --dev --disable-price
+
+# Run tests in another console window
+cd protocol
+truffle test verification_test/**
+```
+
 All contributions and bug fixes are welcome as pull requests back into the repo.
 
 Built using [OpenZeppelin](https://github.com/OpenZeppelin/zeppelin-solidity) and [Truffle](http://truffle.readthedocs.io).
