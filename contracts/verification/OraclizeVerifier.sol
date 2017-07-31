@@ -28,7 +28,7 @@ contract OraclizeVerifier is Verifier, usingOraclize {
 
     // Check if sufficient funds for Oraclize computation
     modifier sufficientOraclizeFunds() {
-        if (oraclize_getPrice("computation") > this.balance) throw;
+        if (oraclize_getPrice("computation") > msg.value) throw;
         _;
     }
 

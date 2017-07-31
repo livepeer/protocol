@@ -1,8 +1,7 @@
 import expectThrow from "../test/helpers/expectThrow"
-import utils from "ethereumjs-util"
 
-var OraclizeVerifier = artifacts.require("OraclizeVerifier")
-var CallbackContractMock = artifacts.require("CallbackContractMock")
+const OraclizeVerifier = artifacts.require("OraclizeVerifier")
+const CallbackContractMock = artifacts.require("CallbackContractMock")
 
 contract("OraclizeVerifier", accounts => {
     let verifier
@@ -42,7 +41,7 @@ contract("OraclizeVerifier", accounts => {
                 assert.equal(result.args.result, true, "callback result incorrect")
             })
 
-            await verifier.verify(jobId, segmentSequenceNumber, code, dataHash, transcodedDataHash, callbackContract, {from: accounts[0], value: web3.toWei(1, 'ether')})
+            await verifier.verify(jobId, segmentSequenceNumber, code, dataHash, transcodedDataHash, callbackContract, {from: accounts[0], value: web3.toWei(1, "ether")})
         })
     })
 

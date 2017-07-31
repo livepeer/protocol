@@ -7,7 +7,7 @@ module.exports = {
 	"rules": {
 		"arrow-parens": ["error", "as-needed"],
 		"max-len": "off",
-		"new-cap": ["error", {"capIsNewExceptions": ["NewJob"]}],
+		"new-cap": ["error", {"capIsNew": false}],
 		"require-jsdoc": "off",
 		"semi": ["error", "never"],
 		"quotes": ["error", "double"]
