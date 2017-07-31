@@ -4,12 +4,12 @@ import MerkleTree from "../../utils/merkleTree"
 import abi from "ethereumjs-abi"
 import utils from "ethereumjs-util"
 
-var LivepeerProtocol = artifacts.require("LivepeerProtocol")
-var LivepeerToken = artifacts.require("LivepeerToken")
-var BondingManager = artifacts.require("BondingManager")
-var RoundsManager = artifacts.require("RoundsManager")
-var JobsManager = artifacts.require("JobsManager")
-var IdentityVerifier = artifacts.require("IdentityVerifier")
+const LivepeerProtocol = artifacts.require("LivepeerProtocol")
+const LivepeerToken = artifacts.require("LivepeerToken")
+const BondingManager = artifacts.require("BondingManager")
+const RoundsManager = artifacts.require("RoundsManager")
+const JobsManager = artifacts.require("JobsManager")
+const IdentityVerifier = artifacts.require("IdentityVerifier")
 
 const ROUND_LENGTH = 50
 const NUM_ACTIVE_TRANSCODERS = 1
@@ -159,7 +159,7 @@ contract("JobsManager", accounts => {
             const claimWorkBlock = web3.eth.blockNumber
             const transcodeClaimsDetails = await jobsManager.getJobTranscodeClaimsDetails(jobId)
             assert.equal(transcodeClaimsDetails[0], claimWorkBlock, "last claimed work block incorrect")
-            assert.equal(transcodeClaimsDetails[1], claimWorkBlock + VERIFICATION_PERIOD,"end verification block incorrect")
+            assert.equal(transcodeClaimsDetails[1], claimWorkBlock + VERIFICATION_PERIOD, "end verification block incorrect")
             assert.equal(transcodeClaimsDetails[2], 0, "start segment sequence number incorrect")
             assert.equal(transcodeClaimsDetails[3], 10, "end segment sequence number incorrect")
             assert.equal(transcodeClaimsDetails[4], dummyTranscodeClaimsRoot, "transcode claims root incorrect")
@@ -179,16 +179,16 @@ contract("JobsManager", accounts => {
         const maxPricePerSegment = 100
 
         // Segment data hashes
-        const d0 = "0x80084bf2fba02475726feb2cab2d8215eab14bc6bdd8bfb2c8151257032ecd8b";
+        const d0 = "0x80084bf2fba02475726feb2cab2d8215eab14bc6bdd8bfb2c8151257032ecd8b"
         const d1 = "0xb039179a8a4ce2c252aa6f2f25798251c19b75fc1508d9d511a191e0487d64a7"
         const d2 = "0x263ab762270d3b73d3e2cddf9acc893bb6bd41110347e5d5e4bd1d3c128ea90a"
         const d3 = "0x4ce8765e720c576f6f5a34ca380b3de5f0912e6e3cc5355542c363891e54594b"
 
         // Segment hashes (streamId, segmentSequenceNumber, dataHash)
-        const s0 = abi.soliditySHA3(["string", "uint256", "string"], [streamId, 0, d0]);
-        const s1 = abi.soliditySHA3(["string", "uint256", "string"], [streamId, 1, d1]);
-        const s2 = abi.soliditySHA3(["string", "uint256", "string"], [streamId, 2, d2]);
-        const s3 = abi.soliditySHA3(["string", "uint256", "string"], [streamId, 3, d3]);
+        const s0 = abi.soliditySHA3(["string", "uint256", "string"], [streamId, 0, d0])
+        const s1 = abi.soliditySHA3(["string", "uint256", "string"], [streamId, 1, d1])
+        const s2 = abi.soliditySHA3(["string", "uint256", "string"], [streamId, 2, d2])
+        const s3 = abi.soliditySHA3(["string", "uint256", "string"], [streamId, 3, d3])
 
         // Transcoded data hashes
         const tD0 = "0x42538602949f370aa331d2c07a1ee7ff26caac9cc676288f94b82eb2188b8465"
@@ -240,15 +240,15 @@ contract("JobsManager", accounts => {
             // Fast foward through job ending period
             await rpc.wait(20, JOB_ENDING_PERIOD)
 
-            bSig0 = utils.toBuffer(web3.eth.sign(accounts[2], utils.bufferToHex(s0)));
-            bSig1 = utils.toBuffer(web3.eth.sign(accounts[2], utils.bufferToHex(s1)));
-            bSig2 = utils.toBuffer(web3.eth.sign(accounts[2], utils.bufferToHex(s2)));
-            bSig3 = utils.toBuffer(web3.eth.sign(accounts[2], utils.bufferToHex(s3)));
+            bSig0 = utils.toBuffer(web3.eth.sign(accounts[2], utils.bufferToHex(s0)))
+            bSig1 = utils.toBuffer(web3.eth.sign(accounts[2], utils.bufferToHex(s1)))
+            bSig2 = utils.toBuffer(web3.eth.sign(accounts[2], utils.bufferToHex(s2)))
+            bSig3 = utils.toBuffer(web3.eth.sign(accounts[2], utils.bufferToHex(s3)))
 
-            tClaim0 = abi.soliditySHA3(["string", "uint256", "string", "string", "bytes"], [streamId, 0, d0, tD0, bSig0]);
-            tClaim1 = abi.soliditySHA3(["string", "uint256", "string", "string", "bytes"], [streamId, 1, d1, tD1, bSig1]);
-            tClaim2 = abi.soliditySHA3(["string", "uint256", "string", "string", "bytes"], [streamId, 2, d2, tD2, bSig2]);
-            tClaim3 = abi.soliditySHA3(["string", "uint256", "string", "string", "bytes"], [streamId, 3, d3, tD3, bSig3]);
+            tClaim0 = abi.soliditySHA3(["string", "uint256", "string", "string", "bytes"], [streamId, 0, d0, tD0, bSig0])
+            tClaim1 = abi.soliditySHA3(["string", "uint256", "string", "string", "bytes"], [streamId, 1, d1, tD1, bSig1])
+            tClaim2 = abi.soliditySHA3(["string", "uint256", "string", "string", "bytes"], [streamId, 2, d2, tD2, bSig2])
+            tClaim3 = abi.soliditySHA3(["string", "uint256", "string", "string", "bytes"], [streamId, 3, d3, tD3, bSig3])
 
             // Generate Merkle root
             const merkleTree = new MerkleTree([tClaim0, tClaim1, tClaim2, tClaim3])
@@ -290,7 +290,7 @@ contract("JobsManager", accounts => {
         it("should throw if segment not signed by broadcaster", async () => {
             const jobId = 0
             const segmentSequenceNumber = 0
-            const badBSig0 = utils.toBuffer(web3.eth.sign(accounts[3], utils.bufferToHex(s0)));
+            const badBSig0 = utils.toBuffer(web3.eth.sign(accounts[3], utils.bufferToHex(s0)))
             // Account 0 calls verify with job 0
             // This should fail because badBSig0 is signed by Account 3 and not the broadcaster Account 2
             await expectThrow(jobsManager.verify(jobId, segmentSequenceNumber, d0, tD0, utils.bufferToHex(badBSig0), proof, {from: accounts[0]}))

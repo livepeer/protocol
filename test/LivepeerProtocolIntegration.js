@@ -1,19 +1,18 @@
 import RPC from "../utils/rpc"
-import expectThrow from "./helpers/expectThrow"
 import MerkleTree from "../utils/merkleTree"
 import abi from "ethereumjs-abi"
 import utils from "ethereumjs-util"
 
-var LivepeerProtocol = artifacts.require("LivepeerProtocol")
-var LivepeerToken = artifacts.require("LivepeerToken")
-var BondingManager = artifacts.require("BondingManager")
-var RoundsManager = artifacts.require("RoundsManager")
-var JobsManager = artifacts.require("JobsManager")
-var IdentityVerifier = artifacts.require("IdentityVerifier")
+const LivepeerProtocol = artifacts.require("LivepeerProtocol")
+const LivepeerToken = artifacts.require("LivepeerToken")
+const BondingManager = artifacts.require("BondingManager")
+const RoundsManager = artifacts.require("RoundsManager")
+const JobsManager = artifacts.require("JobsManager")
+const IdentityVerifier = artifacts.require("IdentityVerifier")
 
 const ROUND_LENGTH = 50
 const CYCLE_LENGTH = 25
-const NUM_ACTIVE_TRANSCODERS = 1;
+const NUM_ACTIVE_TRANSCODERS = 1
 
 contract("LivepeerProtocolIntegration", accounts => {
     let rpc
@@ -226,10 +225,10 @@ contract("LivepeerProtocolIntegration", accounts => {
             const d3 = "0x4ce8765e720c576f6f5a34ca380b3de5f0912e6e3cc5355542c363891e54594b"
 
             // Segment hashes (streamId, segmentSequenceNumber, dataHash)
-            const s0 = abi.soliditySHA3(["string", "uint256", "string"], [streamId, 0, d0]);
-            const s1 = abi.soliditySHA3(["string", "uint256", "string"], [streamId, 1, d1]);
-            const s2 = abi.soliditySHA3(["string", "uint256", "string"], [streamId, 2, d2]);
-            const s3 = abi.soliditySHA3(["string", "uint256", "string"], [streamId, 3, d3]);
+            const s0 = abi.soliditySHA3(["string", "uint256", "string"], [streamId, 0, d0])
+            const s1 = abi.soliditySHA3(["string", "uint256", "string"], [streamId, 1, d1])
+            const s2 = abi.soliditySHA3(["string", "uint256", "string"], [streamId, 2, d2])
+            const s3 = abi.soliditySHA3(["string", "uint256", "string"], [streamId, 3, d3])
 
             // Transcoded data hashes
             const tD0 = "0x42538602949f370aa331d2c07a1ee7ff26caac9cc676288f94b82eb2188b8465"
@@ -253,15 +252,15 @@ contract("LivepeerProtocolIntegration", accounts => {
             let proof
 
             before(async () => {
-                bSig0 = utils.toBuffer(await web3.eth.sign(accounts[2], utils.bufferToHex(s0)));
-                bSig1 = utils.toBuffer(await web3.eth.sign(accounts[2], utils.bufferToHex(s1)));
-                bSig2 = utils.toBuffer(await web3.eth.sign(accounts[2], utils.bufferToHex(s2)));
-                bSig3 = utils.toBuffer(await web3.eth.sign(accounts[2], utils.bufferToHex(s3)));
+                bSig0 = utils.toBuffer(await web3.eth.sign(accounts[2], utils.bufferToHex(s0)))
+                bSig1 = utils.toBuffer(await web3.eth.sign(accounts[2], utils.bufferToHex(s1)))
+                bSig2 = utils.toBuffer(await web3.eth.sign(accounts[2], utils.bufferToHex(s2)))
+                bSig3 = utils.toBuffer(await web3.eth.sign(accounts[2], utils.bufferToHex(s3)))
 
-                tClaim0 = abi.soliditySHA3(["string", "uint256", "string", "string", "bytes"], [streamId, 0, d0, tD0, bSig0]);
-                tClaim1 = abi.soliditySHA3(["string", "uint256", "string", "string", "bytes"], [streamId, 1, d1, tD1, bSig1]);
-                tClaim2 = abi.soliditySHA3(["string", "uint256", "string", "string", "bytes"], [streamId, 2, d2, tD2, bSig2]);
-                tClaim3 = abi.soliditySHA3(["string", "uint256", "string", "string", "bytes"], [streamId, 3, d3, tD3, bSig3]);
+                tClaim0 = abi.soliditySHA3(["string", "uint256", "string", "string", "bytes"], [streamId, 0, d0, tD0, bSig0])
+                tClaim1 = abi.soliditySHA3(["string", "uint256", "string", "string", "bytes"], [streamId, 1, d1, tD1, bSig1])
+                tClaim2 = abi.soliditySHA3(["string", "uint256", "string", "string", "bytes"], [streamId, 2, d2, tD2, bSig2])
+                tClaim3 = abi.soliditySHA3(["string", "uint256", "string", "string", "bytes"], [streamId, 3, d3, tD3, bSig3])
 
                 // Generate Merkle root
                 const merkleTree = new MerkleTree([tClaim0, tClaim1, tClaim2, tClaim3])
@@ -272,14 +271,14 @@ contract("LivepeerProtocolIntegration", accounts => {
             describe("transcoder claims work", () => {
                 it("transcoder can claim work for a range of segments", async () => {
                     // Account 0 claims work
-                    await jobsManager.claimWork(0, 0, 3, root, {from: accounts[0]});
+                    await jobsManager.claimWork(0, 0, 3, root, {from: accounts[0]})
                 })
             })
 
             describe("transcoder invokes verify", () => {
                 it("transcoder can invoke verify and submit a merkle proof", async () => {
                     // Account 0 calls verify
-                    await jobsManager.verify(0, 0, d0, tD0, utils.bufferToHex(bSig0), proof, {from: accounts[0]});
+                    await jobsManager.verify(0, 0, d0, tD0, utils.bufferToHex(bSig0), proof, {from: accounts[0]})
                 })
             })
         })
