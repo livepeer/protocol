@@ -14,7 +14,7 @@ contract("OraclizeVerifier", accounts => {
         const jobId = 0
         const segmentSequenceNumber = 0
         // IPFS hash of Dockerfile archive
-        const code = "QmSQ8hVyn8N9RgU74CEbuN7WfBJ42ic7HJcATRBGxXUieN"
+        const code = "QmPu23REr93Mfv7m9NPdFLMZz7PzHE1LaXvn4AmQCQgR3u"
         // IPFS hash of test.ts
         const dataHash = "QmR9BnJQisvevpCoSVWWKyownN58nydb2zQt9Z2VtnTnKe"
         // Keccak256 hash of transcoded data from test.ts

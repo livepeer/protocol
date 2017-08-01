@@ -7,4 +7,4 @@ WORKDIR /tmp/
 RUN apk --no-cache add ca-certificates bash xz-libs git
 RUN npm install
 
-ENTRYPOINT bash setup.sh && node index.js $ARG0 $ARG1
+ENTRYPOINT bash setup.sh && node index.js $ARG0

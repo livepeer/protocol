@@ -14,6 +14,7 @@ contract OraclizeVerifier is Verifier, usingOraclize {
     struct OraclizeQuery {
         uint256 jobId;
         uint256 segmentSequenceNumber;
+        string transcodedDataHash;
         address callbackContract;
     }
 
@@ -57,6 +58,7 @@ contract OraclizeVerifier is Verifier, usingOraclize {
         // Store Oraclize query parameters
         oraclizeQueries[queryId].jobId = _jobId;
         oraclizeQueries[queryId].segmentSequenceNumber = _segmentSequenceNumber;
+        oraclizeQueries[queryId].transcodedDataHash = _transcodedDataHash;
         oraclizeQueries[queryId].callbackContract = _callbackContract;
 
         return true;
@@ -71,7 +73,7 @@ contract OraclizeVerifier is Verifier, usingOraclize {
         OraclizeQuery memory oc = oraclizeQueries[_queryId];
 
         // Check if transcoded data hash returned by Oraclize matches originally submitted transcoded data hash
-        if (strCompare("true", _result) == 0) {
+        if (strCompare(oc.transcodedDataHash, _result) == 0) {
             // Notify callback contract of successful verification
             if (!Verifiable(oc.callbackContract).receiveVerification(oc.jobId, oc.segmentSequenceNumber, true)) throw;
             OraclizeCallback(oc.jobId, oc.segmentSequenceNumber, _proof, true);
