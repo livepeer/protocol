@@ -49,6 +49,16 @@ cd protocol
 truffle test verification_test/**
 ```
 
+To make changes to the Oraclize computation archive you need to fetch the relevant binaries first
+
+```
+cd verification_computation_archive
+bash fetch_binaries.sh
+# Make relevant changes
+zip -r archive.zip .
+# Add archive.zip to IPFS and change the computation archive IPFS hash in relevant test files
+```
+
 All contributions and bug fixes are welcome as pull requests back into the repo.
 
 Built using [OpenZeppelin](https://github.com/OpenZeppelin/zeppelin-solidity) and [Truffle](http://truffle.readthedocs.io).
