@@ -53,7 +53,7 @@ contract OraclizeVerifier is Verifier, usingOraclize {
      */
     function verify(uint256 _jobId, uint256 _segmentSequenceNumber, string _code, string _dataHash, string _transcodedDataHash, address _callbackContract) payable sufficientOraclizeFunds external returns (bool) {
         // Create Oraclize query
-        bytes32 queryId = oraclize_query("computation", [_code, _dataHash, _transcodedDataHash], 3000000);
+        bytes32 queryId = oraclize_query("computation", [_code, _dataHash], 3000000);
 
         // Store Oraclize query parameters
         oraclizeQueries[queryId].jobId = _jobId;
