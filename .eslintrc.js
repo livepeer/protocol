@@ -1,5 +1,5 @@
 module.exports = {
-  "extends": ["google"],
+  "extends": ["./node_modules/eslint-config-google/index.js"],
 	"parserOptions": {
 		"ecmaVersion": 8,
 		"sourceType": "module"
@@ -7,9 +7,9 @@ module.exports = {
 	"rules": {
 		"arrow-parens": ["error", "as-needed"],
 		"max-len": "off",
-		"new-cap": ["error", {"capIsNewExceptions": ["NewJob"]}],
+		"new-cap": ["error", {"capIsNew": false}],
 		"require-jsdoc": "off",
 		"semi": ["error", "never"],
-		"quotes": ["error", "double"],
+		"quotes": ["error", "double"]
 	}
 };
