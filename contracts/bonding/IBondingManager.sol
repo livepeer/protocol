@@ -13,6 +13,7 @@ contract IBondingManager {
     function withdraw() external returns (bool);
     function reward() external returns (bool);
     function setActiveTranscoders() external returns (bool);
+    function updateTranscoderFeePool(address _transcoder, uint256 _fees) external returns (bool);
 
     // Public functions
     function electActiveTranscoder(uint256 _maxPricePerSegment) public constant returns (address);

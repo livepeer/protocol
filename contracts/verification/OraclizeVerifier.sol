@@ -45,19 +45,19 @@ contract OraclizeVerifier is Verifier, usingOraclize {
     /*
      * @dev Verify implementation that creates an Oraclize computation query
      * @param _jobId Job identifier
-     * @param _segmentSequenceNumber Segment being verified for job
+     * @param _segmentNumber Segment being verified for job
      * @param _code Content-addressed storage hash of binary to execute off-chain
      * @param _dataHash Content-addressed storage hash of input data of segment
-     * @param _transcodedDataHash Content-addressed storage hash of transcoded input data of segment
+     * @param _transcodedDataHash Hash of transcoded segment data
      * @param _callbackContract Address of Verifiable contract to call back
      */
-    function verify(uint256 _jobId, uint256 _segmentSequenceNumber, string _code, string _dataHash, string _transcodedDataHash, address _callbackContract) payable sufficientOraclizeFunds external returns (bool) {
+    function verify(uint256 _jobId, uint256 _segmentNumber, string _code, string _dataHash, string _transcodedDataHash, address _callbackContract) payable sufficientOraclizeFunds external returns (bool) {
         // Create Oraclize query
         bytes32 queryId = oraclize_query("computation", [_code, _dataHash], 3000000);
 
         // Store Oraclize query parameters
         oraclizeQueries[queryId].jobId = _jobId;
-        oraclizeQueries[queryId].segmentSequenceNumber = _segmentSequenceNumber;
+        oraclizeQueries[queryId].segmentSequenceNumber = _segmentNumber;
         oraclizeQueries[queryId].transcodedDataHash = _transcodedDataHash;
         oraclizeQueries[queryId].callbackContract = _callbackContract;
 

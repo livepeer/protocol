@@ -34,4 +34,5 @@ contract LivepeerProtocol is ContractRegistry, Ownable {
 
         return true;
     }
+
 }
