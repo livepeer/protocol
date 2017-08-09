@@ -1,7 +1,4 @@
-pragma solidity ^0.4.11;
-
-import "./ECVerify.sol";
-import "./MerkleProof.sol";
+pragma solidity ^0.4.13;
 
 library JobLib {
     // Prefix hashed with message hash when a signature is produced by the eth_sign RPC call
@@ -19,9 +16,9 @@ library JobLib {
     function shouldVerifySegment(uint256 _segmentNumber,
                                  uint256[2] _segmentRange,
                                  uint256 _claimBlock,
-                                 uint64 _verificationRate) constant returns (bool) {
+                                 uint64 _verificationRate) public constant returns (bool) {
         // Segment must be in segment range
-        if (_segmentNumber < _segmentRane[0] || _segmentNumber > _segmentRange[1]) return false;
+        if (_segmentNumber < _segmentRange[0] || _segmentNumber > _segmentRange[1]) return false;
 
         if (uint256(keccak256(_claimBlock, block.blockhash(_claimBlock), _segmentNumber)) % _verificationRate == 0) {
             return true;
@@ -36,7 +33,7 @@ library JobLib {
      * @param _segmentSequenceNumber Segment sequence number in stream
      * @param _dataHash Content-addressed storage hash of segment data
      */
-    function segmentHash(string _streamId, uint256 _segmentNumber, string _dataHash) constant returns (bytes32) {
+    function segmentHash(string _streamId, uint256 _segmentNumber, string _dataHash) public constant returns (bytes32) {
         return keccak256(_streamId, _segmentNumber, _dataHash);
     }
 

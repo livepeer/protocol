@@ -1,13 +1,13 @@
 pragma solidity ^0.4.13;
 
-import "../Controllable.sol";
-import "../LivepeerProtocol.sol";
 import "./IRoundsManager.sol";
+import "../Manager.sol";
+import "../Registry.sol";
 import "../bonding/IBondingManager.sol";
 
-import "../../installed_contracts/zeppelin/contracts/SafeMath.sol";
+import "zeppelin-solidity/contracts/math/SafeMath.sol";
 
-contract RoundsManager is IRoundsManager, Controllable {
+contract RoundsManager is IRoundsManager, Manager {
     using SafeMath for uint256;
 
     // Time between blocks. For testing purposes
@@ -22,7 +22,7 @@ contract RoundsManager is IRoundsManager, Controllable {
     // Number of active transcoders during a round
     uint256 public numActiveTranscoders;
 
-    function RoundsManager() {
+    function RoundsManager(address _registry) Manager(_registry) {
         // Set block time to 1 second for testing purposes
         blockTime = 1;
         // A round is 50 blocks for testing purposes
@@ -34,19 +34,25 @@ contract RoundsManager is IRoundsManager, Controllable {
     }
 
     /*
-     * @dev Return BondingManager contract (interface)
+     * @dev Initialize the current round. Called once at the start of any round
      */
-    function bondingManager() internal constant returns (IBondingManager) {
-        LivepeerProtocol protocol = LivepeerProtocol(controller);
+    function initializeRound() external returns (bool) {
+        // Check if already called for the current round
+        // Will exit here to avoid large gas consumption if it has been called for the current round already
+        if (lastInitializedRound == currentRound()) return false;
+        // Set current round as initialized
+        lastInitializedRound = currentRound();
 
-        return IBondingManager(protocol.getRegistryContract(protocol.bondingManagerKey()));
+        bondingManager().setActiveTranscoders();
+
+        return true;
     }
 
     /*
      * @dev Return current round
      */
     function currentRound() public constant returns (uint256) {
-        return block.number / roundLength;
+        return block.number.div(roundLength);
     }
 
     /*
@@ -72,17 +78,9 @@ contract RoundsManager is IRoundsManager, Controllable {
     }
 
     /*
-     * @dev Initialize the current round. Called once at the start of any round
+     * @dev Return BondingManager contract (interface)
      */
-    function initializeRound() external returns (bool) {
-        // Check if already called for the current round
-        // Will exit here to avoid large gas consumption if it has been called for the current round already
-        if (lastInitializedRound == currentRound()) return false;
-        // Set current round as initialized
-        lastInitializedRound = currentRound();
-
-        bondingManager().setActiveTranscoders();
-
-        return true;
+    function bondingManager() internal constant returns (IBondingManager) {
+        return IBondingManager(Registry(registry).registry(keccak256("BondingManager")));
     }
 }
