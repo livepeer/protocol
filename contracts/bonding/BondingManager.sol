@@ -168,7 +168,7 @@ contract BondingManager is IBondingManager, Manager {
      * @param _amount The amount of LPT to stake.
      * @param _to The address of the transcoder to stake towards.
      */
-    function bond(uint _amount, address _to) external returns (bool) {
+    function bond(uint256 _amount, address _to) external returns (bool) {
         // Current round must be initialized
         require(roundsManager().currentRoundInitialized());
         // Must bond to a valid transcoder
@@ -334,7 +334,7 @@ contract BondingManager is IBondingManager, Manager {
 
         // Calculate number of tokens to mint
         uint256 mintedTokens = mintedTokensPerReward();
-        // Mint token reward and allocate to this protocol contract
+        /* // Mint token reward and allocate to this protocol contract */
         token.mint(this, mintedTokens);
 
         // Compute transcoder share of minted tokens

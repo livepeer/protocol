@@ -16,9 +16,20 @@ contract IdentityVerifier is Verifier {
      * @param _transcodedDataHash Hash of transcoded segment data
      * @param _callbackContract Address of Verifiable contract to call back
      */
-    function verify(uint256 _jobId, uint256 _segmentNumber, string _code, string _dataHash, string _transcodedDataHash, address _callbackContract) payable external returns (bool) {
+    function verify(
+        uint256 _jobId,
+        uint256 _claimId,
+        uint256 _segmentNumber,
+        string _dataHash,
+        string _transcodedDataHash,
+        address _callbackContract
+    )
+        external
+        payable
+        returns (bool)
+    {
         // Check if receiveVerification on callback contract succeeded
-        if (!Verifiable(_callbackContract).receiveVerification(_jobId, _segmentNumber, true)) throw;
+        if (!Verifiable(_callbackContract).receiveVerification(_jobId, _claimId, _segmentNumber, true)) throw;
 
         return true;
     }

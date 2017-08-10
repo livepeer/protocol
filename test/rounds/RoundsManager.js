@@ -13,7 +13,6 @@ contract("RoundsManager", accounts => {
     const setup = async () => {
         rpc = new RPC(web3)
 
-
         const protocol = await LivepeerProtocol.new()
 
         roundsManager = await RoundsManager.new(protocol.address)

@@ -6,5 +6,5 @@ pragma solidity ^0.4.11;
  */
 contract Verifiable {
     // External functions
-    function receiveVerification(uint256 _jobId, uint256 _segmentNumber, bool _result) external returns (bool);
+    function receiveVerification(uint256 _jobId, uint256 _claimId, uint256 _segmentNumber, bool _result) external returns (bool);
 }
