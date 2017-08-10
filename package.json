@@ -36,7 +36,7 @@
   },
   "dependencies": {
     "mkdirp": "^0.5.1",
-    "truffle": "^3.2.2",
+    "truffle": "^3.4.7",
     "zeppelin-solidity": "^1.2.0"
   }
 }
