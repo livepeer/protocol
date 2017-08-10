@@ -1,4 +1,4 @@
-pragma solidity ^0.4.11;
+pragma solidity ^0.4.13;
 
 import "./Verifier.sol";
 import "./Verifiable.sol";
@@ -29,7 +29,7 @@ contract IdentityVerifier is Verifier {
         returns (bool)
     {
         // Check if receiveVerification on callback contract succeeded
-        if (!Verifiable(_callbackContract).receiveVerification(_jobId, _claimId, _segmentNumber, true)) throw;
+        Verifiable(_callbackContract).receiveVerification(_jobId, _claimId, _segmentNumber, true);
 
         return true;
     }
