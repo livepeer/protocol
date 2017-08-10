@@ -3,7 +3,7 @@ import ethAbi from "ethereumjs-abi"
 import expectThrow from "./helpers/expectThrow"
 
 const LivepeerProtocol = artifacts.require("LivepeerProtocol")
-const Controller = artifacts.require("Controller")
+const Manager = artifacts.require("Manager")
 
 contract("LivepeerProtocol", accounts => {
     describe("constructor", () => {
@@ -26,47 +26,43 @@ contract("LivepeerProtocol", accounts => {
         })
 
         it("should set a registry contract", async () => {
-            const controller = await Controller.new(protocol.address)
+            const manager = await Manager.new(protocol.address)
 
-            await protocol.setContract(ethUtil.bufferToHex(ethAbi.soliditySHA3(["string"], ["Controller"])), controller.address)
+            await protocol.setContract(ethUtil.bufferToHex(ethAbi.soliditySHA3(["string"], ["Manager"])), manager.address)
 
-            assert.equal(
-                await protocol.registry.call(ethUtil.bufferToHex(ethAbi.soliditySHA3(["string"], ["Controller"]))),
-                controller.address,
-                "did not set registry contract address correctly"
-            )
+            assert.equal(await protocol.registry.call(ethUtil.bufferToHex(ethAbi.soliditySHA3(["string"], ["Manager"]))), manager.address, "did not set registry contract address correctly")
         })
     })
 
-    describe("updateControllerManager", () => {
-        let controller
+    describe("updateRegistryManager", () => {
+        let manager
 
         before(async () => {
             await setup()
-            controller = await Controller.new(protocol.address)
-            await protocol.setContract(ethUtil.bufferToHex(ethAbi.soliditySHA3(["string"], ["Controller"])), controller.address)
+            manager = await Manager.new(protocol.address)
+            await protocol.setContract(ethUtil.bufferToHex(ethAbi.soliditySHA3(["string"], ["Manager"])), manager.address)
         })
 
         it("should throw when manager is not paused", async () => {
             const randomAddress = "0x0000000000000000000000000000000000001234"
-            await expectThrow(protocol.updateControllerManager(ethUtil.bufferToHex(ethAbi.soliditySHA3(["string"], ["Controller"])), randomAddress))
+            await expectThrow(protocol.updateManagerRegistry(ethUtil.bufferToHex(ethAbi.soliditySHA3(["string"], ["Manager"])), randomAddress))
         })
 
         it("should throw for invalid key", async () => {
             const randomAddress = "0x0000000000000000000000000000000000001234"
             const invalidKey = "0x123"
-            await expectThrow(protocol.updateControllerManager(invalidKey, randomAddress))
+            await expectThrow(protocol.updateManagerRegistry(invalidKey, randomAddress))
         })
 
-        it("should update a controller's manager", async () => {
+        it("should update a manager's registry", async () => {
             await protocol.pause()
-            await controller.pause()
+            await manager.pause()
 
             const randomAddress = "0x0000000000000000000000000000000000001234"
-            await protocol.updateControllerManager(ethUtil.bufferToHex(ethAbi.soliditySHA3(["string"], ["Controller"])), randomAddress)
+            await protocol.updateManagerRegistry(ethUtil.bufferToHex(ethAbi.soliditySHA3(["string"], ["Manager"])), randomAddress)
 
-            const manager = await controller.manager.call()
-            assert.equal(manager, randomAddress, "manager for controller incorrect")
+            const registry = await manager.registry.call()
+            assert.equal(registry, randomAddress, "registry for manager incorrect")
         })
     })
 })

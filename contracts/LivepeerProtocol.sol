@@ -1,7 +1,7 @@
 pragma solidity ^0.4.13;
 
-import "./Registry.sol";
+import "./ContractRegistry.sol";
 
-contract LivepeerProtocol is Registry {
+contract LivepeerProtocol is ContractRegistry {
     function LivepeerProtocol() {}
 }

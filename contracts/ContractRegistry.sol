@@ -4,7 +4,7 @@ import "./Manager.sol";
 
 import "zeppelin-solidity/contracts/lifecycle/Pausable.sol";
 
-contract Registry is Pausable {
+contract ContractRegistry is Pausable {
     mapping (bytes32 => address) public registry;
 
     function setContract(bytes32 _key, address _contract) onlyOwner public returns (bool) {

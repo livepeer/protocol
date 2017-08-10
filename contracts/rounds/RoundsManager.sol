@@ -2,7 +2,7 @@ pragma solidity ^0.4.13;
 
 import "./IRoundsManager.sol";
 import "../Manager.sol";
-import "../Registry.sol";
+import "../ContractRegistry.sol";
 import "../bonding/IBondingManager.sol";
 
 import "zeppelin-solidity/contracts/math/SafeMath.sol";
@@ -81,6 +81,6 @@ contract RoundsManager is IRoundsManager, Manager {
      * @dev Return BondingManager contract (interface)
      */
     function bondingManager() internal constant returns (IBondingManager) {
-        return IBondingManager(Registry(registry).registry(keccak256("BondingManager")));
+        return IBondingManager(ContractRegistry(registry).registry(keccak256("BondingManager")));
     }
 }

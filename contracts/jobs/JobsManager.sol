@@ -4,7 +4,7 @@ import "./IJobsManager.sol";
 import "./libraries/JobLib.sol";
 import "./libraries/MerkleProof.sol";
 import "../Manager.sol";
-import "../Registry.sol";
+import "../ContractRegistry.sol";
 import "../LivepeerToken.sol";
 import "../bonding/IBondingManager.sol";
 import "../verification/Verifiable.sol";
@@ -133,13 +133,6 @@ contract JobsManager is IJobsManager, Verifiable, Manager {
     }
 
     /*
-     * @dev Returns BondingManager
-     */
-    function bondingManager() internal constant returns (IBondingManager) {
-        return IBondingManager(Registry(registry).registry(keccak256("BondingManager")));
-    }
-
-    /*
      * @dev Deposit funds for jobs
      * @param _amount Amount to deposit
      */
@@ -187,31 +180,6 @@ contract JobsManager is IJobsManager, Verifiable, Manager {
         numJobs = numJobs.add(1);
 
         return true;
-    }
-
-    /*
-     * @dev Compute status of job
-     * @param _jobId Job identifier
-     */
-    function jobStatus(uint256 _jobId) public constant returns (JobStatus) {
-        if (jobs[_jobId].endBlock > 0 && jobs[_jobId].endBlock <= block.number) {
-            // A job is inactive if its end block is set and the current block is greater than or equal to the job's end block
-            return JobStatus.Inactive;
-        } else {
-            // A job is active if the current block is less than the job's end block
-            return JobStatus.Active;
-        }
-    }
-
-    /*
-     * @dev Return claim details
-     * @param _jobId Job identifier
-     * @param _claimId Claim identifier
-     */
-    function getClaimDetails(uint256 _jobId, uint256 _claimId) public constant returns (uint256[2], bytes32, uint256, uint256, uint256, uint256, ClaimStatus) {
-        Claim storage claim = jobs[_jobId].claims[_claimId];
-
-        return (claim.segmentRange, claim.claimRoot, claim.claimBlock, claim.endVerificationBlock, claim.endSlashingBlock, claim.transcoderTotalStake, claim.status);
     }
 
     /*
@@ -315,34 +283,6 @@ contract JobsManager is IJobsManager, Verifiable, Manager {
     }
 
     /*
-     * @dev Validate a transcode receipt
-     * @param _jobId Job identifier
-     * @param _claimId Claim identifier
-     * @param _segmentNumber Segment sequence number in stream
-     * @param _dataHash Content-addressed storage hash of segment data
-     * @param _transcodedDataHash Hash of transcoded segment data
-     * @param _broadcasterSig Broadcaster's signature over segment hash
-     * @param _proof Merkle proof for transcode receipt
-     */
-    function validateReceipt(
-        uint256 _jobId,
-        uint256 _claimId,
-        uint256 _segmentNumber,
-        string _dataHash,
-        string _transcodedDataHash,
-        bytes _broadcasterSig,
-        bytes _proof
-    )
-        internal
-        returns (bool)
-    {
-        if (ECRecovery.recover(JobLib.personalSegmentHash(jobs[_jobId].streamId, _segmentNumber, _dataHash), _broadcasterSig) != jobs[_jobId].broadcasterAddress) return false;
-        if (!MerkleProof.verifyProof(_proof, jobs[_jobId].claims[_claimId].claimRoot, JobLib.transcodeReceiptHash(jobs[_jobId].streamId, _segmentNumber, _dataHash, _transcodedDataHash, _broadcasterSig))) return false;
-
-        return true;
-    }
-
-    /*
      * @dev Callback function that receives the results of transcoding verification
      * @param _jobId Job identifier
      * @param _segmentNumber Segment being verified for job
@@ -355,6 +295,54 @@ contract JobsManager is IJobsManager, Verifiable, Manager {
         }
 
         ReceivedVerification(_jobId, _claimId, _segmentNumber, _result);
+
+        return true;
+    }
+
+    /*
+     * @dev Distribute fees for multiple claims
+     * @param _jobId Job identifier
+     * @param _claimId Claim identifier
+     */
+    function batchDistributeFees(uint256 _jobId, uint256[] _claimIds) external returns (bool) {
+        for (uint256 i = 0; i < _claimIds.length; i++) {
+            distributeFees(_jobId, _claimIds[i]);
+        }
+
+        return true;
+    }
+
+    /*
+     * @dev Slash transcoder for missing verification
+     * @param _jobId Job identifier
+     * @param _claimId Claim identifier
+     * @param _segmentNumber Segment that was not verified
+     */
+    function missedVerificationSlash(uint256 _jobId, uint256 _claimId, uint256 _segmentNumber) external returns (bool) {
+        Job storage job = jobs[_jobId];
+        Claim storage claim = job.claims[_claimId];
+
+        // Must be after verification period
+        require(block.number > claim.endVerificationBlock);
+        // Must be before end of slashing period
+        require(block.number <= claim.endSlashingBlock);
+        // Claim must be pending
+        require(claim.status == ClaimStatus.Pending);
+        // Segment must be eligible for verification
+        require(JobLib.shouldVerifySegment(_segmentNumber, claim.segmentRange, claim.claimBlock, verificationRate));
+        // Transcoder must have missed verification for the segment
+        require(!claim.segmentVerifications[_segmentNumber]);
+
+        // Return escrowed fees for claim
+        uint256 fees = claim.segmentRange[1].sub(claim.segmentRange[0]).add(1).mul(job.maxPricePerSegment);
+        job.escrow = job.escrow.sub(fees);
+        broadcasterDeposits[job.broadcasterAddress] = broadcasterDeposits[job.broadcasterAddress].add(fees);
+
+        // Slash transcoder and provide finder params
+        bondingManager().slashTranscoder(job.transcoderAddress, msg.sender, missedVerificationSlashAmount, finderFee);
+
+        // Set claim as slashed
+        claim.status = ClaimStatus.Slashed;
 
         return true;
     }
@@ -393,50 +381,67 @@ contract JobsManager is IJobsManager, Verifiable, Manager {
     }
 
     /*
-     * @dev Distribute fees for multiple claims
+     * @dev Compute status of job
+     * @param _jobId Job identifier
+     */
+    function jobStatus(uint256 _jobId) public constant returns (JobStatus) {
+        if (jobs[_jobId].endBlock > 0 && jobs[_jobId].endBlock <= block.number) {
+            // A job is inactive if its end block is set and the current block is greater than or equal to the job's end block
+            return JobStatus.Inactive;
+        } else {
+            // A job is active if the current block is less than the job's end block
+            return JobStatus.Active;
+        }
+    }
+
+    /*
+     * @dev Return claim details
      * @param _jobId Job identifier
      * @param _claimId Claim identifier
      */
-    function batchDistributeFees(uint256 _jobId, uint256[] _claimIds) public returns (bool) {
-        for (uint256 i = 0; i < _claimIds.length; i++) {
-            distributeFees(_jobId, _claimIds[i]);
-        }
+    function getClaimDetails(uint256 _jobId, uint256 _claimId)
+        public
+        constant
+        returns (uint256[2], bytes32, uint256, uint256, uint256, uint256, ClaimStatus)
+    {
+        Claim storage claim = jobs[_jobId].claims[_claimId];
+
+        return (claim.segmentRange, claim.claimRoot, claim.claimBlock, claim.endVerificationBlock, claim.endSlashingBlock, claim.transcoderTotalStake, claim.status);
+    }
+
+    /*
+     * @dev Validate a transcode receipt
+     * @param _jobId Job identifier
+     * @param _claimId Claim identifier
+     * @param _segmentNumber Segment sequence number in stream
+     * @param _dataHash Content-addressed storage hash of segment data
+     * @param _transcodedDataHash Hash of transcoded segment data
+     * @param _broadcasterSig Broadcaster's signature over segment hash
+     * @param _proof Merkle proof for transcode receipt
+     */
+    function validateReceipt(
+        uint256 _jobId,
+        uint256 _claimId,
+        uint256 _segmentNumber,
+        string _dataHash,
+        string _transcodedDataHash,
+        bytes _broadcasterSig,
+        bytes _proof
+    )
+        internal
+        returns (bool)
+    {
+        if (ECRecovery.recover(JobLib.personalSegmentHash(jobs[_jobId].streamId, _segmentNumber, _dataHash), _broadcasterSig) != jobs[_jobId].broadcasterAddress) return false;
+        if (!MerkleProof.verifyProof(_proof, jobs[_jobId].claims[_claimId].claimRoot, JobLib.transcodeReceiptHash(jobs[_jobId].streamId, _segmentNumber, _dataHash, _transcodedDataHash, _broadcasterSig))) return false;
 
         return true;
     }
 
     /*
-     * @dev Slash transcoder for missing verification
-     * @param _jobId Job identifier
-     * @param _claimId Claim identifier
-     * @param _segmentNumber Segment that was not verified
+     * @dev Returns BondingManager
      */
-    function missedVerificationSlash(uint256 _jobId, uint256 _claimId, uint256 _segmentNumber) public returns (bool) {
-        Job storage job = jobs[_jobId];
-        Claim storage claim = job.claims[_claimId];
-
-        // Must be after verification period
-        require(block.number > claim.endVerificationBlock);
-        // Must be before end of slashing period
-        require(block.number <= claim.endSlashingBlock);
-        // Claim must be pending
-        require(claim.status == ClaimStatus.Pending);
-        // Segment must be eligible for verification
-        require(JobLib.shouldVerifySegment(_segmentNumber, claim.segmentRange, claim.claimBlock, verificationRate));
-        // Transcoder must have missed verification for the segment
-        require(!claim.segmentVerifications[_segmentNumber]);
-
-        // Return escrowed fees for claim
-        uint256 fees = claim.segmentRange[1].sub(claim.segmentRange[0]).add(1).mul(job.maxPricePerSegment);
-        job.escrow = job.escrow.sub(fees);
-        broadcasterDeposits[job.broadcasterAddress] = broadcasterDeposits[job.broadcasterAddress].add(fees);
-
-        // Slash transcoder and provide finder params
-        bondingManager().slashTranscoder(job.transcoderAddress, msg.sender, missedVerificationSlashAmount, finderFee);
-
-        // Set claim as slashed
-        claim.status = ClaimStatus.Slashed;
-
-        return true;
+    function bondingManager() internal constant returns (IBondingManager) {
+        return IBondingManager(ContractRegistry(registry).registry(keccak256("BondingManager")));
     }
+
 }

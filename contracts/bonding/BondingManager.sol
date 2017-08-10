@@ -3,7 +3,7 @@ pragma solidity ^0.4.13;
 import "./IBondingManager.sol";
 import "./libraries/TranscoderPools.sol";
 import "../Manager.sol";
-import "../Registry.sol";
+import "../ContractRegistry.sol";
 import "../LivepeerToken.sol";
 import "../rounds/IRoundsManager.sol";
 import "../jobs/IJobsManager.sol";
@@ -35,7 +35,7 @@ contract BondingManager is IBondingManager, Manager {
         uint256 lastRewardRound;                             // Last round that the transcoder called reward
         uint8[3] rates;                                      // Current rates for blockRewardCut, feeShare, and pricePerSegment
         uint8[3] pendingRates;                               // Pending rates for blockRewardCut, feeShare, and pricePerSegment
-        mapping (uint256 => TokenPools) tokenPoolsPerRound;  // Mapping of round => token pool for the round
+        mapping (uint256 => TokenPools) tokenPoolsPerRound;  // Mapping of round => token pools for the round
         bool initialized;                                    // Is this transcoder initialized
     }
 
@@ -69,7 +69,7 @@ contract BondingManager is IBondingManager, Manager {
         uint256 startRound;                // The round the delegator transitions to bonded phase
         uint256 delegateBlock;             // The block the delegator bonds to a transcoder
         uint256 withdrawRound;             // The round at which a delegator can withdraw
-        uint256 lastStakeUpdateRound;  // The last round the delegator transitioned states
+        uint256 lastStakeUpdateRound;      // The last round the delegator transitioned states
         bool initialized;                  // Is this delegator initialized
     }
 
@@ -649,13 +649,13 @@ contract BondingManager is IBondingManager, Manager {
      * @dev Return rounds manager
      */
     function roundsManager() internal constant returns (IRoundsManager) {
-        return IRoundsManager(Registry(registry).registry(keccak256("RoundsManager")));
+        return IRoundsManager(ContractRegistry(registry).registry(keccak256("RoundsManager")));
     }
 
     /*
      * @dev Return jobs manager
      */
     function jobsManager() internal constant returns (IJobsManager) {
-        return IJobsManager(Registry(registry).registry(keccak256("JobsManager")));
+        return IJobsManager(ContractRegistry(registry).registry(keccak256("JobsManager")));
     }
 }

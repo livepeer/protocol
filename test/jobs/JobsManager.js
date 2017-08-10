@@ -169,12 +169,12 @@ contract("JobsManager", accounts => {
 
         it("should update broadcaster deposit", async () => {
             const job = await jobsManager.jobs.call(jobId)
-            assert.equal(job[7], 30, "escrow is incorrect")
+            assert.equal(job[7], 40, "escrow is incorrect")
         })
 
         it("should update job escrow", async () => {
             const deposit = await jobsManager.broadcasterDeposits.call(broadcaster)
-            assert.equal(deposit, 970, "deposit is incorrect")
+            assert.equal(deposit, 960, "deposit is incorrect")
         })
     })
 
@@ -368,11 +368,12 @@ contract("JobsManager", accounts => {
 
         it("should throw if sender is not Verifier", async () => {
             const jobId = 0
+            const claimId = 0
             const segmentNumber = 0
             const result = true
 
             // Non-verifier calls receiveVerification
-            await expectThrow(jobsManager.receiveVerification(jobId, segmentNumber, result, {from: accounts[0]}))
+            await expectThrow(jobsManager.receiveVerification(jobId, claimId, segmentNumber, result, {from: accounts[0]}))
         })
     })
 
@@ -416,7 +417,7 @@ contract("JobsManager", accounts => {
             await jobsManager.batchDistributeFees(jobId, claimIds, {from: electedTranscoder})
 
             const job = await jobsManager.jobs.call(jobId)
-            assert.equal(job[7], 30, "escrow is incorrect")
+            assert.equal(job[7], 40, "escrow is incorrect")
         })
 
         it("should set all claims as complete", async () => {
