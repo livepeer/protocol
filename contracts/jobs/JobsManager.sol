@@ -290,6 +290,7 @@ contract JobsManager is IJobsManager, Verifiable, Manager {
      */
     function receiveVerification(uint256 _jobId, uint256 _claimId, uint256 _segmentNumber, bool _result) onlyVerifier external returns (bool) {
         if (!_result) {
+            refundBroadcaster(_jobId, _claimId);
             // Protocol slashes transcoder for failing verification (no finder)
             bondingManager().slashTranscoder(jobs[_jobId].transcoderAddress, address(0), failedVerificationSlashAmount, 0);
         }
@@ -333,10 +334,7 @@ contract JobsManager is IJobsManager, Verifiable, Manager {
         // Transcoder must have missed verification for the segment
         require(!claim.segmentVerifications[_segmentNumber]);
 
-        // Return escrowed fees for claim
-        uint256 fees = claim.segmentRange[1].sub(claim.segmentRange[0]).add(1).mul(job.maxPricePerSegment);
-        job.escrow = job.escrow.sub(fees);
-        broadcasterDeposits[job.broadcasterAddress] = broadcasterDeposits[job.broadcasterAddress].add(fees);
+        refundBroadcaster(_jobId, _claimId);
 
         // Slash transcoder and provide finder params
         bondingManager().slashTranscoder(job.transcoderAddress, msg.sender, missedVerificationSlashAmount, finderFee);
@@ -433,6 +431,23 @@ contract JobsManager is IJobsManager, Verifiable, Manager {
     {
         if (ECRecovery.recover(JobLib.personalSegmentHash(jobs[_jobId].streamId, _segmentNumber, _dataHash), _broadcasterSig) != jobs[_jobId].broadcasterAddress) return false;
         if (!MerkleProof.verifyProof(_proof, jobs[_jobId].claims[_claimId].claimRoot, JobLib.transcodeReceiptHash(jobs[_jobId].streamId, _segmentNumber, _dataHash, _transcodedDataHash, _broadcasterSig))) return false;
+
+        return true;
+    }
+
+    /*
+     * @dev Refund broadcaster for a claim
+     * @param _jobId Job identifier
+     * @param _claimId Claim identifier
+     */
+    function refundBroadcaster(uint256 _jobId, uint256 _claimId) internal returns (bool) {
+        Job storage job = jobs[_jobId];
+        Claim storage claim = job.claims[_claimId];
+
+        // Return escrowed fees for claim
+        uint256 fees = claim.segmentRange[1].sub(claim.segmentRange[0]).add(1).mul(job.maxPricePerSegment);
+        job.escrow = job.escrow.sub(fees);
+        broadcasterDeposits[job.broadcasterAddress] = broadcasterDeposits[job.broadcasterAddress].add(fees);
 
         return true;
     }
