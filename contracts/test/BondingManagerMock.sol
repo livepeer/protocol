@@ -12,9 +12,15 @@ contract BondingManagerMock is IBondingManager, Manager {
     uint256 public constant mockDelegatorRewards = 500;
 
     address public mockTranscoder;
+    uint256 public mockPricePerSegment;
 
     function BondingManagerMock(address _registry, address _mockTranscoder) Manager(_registry) {
         mockTranscoder = _mockTranscoder;
+    }
+
+    function setMockPricePerSegment(uint256 _pricePerSegment) external returns (bool) {
+        mockPricePerSegment = _pricePerSegment;
+        return true;
     }
 
     function transcoder(uint8 _blockRewardCut, uint8 _feeShare, uint256 _pricePerSegment) external returns (bool) {
@@ -53,8 +59,8 @@ contract BondingManagerMock is IBondingManager, Manager {
         return true;
     }
 
-    function electActiveTranscoder(uint256 _maxPricePerSegment) external constant returns (address) {
-        return mockTranscoder;
+    function electActiveTranscoder(uint256 _maxPricePerSegment) external constant returns (address, uint256) {
+        return (mockTranscoder, mockPricePerSegment);
     }
 
     function activeTranscoderTotalStake(address _transcoder) public constant returns (uint256) {

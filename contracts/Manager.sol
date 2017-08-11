@@ -1,13 +1,23 @@
 pragma solidity ^0.4.13;
 
-import "zeppelin-solidity/contracts/lifecycle/Pausable.sol";
+import "./ContractRegistry.sol";
 
-contract Manager is Pausable {
+contract Manager {
     // Registry contract
     address public registry;
 
     modifier onlyRegistry() {
         require(msg.sender == registry);
+        _;
+    }
+
+    modifier whenSystemNotPaused() {
+        require(!ContractRegistry(registry).paused());
+        _;
+    }
+
+    modifier whenSystemPaused() {
+        require(ContractRegistry(registry).paused());
         _;
     }
 
@@ -23,7 +33,7 @@ contract Manager is Pausable {
      * @dev Set registry contract. Only callable by current registry
      * @param _registry Registry contract address
      */
-    function setRegistry(address _registry) onlyRegistry whenPaused public returns (bool) {
+    function setRegistry(address _registry) onlyRegistry whenSystemPaused public returns (bool) {
         registry = _registry;
 
         return true;

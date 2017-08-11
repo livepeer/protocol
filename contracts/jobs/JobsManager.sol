@@ -22,9 +22,6 @@ contract JobsManager is IJobsManager, Verifiable, Manager {
     // Verifier address
     Verifier public verifier;
 
-    // Content-addressed storage hash of verification code
-    string public verificationCodeHash;
-
     // % of segments to be verified. 1 / verificationRate == % to be verified
     uint64 public verificationRate;
 
@@ -58,6 +55,7 @@ contract JobsManager is IJobsManager, Verifiable, Manager {
         string streamId;                      // Unique identifier for stream.
         string transcodingOptions;            // Options used for transcoding
         uint256 maxPricePerSegment;           // Max price (in LPT base units) per segment of a stream
+        uint256 pricePerSegment;              // Set price per segment for job set by a transcoder
         address broadcasterAddress;           // Address of broadcaster that requestes a transcoding job
         address transcoderAddress;            // Address of transcoder selected for the job
         uint256 endBlock;                     // Block at which the job is ended and considered inactive
@@ -100,11 +98,6 @@ contract JobsManager is IJobsManager, Verifiable, Manager {
         _;
     }
 
-    modifier claimExists(uint256 _jobId, uint256 _claimId) {
-        require(_claimId < jobs[_jobId].claims.length);
-        _;
-    }
-
     // Events
     event NewJob(address indexed transcoder, address indexed broadcaster, uint256 jobId);
     event NewClaim(address indexed transcoder, uint256 indexed jobId, uint256 claimId);
@@ -136,7 +129,7 @@ contract JobsManager is IJobsManager, Verifiable, Manager {
      * @dev Deposit funds for jobs
      * @param _amount Amount to deposit
      */
-    function deposit(uint256 _amount) external returns (bool) {
+    function deposit(uint256 _amount) external whenSystemNotPaused returns (bool) {
         broadcasterDeposits[msg.sender] = broadcasterDeposits[msg.sender].add(_amount);
         // Transfer tokens for deposit. Sender needs to approve amount first
         token.transferFrom(msg.sender, this, _amount);
@@ -147,7 +140,7 @@ contract JobsManager is IJobsManager, Verifiable, Manager {
     /*
      * @dev Withdraw deposited funds
      */
-    function withdraw() external returns (bool) {
+    function withdraw() external whenSystemNotPaused returns (bool) {
         uint256 amount = broadcasterDeposits[msg.sender];
         broadcasterDeposits[msg.sender] = 0;
         token.transfer(msg.sender, amount);
@@ -161,8 +154,12 @@ contract JobsManager is IJobsManager, Verifiable, Manager {
      * @param _transcodingOptions Output bitrates, formats, encodings
      * @param _maxPricePerSegment Max price (in LPT base units) to pay for transcoding a segment of a stream
      */
-    function job(string _streamId, string _transcodingOptions, uint256 _maxPricePerSegment) external returns (bool) {
-        address electedTranscoder = bondingManager().electActiveTranscoder(_maxPricePerSegment);
+    function job(string _streamId, string _transcodingOptions, uint256 _maxPricePerSegment)
+        external
+        whenSystemNotPaused
+        returns (bool)
+    {
+        var (electedTranscoder, pricePerSegment) = bondingManager().electActiveTranscoder(_maxPricePerSegment);
         /* There must be an elected transcoder */
         require(electedTranscoder != address(0));
 
@@ -171,6 +168,7 @@ contract JobsManager is IJobsManager, Verifiable, Manager {
         job.streamId = _streamId;
         job.transcodingOptions = _transcodingOptions;
         job.maxPricePerSegment = _maxPricePerSegment;
+        job.pricePerSegment = pricePerSegment;
         job.broadcasterAddress = msg.sender;
         job.transcoderAddress = electedTranscoder;
 
@@ -186,13 +184,13 @@ contract JobsManager is IJobsManager, Verifiable, Manager {
      * @dev End a job. Can be called by either a broadcaster or transcoder of a job
      * @param _jobId Job identifier
      */
-    function endJob(uint256 _jobId) external returns (bool) {
+    function endJob(uint256 _jobId) external whenSystemNotPaused returns (bool) {
         Job storage job = jobs[_jobId];
 
         // Job must not already have an end block
         require(job.endBlock == 0);
         // Sender must be the job's broadcaster or elected transcoder
-        require(job.broadcasterAddress == msg.sender || jobs[_jobId].transcoderAddress == msg.sender);
+        require(job.broadcasterAddress == msg.sender || job.transcoderAddress == msg.sender);
 
         // Set end block for job
         job.endBlock = block.number.add(jobEndingPeriod);
@@ -204,16 +202,23 @@ contract JobsManager is IJobsManager, Verifiable, Manager {
      * @param _segmentRange Range of claimed segments
      * @param _claimRoot Merkle root of transcoded segment proof data for claimed segments
      */
-    function claimWork(uint256 _jobId, uint256[2] _segmentRange, bytes32 _claimRoot) jobExists(_jobId) external returns (bool) {
+    function claimWork(uint256 _jobId, uint256[2] _segmentRange, bytes32 _claimRoot)
+        external
+        whenSystemNotPaused
+        jobExists(_jobId)
+        returns (bool)
+    {
         Job storage job = jobs[_jobId];
 
         // Job must be active
         require(jobStatus(_jobId) == JobStatus.Active);
         // Sender must be elected transcoder
         require(job.transcoderAddress == msg.sender);
+        // Segment range must be valid
+        require(_segmentRange[1] >= _segmentRange[0]);
 
         // Move fees from broadcaster deposit to escrow
-        uint256 fees = _segmentRange[1].sub(_segmentRange[0]).add(1).mul(job.maxPricePerSegment);
+        uint256 fees = _segmentRange[1].sub(_segmentRange[0]).add(1).mul(job.pricePerSegment);
         broadcasterDeposits[job.broadcasterAddress] = broadcasterDeposits[job.broadcasterAddress].sub(fees);
         job.escrow = job.escrow.add(fees);
 
@@ -253,12 +258,10 @@ contract JobsManager is IJobsManager, Verifiable, Manager {
     )
         external
         payable
+        whenSystemNotPaused
         returns (bool)
     {
-        // Must be valid job id
         require(_jobId < numJobs);
-        // Must be valid claim id
-        require(_claimId < jobs[_jobId].claims.length);
 
         Job storage job = jobs[_jobId];
         Claim storage claim = job.claims[_claimId];
@@ -288,7 +291,12 @@ contract JobsManager is IJobsManager, Verifiable, Manager {
      * @param _segmentNumber Segment being verified for job
      * @param _result Boolean result of whether verification succeeded or not
      */
-    function receiveVerification(uint256 _jobId, uint256 _claimId, uint256 _segmentNumber, bool _result) onlyVerifier external returns (bool) {
+    function receiveVerification(uint256 _jobId, uint256 _claimId, uint256 _segmentNumber, bool _result)
+        external
+        whenSystemNotPaused
+        onlyVerifier
+        returns (bool)
+    {
         if (!_result) {
             refundBroadcaster(_jobId, _claimId);
             // Protocol slashes transcoder for failing verification (no finder)
@@ -305,7 +313,11 @@ contract JobsManager is IJobsManager, Verifiable, Manager {
      * @param _jobId Job identifier
      * @param _claimId Claim identifier
      */
-    function batchDistributeFees(uint256 _jobId, uint256[] _claimIds) external returns (bool) {
+    function batchDistributeFees(uint256 _jobId, uint256[] _claimIds)
+        external
+        whenSystemNotPaused
+        returns (bool)
+    {
         for (uint256 i = 0; i < _claimIds.length; i++) {
             distributeFees(_jobId, _claimIds[i]);
         }
@@ -319,7 +331,12 @@ contract JobsManager is IJobsManager, Verifiable, Manager {
      * @param _claimId Claim identifier
      * @param _segmentNumber Segment that was not verified
      */
-    function missedVerificationSlash(uint256 _jobId, uint256 _claimId, uint256 _segmentNumber) external returns (bool) {
+    function missedVerificationSlash(uint256 _jobId, uint256 _claimId, uint256 _segmentNumber)
+        external
+        whenSystemNotPaused
+        jobExists(_jobId)
+        returns (bool)
+    {
         Job storage job = jobs[_jobId];
         Claim storage claim = job.claims[_claimId];
 
@@ -350,12 +367,12 @@ contract JobsManager is IJobsManager, Verifiable, Manager {
      * @param _jobId Job identifier
      * @param _claimId Claim identifier
      */
-    function distributeFees(uint256 _jobId, uint256 _claimId) public returns (bool) {
-        // Must be valid job id
-        require(_jobId < numJobs);
-        // Must be valid claim id
-        require(_claimId < jobs[_jobId].claims.length);
-
+    function distributeFees(uint256 _jobId, uint256 _claimId)
+        public
+        whenSystemNotPaused
+        jobExists(_jobId)
+        returns (bool)
+    {
         Job storage job = jobs[_jobId];
         Claim storage claim = job.claims[_claimId];
 
@@ -366,11 +383,13 @@ contract JobsManager is IJobsManager, Verifiable, Manager {
         // Slashing period must be over for claim
         require(claim.endSlashingBlock < block.number);
 
-        uint256 fees = claim.segmentRange[1].sub(claim.segmentRange[0]).add(1).mul(job.maxPricePerSegment);
+        uint256 fees = claim.segmentRange[1].sub(claim.segmentRange[0]).add(1).mul(job.pricePerSegment);
         // Deduct fees from escrow
         job.escrow = job.escrow.sub(fees);
         // Add fees to transcoder's fee pool
         bondingManager().updateTranscoderFeePool(msg.sender, fees, claim.claimBlock, claim.transcoderTotalStake);
+        // Send fees to bonding manager
+        token.transfer(address(bondingManager()), fees);
 
         // Set claim as complete
         claim.status = ClaimStatus.Complete;
@@ -427,6 +446,7 @@ contract JobsManager is IJobsManager, Verifiable, Manager {
         bytes _proof
     )
         internal
+        constant
         returns (bool)
     {
         if (ECRecovery.recover(JobLib.personalSegmentHash(jobs[_jobId].streamId, _segmentNumber, _dataHash), _broadcasterSig) != jobs[_jobId].broadcasterAddress) return false;
@@ -445,7 +465,7 @@ contract JobsManager is IJobsManager, Verifiable, Manager {
         Claim storage claim = job.claims[_claimId];
 
         // Return escrowed fees for claim
-        uint256 fees = claim.segmentRange[1].sub(claim.segmentRange[0]).add(1).mul(job.maxPricePerSegment);
+        uint256 fees = claim.segmentRange[1].sub(claim.segmentRange[0]).add(1).mul(job.pricePerSegment);
         job.escrow = job.escrow.sub(fees);
         broadcasterDeposits[job.broadcasterAddress] = broadcasterDeposits[job.broadcasterAddress].add(fees);
 

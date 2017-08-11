@@ -36,7 +36,7 @@ contract RoundsManager is IRoundsManager, Manager {
     /*
      * @dev Initialize the current round. Called once at the start of any round
      */
-    function initializeRound() external returns (bool) {
+    function initializeRound() external whenSystemNotPaused returns (bool) {
         // Check if already called for the current round
         // Will exit here to avoid large gas consumption if it has been called for the current round already
         if (lastInitializedRound == currentRound()) return false;

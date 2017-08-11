@@ -30,6 +30,8 @@ contract("JobsManager", accounts => {
 
         const verifier = await IdentityVerifier.new()
         jobsManager = await JobsManager.new(protocol.address, token.address, verifier.address)
+
+        await protocol.unpause()
     }
 
     describe("deposit", () => {
@@ -59,6 +61,8 @@ contract("JobsManager", accounts => {
         })
 
         it("should create a NewJob event", async () => {
+            await bondingManager.setMockPricePerSegment(maxPricePerSegment)
+
             const e = jobsManager.NewJob({})
 
             e.watch(async (err, result) => {
@@ -81,10 +85,11 @@ contract("JobsManager", accounts => {
             assert.equal(job[1], streamId, "stream id incorrect")
             assert.equal(job[2], dummyTranscodingOptions, "transcoding options incorrect")
             assert.equal(job[3], maxPricePerSegment, "max price per segment incorrect")
-            assert.equal(job[4], broadcaster, "broadcaster incorrect")
-            assert.equal(job[5], electedTranscoder, "transcoder incorrect")
-            assert.equal(job[6], 0, "end block incorrect")
-            assert.equal(job[7], 0, "escrow incorrect")
+            assert.equal(job[4], maxPricePerSegment, "job price per segment incorrect")
+            assert.equal(job[5], broadcaster, "broadcaster incorrect")
+            assert.equal(job[6], electedTranscoder, "transcoder incorrect")
+            assert.equal(job[7], 0, "end block incorrect")
+            assert.equal(job[8], 0, "escrow incorrect")
         })
     })
 
@@ -105,6 +110,9 @@ contract("JobsManager", accounts => {
             const streamId = "1"
             const dummyTranscodingOptions = "0x123"
             const maxPricePerSegment = 10
+
+            await bondingManager.setMockPricePerSegment(maxPricePerSegment)
+
             // Broadcaster creates job 0
             await jobsManager.job(streamId, dummyTranscodingOptions, maxPricePerSegment, {from: broadcaster})
             // Broadcaster creates job 1
@@ -169,7 +177,7 @@ contract("JobsManager", accounts => {
 
         it("should update broadcaster deposit", async () => {
             const job = await jobsManager.jobs.call(jobId)
-            assert.equal(job[7], 40, "escrow is incorrect")
+            assert.equal(job[8], 40, "escrow is incorrect")
         })
 
         it("should update job escrow", async () => {
@@ -393,6 +401,9 @@ contract("JobsManager", accounts => {
             const streamId = "1"
             const dummyTranscodingOptions = "0x123"
             const maxPricePerSegment = 10
+
+            await bondingManager.setMockPricePerSegment(maxPricePerSegment)
+
             // Broadcaster creates job 0
             await jobsManager.job(streamId, dummyTranscodingOptions, maxPricePerSegment, {from: broadcaster})
 
@@ -417,7 +428,7 @@ contract("JobsManager", accounts => {
             await jobsManager.batchDistributeFees(jobId, claimIds, {from: electedTranscoder})
 
             const job = await jobsManager.jobs.call(jobId)
-            assert.equal(job[7], 40, "escrow is incorrect")
+            assert.equal(job[8], 40, "escrow is incorrect")
         })
 
         it("should set all claims as complete", async () => {

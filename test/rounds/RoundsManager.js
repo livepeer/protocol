@@ -19,6 +19,8 @@ contract("RoundsManager", accounts => {
 
         const bondingManager = await BondingManagerMock.new(protocol.address)
         await protocol.setContract(ethUtil.bufferToHex(ethAbi.soliditySHA3(["string"], ["BondingManager"])), bondingManager.address)
+
+        await protocol.unpause()
     }
 
     beforeEach(async () => {

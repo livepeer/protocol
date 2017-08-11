@@ -41,6 +41,7 @@ contract("LivepeerProtocol", accounts => {
             await setup()
             manager = await Manager.new(protocol.address)
             await protocol.setContract(ethUtil.bufferToHex(ethAbi.soliditySHA3(["string"], ["Manager"])), manager.address)
+            await protocol.unpause()
         })
 
         it("should throw when manager is not paused", async () => {
@@ -56,7 +57,6 @@ contract("LivepeerProtocol", accounts => {
 
         it("should update a manager's registry", async () => {
             await protocol.pause()
-            await manager.pause()
 
             const randomAddress = "0x0000000000000000000000000000000000001234"
             await protocol.updateManagerRegistry(ethUtil.bufferToHex(ethAbi.soliditySHA3(["string"], ["Manager"])), randomAddress)

@@ -56,6 +56,8 @@ contract("LivepeerProtocolIntegration", accounts => {
         await protocol.setContract(ethUtil.bufferToHex(ethAbi.soliditySHA3(["string"], ["BondingManager"])), bondingManager.address)
         await protocol.setContract(ethUtil.bufferToHex(ethAbi.soliditySHA3(["string"], ["JobsManager"])), jobsManager.address)
         await protocol.setContract(ethUtil.bufferToHex(ethAbi.soliditySHA3(["string"], ["RoundsManager"])), roundsManager.address)
+
+        await protocol.unpause()
     }
 
     describe("reward flow", () => {

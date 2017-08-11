@@ -32,6 +32,8 @@ contract("BondingManager", accounts => {
 
         jobsManager = await JobsManagerMock.new(bondingManager.address)
         await protocol.setContract(ethUtil.bufferToHex(ethAbi.soliditySHA3(["string"], ["JobsManager"])), jobsManager.address)
+
+        await protocol.unpause()
     }
 
     describe("transcoder", () => {
@@ -65,10 +67,10 @@ contract("BondingManager", accounts => {
         it("should create a new transcoder", async () => {
             await bondingManager.transcoder(blockRewardCut, feeShare, pricePerSegment, {from: transcoder})
 
-            const transcoderRates = await bondingManager.transcoderRates(transcoder)
-            assert.equal(transcoderRates[3], blockRewardCut, "pending block reward cut incorrect")
-            assert.equal(transcoderRates[4], feeShare, "pending fee share incorrect")
-            assert.equal(transcoderRates[5], pricePerSegment, "pending price per segment incorrect")
+            const registeredTranscoder = await bondingManager.transcoders.call(transcoder)
+            assert.equal(registeredTranscoder[7], blockRewardCut, "pending block reward cut incorrect")
+            assert.equal(registeredTranscoder[8], feeShare, "pending fee share incorrect")
+            assert.equal(registeredTranscoder[9], pricePerSegment, "pending price per segment incorrect")
         })
     })
 
