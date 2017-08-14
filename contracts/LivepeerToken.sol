@@ -1,8 +1,6 @@
-pragma solidity ^0.4.11;
+pragma solidity ^0.4.13;
 
-import '../installed_contracts/zeppelin/contracts/token/MintableToken.sol';
-import '../installed_contracts/zeppelin/contracts/ownership/Ownable.sol';
-import '../installed_contracts/zeppelin/contracts/SafeMath.sol';
+import "zeppelin-solidity/contracts/token/MintableToken.sol";
 
 // Abstract contract for the ERC20 token standard
 // Livepeer Token
@@ -17,7 +15,7 @@ contract LivepeerToken is MintableToken {
 
     /* Don't accept random ETH sent to this contract */
     function () {
-        throw;
+        revert();
     }
 
 }

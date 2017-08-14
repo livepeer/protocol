@@ -1,4 +1,4 @@
-pragma solidity ^0.4.11;
+pragma solidity ^0.4.13;
 
 /*
  * @title Interface for RoundsManager
@@ -11,10 +11,6 @@ contract IRoundsManager {
     // Public functions
     function currentRound() public constant returns (uint256);
     function currentRoundStartBlock() public constant returns (uint256);
-    function rewardTimeWindowLength() public constant returns (uint256);
-    function cycleLength() public constant returns (uint256);
-    function cycleNum() public constant returns (uint256);
-    function validRewardTimeWindow(uint256 _timeWindowIdx) public constant returns (bool);
     function rewardCallsPerYear() public constant returns (uint256);
     function currentRoundInitialized() public constant returns (bool);
 }

@@ -1,22 +1,24 @@
-pragma solidity ^0.4.11;
+pragma solidity ^0.4.13;
 
-/*
- * @title Registry mapping keys (hash of contract name) with contract addresses
- */
-contract ContractRegistry {
-    mapping (bytes32 => address) registry;
+import "./Manager.sol";
 
-    function registrySet(bytes32 _key, address _contract) internal returns (bool) {
+import "zeppelin-solidity/contracts/lifecycle/Pausable.sol";
+
+contract ContractRegistry is Pausable {
+    mapping (bytes32 => address) public registry;
+
+    function ContractRegistry() {
+        // Contract starts off in paused state
+        pause();
+    }
+
+    function setContract(bytes32 _key, address _contract) public onlyOwner whenPaused returns (bool) {
         registry[_key] = _contract;
 
         return true;
     }
 
-    function registryGet(bytes32 _key) internal constant returns (address) {
-        return registry[_key];
-    }
-
-    function registryContains(bytes32 _key) internal constant returns (bool) {
-        return registry[_key] != address(0x0);
+    function updateManagerRegistry(bytes32 _key, address _registry) public onlyOwner whenPaused returns (bool) {
+        return Manager(registry[_key]).setRegistry(_registry);
     }
 }

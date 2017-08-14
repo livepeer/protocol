@@ -9,7 +9,7 @@ library TranscoderPools {
 
     struct TranscoderPools {
         MinHeap.Heap candidateTranscoders;
-        MaxHeap.Heap reserveTrancoders;
+        MaxHeap.Heap reserveTranscoders;
     }
 
     /*
@@ -19,7 +19,7 @@ library TranscoderPools {
      */
     function init(TranscoderPools storage self, uint256 _candidatePoolSize, uint256 _reservePoolSize) {
         self.candidateTranscoders.init(_candidatePoolSize);
-        self.reserveTrancoders.init(_reservePoolSize);
+        self.reserveTranscoders.init(_reservePoolSize);
     }
 
     /*
@@ -27,7 +27,7 @@ library TranscoderPools {
      * @param _transcoder Address of transcoder
      */
     function isInPools(TranscoderPools storage self, address _transcoder) constant returns (bool) {
-        return self.candidateTranscoders.ids[_transcoder] || self.reserveTrancoders.ids[_transcoder];
+        return self.candidateTranscoders.ids[_transcoder] || self.reserveTranscoders.ids[_transcoder];
     }
 
     /*
@@ -42,7 +42,7 @@ library TranscoderPools {
      * Checks if transcoder is in candidate pool
      */
     function isReserveTranscoder(TranscoderPools storage self, address _transcoder) constant returns (bool) {
-        return self.reserveTrancoders.ids[_transcoder];
+        return self.reserveTranscoders.ids[_transcoder];
     }
 
     /*
@@ -52,7 +52,7 @@ library TranscoderPools {
      */
     function addTranscoder(TranscoderPools storage self, address _transcoder, uint256 _amount) returns (bool) {
         // Check if transcoder is already in a pool
-        if (self.candidateTranscoders.ids[_transcoder] || self.reserveTrancoders.ids[_transcoder]) throw;
+        require(!self.candidateTranscoders.ids[_transcoder] && !self.reserveTranscoders.ids[_transcoder]);
 
         if (!self.candidateTranscoders.isFull()) {
             // Candidate transcoder pool is not full
@@ -70,29 +70,29 @@ library TranscoderPools {
                 // Insert new transcoder into active transcoder pool
                 self.candidateTranscoders.insert(_transcoder, _amount);
 
-                if (self.reserveTrancoders.isEmpty()) {
+                if (self.reserveTranscoders.isEmpty()) {
                     // Insert candidate transcoder with smallest stake into reserve pool
-                    self.reserveTrancoders.insert(minCandidate, minCandidateStake);
+                    self.reserveTranscoders.insert(minCandidate, minCandidateStake);
                 } else {
-                    var (, maxReserveStake) = self.reserveTrancoders.max();
+                    var (, maxReserveStake) = self.reserveTranscoders.max();
 
                     if (minCandidateStake >= maxReserveStake) {
                         // Stake of former candidate transcoder with smallest stake greater than
                         // or equal to stake of reserve transcoder with greatest stake.
                         // Favor the former candidate transcoder if stake is equal
                         // Remove reserve transcoder with greatest stake
-                        self.reserveTrancoders.extractMax();
+                        self.reserveTranscoders.extractMax();
                         // Insert former candidate transcoder with smallest stake
-                        self.reserveTrancoders.insert(minCandidate, minCandidateStake);
+                        self.reserveTranscoders.insert(minCandidate, minCandidateStake);
                     }
                 }
-            } else if (!self.reserveTrancoders.isFull()) {
+            } else if (!self.reserveTranscoders.isFull()) {
                 // Reserve pool is not full
                 // Insert transcoder
-                self.reserveTrancoders.insert(_transcoder, _amount);
+                self.reserveTranscoders.insert(_transcoder, _amount);
             } else {
                 // Cannot add transcoder if both pools are full
-                throw;
+                revert();
             }
         }
 
@@ -109,13 +109,13 @@ library TranscoderPools {
             // Transcoder in candidate pool
             // Increase key
             self.candidateTranscoders.increaseKey(_transcoder, _amount);
-        } else if (self.reserveTrancoders.ids[_transcoder]) {
+        } else if (self.reserveTranscoders.ids[_transcoder]) {
             // Transcoder in reserve pool
             // Increase key
-            self.reserveTrancoders.increaseKey(_transcoder, _amount);
+            self.reserveTranscoders.increaseKey(_transcoder, _amount);
             // Review reserve transcoder for promotion
             // Get reserve transcoder with highest stake
-            var (maxReserve, maxReserveStake) = self.reserveTrancoders.max();
+            var (maxReserve, maxReserveStake) = self.reserveTranscoders.max();
 
             if (_transcoder == maxReserve) {
                 // Transcoder with increased stake is now reserve transcoder with highest stake
@@ -129,14 +129,14 @@ library TranscoderPools {
                     // Add transcoder with increased stake to candidate transcoder pool
                     self.candidateTranscoders.insert(maxReserve, maxReserveStake);
                     // Remove transcoder with increased stake from reserve transcoder pool
-                    self.reserveTrancoders.extractMax();
+                    self.reserveTranscoders.extractMax();
                     // Add candidate transcoder with smallest stake to reserve transcoder pool
-                    self.reserveTrancoders.insert(minCandidate, minCandidateStake);
+                    self.reserveTranscoders.insert(minCandidate, minCandidateStake);
                 }
             }
         } else {
             // Transcoder is in neither pool
-            throw;
+            revert();
         }
 
         return true;
@@ -152,19 +152,19 @@ library TranscoderPools {
             // Remove transcoder from active pool
             self.candidateTranscoders.deleteId(_transcoder);
 
-            if (!self.reserveTrancoders.isEmpty()) {
+            if (!self.reserveTranscoders.isEmpty()) {
                 // Promote the reserve transcoder with the greatest stake
-                var (maxReserve, maxReserveStake) = self.reserveTrancoders.max();
-                self.reserveTrancoders.extractMax();
+                var (maxReserve, maxReserveStake) = self.reserveTranscoders.max();
+                self.reserveTranscoders.extractMax();
                 self.candidateTranscoders.insert(maxReserve, maxReserveStake);
             }
-        } else if (self.reserveTrancoders.ids[_transcoder]) {
+        } else if (self.reserveTranscoders.ids[_transcoder]) {
             // Transcoder in reserve transcoder pool
             // Remove transcoder from reserve pool
-            self.reserveTrancoders.deleteId(_transcoder);
+            self.reserveTranscoders.deleteId(_transcoder);
         } else {
             // Transcoder not in either pool
-            throw;
+            revert();
         }
 
         return true;
@@ -184,10 +184,10 @@ library TranscoderPools {
             // Get candidate transcoder with smallest stake
             var (minCandidate, minCandidateStake) = self.candidateTranscoders.min();
 
-            if (!self.reserveTrancoders.isEmpty() && _transcoder == minCandidate) {
+            if (!self.reserveTranscoders.isEmpty() && _transcoder == minCandidate) {
                 // Transcoder with decreased stake is now candidate transcoder with smallest stake
                 // Get reserve transcoder with largest stake
-                var (maxReserve, maxReserveStake) = self.reserveTrancoders.max();
+                var (maxReserve, maxReserveStake) = self.reserveTranscoders.max();
 
                 if (minCandidateStake < maxReserveStake) {
                     // Transcoder with decreased stake has less stake than reserve transcoder with largest stake
@@ -196,18 +196,18 @@ library TranscoderPools {
                     // Add reserve transcoder with largest stake to candidate transcoder pool
                     self.candidateTranscoders.insert(maxReserve, maxReserveStake);
                     // Remove reserve transcoder with largest stake from reserve transcoder pool
-                    self.reserveTrancoders.extractMax();
+                    self.reserveTranscoders.extractMax();
                     // Add transcoder with decreased stake to reserve transcoder pool
-                    self.reserveTrancoders.insert(minCandidate, minCandidateStake);
+                    self.reserveTranscoders.insert(minCandidate, minCandidateStake);
                 }
             }
-        } else if (self.reserveTrancoders.ids[_transcoder]) {
+        } else if (self.reserveTranscoders.ids[_transcoder]) {
             // Transcoder in reserve transcoder pool
             // Decrease key
-            self.reserveTrancoders.decreaseKey(_transcoder, _amount);
+            self.reserveTranscoders.decreaseKey(_transcoder, _amount);
         } else {
             // Transcoder not in either transcoder pool
-            throw;
+            revert();
         }
 
         return true;
@@ -221,12 +221,12 @@ library TranscoderPools {
         if (self.candidateTranscoders.ids[_transcoder]) {
             // Transcoder in candidate pool
             return self.candidateTranscoders.getKey(_transcoder);
-        } else if (self.reserveTrancoders.ids[_transcoder]) {
+        } else if (self.reserveTranscoders.ids[_transcoder]) {
             // Transcoder in reserve pool
-            return self.reserveTrancoders.getKey(_transcoder);
+            return self.reserveTranscoders.getKey(_transcoder);
         } else {
             // Transcoder not in either pool
-            throw;
+            revert();
         }
     }
 }

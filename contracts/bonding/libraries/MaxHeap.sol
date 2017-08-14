@@ -1,8 +1,8 @@
-pragma solidity ^0.4.11;
+pragma solidity ^0.4.13;
 
 import "./Node.sol";
 
-import "../../../installed_contracts/zeppelin/contracts/SafeMath.sol";
+import "zeppelin-solidity/contracts/math/SafeMath.sol";
 
 library MaxHeap {
     using SafeMath for uint256;
@@ -21,7 +21,7 @@ library MaxHeap {
      */
     function init(Heap storage self, uint _size) {
         // Check if heap is already initialized
-        if (self.initialized == true) throw;
+        require(!self.initialized);
 
         self.maxSize = _size;
         self.initialized = true;
@@ -62,7 +62,7 @@ library MaxHeap {
      */
     function getKey(Heap storage self, address _id) constant returns (uint256) {
         // Check if id is in heap
-        if (self.ids[_id] == false) throw;
+        require(self.ids[_id]);
 
         return self.nodes[self.positions[_id]].key;
     }
@@ -72,7 +72,7 @@ library MaxHeap {
      */
     function max(Heap storage self) constant returns (address, uint) {
         // Check if heap is empty
-        if (self.nodes.length == 0) throw;
+        require(self.nodes.length > 0);
 
         return (self.nodes[0].id, self.nodes[0].key);
     }
@@ -84,9 +84,9 @@ library MaxHeap {
      */
     function insert(Heap storage self, address _id, uint _key) {
         // Check if heap is already full
-        if (self.nodes.length == self.maxSize) throw;
+        require(self.nodes.length != self.maxSize);
         // Check if id already in heap
-        if (self.ids[_id] == true) throw;
+        require(!self.ids[_id]);
 
         // Create and set node
         self.nodes.push(Node.Node(_id, _key, true));
@@ -104,7 +104,7 @@ library MaxHeap {
      */
     function extractMax(Heap storage self) {
         // Check for empty heap
-        if (self.nodes.length == 0) throw;
+        require(self.nodes.length > 0);
 
         deletePos(self, 0);
     }
@@ -115,7 +115,7 @@ library MaxHeap {
      */
     function deleteId(Heap storage self, address _id) {
         // Check if id is in heap
-        if (self.ids[_id] == false) throw;
+        require(self.ids[_id]);
 
         deletePos(self, self.positions[_id]);
     }
@@ -125,7 +125,7 @@ library MaxHeap {
      * @param _pos Position of node
      */
     function deletePos(Heap storage self, uint _pos) {
-        if (self.nodes.length < _pos) throw;
+        require(self.nodes.length >= _pos);
 
         // Update ids contained in the heap
         self.ids[self.nodes[_pos].id] = false;
@@ -152,7 +152,7 @@ library MaxHeap {
      */
     function increaseKey(Heap storage self, address _id, uint _amount) {
         // Check if id in heap
-        if (self.ids[_id] == false) throw;
+        require(self.ids[_id]);
 
         uint pos = self.positions[_id];
 
@@ -170,7 +170,7 @@ library MaxHeap {
      */
     function decreaseKey(Heap storage self, address _id, uint _amount) {
         // Check if id in heap
-        if (self.ids[_id] == false) throw;
+        require(self.ids[_id]);
 
         uint pos = self.positions[_id];
 
