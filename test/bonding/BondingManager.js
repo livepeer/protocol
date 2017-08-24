@@ -9,6 +9,7 @@ const RoundsManagerMock = artifacts.require("RoundsManagerMock")
 const JobsManagerMock = artifacts.require("JobsManagerMock")
 
 const NUM_ACTIVE_TRANSCODERS = 1
+const UNBONDING_PERIOD = 2
 
 contract("BondingManager", accounts => {
     const minter = accounts[0]
@@ -25,7 +26,7 @@ contract("BondingManager", accounts => {
 
         const protocol = await LivepeerProtocol.new()
 
-        bondingManager = await BondingManager.new(protocol.address, token.address, NUM_ACTIVE_TRANSCODERS)
+        bondingManager = await BondingManager.new(protocol.address, token.address, NUM_ACTIVE_TRANSCODERS, UNBONDING_PERIOD)
 
         roundsManager = await RoundsManagerMock.new(bondingManager.address)
         await protocol.setContract(ethUtil.bufferToHex(ethAbi.soliditySHA3(["string"], ["RoundsManager"])), roundsManager.address)

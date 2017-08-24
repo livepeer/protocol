@@ -10,6 +10,14 @@ const JobsManager = artifacts.require("JobsManager")
 const IdentityVerifier = artifacts.require("IdentityVerifier")
 const BondingManagerMock = artifacts.require("BondingManagerMock")
 
+const VERIFICATION_RATE = 1
+const JOB_ENDING_PERIOD = 50
+const VERIFICATION_PERIOD = 50
+const SLASHING_PERIOD = 50
+const FAILED_VERIFICATION_SLASH_AMOUNT = 20
+const MISSED_VERIFICATION_SLASH_AMOUNT = 30
+const FINDER_FEE = 4
+
 contract("JobsManager", accounts => {
     let rpc
     let token
@@ -29,7 +37,18 @@ contract("JobsManager", accounts => {
         await protocol.setContract(ethUtil.bufferToHex(ethAbi.soliditySHA3(["string"], ["BondingManager"])), bondingManager.address)
 
         const verifier = await IdentityVerifier.new()
-        jobsManager = await JobsManager.new(protocol.address, token.address, verifier.address)
+        jobsManager = await JobsManager.new(
+            protocol.address,
+            token.address,
+            verifier.address,
+            VERIFICATION_RATE,
+            JOB_ENDING_PERIOD,
+            VERIFICATION_PERIOD,
+            SLASHING_PERIOD,
+            FAILED_VERIFICATION_SLASH_AMOUNT,
+            MISSED_VERIFICATION_SLASH_AMOUNT,
+            FINDER_FEE
+        )
 
         await protocol.unpause()
     }

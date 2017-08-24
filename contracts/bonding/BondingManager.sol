@@ -109,12 +109,17 @@ contract BondingManager is IBondingManager, Manager {
      * @dev BondingManager constructor. Sets a pre-existing address for the LivepeerToken contract
      * @param _token LivepeerToken contract address
      */
-    function BondingManager(address _registry, address _token, uint256 _numActiveTranscoders) Manager(_registry) {
+    function BondingManager(
+        address _registry,
+        address _token,
+        uint256 _numActiveTranscoders,
+        uint64 _unbondingPeriod
+    ) Manager(_registry) {
         // Set LivepeerToken address
         token = LivepeerToken(_token);
 
-        // Set unbonding period to 2 rounds. Current value is for testing purposes
-        unbondingPeriod = 2;
+        // Set unbonding period
+        unbondingPeriod = _unbondingPeriod;
 
         // Set up transcoder pools
         transcoderPools.init(_numActiveTranscoders, _numActiveTranscoders);

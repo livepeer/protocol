@@ -13,6 +13,17 @@ const IdentityVerifier = artifacts.require("IdentityVerifier")
 
 const ROUND_LENGTH = 50
 const NUM_ACTIVE_TRANSCODERS = 1
+const UNBONDING_PERIOD = 2
+
+const VERIFICATION_RATE = 1
+const JOB_ENDING_PERIOD = 50
+const VERIFICATION_PERIOD = 50
+const SLASHING_PERIOD = 50
+const FAILED_VERIFICATION_SLASH_AMOUNT = 20
+const MISSED_VERIFICATION_SLASH_AMOUNT = 30
+const FINDER_FEE = 4
+
+const BLOCK_TIME = 1
 
 contract("LivepeerProtocolIntegration", accounts => {
     let rpc
@@ -43,14 +54,25 @@ contract("LivepeerProtocolIntegration", accounts => {
         const protocol = await LivepeerProtocol.new()
 
         // Create bonding manager
-        bondingManager = await BondingManager.new(protocol.address, token.address, NUM_ACTIVE_TRANSCODERS)
+        bondingManager = await BondingManager.new(protocol.address, token.address, NUM_ACTIVE_TRANSCODERS, UNBONDING_PERIOD)
         token.transferOwnership(bondingManager.address, {from: accounts[0]})
 
         // Create jobs manager
-        jobsManager = await JobsManager.new(protocol.address, token.address, verifier.address)
+        jobsManager = await JobsManager.new(
+            protocol.address,
+            token.address,
+            verifier.address,
+            VERIFICATION_RATE,
+            JOB_ENDING_PERIOD,
+            VERIFICATION_PERIOD,
+            SLASHING_PERIOD,
+            FAILED_VERIFICATION_SLASH_AMOUNT,
+            MISSED_VERIFICATION_SLASH_AMOUNT,
+            FINDER_FEE
+        )
 
-        // // Create rounds manager
-        roundsManager = await RoundsManager.new(protocol.address)
+        // Create rounds manager
+        roundsManager = await RoundsManager.new(protocol.address, BLOCK_TIME, ROUND_LENGTH, NUM_ACTIVE_TRANSCODERS)
 
         // // Register managers
         await protocol.setContract(ethUtil.bufferToHex(ethAbi.soliditySHA3(["string"], ["BondingManager"])), bondingManager.address)

@@ -10,6 +10,7 @@ module.exports = {
 		"new-cap": ["error", {"capIsNew": false}],
 		"require-jsdoc": "off",
 		"semi": ["error", "never"],
-		"quotes": ["error", "double"]
+		"quotes": ["error", "double"],
+        "comma-dangle": ["error", "never"]
 	}
 };

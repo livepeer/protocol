@@ -6,6 +6,10 @@ const LivepeerProtocol = artifacts.require("LivepeerProtocol")
 const BondingManagerMock = artifacts.require("BondingManagerMock")
 const RoundsManager = artifacts.require("RoundsManager")
 
+const BLOCK_TIME = 1
+const ROUND_LENGTH = 50
+const NUM_ACTIVE_TRANSCODERS = 1
+
 contract("RoundsManager", accounts => {
     let rpc
     let roundsManager
@@ -15,7 +19,7 @@ contract("RoundsManager", accounts => {
 
         const protocol = await LivepeerProtocol.new()
 
-        roundsManager = await RoundsManager.new(protocol.address)
+        roundsManager = await RoundsManager.new(protocol.address, BLOCK_TIME, ROUND_LENGTH, NUM_ACTIVE_TRANSCODERS)
 
         const bondingManager = await BondingManagerMock.new(protocol.address)
         await protocol.setContract(ethUtil.bufferToHex(ethAbi.soliditySHA3(["string"], ["BondingManager"])), bondingManager.address)

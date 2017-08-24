@@ -22,14 +22,16 @@ contract RoundsManager is IRoundsManager, Manager {
     // Number of active transcoders during a round
     uint256 public numActiveTranscoders;
 
-    function RoundsManager(address _registry) Manager(_registry) {
-        // Set block time to 1 second for testing purposes
-        blockTime = 1;
-        // A round is 50 blocks for testing purposes
-        roundLength = 50;
-        // A round has 1 active transcoders for testing purposes
-        numActiveTranscoders = 1;
-        // Set last initialized round to current round
+    function RoundsManager(
+        address _registry,
+        uint256 _blockTime,
+        uint256 _roundLength,
+        uint256 _numActiveTranscoders
+    ) Manager(_registry) {
+        blockTime = _blockTime;
+        roundLength = _roundLength;
+        numActiveTranscoders = _numActiveTranscoders;
+
         lastInitializedRound = currentRound();
     }
 
