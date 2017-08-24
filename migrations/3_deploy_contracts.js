@@ -34,8 +34,8 @@ module.exports = function(deployer, network) {
         )
     }).then(() => {
         return deployer.deploy([
-            [BondingManager, LivepeerProtocol.address, LivepeerToken.address, config.numActiveTranscoders, config.bondingManager.unbondingPeriod],
-            [RoundsManager, LivepeerProtocol.address, config.roundsManager.blockTime, config.roundsManager.roundLength, config.numActiveTranscoders]
+            [BondingManager, LivepeerProtocol.address, LivepeerToken.address, config.bondingManager.numActiveTranscoders, config.bondingManager.unbondingPeriod],
+            [RoundsManager, LivepeerProtocol.address, config.roundsManager.blockTime, config.roundsManager.roundLength]
         ])
     })
 }

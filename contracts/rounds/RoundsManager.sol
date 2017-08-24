@@ -19,18 +19,13 @@ contract RoundsManager is IRoundsManager, Manager {
     // Last initialized round. After first round, this is the last round during which initializeRound() was called
     uint256 public lastInitializedRound;
 
-    // Number of active transcoders during a round
-    uint256 public numActiveTranscoders;
-
     function RoundsManager(
         address _registry,
         uint256 _blockTime,
-        uint256 _roundLength,
-        uint256 _numActiveTranscoders
+        uint256 _roundLength
     ) Manager(_registry) {
         blockTime = _blockTime;
         roundLength = _roundLength;
-        numActiveTranscoders = _numActiveTranscoders;
 
         lastInitializedRound = currentRound();
     }
@@ -67,9 +62,9 @@ contract RoundsManager is IRoundsManager, Manager {
     /*
      * @dev Return number of reward calls per year
      */
-    function rewardCallsPerYear() public constant returns (uint256) {
+    function roundsPerYear() public constant returns (uint256) {
         uint256 secondsInYear = 1 years;
-        return secondsInYear.div(blockTime).div(roundLength).mul(numActiveTranscoders);
+        return secondsInYear.div(blockTime).div(roundLength);
     }
 
     /*

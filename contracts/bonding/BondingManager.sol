@@ -92,6 +92,8 @@ contract BondingManager is IBondingManager, Manager {
     mapping (address => bool) public isActiveTranscoder;
     // Mapping to track the index position of an address in the current active transcoder set
     mapping (address => uint256) public activeTranscoderPositions;
+    // Total stake of all active transcoders
+    uint256 public totalActiveTranscoderStake;
 
     // Only the RoundsManager can call
     modifier onlyRoundsManager() {
@@ -299,6 +301,8 @@ contract BondingManager is IBondingManager, Manager {
             activeTranscoders.length = transcoderPools.candidateTranscoders.nodes.length;
         }
 
+        uint256 stake = 0;
+
         for (uint256 i = 0; i < transcoderPools.candidateTranscoders.nodes.length; i++) {
             if (activeTranscoders[i].initialized) {
                 // Set address of old node to not be present in active transcoder set
@@ -318,7 +322,12 @@ contract BondingManager is IBondingManager, Manager {
             transcoders[activeTranscoder].blockRewardCut = transcoders[activeTranscoder].pendingBlockRewardCut;
             transcoders[activeTranscoder].feeShare = transcoders[activeTranscoder].pendingFeeShare;
             transcoders[activeTranscoder].pricePerSegment = transcoders[activeTranscoder].pendingPricePerSegment;
+
+            stake = stake.add(transcoderTotalStake(activeTranscoder));
         }
+
+        // Update total stake of all active transcoders
+        totalActiveTranscoderStake = stake;
 
         return true;
     }
@@ -343,7 +352,7 @@ contract BondingManager is IBondingManager, Manager {
         t.lastRewardRound = currentRound;
 
         // Calculate number of tokens to mint
-        uint256 mintedTokens = mintedTokensPerReward();
+        uint256 mintedTokens = mintedTokensPerReward(transcoderTotalStake(msg.sender));
         /* // Mint token reward and allocate to this protocol contract */
         token.mint(this, mintedTokens);
 
@@ -610,8 +619,8 @@ contract BondingManager is IBondingManager, Manager {
     /*
      * @dev Return number of minted tokens for a reward call
      */
-    function mintedTokensPerReward() public constant returns (uint256) {
-        return initialTokenSupply.mul(initialYearlyInflation).div(100).div(roundsManager().rewardCallsPerYear());
+    function mintedTokensPerReward(uint256 _transcoderStake) public constant returns (uint256) {
+        return initialTokenSupply.mul(initialYearlyInflation).div(100).div(roundsManager().roundsPerYear()).mul(_transcoderStake).div(totalActiveTranscoderStake);
     }
 
     /*

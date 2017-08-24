@@ -1,6 +1,6 @@
 module.exports = {
-    numActiveTranscoders: 1,
     bondingManager: {
+        numActiveTranscoders: 1,
         unbondingPeriod: 2
     },
     jobsManager: {
