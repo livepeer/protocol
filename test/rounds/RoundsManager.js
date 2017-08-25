@@ -6,6 +6,9 @@ const LivepeerProtocol = artifacts.require("LivepeerProtocol")
 const BondingManagerMock = artifacts.require("BondingManagerMock")
 const RoundsManager = artifacts.require("RoundsManager")
 
+const BLOCK_TIME = 1
+const ROUND_LENGTH = 50
+
 contract("RoundsManager", accounts => {
     let rpc
     let roundsManager
@@ -15,7 +18,7 @@ contract("RoundsManager", accounts => {
 
         const protocol = await LivepeerProtocol.new()
 
-        roundsManager = await RoundsManager.new(protocol.address)
+        roundsManager = await RoundsManager.new(protocol.address, BLOCK_TIME, ROUND_LENGTH)
 
         const bondingManager = await BondingManagerMock.new(protocol.address)
         await protocol.setContract(ethUtil.bufferToHex(ethAbi.soliditySHA3(["string"], ["BondingManager"])), bondingManager.address)
@@ -47,13 +50,12 @@ contract("RoundsManager", accounts => {
         })
     })
 
-    describe("rewardCallsPerYear", () => {
+    describe("roundsPerYear", () => {
         it("returns the correct number of calls per year", async () => {
             const roundLength = await roundsManager.roundLength.call()
-            const numActiveTranscoders = await roundsManager.numActiveTranscoders.call()
-            const numCalls = Math.floor((365 * 24 * 60 * 60) / roundLength.toNumber()) * numActiveTranscoders.toNumber()
+            const rounds = Math.floor((365 * 24 * 60 * 60) / roundLength.toNumber())
 
-            assert.equal(await roundsManager.rewardCallsPerYear(), numCalls, "reward calls per year is incorrect")
+            assert.equal(await roundsManager.roundsPerYear(), rounds, "rounds per year is incorrect")
         })
     })
 

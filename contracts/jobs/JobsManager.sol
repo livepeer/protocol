@@ -103,26 +103,32 @@ contract JobsManager is IJobsManager, Verifiable, Manager {
     event NewClaim(address indexed transcoder, uint256 indexed jobId, uint256 claimId);
     event ReceivedVerification(uint256 indexed jobId, uint256 indexed claimId, uint256 segmentNumber, bool result);
 
-    function JobsManager(address _registry, address _token, address _verifier)
+    function JobsManager(
+        address _registry,
+        address _token,
+        address _verifier,
+        uint64 _verificationRate,
+        uint256 _jobEndingPeriod,
+        uint256 _verificationPeriod,
+        uint256 _slashingPeriod,
+        uint64 _failedVerificationSlashAmount,
+        uint64 _missedVerificationSlashAmount,
+        uint64 _finderFee
+    )
         Manager(_registry)
     {
         // Set LivepeerToken address
         token = LivepeerToken(_token);
         // Set Verifier address
         verifier = Verifier(_verifier);
-        // TODO: These are all test values and need to be replaced with realistic values
-        // Verify all segments.
-        verificationRate = 1;
-        // A job becomes inactive 100 blocks after endJob() is called
-        jobEndingPeriod = 50;
-        // A transcoder has 100 blocks for verification after claiming work
-        verificationPeriod = 50;
-        // Slashing period after verification is 100 blocks
-        slashingPeriod = 50;
-        // Stake slashed by 20% for a failed verification
-        failedVerificationSlashAmount = 20;
-        // Stake slashed by 30% for a missed verification
-        missedVerificationSlashAmount = 30;
+
+        verificationRate = _verificationRate;
+        jobEndingPeriod = _jobEndingPeriod;
+        verificationPeriod = _verificationPeriod;
+        slashingPeriod = _slashingPeriod;
+        failedVerificationSlashAmount = _failedVerificationSlashAmount;
+        missedVerificationSlashAmount = _missedVerificationSlashAmount;
+        finderFee = _finderFee;
     }
 
     /*
