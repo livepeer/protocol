@@ -1,5 +1,5 @@
 module.exports = {
-  "extends": ["./node_modules/eslint-config-google/index.js"],
+    "extends": ["./node_modules/eslint-config-google/index.js"],
 	"parserOptions": {
 		"ecmaVersion": 8,
 		"sourceType": "module"
