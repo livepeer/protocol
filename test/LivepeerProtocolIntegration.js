@@ -90,7 +90,6 @@ contract("LivepeerProtocolIntegration", accounts => {
         const delegator2 = accounts[5]
 
         const transcoderBond0 = 100
-        const transcoderBond1 = 100
         const delegatorBond0 = 100
         const delegatorBond1 = 100
         const delegatorBond2 = 100
@@ -140,7 +139,7 @@ contract("LivepeerProtocolIntegration", accounts => {
 
             it("reward should update transcoder total stake with minted tokens", async () => {
                 const initialTranscoderTotalStake = transcoderBond0 + delegatorBond0 + delegatorBond1 + delegatorBond2
-                mintedTokens = await bondingManager.mintedTokensPerReward(initialTranscoderTotalStake)
+                mintedTokens = await bondingManager.mintedTokensPerReward(transcoder0)
                 const updatedTranscoderTotalStake = await bondingManager.transcoderTotalStake(transcoder0)
 
                 assert.equal(updatedTranscoderTotalStake.minus(initialTranscoderTotalStake), mintedTokens.toNumber(), "transcoder total stake not updated with minted tokens correctly")
@@ -177,7 +176,7 @@ contract("LivepeerProtocolIntegration", accounts => {
             it("transcoder should call reward", async () => {
                 await rpc.waitUntilNextBlockMultiple(20, ROUND_LENGTH)
                 await roundsManager.initializeRound({from: transcoder0})
-                mintedTokens = await bondingManager.mintedTokensPerReward(initialTranscoderTotalStake)
+                mintedTokens = await bondingManager.mintedTokensPerReward(transcoder0)
                 await bondingManager.reward({from: transcoder0})
             })
 
@@ -243,7 +242,7 @@ contract("LivepeerProtocolIntegration", accounts => {
 
                 await bondingManager.reward({from: transcoder})
 
-                const mintedTokens = await bondingManager.mintedTokensPerReward(transcoderTotalStakeBeforeLastReward)
+                const mintedTokens = await bondingManager.mintedTokensPerReward(transcoder)
                 const transcoderRewardShare = mintedTokens.times(blockRewardCut).div(100).floor()
                 const registeredTranscoder = await bondingManager.transcoders.call(transcoder)
                 assert.equal(registeredTranscoder[1], transcoderRewardShare.plus(transcoderBond).toNumber(), "transcoder bond is incorrect")
@@ -361,7 +360,7 @@ contract("LivepeerProtocolIntegration", accounts => {
                 let registeredDelegator = await bondingManager.delegators.call(delegator)
                 const initialDelegatorBond = registeredDelegator[1]
                 const transcoderTotalStake = await bondingManager.transcoderTotalStake(transcoder)
-                const mintedTokens = await bondingManager.mintedTokensPerReward(transcoderTotalStakeBeforeLastReward)
+                const mintedTokens = await bondingManager.mintedTokensPerReward(transcoder)
 
                 await roundsManager.initializeRound({from: delegator})
 

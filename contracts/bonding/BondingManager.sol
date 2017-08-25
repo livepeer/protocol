@@ -352,7 +352,7 @@ contract BondingManager is IBondingManager, Manager {
         t.lastRewardRound = currentRound;
 
         // Calculate number of tokens to mint
-        uint256 mintedTokens = mintedTokensPerReward(transcoderTotalStake(msg.sender));
+        uint256 mintedTokens = mintedTokensPerReward(msg.sender);
         /* // Mint token reward and allocate to this protocol contract */
         token.mint(this, mintedTokens);
 
@@ -619,8 +619,9 @@ contract BondingManager is IBondingManager, Manager {
     /*
      * @dev Return number of minted tokens for a reward call
      */
-    function mintedTokensPerReward(uint256 _transcoderStake) public constant returns (uint256) {
-        return initialTokenSupply.mul(initialYearlyInflation).div(100).div(roundsManager().roundsPerYear()).mul(_transcoderStake).div(totalActiveTranscoderStake);
+    function mintedTokensPerReward(address _transcoder) public constant returns (uint256) {
+        uint256 transcoderActiveStake = activeTranscoders[activeTranscoderPositions[_transcoder]].key;
+        return initialTokenSupply.mul(initialYearlyInflation).div(100).div(roundsManager().roundsPerYear()).mul(transcoderActiveStake).div(totalActiveTranscoderStake);
     }
 
     /*
