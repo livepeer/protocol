@@ -15,5 +15,11 @@ module.exports = {
     roundsManager: {
         blockTime: 1,
         roundLength: 50
+    },
+    faucet: {
+        faucetAmount: 100000000000000000000,
+        requestAmount: 1000,
+        requestWait: 2,
+        whitelist: []
     }
 }

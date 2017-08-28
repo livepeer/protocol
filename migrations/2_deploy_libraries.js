@@ -18,13 +18,13 @@ module.exports = function(deployer) {
         JobsManager,
         RoundsManager,
         MaxHeap,
-        MinHeap,
+        MinHeap
     ])
 
     deployer.deploy(Node)
     deployer.link(Node, [
         MinHeap,
-        MaxHeap,
+        MaxHeap
     ])
 
     deployer.deploy(MinHeap)
