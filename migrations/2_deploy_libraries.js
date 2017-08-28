@@ -5,14 +5,26 @@ const TranscoderPools = artifacts.require("TranscoderPools")
 const MerkleProof = artifacts.require("MerkleProof")
 const ECRecovery = artifacts.require("ECRecovery")
 const JobLib = artifacts.require("JobLib")
+const SafeMath = artifacts.require("SafeMath")
+
 const JobsManager = artifacts.require("JobsManager")
 const BondingManager = artifacts.require("BondingManager")
+const RoundsManager = artifacts.require("RoundsManager")
 
 module.exports = function(deployer) {
+    deployer.deploy(SafeMath)
+    deployer.link(SafeMath, [
+        BondingManager,
+        JobsManager,
+        RoundsManager,
+        MaxHeap,
+        MinHeap
+    ])
+
     deployer.deploy(Node)
     deployer.link(Node, [
         MinHeap,
-        MaxHeap,
+        MaxHeap
     ])
 
     deployer.deploy(MinHeap)

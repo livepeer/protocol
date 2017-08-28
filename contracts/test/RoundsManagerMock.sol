@@ -6,7 +6,7 @@ import "../bonding/IBondingManager.sol";
 contract RoundsManagerMock is IRoundsManager {
     uint256 public mockCurrentRound;
     uint256 public mockCurrentRoundStartBlock;
-    uint256 public mockRewardCallsPerYear;
+    uint256 public mockRoundsPerYear;
     bool public mockCurrentRoundInitialized;
 
     IBondingManager bondingManager;
@@ -37,8 +37,8 @@ contract RoundsManagerMock is IRoundsManager {
         return mockCurrentRoundStartBlock;
     }
 
-    function rewardCallsPerYear() public constant returns (uint256) {
-        return mockRewardCallsPerYear;
+    function roundsPerYear() public constant returns (uint256) {
+        return mockRoundsPerYear;
     }
 
     function currentRoundInitialized() public constant returns (bool) {

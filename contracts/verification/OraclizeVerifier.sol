@@ -31,15 +31,13 @@ contract OraclizeVerifier is Verifier, usingOraclize {
 
     // Check if sufficient funds for Oraclize computation
     modifier sufficientOraclizeFunds() {
-        if (oraclize_getPrice("computation") > msg.value) throw;
+        require(oraclize_getPrice("computation") <= msg.value);
         _;
     }
 
     function OraclizeVerifier() {
         // OAR used for testing purposes
         OAR = OraclizeAddrResolverI(0x6f485C8BF6fc43eA212E93BBF8ce046C7f1cb475);
-        // Set Oraclize proof
-        oraclize_setProof(proofType_TLSNotary | proofStorage_IPFS);
         // Set verification code hash
         verificationCodeHash = "QmPu23REr93Mfv7m9NPdFLMZz7PzHE1LaXvn4AmQCQgR3u";
     }
