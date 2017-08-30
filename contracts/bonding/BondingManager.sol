@@ -83,6 +83,9 @@ contract BondingManager is IBondingManager, Manager {
     mapping (address => Delegator) public delegators;
     mapping (address => Transcoder) public transcoders;
 
+    // Keep track of all transcoder addresses
+    address[] public registeredTranscoders;
+
     // Active and candidate transcoder pools
     TranscoderPools.TranscoderPools transcoderPools;
 
@@ -151,6 +154,8 @@ contract BondingManager is IBondingManager, Manager {
         t.pendingBlockRewardCut = _blockRewardCut;
         t.pendingFeeShare = _feeShare;
         t.pendingPricePerSegment = _pricePerSegment;
+
+        registeredTranscoders.push(msg.sender);
 
         return true;
     }
@@ -625,6 +630,13 @@ contract BondingManager is IBondingManager, Manager {
     }
 
     /*
+     * @dev Return number of registered transcoders
+     */
+    function getTotalRegisteredTranscoders() public constant returns (uint256) {
+        return registeredTranscoders.length;
+    }
+
+     /*
      * @dev Computes token distribution for delegator since its last state transition
      * @param _delegator Address of delegator
      */

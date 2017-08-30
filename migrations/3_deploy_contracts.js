@@ -4,7 +4,7 @@ const JobsManager = artifacts.require("JobsManager")
 const BondingManager = artifacts.require("BondingManager")
 const RoundsManager = artifacts.require("RoundsManager")
 const IdentityVerifier = artifacts.require("IdentityVerifier")
-const OraclizeVerifier = artifacts.require("OraclizeVerifier")
+// const OraclizeVerifier = artifacts.require("OraclizeVerifier")
 const LivepeerProtocol = artifacts.require("LivepeerProtocol")
 const LivepeerToken = artifacts.require("LivepeerToken")
 
@@ -16,14 +16,16 @@ module.exports = function(deployer, network) {
         if (network == "development") {
             return deployer.deploy(IdentityVerifier)
         } else {
-            return deployer.deploy(OraclizeVerifier)
+            return deployer.deploy(IdentityVerifier)
+            // return deployer.deploy(OraclizeVerifier)
         }
     }).then(() => {
         return deployer.deploy(
             JobsManager,
             LivepeerProtocol.address,
             LivepeerToken.address,
-            network == "development" ? IdentityVerifier.address : OraclizeVerifier.address,
+            IdentityVerifier.address,
+            // network == "development" ? IdentityVerifier.address : OraclizeVerifier.address,
             config.jobsManager.verificationRate,
             config.jobsManager.jobEndingPeriod,
             config.jobsManager.verificationPeriod,
