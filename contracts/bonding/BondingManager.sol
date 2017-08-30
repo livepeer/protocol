@@ -281,11 +281,11 @@ contract BondingManager is IBondingManager, Manager {
         // Current round must be initialized
         require(roundsManager().currentRoundInitialized());
 
-        if (transcoderStatus(msg.sender) == TranscoderStatus.Unbonding) {
+        if (transcoderStatus(msg.sender) == TranscoderStatus.Unbonded) {
             token.transfer(msg.sender, transcoders[msg.sender].bondedAmount);
 
             delete transcoders[msg.sender];
-        } else if (delegatorStatus(msg.sender) == DelegatorStatus.Unbonding){
+        } else if (delegatorStatus(msg.sender) == DelegatorStatus.Unbonded){
             token.transfer(msg.sender, delegators[msg.sender].bondedAmount);
 
             delete delegators[msg.sender];
@@ -612,7 +612,7 @@ contract BondingManager is IBondingManager, Manager {
         } else if (del.startRound > roundsManager().currentRound()) {
             // Delegator round start is in the future
             return DelegatorStatus.Pending;
-        } else if (del.startRound <= roundsManager().currentRound()) {
+        } else if (del.startRound > 0 && del.startRound <= roundsManager().currentRound()) {
             // Delegator round start is now or in the past
             return DelegatorStatus.Bonded;
         } else {
