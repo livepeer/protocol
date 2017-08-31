@@ -46,6 +46,36 @@ library TranscoderPools {
     }
 
     /*
+     * Returns address of candidate transcoder at a position in the heap
+     * @param _position Position in candidate transcoder heap
+     */
+    function getCandidateTranscoderAtPosition(TranscoderPools storage self, uint256 _position) constant returns (address) {
+        return self.candidateTranscoders.nodes[_position].id;
+    }
+
+    /*
+     * Returns address of reserve transcoder at a position in the heap
+     * @param _position Position in reserve transcoder heap
+     */
+    function getReserveTranscoderAtPosition(TranscoderPools storage self, uint256 _position) constant returns (address) {
+        return self.reserveTranscoders.nodes[_position].id;
+    }
+
+    /*
+     * Returns current size of candidate pool
+     */
+    function getCandidatePoolSize(TranscoderPools storage self) constant returns (uint256) {
+        return self.candidateTranscoders.nodes.length;
+    }
+
+    /*
+     * Returns current size of reserve pool
+     */
+    function getReservePoolSize(TranscoderPools storage self) constant returns (uint256) {
+        return self.reserveTranscoders.nodes.length;
+    }
+
+    /*
      * Adds a transcoder to a pool. Throws if transcoder is already in a pool
      * @param _transcoder Address of transcoder
      * @param _amount The cumulative amount of LPT bonded to the transcoder

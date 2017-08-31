@@ -83,9 +83,6 @@ contract BondingManager is IBondingManager, Manager {
     mapping (address => Delegator) public delegators;
     mapping (address => Transcoder) public transcoders;
 
-    // Keep track of all transcoder addresses
-    address[] public registeredTranscoders;
-
     // Active and candidate transcoder pools
     TranscoderPools.TranscoderPools transcoderPools;
 
@@ -155,7 +152,9 @@ contract BondingManager is IBondingManager, Manager {
         t.pendingFeeShare = _feeShare;
         t.pendingPricePerSegment = _pricePerSegment;
 
-        registeredTranscoders.push(msg.sender);
+        if (!transcoderPools.isInPools(msg.sender)) {
+            transcoderPools.addTranscoder(msg.sender, 0);
+        }
 
         return true;
     }
@@ -630,10 +629,33 @@ contract BondingManager is IBondingManager, Manager {
     }
 
     /*
-     * @dev Return number of registered transcoders
+     * @dev Return current size of candidate transcoder pool
      */
-    function getTotalRegisteredTranscoders() public constant returns (uint256) {
-        return registeredTranscoders.length;
+    function getCandidatePoolSize() public constant returns (uint256) {
+        return transcoderPools.getCandidatePoolSize();
+    }
+
+    /*
+     * @dev Return current size of reserve transcoder pool
+     */
+    function getReservePoolSize() public constant returns (uint256) {
+        return transcoderPools.getReservePoolSize();
+    }
+
+    /*
+     * @dev Return candidate transcoder at position in candidate pool
+     * @param _position Position in candidate pool
+     */
+    function getCandidateTranscoderAtPosition(uint256 _position) public constant returns (address) {
+        return transcoderPools.getCandidateTranscoderAtPosition(_position);
+    }
+
+    /*
+     * @dev Return reserve transcoder at postiion in reserve pool
+     * @param _position Position in reserve pool
+     */
+    function getReserveTranscoderAtPosition(uint256 _position) public constant returns (address) {
+        return transcoderPools.getReserveTranscoderAtPosition(_position);
     }
 
      /*
