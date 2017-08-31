@@ -286,6 +286,9 @@ contract("BondingManager", accounts => {
             // Set active transcoders
             await roundsManager.initializeRound()
 
+            // Set current round so delegator is bonded
+            await roundsManager.setCurrentRound(7)
+
             // Call updateTranscoderFeePool via transaction from JobsManager
             await jobsManager.distributeFees()
         })
