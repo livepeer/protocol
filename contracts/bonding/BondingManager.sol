@@ -152,6 +152,10 @@ contract BondingManager is IBondingManager, Manager {
         t.pendingFeeShare = _feeShare;
         t.pendingPricePerSegment = _pricePerSegment;
 
+        if (!transcoderPools.isInPools(msg.sender)) {
+            transcoderPools.addTranscoder(msg.sender, 0);
+        }
+
         return true;
     }
 
@@ -276,11 +280,11 @@ contract BondingManager is IBondingManager, Manager {
         // Current round must be initialized
         require(roundsManager().currentRoundInitialized());
 
-        if (transcoderStatus(msg.sender) == TranscoderStatus.Unbonding) {
+        if (transcoderStatus(msg.sender) == TranscoderStatus.Unbonded) {
             token.transfer(msg.sender, transcoders[msg.sender].bondedAmount);
 
             delete transcoders[msg.sender];
-        } else if (delegatorStatus(msg.sender) == DelegatorStatus.Unbonding){
+        } else if (delegatorStatus(msg.sender) == DelegatorStatus.Unbonded){
             token.transfer(msg.sender, delegators[msg.sender].bondedAmount);
 
             delete delegators[msg.sender];
@@ -607,7 +611,7 @@ contract BondingManager is IBondingManager, Manager {
         } else if (del.startRound > roundsManager().currentRound()) {
             // Delegator round start is in the future
             return DelegatorStatus.Pending;
-        } else if (del.startRound <= roundsManager().currentRound()) {
+        } else if (del.startRound > 0 && del.startRound <= roundsManager().currentRound()) {
             // Delegator round start is now or in the past
             return DelegatorStatus.Bonded;
         } else {
@@ -625,6 +629,36 @@ contract BondingManager is IBondingManager, Manager {
     }
 
     /*
+     * @dev Return current size of candidate transcoder pool
+     */
+    function getCandidatePoolSize() public constant returns (uint256) {
+        return transcoderPools.getCandidatePoolSize();
+    }
+
+    /*
+     * @dev Return current size of reserve transcoder pool
+     */
+    function getReservePoolSize() public constant returns (uint256) {
+        return transcoderPools.getReservePoolSize();
+    }
+
+    /*
+     * @dev Return candidate transcoder at position in candidate pool
+     * @param _position Position in candidate pool
+     */
+    function getCandidateTranscoderAtPosition(uint256 _position) public constant returns (address) {
+        return transcoderPools.getCandidateTranscoderAtPosition(_position);
+    }
+
+    /*
+     * @dev Return reserve transcoder at postiion in reserve pool
+     * @param _position Position in reserve pool
+     */
+    function getReserveTranscoderAtPosition(uint256 _position) public constant returns (address) {
+        return transcoderPools.getReserveTranscoderAtPosition(_position);
+    }
+
+     /*
      * @dev Computes token distribution for delegator since its last state transition
      * @param _delegator Address of delegator
      */
