@@ -125,6 +125,8 @@ contract("LivepeerProtocolIntegration", accounts => {
         describe("reward call during a round", () => {
             let delegatorsWithoutTranscoderRewardShare
 
+            const blockRewardCut = 10
+
             it("transcoder should be active at the start of a new round", async () => {
                 // Fast foward to next round
                 await rpc.waitUntilNextBlockMultiple(20, ROUND_LENGTH)
@@ -134,7 +136,7 @@ contract("LivepeerProtocolIntegration", accounts => {
             })
 
             it("transcoder should call reward", async () => {
-                const delegatorsRewardShare = (await bondingManager.mintedTokensPerReward(transcoder0)).times(.9).floor()
+                const delegatorsRewardShare = (await bondingManager.mintedTokensPerReward(transcoder0)).times((100 - blockRewardCut) / 100).floor()
                 const transcoderTotalStake = transcoderBond0 + delegatorBond0 + delegatorBond1 + delegatorBond2
                 delegatorsWithoutTranscoderRewardShare = delegatorsRewardShare.minus(delegatorsRewardShare.times(transcoderBond0).div(transcoderTotalStake)).floor()
                 await bondingManager.reward({from: transcoder0})
@@ -142,10 +144,9 @@ contract("LivepeerProtocolIntegration", accounts => {
 
             it("reward should update transcoder total stake with minted tokens", async () => {
                 const initialTranscoderTotalStake = transcoderBond0 + delegatorBond0 + delegatorBond1 + delegatorBond2
-                const mintedTokens = await bondingManager.mintedTokensPerReward(transcoder0)
                 const updatedTranscoderTotalStake = await bondingManager.transcoderTotalStake(transcoder0)
 
-                assert.equal(updatedTranscoderTotalStake.minus(initialTranscoderTotalStake), mintedTokens.toNumber(), "transcoder total stake not updated with minted tokens correctly")
+                assert.equal(updatedTranscoderTotalStake.minus(initialTranscoderTotalStake), (await bondingManager.mintedTokensPerReward(transcoder0)).toNumber(), "transcoder total stake not updated with minted tokens correctly")
             })
 
             it("delegator should update own stake when unbonding", async () => {
@@ -163,20 +164,14 @@ contract("LivepeerProtocolIntegration", accounts => {
         })
 
         describe("reward call during another round", () => {
-            let roundsPerYear
             let transcoderTotalStake0
             let transcoderTotalStake1
             let delegatorsWithoutTranscoderRewardShare0
             let delegatorsWithoutTranscoderRewardShare1
 
             before(async () => {
-                roundsPerYear = await roundsManager.roundsPerYear()
                 transcoderTotalStake0 = transcoderBond0 + delegatorBond0 + delegatorBond1 + delegatorBond2
                 transcoderTotalStake1 = await bondingManager.transcoderTotalStake(transcoder0)
-
-                const mintedTokens = (new BigNumber(10000000 * Math.pow(10, 18))).times(.26).floor().div(roundsPerYear).floor()
-                const delegatorsRewardShare = mintedTokens.times(.9).floor()
-                delegatorsWithoutTranscoderRewardShare0 = delegatorsRewardShare.minus(delegatorsRewardShare.times(transcoderBond0).div(transcoderTotalStake0).floor())
 
                 const blockRewardCut = 10
                 const feeShare = 5
@@ -189,11 +184,6 @@ contract("LivepeerProtocolIntegration", accounts => {
                 await rpc.waitUntilNextBlockMultiple(20, ROUND_LENGTH)
                 await roundsManager.initializeRound({from: transcoder0})
 
-                const registeredTranscoder = await bondingManager.transcoders.call(transcoder0)
-                const registeredTranscoderBond = registeredTranscoder[1]
-                const mintedTokens = (new BigNumber(10000000 * Math.pow(10, 18))).times(.26).floor().div(roundsPerYear).floor()
-                const delegatorsRewardShare = mintedTokens.times(.9).floor()
-                delegatorsWithoutTranscoderRewardShare1 = delegatorsRewardShare.minus(delegatorsRewardShare.times(registeredTranscoderBond).div(transcoderTotalStake1).floor())
 
                 await bondingManager.reward({from: transcoder0})
             })
@@ -203,6 +193,15 @@ contract("LivepeerProtocolIntegration", accounts => {
 
                 const delegator = await bondingManager.delegators.call(delegator1)
                 const updatedDelegatorStake = delegator[1]
+
+                const blockRewardCut = 10
+
+                const delegatorsRewardShare = (await bondingManager.mintedTokensPerReward(transcoder0)).times((100 - blockRewardCut) / 100).floor()
+                delegatorsWithoutTranscoderRewardShare0 = delegatorsRewardShare.minus(delegatorsRewardShare.times(transcoderBond0).div(transcoderTotalStake0).floor())
+
+                const registeredTranscoder = await bondingManager.transcoders.call(transcoder0)
+                const registeredTranscoderBond = registeredTranscoder[1]
+                delegatorsWithoutTranscoderRewardShare1 = delegatorsRewardShare.minus(delegatorsRewardShare.times(registeredTranscoderBond).div(transcoderTotalStake1).floor())
 
                 // BlockRewardCut = 10%
                 // Delegator earns reward shares from 2 reward calls
@@ -259,9 +258,9 @@ contract("LivepeerProtocolIntegration", accounts => {
 
                 await bondingManager.reward({from: transcoder})
 
-                const mintedTokens = await bondingManager.mintedTokensPerReward(transcoder)
                 const transcoderTotalStake = transcoderBond + delegatorBond
-                const delegatorsRewardShare = mintedTokens.times(.9).floor()
+                const mintedTokens = await bondingManager.mintedTokensPerReward(transcoder)
+                const delegatorsRewardShare = mintedTokens.times((100 - blockRewardCut) / 100).floor()
                 const delegatorsWithoutTranscoderRewardShare = delegatorsRewardShare.minus(delegatorsRewardShare.times(transcoderBond).div(transcoderTotalStake).floor())
                 const transcoderRewardShare = mintedTokens.minus(delegatorsWithoutTranscoderRewardShare)
                 const registeredTranscoder = await bondingManager.transcoders.call(transcoder)
@@ -380,12 +379,12 @@ contract("LivepeerProtocolIntegration", accounts => {
                 let registeredDelegator = await bondingManager.delegators.call(delegator)
                 const initialDelegatorBond = registeredDelegator[1]
                 const transcoderTotalStake = await bondingManager.transcoderTotalStake(transcoder)
-                const mintedTokens = (new BigNumber(10000000 * Math.pow(10, 18))).times(.26).floor().div(await roundsManager.roundsPerYear())
 
                 await roundsManager.initializeRound({from: delegator})
 
                 await bondingManager.unbond({from: delegator})
-                const delegatorsRewardShare = mintedTokens.times(.9).floor()
+
+                const delegatorsRewardShare = (await bondingManager.mintedTokensPerReward(transcoder)).times((100 - blockRewardCut) / 100).floor()
                 const delegatorsWithoutTranscoderRewardShare = delegatorsRewardShare.minus(delegatorsRewardShare.times(transcoderBond).div(transcoderTotalStakeBeforeLastReward).floor())
                 const delegatorRewardShare = delegatorsWithoutTranscoderRewardShare.times(initialDelegatorBond).div(transcoderTotalStakeBeforeLastReward).floor()
                 const delegatorsFeeShare = (new BigNumber(fees)).times(feeShare).div(100).floor()
