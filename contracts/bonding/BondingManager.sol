@@ -360,11 +360,16 @@ contract BondingManager is IBondingManager, Manager {
         /* // Mint token reward and allocate to this protocol contract */
         token.mint(this, mintedTokens);
 
-        // Compute transcoder share of minted tokens
-        uint256 transcoderRewardShare = mintedTokens.mul(t.blockRewardCut).div(100);
+        // Compute reward share for delegators
+        uint256 delegatorsRewardShare = mintedTokens.mul(uint256(100).sub(t.blockRewardCut)).div(100);
+        // Compute reward share for delegators excluding transcoder (as a delegator)
+        uint256 delegatorsWithoutTranscoderRewardShare = delegatorsRewardShare.sub(delegatorsRewardShare.mul(t.bondedAmount).div(transcoderTotalStake(msg.sender)));
+        // Compute reward share for transcoder
+        uint256 transcoderRewardShare = mintedTokens.sub(delegatorsWithoutTranscoderRewardShare);
+
         // Update transcoder's reward pool for the current round
         RewardPool storage rewardPool = t.tokenPoolsPerRound[currentRound].rewardPool;
-        rewardPool.rewards = rewardPool.rewards.add(mintedTokens.sub(transcoderRewardShare));
+        rewardPool.rewards = rewardPool.rewards.add(delegatorsWithoutTranscoderRewardShare);
 
         if (rewardPool.transcoderTotalStake == 0) {
             rewardPool.transcoderTotalStake = transcoderTotalStake(msg.sender);
