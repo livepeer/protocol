@@ -25,6 +25,10 @@ contract RoundsManagerMock is IRoundsManager {
         return true;
     }
 
+    function setRoundsPerYear(uint256 _roundsPerYear) external returns (uint256) {
+        mockRoundsPerYear = _roundsPerYear;
+    }
+
     function initializeRound() external returns (bool) {
         return bondingManager.setActiveTranscoders();
     }
