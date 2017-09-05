@@ -27,6 +27,7 @@ contract("BondingManager", accounts => {
         const protocol = await LivepeerProtocol.new()
 
         bondingManager = await BondingManager.new(protocol.address, token.address, NUM_ACTIVE_TRANSCODERS, UNBONDING_PERIOD)
+        await token.transferOwnership(bondingManager.address)
 
         roundsManager = await RoundsManagerMock.new(bondingManager.address)
         await protocol.setContract(ethUtil.bufferToHex(ethAbi.soliditySHA3(["string"], ["RoundsManager"])), roundsManager.address)
@@ -298,6 +299,42 @@ contract("BondingManager", accounts => {
             const delegatorFeeShare = Math.floor((delegatorBond * delegatorsFeeShare) / transcoderTotalStake)
             const delegatorStake = await bondingManager.delegatorStake(delegator)
             assert.equal(delegatorStake, delegatorBond + delegatorFeeShare)
+        })
+    })
+
+    describe("reward", () => {
+        const transcoder = accounts[1]
+        const transcoderBond = 2000
+
+        before(async () => {
+            await setup()
+
+            // Distribute tokens
+            await token.transfer(transcoder, 100000, {from: minter})
+
+            const blockRewardCut = 10
+            const feeShare = 5
+            const pricePerSegment = 10
+
+            await roundsManager.setCurrentRound(5)
+            await roundsManager.setCurrentRoundInitialized(true)
+            await roundsManager.setRoundsPerYear(1000)
+
+            // Account 1 => transcoder
+            await bondingManager.transcoder(blockRewardCut, feeShare, pricePerSegment, {from: transcoder})
+            // Transcoder bonds
+            await token.approve(bondingManager.address, transcoderBond, {from: transcoder})
+            await bondingManager.bond(transcoderBond, transcoder, {from: transcoder})
+        })
+
+        it("should update stake for transcoder when it is the only delegator", async () => {
+            await roundsManager.setCurrentRound(6)
+            await roundsManager.initializeRound()
+
+            await bondingManager.reward({from: transcoder})
+
+            const registeredTranscoder = await bondingManager.transcoders.call(transcoder)
+            assert.equal(registeredTranscoder[1], (await bondingManager.mintedTokensPerReward(transcoder)).plus(transcoderBond).toNumber(), "incorrect transcoder bond")
         })
     })
 })
