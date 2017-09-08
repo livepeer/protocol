@@ -70,13 +70,25 @@ contract("BondingManager", accounts => {
             await expectThrow(bondingManager.transcoder(blockRewardCut, invalidFeeShare, pricePerSegment, {from: tAddr}))
         })
 
-        it("should create a new transcoder", async () => {
+        it("should create a new transcoder with 0 stake", async () => {
             await bondingManager.transcoder(blockRewardCut, feeShare, pricePerSegment, {from: tAddr})
 
             const transcoder = await bondingManager.transcoders.call(tAddr)
             assert.equal(transcoder[5], blockRewardCut, "pending block reward cut incorrect")
             assert.equal(transcoder[6], feeShare, "pending fee share incorrect")
             assert.equal(transcoder[7], pricePerSegment, "pending price per segment incorrect")
+
+            const transcoderTotalStake = await bondingManager.transcoderTotalStake(tAddr)
+            assert.equal(transcoderTotalStake, 0, "transcoder total stake incorrecet")
+        })
+
+        it("should create a new transcoder with delegated stake", async () => {
+            await token.approve(bondingManager.address, 2000, {from: accounts[2]})
+            await bondingManager.bond(2000, tAddr, {from: accounts[2]})
+
+            await bondingManager.transcoder(blockRewardCut, feeShare, pricePerSegment, {from: tAddr})
+            const transcoderTotalStake = await bondingManager.transcoderTotalStake(tAddr)
+            assert.equal(transcoderTotalStake, 2000, "transcoder total stake incorrect")
         })
     })
 
