@@ -1,6 +1,7 @@
 import ethUtil from "ethereumjs-util"
 import ethAbi from "ethereumjs-abi"
 import expectThrow from "../helpers/expectThrow"
+import {toSmallestUnits, add} from "../../utils/bn_util"
 
 const LivepeerProtocol = artifacts.require("LivepeerProtocol")
 const LivepeerToken = artifacts.require("LivepeerToken")
@@ -21,8 +22,12 @@ contract("BondingManager", accounts => {
 
     const setup = async () => {
         token = await LivepeerToken.new()
-        // Initial token distribution. Mint 3 LPT to contract creator
-        token.mint(minter, 3000000000000000000)
+        // Initial token distribution
+        token.mint(minter, toSmallestUnits(5))
+        await token.transfer(accounts[1], toSmallestUnits(1), {from: minter})
+        await token.transfer(accounts[2], toSmallestUnits(1), {from: minter})
+        await token.transfer(accounts[3], toSmallestUnits(1), {from: minter})
+        await token.transfer(accounts[4], toSmallestUnits(1), {from: minter})
 
         const protocol = await LivepeerProtocol.new()
 
@@ -38,7 +43,7 @@ contract("BondingManager", accounts => {
     }
 
     describe("transcoder", () => {
-        const transcoder = accounts[1]
+        const tAddr = accounts[1]
         const blockRewardCut = 10
         const feeShare = 5
         const pricePerSegment = 10
@@ -50,33 +55,45 @@ contract("BondingManager", accounts => {
         it("should throw if round is not initialized", async () => {
             roundsManager.setCurrentRoundInitialized(false)
 
-            await expectThrow(bondingManager.transcoder(blockRewardCut, feeShare, pricePerSegment, {from: transcoder}))
+            await expectThrow(bondingManager.transcoder(blockRewardCut, feeShare, pricePerSegment, {from: tAddr}))
         })
 
         it("should fail if blockRewardCut > 100", async () => {
             roundsManager.setCurrentRoundInitialized(true)
 
             const invalidBlockRewardCut = 101
-            await expectThrow(bondingManager.transcoder(invalidBlockRewardCut, feeShare, pricePerSegment, {from: transcoder}))
+            await expectThrow(bondingManager.transcoder(invalidBlockRewardCut, feeShare, pricePerSegment, {from: tAddr}))
         })
 
         it("should fail if feeShare > 100", async () => {
             const invalidFeeShare = 101
-            await expectThrow(bondingManager.transcoder(blockRewardCut, invalidFeeShare, pricePerSegment, {from: transcoder}))
+            await expectThrow(bondingManager.transcoder(blockRewardCut, invalidFeeShare, pricePerSegment, {from: tAddr}))
         })
 
-        it("should create a new transcoder", async () => {
-            await bondingManager.transcoder(blockRewardCut, feeShare, pricePerSegment, {from: transcoder})
+        it("should create a new transcoder with 0 stake", async () => {
+            await bondingManager.transcoder(blockRewardCut, feeShare, pricePerSegment, {from: tAddr})
 
-            const registeredTranscoder = await bondingManager.transcoders.call(transcoder)
-            assert.equal(registeredTranscoder[7], blockRewardCut, "pending block reward cut incorrect")
-            assert.equal(registeredTranscoder[8], feeShare, "pending fee share incorrect")
-            assert.equal(registeredTranscoder[9], pricePerSegment, "pending price per segment incorrect")
+            const transcoder = await bondingManager.transcoders.call(tAddr)
+            assert.equal(transcoder[5], blockRewardCut, "pending block reward cut incorrect")
+            assert.equal(transcoder[6], feeShare, "pending fee share incorrect")
+            assert.equal(transcoder[7], pricePerSegment, "pending price per segment incorrect")
+
+            const transcoderTotalStake = await bondingManager.transcoderTotalStake(tAddr)
+            assert.equal(transcoderTotalStake, 0, "transcoder total stake incorrecet")
+        })
+
+        it("should create a new transcoder with delegated stake", async () => {
+            await token.approve(bondingManager.address, 2000, {from: accounts[2]})
+            await bondingManager.bond(2000, tAddr, {from: accounts[2]})
+
+            await bondingManager.transcoder(blockRewardCut, feeShare, pricePerSegment, {from: tAddr})
+            const transcoderTotalStake = await bondingManager.transcoderTotalStake(tAddr)
+            assert.equal(transcoderTotalStake, 2000, "transcoder total stake incorrect")
         })
     })
 
     describe("resignAsTranscoder", () => {
-        const transcoder = accounts[1]
+        const tAddr = accounts[1]
 
         before(async () => {
             await setup()
@@ -86,19 +103,19 @@ contract("BondingManager", accounts => {
             const pricePerSegment = 100
 
             await roundsManager.setCurrentRoundInitialized(true)
-            await bondingManager.transcoder(blockRewardCut, feeShare, pricePerSegment, {from: transcoder})
+            await bondingManager.transcoder(blockRewardCut, feeShare, pricePerSegment, {from: tAddr})
         })
 
         it("should throw if current round is not initialized", async () => {
             await roundsManager.setCurrentRoundInitialized(false)
-            await expectThrow(bondingManager.resignAsTranscoder({from: transcoder}))
+            await expectThrow(bondingManager.resignAsTranscoder({from: tAddr}))
         })
 
         it("should throw if transcoder is not registered", async () => {
             await expectThrow(bondingManager.resignAsTranscoder({from: accounts[2]}))
         })
 
-        it("should set withdraw round", async () => {
+        it("should set delegator withdraw round", async () => {
             const currentRound = 100
             await roundsManager.setCurrentRound(currentRound)
             await roundsManager.setCurrentRoundInitialized(true)
@@ -106,78 +123,71 @@ contract("BondingManager", accounts => {
             const unbondingPeriod = await bondingManager.unbondingPeriod.call()
             const withdrawRound = currentRound + unbondingPeriod.toNumber()
 
-            await bondingManager.resignAsTranscoder({from: transcoder})
+            await bondingManager.resignAsTranscoder({from: tAddr})
 
-            const resignedTranscoder = await bondingManager.transcoders.call(transcoder)
-            assert.equal(resignedTranscoder[2], withdrawRound, "withdraw round is incorrect")
+            const resignedTranscoder = await bondingManager.transcoders.call(tAddr)
+            assert.equal(resignedTranscoder[0], withdrawRound, "withdraw round is incorrect")
         })
 
-        it("should set a transcoder as unbonding", async () => {
-            const transcoderStatus = await bondingManager.transcoderStatus(transcoder)
-            assert.equal(transcoderStatus, 2, "transcoder is not unbonding")
+        it("should set a transcoder as resigned", async () => {
+            const transcoderStatus = await bondingManager.transcoderStatus(tAddr)
+            assert.equal(transcoderStatus, 2, "transcoder is not resigned")
         })
     })
 
     describe("bond", () => {
-        const transcoder0 = accounts[1]
-        const transcoder1 = accounts[2]
-        const delegator = accounts[3]
+        const tAddr0 = accounts[1]
+        const tAddr1 = accounts[2]
+        const dAddr = accounts[3]
 
         before(async () => {
             await setup()
-
-            // Distribute tokens
-            await token.transfer(transcoder0, 100000, {from: minter})
-            await token.transfer(transcoder1, 100000, {from: minter})
-            await token.transfer(delegator, 100000, {from: minter})
 
             const blockRewardCut = 10
             const feeShare = 5
             const pricePerSegment = 10
 
             await roundsManager.setCurrentRoundInitialized(true)
-            // Account 0 => transcoder
-            await bondingManager.transcoder(blockRewardCut, feeShare, pricePerSegment, {from: transcoder0})
-            // Account 1 => transcoder
-            await bondingManager.transcoder(blockRewardCut, feeShare, pricePerSegment, {from: transcoder1})
+            await bondingManager.transcoder(blockRewardCut, feeShare, pricePerSegment, {from: tAddr0})
+            await bondingManager.transcoder(blockRewardCut, feeShare, pricePerSegment, {from: tAddr1})
         })
 
         it("can bond stake towards self as transcoder", async () => {
-            await token.approve(bondingManager.address, 2000, {from: transcoder0})
-            await bondingManager.bond(2000, transcoder0, {from: transcoder0})
+            await token.approve(bondingManager.address, 2000, {from: tAddr0})
+            await bondingManager.bond(2000, tAddr0, {from: tAddr0})
 
-            const registeredTranscoder = await bondingManager.transcoders.call(transcoder0)
-            assert.equal(registeredTranscoder[1], 2000, "bonded amount incorrect")
+            const tDelegator = await bondingManager.delegators.call(tAddr0)
+            assert.equal(tDelegator[0], 2000, "bonded amount incorrect")
         })
 
         it("can bond stake towards a transcoder as delegator", async () => {
-            await token.approve(bondingManager.address, 2000, {from: delegator})
-            await bondingManager.bond(2000, transcoder0, {from: delegator})
+            await token.approve(bondingManager.address, 2000, {from: dAddr})
+            await bondingManager.bond(2000, tAddr0, {from: dAddr})
 
-            const registeredDelegator = await bondingManager.delegators.call(delegator)
-            assert.equal(registeredDelegator[1], 2000, "bonded amount incorrect")
-            assert.equal(registeredDelegator[2], transcoder0, "transcoder address incorrect")
+            const delegator = await bondingManager.delegators.call(dAddr)
+            assert.equal(delegator[0], 2000, "bonded amount incorrect")
+            assert.equal(delegator[1], tAddr0, "transcoder address incorrect")
         })
 
         it("can increase stake towards a transcoder as delegator", async () => {
-            await token.approve(bondingManager.address, 2000, {from: delegator})
-            await bondingManager.bond(2000, transcoder0, {from: delegator})
+            await token.approve(bondingManager.address, 2000, {from: dAddr})
+            await bondingManager.bond(2000, tAddr0, {from: dAddr})
 
-            const registeredDelegator = await bondingManager.delegators.call(delegator)
-            assert.equal(registeredDelegator[1], 4000, "bonded amount incorrect")
+            const delegator = await bondingManager.delegators.call(dAddr)
+            assert.equal(delegator[0], 4000, "bonded amount incorrect")
         })
 
         it("can move stake to another transcoder as delegator", async () => {
-            await bondingManager.bond(0, transcoder1, {from: delegator})
+            await bondingManager.bond(0, tAddr1, {from: dAddr})
 
-            const registeredDelegator = await bondingManager.delegators.call(delegator)
-            assert.equal(registeredDelegator[2], transcoder1, "transcoder address incorrect")
+            const delegator = await bondingManager.delegators.call(dAddr)
+            assert.equal(delegator[1], tAddr1, "transcoder address incorrect")
         })
     })
 
     describe("updateTranscoderFeePool", async () => {
-        const transcoder = accounts[1]
-        const delegator = accounts[2]
+        const tAddr = accounts[1]
+        const dAddr = accounts[2]
 
         // Transcoder rates
         const blockRewardCut = 10
@@ -189,31 +199,23 @@ contract("BondingManager", accounts => {
         const claimBlock = 100
         const transcoderTotalStake = 1000
 
-        // Bonds
-        const transcoderBond = 2000
-        const delegatorBond = 2000
-
         before(async () => {
             await setup()
-
-            // Distribute tokens
-            await token.transfer(transcoder, 100000, {from: minter})
-            await token.transfer(delegator, 100000, {from: minter})
 
             await roundsManager.setCurrentRoundInitialized(true)
 
             // Register transcoder
-            await bondingManager.transcoder(blockRewardCut, feeShare, pricePerSegment, {from: transcoder})
+            await bondingManager.transcoder(blockRewardCut, feeShare, pricePerSegment, {from: tAddr})
 
             // Transcoder bonds
-            await token.approve(bondingManager.address, 2000, {from: transcoder})
-            await bondingManager.bond(2000, transcoder, {from: transcoder})
+            await token.approve(bondingManager.address, 2000, {from: tAddr})
+            await bondingManager.bond(2000, tAddr, {from: tAddr})
 
             // Delegator bonds to transcoder
-            await token.approve(bondingManager.address, 2000, {from: delegator})
-            await bondingManager.bond(2000, transcoder, {from: delegator})
+            await token.approve(bondingManager.address, 2000, {from: dAddr})
+            await bondingManager.bond(2000, tAddr, {from: dAddr})
 
-            await jobsManager.setMockTranscoder(transcoder)
+            await jobsManager.setMockTranscoder(tAddr)
             await jobsManager.setMockFees(fees)
             await jobsManager.setMockClaimBlock(claimBlock)
             await jobsManager.setMockTranscoderTotalStake(transcoderTotalStake)
@@ -226,22 +228,21 @@ contract("BondingManager", accounts => {
             // Call updateTranscoderFeePool via transaction from JobsManager
             await jobsManager.distributeFees()
 
-            const transcoderTotalStake = await bondingManager.transcoderTotalStake(transcoder)
-            assert.equal(transcoderTotalStake, transcoderBond + delegatorBond + fees, "transcoder total stake incorrect")
+            const transcoderTotalStake = await bondingManager.transcoderTotalStake(tAddr)
+            assert.equal(transcoderTotalStake.toString(), add(2000, 2000, fees), "transcoder total stake incorrect")
         })
 
         it("should update transcoder's bond with fee share", async () => {
-            const delegatorsFeeShare = Math.floor((fees * feeShare) / 100)
-            const transcoderFeeShare = fees - delegatorsFeeShare + Math.floor((delegatorsFeeShare * transcoderBond) / (transcoderBond + delegatorBond))
+            const transcoderFeeShare = Math.floor((fees * (100 - feeShare)) / 100)
 
-            const registeredTranscoder = await bondingManager.transcoders.call(transcoder)
-            assert.equal(registeredTranscoder[1], transcoderBond + transcoderFeeShare, "transcoder bond incorrect")
+            const tDelegator = await bondingManager.delegators.call(tAddr)
+            assert.equal(tDelegator[0].toString(), add(2000, transcoderFeeShare), "transcoder bond incorrect")
         })
     })
 
     describe("delegatorStake", async () => {
-        const transcoder = accounts[1]
-        const delegator = accounts[2]
+        const tAddr = accounts[1]
+        const dAddr = accounts[2]
 
         // Transcoder rates
         const blockRewardCut = 10
@@ -253,32 +254,24 @@ contract("BondingManager", accounts => {
         const claimBlock = web3.eth.blockNumber + 1000
         const transcoderTotalStake = 4000
 
-        // Bonds
-        const transcoderBond = 2000
-        const delegatorBond = 2000
-
         before(async () => {
             await setup()
-
-            // Distribute tokens
-            await token.transfer(transcoder, 100000, {from: minter})
-            await token.transfer(delegator, 100000, {from: minter})
 
             await roundsManager.setCurrentRoundInitialized(true)
             await roundsManager.setCurrentRound(5)
 
             // Register transcoder
-            await bondingManager.transcoder(blockRewardCut, feeShare, pricePerSegment, {from: transcoder})
+            await bondingManager.transcoder(blockRewardCut, feeShare, pricePerSegment, {from: tAddr})
 
             // Transcoder bonds
-            await token.approve(bondingManager.address, transcoderBond, {from: transcoder})
-            await bondingManager.bond(transcoderBond, transcoder, {from: transcoder})
+            await token.approve(bondingManager.address, 2000, {from: tAddr})
+            await bondingManager.bond(2000, tAddr, {from: tAddr})
 
             // Delegator bonds to transcoder
-            await token.approve(bondingManager.address, delegatorBond, {from: delegator})
-            await bondingManager.bond(delegatorBond, transcoder, {from: delegator})
+            await token.approve(bondingManager.address, 2000, {from: dAddr})
+            await bondingManager.bond(2000, tAddr, {from: dAddr})
 
-            await jobsManager.setMockTranscoder(transcoder)
+            await jobsManager.setMockTranscoder(tAddr)
             await jobsManager.setMockFees(fees)
             await jobsManager.setMockClaimBlock(claimBlock)
             await jobsManager.setMockTranscoderTotalStake(transcoderTotalStake)
@@ -295,9 +288,9 @@ contract("BondingManager", accounts => {
 
         it("should compute delegator stake with latest fees", async () => {
             const delegatorsFeeShare = Math.floor((fees * feeShare) / 100)
-            const delegatorFeeShare = Math.floor((delegatorBond * delegatorsFeeShare) / transcoderTotalStake)
-            const delegatorStake = await bondingManager.delegatorStake(delegator)
-            assert.equal(delegatorStake, delegatorBond + delegatorFeeShare)
+            const delegatorFeeShare = Math.floor((2000 * delegatorsFeeShare) / transcoderTotalStake)
+            const delegatorStake = await bondingManager.delegatorStake(dAddr)
+            assert.equal(delegatorStake.toString(), add(2000, delegatorFeeShare))
         })
     })
 })

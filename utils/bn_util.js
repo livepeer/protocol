@@ -6,3 +6,19 @@ export function toSmallestUnits(value, decimals = 18) {
 
     return bigVal.times(units)
 }
+
+export function add(...args) {
+    return args.reduce((acc, num) => {
+        const a = new BigNumber(acc)
+        const b = new BigNumber(num)
+        return a.plus(b)
+    }).toString()
+}
+
+export function sub(...args) {
+    return args.reduce((acc, num) => {
+        const a = new BigNumber(acc)
+        const b = new BigNumber(num)
+        return a.sub(b)
+    }).toString()
+}
