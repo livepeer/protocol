@@ -2,6 +2,7 @@ import RPC from "../utils/rpc"
 import MerkleTree from "../utils/merkleTree"
 import ethUtil from "ethereumjs-util"
 import ethAbi from "ethereumjs-abi"
+import {toSmallestUnits} from "../utils/bn_util"
 import BigNumber from "bignumber.js"
 
 const LivepeerProtocol = artifacts.require("LivepeerProtocol")
@@ -40,12 +41,12 @@ contract("LivepeerProtocolIntegration", accounts => {
 
         // Initial token distribution
         token = await LivepeerToken.new()
-        token.mint(accounts[0], 3000000000000000000, {from: accounts[0]})
-        token.transfer(accounts[1], 1000000, {from: accounts[0]})
-        token.transfer(accounts[2], 1000000, {from: accounts[0]})
-        token.transfer(accounts[3], 1000000, {from: accounts[0]})
-        token.transfer(accounts[4], 1000000, {from: accounts[0]})
-        token.transfer(accounts[5], 1000000, {from: accounts[0]})
+        token.mint(accounts[0], toSmallestUnits(6), {from: accounts[0]})
+        token.transfer(accounts[1], toSmallestUnits(1), {from: accounts[0]})
+        token.transfer(accounts[2], toSmallestUnits(1), {from: accounts[0]})
+        token.transfer(accounts[3], toSmallestUnits(1), {from: accounts[0]})
+        token.transfer(accounts[4], toSmallestUnits(1), {from: accounts[0]})
+        token.transfer(accounts[5], toSmallestUnits(1), {from: accounts[0]})
 
         // Create verifier
         const verifier = await IdentityVerifier.new()
@@ -150,12 +151,12 @@ contract("LivepeerProtocolIntegration", accounts => {
                 await bondingManager.unbond({from: delegator0})
 
                 const delegator = await bondingManager.delegators.call(delegator0)
-                const updatedDelegatorStake = delegator[1]
+                const updatedDelegatorStake = delegator[0]
                 const transcoderTotalStake = transcoderBond0 + delegatorBond0 + delegatorBond1 + delegatorBond2
 
                 // BlockRewardCut = 10%
-                const delegatorRewardShare = mintedTokens.times(delegatorBond0).dividedBy(transcoderTotalStake).times(.9).floor().toNumber()
-                assert.equal(updatedDelegatorStake.minus(delegatorBond0), delegatorRewardShare, "delegator stake not updated correctly")
+                const delegatorRewardShare = mintedTokens.times(delegatorBond0).dividedBy(transcoderTotalStake).times(.9).floor().toString()
+                assert.equal(updatedDelegatorStake.minus(delegatorBond0).toString(), delegatorRewardShare, "delegator stake not updated correctly")
             })
         })
 
@@ -184,7 +185,7 @@ contract("LivepeerProtocolIntegration", accounts => {
                 await bondingManager.bond(0, transcoder1, {from: delegator1})
 
                 const delegator = await bondingManager.delegators.call(delegator1)
-                const updatedDelegatorStake = delegator[1]
+                const updatedDelegatorStake = delegator[0]
                 const transcoderTotalStake0 = transcoderBond0 + delegatorBond0 + delegatorBond1 + delegatorBond2
 
                 // BlockRewardCut = 10%
@@ -244,8 +245,8 @@ contract("LivepeerProtocolIntegration", accounts => {
 
                 const mintedTokens = await bondingManager.mintedTokensPerReward(transcoder)
                 const transcoderRewardShare = mintedTokens.times(blockRewardCut).div(100).floor()
-                const registeredTranscoder = await bondingManager.transcoders.call(transcoder)
-                assert.equal(registeredTranscoder[1], transcoderRewardShare.plus(transcoderBond).toNumber(), "transcoder bond is incorrect")
+                const tDelegator = await bondingManager.delegators.call(transcoder)
+                assert.equal(tDelegator[0], transcoderRewardShare.plus(transcoderBond).toNumber(), "transcoder bond is incorrect")
             })
         })
 
@@ -343,8 +344,8 @@ contract("LivepeerProtocolIntegration", accounts => {
             })
 
             it("transcoder should update own stake with fees", async () => {
-                let registeredTranscoder = await bondingManager.transcoders.call(transcoder)
-                const initialTranscoderBond = registeredTranscoder[1]
+                let tDelegator = await bondingManager.delegators.call(transcoder)
+                const initialTranscoderBond = tDelegator[0]
 
                 await jobsManager.distributeFees(jobId, claimId, {from: transcoder})
 
@@ -352,13 +353,13 @@ contract("LivepeerProtocolIntegration", accounts => {
                 const delegatorsFeeShare = (new BigNumber(fees)).times(feeShare).div(100).floor()
                 const transcoderFeeShare = (new BigNumber(fees)).minus(delegatorsFeeShare).plus(delegatorsFeeShare.times(initialTranscoderBond).div(transcoderTotalStake).floor())
 
-                registeredTranscoder = await bondingManager.transcoders.call(transcoder)
-                assert.equal(registeredTranscoder[1], initialTranscoderBond.plus(transcoderFeeShare).toNumber(), "transcoder bond is incorrect")
+                tDelegator = await bondingManager.delegators.call(transcoder)
+                assert.equal(tDelegator[0], initialTranscoderBond.plus(transcoderFeeShare).toNumber(), "transcoder bond is incorrect")
             })
 
             it("delegators should update own stake with rewards and fees when unbonding", async () => {
-                let registeredDelegator = await bondingManager.delegators.call(delegator)
-                const initialDelegatorBond = registeredDelegator[1]
+                let tDelegator = await bondingManager.delegators.call(delegator)
+                const initialDelegatorBond = tDelegator[0]
                 const transcoderTotalStake = await bondingManager.transcoderTotalStake(transcoder)
                 const mintedTokens = await bondingManager.mintedTokensPerReward(transcoder)
 
@@ -369,8 +370,8 @@ contract("LivepeerProtocolIntegration", accounts => {
                 const delegatorsFeeShare = (new BigNumber(fees)).times(feeShare).div(100).floor()
                 const delegatorFeeShare = delegatorsFeeShare.times(initialDelegatorBond).div(transcoderTotalStake)
 
-                registeredDelegator = await bondingManager.delegators.call(delegator)
-                assert.equal(registeredDelegator[1], initialDelegatorBond.plus(delegatorRewardShare).plus(delegatorFeeShare).toNumber(), "delegator bond is incorrect")
+                tDelegator = await bondingManager.delegators.call(delegator)
+                assert.equal(tDelegator[0], initialDelegatorBond.plus(delegatorRewardShare).plus(delegatorFeeShare).toNumber(), "delegator bond is incorrect")
             })
         })
     })
