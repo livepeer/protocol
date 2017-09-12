@@ -10,6 +10,7 @@ import "../jobs/IJobsManager.sol";
 
 import "zeppelin-solidity/contracts/math/SafeMath.sol";
 
+
 contract BondingManager is IBondingManager, Manager {
     using SafeMath for uint256;
     using TranscoderPools for TranscoderPools.TranscoderPools;
@@ -685,11 +686,13 @@ contract BondingManager is IBondingManager, Manager {
         uint256 delegatorsFeeShare = _fees.mul(transcoders[_transcoder].feeShare).div(100);
 
         // Update transcoder's fee pool for the round
-        transcoders[_transcoder].tokenPoolsPerRound[_round].feePool.push(ClaimFees({
-            claimBlock: _claimBlock,
-            fees: delegatorsFeeShare,
-            transcoderTotalStake: _transcoderTotalStake
-        }));
+        transcoders[_transcoder].tokenPoolsPerRound[_round].feePool.push(
+            ClaimFees({
+                claimBlock: _claimBlock,
+                fees: delegatorsFeeShare,
+                transcoderTotalStake: _transcoderTotalStake
+            })
+        );
 
         increaseTranscoderStake(_transcoder, _fees, _fees.sub(delegatorsFeeShare), _round);
 

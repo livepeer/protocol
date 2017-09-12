@@ -1,9 +1,10 @@
-pragma solidity ^0.4.11;
+pragma solidity ^0.4.13;
 
 import "./Verifier.sol";
 import "./Verifiable.sol";
 
 import "../../installed_contracts/oraclize/contracts/usingOraclize.sol";
+
 
 /*
  * @title Verifier contract that uses Oraclize for off-chain computation

@@ -1,9 +1,10 @@
-pragma solidity ^0.4.11;
+pragma solidity ^0.4.13;
+
 
 library Node {
     struct Node {
         address id;
-        uint key;
+        uint256 key;
         bool initialized;
     }
 }

@@ -8,8 +8,8 @@
   },
   "scripts": {
     "lint": "npm run eslint; npm run solium",
-    "eslint": "eslint util/** test/**",
-    "solium": "solium --dir ./contracts",
+    "eslint": "./node_modules/eslint/bin/eslint.js util/** test/**",
+    "solium": "./node_modules/solium/bin/solium.js --dir ./contracts",
     "test": "npm run lint; truffle test",
     "testrpc": "testrpc"
   },
@@ -36,7 +36,7 @@
     "ethereumjs-abi": "^0.6.4",
     "ethereumjs-testrpc": "^4.1.1",
     "ethereumjs-util": "^5.1.2",
-    "solium": "^0.5.5"
+    "solium": "github:AugurProject/Solium"
   },
   "dependencies": {
     "mkdirp": "^0.5.1",

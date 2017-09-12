@@ -1,8 +1,9 @@
 pragma solidity ^0.4.13;
 
+
 library JobLib {
     // Prefix hashed with message hash when a signature is produced by the eth_sign RPC call
-    string constant personalHashPrefix = "\u0019Ethereum Signed Message:\n32";
+    string constant PERSONAL_HASH_PREFIX = "\u0019Ethereum Signed Message:\n32";
 
     /*
      * Computes whether a segment is eligible for verification based on the last call to claimWork()
@@ -13,12 +14,20 @@ library JobLib {
      * @param _lastClaimedWorkBlockHash Block hash when claimWork() was last called
      * @param _verificationRate Rate at which a particular segment should be verified
      */
-    function shouldVerifySegment(uint256 _segmentNumber,
-                                 uint256[2] _segmentRange,
-                                 uint256 _claimBlock,
-                                 uint64 _verificationRate) public constant returns (bool) {
+    function shouldVerifySegment(
+        uint256 _segmentNumber,
+        uint256[2] _segmentRange,
+        uint256 _claimBlock,
+        uint64 _verificationRate
+    )
+        public
+        constant
+        returns (bool)
+    {
         // Segment must be in segment range
-        if (_segmentNumber < _segmentRange[0] || _segmentNumber > _segmentRange[1]) return false;
+        if (_segmentNumber < _segmentRange[0] || _segmentNumber > _segmentRange[1]) {
+            return false;
+        }
 
         if (uint256(keccak256(_claimBlock, block.blockhash(_claimBlock), _segmentNumber)) % _verificationRate == 0) {
             return true;
@@ -44,7 +53,7 @@ library JobLib {
      * @param _dataHash Content-addrssed storage hash of segment data
      */
     function personalSegmentHash(string _streamId, uint256 _segmentNumber, string _dataHash) public constant returns (bytes32) {
-        bytes memory prefixBytes = bytes(personalHashPrefix);
+        bytes memory prefixBytes = bytes(PERSONAL_HASH_PREFIX);
 
         return keccak256(prefixBytes, segmentHash(_streamId, _segmentNumber, _dataHash));
     }
@@ -57,11 +66,17 @@ library JobLib {
      * @param _transcodedDataHash Content-addressed storage hash of transcoded segment data
      * @param _broadcasterSig Broadcaster's signature over segment
      */
-    function transcodeReceiptHash(string _streamId,
-                                  uint256 _segmentNumber,
-                                  string _dataHash,
-                                  string _transcodedDataHash,
-                                  bytes _broadcasterSig) public constant returns (bytes32) {
+    function transcodeReceiptHash(
+        string _streamId,
+        uint256 _segmentNumber,
+        string _dataHash,
+        string _transcodedDataHash,
+        bytes _broadcasterSig
+    )
+        public
+        constant
+        returns (bytes32)
+    {
         return keccak256(_streamId, _segmentNumber, _dataHash, _transcodedDataHash, _broadcasterSig);
     }
 }

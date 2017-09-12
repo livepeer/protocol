@@ -3,6 +3,7 @@ pragma solidity ^0.4.13;
 import "../rounds/IRoundsManager.sol";
 import "../bonding/IBondingManager.sol";
 
+
 contract RoundsManagerMock is IRoundsManager {
     uint256 public mockCurrentRound;
     uint256 public mockCurrentRoundStartBlock;

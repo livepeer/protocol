@@ -7,6 +7,7 @@ import "../bonding/IBondingManager.sol";
 
 import "zeppelin-solidity/contracts/math/SafeMath.sol";
 
+
 contract RoundsManager is IRoundsManager, Manager {
     using SafeMath for uint256;
 
@@ -19,11 +20,7 @@ contract RoundsManager is IRoundsManager, Manager {
     // Last initialized round. After first round, this is the last round during which initializeRound() was called
     uint256 public lastInitializedRound;
 
-    function RoundsManager(
-        address _registry,
-        uint256 _blockTime,
-        uint256 _roundLength
-    ) Manager(_registry) {
+    function RoundsManager(address _registry, uint256 _blockTime, uint256 _roundLength) Manager(_registry) {
         blockTime = _blockTime;
         roundLength = _roundLength;
 
@@ -36,7 +33,10 @@ contract RoundsManager is IRoundsManager, Manager {
     function initializeRound() external whenSystemNotPaused returns (bool) {
         // Check if already called for the current round
         // Will exit here to avoid large gas consumption if it has been called for the current round already
-        if (lastInitializedRound == currentRound()) return false;
+        if (lastInitializedRound == currentRound()) {
+            return false;
+        }
+
         // Set current round as initialized
         lastInitializedRound = currentRound();
 
@@ -70,7 +70,7 @@ contract RoundsManager is IRoundsManager, Manager {
     /*
      * @dev Check if current round is initialized i.e. block.number / roundLength == lastInitializedRound
      */
-    function currentRoundInitialized() public constant returns (bool)  {
+    function currentRoundInitialized() public constant returns (bool) {
         return lastInitializedRound == currentRound();
     }
 

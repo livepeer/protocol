@@ -1,4 +1,5 @@
-pragma solidity ^0.4.11;
+pragma solidity ^0.4.13;
+
 
 /*
  * @title Interface for verifier contract. Can be backed by any implementation including oracles or Truebit

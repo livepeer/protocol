@@ -1,4 +1,5 @@
-pragma solidity ^0.4.11;
+pragma solidity ^0.4.13;
+
 
 /*
  * @title MerkleProof
@@ -20,8 +21,8 @@ library MerkleProof {
         for (uint256 i = 32; i <= _proof.length; i += 32) {
             assembly {
                 // Load the current element of the proof
-            proofElement := mload(add(_proof, i))
-                    }
+                proofElement := mload(add(_proof, i))
+            }
 
             if (computedHash < proofElement) {
                 // Hash(current computed hash + current element of the proof)

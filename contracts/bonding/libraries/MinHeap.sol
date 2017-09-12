@@ -1,17 +1,18 @@
-pragma solidity ^0.4.11;
+pragma solidity ^0.4.13;
 
 import "./Node.sol";
 
 import "zeppelin-solidity/contracts/math/SafeMath.sol";
+
 
 library MinHeap {
     using SafeMath for uint256;
 
     struct Heap {
         Node.Node[] nodes;
-        mapping (address => uint) positions;
+        mapping (address => uint256) positions;
         mapping (address => bool) ids;
-        uint maxSize;
+        uint256 maxSize;
         bool initialized;
     }
 
@@ -19,7 +20,7 @@ library MinHeap {
      * Initialize heap by setting a max size
      * @param _size Max size of heap
      */
-    function init(Heap storage self, uint _size) {
+    function init(Heap storage self, uint256 _size) {
         // Check if heap is already initialized
         require(!self.initialized);
 
@@ -38,7 +39,7 @@ library MinHeap {
     /*
      * Returns current size of heap
      */
-    function size(Heap storage self) constant returns (uint) {
+    function size(Heap storage self) constant returns (uint256) {
         return self.nodes.length;
     }
 
@@ -60,7 +61,7 @@ library MinHeap {
      * Returns the key for an id
      * @param Address id
      */
-    function getKey(Heap storage self, address _id) constant returns (uint) {
+    function getKey(Heap storage self, address _id) constant returns (uint256) {
         // Check if id is in the heap
         require(self.ids[_id]);
 
@@ -70,7 +71,7 @@ library MinHeap {
     /*
      * Returns the min node in the heap as a address, key pair
      */
-    function min(Heap storage self) constant returns (address, uint) {
+    function min(Heap storage self) constant returns (address, uint256) {
         // Check if heap is empty
         require(self.nodes.length > 0);
 
@@ -82,7 +83,7 @@ library MinHeap {
      * @param _id Address id
      * @param _key Key for address
      */
-    function insert(Heap storage self, address _id, uint _key) {
+    function insert(Heap storage self, address _id, uint256 _key) {
         // Check if heap is already full
         require(self.nodes.length != self.maxSize);
         // Check if id already in heap. Call increaseKey instead
@@ -124,7 +125,7 @@ library MinHeap {
      * Delete node at given position while maintaining heap property
      * @param _pos Position of node
      */
-    function deletePos(Heap storage self, uint _pos) {
+    function deletePos(Heap storage self, uint256 _pos) {
         require(self.nodes.length >= _pos);
 
         // Update ids contained in the heap
@@ -150,12 +151,12 @@ library MinHeap {
      * @param _id Address id
      * @param _amount Amount to increase key by
      */
-    function increaseKey(Heap storage self, address _id, uint _amount) {
+    function increaseKey(Heap storage self, address _id, uint256 _amount) {
         // Check if id is in heap
         require(self.ids[_id]);
 
         // Get position of id in heap
-        uint pos = self.positions[_id];
+        uint256 pos = self.positions[_id];
 
         // Update key for address
         self.nodes[pos].key = self.nodes[pos].key.add(_amount);
@@ -169,12 +170,12 @@ library MinHeap {
      * @param _id Address id
      * @param _amount Amount to decrease key by
      */
-    function decreaseKey(Heap storage self, address _id, uint _amount) {
+    function decreaseKey(Heap storage self, address _id, uint256 _amount) {
         // Check if id is in heap
         require(self.ids[_id]);
 
         // Get position of address in heap
-        uint pos = self.positions[_id];
+        uint256 pos = self.positions[_id];
 
         // Update key for address
         self.nodes[pos].key = self.nodes[pos].key.sub(_amount);
@@ -187,7 +188,7 @@ library MinHeap {
      * Sifts a node up the heap to its proper position such that the heap property is obeyed
      * @param _pos Starting position of node
      */
-    function siftUp(Heap storage self, uint _pos) private {
+    function siftUp(Heap storage self, uint256 _pos) private {
         // Set current node to be node at starting position
         Node.Node memory curr = self.nodes[_pos];
 
@@ -210,20 +211,18 @@ library MinHeap {
      * Sifts a node down the heap to its proper position such that the heap property is obeyed
      * @param _pos Starting position of node
      */
-    function siftDown(Heap storage self, uint _pos) private {
+    function siftDown(Heap storage self, uint256 _pos) private {
         // Set current node to be node at starting position
         Node.Node memory curr = self.nodes[_pos];
         // Flag for whether the heap property is obeyed
         bool isHeap = false;
         // Set index of current smallest node to left child
-        uint smallest = _pos * 2 + 1;
+        uint256 smallest = _pos * 2 + 1;
 
         // Sift until we obey the heap property
         while (smallest < self.nodes.length && !isHeap) {
             // Check if node is initialized by checking for an address
-            if (smallest + 1 < self.nodes.length
-                && self.nodes[smallest + 1].initialized
-                && self.nodes[smallest + 1].key < self.nodes[smallest].key) {
+            if (smallest + 1 < self.nodes.length && self.nodes[smallest + 1].initialized && self.nodes[smallest + 1].key < self.nodes[smallest].key) {
                 // Update index of current smallest node to be right child
                 smallest++;
             }
