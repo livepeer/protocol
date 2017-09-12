@@ -17,6 +17,11 @@
     "indentation": true,
     "whitespace": true,
     "deprecated-suicide": true,
-    "pragma-on-top": true
+    "pragma-on-top": true,
+    "overflow-indentation": false,
+    "semicolon-whitespace": true,
+    "conditionals-whitespace": true,
+    "function-whitespace": false,
+    "comma-whitespace": true
   }
 }

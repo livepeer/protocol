@@ -8,7 +8,7 @@
   },
   "scripts": {
     "lint": "npm run eslint; npm run solium",
-    "eslint": "./node_modules/eslint/bin/eslint.js util/** test/**",
+    "eslint": "./node_modules/eslint/bin/eslint.js util/** scripts/** test/**",
     "solium": "./node_modules/solium/bin/solium.js --dir ./contracts",
     "test": "npm run lint; truffle test",
     "testrpc": "testrpc"
