@@ -3,13 +3,14 @@ pragma solidity ^0.4.13;
 import "../Manager.sol";
 import "../bonding/IBondingManager.sol";
 
+
 /*
  * @title Mock BondingManager used for testing
  */
 contract BondingManagerMock is IBondingManager, Manager {
-    uint256 public constant mockTranscoderStake = 500;
-    uint256 public constant mockDelegatorStake = 500;
-    uint256 public constant mockDelegatorRewards = 500;
+    uint256 public mockTranscoderStake = 500;
+    uint256 public mockDelegatorStake = 500;
+    uint256 public mockDelegatorRewards = 500;
 
     address public mockTranscoder;
     uint256 public mockPricePerSegment;

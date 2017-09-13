@@ -4,6 +4,7 @@ import "../LivepeerToken.sol";
 
 import "zeppelin-solidity/contracts/ownership/Ownable.sol";
 
+
 /*
  * @title Facuet for the Livepeer Token
  */

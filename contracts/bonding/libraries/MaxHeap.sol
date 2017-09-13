@@ -4,6 +4,7 @@ import "./Node.sol";
 
 import "zeppelin-solidity/contracts/math/SafeMath.sol";
 
+
 library MaxHeap {
     using SafeMath for uint256;
 
@@ -70,7 +71,7 @@ library MaxHeap {
     /*
      * Returns the max node in the heap as a address, key pair
      */
-    function max(Heap storage self) constant returns (address, uint) {
+    function max(Heap storage self) constant returns (address, uint256) {
         // Check if heap is empty
         require(self.nodes.length > 0);
 
@@ -82,7 +83,7 @@ library MaxHeap {
      * @param _id Address id
      * @param _key Key for id
      */
-    function insert(Heap storage self, address _id, uint _key) {
+    function insert(Heap storage self, address _id, uint256 _key) {
         // Check if heap is already full
         require(self.nodes.length != self.maxSize);
         // Check if id already in heap
@@ -124,7 +125,7 @@ library MaxHeap {
      * Delete node at given position while maintaining heap property
      * @param _pos Position of node
      */
-    function deletePos(Heap storage self, uint _pos) {
+    function deletePos(Heap storage self, uint256 _pos) {
         require(self.nodes.length >= _pos);
 
         // Update ids contained in the heap
@@ -150,11 +151,11 @@ library MaxHeap {
      * @param _id Address id
      * @param _amount Amount to increase key by
      */
-    function increaseKey(Heap storage self, address _id, uint _amount) {
+    function increaseKey(Heap storage self, address _id, uint256 _amount) {
         // Check if id in heap
         require(self.ids[_id]);
 
-        uint pos = self.positions[_id];
+        uint256 pos = self.positions[_id];
 
         // Update key for address
         self.nodes[pos].key = self.nodes[pos].key.add(_amount);
@@ -168,11 +169,11 @@ library MaxHeap {
      * @param _id Address id
      * @param _amount Amount to decrease key by
      */
-    function decreaseKey(Heap storage self, address _id, uint _amount) {
+    function decreaseKey(Heap storage self, address _id, uint256 _amount) {
         // Check if id in heap
         require(self.ids[_id]);
 
-        uint pos = self.positions[_id];
+        uint256 pos = self.positions[_id];
 
         // Update key for address
         self.nodes[pos].key = self.nodes[pos].key.sub(_amount);
@@ -185,7 +186,7 @@ library MaxHeap {
      * Sifts a node up the heap to its proper position such that the heap property is obeyed
      * @param _pos Starting position of node
      */
-    function siftUp(Heap storage self, uint _pos) private {
+    function siftUp(Heap storage self, uint256 _pos) private {
         // Set current node to be node at starting position
         Node.Node memory curr = self.nodes[_pos];
 
@@ -208,18 +209,17 @@ library MaxHeap {
      * Sifts a node down the heap to its proper position such that the heap property is obeyed
      * @param _pos Starting position of node
      */
-    function siftDown(Heap storage self, uint _pos) private {
+    function siftDown(Heap storage self, uint256 _pos) private {
         // Set current node to be node at starting position
         Node.Node memory curr = self.nodes[_pos];
         // Flag for whether the heap property is obeyed
         bool isHeap = false;
         // Set index of current largest node to left child
-        uint largest = _pos * 2 + 1;
+        uint256 largest = _pos * 2 + 1;
 
         // Sift until we obey the heap property
         while (largest < self.nodes.length && !isHeap) {
-            if (largest + 1 < self.nodes.length
-                && self.nodes[largest + 1].key > self.nodes[largest].key) {
+            if (largest + 1 < self.nodes.length && self.nodes[largest + 1].key > self.nodes[largest].key) {
                 // Update index of current smallest node to be right child
                 largest++;
             }

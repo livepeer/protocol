@@ -13,6 +13,7 @@ import "../verification/Verifier.sol";
 import "zeppelin-solidity/contracts/math/SafeMath.sol";
 import "zeppelin-solidity/contracts/ECRecovery.sol";
 
+
 contract JobsManager is IJobsManager, Verifiable, Manager {
     using SafeMath for uint256;
 
@@ -228,16 +229,22 @@ contract JobsManager is IJobsManager, Verifiable, Manager {
         broadcasterDeposits[job.broadcasterAddress] = broadcasterDeposits[job.broadcasterAddress].sub(fees);
         job.escrow = job.escrow.add(fees);
 
-        job.claims.push(Claim({
-            claimId: job.claims.length,
-            segmentRange: _segmentRange,
-            claimRoot: _claimRoot,
-            claimBlock: block.number,
-            transcoderTotalStake: bondingManager().transcoderTotalStake(msg.sender),
-            endVerificationBlock: block.number.add(verificationPeriod),
-            endSlashingBlock: block.number.add(verificationPeriod).add(slashingPeriod),
-            status: ClaimStatus.Pending
-        }));
+        uint256 transcoderTotalStake = bondingManager().transcoderTotalStake(msg.sender);
+        uint256 endVerificationBlock = block.number.add(verificationPeriod);
+        uint256 endSlashingBlock = endVerificationBlock.add(slashingPeriod);
+
+        job.claims.push(
+            Claim({
+                claimId: job.claims.length,
+                segmentRange: _segmentRange,
+                claimRoot: _claimRoot,
+                claimBlock: block.number,
+                transcoderTotalStake: transcoderTotalStake,
+                endVerificationBlock: endVerificationBlock,
+                endSlashingBlock: endSlashingBlock,
+                status: ClaimStatus.Pending
+           })
+        );
 
         NewClaim(job.transcoderAddress, _jobId, job.claims.length - 1);
 
@@ -455,8 +462,12 @@ contract JobsManager is IJobsManager, Verifiable, Manager {
         constant
         returns (bool)
     {
-        if (ECRecovery.recover(JobLib.personalSegmentHash(jobs[_jobId].streamId, _segmentNumber, _dataHash), _broadcasterSig) != jobs[_jobId].broadcasterAddress) return false;
-        if (!MerkleProof.verifyProof(_proof, jobs[_jobId].claims[_claimId].claimRoot, JobLib.transcodeReceiptHash(jobs[_jobId].streamId, _segmentNumber, _dataHash, _transcodedDataHash, _broadcasterSig))) return false;
+        if (ECRecovery.recover(JobLib.personalSegmentHash(jobs[_jobId].streamId, _segmentNumber, _dataHash), _broadcasterSig) != jobs[_jobId].broadcasterAddress) {
+            return false;
+        }
+        if (!MerkleProof.verifyProof(_proof, jobs[_jobId].claims[_claimId].claimRoot, JobLib.transcodeReceiptHash(jobs[_jobId].streamId, _segmentNumber, _dataHash, _transcodedDataHash, _broadcasterSig))) {
+            return false;
+        }
 
         return true;
     }

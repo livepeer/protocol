@@ -3,6 +3,7 @@ pragma solidity ^0.4.13;
 import "./Verifier.sol";
 import "./Verifiable.sol";
 
+
 /*
  * @title Verifier contract that always returns true
  */
@@ -29,7 +30,8 @@ contract IdentityVerifier is Verifier {
         returns (bool)
     {
         // Check if receiveVerification on callback contract succeeded
-        Verifiable(_callbackContract).receiveVerification(_jobId, _claimId, _segmentNumber, true);
+        Verifiable verifiableContract = Verifiable(_callbackContract);
+        verifiableContract.receiveVerification(_jobId, _claimId, _segmentNumber, true);
 
         return true;
     }

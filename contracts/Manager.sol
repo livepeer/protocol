@@ -2,22 +2,23 @@ pragma solidity ^0.4.13;
 
 import "./ContractRegistry.sol";
 
+
 contract Manager {
     // Registry contract
-    address public registry;
+    ContractRegistry public registry;
 
     modifier onlyRegistry() {
-        require(msg.sender == registry);
+        require(ContractRegistry(msg.sender) == registry);
         _;
     }
 
     modifier whenSystemNotPaused() {
-        require(!ContractRegistry(registry).paused());
+        require(!registry.paused());
         _;
     }
 
     modifier whenSystemPaused() {
-        require(ContractRegistry(registry).paused());
+        require(registry.paused());
         _;
     }
 
@@ -26,7 +27,7 @@ contract Manager {
      * @param _registry Registry contract address
      */
     function Manager(address _registry) {
-        registry = _registry;
+        registry = ContractRegistry(_registry);
     }
 
     /*
@@ -34,7 +35,7 @@ contract Manager {
      * @param _registry Registry contract address
      */
     function setRegistry(address _registry) onlyRegistry whenSystemPaused public returns (bool) {
-        registry = _registry;
+        registry = ContractRegistry(_registry);
 
         return true;
     }

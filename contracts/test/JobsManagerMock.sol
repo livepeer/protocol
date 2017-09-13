@@ -1,7 +1,8 @@
 pragma solidity ^0.4.13;
 
-import "../jobs/IJobsManager.sol";
 import "../bonding/IBondingManager.sol";
+import "../jobs/IJobsManager.sol";
+
 
 contract JobsManagerMock is IJobsManager {
     IBondingManager bondingManager;

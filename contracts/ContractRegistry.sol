@@ -4,6 +4,7 @@ import "./Manager.sol";
 
 import "zeppelin-solidity/contracts/lifecycle/Pausable.sol";
 
+
 contract ContractRegistry is Pausable {
     mapping (bytes32 => address) public registry;
 
