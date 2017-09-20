@@ -5,25 +5,27 @@ import "../bonding/IBondingManager.sol";
 
 
 contract RoundsManagerMock is IRoundsManager {
-    uint256 public mockCurrentRound;
-    uint256 public mockCurrentRoundStartBlock;
-    uint256 public mockRoundsPerYear;
-    bool public mockCurrentRoundInitialized;
-
     IBondingManager bondingManager;
 
-    function RoundsManagerMock(address _bondingManager) {
+    uint256 public currentRound;
+    uint256 public currentRoundStartBlock;
+    uint256 public roundsPerYear;
+    bool public currentRoundInitialized;
+
+    function setBondingManager(address _bondingManager) external {
         bondingManager = IBondingManager(_bondingManager);
     }
 
-    function setCurrentRound(uint256 _round) external returns (bool) {
-        mockCurrentRound = _round;
-        return true;
+    function setCurrentRound(uint256 _round) external {
+        currentRound = _round;
     }
 
-    function setCurrentRoundInitialized(bool _initialized) external returns (bool) {
-        mockCurrentRoundInitialized = _initialized;
-        return true;
+    function setCurrentRoundInitialized(bool _initialized) external {
+        currentRoundInitialized = _initialized;
+    }
+
+    function setRoundsPerYear(uint256 _rounds) external {
+        roundsPerYear = _rounds;
     }
 
     function initializeRound() external returns (bool) {
@@ -31,18 +33,18 @@ contract RoundsManagerMock is IRoundsManager {
     }
 
     function currentRound() public constant returns (uint256) {
-        return mockCurrentRound;
+        return currentRound;
     }
 
     function currentRoundStartBlock() public constant returns (uint256) {
-        return mockCurrentRoundStartBlock;
+        return currentRoundStartBlock;
     }
 
     function roundsPerYear() public constant returns (uint256) {
-        return mockRoundsPerYear;
+        return roundsPerYear;
     }
 
     function currentRoundInitialized() public constant returns (bool) {
-        return mockCurrentRoundInitialized;
+        return currentRoundInitialized;
     }
 }

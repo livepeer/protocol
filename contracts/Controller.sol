@@ -26,6 +26,10 @@ contract Controller is Pausable, IController {
         return true;
     }
 
+    /*
+     * @dev Get contract address for an id
+     * @param _id Contract id
+     */
     function getContract(bytes32 _id) public constant returns (address) {
         return registry[_id];
     }

@@ -642,7 +642,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     }
 
     /*
-     * @dev Return reserve transcoder at postiion in reserve pool
+     * @dev Return reserve transcoder at postion in reserve pool
      * @param _position Position in reserve pool
      */
     function getReserveTranscoderAtPosition(uint256 _position) public constant returns (address) {
@@ -658,6 +658,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      */
     function increaseTranscoderStake(address _transcoder, uint256 _totalAmount, uint256 _transcoderShare, uint256 _round) internal returns (bool) {
         delegators[_transcoder].bondedAmount = delegators[_transcoder].bondedAmount.add(_transcoderShare);
+        delegators[_transcoder].delegatedAmount = delegators[_transcoder].delegatedAmount.add(_totalAmount);
 
         if (delegatorStatus(_transcoder) == DelegatorStatus.Unbonded) {
             // Set delegator fields if transcoder is not a bonded delegator
