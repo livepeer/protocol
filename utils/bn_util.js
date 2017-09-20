@@ -12,7 +12,7 @@ export function add(...args) {
         const a = new BigNumber(acc)
         const b = new BigNumber(num)
         return a.plus(b)
-    }).toString()
+    })
 }
 
 export function sub(...args) {
@@ -20,5 +20,21 @@ export function sub(...args) {
         const a = new BigNumber(acc)
         const b = new BigNumber(num)
         return a.sub(b)
-    }).toString()
+    })
+}
+
+export function mul(...args) {
+    return args.reduce((acc, num) => {
+        const a = new BigNumber(acc)
+        const b = new BigNumber(num)
+        return a.mul(b)
+    })
+}
+
+export function div(...args) {
+    return args.reduce((acc, num) => {
+        const a = new BigNumber(acc)
+        const b = new BigNumber(num)
+        return a.div(b)
+    })
 }

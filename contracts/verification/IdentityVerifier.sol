@@ -1,13 +1,22 @@
 pragma solidity ^0.4.13;
 
-import "./Verifier.sol";
-import "./Verifiable.sol";
+import "../Manager.sol";
+import "./IVerifier.sol";
+import "./IVerifiable.sol";
 
 
 /*
  * @title Verifier contract that always returns true
  */
-contract IdentityVerifier is Verifier {
+contract IdentityVerifier is Manager, IVerifier {
+    // Check that sender is JobsManager
+    modifier onlyJobsManager() {
+        require(msg.sender == controller.getContract(keccak256("JobsManager")));
+        _;
+    }
+
+    function IdentityVerifier(address _controller) Manager(_controller) {}
+
     /*
      * @dev Verify implementation that always returns true. Used primarily for testing purposes
      * @param _jobId Job identifier
@@ -26,11 +35,12 @@ contract IdentityVerifier is Verifier {
         address _callbackContract
     )
         external
+        onlyJobsManager
         payable
         returns (bool)
     {
         // Check if receiveVerification on callback contract succeeded
-        Verifiable verifiableContract = Verifiable(_callbackContract);
+        IVerifiable verifiableContract = IVerifiable(_callbackContract);
         verifiableContract.receiveVerification(_jobId, _claimId, _segmentNumber, true);
 
         return true;

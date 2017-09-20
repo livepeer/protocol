@@ -8,18 +8,11 @@ const MinterMock = artifacts.require("MinterMock")
 const BondingManagerMock = artifacts.require("BondingManagerMock")
 const RoundsManagerMock = artifacts.require("RoundsManagerMock")
 const JobsManagerMock = artifacts.require("JobsManagerMock")
-const IdentityVerifier = artifacts.require("IdentityVerifier")
+const VerifierMock = artifacts.require("VerifierMock")
 
 export default class Fixture {
     constructor(web3) {
         this.rpc = new RPC(web3)
-        this.contracts = {
-            "LivepeerToken": null,
-            "Minter": null,
-            "BondingManager": null,
-            "JobsManager": null,
-            "RoundsManager": null
-        }
     }
 
     async deployController() {
@@ -32,7 +25,7 @@ export default class Fixture {
         this.bondingManager = await this.deployAndRegister(BondingManagerMock, "BondingManager")
         this.roundsManager = await this.deployAndRegister(RoundsManagerMock, "RoundsManager")
         this.jobsManager = await this.deployAndRegister(JobsManagerMock, "JobsManager")
-        this.verifier = await this.deployAndRegistery(IdentityVerifier, "Verifier")
+        this.verifier = await this.deployAndRegister(VerifierMock, "Verifier")
     }
 
     async deployAndRegister(artifact, name, args = []) {

@@ -7,14 +7,14 @@ import "./libraries/MerkleProof.sol";
 import "../token/ILivepeerToken.sol";
 import "../token/IMinter.sol";
 import "../bonding/IBondingManager.sol";
-import "../verification/Verifiable.sol";
-import "../verification/Verifier.sol";
+import "../verification/IVerifiable.sol";
+import "../verification/IVerifier.sol";
 
 import "zeppelin-solidity/contracts/math/SafeMath.sol";
 import "zeppelin-solidity/contracts/ECRecovery.sol";
 
 
-contract JobsManager is ManagerProxyTarget, Verifiable, IJobsManager {
+contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
     using SafeMath for uint256;
 
     // % of segments to be verified. 1 / verificationRate == % to be verified
@@ -83,7 +83,7 @@ contract JobsManager is ManagerProxyTarget, Verifiable, IJobsManager {
 
     // Check if sender is Verifier contract
     modifier onlyVerifier() {
-        require(Verifier(msg.sender) == verifier());
+        require(IVerifier(msg.sender) == verifier());
         _;
     }
 
@@ -94,7 +94,7 @@ contract JobsManager is ManagerProxyTarget, Verifiable, IJobsManager {
     }
 
     // Events
-    event NewJob(address indexed transcoder, address indexed broadcaster, uint256 jobId);
+    event NewJob(address indexed transcoder, address indexed broadcaster, uint256 jobId, string streamId, string transcodingOptions);
     event NewClaim(address indexed transcoder, uint256 indexed jobId, uint256 claimId);
     event ReceivedVerification(uint256 indexed jobId, uint256 indexed claimId, uint256 segmentNumber, bool result);
 
@@ -113,6 +113,8 @@ contract JobsManager is ManagerProxyTarget, Verifiable, IJobsManager {
         beforeInitialization
         returns (bool)
     {
+        finishInitialization();
+
         verificationRate = _verificationRate;
         jobEndingPeriod = _jobEndingPeriod;
         verificationPeriod = _verificationPeriod;
@@ -170,7 +172,7 @@ contract JobsManager is ManagerProxyTarget, Verifiable, IJobsManager {
         job.broadcasterAddress = msg.sender;
         job.transcoderAddress = electedTranscoder;
 
-        NewJob(electedTranscoder, msg.sender, numJobs);
+        NewJob(electedTranscoder, msg.sender, numJobs, _streamId, _transcodingOptions);
 
         // Increment number of created jobs
         numJobs = numJobs.add(1);
@@ -561,7 +563,7 @@ contract JobsManager is ManagerProxyTarget, Verifiable, IJobsManager {
     /*
      * @dev Returns Verifier
      */
-    function verifier() internal constant returns (Verifier) {
-        return Verifier(controller.getContract(keccak256("Verifier")));
+    function verifier() internal constant returns (IVerifier) {
+        return IVerifier(controller.getContract(keccak256("Verifier")));
     }
 }

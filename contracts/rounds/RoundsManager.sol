@@ -22,6 +22,8 @@ contract RoundsManager is ManagerProxyTarget, IRoundsManager {
     function RoundsManager(address _controller) Manager(_controller) {}
 
     function initialize(uint256 _blockTime, uint256 _roundLength) external beforeInitialization returns (bool) {
+        finishInitialization();
+
         blockTime = _blockTime;
         roundLength = _roundLength;
         lastInitializedRound = currentRound();

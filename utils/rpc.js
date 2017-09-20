@@ -7,13 +7,13 @@ export default class RPC {
         const req = {
             jsonrpc: "2.0",
             method: method,
-            id: new Date().getTime(),
+            id: new Date().getTime()
         }
 
         if (arg) req.params = arg
 
         return new Promise((resolve, reject) => {
-            this.web3.currentProvider.sendAsync(req, (err, result) => {
+            return this.web3.currentProvider.sendAsync(req, (err, result) => {
                 if (err) {
                     reject(err)
                 } else if (result && result.error) {
@@ -31,6 +31,10 @@ export default class RPC {
         return this.sendAsync("evm_increaseTime", [time])
     }
 
+    mine() {
+        return this.sendAsync("evm_mine")
+    }
+
     snapshot() {
         return this.sendAsync("evm_snapshot")
             .then(res => res.result)
@@ -40,30 +44,37 @@ export default class RPC {
         return this.sendAsync("evm_revert", [snapshotId])
     }
 
-    // Wait a number of blocks using evm_mine and evm_increaseTime
-    // https://github.com/DigixGlobal/tempo
-    wait(seconds = 20, blocks = 1) {
-        return new Promise(resolve => {
-            return this.web3.eth.getBlock("latest", (e, {number}) => {
-                resolve(blocks + number)
-            })
-        }).then(targetBlock => {
-            return this.waitUntilBlock(seconds, targetBlock)
-        })
+    async wait(blocks = 1, seconds = 20) {
+        let currentBlock = await this.getBlockNumberAsync()
+        const targetBlock = currentBlock + blocks
+        await this.waitUntilBlock(targetBlock, seconds)
     }
 
-    waitUntilBlock(seconds, targetBlock) {
-        return new Promise(resolve => {
-            const asyncIterator = () => {
-                return this.web3.eth.getBlock("latest", (e, {number}) => {
-                    if (number >= targetBlock - 1) {
-                        return this.sendAsync("evm_increaseTime", [seconds])
-                            .then(() => this.sendAsync("evm_mine")).then(resolve)
-                    }
-                    return this.sendAsync("evm_mine").then(asyncIterator)
-                })
-            }
-            asyncIterator()
+    async waitUntilBlock(targetBlock, seconds = 20) {
+        let currentBlock = await this.getBlockNumberAsync()
+
+        while (currentBlock < targetBlock) {
+            await this.increaseTime(seconds)
+            await this.mine()
+            currentBlock++
+        }
+    }
+
+    async waitUntilNextBlockMultiple(blockMultiple, multiples = 1, seconds = 20) {
+        const currentBlock = await this.getBlockNumberAsync()
+        const additionalBlocks = (multiples - 1) * blockMultiple
+        await this.waitUntilBlock(this.nextBlockMultiple(currentBlock, blockMultiple) + additionalBlocks)
+    }
+
+    getBlockNumberAsync() {
+        return new Promise((resolve, reject) => {
+            return this.web3.eth.getBlockNumber((err, blockNum) => {
+                if (err) {
+                    reject(err)
+                } else {
+                    resolve(blockNum)
+                }
+            })
         })
     }
 
@@ -79,16 +90,5 @@ export default class RPC {
         }
 
         return currentBlockNum + blockMultiple - remainder
-    }
-
-    waitUntilNextBlockMultiple(seconds = 20, blockMultiple, multiples = 1) {
-        return new Promise(resolve => {
-            return this.web3.eth.getBlockNumber((e, blockNum) => {
-                resolve(blockNum)
-            })
-        }).then(blockNum => {
-            const additionalBlocks = (multiples - 1) * blockMultiple
-            return this.waitUntilBlock(seconds, this.nextBlockMultiple(blockNum, blockMultiple) + additionalBlocks)
-        })
     }
 }

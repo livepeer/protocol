@@ -10,11 +10,6 @@ contract Controller is Pausable, IController {
     // Track contract ids and their mapped addresses
     mapping (bytes32 => address) registry;
 
-    function Controller() {
-        // Start in paused state
-        pause();
-    }
-
     /*
      * @dev Register contract id and mapped address
      * @param _id Contract id (keccak256 hash of contract name)
