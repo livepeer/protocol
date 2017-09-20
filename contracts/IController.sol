@@ -1,8 +1,10 @@
 pragma solidity ^0.4.13;
 
+import "zeppelin-solidity/contracts/lifecycle/Pausable.sol";
 
-contract IController {
+
+contract IController is Pausable {
     function setContract(bytes32 _id, address _contract) external returns (bool);
-    function updateContractController(bytes32 _id, address _controller) external returns (bool);
-    function isWhitelistedCaller(address _target, address _caller) public constant returns (bool);
+    function updateController(bytes32 _id, address _controller) external returns (bool);
+    function getContract(bytes32 _id) public constant returns (address);
 }

@@ -1,16 +1,14 @@
 pragma solidity ^0.4.13;
 
-import "./IControlled.sol";
+import "./IController.sol";
+import "./IManager.sol";
 
 import "zeppelin-solidity/contracts/lifecycle/Pausable.sol";
 
 
 contract Controller is Pausable, IController {
     // Track contract ids and their mapped addresses
-    mapping (bytes32 => address) public registry;
-
-    // Track contract addresses and their whitelisted callers
-    mapping (address => mapping (address => bool)) whitelistedCallers;
+    mapping (bytes32 => address) registry;
 
     function Controller() {
         // Start in paused state
@@ -28,21 +26,16 @@ contract Controller is Pausable, IController {
         return true;
     }
 
-    /*
-     * @dev Update controlled contract's controller
-     * @param _id Contract id (keccak256 hash of contract name)
-     * @param _controller Controller address
-     */
-    function updateContractController(bytes32 _id, address _controller) external onlyOwner returns (bool) {
-        return IControlled(registry[_id]).setController(_controller);
+    function getContract(bytes32 _id) public constant returns (address) {
+        return registry[_id];
     }
 
     /*
-     * @dev Check if a caller is whitelisted for a target contract
-     * @param _target Target contract address
-     * @param _caller Caller address
+     * @dev Update contract's controller
+     * @param _id Contract id (keccak256 hash of contract name)
+     * @param _controller Controller address
      */
-    function isWhitelistedCaller(address _target, address _caller) public constant returns (bool) {
-        return whitelistedCallers[_target][_caller];
+    function updateController(bytes32 _id, address _controller) external onlyOwner returns (bool) {
+        return IManager(registry[_id]).setController(_controller);
     }
 }

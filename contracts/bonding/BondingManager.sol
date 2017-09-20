@@ -1,29 +1,19 @@
 pragma solidity ^0.4.13;
 
+import "../ManagerProxyTarget.sol";
 import "./IBondingManager.sol";
 import "./libraries/TranscoderPools.sol";
-import "../Manager.sol";
-import "../ContractRegistry.sol";
-import "../LivepeerToken.sol";
+import "../token/ILivepeerToken.sol";
+import "../token/IMinter.sol";
 import "../rounds/IRoundsManager.sol";
 import "../jobs/IJobsManager.sol";
 
 import "zeppelin-solidity/contracts/math/SafeMath.sol";
 
 
-contract BondingManager is IBondingManager, Manager {
+contract BondingManager is ManagerProxyTarget, IBondingManager {
     using SafeMath for uint256;
     using TranscoderPools for TranscoderPools.TranscoderPools;
-
-    // Token address
-    LivepeerToken public token;
-
-    // Start with 10M tokens. 1 LPT == 10^18th units
-    uint256 public initialTokenSupply = 10000000 * (10 ** 18);
-
-    // Upper bound inflation rate
-    // Initially fixed at 26%
-    uint8 public initialYearlyInflation = 26;
 
     // Time between unbonding and possible withdrawl in rounds
     uint64 public unbondingPeriod;
@@ -78,9 +68,8 @@ contract BondingManager is IBondingManager, Manager {
     enum DelegatorStatus { Pending, Bonded, Unbonding, Unbonded }
 
     // Keep track of the known transcoders and delegators
-    // Note: Casper style implementation would have us using arrays and bitmaps to index these
-    mapping (address => Delegator) public delegators;
-    mapping (address => Transcoder) public transcoders;
+    mapping (address => Delegator) delegators;
+    mapping (address => Transcoder) transcoders;
 
     // Active and candidate transcoder pools
     TranscoderPools.TranscoderPools transcoderPools;
@@ -96,13 +85,13 @@ contract BondingManager is IBondingManager, Manager {
 
     // Only the RoundsManager can call
     modifier onlyRoundsManager() {
-        require(msg.sender == address(roundsManager()));
+        require(IRoundsManager(msg.sender) == roundsManager());
         _;
     }
 
     // Only the JobsManager can call
     modifier onlyJobsManager() {
-        require(msg.sender == address(jobsManager()));
+        require(IJobsManager(msg.sender) == jobsManager());
         _;
     }
 
@@ -127,20 +116,10 @@ contract BondingManager is IBondingManager, Manager {
         _;
     }
 
-    /*
-     * @dev BondingManager constructor. Sets a pre-existing address for the LivepeerToken contract
-     * @param _token LivepeerToken contract address
-     */
-    function BondingManager(
-        address _registry,
-        address _token,
-        uint256 _numActiveTranscoders,
-        uint64 _unbondingPeriod
-    )
-        Manager(_registry)
-    {
-        // Set LivepeerToken address
-        token = LivepeerToken(_token);
+    function BondingManager(address _controller) Manager(_controller) {}
+
+    function initialize(uint64 _unbondingPeriod, uint256 _numActiveTranscoders) external beforeInitialization returns (bool) {
+        finishInitialization();
         // Set unbonding period
         unbondingPeriod = _unbondingPeriod;
         // Set up transcoder pools
@@ -155,6 +134,7 @@ contract BondingManager is IBondingManager, Manager {
      */
     function transcoder(uint8 _blockRewardCut, uint8 _feeShare, uint256 _pricePerSegment)
         external
+        afterInitialization
         whenSystemNotPaused
         currentRoundInitialized
         returns (bool)
@@ -183,7 +163,13 @@ contract BondingManager is IBondingManager, Manager {
     /*
      * @dev Remove the sender as a transcoder
      */
-    function resignAsTranscoder() external whenSystemNotPaused currentRoundInitialized returns (bool) {
+    function resignAsTranscoder()
+        external
+        afterInitialization
+        whenSystemNotPaused
+        currentRoundInitialized
+        returns (bool)
+    {
         // Sender must be registered transcoder
         require(transcoderStatus(msg.sender) == TranscoderStatus.Registered);
         // Remove transcoder from pools
@@ -204,6 +190,7 @@ contract BondingManager is IBondingManager, Manager {
         address _to
     )
         external
+        afterInitialization
         whenSystemNotPaused
         currentRoundInitialized
         updateDelegatorStakeWithRewardsAndFees
@@ -254,8 +241,8 @@ contract BondingManager is IBondingManager, Manager {
 
         if (_amount > 0) {
             // Only transfer tokens if _amount is greater than 0
-            // Transfer the token. This call throws if it fails.
-            token.transferFrom(msg.sender, this, _amount);
+            // Transfer the token to the Minter
+            livepeerToken().transferFrom(msg.sender, minter(), _amount);
         }
 
         return true;
@@ -267,6 +254,7 @@ contract BondingManager is IBondingManager, Manager {
      */
     function unbond()
         external
+        afterInitialization
         whenSystemNotPaused
         currentRoundInitialized
         updateDelegatorStakeWithRewardsAndFees
@@ -297,11 +285,12 @@ contract BondingManager is IBondingManager, Manager {
     /**
      * @dev Withdraws withdrawable funds back to the caller after unbonding period.
      */
-    function withdraw() external whenSystemNotPaused currentRoundInitialized returns (bool) {
+    function withdraw() external afterInitialization whenSystemNotPaused currentRoundInitialized returns (bool) {
         // Delegator must be unbonded
         require(delegatorStatus(msg.sender) == DelegatorStatus.Unbonded);
 
-        token.transfer(msg.sender, delegators[msg.sender].bondedAmount);
+        // Ask Minter to transfer tokens to sender
+        minter().transferTokens(msg.sender, delegators[msg.sender].bondedAmount);
 
         delete delegators[msg.sender];
 
@@ -311,7 +300,7 @@ contract BondingManager is IBondingManager, Manager {
     /*
      * @dev Set active transcoder set for the current round
      */
-    function setActiveTranscoders() external whenSystemNotPaused onlyRoundsManager returns (bool) {
+    function setActiveTranscoders() external afterInitialization whenSystemNotPaused onlyRoundsManager returns (bool) {
         if (activeTranscoders.length != transcoderPools.candidateTranscoders.nodes.length) {
             // Set length of array if it has not already been set
             activeTranscoders.length = transcoderPools.candidateTranscoders.nodes.length;
@@ -352,7 +341,7 @@ contract BondingManager is IBondingManager, Manager {
      * @dev Distribute the token rewards to transcoder and delegates.
      * Active transcoders call this once per cycle when it is their turn.
      */
-    function reward() external whenSystemNotPaused currentRoundInitialized returns (bool) {
+    function reward() external afterInitialization whenSystemNotPaused currentRoundInitialized returns (bool) {
         // Sender must be an active transcoder
         require(isActiveTranscoder[msg.sender]);
 
@@ -363,10 +352,8 @@ contract BondingManager is IBondingManager, Manager {
         // Set last round that transcoder called reward
         transcoders[msg.sender].lastRewardRound = currentRound;
 
-        // Calculate number of tokens to mint
-        uint256 mintedTokens = mintedTokensPerReward(msg.sender);
-        // Mint token reward and allocate to this protocol contract
-        token.mint(this, mintedTokens);
+        // Mint token reward
+        uint256 mintedTokens = minter().mint(activeTranscoders[activeTranscoderPositions[msg.sender]].key, totalActiveTranscoderStake);
 
         updateTranscoderWithRewards(msg.sender, mintedTokens, currentRound);
 
@@ -385,6 +372,7 @@ contract BondingManager is IBondingManager, Manager {
         uint256 _transcoderTotalStake
     )
         external
+        afterInitialization
         whenSystemNotPaused
         onlyJobsManager
         returns (bool)
@@ -411,6 +399,7 @@ contract BondingManager is IBondingManager, Manager {
         uint64 _finderFee
     )
         external
+        afterInitialization
         whenSystemNotPaused
         onlyJobsManager
         returns (bool)
@@ -430,7 +419,7 @@ contract BondingManager is IBondingManager, Manager {
 
         if (_finder != address(0)) {
             // Award finder fee
-            token.transfer(_finder, penalty.mul(_finderFee).div(100));
+            minter().transferTokens(_finder, penalty.mul(_finderFee).div(100));
         }
 
         return true;
@@ -441,7 +430,7 @@ contract BondingManager is IBondingManager, Manager {
      * Returns address of elected active transcoder and its price per segment
      * @param _maxPricePerSegment Max price (in LPT base units) per segment of a stream
      */
-    function electActiveTranscoder(uint256 _maxPricePerSegment) external constant returns (address, uint256) {
+    function electActiveTranscoder(uint256 _maxPricePerSegment) external constant returns (address) {
         // Create array to store available transcoders charging an acceptable price per segment
         Node.Node[] memory availableTranscoders = new Node.Node[](activeTranscoders.length);
         // Keep track of the actual number of available transcoders
@@ -460,7 +449,7 @@ contract BondingManager is IBondingManager, Manager {
 
         if (numAvailableTranscoders == 0) {
             // There is no currently available transcoder that charges a price per segment less than or equal to the max price per segment for a job
-            return (address(0), 0);
+            return address(0);
         } else {
             // Pseudorandomly pick an available transcoder weighted by its stake relative to the total stake of all available transcoders
             uint256 r = uint256(block.blockhash(block.number - 1)) % totalAvailableTranscoderStake;
@@ -470,14 +459,14 @@ contract BondingManager is IBondingManager, Manager {
                 s = s.add(availableTranscoders[j].key);
 
                 if (s > r) {
-                    return (availableTranscoders[j].id, transcoders[availableTranscoders[j].id].pricePerSegment);
+                    return availableTranscoders[j].id;
                 }
             }
 
-            return (availableTranscoders[numAvailableTranscoders - 1].id, transcoders[availableTranscoders[numAvailableTranscoders - 1].id].pricePerSegment);
+            return availableTranscoders[numAvailableTranscoders - 1].id;
         }
 
-        return (address(0), 0);
+        return address(0);
     }
 
     /*
@@ -566,12 +555,68 @@ contract BondingManager is IBondingManager, Manager {
         }
     }
 
-    /*
-     * @dev Return number of minted tokens for a reward call
-     */
-    function mintedTokensPerReward(address _transcoder) public constant returns (uint256) {
-        uint256 transcoderActiveStake = activeTranscoders[activeTranscoderPositions[_transcoder]].key;
-        return initialTokenSupply.mul(initialYearlyInflation).div(100).div(roundsManager().roundsPerYear()).mul(transcoderActiveStake).div(totalActiveTranscoderStake);
+    // Transcoder getters
+
+    function getTranscoderDelegatorWithdrawRound(address _transcoder) public constant returns (uint256) {
+        return transcoders[_transcoder].delegatorWithdrawRound;
+    }
+
+    function getTranscoderLastRewardRound(address _transcoder) public constant returns (uint256) {
+        return transcoders[_transcoder].lastRewardRound;
+    }
+
+    function getTranscoderBlockRewardCut(address _transcoder) public constant returns (uint8) {
+        return transcoders[_transcoder].blockRewardCut;
+    }
+
+    function getTranscoderFeeShare(address _transcoder) public constant returns (uint8) {
+        return transcoders[_transcoder].feeShare;
+    }
+
+    function getTranscoderPricePerSegment(address _transcoder) public constant returns (uint256) {
+        return transcoders[_transcoder].pricePerSegment;
+    }
+
+    function getTranscoderPendingBlockRewardCut(address _transcoder) public constant returns (uint8) {
+        return transcoders[_transcoder].pendingBlockRewardCut;
+    }
+
+    function getTranscoderPendingFeeShare(address _transcoder) public constant returns (uint8) {
+        return transcoders[_transcoder].pendingFeeShare;
+    }
+
+    function getTranscoderPendingPricePerSegment(address _transcoder) public constant returns (uint256) {
+        return transcoders[_transcoder].pendingPricePerSegment;
+    }
+
+    // Delegator getters
+
+    function getDelegatorBondedAmount(address _delegator) public constant returns (uint256) {
+        return delegators[_delegator].bondedAmount;
+    }
+
+    function getDelegatorDelegateAddress(address _delegator) public constant returns (address) {
+        return delegators[_delegator].delegateAddress;
+    }
+
+    function getDelegatorDelegatedAmount(address _delegator) public constant returns (uint256) {
+        return delegators[_delegator].delegatedAmount;
+    }
+
+    function getDelegatorStartRound(address _delegator) public constant returns (uint256) {
+        return delegators[_delegator].startRound;
+    }
+
+    function getDelegatorDelegateBlock(address _delegator) public constant returns (uint256) {
+        return delegators[_delegator].delegateBlock;
+    }
+
+    function getDelegatorWithdrawRound(address _delegator) public constant returns (uint256) {
+        return delegators[_delegator].withdrawRound;
+    }
+
+    function getDelegatorLastStakeUpdateRound(address _delegator) public constant returns (uint256) {
+        return delegators[_delegator].lastStakeUpdateRound;
     }
 
     /*
@@ -750,16 +795,30 @@ contract BondingManager is IBondingManager, Manager {
     }
 
     /*
-     * @dev Return rounds manager
+     * @dev Return LivepeerToken
      */
-    function roundsManager() internal constant returns (IRoundsManager) {
-        return IRoundsManager(ContractRegistry(registry).registry(keccak256("RoundsManager")));
+    function livepeerToken() internal constant returns (ILivepeerToken) {
+        return ILivepeerToken(controller.getContract(keccak256("LivepeerToken")));
     }
 
     /*
-     * @dev Return jobs manager
+     * @dev Return Minter
+     */
+    function minter() internal constant returns (IMinter) {
+        return IMinter(controller.getContract(keccak256("Minter")));
+    }
+
+    /*
+     * @dev Return RoundsManager
+     */
+    function roundsManager() internal constant returns (IRoundsManager) {
+        return IRoundsManager(controller.getContract(keccak256("RoundsManager")));
+    }
+
+    /*
+     * @dev Return JobsManager
      */
     function jobsManager() internal constant returns (IJobsManager) {
-        return IJobsManager(ContractRegistry(registry).registry(keccak256("JobsManager")));
+        return IJobsManager(controller.getContract(keccak256("JobsManager")));
     }
 }

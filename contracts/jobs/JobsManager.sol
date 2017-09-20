@@ -1,11 +1,11 @@
 pragma solidity ^0.4.13;
 
+import "../ManagerProxyTarget.sol";
 import "./IJobsManager.sol";
 import "./libraries/JobLib.sol";
 import "./libraries/MerkleProof.sol";
-import "../Manager.sol";
-import "../ContractRegistry.sol";
-import "../LivepeerToken.sol";
+import "../token/ILivepeerToken.sol";
+import "../token/IMinter.sol";
 import "../bonding/IBondingManager.sol";
 import "../verification/Verifiable.sol";
 import "../verification/Verifier.sol";
@@ -14,14 +14,8 @@ import "zeppelin-solidity/contracts/math/SafeMath.sol";
 import "zeppelin-solidity/contracts/ECRecovery.sol";
 
 
-contract JobsManager is IJobsManager, Verifiable, Manager {
+contract JobsManager is ManagerProxyTarget, Verifiable, IJobsManager {
     using SafeMath for uint256;
-
-    // Token address
-    LivepeerToken public token;
-
-    // Verifier address
-    Verifier public verifier;
 
     // % of segments to be verified. 1 / verificationRate == % to be verified
     uint64 public verificationRate;
@@ -56,7 +50,6 @@ contract JobsManager is IJobsManager, Verifiable, Manager {
         string streamId;                      // Unique identifier for stream.
         string transcodingOptions;            // Options used for transcoding
         uint256 maxPricePerSegment;           // Max price (in LPT base units) per segment of a stream
-        uint256 pricePerSegment;              // Set price per segment for job set by a transcoder
         address broadcasterAddress;           // Address of broadcaster that requestes a transcoding job
         address transcoderAddress;            // Address of transcoder selected for the job
         uint256 endBlock;                     // Block at which the job is ended and considered inactive
@@ -90,10 +83,11 @@ contract JobsManager is IJobsManager, Verifiable, Manager {
 
     // Check if sender is Verifier contract
     modifier onlyVerifier() {
-        require(msg.sender == address(verifier));
+        require(Verifier(msg.sender) == verifier());
         _;
     }
 
+    // Check if job exists
     modifier jobExists(uint256 _jobId) {
         require(_jobId < numJobs);
         _;
@@ -104,10 +98,9 @@ contract JobsManager is IJobsManager, Verifiable, Manager {
     event NewClaim(address indexed transcoder, uint256 indexed jobId, uint256 claimId);
     event ReceivedVerification(uint256 indexed jobId, uint256 indexed claimId, uint256 segmentNumber, bool result);
 
-    function JobsManager(
-        address _registry,
-        address _token,
-        address _verifier,
+    function JobsManager(address _controller) Manager(_controller) {}
+
+    function initialize(
         uint64 _verificationRate,
         uint256 _jobEndingPeriod,
         uint256 _verificationPeriod,
@@ -116,13 +109,10 @@ contract JobsManager is IJobsManager, Verifiable, Manager {
         uint64 _missedVerificationSlashAmount,
         uint64 _finderFee
     )
-        Manager(_registry)
+        external
+        beforeInitialization
+        returns (bool)
     {
-        // Set LivepeerToken address
-        token = LivepeerToken(_token);
-        // Set Verifier address
-        verifier = Verifier(_verifier);
-
         verificationRate = _verificationRate;
         jobEndingPeriod = _jobEndingPeriod;
         verificationPeriod = _verificationPeriod;
@@ -136,21 +126,22 @@ contract JobsManager is IJobsManager, Verifiable, Manager {
      * @dev Deposit funds for jobs
      * @param _amount Amount to deposit
      */
-    function deposit(uint256 _amount) external whenSystemNotPaused returns (bool) {
+    function deposit(uint256 _amount) external afterInitialization whenSystemNotPaused returns (bool) {
         broadcasterDeposits[msg.sender] = broadcasterDeposits[msg.sender].add(_amount);
-        // Transfer tokens for deposit. Sender needs to approve amount first
-        token.transferFrom(msg.sender, this, _amount);
+        // Transfer tokens for deposit to Minter. Sender needs to approve amount first
+        livepeerToken().transferFrom(msg.sender, minter(), _amount);
 
         return true;
     }
 
     /*
      * @dev Withdraw deposited funds
+     * FIXME: Attacker can withdraw funds before transcoder has a chance to claim them
      */
-    function withdraw() external whenSystemNotPaused returns (bool) {
+    function withdraw() external afterInitialization whenSystemNotPaused returns (bool) {
         uint256 amount = broadcasterDeposits[msg.sender];
         broadcasterDeposits[msg.sender] = 0;
-        token.transfer(msg.sender, amount);
+        minter().transferTokens(msg.sender, amount);
 
         return true;
     }
@@ -163,10 +154,11 @@ contract JobsManager is IJobsManager, Verifiable, Manager {
      */
     function job(string _streamId, string _transcodingOptions, uint256 _maxPricePerSegment)
         external
+        afterInitialization
         whenSystemNotPaused
         returns (bool)
     {
-        var (electedTranscoder, pricePerSegment) = bondingManager().electActiveTranscoder(_maxPricePerSegment);
+        address electedTranscoder = bondingManager().electActiveTranscoder(_maxPricePerSegment);
         /* There must be an elected transcoder */
         require(electedTranscoder != address(0));
 
@@ -175,7 +167,6 @@ contract JobsManager is IJobsManager, Verifiable, Manager {
         job.streamId = _streamId;
         job.transcodingOptions = _transcodingOptions;
         job.maxPricePerSegment = _maxPricePerSegment;
-        job.pricePerSegment = pricePerSegment;
         job.broadcasterAddress = msg.sender;
         job.transcoderAddress = electedTranscoder;
 
@@ -191,7 +182,7 @@ contract JobsManager is IJobsManager, Verifiable, Manager {
      * @dev End a job. Can be called by either a broadcaster or transcoder of a job
      * @param _jobId Job identifier
      */
-    function endJob(uint256 _jobId) external whenSystemNotPaused returns (bool) {
+    function endJob(uint256 _jobId) external afterInitialization whenSystemNotPaused returns (bool) {
         Job storage job = jobs[_jobId];
 
         // Job must not already have an end block
@@ -211,6 +202,7 @@ contract JobsManager is IJobsManager, Verifiable, Manager {
      */
     function claimWork(uint256 _jobId, uint256[2] _segmentRange, bytes32 _claimRoot)
         external
+        afterInitialization
         whenSystemNotPaused
         jobExists(_jobId)
         returns (bool)
@@ -225,7 +217,7 @@ contract JobsManager is IJobsManager, Verifiable, Manager {
         require(_segmentRange[1] >= _segmentRange[0]);
 
         // Move fees from broadcaster deposit to escrow
-        uint256 fees = _segmentRange[1].sub(_segmentRange[0]).add(1).mul(job.pricePerSegment);
+        uint256 fees = _segmentRange[1].sub(_segmentRange[0]).add(1).mul(job.maxPricePerSegment);
         broadcasterDeposits[job.broadcasterAddress] = broadcasterDeposits[job.broadcasterAddress].sub(fees);
         job.escrow = job.escrow.add(fees);
 
@@ -271,6 +263,7 @@ contract JobsManager is IJobsManager, Verifiable, Manager {
     )
         external
         payable
+        afterInitialization
         whenSystemNotPaused
         returns (bool)
     {
@@ -293,7 +286,7 @@ contract JobsManager is IJobsManager, Verifiable, Manager {
         claim.segmentVerifications[_segmentNumber] = true;
 
         // Invoke transcoding verification. This is async and will result in a callback to receiveVerification() which is implemented by this contract
-        verifier.verify(_jobId, _claimId, _segmentNumber, _dataHash, _transcodedDataHash, this);
+        verifier().verify(_jobId, _claimId, _segmentNumber, _dataHash, _transcodedDataHash, this);
 
         return true;
     }
@@ -306,6 +299,7 @@ contract JobsManager is IJobsManager, Verifiable, Manager {
      */
     function receiveVerification(uint256 _jobId, uint256 _claimId, uint256 _segmentNumber, bool _result)
         external
+        afterInitialization
         whenSystemNotPaused
         onlyVerifier
         returns (bool)
@@ -328,6 +322,7 @@ contract JobsManager is IJobsManager, Verifiable, Manager {
      */
     function batchDistributeFees(uint256 _jobId, uint256[] _claimIds)
         external
+        afterInitialization
         whenSystemNotPaused
         returns (bool)
     {
@@ -346,6 +341,7 @@ contract JobsManager is IJobsManager, Verifiable, Manager {
      */
     function missedVerificationSlash(uint256 _jobId, uint256 _claimId, uint256 _segmentNumber)
         external
+        afterInitialization
         whenSystemNotPaused
         jobExists(_jobId)
         returns (bool)
@@ -382,6 +378,7 @@ contract JobsManager is IJobsManager, Verifiable, Manager {
      */
     function distributeFees(uint256 _jobId, uint256 _claimId)
         public
+        afterInitialization
         whenSystemNotPaused
         jobExists(_jobId)
         returns (bool)
@@ -396,13 +393,11 @@ contract JobsManager is IJobsManager, Verifiable, Manager {
         // Slashing period must be over for claim
         require(claim.endSlashingBlock < block.number);
 
-        uint256 fees = claim.segmentRange[1].sub(claim.segmentRange[0]).add(1).mul(job.pricePerSegment);
+        uint256 fees = claim.segmentRange[1].sub(claim.segmentRange[0]).add(1).mul(job.maxPricePerSegment);
         // Deduct fees from escrow
         job.escrow = job.escrow.sub(fees);
         // Add fees to transcoder's fee pool
         bondingManager().updateTranscoderFeePool(msg.sender, fees, claim.claimBlock, claim.transcoderTotalStake);
-        // Send fees to bonding manager
-        token.transfer(address(bondingManager()), fees);
 
         // Set claim as complete
         claim.status = ClaimStatus.Complete;
@@ -424,19 +419,72 @@ contract JobsManager is IJobsManager, Verifiable, Manager {
         }
     }
 
-    /*
-     * @dev Return claim details
-     * @param _jobId Job identifier
-     * @param _claimId Claim identifier
-     */
-    function getClaimDetails(uint256 _jobId, uint256 _claimId)
-        public
-        constant
-        returns (uint256[2], bytes32, uint256, uint256, uint256, uint256, ClaimStatus)
-    {
-        Claim storage claim = jobs[_jobId].claims[_claimId];
+    // Job getters
 
-        return (claim.segmentRange, claim.claimRoot, claim.claimBlock, claim.endVerificationBlock, claim.endSlashingBlock, claim.transcoderTotalStake, claim.status);
+    function getJobStreamId(uint256 _jobId) public constant returns (string) {
+        return jobs[_jobId].streamId;
+    }
+
+    function getJobTranscodingOptions(uint256 _jobId) public constant returns (string) {
+        return jobs[_jobId].transcodingOptions;
+    }
+
+    function getJobMaxPricePerSegment(uint256 _jobId) public constant returns (uint256) {
+        return jobs[_jobId].maxPricePerSegment;
+    }
+
+    function getJobBroadcasterAddress(uint256 _jobId) public constant returns (address) {
+        return jobs[_jobId].broadcasterAddress;
+    }
+
+    function getJobTranscoderAddress(uint256 _jobId) public constant returns (address) {
+        return jobs[_jobId].transcoderAddress;
+    }
+
+    function getJobEndBlock(uint256 _jobId) public constant returns (uint256) {
+        return jobs[_jobId].endBlock;
+    }
+
+    function getJobEscrow(uint256 _jobId) public constant returns (uint256) {
+        return jobs[_jobId].escrow;
+    }
+
+    function getJobTotalClaims(uint256 _jobId) public constant returns (uint256) {
+        return jobs[_jobId].claims.length;
+    }
+
+    // Claim getters
+
+    function getClaimStartSegment(uint256 _jobId, uint256 _claimId) public constant returns (uint256) {
+        return jobs[_jobId].claims[_claimId].segmentRange[0];
+    }
+
+    function getClaimEndSegment(uint256 _jobId, uint256 _claimId) public constant returns (uint256) {
+        return jobs[_jobId].claims[_claimId].segmentRange[1];
+    }
+
+    function getClaimRoot(uint256 _jobId, uint256 _claimId) public constant returns (bytes32) {
+        return jobs[_jobId].claims[_claimId].claimRoot;
+    }
+
+    function getClaimBlock(uint256 _jobId, uint256 _claimId) public constant returns (uint256) {
+        return jobs[_jobId].claims[_claimId].claimBlock;
+    }
+
+    function getClaimEndVerificationBlock(uint256 _jobId, uint256 _claimId) public constant returns (uint256) {
+        return jobs[_jobId].claims[_claimId].endVerificationBlock;
+    }
+
+    function getClaimEndSlashingBlock(uint256 _jobId, uint256 _claimId) public constant returns (uint256) {
+        return jobs[_jobId].claims[_claimId].endSlashingBlock;
+    }
+
+    function getClaimTranscoderTotalStake(uint256 _jobId, uint256 _claimId) public constant returns (uint256) {
+        return jobs[_jobId].claims[_claimId].transcoderTotalStake;
+    }
+
+    function getClaimStatus(uint256 _jobId, uint256 _claimId) public constant returns (ClaimStatus) {
+        return jobs[_jobId].claims[_claimId].status;
     }
 
     /*
@@ -482,7 +530,7 @@ contract JobsManager is IJobsManager, Verifiable, Manager {
         Claim storage claim = job.claims[_claimId];
 
         // Return escrowed fees for claim
-        uint256 fees = claim.segmentRange[1].sub(claim.segmentRange[0]).add(1).mul(job.pricePerSegment);
+        uint256 fees = claim.segmentRange[1].sub(claim.segmentRange[0]).add(1).mul(job.maxPricePerSegment);
         job.escrow = job.escrow.sub(fees);
         broadcasterDeposits[job.broadcasterAddress] = broadcasterDeposits[job.broadcasterAddress].add(fees);
 
@@ -490,10 +538,30 @@ contract JobsManager is IJobsManager, Verifiable, Manager {
     }
 
     /*
+     * @dev Returns LivepeerToken
+     */
+    function livepeerToken() internal constant returns (ILivepeerToken) {
+        return ILivepeerToken(controller.getContract(keccak256("LivepeerToken")));
+    }
+
+    /*
+     * @dev Returns Minter
+     */
+    function minter() internal constant returns (IMinter) {
+        return IMinter(controller.getContract(keccak256("Minter")));
+    }
+
+    /*
      * @dev Returns BondingManager
      */
     function bondingManager() internal constant returns (IBondingManager) {
-        return IBondingManager(ContractRegistry(registry).registry(keccak256("BondingManager")));
+        return IBondingManager(controller.getContract(keccak256("BondingManager")));
     }
 
+    /*
+     * @dev Returns Verifier
+     */
+    function verifier() internal constant returns (Verifier) {
+        return Verifier(controller.getContract(keccak256("Verifier")));
+    }
 }

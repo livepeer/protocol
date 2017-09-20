@@ -1,6 +1,6 @@
 pragma solidity ^0.4.13;
 
-import "../LivepeerToken.sol";
+import "../token/ILivepeerToken.sol";
 
 import "zeppelin-solidity/contracts/ownership/Ownable.sol";
 
@@ -10,7 +10,7 @@ import "zeppelin-solidity/contracts/ownership/Ownable.sol";
  */
 contract LivepeerTokenFaucet is Ownable {
     // Token
-    LivepeerToken public token;
+    ILivepeerToken public token;
 
     // Amount of token sent to sender for a request
     uint256 public requestAmount;
@@ -39,7 +39,7 @@ contract LivepeerTokenFaucet is Ownable {
      * @param _requestWait Amount of time a sender must wait between request (denominated in hours)
      */
     function LivepeerTokenFaucet(address _token, uint256 _requestAmount, uint256 _requestWait) {
-        token = LivepeerToken(_token);
+        token = ILivepeerToken(_token);
         requestAmount = _requestAmount;
         requestWait = _requestWait;
     }

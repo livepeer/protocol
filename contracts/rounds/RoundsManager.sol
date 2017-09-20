@@ -1,14 +1,13 @@
 pragma solidity ^0.4.13;
 
+import "../ManagerProxyTarget.sol";
 import "./IRoundsManager.sol";
-import "../Manager.sol";
-import "../ContractRegistry.sol";
 import "../bonding/IBondingManager.sol";
 
 import "zeppelin-solidity/contracts/math/SafeMath.sol";
 
 
-contract RoundsManager is IRoundsManager, Manager {
+contract RoundsManager is ManagerProxyTarget, IRoundsManager {
     using SafeMath for uint256;
 
     // Time between blocks. For testing purposes
@@ -20,19 +19,21 @@ contract RoundsManager is IRoundsManager, Manager {
     // Last initialized round. After first round, this is the last round during which initializeRound() was called
     uint256 public lastInitializedRound;
 
-    function RoundsManager(address _registry, uint256 _blockTime, uint256 _roundLength) Manager(_registry) {
+    function RoundsManager(address _controller) Manager(_controller) {}
+
+    function initialize(uint256 _blockTime, uint256 _roundLength) external beforeInitialization returns (bool) {
         blockTime = _blockTime;
         roundLength = _roundLength;
-
         lastInitializedRound = currentRound();
     }
 
     /*
      * @dev Initialize the current round. Called once at the start of any round
      */
-    function initializeRound() external whenSystemNotPaused returns (bool) {
+    function initializeRound() external afterInitialization whenSystemNotPaused returns (bool) {
         // Check if already called for the current round
         // Will exit here to avoid large gas consumption if it has been called for the current round already
+        // FIXME: replace with revert() after the Byzantium update which will return gas to the sender
         if (lastInitializedRound == currentRound()) {
             return false;
         }
@@ -78,6 +79,6 @@ contract RoundsManager is IRoundsManager, Manager {
      * @dev Return BondingManager contract (interface)
      */
     function bondingManager() internal constant returns (IBondingManager) {
-        return IBondingManager(ContractRegistry(registry).registry(keccak256("BondingManager")));
+        return IBondingManager(controller.getContract(keccak256("BondingManager")));
     }
 }

@@ -1,19 +1,20 @@
 pragma solidity ^0.4.13;
 
-import "./Controlled.sol";
+import "./ManagerProxyTarget.sol";
 
 
-contract Proxy is Controlled {
-    function Proxy(address _controller, bytes32 _contractId) Controlled(_controller, _contractId) {}
+contract ManagerProxy is ManagerProxyTarget {
+    function ManagerProxy(address _controller, bytes32 _targetContractId) Manager(_controller) {
+        targetContractId = _targetContractId;
+    }
 
     // Based on https://github.com/AugurProject/augur-core/blob/develop/src/libraries/Delegator.sol
     function() public payable {
-        // Set size of method call result
-        // Only allow fixed return size of 32 for now until
+        // Set size of method call result to 32 for now until
         // we can use the RETURNDATACOPY and RETURNDATASIZE opcodes introduced
         // in the Byzantium hard fork
         uint32 size = 32;
-        address target = controller.registry(contractId);
+        address target = controller.getContract(targetContractId);
         // Target contract must be registered
         require(target > 0);
 
@@ -44,7 +45,7 @@ contract Proxy is Controlled {
                 revert(0, 0)
             } default {
                 // Return result of method call stored in mem[calldataMemoryOffset..(calldataMemoryOffset + size)]
-                return(_calldataMemoryOffset, size)
+                return(calldataMemoryOffset, size)
             }
         }
     }
