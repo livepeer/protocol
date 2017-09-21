@@ -202,112 +202,113 @@ contract("BondingManager", accounts => {
         })
     })
 
-    // describe("updateTranscoderFeePool", async () => {
-    //     const tAddr = accounts[1]
-    //     const dAddr = accounts[2]
+    describe("updateTranscoderFeePool", async () => {
+        const tAddr = accounts[1]
+        const dAddr = accounts[2]
 
-    //     // Transcoder rates
-    //     const blockRewardCut = 10
-    //     const feeShare = 5
-    //     const pricePerSegment = 10
+        // Transcoder rates
+        const blockRewardCut = 10
+        const feeShare = 5
+        const pricePerSegment = 10
 
-    //     // Mock fees params
-    //     const fees = 300
-    //     const claimBlock = 100
-    //     const transcoderTotalStake = 1000
+        // Mock fees params
+        const fees = 300
+        const claimBlock = 100
+        const transcoderTotalStake = 1000
 
-    //     before(async () => {
-    //         await setup()
+        beforeEach(async () => {
+            await bondingManager.initialize(UNBONDING_PERIOD, NUM_ACTIVE_TRANSCODERS)
+            await fixture.jobsManager.setBondingManager(bondingManager.address)
+            await fixture.roundsManager.setBondingManager(bondingManager.address)
+            await fixture.roundsManager.setCurrentRoundInitialized(true)
+            await fixture.token.setApproved(true)
 
-    //         await roundsManager.setCurrentRoundInitialized(true)
+            // Register transcoder
+            await bondingManager.transcoder(blockRewardCut, feeShare, pricePerSegment, {from: tAddr})
 
-    //         // Register transcoder
-    //         await bondingManager.transcoder(blockRewardCut, feeShare, pricePerSegment, {from: tAddr})
+            // Transcoder bonds
+            await bondingManager.bond(2000, tAddr, {from: tAddr})
+            // Delegator bonds to transcoder
+            await bondingManager.bond(2000, tAddr, {from: dAddr})
 
-    //         // Transcoder bonds
-    //         await token.approve(bondingManager.address, 2000, {from: tAddr})
-    //         await bondingManager.bond(2000, tAddr, {from: tAddr})
+            await fixture.jobsManager.setTranscoder(tAddr)
+            await fixture.jobsManager.setFees(fees)
+            await fixture.jobsManager.setClaimBlock(claimBlock)
+            await fixture.jobsManager.setTranscoderTotalStake(transcoderTotalStake)
 
-    //         // Delegator bonds to transcoder
-    //         await token.approve(bondingManager.address, 2000, {from: dAddr})
-    //         await bondingManager.bond(2000, tAddr, {from: dAddr})
+            // Set active transcoders
+            await fixture.roundsManager.initializeRound()
+        })
 
-    //         await jobsManager.setMockTranscoder(tAddr)
-    //         await jobsManager.setMockFees(fees)
-    //         await jobsManager.setMockClaimBlock(claimBlock)
-    //         await jobsManager.setMockTranscoderTotalStake(transcoderTotalStake)
+        it("should update transcoder's total stake", async () => {
+            // Call updateTranscoderFeePool via transaction from JobsManager
+            await fixture.jobsManager.distributeFees()
 
-    //         // Set active transcoders
-    //         await roundsManager.initializeRound()
-    //     })
+            const transcoderTotalStake = await bondingManager.transcoderTotalStake(tAddr)
+            assert.equal(transcoderTotalStake.toString(), add(2000, 2000, fees), "transcoder total stake incorrect")
+        })
 
-    //     it("should update transcoder's total stake", async () => {
-    //         // Call updateTranscoderFeePool via transaction from JobsManager
-    //         await jobsManager.distributeFees()
+        it("should update transcoder's bond with fee share", async () => {
+            // Call updateTranscoderFeePool via transaction from JobsManager
+            await fixture.jobsManager.distributeFees()
 
-    //         const transcoderTotalStake = await bondingManager.transcoderTotalStake(tAddr)
-    //         assert.equal(transcoderTotalStake.toString(), add(2000, 2000, fees), "transcoder total stake incorrect")
-    //     })
+            const transcoderFeeShare = Math.floor((fees * (100 - feeShare)) / 100)
 
-    //     it("should update transcoder's bond with fee share", async () => {
-    //         const transcoderFeeShare = Math.floor((fees * (100 - feeShare)) / 100)
+            const tBondedAmount = await bondingManager.getDelegatorBondedAmount(tAddr)
+            assert.equal(tBondedAmount.toString(), add(2000, transcoderFeeShare).toString(), "transcoder bond incorrect")
+        })
+    })
 
-    //         const tDelegator = await bondingManager.delegators.call(tAddr)
-    //         assert.equal(tDelegator[0].toString(), add(2000, transcoderFeeShare), "transcoder bond incorrect")
-    //     })
-    // })
+    describe("delegatorStake", async () => {
+        const tAddr = accounts[1]
+        const dAddr = accounts[2]
 
-    // describe("delegatorStake", async () => {
-    //     const tAddr = accounts[1]
-    //     const dAddr = accounts[2]
+        // Transcoder rates
+        const blockRewardCut = 10
+        const feeShare = 5
+        const pricePerSegment = 10
 
-    //     // Transcoder rates
-    //     const blockRewardCut = 10
-    //     const feeShare = 5
-    //     const pricePerSegment = 10
+        // Mock fees params
+        const fees = 300
+        const claimBlock = web3.eth.blockNumber + 1000
+        const transcoderTotalStake = 4000
 
-    //     // Mock fees params
-    //     const fees = 300
-    //     const claimBlock = web3.eth.blockNumber + 1000
-    //     const transcoderTotalStake = 4000
+        beforeEach(async () => {
+            await bondingManager.initialize(UNBONDING_PERIOD, NUM_ACTIVE_TRANSCODERS)
+            await fixture.jobsManager.setBondingManager(bondingManager.address)
+            await fixture.roundsManager.setBondingManager(bondingManager.address)
+            await fixture.roundsManager.setCurrentRoundInitialized(true)
+            await fixture.roundsManager.setCurrentRound(5)
+            await fixture.token.setApproved(true)
 
-    //     before(async () => {
-    //         await setup()
+            // Register transcoder
+            await bondingManager.transcoder(blockRewardCut, feeShare, pricePerSegment, {from: tAddr})
 
-    //         await roundsManager.setCurrentRoundInitialized(true)
-    //         await roundsManager.setCurrentRound(5)
+            // Transcoder bonds
+            await bondingManager.bond(2000, tAddr, {from: tAddr})
+            // Delegator bonds to transcoder
+            await bondingManager.bond(2000, tAddr, {from: dAddr})
 
-    //         // Register transcoder
-    //         await bondingManager.transcoder(blockRewardCut, feeShare, pricePerSegment, {from: tAddr})
+            await fixture.jobsManager.setTranscoder(tAddr)
+            await fixture.jobsManager.setFees(fees)
+            await fixture.jobsManager.setClaimBlock(claimBlock)
+            await fixture.jobsManager.setTranscoderTotalStake(transcoderTotalStake)
 
-    //         // Transcoder bonds
-    //         await token.approve(bondingManager.address, 2000, {from: tAddr})
-    //         await bondingManager.bond(2000, tAddr, {from: tAddr})
+            // Set active transcoders
+            await fixture.roundsManager.initializeRound()
 
-    //         // Delegator bonds to transcoder
-    //         await token.approve(bondingManager.address, 2000, {from: dAddr})
-    //         await bondingManager.bond(2000, tAddr, {from: dAddr})
+            // Set current round so delegator is bonded
+            await fixture.roundsManager.setCurrentRound(7)
 
-    //         await jobsManager.setMockTranscoder(tAddr)
-    //         await jobsManager.setMockFees(fees)
-    //         await jobsManager.setMockClaimBlock(claimBlock)
-    //         await jobsManager.setMockTranscoderTotalStake(transcoderTotalStake)
+            // Call updateTranscoderFeePool via transaction from JobsManager
+            await fixture.jobsManager.distributeFees()
+        })
 
-    //         // Set active transcoders
-    //         await roundsManager.initializeRound()
-
-    //         // Set current round so delegator is bonded
-    //         await roundsManager.setCurrentRound(7)
-
-    //         // Call updateTranscoderFeePool via transaction from JobsManager
-    //         await jobsManager.distributeFees()
-    //     })
-
-    //     it("should compute delegator stake with latest fees", async () => {
-    //         const delegatorsFeeShare = Math.floor((fees * feeShare) / 100)
-    //         const delegatorFeeShare = Math.floor((2000 * delegatorsFeeShare) / transcoderTotalStake)
-    //         const delegatorStake = await bondingManager.delegatorStake(dAddr)
-    //         assert.equal(delegatorStake.toString(), add(2000, delegatorFeeShare))
-    //     })
-    // })
+        it("should compute delegator stake with latest fees", async () => {
+            const delegatorsFeeShare = Math.floor((fees * feeShare) / 100)
+            const delegatorFeeShare = Math.floor((2000 * delegatorsFeeShare) / transcoderTotalStake)
+            const delegatorStake = await bondingManager.delegatorStake(dAddr)
+            assert.equal(delegatorStake.toString(), add(2000, delegatorFeeShare))
+        })
+    })
 })
