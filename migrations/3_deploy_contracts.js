@@ -1,43 +1,36 @@
-// const config = require("./migrations.config.js")
+const config = require("./migrations.config.js")
 
-// const JobsManager = artifacts.require("JobsManager")
-// const BondingManager = artifacts.require("BondingManager")
-// const RoundsManager = artifacts.require("RoundsManager")
-// const IdentityVerifier = artifacts.require("IdentityVerifier")
-// // const OraclizeVerifier = artifacts.require("OraclizeVerifier")
-// const LivepeerProtocol = artifacts.require("LivepeerProtocol")
-// const LivepeerToken = artifacts.require("LivepeerToken")
+const Controller = artifacts.require("Controller")
+const Minter = artifacts.require("Minter")
+const BondingManager = artifacts.require("BondingManager")
+const JobsManager = artifacts.require("JobsManager")
+const RoundsManager = artifacts.require("RoundsManager")
+const IdentityVerifier = artifacts.require("IdentityVerifier")
+const OraclizeVerifier = artifacts.require("OraclizeVerifier")
+const LivepeerToken = artifacts.require("LivepeerToken")
 
 module.exports = function(deployer, network) {
-    // deployer.deploy([
-    //     LivepeerProtocol,
-    //     LivepeerToken
-    // ]).then(() => {
-    //     if (network == "development") {
-    //         return deployer.deploy(IdentityVerifier)
-    //     } else {
-    //         return deployer.deploy(IdentityVerifier)
-    //         // return deployer.deploy(OraclizeVerifier)
-    //     }
-    // }).then(() => {
-    //     return deployer.deploy(
-    //         JobsManager,
-    //         LivepeerProtocol.address,
-    //         LivepeerToken.address,
-    //         IdentityVerifier.address,
-    //         // network == "development" ? IdentityVerifier.address : OraclizeVerifier.address,
-    //         config.jobsManager.verificationRate,
-    //         config.jobsManager.jobEndingPeriod,
-    //         config.jobsManager.verificationPeriod,
-    //         config.jobsManager.slashingPeriod,
-    //         config.jobsManager.failedVerificationSlashAmount,
-    //         config.jobsManager.missedVerificationSlashAmount,
-    //         config.jobsManager.finderFee
-    //     )
-    // }).then(() => {
-    //     return deployer.deploy([
-    //         [BondingManager, LivepeerProtocol.address, LivepeerToken.address, config.bondingManager.numActiveTranscoders, config.bondingManager.unbondingPeriod],
-    //         [RoundsManager, LivepeerProtocol.address, config.roundsManager.blockTime, config.roundsManager.roundLength]
-    //     ])
-    // })
+    deployer.deploy(
+        Controller
+    ).then(() => {
+        // Deploy non-upgradeable contracts
+        return deployer.deploy([
+            [LivepeerToken, Controller.address],
+            [Minter, Controller.address, config.minter.initialTokenSupply, config.minter.yearlyInflation]
+        ])
+    }).then(() => {
+        // Deploy Verifier
+        if (network == "development") {
+            return deployer.deploy(IdentityVerifier, Controller.address)
+        } else {
+            return deployer.deploy(OraclizeVerifier)
+        }
+    }).then(() => {
+        // Deploy upgradeable proxy target contracts
+        return deployer.deploy([
+            [BondingManager, Controller.address],
+            [JobsManager, Controller.address],
+            [RoundsManager, Controller.address]
+        ])
+    })
 }

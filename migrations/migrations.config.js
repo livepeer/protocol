@@ -21,5 +21,9 @@ module.exports = {
         requestAmount: 1000,
         requestWait: 2,
         whitelist: []
+    },
+    minter: {
+        initialTokenSupply: 10000000 * Math.pow(10, 18),
+        yearlyInflation: 26
     }
 }
