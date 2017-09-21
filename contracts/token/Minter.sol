@@ -24,7 +24,7 @@ contract Minter is Manager, IMinter {
 
     // Sender must be BondingManager or JobsManager
     modifier onlyBondingManagerOrJobsManager() {
-        require(msg.sender == controller.getContract(keccak256("JobsManager")));
+        require(msg.sender == controller.getContract(keccak256("BondingManager")) || msg.sender == controller.getContract(keccak256("JobsManager")));
         _;
     }
 

@@ -4,6 +4,7 @@ import "../token/ILivepeerToken.sol";
 
 import "zeppelin-solidity/contracts/token/StandardToken.sol";
 
+
 contract LivepeerTokenMock is ILivepeerToken {
     bool public approved;
 

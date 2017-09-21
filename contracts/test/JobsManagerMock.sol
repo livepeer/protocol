@@ -20,7 +20,7 @@ contract JobsManagerMock is IJobsManager {
     uint64 public slashAmount;
     uint64 public finderFee;
 
-    function setMinter(address _minter) {
+    function setMinter(address _minter) external {
         minter = IMinter(_minter);
     }
 

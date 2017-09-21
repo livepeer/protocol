@@ -28,7 +28,7 @@ contract ManagerProxyTargetMockV3 is ManagerProxyTarget {
         uint64Value = _value;
     }
 
-    function setUint256(uint256 _value) external afterInitialization{
+    function setUint256(uint256 _value) external afterInitialization {
         uint256Value = _value;
     }
 
