@@ -1,10 +1,9 @@
 import ethAbi from "ethereumjs-abi"
 
 export default class TranscodeReceipt {
-    constructor(segment, transcodedDataHash, signedSegmentHash) {
+    constructor(segment, transcodedDataHash) {
         this.segment = segment
         this.transcodedDataHash = transcodedDataHash
-        this.signedSegmentHash = signedSegmentHash
     }
 
     hash() {
@@ -15,7 +14,7 @@ export default class TranscodeReceipt {
                 this.segment.sequenceNumber,
                 this.segment.dataHash,
                 this.transcodedDataHash,
-                this.signedSegmentHash
+                this.segment.signedHash()
             ]
         )
     }
