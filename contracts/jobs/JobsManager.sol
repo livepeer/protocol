@@ -3,7 +3,6 @@ pragma solidity ^0.4.13;
 import "../ManagerProxyTarget.sol";
 import "./IJobsManager.sol";
 import "./libraries/JobLib.sol";
-import "./libraries/MerkleProof.sol";
 import "../token/ILivepeerToken.sol";
 import "../token/IMinter.sol";
 import "../bonding/IBondingManager.sol";
@@ -12,6 +11,7 @@ import "../verification/IVerifier.sol";
 
 import "zeppelin-solidity/contracts/math/SafeMath.sol";
 import "zeppelin-solidity/contracts/ECRecovery.sol";
+import "zeppelin-solidity/contracts/MerkleProof.sol";
 
 
 contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
