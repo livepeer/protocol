@@ -18,8 +18,7 @@ contract OraclizeVerifier is Manager, usingOraclize, IVerifier {
         uint256 jobId;
         uint256 claimId;
         uint256 segmentNumber;
-        string transcodedDataHash;
-        address callbackContract;
+        bytes32 transcodedDataHash;
     }
 
     // Stores active Oraclize queries
@@ -57,7 +56,7 @@ contract OraclizeVerifier is Manager, usingOraclize, IVerifier {
      * @param _jobId Job identifier
      * @param _segmentNumber Segment being verified for job
      * @param _code Content-addressed storage hash of binary to execute off-chain
-     * @param _dataHash Content-addressed storage hash of input data of segment
+     * @param _dataStorageHash Content-addressed storage hash of input data of segment
      * @param _transcodedDataHash Hash of transcoded segment data
      * @param _callbackContract Address of Verifiable contract to call back
      */
@@ -65,9 +64,9 @@ contract OraclizeVerifier is Manager, usingOraclize, IVerifier {
         uint256 _jobId,
         uint256 _claimId,
         uint256 _segmentNumber,
-        string _dataHash,
-        string _transcodedDataHash,
-        address _callbackContract
+        string _transcodingOptions,
+        string _dataStorageHash,
+        bytes32 _transcodedDataHash
     )
         external
         payable
@@ -76,15 +75,14 @@ contract OraclizeVerifier is Manager, usingOraclize, IVerifier {
         returns (bool)
     {
         // Create Oraclize query
-        string memory mVerificationCodeHash = verificationCodeHash;
-        bytes32 queryId = oraclize_query("computation", [mVerificationCodeHash, _dataHash], 3000000);
+        string memory codeHashQuery = strConcat("binary(", verificationCodeHash, ").unhexlify()");
+        bytes32 queryId = oraclize_query("computation", [codeHashQuery, _dataStorageHash, _transcodingOptions], 3000000);
 
         // Store Oraclize query parameters
         oraclizeQueries[queryId].jobId = _jobId;
         oraclizeQueries[queryId].claimId = _claimId;
         oraclizeQueries[queryId].segmentNumber = _segmentNumber;
         oraclizeQueries[queryId].transcodedDataHash = _transcodedDataHash;
-        oraclizeQueries[queryId].callbackContract = _callbackContract;
 
         return true;
     }
@@ -98,17 +96,32 @@ contract OraclizeVerifier is Manager, usingOraclize, IVerifier {
         OraclizeQuery memory oc = oraclizeQueries[_queryId];
 
         // Check if transcoded data hash returned by Oraclize matches originally submitted transcoded data hash
-        if (strCompare(oc.transcodedDataHash, _result) == 0) {
+        if (oc.transcodedDataHash == strToBytes32(_result)) {
             // Notify callback contract of successful verification
-            IVerifiable(oc.callbackContract).receiveVerification(oc.jobId, oc.claimId, oc.segmentNumber, true);
+            IVerifiable(controller.getContract(keccak256("JobsManager"))).receiveVerification(oc.jobId, oc.claimId, oc.segmentNumber, true);
             OraclizeCallback(oc.jobId, oc.claimId, oc.segmentNumber, _proof, true);
         } else {
             // Notify callback contract of failed verification
-            IVerifiable(oc.callbackContract).receiveVerification(oc.jobId, oc.claimId, oc.segmentNumber, false);
+            IVerifiable(controller.getContract(keccak256("JobsManager"))).receiveVerification(oc.jobId, oc.claimId, oc.segmentNumber, false);
             OraclizeCallback(oc.jobId, oc.claimId, oc.segmentNumber, _proof, false);
         }
 
         // Remove Oraclize query
         delete oraclizeQueries[_queryId];
+    }
+
+    /*
+     * @dev Convert a string representing a 32 byte array into a 32 byte array
+     * @param _str String representing a 32 byte array
+     */
+    function strToBytes32(string _str) internal constant returns (bytes32) {
+        bytes memory byteStr = bytes(_str);
+        bytes32 result;
+
+        assembly {
+            result := mload(add(byteStr, 32))
+        }
+
+        return result;
     }
 }

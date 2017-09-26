@@ -22,7 +22,7 @@ contract IdentityVerifier is Manager, IVerifier {
      * @param _jobId Job identifier
      * @param _segmentNumber Segment being verified for job
      * @param _code Content-addressed storage hash of binary to execute off-chain
-     * @param _dataHash Content-addressed storage hash of input data of segment
+     * @param _dataStorageHash Content-addressed storage hash of input data of segment
      * @param _transcodedDataHash Hash of transcoded segment data
      * @param _callbackContract Address of Verifiable contract to call back
      */
@@ -30,9 +30,9 @@ contract IdentityVerifier is Manager, IVerifier {
         uint256 _jobId,
         uint256 _claimId,
         uint256 _segmentNumber,
-        string _dataHash,
-        string _transcodedDataHash,
-        address _callbackContract
+        string _transcodingOptions,
+        string _dataStorageHash,
+        bytes32 _transcodedDataHash
     )
         external
         onlyJobsManager
@@ -40,7 +40,7 @@ contract IdentityVerifier is Manager, IVerifier {
         returns (bool)
     {
         // Check if receiveVerification on callback contract succeeded
-        IVerifiable verifiableContract = IVerifiable(_callbackContract);
+        IVerifiable verifiableContract = IVerifiable(msg.sender);
         verifiableContract.receiveVerification(_jobId, _claimId, _segmentNumber, true);
 
         return true;
