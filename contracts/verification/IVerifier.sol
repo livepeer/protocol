@@ -13,4 +13,6 @@ contract IVerifier {
         string _dataStorageHash,
         bytes32 _transcodedDataHash
     ) external payable returns (bool);
+
+    function getPrice() public constant returns (uint256);
 }

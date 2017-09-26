@@ -31,14 +31,18 @@ contract VerifierMock is IVerifier {
         uint256 _jobId,
         uint256 _claimId,
         uint256 _segmentNumber,
-        string _dataHash,
-        string _transcodedDataHash,
-        address _callbackContract
+        string _transcodingOptions,
+        string _dataStorageHash,
+        bytes32 _transcodedDataHash
     )
         external
         payable
         returns (bool)
     {
         return true;
+    }
+
+    function getPrice() public constant returns (uint256) {
+        return 0;
     }
 }

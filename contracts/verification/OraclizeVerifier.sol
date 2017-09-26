@@ -4,6 +4,7 @@ import "../Manager.sol";
 import "./IVerifier.sol";
 import "./IVerifiable.sol";
 
+import "zeppelin-solidity/contracts/math/SafeMath.sol";
 import "../../installed_contracts/oraclize/contracts/usingOraclize.sol";
 
 
@@ -11,7 +12,11 @@ import "../../installed_contracts/oraclize/contracts/usingOraclize.sol";
  * @title Verifier contract that uses Oraclize for off-chain computation
  */
 contract OraclizeVerifier is Manager, usingOraclize, IVerifier {
+    using SafeMath for uint256;
+
     string public verificationCodeHash;
+    uint256 public gasPrice;
+    uint256 public gasLimit;
 
     // Stores parameters for an Oraclize query
     struct OraclizeQuery {
@@ -37,19 +42,24 @@ contract OraclizeVerifier is Manager, usingOraclize, IVerifier {
     }
 
     // Check if sufficient funds for Oraclize computation
-    modifier sufficientOraclizeFunds() {
-        require(oraclize_getPrice("computation") <= msg.value);
+    modifier sufficientPayment() {
+        require(getPrice() <= msg.value);
         _;
     }
 
-    function OraclizeVerifier(address _controller, string _verificationCodeHash) Manager(_controller) {
-        // OAR used for testing purposes
-        OAR = OraclizeAddrResolverI(0x6f485C8BF6fc43eA212E93BBF8ce046C7f1cb475);
+    event OraclizeCallback(uint256 indexed jobId, uint256 indexed claimId, uint256 indexed segmentNumber, bytes proof, bool result);
+
+    function OraclizeVerifier(address _controller, string _verificationCodeHash, uint256 _gasPrice, uint256 _gasLimit) Manager(_controller) {
         // Set verification code hash
         verificationCodeHash = _verificationCodeHash;
+        // Set callback gas price
+        gasPrice = _gasPrice;
+        oraclize_setCustomGasPrice(_gasPrice);
+        // Set callback gas limit
+        gasLimit = _gasLimit;
+        // Set Oraclize proof type
+        oraclize_setProof(proofType_TLSNotary | proofStorage_IPFS);
     }
-
-    event OraclizeCallback(uint256 indexed jobId, uint256 indexed claimId, uint256 indexed segmentNumber, bytes proof, bool result);
 
     /*
      * @dev Verify implementation that creates an Oraclize computation query
@@ -71,12 +81,12 @@ contract OraclizeVerifier is Manager, usingOraclize, IVerifier {
         external
         payable
         onlyJobsManager
-        sufficientOraclizeFunds
+        sufficientPayment
         returns (bool)
     {
         // Create Oraclize query
         string memory codeHashQuery = strConcat("binary(", verificationCodeHash, ").unhexlify()");
-        bytes32 queryId = oraclize_query("computation", [codeHashQuery, _dataStorageHash, _transcodingOptions], 3000000);
+        bytes32 queryId = oraclize_query("computation", [codeHashQuery, _dataStorageHash, _transcodingOptions], gasLimit);
 
         // Store Oraclize query parameters
         oraclizeQueries[queryId].jobId = _jobId;
@@ -108,6 +118,10 @@ contract OraclizeVerifier is Manager, usingOraclize, IVerifier {
 
         // Remove Oraclize query
         delete oraclizeQueries[_queryId];
+    }
+
+    function getPrice() public constant returns (uint256) {
+        return oraclize_getPrice("computation").add(gasPrice.mul(gasLimit));
     }
 
     /*
