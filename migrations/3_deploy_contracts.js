@@ -23,7 +23,7 @@ module.exports = function(deployer, network) {
         if (network == "development") {
             return deployer.deploy(IdentityVerifier, Controller.address)
         } else {
-            return deployer.deploy(OraclizeVerifier, Controller.address, config.verifier.verificationCodeHash)
+            return deployer.deploy(OraclizeVerifier, Controller.address, config.verifier.verificationCodeHash, config.verifier.gasPrice, config.verifier.gasLimit)
         }
     }).then(() => {
         // Deploy upgradeable proxy target contracts

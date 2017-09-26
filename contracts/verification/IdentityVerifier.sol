@@ -46,6 +46,9 @@ contract IdentityVerifier is Manager, IVerifier {
         return true;
     }
 
+    /*
+     * @dev Return price of verification which is zero for this implementation
+     */
     function getPrice() public constant returns (uint256) {
         return 0;
     }

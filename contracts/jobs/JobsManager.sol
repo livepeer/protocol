@@ -303,6 +303,14 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         return true;
     }
 
+    /*
+     * @dev Invoke transcoding verification by calling the Verifier contract
+     * @param _jobId Job identifier
+     * @param _claimId Claim identifier
+     * @param _segmentNumber Segment sequence number in stream
+     * @param _dataStorageHash Content addressable storage hash of segment data
+     * @param _transcodedDataHash Keccak256 hash of transcoded segment data
+     */
     function invokeVerification(
         uint256 _jobId,
         uint256 _claimId,

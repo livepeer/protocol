@@ -120,6 +120,9 @@ contract OraclizeVerifier is Manager, usingOraclize, IVerifier {
         delete oraclizeQueries[_queryId];
     }
 
+    /*
+     * @dev Return price of Oraclize verification
+     */
     function getPrice() public constant returns (uint256) {
         return oraclize_getPrice("computation").add(gasPrice.mul(gasLimit));
     }
