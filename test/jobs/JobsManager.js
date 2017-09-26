@@ -305,6 +305,7 @@ contract("JobsManager", accounts => {
         // Build merkle tree
         const merkleTree = new MerkleTree(tReceiptHashes)
 
+        const dataStorageHash = "0x123"
         const correctDataHash = dataHashes[0]
         const correctTDataHash = tDataHashes[0]
         const correctSig = ethUtil.bufferToHex(segments[0].signedHash())
@@ -344,47 +345,47 @@ contract("JobsManager", accounts => {
         it("should throw for invalid job id", async () => {
             const invalidJobId = 2
             // Transcoder calls verify with invalid job id
-            await expectThrow(jobsManager.verify(invalidJobId, claimId, segmentNumber, correctDataHash, correctTDataHash, correctSig, correctProof, {from: electedTranscoder}))
+            await expectThrow(jobsManager.verify(invalidJobId, claimId, segmentNumber, dataStorageHash, correctDataHash, correctTDataHash, correctSig, correctProof, {from: electedTranscoder}))
         })
 
         it("should throw for invalid claim id", async () => {
             const invalidClaimId = 1
             // Transcoder calls verify with invalid claim id
-            await expectThrow(jobsManager.verify(jobId, invalidClaimId, segmentNumber, correctDataHash, correctTDataHash, correctSig, correctProof, {from: electedTranscoder}))
+            await expectThrow(jobsManager.verify(jobId, invalidClaimId, segmentNumber, dataStorageHash, correctDataHash, correctTDataHash, correctSig, correctProof, {from: electedTranscoder}))
         })
 
         it("should throw for inactive job", async () => {
             const inactiveJobId = 1
             // Transcoder calls verify with inactive job
-            await expectThrow(jobsManager.verify(inactiveJobId, claimId, segmentNumber, correctDataHash, correctTDataHash, correctSig, correctProof, {from: electedTranscoder}))
+            await expectThrow(jobsManager.verify(inactiveJobId, claimId, segmentNumber, dataStorageHash, correctDataHash, correctTDataHash, correctSig, correctProof, {from: electedTranscoder}))
         })
 
         it("should throw if sender is not elected transcoder", async () => {
             // Account 2 (not elected transcoder) calls verify
-            await expectThrow(jobsManager.verify(jobId, claimId, segmentNumber, correctDataHash, correctTDataHash, correctSig, correctProof, {from: accounts[2]}))
+            await expectThrow(jobsManager.verify(jobId, claimId, segmentNumber, dataStorageHash, correctDataHash, correctTDataHash, correctSig, correctProof, {from: accounts[2]}))
         })
 
         it("should throw if segment is not eligible for verification", async () => {
             const invalidSegmentNumber = 99
             // Transcoder calls verify with invalid segment number
-            await expectThrow(jobsManager.verify(jobId, claimId, invalidSegmentNumber, correctDataHash, correctTDataHash, correctSig, correctProof, {from: electedTranscoder}))
+            await expectThrow(jobsManager.verify(jobId, claimId, invalidSegmentNumber, dataStorageHash, correctDataHash, correctTDataHash, correctSig, correctProof, {from: electedTranscoder}))
         })
 
         it("should throw if segment not signed by broadcaster", async () => {
             const badSig = web3.eth.sign(accounts[3], ethUtil.bufferToHex(segments[0].hash()))
             // This should fail because badSig is signed by Account 3 and not the broadcaster
-            await expectThrow(jobsManager.verify(jobId, claimId, segmentNumber, correctDataHash, correctTDataHash, badSig, correctProof, {from: electedTranscoder}))
+            await expectThrow(jobsManager.verify(jobId, claimId, segmentNumber, dataStorageHash, correctDataHash, correctTDataHash, badSig, correctProof, {from: electedTranscoder}))
         })
 
         it("should throw if submitted Merkle proof is invalid", async () => {
             const badSig = ethUtil.bufferToHex(segments[3].signedHash())
             // This should fail because badSig is the sig for segment 3 but the receipt being verified is for segment 0
-            await expectThrow(jobsManager.verify(jobId, claimId, segmentNumber, correctDataHash, correctTDataHash, badSig, correctProof, {from: electedTranscoder}))
+            await expectThrow(jobsManager.verify(jobId, claimId, segmentNumber, dataStorageHash, correctDataHash, correctTDataHash, badSig, correctProof, {from: electedTranscoder}))
         })
 
         it("should not throw for successful verify call", async () => {
             // Transcoder calls verify
-            await jobsManager.verify(jobId, claimId, segmentNumber, correctDataHash, correctTDataHash, correctSig, correctProof, {from: electedTranscoder})
+            await jobsManager.verify(jobId, claimId, segmentNumber, dataStorageHash, correctDataHash, correctTDataHash, correctSig, correctProof, {from: electedTranscoder})
         })
     })
 
@@ -616,6 +617,7 @@ contract("JobsManager", accounts => {
         // Build merkle tree
         const merkleTree = new MerkleTree(tReceiptHashes)
 
+        const dataStorageHash = "0x123"
         const correctDataHash = dataHashes[0]
         const correctTDataHash = tDataHashes[0]
         const correctSig = ethUtil.bufferToHex(segments[0].signedHash())
@@ -669,7 +671,7 @@ contract("JobsManager", accounts => {
 
         it("should throw if segment was verified", async () => {
             // Transcoder calls verify
-            await jobsManager.verify(jobId, claimId, segmentNumber, correctDataHash, correctTDataHash, correctSig, correctProof, {from: electedTranscoder})
+            await jobsManager.verify(jobId, claimId, segmentNumber, dataStorageHash, correctDataHash, correctTDataHash, correctSig, correctProof, {from: electedTranscoder})
             // Fast foward through verification period
             const verificationPeriod = await jobsManager.verificationPeriod.call()
             await fixture.rpc.wait(verificationPeriod.toNumber())
