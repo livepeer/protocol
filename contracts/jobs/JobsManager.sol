@@ -93,6 +93,12 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         _;
     }
 
+    // Check if sender provided enough payment for verification
+    modifier sufficientPayment() {
+        require(msg.value >= verifier().getPrice());
+        _;
+    }
+
     // Events
     event NewJob(address indexed transcoder, address indexed broadcaster, uint256 jobId, string streamId, string transcodingOptions);
     event NewClaim(address indexed transcoder, uint256 indexed jobId, uint256 claimId);
@@ -268,6 +274,7 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         payable
         afterInitialization
         whenSystemNotPaused
+        sufficientPayment
         returns (bool)
     {
         require(_jobId < numJobs);
@@ -306,7 +313,16 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         internal
         returns (bool)
     {
-        return verifier().verify(_jobId, _claimId, _segmentNumber, jobs[_jobId].transcodingOptions, _dataStorageHash, _transcodedDataHash);
+        IVerifier verifierContract = verifier();
+
+        uint256 price = verifierContract.getPrice();
+
+        // Send payment to verifier if price is greater than zero
+        if (price > 0) {
+            return verifier().verify(_jobId, _claimId, _segmentNumber, jobs[_jobId].transcodingOptions, _dataStorageHash, _transcodedDataHash);
+        } else {
+            return verifier().verify.value(price)(_jobId, _claimId, _segmentNumber, jobs[_jobId].transcodingOptions, _dataStorageHash, _transcodedDataHash);
+        }
     }
 
     /*

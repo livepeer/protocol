@@ -342,6 +342,12 @@ contract("JobsManager", accounts => {
             await jobsManager.claimWork(jobId, segmentRange, merkleTree.getHexRoot(), {from: electedTranscoder})
         })
 
+        it("should throw for insufficient payment for verification", async () => {
+            await fixture.verifier.setPrice(10)
+            // Transcoder calls verify with 0 payment
+            await expectThrow(jobsManager.verify(jobId, claimId, segmentNumber, dataStorageHash, correctDataHash, correctTDataHash, correctSig, correctProof, {from: electedTranscoder}))
+        })
+
         it("should throw for invalid job id", async () => {
             const invalidJobId = 2
             // Transcoder calls verify with invalid job id
@@ -384,8 +390,10 @@ contract("JobsManager", accounts => {
         })
 
         it("should not throw for successful verify call", async () => {
-            // Transcoder calls verify
-            await jobsManager.verify(jobId, claimId, segmentNumber, dataStorageHash, correctDataHash, correctTDataHash, correctSig, correctProof, {from: electedTranscoder})
+            // Set price to 100 wei
+            await fixture.verifier.setPrice(100)
+            // Transcoder calls verify with 100 wei payment
+            await jobsManager.verify(jobId, claimId, segmentNumber, dataStorageHash, correctDataHash, correctTDataHash, correctSig, correctProof, {from: electedTranscoder, value: 100})
         })
     })
 
