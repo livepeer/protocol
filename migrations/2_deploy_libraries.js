@@ -10,6 +10,7 @@ const SafeMath = artifacts.require("SafeMath")
 const JobsManager = artifacts.require("JobsManager")
 const BondingManager = artifacts.require("BondingManager")
 const RoundsManager = artifacts.require("RoundsManager")
+const OraclizeVerifier = artifacts.require("OraclizeVerifier")
 
 module.exports = function(deployer) {
     deployer.deploy(SafeMath)
@@ -17,6 +18,7 @@ module.exports = function(deployer) {
         BondingManager,
         JobsManager,
         RoundsManager,
+        OraclizeVerifier,
         MaxHeap,
         MinHeap
     ])
@@ -37,10 +39,10 @@ module.exports = function(deployer) {
     deployer.link(TranscoderPools, BondingManager)
 
     deployer.deploy(MerkleProof)
-    deployer.link(MerkleProof, JobsManager)
+    deployer.link(MerkleProof, JobLib)
 
     deployer.deploy(ECRecovery)
-    deployer.link(ECRecovery, JobsManager)
+    deployer.link(ECRecovery, JobLib)
 
     deployer.deploy(JobLib)
     deployer.link(JobLib, JobsManager)

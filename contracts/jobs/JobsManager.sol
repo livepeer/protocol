@@ -10,8 +10,6 @@ import "../verification/IVerifiable.sol";
 import "../verification/IVerifier.sol";
 
 import "zeppelin-solidity/contracts/math/SafeMath.sol";
-import "zeppelin-solidity/contracts/ECRecovery.sol";
-import "zeppelin-solidity/contracts/MerkleProof.sol";
 
 
 contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
@@ -327,9 +325,9 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
 
         // Send payment to verifier if price is greater than zero
         if (price > 0) {
-            return verifier().verify(_jobId, _claimId, _segmentNumber, jobs[_jobId].transcodingOptions, _dataStorageHash, _transcodedDataHash);
+            return verifierContract.verify(_jobId, _claimId, _segmentNumber, jobs[_jobId].transcodingOptions, _dataStorageHash, _transcodedDataHash);
         } else {
-            return verifier().verify.value(price)(_jobId, _claimId, _segmentNumber, jobs[_jobId].transcodingOptions, _dataStorageHash, _transcodedDataHash);
+            return verifierContract.verify.value(price)(_jobId, _claimId, _segmentNumber, jobs[_jobId].transcodingOptions, _dataStorageHash, _transcodedDataHash);
         }
     }
 

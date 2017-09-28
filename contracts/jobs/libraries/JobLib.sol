@@ -23,7 +23,7 @@ library JobLib {
         uint256 _claimBlock,
         uint64 _verificationRate
     )
-        internal
+        public
         constant
         returns (bool)
     {
@@ -46,7 +46,7 @@ library JobLib {
         bytes _broadcasterSig,
         address _broadcaster
     )
-        internal
+        public
         constant
         returns (bool)
     {
@@ -62,7 +62,7 @@ library JobLib {
         bytes _proof,
         bytes32 _claimRoot
     )
-        internal
+        public
         constant
         returns (bool)
     {
