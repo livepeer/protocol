@@ -325,9 +325,9 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
 
         // Send payment to verifier if price is greater than zero
         if (price > 0) {
-            return verifierContract.verify(_jobId, _claimId, _segmentNumber, jobs[_jobId].transcodingOptions, _dataStorageHash, _transcodedDataHash);
-        } else {
             return verifierContract.verify.value(price)(_jobId, _claimId, _segmentNumber, jobs[_jobId].transcodingOptions, _dataStorageHash, _transcodedDataHash);
+        } else {
+            return verifierContract.verify(_jobId, _claimId, _segmentNumber, jobs[_jobId].transcodingOptions, _dataStorageHash, _transcodedDataHash);
         }
     }
 
