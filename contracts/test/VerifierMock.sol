@@ -12,6 +12,8 @@ contract VerifierMock is IVerifier {
     uint256 public segmentNumber;
     bool public result;
 
+    uint256 price;
+
     function setVerifiable(address _verifiable) external {
         verifiable = IVerifiable(_verifiable);
     }
@@ -23,6 +25,10 @@ contract VerifierMock is IVerifier {
         result = _result;
     }
 
+    function setPrice(uint256 _price) external {
+        price = _price;
+    }
+
     function callReceiveVerification() external {
         verifiable.receiveVerification(jobId, claimId, segmentNumber, result);
     }
@@ -31,14 +37,18 @@ contract VerifierMock is IVerifier {
         uint256 _jobId,
         uint256 _claimId,
         uint256 _segmentNumber,
-        string _dataHash,
-        string _transcodedDataHash,
-        address _callbackContract
+        string _transcodingOptions,
+        string _dataStorageHash,
+        bytes32 _transcodedDataHash
     )
         external
         payable
         returns (bool)
     {
         return true;
+    }
+
+    function getPrice() public constant returns (uint256) {
+        return price;
     }
 }

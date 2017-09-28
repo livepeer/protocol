@@ -1,5 +1,8 @@
 pragma solidity ^0.4.13;
 
+import "zeppelin-solidity/contracts/ECRecovery.sol";
+import "zeppelin-solidity/contracts/MerkleProof.sol";
+
 
 library JobLib {
     // Prefix hashed with message hash when a signature is produced by the eth_sign RPC call
@@ -36,13 +39,43 @@ library JobLib {
         }
     }
 
+    function validateBroadcasterSig(
+        string _streamId,
+        uint256 _segmentNumber,
+        bytes32 _dataHash,
+        bytes _broadcasterSig,
+        address _broadcaster
+    )
+        public
+        constant
+        returns (bool)
+    {
+        return ECRecovery.recover(personalSegmentHash(_streamId, _segmentNumber, _dataHash), _broadcasterSig) == _broadcaster;
+    }
+
+    function validateReceipt(
+        string _streamId,
+        uint256 _segmentNumber,
+        bytes32 _dataHash,
+        bytes32 _transcodedDataHash,
+        bytes _broadcasterSig,
+        bytes _proof,
+        bytes32 _claimRoot
+    )
+        public
+        constant
+        returns (bool)
+    {
+        return MerkleProof.verifyProof(_proof, _claimRoot, transcodeReceiptHash(_streamId, _segmentNumber, _dataHash, _transcodedDataHash, _broadcasterSig));
+    }
+
     /*
      * Compute the hash of a segment
      * @param _streamId Stream identifier
      * @param _segmentSequenceNumber Segment sequence number in stream
      * @param _dataHash Content-addressed storage hash of segment data
      */
-    function segmentHash(string _streamId, uint256 _segmentNumber, string _dataHash) public constant returns (bytes32) {
+    function segmentHash(string _streamId, uint256 _segmentNumber, bytes32 _dataHash) public constant returns (bytes32) {
         return keccak256(_streamId, _segmentNumber, _dataHash);
     }
 
@@ -52,7 +85,7 @@ library JobLib {
      * @param _segmentSequenceNumber Segment sequence number in stream
      * @param _dataHash Content-addrssed storage hash of segment data
      */
-    function personalSegmentHash(string _streamId, uint256 _segmentNumber, string _dataHash) public constant returns (bytes32) {
+    function personalSegmentHash(string _streamId, uint256 _segmentNumber, bytes32 _dataHash) public constant returns (bytes32) {
         bytes memory prefixBytes = bytes(PERSONAL_HASH_PREFIX);
 
         return keccak256(prefixBytes, segmentHash(_streamId, _segmentNumber, _dataHash));
@@ -69,8 +102,8 @@ library JobLib {
     function transcodeReceiptHash(
         string _streamId,
         uint256 _segmentNumber,
-        string _dataHash,
-        string _transcodedDataHash,
+        bytes32 _dataHash,
+        bytes32 _transcodedDataHash,
         bytes _broadcasterSig
     )
         public

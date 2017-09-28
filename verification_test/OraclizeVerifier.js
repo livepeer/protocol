@@ -1,34 +1,43 @@
+import Fixture from "../test/helpers/fixture"
 import expectThrow from "../test/helpers/expectThrow"
+import BigNumber from "bignumber.js"
 
 const OraclizeVerifier = artifacts.require("OraclizeVerifier")
-const CallbackContractMock = artifacts.require("CallbackContractMock")
+
+const GAS_PRICE = new BigNumber(web3.toWei(20, "gwei"))
+const GAS_LIMIT = 3000000
 
 contract("OraclizeVerifier", accounts => {
+    let fixture
     let verifier
 
+    // IPFS hash of Dockerfile archive
+    const codeHash = "QmZmvi1BaYSdxM1Tgwhi2mURabh46xCkzuH9PWeAkAZZGc"
+
     before(async () => {
-        verifier = await OraclizeVerifier.new()
+        fixture = new Fixture(web3)
+        await fixture.deployController()
+        await fixture.deployMocks()
+        verifier = await OraclizeVerifier.new(fixture.controller.address, codeHash, GAS_PRICE, GAS_LIMIT)
+        await fixture.jobsManager.setVerifier(verifier.address)
+    })
+
+    describe("verificationCodeHash", () => {
+        it("should return the verification code hash", async () => {
+            const hash = await verifier.verificationCodeHash.call()
+            assert.equal(hash, codeHash, "verification code hash incorrect")
+        })
     })
 
     describe("verify", () => {
         const jobId = 0
-        const segmentSequenceNumber = 0
-        // IPFS hash of Dockerfile archive
-        const code = "QmPu23REr93Mfv7m9NPdFLMZz7PzHE1LaXvn4AmQCQgR3u"
-        // IPFS hash of test.ts
-        const dataHash = "QmR9BnJQisvevpCoSVWWKyownN58nydb2zQt9Z2VtnTnKe"
-        // Keccak256 hash of transcoded data from test.ts
-        const transcodedDataHash = "0xd0d8ff5eecaaa738d9097aea662f9c8dac2f35636fca52aea4ba6f4f766f5137"
-
-        let callbackContract
-
-        before(async () => {
-            callbackContract = (await CallbackContractMock.new()).address
-        })
-
-        it("should throw if insufficient funds for Oraclize", async () => {
-            await expectThrow(verifier.verify(jobId, segmentSequenceNumber, code, dataHash, transcodedDataHash, callbackContract))
-        })
+        const claimId = 0
+        const segmentNumber = 0
+        const transcodingOptions = "P720p60fps16x9,P720p30fps16x9"
+        // IPFS hash of seg.ts
+        const dataStorageHash = "QmR9BnJQisvevpCoSVWWKyownN58nydb2zQt9Z2VtnTnKe"
+        // Keccak256 hash of transcoded data
+        const transcodedDataHash = "0x77903c5de84acf703524da5547df170612ab9308edfec742f5f22f5dc0cfb76a"
 
         it("should trigger async callback from Oraclize", async () => {
             const e = verifier.OraclizeCallback({})
@@ -37,11 +46,15 @@ contract("OraclizeVerifier", accounts => {
                 e.stopWatching()
 
                 assert.equal(result.args.jobId, jobId, "callback job id incorrect")
-                assert.equal(result.args.segmentSequenceNumber, segmentSequenceNumber, "callback segment sequence number incorrect")
+                assert.equal(result.args.claimId, claimId, "callback claim id incorrect")
+                assert.equal(result.args.segmentNumber, segmentNumber, "callback segment sequence number incorrect")
                 assert.equal(result.args.result, true, "callback result incorrect")
             })
 
-            await verifier.verify(jobId, segmentSequenceNumber, code, dataHash, transcodedDataHash, callbackContract, {from: accounts[0], value: web3.toWei(1, "ether")})
+            await fixture.jobsManager.setVerifyParams(jobId, claimId, segmentNumber, transcodingOptions, dataStorageHash, transcodedDataHash)
+
+            const price = await verifier.getPrice()
+            await fixture.jobsManager.callVerify({from: accounts[0], value: price})
         })
     })
 

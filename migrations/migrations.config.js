@@ -27,6 +27,9 @@ module.exports = {
         yearlyInflation: 26
     },
     verifier: {
-        verificationCodeHash: "QmPu23REr93Mfv7m9NPdFLMZz7PzHE1LaXvn4AmQCQgR3u"
+        verificationCodeHash: "QmZmvi1BaYSdxM1Tgwhi2mURabh46xCkzuH9PWeAkAZZGc",
+        solvers: [],
+        gasPrice: 20000000000,
+        gasLimit: 3000000
     }
 }

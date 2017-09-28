@@ -3,7 +3,6 @@ pragma solidity ^0.4.13;
 import "../ManagerProxyTarget.sol";
 import "./IJobsManager.sol";
 import "./libraries/JobLib.sol";
-import "./libraries/MerkleProof.sol";
 import "../token/ILivepeerToken.sol";
 import "../token/IMinter.sol";
 import "../bonding/IBondingManager.sol";
@@ -11,7 +10,6 @@ import "../verification/IVerifiable.sol";
 import "../verification/IVerifier.sol";
 
 import "zeppelin-solidity/contracts/math/SafeMath.sol";
-import "zeppelin-solidity/contracts/ECRecovery.sol";
 
 
 contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
@@ -90,6 +88,12 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
     // Check if job exists
     modifier jobExists(uint256 _jobId) {
         require(_jobId < numJobs);
+        _;
+    }
+
+    // Check if sender provided enough payment for verification
+    modifier sufficientPayment() {
+        require(msg.value >= verifier().getPrice());
         _;
     }
 
@@ -258,8 +262,9 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         uint256 _jobId,
         uint256 _claimId,
         uint256 _segmentNumber,
-        string _dataHash,
-        string _transcodedDataHash,
+        string _dataStorageHash,
+        bytes32 _dataHash,
+        bytes32 _transcodedDataHash,
         bytes _broadcasterSig,
         bytes _proof
     )
@@ -267,6 +272,7 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         payable
         afterInitialization
         whenSystemNotPaused
+        sufficientPayment
         returns (bool)
     {
         require(_jobId < numJobs);
@@ -281,16 +287,48 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
 
         // Segment must be eligible for verification
         require(JobLib.shouldVerifySegment(_segmentNumber, claim.segmentRange, claim.claimBlock, verificationRate));
+        // Segment must be signed by broadcaster
+        require(JobLib.validateBroadcasterSig(job.streamId, _segmentNumber, _dataHash, _broadcasterSig, job.broadcasterAddress));
         // Receipt must be valid
-        require(validateReceipt(_jobId, _claimId, _segmentNumber, _dataHash, _transcodedDataHash, _broadcasterSig, _proof));
+        require(JobLib.validateReceipt(job.streamId, _segmentNumber, _dataHash, _transcodedDataHash, _broadcasterSig, _proof, claim.claimRoot));
 
         // Mark segment as submitted for verification
         claim.segmentVerifications[_segmentNumber] = true;
 
         // Invoke transcoding verification. This is async and will result in a callback to receiveVerification() which is implemented by this contract
-        verifier().verify(_jobId, _claimId, _segmentNumber, _dataHash, _transcodedDataHash, this);
+        invokeVerification(_jobId, _claimId, _segmentNumber, _dataStorageHash, _transcodedDataHash);
 
         return true;
+    }
+
+    /*
+     * @dev Invoke transcoding verification by calling the Verifier contract
+     * @param _jobId Job identifier
+     * @param _claimId Claim identifier
+     * @param _segmentNumber Segment sequence number in stream
+     * @param _dataStorageHash Content addressable storage hash of segment data
+     * @param _transcodedDataHash Keccak256 hash of transcoded segment data
+     */
+    function invokeVerification(
+        uint256 _jobId,
+        uint256 _claimId,
+        uint256 _segmentNumber,
+        string _dataStorageHash,
+        bytes32 _transcodedDataHash
+    )
+        internal
+        returns (bool)
+    {
+        IVerifier verifierContract = verifier();
+
+        uint256 price = verifierContract.getPrice();
+
+        // Send payment to verifier if price is greater than zero
+        if (price > 0) {
+            return verifierContract.verify.value(price)(_jobId, _claimId, _segmentNumber, jobs[_jobId].transcodingOptions, _dataStorageHash, _transcodedDataHash);
+        } else {
+            return verifierContract.verify(_jobId, _claimId, _segmentNumber, jobs[_jobId].transcodingOptions, _dataStorageHash, _transcodedDataHash);
+        }
     }
 
     /*
@@ -487,39 +525,6 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
 
     function getClaimStatus(uint256 _jobId, uint256 _claimId) public constant returns (ClaimStatus) {
         return jobs[_jobId].claims[_claimId].status;
-    }
-
-    /*
-     * @dev Validate a transcode receipt
-     * @param _jobId Job identifier
-     * @param _claimId Claim identifier
-     * @param _segmentNumber Segment sequence number in stream
-     * @param _dataHash Content-addressed storage hash of segment data
-     * @param _transcodedDataHash Hash of transcoded segment data
-     * @param _broadcasterSig Broadcaster's signature over segment hash
-     * @param _proof Merkle proof for transcode receipt
-     */
-    function validateReceipt(
-        uint256 _jobId,
-        uint256 _claimId,
-        uint256 _segmentNumber,
-        string _dataHash,
-        string _transcodedDataHash,
-        bytes _broadcasterSig,
-        bytes _proof
-    )
-        internal
-        constant
-        returns (bool)
-    {
-        if (ECRecovery.recover(JobLib.personalSegmentHash(jobs[_jobId].streamId, _segmentNumber, _dataHash), _broadcasterSig) != jobs[_jobId].broadcasterAddress) {
-            return false;
-        }
-        if (!MerkleProof.verifyProof(_proof, jobs[_jobId].claims[_claimId].claimRoot, JobLib.transcodeReceiptHash(jobs[_jobId].streamId, _segmentNumber, _dataHash, _transcodedDataHash, _broadcasterSig))) {
-            return false;
-        }
-
-        return true;
     }
 
     /*

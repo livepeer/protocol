@@ -3,15 +3,21 @@ pragma solidity ^0.4.13;
 import "../bonding/IBondingManager.sol";
 import "../jobs/IJobsManager.sol";
 import "../token/IMinter.sol";
+import "../verification/IVerifier.sol";
 
 
 contract JobsManagerMock is IJobsManager {
     IBondingManager bondingManager;
     IMinter minter;
+    IVerifier verifier;
 
     address public transcoder;
+    uint256 public jobId;
     uint256 public claimId;
     uint256 public segmentNumber;
+    string public transcodingOptions;
+    string public dataStorageHash;
+    bytes32 public transcodedDataHash;
     uint256 public fees;
     uint256 public claimBlock;
     uint256 public transcoderTotalStake;
@@ -26,6 +32,19 @@ contract JobsManagerMock is IJobsManager {
 
     function setBondingManager(address _bondingManager) {
         bondingManager = IBondingManager(_bondingManager);
+    }
+
+    function setVerifier(address _verifier) {
+        verifier = IVerifier(_verifier);
+    }
+
+    function setVerifyParams(uint256 _jobId, uint256 _claimId, uint256 _segmentNumber, string _transcodingOptions, string _dataStorageHash, bytes32 _transcodedDataHash) external {
+        jobId = _jobId;
+        claimId = _claimId;
+        segmentNumber = _segmentNumber;
+        transcodingOptions = _transcodingOptions;
+        dataStorageHash = _dataStorageHash;
+        transcodedDataHash = _transcodedDataHash;
     }
 
     function setTranscoder(address _transcoder) external {
@@ -66,5 +85,13 @@ contract JobsManagerMock is IJobsManager {
 
     function withdraw() external {
         minter.transferTokens(msg.sender, withdrawAmount);
+    }
+
+    function callVerify() external payable {
+        verifier.verify.value(msg.value)(jobId, claimId, segmentNumber, transcodingOptions, dataStorageHash, transcodedDataHash);
+    }
+
+    function receiveVerification(uint256 _jobId, uint256 _claimId, uint256 _segmentNumber, bool _result) external returns (bool) {
+        return true;
     }
 }
