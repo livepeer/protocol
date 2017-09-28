@@ -8,6 +8,7 @@ const BondingManager = artifacts.require("BondingManager")
 const JobsManager = artifacts.require("JobsManager")
 const RoundsManager = artifacts.require("RoundsManager")
 const IdentityVerifier = artifacts.require("IdentityVerifier")
+const LivepeerVerifier = artifacts.require("LivepeerVerifier")
 const OraclizeVerifier = artifacts.require("OraclizeVerifier")
 const LivepeerToken = artifacts.require("LivepeerToken")
 const ManagerProxy = artifacts.require("ManagerProxy")
@@ -34,8 +35,10 @@ module.exports = function(deployer, network) {
         ])
     }).then(() => {
         // Register Verifier
-        if (network == "development") {
+        if (network === "development") {
             return controller.setContract(ethUtil.bufferToHex(ethAbi.soliditySHA3(["string"], ["Verifier"])), IdentityVerifier.address)
+        } else if (network === "lpTestNet") {
+            return controller.setContract(ethUtil.bufferToHex(ethAbi.soliditySHA3(["string"], ["Verifier"])), LivepeerVerifier.address)
         } else {
             return controller.setContract(ethUtil.bufferToHex(ethAbi.soliditySHA3(["string"], ["Verifier"])), OraclizeVerifier.address)
         }

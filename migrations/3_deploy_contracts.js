@@ -6,6 +6,7 @@ const BondingManager = artifacts.require("BondingManager")
 const JobsManager = artifacts.require("JobsManager")
 const RoundsManager = artifacts.require("RoundsManager")
 const IdentityVerifier = artifacts.require("IdentityVerifier")
+const LivepeerVerifier = artifacts.require("LivepeerVerifier")
 const OraclizeVerifier = artifacts.require("OraclizeVerifier")
 const LivepeerToken = artifacts.require("LivepeerToken")
 
@@ -20,8 +21,10 @@ module.exports = function(deployer, network) {
         ])
     }).then(() => {
         // Deploy Verifier
-        if (network == "development") {
+        if (network === "development") {
             return deployer.deploy(IdentityVerifier, Controller.address)
+        } else if (network === "lpTestNet") {
+            return deployer.deploy(LivepeerVerifier, Controller.address, config.verifier.solvers, config.verifier.verificationCodeHash)
         } else {
             return deployer.deploy(OraclizeVerifier, Controller.address, config.verifier.verificationCodeHash, config.verifier.gasPrice, config.verifier.gasLimit)
         }
