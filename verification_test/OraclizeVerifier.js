@@ -11,14 +11,22 @@ contract("OraclizeVerifier", accounts => {
     let fixture
     let verifier
 
+    // IPFS hash of Dockerfile archive
+    const codeHash = "QmZmvi1BaYSdxM1Tgwhi2mURabh46xCkzuH9PWeAkAZZGc"
+
     before(async () => {
         fixture = new Fixture(web3)
         await fixture.deployController()
         await fixture.deployMocks()
-        // IPFS hash of Dockerfile archive
-        const codeHash = "QmZmvi1BaYSdxM1Tgwhi2mURabh46xCkzuH9PWeAkAZZGc"
         verifier = await OraclizeVerifier.new(fixture.controller.address, codeHash, GAS_PRICE, GAS_LIMIT)
         await fixture.jobsManager.setVerifier(verifier.address)
+    })
+
+    describe("verificationCodeHash", () => {
+        it("should return the verification code hash", async () => {
+            const hash = await verifier.verificationCodeHash.call()
+            assert.equal(hash, codeHash, "verification code hash incorrect")
+        })
     })
 
     describe("verify", () => {

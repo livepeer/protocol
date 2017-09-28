@@ -20,7 +20,7 @@ contract LivepeerVerifier is Manager, IVerifier {
         bytes32 transcodedDataHash;
     }
 
-    mapping (uint256 => Request) requests;
+    mapping (uint256 => Request) public requests;
     uint256 public requestCount;
 
     // Check if sender is JobsManager
@@ -36,7 +36,7 @@ contract LivepeerVerifier is Manager, IVerifier {
     }
 
     event VerifyRequest(uint256 indexed requestId, uint256 indexed jobId, uint256 indexed claimId, uint256 segmentNumber, string transcodingOptions, string dataStorageHash, bytes32 transcodedDataHash);
-    event Callback(uint256 indexed requestid, uint256 indexed jobId, uint256 indexed claimId, uint256 segmentNumber, bool result);
+    event Callback(uint256 indexed requestId, uint256 indexed jobId, uint256 indexed claimId, uint256 segmentNumber, bool result);
 
     function LivepeerVerifier(address _controller, address[] _solvers, string _verificationCodeHash) Manager(_controller) {
         // Set solvers
@@ -89,7 +89,7 @@ contract LivepeerVerifier is Manager, IVerifier {
     function __callback(uint256 _requestId, bytes32 _result) external onlySolvers returns (bool) {
         Request memory q = requests[_requestId];
 
-        // Check if transcoded data hash returned by solver matcheds originally submitted transcoded data hash
+        // Check if transcoded data hash returned by solver matches originally submitted transcoded data hash
         if (q.transcodedDataHash == _result) {
             IVerifiable(controller.getContract(keccak256("JobsManager"))).receiveVerification(q.jobId, q.claimId, q.segmentNumber, true);
             Callback(_requestId, q.jobId, q.claimId, q.segmentNumber, true);
