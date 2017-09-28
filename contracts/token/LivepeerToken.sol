@@ -3,7 +3,6 @@ pragma solidity ^0.4.13;
 import "zeppelin-solidity/contracts/token/MintableToken.sol";
 
 
-// Abstract contract for the ERC20 token standard
 // Livepeer Token
 contract LivepeerToken is MintableToken {
 

@@ -21,5 +21,12 @@ module.exports = {
         requestAmount: 1000,
         requestWait: 2,
         whitelist: []
+    },
+    minter: {
+        initialTokenSupply: 10000000 * Math.pow(10, 18),
+        yearlyInflation: 26
+    },
+    verifier: {
+        verificationCodeHash: "QmPu23REr93Mfv7m9NPdFLMZz7PzHE1LaXvn4AmQCQgR3u"
     }
 }

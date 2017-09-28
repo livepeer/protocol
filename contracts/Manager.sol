@@ -1,41 +1,41 @@
 pragma solidity ^0.4.13;
 
-import "./ContractRegistry.sol";
+import "./IManager.sol";
+import "./IController.sol";
 
 
-contract Manager {
-    // Registry contract
-    ContractRegistry public registry;
+contract Manager is IManager {
+    // Controller that contract is registered with
+    IController public controller;
 
-    modifier onlyRegistry() {
-        require(ContractRegistry(msg.sender) == registry);
+    // Check if sender is the controller
+    modifier onlyController() {
+        require(IController(msg.sender) == controller);
         _;
     }
 
+    // Check if controller is not paused
     modifier whenSystemNotPaused() {
-        require(!registry.paused());
+        require(!controller.paused());
         _;
     }
 
+    // Check if controller is paused
     modifier whenSystemPaused() {
-        require(registry.paused());
+        require(!controller.paused());
         _;
     }
 
-    /*
-     * @dev Initialize a manager contract with its registry
-     * @param _registry Registry contract address
-     */
-    function Manager(address _registry) {
-        registry = ContractRegistry(_registry);
+    function Manager(address _controller) {
+        controller = IController(_controller);
     }
 
     /*
-     * @dev Set registry contract. Only callable by current registry
-     * @param _registry Registry contract address
+     * @dev Set controller. Only callable by current controller
+     * @param _controller Controller contract address
      */
-    function setRegistry(address _registry) onlyRegistry whenSystemPaused public returns (bool) {
-        registry = ContractRegistry(_registry);
+    function setController(address _controller) external onlyController returns (bool) {
+        controller = IController(_controller);
 
         return true;
     }

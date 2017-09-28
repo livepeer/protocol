@@ -5,7 +5,7 @@ pragma solidity ^0.4.13;
  * @title Interface for contract that receives verification results
  * TODO: switch to interface type
  */
-contract Verifiable {
+contract IVerifiable {
     // External functions
     function receiveVerification(
         uint256 _jobId,

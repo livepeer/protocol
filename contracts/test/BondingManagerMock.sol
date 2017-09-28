@@ -1,51 +1,42 @@
 pragma solidity ^0.4.13;
 
-import "../Manager.sol";
+import "../token/IMinter.sol";
 import "../bonding/IBondingManager.sol";
 
 
 /*
  * @title Mock BondingManager used for testing
  */
-contract BondingManagerMock is IBondingManager, Manager {
-    uint256 public mockTranscoderStake = 500;
-    uint256 public mockDelegatorStake = 500;
-    uint256 public mockDelegatorRewards = 500;
+contract BondingManagerMock is IBondingManager {
+    IMinter minter;
 
-    address public mockTranscoder;
-    uint256 public mockPricePerSegment;
+    address public transcoder;
+    uint256 public pricePerSegment;
+    uint256 public activeStake;
+    uint256 public totalActiveStake;
+    uint256 public withdrawAmount;
 
-    function BondingManagerMock(address _registry, address _mockTranscoder) Manager(_registry) {
-        mockTranscoder = _mockTranscoder;
+    function setMinter(address _minter) external {
+        minter = IMinter(_minter);
     }
 
-    function setMockPricePerSegment(uint256 _pricePerSegment) external returns (bool) {
-        mockPricePerSegment = _pricePerSegment;
-        return true;
+    function setActiveTranscoder(address _transcoder, uint256 _pricePerSegment, uint256 _activeStake, uint256 _totalActiveStake) external {
+        transcoder = _transcoder;
+        pricePerSegment = _pricePerSegment;
+        activeStake = _activeStake;
+        totalActiveStake = _totalActiveStake;
     }
 
-    function transcoder(uint8 _blockRewardCut, uint8 _feeShare, uint256 _pricePerSegment) external returns (bool) {
-        return true;
+    function setWithdrawAmount(uint256 _amount) external {
+        withdrawAmount = _amount;
     }
 
-    function resignAsTranscoder() external returns (bool) {
-        return true;
+    function withdraw() external {
+        minter.transferTokens(msg.sender, withdrawAmount);
     }
 
-    function bond(uint _amount, address _to) external returns (bool) {
-        return true;
-    }
-
-    function unbond() external returns (bool) {
-        return true;
-    }
-
-    function withdraw() external returns (bool) {
-        return true;
-    }
-
-    function reward() external returns (bool) {
-        return true;
+    function reward() external {
+        minter.mint(activeStake, totalActiveStake);
     }
 
     function setActiveTranscoders() external returns (bool) {
@@ -60,23 +51,11 @@ contract BondingManagerMock is IBondingManager, Manager {
         return true;
     }
 
-    function electActiveTranscoder(uint256 _maxPricePerSegment) external constant returns (address, uint256) {
-        return (mockTranscoder, mockPricePerSegment);
-    }
-
-    function activeTranscoderTotalStake(address _transcoder) public constant returns (uint256) {
-        return mockTranscoderStake;
+    function electActiveTranscoder(uint256 _maxPricePerSegment) external constant returns (address) {
+        return transcoder;
     }
 
     function transcoderTotalStake(address _transcoder) public constant returns (uint256) {
-        return mockTranscoderStake;
-    }
-
-    function delegatorStake(address _delegator) public constant returns (uint256) {
-        return mockDelegatorStake;
-    }
-
-    function delegatorRewards(address _delegator) public constant returns (uint256) {
-        return mockDelegatorRewards;
+        return activeStake;
     }
 }

@@ -1,12 +1,10 @@
 pragma solidity ^0.4.13;
 
 
-/*
- * @title Interface for verifier contract. Can be backed by any implementation including oracles or Truebit
- * TODO: switch to interface type
+/**
+ * @title Interface for a Verifier. Can be backed by any implementaiton including oracles or Truebit
  */
-contract Verifier {
-    // External functions
+contract IVerifier {
     function verify(
         uint256 _jobId,
         uint256 _claimId,

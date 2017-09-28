@@ -1,7 +1,8 @@
 pragma solidity ^0.4.13;
 
-import "./Verifier.sol";
-import "./Verifiable.sol";
+import "../Manager.sol";
+import "./IVerifier.sol";
+import "./IVerifiable.sol";
 
 import "../../installed_contracts/oraclize/contracts/usingOraclize.sol";
 
@@ -9,7 +10,7 @@ import "../../installed_contracts/oraclize/contracts/usingOraclize.sol";
 /*
  * @title Verifier contract that uses Oraclize for off-chain computation
  */
-contract OraclizeVerifier is Verifier, usingOraclize {
+contract OraclizeVerifier is Manager, usingOraclize, IVerifier {
     string public verificationCodeHash;
 
     // Stores parameters for an Oraclize query
@@ -30,17 +31,23 @@ contract OraclizeVerifier is Verifier, usingOraclize {
         _;
     }
 
+    // Check if sender is JobsManager
+    modifier onlyJobsManager() {
+        require(msg.sender == controller.getContract(keccak256("JobsManager")));
+        _;
+    }
+
     // Check if sufficient funds for Oraclize computation
     modifier sufficientOraclizeFunds() {
         require(oraclize_getPrice("computation") <= msg.value);
         _;
     }
 
-    function OraclizeVerifier() {
+    function OraclizeVerifier(address _controller, string _verificationCodeHash) Manager(_controller) {
         // OAR used for testing purposes
         OAR = OraclizeAddrResolverI(0x6f485C8BF6fc43eA212E93BBF8ce046C7f1cb475);
         // Set verification code hash
-        verificationCodeHash = "QmPu23REr93Mfv7m9NPdFLMZz7PzHE1LaXvn4AmQCQgR3u";
+        verificationCodeHash = _verificationCodeHash;
     }
 
     event OraclizeCallback(uint256 indexed jobId, uint256 indexed claimId, uint256 indexed segmentNumber, bytes proof, bool result);
@@ -64,6 +71,7 @@ contract OraclizeVerifier is Verifier, usingOraclize {
     )
         external
         payable
+        onlyJobsManager
         sufficientOraclizeFunds
         returns (bool)
     {
@@ -92,11 +100,11 @@ contract OraclizeVerifier is Verifier, usingOraclize {
         // Check if transcoded data hash returned by Oraclize matches originally submitted transcoded data hash
         if (strCompare(oc.transcodedDataHash, _result) == 0) {
             // Notify callback contract of successful verification
-            Verifiable(oc.callbackContract).receiveVerification(oc.jobId, oc.claimId, oc.segmentNumber, true);
+            IVerifiable(oc.callbackContract).receiveVerification(oc.jobId, oc.claimId, oc.segmentNumber, true);
             OraclizeCallback(oc.jobId, oc.claimId, oc.segmentNumber, _proof, true);
         } else {
             // Notify callback contract of failed verification
-            Verifiable(oc.callbackContract).receiveVerification(oc.jobId, oc.claimId, oc.segmentNumber, false);
+            IVerifiable(oc.callbackContract).receiveVerification(oc.jobId, oc.claimId, oc.segmentNumber, false);
             OraclizeCallback(oc.jobId, oc.claimId, oc.segmentNumber, _proof, false);
         }
 

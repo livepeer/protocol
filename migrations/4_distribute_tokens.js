@@ -5,7 +5,7 @@ const LivepeerToken = artifacts.require("LivepeerToken")
 const LivepeerTokenFaucet = artifacts.require("LivepeerTokenFaucet")
 
 module.exports = function(deployer, network, accounts) {
-    if (network == "lpTestNet") {
+    if (network == "development") {
         deployer.deploy(
             LivepeerTokenFaucet,
             LivepeerToken.address,
