@@ -17,7 +17,7 @@ contract LivepeerVerifier is Manager, IVerifier {
         uint256 jobId;
         uint256 claimId;
         uint256 segmentNumber;
-        bytes32 transcodedDataHash;
+        bytes32 commitHash;
     }
 
     mapping (uint256 => Request) public requests;
@@ -71,7 +71,7 @@ contract LivepeerVerifier is Manager, IVerifier {
         requests[requestCount].jobId = _jobId;
         requests[requestCount].claimId = _claimId;
         requests[requestCount].segmentNumber = _segmentNumber;
-        requests[requestCount].transcodedDataHash = _dataHashes[1];
+        requests[requestCount].commitHash = keccak256(_dataHashes[0], _dataHashes[1]);
 
         VerifyRequest(requestCount, _jobId, _claimId, _segmentNumber, _transcodingOptions, _dataStorageHash, _dataHashes[0], _dataHashes[1]);
 
@@ -90,7 +90,7 @@ contract LivepeerVerifier is Manager, IVerifier {
         Request memory q = requests[_requestId];
 
         // Check if transcoded data hash returned by solver matches originally submitted transcoded data hash
-        if (q.transcodedDataHash == _result) {
+        if (q.commitHash == _result) {
             IVerifiable(controller.getContract(keccak256("JobsManager"))).receiveVerification(q.jobId, q.claimId, q.segmentNumber, true);
             Callback(_requestId, q.jobId, q.claimId, q.segmentNumber, true);
         } else {
