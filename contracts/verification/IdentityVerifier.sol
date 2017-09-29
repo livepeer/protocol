@@ -23,8 +23,7 @@ contract IdentityVerifier is Manager, IVerifier {
      * @param _segmentNumber Segment being verified for job
      * @param _code Content-addressed storage hash of binary to execute off-chain
      * @param _dataStorageHash Content-addressed storage hash of input data of segment
-     * @param _transcodedDataHash Hash of transcoded segment data
-     * @param _callbackContract Address of Verifiable contract to call back
+     * @param _dataHashes Hash of segment data and hash of transcoded segment data
      */
     function verify(
         uint256 _jobId,
@@ -32,7 +31,7 @@ contract IdentityVerifier is Manager, IVerifier {
         uint256 _segmentNumber,
         string _transcodingOptions,
         string _dataStorageHash,
-        bytes32 _transcodedDataHash
+        bytes32[2] _dataHashes
     )
         external
         onlyJobsManager

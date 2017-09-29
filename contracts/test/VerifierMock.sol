@@ -39,7 +39,7 @@ contract VerifierMock is IVerifier {
         uint256 _segmentNumber,
         string _transcodingOptions,
         string _dataStorageHash,
-        bytes32 _transcodedDataHash
+        bytes32[2] _dataHashes
     )
         external
         payable

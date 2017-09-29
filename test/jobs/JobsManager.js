@@ -2,6 +2,7 @@ import Fixture from "../helpers/fixture"
 import expectThrow from "../helpers/expectThrow"
 import MerkleTree from "../../utils/merkleTree"
 import batchTranscodeReceiptHashes from "../../utils/batchTranscodeReceipts"
+import {createTranscodingOptions} from "../../utils/videoProfile"
 import Segment from "../../utils/segment"
 import ethUtil from "ethereumjs-util"
 
@@ -103,7 +104,7 @@ contract("JobsManager", accounts => {
         const broadcaster = accounts[0]
         const electedTranscoder = accounts[1]
         const streamId = "1"
-        const transcodingOptions = "0x123"
+        const transcodingOptions = createTranscodingOptions(["foo", "bar"])
         const maxPricePerSegment = 100
 
         beforeEach(async () => {
@@ -159,7 +160,7 @@ contract("JobsManager", accounts => {
 
         const electedTranscoder = accounts[1]
         const streamId = "1"
-        const transcodingOptions = "0x123"
+        const transcodingOptions = createTranscodingOptions(["foo", "bar"])
         const maxPricePerSegment = 10
         const jobId = 0
         const segmentRange = [0, 3]
@@ -253,7 +254,7 @@ contract("JobsManager", accounts => {
         it("should update broadcaster deposit", async () => {
             await jobsManager.claimWork(jobId, segmentRange, claimRoot, {from: electedTranscoder})
 
-            const fees = maxPricePerSegment * (segmentRange[1] - segmentRange[0] + 1)
+            const fees = maxPricePerSegment * 2 * (segmentRange[1] - segmentRange[0] + 1)
 
             const jEscrow = await jobsManager.getJobEscrow(jobId)
             assert.equal(jEscrow, fees, "escrow is incorrect")
@@ -262,7 +263,7 @@ contract("JobsManager", accounts => {
         it("should update job escrow", async () => {
             await jobsManager.claimWork(jobId, segmentRange, claimRoot, {from: electedTranscoder})
 
-            const fees = maxPricePerSegment * (segmentRange[1] - segmentRange[0] + 1)
+            const fees = maxPricePerSegment * 2 * (segmentRange[1] - segmentRange[0] + 1)
             const expDeposit = deposit - fees
 
             const newDeposit = await jobsManager.broadcasterDeposits.call(broadcaster)
@@ -308,6 +309,7 @@ contract("JobsManager", accounts => {
         const dataStorageHash = "0x123"
         const correctDataHash = dataHashes[0]
         const correctTDataHash = tDataHashes[0]
+        const correctDataHashes = [correctDataHash, correctTDataHash]
         const correctSig = ethUtil.bufferToHex(segments[0].signedHash())
         const correctProof = merkleTree.getHexProof(tReceiptHashes[0])
 
@@ -345,55 +347,55 @@ contract("JobsManager", accounts => {
         it("should throw for insufficient payment for verification", async () => {
             await fixture.verifier.setPrice(10)
             // Transcoder calls verify with 0 payment
-            await expectThrow(jobsManager.verify(jobId, claimId, segmentNumber, dataStorageHash, correctDataHash, correctTDataHash, correctSig, correctProof, {from: electedTranscoder}))
+            await expectThrow(jobsManager.verify(jobId, claimId, segmentNumber, dataStorageHash, correctDataHashes, correctSig, correctProof, {from: electedTranscoder}))
         })
 
         it("should throw for invalid job id", async () => {
             const invalidJobId = 2
             // Transcoder calls verify with invalid job id
-            await expectThrow(jobsManager.verify(invalidJobId, claimId, segmentNumber, dataStorageHash, correctDataHash, correctTDataHash, correctSig, correctProof, {from: electedTranscoder}))
+            await expectThrow(jobsManager.verify(invalidJobId, claimId, segmentNumber, dataStorageHash, correctDataHashes, correctSig, correctProof, {from: electedTranscoder}))
         })
 
         it("should throw for invalid claim id", async () => {
             const invalidClaimId = 1
             // Transcoder calls verify with invalid claim id
-            await expectThrow(jobsManager.verify(jobId, invalidClaimId, segmentNumber, dataStorageHash, correctDataHash, correctTDataHash, correctSig, correctProof, {from: electedTranscoder}))
+            await expectThrow(jobsManager.verify(jobId, invalidClaimId, segmentNumber, dataStorageHash, correctDataHashes, correctSig, correctProof, {from: electedTranscoder}))
         })
 
         it("should throw for inactive job", async () => {
             const inactiveJobId = 1
             // Transcoder calls verify with inactive job
-            await expectThrow(jobsManager.verify(inactiveJobId, claimId, segmentNumber, dataStorageHash, correctDataHash, correctTDataHash, correctSig, correctProof, {from: electedTranscoder}))
+            await expectThrow(jobsManager.verify(inactiveJobId, claimId, segmentNumber, dataStorageHash, correctDataHashes, correctSig, correctProof, {from: electedTranscoder}))
         })
 
         it("should throw if sender is not elected transcoder", async () => {
             // Account 2 (not elected transcoder) calls verify
-            await expectThrow(jobsManager.verify(jobId, claimId, segmentNumber, dataStorageHash, correctDataHash, correctTDataHash, correctSig, correctProof, {from: accounts[2]}))
+            await expectThrow(jobsManager.verify(jobId, claimId, segmentNumber, dataStorageHash, correctDataHashes, correctSig, correctProof, {from: accounts[2]}))
         })
 
         it("should throw if segment is not eligible for verification", async () => {
             const invalidSegmentNumber = 99
             // Transcoder calls verify with invalid segment number
-            await expectThrow(jobsManager.verify(jobId, claimId, invalidSegmentNumber, dataStorageHash, correctDataHash, correctTDataHash, correctSig, correctProof, {from: electedTranscoder}))
+            await expectThrow(jobsManager.verify(jobId, claimId, invalidSegmentNumber, dataStorageHash, correctDataHashes, correctSig, correctProof, {from: electedTranscoder}))
         })
 
         it("should throw if segment not signed by broadcaster", async () => {
             const badSig = web3.eth.sign(accounts[3], ethUtil.bufferToHex(segments[0].hash()))
             // This should fail because badSig is signed by Account 3 and not the broadcaster
-            await expectThrow(jobsManager.verify(jobId, claimId, segmentNumber, dataStorageHash, correctDataHash, correctTDataHash, badSig, correctProof, {from: electedTranscoder}))
+            await expectThrow(jobsManager.verify(jobId, claimId, segmentNumber, dataStorageHash, correctDataHashes, badSig, correctProof, {from: electedTranscoder}))
         })
 
         it("should throw if submitted Merkle proof is invalid", async () => {
             const badSig = ethUtil.bufferToHex(segments[3].signedHash())
             // This should fail because badSig is the sig for segment 3 but the receipt being verified is for segment 0
-            await expectThrow(jobsManager.verify(jobId, claimId, segmentNumber, dataStorageHash, correctDataHash, correctTDataHash, badSig, correctProof, {from: electedTranscoder}))
+            await expectThrow(jobsManager.verify(jobId, claimId, segmentNumber, dataStorageHash, correctDataHashes, badSig, correctProof, {from: electedTranscoder}))
         })
 
         it("should not throw for successful verify call", async () => {
             // Set price to 100 wei
             await fixture.verifier.setPrice(100)
             // Transcoder calls verify with 100 wei payment
-            await jobsManager.verify(jobId, claimId, segmentNumber, dataStorageHash, correctDataHash, correctTDataHash, correctSig, correctProof, {from: electedTranscoder, value: 100})
+            await jobsManager.verify(jobId, claimId, segmentNumber, dataStorageHash, correctDataHashes, correctSig, correctProof, {from: electedTranscoder, value: 100})
         })
     })
 
@@ -420,7 +422,7 @@ contract("JobsManager", accounts => {
             await jobsManager.deposit(1000, {from: broadcaster})
 
             const streamId = "1"
-            const transcodingOptions = "0x123"
+            const transcodingOptions = createTranscodingOptions(["foo", "bar"])
             // Broadcaster creates job 0
             await jobsManager.job(streamId, transcodingOptions, maxPricePerSegment, {from: broadcaster})
 
@@ -557,7 +559,7 @@ contract("JobsManager", accounts => {
             await jobsManager.deposit(1000, {from: broadcaster})
 
             const streamId = "1"
-            const transcodingOptions = "0x123"
+            const transcodingOptions = createTranscodingOptions(["foo", "bar"])
             // Broadcaster creates job 0
             await jobsManager.job(streamId, transcodingOptions, maxPricePerSegment, {from: broadcaster})
 
@@ -582,7 +584,7 @@ contract("JobsManager", accounts => {
             await jobsManager.batchDistributeFees(jobId, claimIds, {from: electedTranscoder})
 
             const jEscrow = await jobsManager.getJobEscrow(jobId)
-            assert.equal(jEscrow, 40, "escrow is incorrect")
+            assert.equal(jEscrow, 80, "escrow is incorrect")
 
             const cStatus0 = await jobsManager.getClaimStatus(jobId, 0)
             assert.equal(cStatus0, 2, "claim 0 status incorrect")
@@ -628,6 +630,7 @@ contract("JobsManager", accounts => {
         const dataStorageHash = "0x123"
         const correctDataHash = dataHashes[0]
         const correctTDataHash = tDataHashes[0]
+        const correctDataHashes = [correctDataHash, correctTDataHash]
         const correctSig = ethUtil.bufferToHex(segments[0].signedHash())
         const correctProof = merkleTree.getHexProof(tReceiptHashes[0])
 
@@ -646,7 +649,7 @@ contract("JobsManager", accounts => {
 
             await jobsManager.deposit(1000, {from: broadcaster})
 
-            const transcodingOptions = "0x123"
+            const transcodingOptions = createTranscodingOptions(["foo", "bar"])
             // Broadcaster creates job 0
             await jobsManager.job(streamId, transcodingOptions, maxPricePerSegment, {from: broadcaster})
 
@@ -679,7 +682,7 @@ contract("JobsManager", accounts => {
 
         it("should throw if segment was verified", async () => {
             // Transcoder calls verify
-            await jobsManager.verify(jobId, claimId, segmentNumber, dataStorageHash, correctDataHash, correctTDataHash, correctSig, correctProof, {from: electedTranscoder})
+            await jobsManager.verify(jobId, claimId, segmentNumber, dataStorageHash, correctDataHashes, correctSig, correctProof, {from: electedTranscoder})
             // Fast foward through verification period
             const verificationPeriod = await jobsManager.verificationPeriod.call()
             await fixture.rpc.wait(verificationPeriod.toNumber())

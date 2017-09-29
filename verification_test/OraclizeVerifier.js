@@ -12,7 +12,7 @@ contract("OraclizeVerifier", accounts => {
     let verifier
 
     // IPFS hash of Dockerfile archive
-    const codeHash = "QmZmvi1BaYSdxM1Tgwhi2mURabh46xCkzuH9PWeAkAZZGc"
+    const codeHash = "QmXKxSKhUZnmjb53HzS94arpshet3N5Kmct8JBAsgm9umR"
 
     before(async () => {
         fixture = new Fixture(web3)
@@ -36,8 +36,12 @@ contract("OraclizeVerifier", accounts => {
         const transcodingOptions = "P720p60fps16x9,P720p30fps16x9"
         // IPFS hash of seg.ts
         const dataStorageHash = "QmR9BnJQisvevpCoSVWWKyownN58nydb2zQt9Z2VtnTnKe"
+        // Keccak256 hash of segment data
+        const dataHash = "0xcda2f677da4cdf85364c90a85a8ecfdaa8b5677aeca346efa2a5247654079a29"
         // Keccak256 hash of transcoded data
         const transcodedDataHash = "0x77903c5de84acf703524da5547df170612ab9308edfec742f5f22f5dc0cfb76a"
+
+        const dataHashes = [dataHash, transcodedDataHash]
 
         it("should trigger async callback from Oraclize", async () => {
             const e = verifier.OraclizeCallback({})
@@ -51,7 +55,7 @@ contract("OraclizeVerifier", accounts => {
                 assert.equal(result.args.result, true, "callback result incorrect")
             })
 
-            await fixture.jobsManager.setVerifyParams(jobId, claimId, segmentNumber, transcodingOptions, dataStorageHash, transcodedDataHash)
+            await fixture.jobsManager.setVerifyParams(jobId, claimId, segmentNumber, transcodingOptions, dataStorageHash, dataHashes)
 
             const price = await verifier.getPrice()
             await fixture.jobsManager.callVerify({from: accounts[0], value: price})

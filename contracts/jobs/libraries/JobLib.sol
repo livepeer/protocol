@@ -2,11 +2,30 @@ pragma solidity ^0.4.13;
 
 import "zeppelin-solidity/contracts/ECRecovery.sol";
 import "zeppelin-solidity/contracts/MerkleProof.sol";
+import "zeppelin-solidity/contracts/math/SafeMath.sol";
 
 
 library JobLib {
+    using SafeMath for uint256;
     // Prefix hashed with message hash when a signature is produced by the eth_sign RPC call
     string constant PERSONAL_HASH_PREFIX = "\u0019Ethereum Signed Message:\n32";
+    // # of bytes used to store a video profile identifier as a utf8 encoded string
+    // Video profile identifier is currently stored as bytes4(keccak256(PROFILE_NAME))
+    // We use 2 * 4 = 8 bytes because we store the bytes in a utf8 encoded string so
+    // the identifiers can be easily parsed off-chain
+    uint8 constant VIDEO_PROFILE_SIZE = 8;
+
+    /*
+     * @dev Computes the amount of fees given total segments, total number of profiles and price per segment
+     * @param _totalSegments # of segments
+     * @param _transcodingOptions String containing video profiles for a job
+     * @param _pricePerSegment Price in LPT base units per segment
+     */
+    function calcFees(uint256 _totalSegments, string _transcodingOptions, uint256 _pricePerSegment) public constant returns (uint256) {
+        // Calculate total profiles defined in the transcoding options string
+        uint256 totalProfiles = bytes(_transcodingOptions).length.div(VIDEO_PROFILE_SIZE);
+        return _totalSegments.mul(totalProfiles).mul(_pricePerSegment);
+    }
 
     /*
      * Computes whether a segment is eligible for verification based on the last call to claimWork()

@@ -223,7 +223,7 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         require(_segmentRange[1] >= _segmentRange[0]);
 
         // Move fees from broadcaster deposit to escrow
-        uint256 fees = _segmentRange[1].sub(_segmentRange[0]).add(1).mul(job.maxPricePerSegment);
+        uint256 fees = JobLib.calcFees(_segmentRange[1].sub(_segmentRange[0]).add(1), job.transcodingOptions, job.maxPricePerSegment);
         broadcasterDeposits[job.broadcasterAddress] = broadcasterDeposits[job.broadcasterAddress].sub(fees);
         job.escrow = job.escrow.add(fees);
 
@@ -253,8 +253,8 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
      * @dev Submit transcode receipt and invoke transcoding verification
      * @param _jobId Job identifier
      * @param _segmentNumber Segment sequence number in stream
-     * @param _dataHash Content-addressed storage hash of segment data
-     * @param _transcodedDataHash Hash of transcoded segment data
+     * @param _dataStorageHash Content-addressed storage hash of segment data
+     * @param _dataHashes Hash of segment data and hash of transcoded segment data
      * @param _broadcasterSig Broadcaster's signature over segment hash
      * @param _proof Merkle proof for transcode receipt
      */
@@ -263,8 +263,7 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         uint256 _claimId,
         uint256 _segmentNumber,
         string _dataStorageHash,
-        bytes32 _dataHash,
-        bytes32 _transcodedDataHash,
+        bytes32[2] _dataHashes,
         bytes _broadcasterSig,
         bytes _proof
     )
@@ -288,15 +287,15 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         // Segment must be eligible for verification
         require(JobLib.shouldVerifySegment(_segmentNumber, claim.segmentRange, claim.claimBlock, verificationRate));
         // Segment must be signed by broadcaster
-        require(JobLib.validateBroadcasterSig(job.streamId, _segmentNumber, _dataHash, _broadcasterSig, job.broadcasterAddress));
+        require(JobLib.validateBroadcasterSig(job.streamId, _segmentNumber, _dataHashes[0], _broadcasterSig, job.broadcasterAddress));
         // Receipt must be valid
-        require(JobLib.validateReceipt(job.streamId, _segmentNumber, _dataHash, _transcodedDataHash, _broadcasterSig, _proof, claim.claimRoot));
+        require(JobLib.validateReceipt(job.streamId, _segmentNumber, _dataHashes[0], _dataHashes[1], _broadcasterSig, _proof, claim.claimRoot));
 
         // Mark segment as submitted for verification
         claim.segmentVerifications[_segmentNumber] = true;
 
         // Invoke transcoding verification. This is async and will result in a callback to receiveVerification() which is implemented by this contract
-        invokeVerification(_jobId, _claimId, _segmentNumber, _dataStorageHash, _transcodedDataHash);
+        invokeVerification(_jobId, _claimId, _segmentNumber, _dataStorageHash, _dataHashes);
 
         return true;
     }
@@ -307,14 +306,14 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
      * @param _claimId Claim identifier
      * @param _segmentNumber Segment sequence number in stream
      * @param _dataStorageHash Content addressable storage hash of segment data
-     * @param _transcodedDataHash Keccak256 hash of transcoded segment data
+     * @param _dataHashes Hash of segment data and hash of transcoded segment data
      */
     function invokeVerification(
         uint256 _jobId,
         uint256 _claimId,
         uint256 _segmentNumber,
         string _dataStorageHash,
-        bytes32 _transcodedDataHash
+        bytes32[2] _dataHashes
     )
         internal
         returns (bool)
@@ -325,9 +324,9 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
 
         // Send payment to verifier if price is greater than zero
         if (price > 0) {
-            return verifierContract.verify.value(price)(_jobId, _claimId, _segmentNumber, jobs[_jobId].transcodingOptions, _dataStorageHash, _transcodedDataHash);
+            return verifierContract.verify.value(price)(_jobId, _claimId, _segmentNumber, jobs[_jobId].transcodingOptions, _dataStorageHash, _dataHashes);
         } else {
-            return verifierContract.verify(_jobId, _claimId, _segmentNumber, jobs[_jobId].transcodingOptions, _dataStorageHash, _transcodedDataHash);
+            return verifierContract.verify(_jobId, _claimId, _segmentNumber, jobs[_jobId].transcodingOptions, _dataStorageHash, _dataHashes);
         }
     }
 
@@ -433,7 +432,7 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         // Slashing period must be over for claim
         require(claim.endSlashingBlock < block.number);
 
-        uint256 fees = claim.segmentRange[1].sub(claim.segmentRange[0]).add(1).mul(job.maxPricePerSegment);
+        uint256 fees = JobLib.calcFees(claim.segmentRange[1].sub(claim.segmentRange[0]).add(1), job.transcodingOptions, job.maxPricePerSegment);
         // Deduct fees from escrow
         job.escrow = job.escrow.sub(fees);
         // Add fees to transcoder's fee pool
@@ -537,7 +536,7 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         Claim storage claim = job.claims[_claimId];
 
         // Return escrowed fees for claim
-        uint256 fees = claim.segmentRange[1].sub(claim.segmentRange[0]).add(1).mul(job.maxPricePerSegment);
+        uint256 fees = JobLib.calcFees(claim.segmentRange[1].sub(claim.segmentRange[0]).add(1), job.transcodingOptions, job.maxPricePerSegment);
         job.escrow = job.escrow.sub(fees);
         broadcasterDeposits[job.broadcasterAddress] = broadcasterDeposits[job.broadcasterAddress].add(fees);
 
