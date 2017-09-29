@@ -15,4 +15,4 @@ module.exports = {
             network_id: 777
         }
     }
-};
+}
