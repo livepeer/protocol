@@ -35,7 +35,7 @@ contract LivepeerVerifier is Manager, IVerifier {
         _;
     }
 
-    event VerifyRequest(uint256 indexed requestId, uint256 indexed jobId, uint256 indexed claimId, uint256 segmentNumber, string transcodingOptions, string dataStorageHash, bytes32 transcodedDataHash);
+    event VerifyRequest(uint256 indexed requestId, uint256 indexed jobId, uint256 indexed claimId, uint256 segmentNumber, string transcodingOptions, string dataStorageHash, bytes32 dataHash, bytes32 transcodedDataHash);
     event Callback(uint256 indexed requestId, uint256 indexed jobId, uint256 indexed claimId, uint256 segmentNumber, bool result);
 
     function LivepeerVerifier(address _controller, address[] _solvers, string _verificationCodeHash) Manager(_controller) {
@@ -60,7 +60,7 @@ contract LivepeerVerifier is Manager, IVerifier {
         uint256 _segmentNumber,
         string _transcodingOptions,
         string _dataStorageHash,
-        bytes32 _transcodedDataHash
+        bytes32[2] _dataHashes
     )
         external
         payable
@@ -71,9 +71,9 @@ contract LivepeerVerifier is Manager, IVerifier {
         requests[requestCount].jobId = _jobId;
         requests[requestCount].claimId = _claimId;
         requests[requestCount].segmentNumber = _segmentNumber;
-        requests[requestCount].transcodedDataHash = _transcodedDataHash;
+        requests[requestCount].transcodedDataHash = _dataHashes[1];
 
-        VerifyRequest(requestCount, _jobId, _claimId, _segmentNumber, _transcodingOptions, _dataStorageHash, _transcodedDataHash);
+        VerifyRequest(requestCount, _jobId, _claimId, _segmentNumber, _transcodingOptions, _dataStorageHash, _dataHashes[0], _dataHashes[1]);
 
         // Update request count
         requestCount++;
