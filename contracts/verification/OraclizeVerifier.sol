@@ -23,7 +23,7 @@ contract OraclizeVerifier is Manager, usingOraclize, IVerifier {
         uint256 jobId;
         uint256 claimId;
         uint256 segmentNumber;
-        bytes32 transcodedDataHash;
+        bytes32 commitHash;
     }
 
     // Stores active Oraclize queries
@@ -67,8 +67,7 @@ contract OraclizeVerifier is Manager, usingOraclize, IVerifier {
      * @param _segmentNumber Segment being verified for job
      * @param _code Content-addressed storage hash of binary to execute off-chain
      * @param _dataStorageHash Content-addressed storage hash of input data of segment
-     * @param _transcodedDataHash Hash of transcoded segment data
-     * @param _callbackContract Address of Verifiable contract to call back
+     * @param _dataHashes Hash of segment data and hash of transcoded segment data
      */
     function verify(
         uint256 _jobId,
@@ -76,7 +75,7 @@ contract OraclizeVerifier is Manager, usingOraclize, IVerifier {
         uint256 _segmentNumber,
         string _transcodingOptions,
         string _dataStorageHash,
-        bytes32 _transcodedDataHash
+        bytes32[2] _dataHashes
     )
         external
         payable
@@ -92,7 +91,7 @@ contract OraclizeVerifier is Manager, usingOraclize, IVerifier {
         oraclizeQueries[queryId].jobId = _jobId;
         oraclizeQueries[queryId].claimId = _claimId;
         oraclizeQueries[queryId].segmentNumber = _segmentNumber;
-        oraclizeQueries[queryId].transcodedDataHash = _transcodedDataHash;
+        oraclizeQueries[queryId].commitHash = keccak256(_dataHashes[0], _dataHashes[1]);
 
         return true;
     }
@@ -105,8 +104,8 @@ contract OraclizeVerifier is Manager, usingOraclize, IVerifier {
     function __callback(bytes32 _queryId, string _result, bytes _proof) onlyOraclize {
         OraclizeQuery memory oc = oraclizeQueries[_queryId];
 
-        // Check if transcoded data hash returned by Oraclize matches originally submitted transcoded data hash
-        if (oc.transcodedDataHash == strToBytes32(_result)) {
+        // Check if hash returned by Oraclize matches originally submitted commit hash = h(dataHash, transcodedDataHash)
+        if (oc.commitHash == strToBytes32(_result)) {
             // Notify callback contract of successful verification
             IVerifiable(controller.getContract(keccak256("JobsManager"))).receiveVerification(oc.jobId, oc.claimId, oc.segmentNumber, true);
             OraclizeCallback(oc.jobId, oc.claimId, oc.segmentNumber, _proof, true);
