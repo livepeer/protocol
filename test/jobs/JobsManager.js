@@ -2,6 +2,7 @@ import Fixture from "../helpers/fixture"
 import expectThrow from "../helpers/expectThrow"
 import MerkleTree from "../../utils/merkleTree"
 import batchTranscodeReceiptHashes from "../../utils/batchTranscodeReceipts"
+import {createTranscodingOptions} from "../../utils/videoProfile"
 import Segment from "../../utils/segment"
 import ethUtil from "ethereumjs-util"
 
@@ -103,7 +104,7 @@ contract("JobsManager", accounts => {
         const broadcaster = accounts[0]
         const electedTranscoder = accounts[1]
         const streamId = "1"
-        const transcodingOptions = "0x123"
+        const transcodingOptions = createTranscodingOptions(["foo", "bar"])
         const maxPricePerSegment = 100
 
         beforeEach(async () => {
@@ -159,7 +160,7 @@ contract("JobsManager", accounts => {
 
         const electedTranscoder = accounts[1]
         const streamId = "1"
-        const transcodingOptions = "0x123"
+        const transcodingOptions = createTranscodingOptions(["foo", "bar"])
         const maxPricePerSegment = 10
         const jobId = 0
         const segmentRange = [0, 3]
@@ -253,7 +254,7 @@ contract("JobsManager", accounts => {
         it("should update broadcaster deposit", async () => {
             await jobsManager.claimWork(jobId, segmentRange, claimRoot, {from: electedTranscoder})
 
-            const fees = maxPricePerSegment * (segmentRange[1] - segmentRange[0] + 1)
+            const fees = maxPricePerSegment * 2 * (segmentRange[1] - segmentRange[0] + 1)
 
             const jEscrow = await jobsManager.getJobEscrow(jobId)
             assert.equal(jEscrow, fees, "escrow is incorrect")
@@ -262,7 +263,7 @@ contract("JobsManager", accounts => {
         it("should update job escrow", async () => {
             await jobsManager.claimWork(jobId, segmentRange, claimRoot, {from: electedTranscoder})
 
-            const fees = maxPricePerSegment * (segmentRange[1] - segmentRange[0] + 1)
+            const fees = maxPricePerSegment * 2 * (segmentRange[1] - segmentRange[0] + 1)
             const expDeposit = deposit - fees
 
             const newDeposit = await jobsManager.broadcasterDeposits.call(broadcaster)
@@ -421,7 +422,7 @@ contract("JobsManager", accounts => {
             await jobsManager.deposit(1000, {from: broadcaster})
 
             const streamId = "1"
-            const transcodingOptions = "0x123"
+            const transcodingOptions = createTranscodingOptions(["foo", "bar"])
             // Broadcaster creates job 0
             await jobsManager.job(streamId, transcodingOptions, maxPricePerSegment, {from: broadcaster})
 
@@ -558,7 +559,7 @@ contract("JobsManager", accounts => {
             await jobsManager.deposit(1000, {from: broadcaster})
 
             const streamId = "1"
-            const transcodingOptions = "0x123"
+            const transcodingOptions = createTranscodingOptions(["foo", "bar"])
             // Broadcaster creates job 0
             await jobsManager.job(streamId, transcodingOptions, maxPricePerSegment, {from: broadcaster})
 
@@ -583,7 +584,7 @@ contract("JobsManager", accounts => {
             await jobsManager.batchDistributeFees(jobId, claimIds, {from: electedTranscoder})
 
             const jEscrow = await jobsManager.getJobEscrow(jobId)
-            assert.equal(jEscrow, 40, "escrow is incorrect")
+            assert.equal(jEscrow, 80, "escrow is incorrect")
 
             const cStatus0 = await jobsManager.getClaimStatus(jobId, 0)
             assert.equal(cStatus0, 2, "claim 0 status incorrect")
@@ -648,7 +649,7 @@ contract("JobsManager", accounts => {
 
             await jobsManager.deposit(1000, {from: broadcaster})
 
-            const transcodingOptions = "0x123"
+            const transcodingOptions = createTranscodingOptions(["foo", "bar"])
             // Broadcaster creates job 0
             await jobsManager.job(streamId, transcodingOptions, maxPricePerSegment, {from: broadcaster})
 
