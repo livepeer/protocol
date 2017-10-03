@@ -66,7 +66,7 @@ module.exports = function(deployer, network) {
             controller.setContract(ethUtil.bufferToHex(ethAbi.soliditySHA3(["string"], ["RoundsManager"])), roundsManagerProxy.address)
         ])
     }).then(() => {
-        // Cast proxiy contracts into target contracts
+        // Cast proxy contracts into target contracts
         return Promise.all([
             BondingManager.at(bondingManagerProxy.address),
             JobsManager.at(jobsManagerProxy.address),

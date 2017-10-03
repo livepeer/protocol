@@ -1,11 +1,14 @@
 const config = require("./migrations.config.js")
 const BigNumber = require("bignumber.js")
+const ethUtil = require("ethereumjs-util")
+const ethAbi = require("ethereumjs-abi")
 
+const Controller = artifacts.require("Controller")
 const LivepeerToken = artifacts.require("LivepeerToken")
 const LivepeerTokenFaucet = artifacts.require("LivepeerTokenFaucet")
 
 module.exports = function(deployer, network, accounts) {
-    if (network == "development") {
+    if (network == "lpTestNet") {
         deployer.deploy(
             LivepeerTokenFaucet,
             LivepeerToken.address,
@@ -21,6 +24,10 @@ module.exports = function(deployer, network, accounts) {
             return Promise.all(config.faucet.whitelist.map(addr => {
                 return faucet.addToWhitelist(addr)
             }))
+        }).then(() => {
+            return Controller.deployed()
+        }).then(controller => {
+            return controller.setContract(ethUtil.bufferToHex(ethAbi.soliditySHA3(["string"], ["LivepeerTokenFaucet"])), LivepeerTokenFaucet.address)
         })
     }
 }

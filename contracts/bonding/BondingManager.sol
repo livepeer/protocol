@@ -108,7 +108,6 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         if (delegatorStatus(msg.sender) == DelegatorStatus.Bonded && transcoderStatus(del.delegateAddress) == TranscoderStatus.Registered) {
             uint256 rewardsAndFees = delegatorTokenPoolsShare(del);
             del.bondedAmount = del.bondedAmount.add(rewardsAndFees);
-            delegators[del.delegateAddress].delegatedAmount = delegators[del.delegateAddress].delegatedAmount.add(rewardsAndFees);
         }
 
         del.lastStakeUpdateRound = roundsManager().currentRound();
