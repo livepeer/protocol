@@ -137,6 +137,12 @@ contract("JobsManager", accounts => {
         })
 
         it("should create a new job", async () => {
+            const creationRound = 100
+            await fixture.roundsManager.setCurrentRound(creationRound)
+
+            const transcoderTotalStake = 100
+            await fixture.bondingManager.setActiveTranscoder(accounts[1], 0, transcoderTotalStake, 0)
+
             await jobsManager.job(streamId, transcodingOptions, maxPricePerSegment, {from: broadcaster})
 
             const jMaxPricePerSegment = await jobsManager.getJobMaxPricePerSegment(0)
@@ -145,6 +151,10 @@ contract("JobsManager", accounts => {
             assert.equal(jBroadcasterAddress, broadcaster, "broadcaster address incorrect")
             const jTranscoderAddress = await jobsManager.getJobTranscoderAddress(0)
             assert.equal(jTranscoderAddress, electedTranscoder, "transcoder address incorrect")
+            const jCreationRound = await jobsManager.getJobCreationRound(0)
+            assert.equal(jCreationRound, creationRound, "creation round incorrect")
+            const jTranscoderTotalStake = await jobsManager.getJobTranscoderTotalStake(0)
+            assert.equal(jTranscoderTotalStake, transcoderTotalStake, "transcoder total stake incorrect")
             const jEndBlock = await jobsManager.getJobEndBlock(0)
             assert.equal(jEndBlock, 0, "end block incorrect")
             const jEscrow = await jobsManager.getJobEscrow(0)
@@ -233,7 +243,6 @@ contract("JobsManager", accounts => {
             const claimBlock = web3.eth.blockNumber
             const verificationPeriod = await jobsManager.verificationPeriod.call()
             const slashingPeriod = await jobsManager.slashingPeriod.call()
-            const transcoderTotalStake = await fixture.bondingManager.transcoderTotalStake(accounts[1])
 
             const cStartSegment = await jobsManager.getClaimStartSegment(jobId, claimId)
             assert.equal(cStartSegment, segmentRange[0], "segment range start incorrect")
@@ -247,8 +256,6 @@ contract("JobsManager", accounts => {
             assert.equal(cEndVerificationBlock, claimBlock + verificationPeriod.toNumber(), "end verification block incorrect")
             const cEndSlashingBlock = await jobsManager.getClaimEndSlashingBlock(jobId, claimId)
             assert.equal(cEndSlashingBlock, claimBlock + verificationPeriod.toNumber() + slashingPeriod.toNumber(), "end slashing block incorrect")
-            const cTranscoderStake = await jobsManager.getClaimTranscoderTotalStake(jobId, claimId)
-            assert.equal(cTranscoderStake, transcoderTotalStake.toNumber(), "transcoder total stake incorrect")
         })
 
         it("should update broadcaster deposit", async () => {

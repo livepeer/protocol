@@ -189,16 +189,13 @@ contract("BondingManager", accounts => {
             assert.equal(tDelegatedAmount, 100, "delegated amount incorrect")
         })
 
-        it("should update start round and delegate block when moving bond", async () => {
+        it("should update start round when moving bond", async () => {
             await bondingManager.bond(100, tAddr0, {from: dAddr})
             await fixture.roundsManager.setCurrentRound(100)
 
             await bondingManager.bond(0, tAddr1, {from: dAddr})
             const dStartRound = await bondingManager.getDelegatorStartRound(dAddr)
             assert.equal(dStartRound, 101, "start round incorrect")
-            const delegateBlock = web3.eth.blockNumber
-            const dDelegateBlock = await bondingManager.getDelegatorDelegateBlock(dAddr)
-            assert.equal(dDelegateBlock, delegateBlock, "delegate block incorrect")
         })
     })
 
@@ -268,9 +265,9 @@ contract("BondingManager", accounts => {
         const feeShare = 5
         const pricePerSegment = 10
 
-        // Mock fees params
+        // Mock distribute fees params
         const fees = 300
-        const claimBlock = web3.eth.blockNumber + 1000
+        const jobCreationRound = 6
         const transcoderTotalStake = 4000
 
         beforeEach(async () => {
@@ -289,10 +286,7 @@ contract("BondingManager", accounts => {
             // Delegator bonds to transcoder
             await bondingManager.bond(2000, tAddr, {from: dAddr})
 
-            await fixture.jobsManager.setTranscoder(tAddr)
-            await fixture.jobsManager.setFees(fees)
-            await fixture.jobsManager.setClaimBlock(claimBlock)
-            await fixture.jobsManager.setTranscoderTotalStake(transcoderTotalStake)
+            await fixture.jobsManager.setDistributeFeesParams(tAddr, fees, jobCreationRound, transcoderTotalStake)
 
             // Set active transcoders
             await fixture.roundsManager.initializeRound()
@@ -308,7 +302,7 @@ contract("BondingManager", accounts => {
             const delegatorsFeeShare = Math.floor((fees * feeShare) / 100)
             const delegatorFeeShare = Math.floor((2000 * delegatorsFeeShare) / transcoderTotalStake)
             const delegatorStake = await bondingManager.delegatorStake(dAddr)
-            assert.equal(delegatorStake.toString(), add(2000, delegatorFeeShare))
+            assert.equal(delegatorStake.toString(), add(2000, delegatorFeeShare).toString())
         })
     })
 })
