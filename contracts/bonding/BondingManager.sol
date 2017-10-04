@@ -700,7 +700,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         rewardPool.rewards = rewardPool.rewards.add(_rewards.sub(transcoderRewardShare));
 
         if (rewardPool.transcoderTotalStake == 0) {
-            rewardPool.transcoderTotalStake = transcoderTotalStake(_transcoder);
+            rewardPool.transcoderTotalStake = activeTranscoderTotalStake(_transcoder);
         }
 
         increaseTranscoderStake(_transcoder, _rewards, transcoderRewardShare, _round);

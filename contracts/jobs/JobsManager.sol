@@ -178,7 +178,7 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         job.broadcasterAddress = msg.sender;
         job.transcoderAddress = electedTranscoder;
         job.creationRound = roundsManager().currentRound();
-        job.transcoderTotalStake = bondingManager().transcoderTotalStake(electedTranscoder);
+        job.transcoderTotalStake = bondingManager().activeTranscoderTotalStake(electedTranscoder);
 
         NewJob(electedTranscoder, msg.sender, numJobs, _streamId, _transcodingOptions);
 

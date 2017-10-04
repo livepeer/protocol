@@ -14,4 +14,5 @@ contract IBondingManager {
 
     // Public functions
     function transcoderTotalStake(address _transcoder) public constant returns (uint256);
+    function activeTranscoderTotalStake(address _transcoder) public constant returns (uint256);
 }
