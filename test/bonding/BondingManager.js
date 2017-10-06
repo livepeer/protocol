@@ -210,8 +210,7 @@ contract("BondingManager", accounts => {
 
         // Mock fees params
         const fees = 300
-        const claimBlock = 100
-        const transcoderTotalStake = 1000
+        const round = 5
 
         beforeEach(async () => {
             await bondingManager.initialize(UNBONDING_PERIOD, NUM_ACTIVE_TRANSCODERS)
@@ -228,13 +227,12 @@ contract("BondingManager", accounts => {
             // Delegator bonds to transcoder
             await bondingManager.bond(2000, tAddr, {from: dAddr})
 
-            await fixture.jobsManager.setTranscoder(tAddr)
-            await fixture.jobsManager.setFees(fees)
-            await fixture.jobsManager.setClaimBlock(claimBlock)
-            await fixture.jobsManager.setTranscoderTotalStake(transcoderTotalStake)
+            await fixture.jobsManager.setDistributeFeesParams(tAddr, fees, round)
 
             // Set active transcoders
+            await fixture.roundsManager.setCurrentRound(round)
             await fixture.roundsManager.initializeRound()
+            await fixture.jobsManager.callElectActiveTranscoder(pricePerSegment)
         })
 
         it("should update transcoder's total stake", async () => {
@@ -289,19 +287,24 @@ contract("BondingManager", accounts => {
             // Delegator bonds to transcoder
             await bondingManager.bond(2000, tAddr, {from: dAddr})
 
-            await fixture.jobsManager.setDistributeFeesParams(tAddr, fees, jobCreationRound, transcoderTotalStake)
-
             // Set active transcoders
             await fixture.roundsManager.initializeRound()
+            // Set the current round to jobCreationRound
+            await fixture.roundsManager.setCurrentRound(jobCreationRound)
+            // Set the totalStake for the fee pool at jobCreationRound
+            await fixture.jobsManager.callElectActiveTranscoder(pricePerSegment)
+
+            // Set params for distribute fees
+            await fixture.jobsManager.setDistributeFeesParams(tAddr, fees, jobCreationRound)
 
             // Set current round so delegator is bonded
             await fixture.roundsManager.setCurrentRound(7)
 
-            // Call updateTranscoderFeePool via transaction from JobsManager
+            // Call updateTranscoderFeePool via transaction from JobsManager. Fee pool at jobCreationRound updated with fees
             await fixture.jobsManager.distributeFees()
 
             // Set minted tokens for a call to reward
-            await fixture.minter.setMintedTokens(mintedTokens)
+            await fixture.minter.setReward(mintedTokens)
 
             // Transcoder calls reward
             await bondingManager.reward({from: tAddr})
@@ -314,6 +317,64 @@ contract("BondingManager", accounts => {
             const delegatorRewardShare = Math.floor((2000 * delegatorsRewardShare) / transcoderTotalStake)
             const expDelegatorStake = add(2000, delegatorFeeShare, delegatorRewardShare).toString()
             await bondingManager.updateDelegatorStake(7, {from: dAddr})
+
+            const delegatorStake = await bondingManager.getDelegatorBondedAmount(dAddr)
+            assert.equal(delegatorStake.toString(), expDelegatorStake, "delegator stake incorrect")
+        })
+
+        it("should throw if the end round is the same as the last stake update round", async () => {
+            await bondingManager.updateDelegatorStake(7, {from: dAddr})
+            await expectThrow(bondingManager.updateDelegatorStake(7, {from: dAddr}))
+        })
+
+        it("should update the delegator's stake through the end round when there are multiple token pools to claim from", async () => {
+            const transcoderTotalStake2 = 4000 + fees + mintedTokens
+            const fees2 = 400
+            const mintedTokens2 = 600
+            const jobCreationRound2 = 8
+
+            // Set active transcoders
+            await fixture.roundsManager.initializeRound()
+            // Set current round to jobCreationRound2
+            await fixture.roundsManager.setCurrentRound(jobCreationRound2)
+            // Set the totalStake for the fee pool at jobCreationRound2
+            await fixture.jobsManager.callElectActiveTranscoder(pricePerSegment)
+
+            // Set params for distribute fees
+            await fixture.jobsManager.setDistributeFeesParams(tAddr, fees2, jobCreationRound2)
+
+            // Call updateTranscoderFeePool via transaction from JobsManager. Fee pool at jobCreationRound2 updated with fees2
+            await fixture.jobsManager.distributeFees()
+
+            // Set minted tokens for a call to reward
+            await fixture.minter.setReward(mintedTokens2)
+
+            // Transcoder calls reward
+            await bondingManager.reward({from: tAddr})
+
+            // 15
+            const delegatorsFeeShare1 = Math.floor((fees * feeShare) / 100)
+            // 7
+            const delegatorFeeShare1 = Math.floor((2000 * delegatorsFeeShare1) / transcoderTotalStake)
+
+            // 20
+            const delegatorsFeeShare2 = Math.floor((fees2 * feeShare) / 100)
+            // 8
+            const delegatorFeeShare2 = Math.floor((2000 * delegatorsFeeShare2) / transcoderTotalStake2)
+
+            // 450
+            const delegatorsRewardShare1 = Math.floor((mintedTokens * (100 - blockRewardCut)) / 100)
+            // 225
+            const delegatorRewardShare1 = Math.floor((2000 * delegatorsRewardShare1) / transcoderTotalStake)
+
+            // 540
+            const delegatorsRewardShare2 = Math.floor((mintedTokens2 * (100 - blockRewardCut)) / 100)
+            // 250
+            const delegatorRewardShare2 = Math.floor((add(2000, delegatorRewardShare1).toNumber() * delegatorsRewardShare2) / transcoderTotalStake2)
+
+            // 2490
+            const expDelegatorStake = add(2000, delegatorFeeShare1, delegatorRewardShare1, delegatorFeeShare2, delegatorRewardShare2).toString()
+            await bondingManager.updateDelegatorStake(8, {from: dAddr})
 
             const delegatorStake = await bondingManager.getDelegatorBondedAmount(dAddr)
             assert.equal(delegatorStake.toString(), expDelegatorStake, "delegator stake incorrect")
@@ -350,10 +411,12 @@ contract("BondingManager", accounts => {
             // Delegator bonds to transcoder
             await bondingManager.bond(2000, tAddr, {from: dAddr})
 
-            await fixture.jobsManager.setDistributeFeesParams(tAddr, fees, jobCreationRound, transcoderTotalStake)
-
             // Set active transcoders
             await fixture.roundsManager.initializeRound()
+            await fixture.roundsManager.setCurrentRound(jobCreationRound)
+            await fixture.jobsManager.callElectActiveTranscoder(pricePerSegment)
+
+            await fixture.jobsManager.setDistributeFeesParams(tAddr, fees, jobCreationRound)
 
             // Set current round so delegator is bonded
             await fixture.roundsManager.setCurrentRound(7)

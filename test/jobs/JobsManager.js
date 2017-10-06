@@ -153,8 +153,6 @@ contract("JobsManager", accounts => {
             assert.equal(jTranscoderAddress, electedTranscoder, "transcoder address incorrect")
             const jCreationRound = await jobsManager.getJobCreationRound(0)
             assert.equal(jCreationRound, creationRound, "creation round incorrect")
-            const jTranscoderTotalStake = await jobsManager.getJobTranscoderTotalStake(0)
-            assert.equal(jTranscoderTotalStake, transcoderTotalStake, "transcoder total stake incorrect")
             const jEndBlock = await jobsManager.getJobEndBlock(0)
             assert.equal(jEndBlock, 0, "end block incorrect")
             const jEscrow = await jobsManager.getJobEscrow(0)

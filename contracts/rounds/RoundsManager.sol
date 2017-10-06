@@ -3,6 +3,7 @@ pragma solidity ^0.4.13;
 import "../ManagerProxyTarget.sol";
 import "./IRoundsManager.sol";
 import "../bonding/IBondingManager.sol";
+import "../token/IMinter.sol";
 
 import "zeppelin-solidity/contracts/math/SafeMath.sol";
 
@@ -44,6 +45,7 @@ contract RoundsManager is ManagerProxyTarget, IRoundsManager {
         lastInitializedRound = currentRound();
 
         bondingManager().setActiveTranscoders();
+        minter().setCurrentRewardTokens();
 
         return true;
     }
@@ -82,5 +84,9 @@ contract RoundsManager is ManagerProxyTarget, IRoundsManager {
      */
     function bondingManager() internal constant returns (IBondingManager) {
         return IBondingManager(controller.getContract(keccak256("BondingManager")));
+    }
+
+    function minter() internal constant returns (IMinter) {
+        return IMinter(controller.getContract(keccak256("Minter")));
     }
 }

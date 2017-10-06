@@ -52,7 +52,6 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         address broadcasterAddress;           // Address of broadcaster that requestes a transcoding job
         address transcoderAddress;            // Address of transcoder selected for the job
         uint256 creationRound;                // Round that a job is created
-        uint256 transcoderTotalStake;         // Transcoder's total stake at the time of job assignment
         uint256 endBlock;                     // Block at which the job is ended and considered inactive
         Claim[] claims;                       // Claims submitted for this job
         uint256 escrow;                       // Claim fees before verification and slashing periods are complete
@@ -178,7 +177,6 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         job.broadcasterAddress = msg.sender;
         job.transcoderAddress = electedTranscoder;
         job.creationRound = roundsManager().currentRound();
-        job.transcoderTotalStake = bondingManager().activeTranscoderTotalStake(electedTranscoder);
 
         NewJob(electedTranscoder, msg.sender, numJobs, _streamId, _transcodingOptions);
 
@@ -438,7 +436,7 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         // Deduct fees from escrow
         job.escrow = job.escrow.sub(fees);
         // Add fees to transcoder's fee pool
-        bondingManager().updateTranscoderFeePool(msg.sender, fees, job.creationRound, job.transcoderTotalStake);
+        bondingManager().updateTranscoderFeePool(msg.sender, fees, job.creationRound);
 
         // Set claim as complete
         claim.status = ClaimStatus.Complete;
@@ -484,10 +482,6 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
 
     function getJobCreationRound(uint256 _jobId) public constant returns (uint256) {
         return jobs[_jobId].creationRound;
-    }
-
-    function getJobTranscoderTotalStake(uint256 _jobId) public constant returns (uint256) {
-        return jobs[_jobId].transcoderTotalStake;
     }
 
     function getJobEndBlock(uint256 _jobId) public constant returns (uint256) {

@@ -48,11 +48,10 @@ contract JobsManagerMock is IJobsManager {
         dataHashes = _dataHashes;
     }
 
-    function setDistributeFeesParams(address _transcoder, uint256 _fees, uint256 _round, uint256 _transcoderTotalStake) external {
+    function setDistributeFeesParams(address _transcoder, uint256 _fees, uint256 _round) external {
         transcoder = _transcoder;
         fees = _fees;
         round = _round;
-        transcoderTotalStake = _transcoderTotalStake;
     }
 
     function setTranscoder(address _transcoder) external {
@@ -84,7 +83,7 @@ contract JobsManagerMock is IJobsManager {
     }
 
     function distributeFees() public returns (bool) {
-        return bondingManager.updateTranscoderFeePool(transcoder, fees, round, transcoderTotalStake);
+        return bondingManager.updateTranscoderFeePool(transcoder, fees, round);
     }
 
     function missedVerificationSlash() public returns (bool) {
@@ -101,5 +100,9 @@ contract JobsManagerMock is IJobsManager {
 
     function receiveVerification(uint256 _jobId, uint256 _claimId, uint256 _segmentNumber, bool _result) external returns (bool) {
         return true;
+    }
+
+    function callElectActiveTranscoder(uint256 _maxPricePerSegment) external {
+        bondingManager.electActiveTranscoder(_maxPricePerSegment);
     }
 }

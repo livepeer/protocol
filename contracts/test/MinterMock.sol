@@ -4,17 +4,25 @@ import "../token/IMinter.sol";
 
 
 contract MinterMock is IMinter {
-    uint256 mintedTokens;
+    uint256 reward;
 
-    function setMintedTokens(uint256 _amount) external {
-        mintedTokens = _amount;
+    function setReward(uint256 _amount) external {
+        reward = _amount;
     }
 
-    function mint(uint256 _activeStake, uint256 _totalActiveStake) external returns (uint256) {
-        return mintedTokens;
+    function createReward(uint256 _fracNum, uint256 _fracDenom) external returns (uint256) {
+        return reward;
     }
 
     function transferTokens(address _to, uint256 _amount) external returns (bool) {
+        return true;
+    }
+
+    function addToRedistributionPool(uint256 _amount) external returns (bool) {
+        return true;
+    }
+
+    function setCurrentRewardTokens() external returns (bool) {
         return true;
     }
 }
