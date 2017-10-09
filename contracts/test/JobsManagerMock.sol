@@ -83,7 +83,7 @@ contract JobsManagerMock is IJobsManager {
     }
 
     function distributeFees() public returns (bool) {
-        return bondingManager.updateTranscoderFeePool(transcoder, fees, round);
+        return bondingManager.updateTranscoderWithFees(transcoder, fees, round);
     }
 
     function missedVerificationSlash() public returns (bool) {

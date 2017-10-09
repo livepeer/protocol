@@ -436,7 +436,7 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         // Deduct fees from escrow
         job.escrow = job.escrow.sub(fees);
         // Add fees to transcoder's fee pool
-        bondingManager().updateTranscoderFeePool(msg.sender, fees, job.creationRound);
+        bondingManager().updateTranscoderWithFees(msg.sender, fees, job.creationRound);
 
         // Set claim as complete
         claim.status = ClaimStatus.Complete;

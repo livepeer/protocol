@@ -8,7 +8,7 @@ pragma solidity ^0.4.13;
 contract IBondingManager {
     // External functions
     function setActiveTranscoders() external returns (bool);
-    function updateTranscoderFeePool(address _transcoder, uint256 _fees, uint256 _round) external returns (bool);
+    function updateTranscoderWithFees(address _transcoder, uint256 _fees, uint256 _round) external returns (bool);
     function slashTranscoder(address _transcoder, address _finder, uint64 _slashAmount, uint64 _finderFee) external returns (bool);
     function electActiveTranscoder(uint256 _maxPricePerSegment) external returns (address);
 

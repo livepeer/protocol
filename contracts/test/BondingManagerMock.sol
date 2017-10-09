@@ -43,7 +43,7 @@ contract BondingManagerMock is IBondingManager {
         return true;
     }
 
-    function updateTranscoderFeePool(address _transcoder, uint256 _fees, uint256 _round) external returns (bool) {
+    function updateTranscoderWithFees(address _transcoder, uint256 _fees, uint256 _round) external returns (bool) {
         return true;
     }
 
