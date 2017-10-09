@@ -39,7 +39,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         uint256 rewardPool;      // Reward tokens in the pool
         uint256 feePool;         // Fee tokens in the pool. stakeRemaining / totalStake = % of claimable fees in the pool
         uint256 totalStake;      // Transcoder's total stake during the pool's round
-        uint256 stakeRemaining;  // Stake that has not been used to claim fees in the pool
+        uint256 stakeRemaining;  // Stake that has not been used to claim fees from the fee pool
     }
 
     // Represents a delegator's current state
@@ -422,20 +422,24 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             del.bondedAmount = del.bondedAmount.sub(penalty);
         }
 
-        // Add slashed amount to the redistribution pool
-        if (penalty > 0) {
-            minter().addToRedistributionPool(penalty);
-        }
-
         // Set withdraw round for delegators
         transcoders[msg.sender].delegatorWithdrawRound = roundsManager().currentRound().add(unbondingPeriod);
 
         // Remove transcoder from pools
         transcoderPools.removeTranscoder(_transcoder);
 
-        if (_finder != address(0)) {
-            // Award finder fee
-            minter().transferTokens(_finder, penalty.mul(_finderFee).div(100));
+        // Add slashed amount to the redistribution pool
+        if (penalty > 0) {
+            uint256 redistributedAmount = penalty;
+
+            if (_finder != address(0)) {
+                // Award finder fee
+                uint256 finderAmount = penalty.mul(_finderFee).div(100);
+                redistributedAmount = redistributedAmount.sub(finderAmount);
+                minter().transferTokens(_finder, finderAmount);
+            }
+
+            minter().addToRedistributionPool(redistributedAmount);
         }
 
         return true;

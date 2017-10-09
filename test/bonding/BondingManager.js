@@ -502,4 +502,79 @@ contract("BondingManager", accounts => {
             assert.equal(unbondedAmount, expUnbondedAmount, "delegator unbonded amount incorrect")
         })
     })
+
+    describe("withdraw", () => {
+        const tAddr = accounts[1]
+        const dAddr = accounts[2]
+
+        // Transcoder rates
+        const blockRewardCut = 10
+        const feeShare = 5
+        const pricePerSegment = 10
+
+        // Mock distribute fees params
+        const fees = 300
+        const jobCreationRound = 6
+        const transcoderTotalStake = 4000
+
+        beforeEach(async () => {
+            await bondingManager.initialize(UNBONDING_PERIOD, NUM_ACTIVE_TRANSCODERS)
+            await fixture.jobsManager.setBondingManager(bondingManager.address)
+            await fixture.roundsManager.setBondingManager(bondingManager.address)
+            await fixture.roundsManager.setCurrentRoundInitialized(true)
+            await fixture.roundsManager.setCurrentRound(5)
+            await fixture.token.setApproved(true)
+
+            // Register transcoder
+            await bondingManager.transcoder(blockRewardCut, feeShare, pricePerSegment, {from: tAddr})
+
+            // Transcoder bonds
+            await bondingManager.bond(2000, tAddr, {from: tAddr})
+            // Delegator bonds to transcoder
+            await bondingManager.bond(2000, tAddr, {from: dAddr})
+
+            // Set active transcoders
+            await fixture.roundsManager.initializeRound()
+            await fixture.roundsManager.setCurrentRound(jobCreationRound)
+            await fixture.jobsManager.callElectActiveTranscoder(pricePerSegment)
+
+            await fixture.jobsManager.setDistributeFeesParams(tAddr, fees, jobCreationRound)
+
+            // Set current round so delegator is bonded
+            await fixture.roundsManager.setCurrentRound(7)
+
+            // Call updateTranscoderWithFees via transaction from JobsManager
+            await fixture.jobsManager.distributeFees()
+        })
+
+        it("should withdraw unbonded amount", async () => {
+            const delegatorsFeeShare = Math.floor((fees * feeShare) / 100)
+            const delegatorFeeShare = Math.floor((2000 * delegatorsFeeShare) / transcoderTotalStake)
+            const expWithdrawAmount = delegatorFeeShare
+
+            await bondingManager.claimTokenPoolsShares(7, {from: dAddr})
+            const startUnbondedAmount = await bondingManager.getDelegatorUnbondedAmount(dAddr)
+            await bondingManager.withdraw({from: dAddr})
+            const endUnbondedAmount = await bondingManager.getDelegatorUnbondedAmount(dAddr)
+            assert.equal(startUnbondedAmount.sub(endUnbondedAmount).toNumber(), expWithdrawAmount, "withdraw amount incorrect")
+        })
+
+        it("should throw if unbonded amount is zero and bonded tokens are not yet unbonded", async () => {
+            await expectThrow(bondingManager.withdraw({from: dAddr}))
+        })
+
+        it("should withdraw bonded tokens that are now unbonded", async () => {
+            await bondingManager.unbond({from: dAddr})
+            // Withdraw unbonded amount first
+            await bondingManager.withdraw({from: dAddr})
+            const unbondingPeriod = await bondingManager.unbondingPeriod.call()
+            await fixture.roundsManager.setCurrentRound(7 + unbondingPeriod.toNumber())
+            const expWithdrawAmount = 2000
+
+            const startBondedAmount = await bondingManager.getDelegatorBondedAmount(dAddr)
+            await bondingManager.withdraw({from: dAddr})
+            const endBondedAmount = await bondingManager.getDelegatorBondedAmount(dAddr)
+            assert.equal(startBondedAmount.sub(endBondedAmount).toNumber(), expWithdrawAmount, "withdraw amount incorrect")
+        })
+    })
 })
