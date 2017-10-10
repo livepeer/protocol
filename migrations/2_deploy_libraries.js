@@ -2,6 +2,7 @@ const Node = artifacts.require("Node")
 const MinHeap = artifacts.require("MinHeap")
 const MaxHeap = artifacts.require("MaxHeap")
 const TranscoderPools = artifacts.require("TranscoderPools")
+const TokenPools = artifacts.require("TokenPools")
 const MerkleProof = artifacts.require("MerkleProof")
 const ECRecovery = artifacts.require("ECRecovery")
 const JobLib = artifacts.require("JobLib")
@@ -37,6 +38,9 @@ module.exports = function(deployer) {
 
     deployer.deploy(TranscoderPools)
     deployer.link(TranscoderPools, BondingManager)
+
+    deployer.deploy(TokenPools)
+    deployer.link(TokenPools, BondingManager)
 
     deployer.deploy(MerkleProof)
     deployer.link(MerkleProof, JobLib)

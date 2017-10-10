@@ -239,14 +239,14 @@ contract("BondingManager", accounts => {
             await fixture.roundsManager.setCurrentRound(currentRound)
         })
 
-        it("should update transcoder's unbonded amount with fee share", async () => {
-            // Call updateTranscoderWithFees via transaction from JobsManager
-            await fixture.jobsManager.distributeFees()
+        // it("should update transcoder's unbonded amount with fee share", async () => {
+        //     // Call updateTranscoderWithFees via transaction from JobsManager
+        //     await fixture.jobsManager.distributeFees()
 
-            const expUnbondedAmount = Math.floor((fees * (100 - feeShare)) / 100)
-            const unbondedAmount = await bondingManager.getDelegatorUnbondedAmount(tAddr)
-            assert.equal(unbondedAmount, expUnbondedAmount, "transcoder unbonded amount incorrect")
-        })
+        //     const expUnbondedAmount = Math.floor((fees * (100 - feeShare)) / 100)
+        //     const unbondedAmount = await bondingManager.getDelegatorUnbondedAmount(tAddr)
+        //     assert.equal(unbondedAmount, expUnbondedAmount, "transcoder unbonded amount incorrect")
+        // })
 
         it("should only add claimable fees to the fee pool for a round", async () => {
             // Delegator unbonds and claims fee pool share before fees are distributed
@@ -254,8 +254,9 @@ contract("BondingManager", accounts => {
             // Call updateTranscoderWithFees via transaction from JobsManager
             await fixture.jobsManager.distributeFees()
 
+            const transcoderFeeShare = Math.floor((fees * (100 - feeShare)) / 100)
             const delegatorsFeeShare = Math.floor((fees * feeShare) / 100)
-            const expFeePool = Math.floor((2000 * delegatorsFeeShare) / 4000)
+            const expFeePool = Math.floor((2000 * delegatorsFeeShare) / 4000) + transcoderFeeShare
             const feePool = await bondingManager.getTranscoderFeePoolForRound(tAddr, jobCreationRound)
             assert.equal(feePool, expFeePool, "transcoder fee pool incorrect")
         })
@@ -335,6 +336,30 @@ contract("BondingManager", accounts => {
             assert.equal(delegatorStake.toString(), expDelegatorStake, "delegator stake incorrect")
             const unbondedAmount = await bondingManager.getDelegatorUnbondedAmount(dAddr)
             assert.equal(unbondedAmount.toString(), expUnbondedAmount, "delegator unbonded amount incorrect")
+        })
+
+        it("should update the transcoder's stake and unbonded amount through the end round", async () => {
+            // 15
+            const delegatorsFeeShare = Math.floor((fees * feeShare) / 100)
+            // 7
+            const delegatorFeeShare = Math.floor((2000 * delegatorsFeeShare) / transcoderTotalStake)
+            // 285
+            const transcoderFeeShare = fees - delegatorsFeeShare
+            // 450
+            const delegatorsRewardShare = Math.floor((mintedTokens * (100 - blockRewardCut)) / 100)
+            // 225
+            const delegatorRewardShare = Math.floor((2000 * delegatorsRewardShare) / transcoderTotalStake)
+            // 50
+            const transcoderRewardShare = mintedTokens - delegatorsRewardShare
+
+            const expTranscoderStake = add(2000, delegatorRewardShare, transcoderRewardShare)
+            const expUnbondedAmount = add(delegatorFeeShare, transcoderFeeShare)
+            await bondingManager.claimTokenPoolsShares(7, {from: tAddr})
+
+            const transcoderStake = await bondingManager.getDelegatorBondedAmount(tAddr)
+            assert.equal(transcoderStake.toString(), expTranscoderStake, "transcoder stake incorrect")
+            const unbondedAmount = await bondingManager.getDelegatorUnbondedAmount(tAddr)
+            assert.equal(unbondedAmount.toString(), expUnbondedAmount, "transcoder unbonded amount incorrect")
         })
 
         it("should throw if the end round is the same as lastClaimTokenPoolsSharesRound", async () => {
