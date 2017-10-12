@@ -170,8 +170,10 @@ contract("BondingManager", accounts => {
             const pricePerSegment = 10
 
             await bondingManager.initialize(UNBONDING_PERIOD, NUM_ACTIVE_TRANSCODERS)
+            await fixture.jobsManager.setBondingManager(bondingManager.address)
+            await fixture.roundsManager.setBondingManager(bondingManager.address)
             await fixture.roundsManager.setCurrentRoundInitialized(true)
-            await fixture.roundsManager.setCurrentRound(99)
+            await fixture.roundsManager.setCurrentRound(5)
             await fixture.token.setApproved(true)
 
             await bondingManager.transcoder(blockRewardCut, feeShare, pricePerSegment, {from: tAddr0})
@@ -197,6 +199,37 @@ contract("BondingManager", accounts => {
             await bondingManager.bond(0, tAddr1, {from: dAddr})
             const dStartRound = await bondingManager.getDelegatorStartRound(dAddr)
             assert.equal(dStartRound, 101, "start round incorrect")
+        })
+
+        it("should use the unbonded amount if the amount to bond is less than or equal to the unbonded amount", async () => {
+            await bondingManager.bond(100, tAddr0, {from: dAddr})
+
+            const fees = 300
+            const pricePerSegment = 10
+            const jobCreationRound = 6
+            const currentRound = 7
+
+            await fixture.jobsManager.setDistributeFeesParams(tAddr0, fees, jobCreationRound)
+
+            // Set active transcoders
+            await fixture.roundsManager.setCurrentRound(jobCreationRound)
+            await fixture.roundsManager.initializeRound()
+            await fixture.jobsManager.callElectActiveTranscoder(pricePerSegment)
+            await fixture.roundsManager.setCurrentRound(currentRound)
+
+            // Call updateTranscoderWithFees via transaction from JobsManager
+            await fixture.jobsManager.distributeFees()
+            // Claim token pool share
+            await bondingManager.claimTokenPoolsShares(currentRound, {from: dAddr})
+
+            const startUnbondedAmount = await bondingManager.getDelegatorUnbondedAmount(dAddr)
+            await bondingManager.bond(15, tAddr0, {from: dAddr})
+            const endUnbondedAmount = await bondingManager.getDelegatorUnbondedAmount(dAddr)
+
+            assert.equal(startUnbondedAmount.sub(endUnbondedAmount), 15, "unbonded amount used incorrect")
+
+            const bondedAmount = await bondingManager.getDelegatorBondedAmount(dAddr)
+            assert.equal(bondedAmount, 115, "bonded amount incorreect")
         })
     })
 
@@ -239,24 +272,13 @@ contract("BondingManager", accounts => {
             await fixture.roundsManager.setCurrentRound(currentRound)
         })
 
-        // it("should update transcoder's unbonded amount with fee share", async () => {
-        //     // Call updateTranscoderWithFees via transaction from JobsManager
-        //     await fixture.jobsManager.distributeFees()
-
-        //     const expUnbondedAmount = Math.floor((fees * (100 - feeShare)) / 100)
-        //     const unbondedAmount = await bondingManager.getDelegatorUnbondedAmount(tAddr)
-        //     assert.equal(unbondedAmount, expUnbondedAmount, "transcoder unbonded amount incorrect")
-        // })
-
-        it("should only add claimable fees to the fee pool for a round", async () => {
+        it("should add fees to the fee pool for a round", async () => {
             // Delegator unbonds and claims fee pool share before fees are distributed
             await bondingManager.unbond({from: dAddr})
             // Call updateTranscoderWithFees via transaction from JobsManager
             await fixture.jobsManager.distributeFees()
 
-            const transcoderFeeShare = Math.floor((fees * (100 - feeShare)) / 100)
-            const delegatorsFeeShare = Math.floor((fees * feeShare) / 100)
-            const expFeePool = Math.floor((2000 * delegatorsFeeShare) / 4000) + transcoderFeeShare
+            const expFeePool = fees
             const feePool = await bondingManager.getTranscoderFeePoolForRound(tAddr, jobCreationRound)
             assert.equal(feePool, expFeePool, "transcoder fee pool incorrect")
         })

@@ -8,68 +8,69 @@ library TokenPools {
 
     // Represents rewards and fees to be distributed to delegators
     struct Data {
-        uint256 rewardPool;      // Reward tokens in the pool. (totalStake - stakeUsed) / totalStake = % of claimable rewards in the pool
-        uint256 feePool;         // Fee tokens in the pool. (totalStake - stakeUsed) / totalStake = % of claimable fees in the pool
-        uint256 totalStake;      // Transcoder's total stake during the pool's round
-        uint256 usedStake;       // Staked used to claim from fee and reward pools
-        uint8 blockRewardCut;    // Block reward cut for the reward pool
-        uint8 feeShare;          // Fee share for the fee pool
-        bool transcoderClaimed;  // Tracks if a transcoder claimed its share
+        uint256 rewardPool;                // Reward tokens in the pool. (totalStake - stakeUsed) / totalStake = % of claimable rewards in the pool
+        uint256 feePool;                   // Fee tokens in the pool. (totalStake - stakeUsed) / totalStake = % of claimable fees in the pool
+        uint256 totalStake;                // Transcoder's total stake during the pool's round
+        uint256 usedStake;                 // Staked used to claim from fee and reward pools
+        uint8 transcoderBlockRewardCut;    // Block reward cut for the reward pool
+        uint8 transcoderFeeShare;          // Fee share for the fee pool
     }
 
-    function addClaimableFees(TokenPools.Data storage tokenPools, uint256 _fees) internal returns (uint256) {
-        uint256 delegatorsFeeShare = _fees.mul(tokenPools.feeShare).div(100);
-        uint256 transcoderFeeShare = _fees.sub(delegatorsFeeShare);
-        uint256 claimableDelegatorFees = delegatorsFeeShare.mul(tokenPools.totalStake.sub(tokenPools.usedStake)).div(tokenPools.totalStake);
-        uint256 claimableFees = claimableDelegatorFees.add(transcoderFeeShare);
-        tokenPools.feePool = tokenPools.feePool.add(claimableFees);
+    function init(TokenPools.Data storage tokenPools, uint256 _stake, uint8 _blockRewardCut, uint8 _feeShare) internal returns (bool) {
+        tokenPools.totalStake = _stake;
+        tokenPools.transcoderBlockRewardCut = _blockRewardCut;
+        tokenPools.transcoderFeeShare = _feeShare;
 
-        return claimableFees;
+        return true;
     }
 
-    function addClaimableRewards(TokenPools.Data storage tokenPools, uint256 _rewards) internal returns (uint256) {
-        uint256 transcoderRewardShare = _rewards.mul(tokenPools.blockRewardCut).div(100);
-        uint256 delegatorsRewardShare = _rewards.sub(transcoderRewardShare);
-        uint256 claimableDelegatorRewards = delegatorsRewardShare.mul(tokenPools.totalStake.sub(tokenPools.usedStake)).div(tokenPools.totalStake);
-        uint256 claimableRewards = claimableDelegatorRewards.add(transcoderRewardShare);
-        tokenPools.rewardPool = tokenPools.rewardPool.add(claimableRewards);
-
-        return claimableRewards;
-    }
-
-    function transcoderFeePoolShare(TokenPools.Data storage tokenPools, uint256 _stake) internal constant returns (uint256) {
-        uint256 delegatorFees = delegatorFeePoolShare(tokenPools, _stake);
-        return delegatorFees.add(tokenPools.feePool.mul(uint256(100).sub(tokenPools.feeShare)).div(100));
-    }
-
-    function delegatorFeePoolShare(TokenPools.Data storage tokenPools, uint256 _stake) internal constant returns (uint256) {
-        if (tokenPools.feePool == 0) {
+    function unclaimableFees(TokenPools.Data storage tokenPools, uint256 _fees) internal constant returns (uint256) {
+        if (tokenPools.totalStake == 0) {
             return 0;
         } else {
-            if (tokenPools.transcoderClaimed) {
-                return tokenPools.feePool.mul(_stake).div(tokenPools.totalStake.sub(tokenPools.usedStake));
-            } else {
-                uint256 delegatorFees = tokenPools.feePool.mul(tokenPools.feeShare).div(100);
-                return delegatorFees.mul(_stake).div(tokenPools.totalStake.sub(tokenPools.usedStake));
-            }
+            uint256 delegatorsFeeShare = _fees.mul(tokenPools.transcoderFeeShare).div(100);
+            return delegatorsFeeShare.mul(tokenPools.usedStake).div(tokenPools.totalStake);
         }
     }
 
-    function transcoderRewardPoolShare(TokenPools.Data storage tokenPools, uint256 _stake) internal constant returns (uint256) {
-        uint256 delegatorRewards = delegatorRewardPoolShare(tokenPools, _stake);
-        return delegatorRewards.add(tokenPools.rewardPool.mul(tokenPools.blockRewardCut).div(100));
-    }
-
-    function delegatorRewardPoolShare(TokenPools.Data storage tokenPools, uint256 _stake) internal constant returns (uint256) {
-        if (tokenPools.rewardPool == 0) {
+    function unclaimableRewards(TokenPools.Data storage tokenPools, uint256 _rewards) internal constant returns (uint256) {
+        if (tokenPools.totalStake == 0) {
             return 0;
         } else {
-            if (tokenPools.transcoderClaimed) {
-                return tokenPools.rewardPool.mul(_stake).div(tokenPools.totalStake.sub(tokenPools.usedStake));
-            } else {
-                uint256 delegatorRewards = tokenPools.rewardPool.mul(uint256(100).sub(tokenPools.blockRewardCut)).div(100);
-                return delegatorRewards.mul(_stake).div(tokenPools.totalStake.sub(tokenPools.usedStake));
-            }
+            uint256 delegatorsRewardShare = _rewards.mul(uint256(100).sub(tokenPools.transcoderBlockRewardCut)).div(100);
+            return delegatorsRewardShare.mul(tokenPools.usedStake).div(tokenPools.totalStake);
+        }
+    }
+
+    function feePoolShare(TokenPools.Data storage tokenPools, uint256 _stake, bool _isTranscoder) internal constant returns (uint256) {
+        uint256 transcoderFees = 0;
+        uint256 delegatorFees = 0;
+
+        if (tokenPools.totalStake > 0) {
+            transcoderFees = tokenPools.feePool.mul(uint256(100).sub(tokenPools.transcoderFeeShare)).div(100);
+            delegatorFees = tokenPools.feePool.sub(transcoderFees).mul(_stake).div(tokenPools.totalStake);
+        }
+
+        if (_isTranscoder) {
+            return delegatorFees.add(transcoderFees);
+        } else {
+            return delegatorFees;
+        }
+    }
+
+    function rewardPoolShare(TokenPools.Data storage tokenPools, uint256 _stake, bool _isTranscoder) internal constant returns (uint256) {
+        uint256 transcoderRewards = 0;
+        uint256 delegatorRewards = 0;
+
+        if (tokenPools.totalStake > 0) {
+            transcoderRewards = tokenPools.rewardPool.mul(tokenPools.transcoderBlockRewardCut).div(100);
+            delegatorRewards = tokenPools.rewardPool.sub(transcoderRewards).mul(_stake).div(tokenPools.totalStake);
+        }
+
+        if (_isTranscoder) {
+            return delegatorRewards.add(transcoderRewards);
+        } else {
+            return delegatorRewards;
         }
     }
 }
