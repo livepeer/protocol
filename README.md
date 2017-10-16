@@ -1,3 +1,5 @@
+[![CircleCI](https://img.shields.io/circleci/project/github/RedSparr0w/node-csgo-parser.svg)](https://circleci.com/gh/livepeer/protocol/tree/master)
+
 # Livepeer Protocol
 
 The Livepeer Protocol consists of the on-chain smart contracts that govern the logic of:
