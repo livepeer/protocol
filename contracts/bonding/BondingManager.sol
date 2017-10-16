@@ -273,18 +273,20 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         autoClaimTokenPoolsShares
         returns (bool)
     {
+        // Delegator must either have unbonded tokens or be in the unbonded state
+        require(delegators[msg.sender].unbondedAmount > 0 || delegatorStatus(msg.sender) == DelegatorStatus.Unbonded);
+
         uint256 amount = 0;
 
         if (delegators[msg.sender].unbondedAmount > 0) {
             // Withdraw unbonded amount
-            amount = delegators[msg.sender].unbondedAmount;
+            amount = amount.add(delegators[msg.sender].unbondedAmount);
             delegators[msg.sender].unbondedAmount = 0;
-        } else {
-            // Delegator must be unbonded if there is not unbonded tokens to withdraw
-            require(delegatorStatus(msg.sender) == DelegatorStatus.Unbonded);
+        }
 
+        if (delegatorStatus(msg.sender) == DelegatorStatus.Unbonded) {
             // Withdraw bonded amount which is now unbonded
-            amount = delegators[msg.sender].bondedAmount;
+            amount = amount.add(delegators[msg.sender].bondedAmount);
             delete delegators[msg.sender];
         }
 
