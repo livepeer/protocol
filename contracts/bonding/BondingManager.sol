@@ -3,6 +3,7 @@ pragma solidity ^0.4.13;
 import "../ManagerProxyTarget.sol";
 import "./IBondingManager.sol";
 import "./libraries/TranscoderPools.sol";
+import "./libraries/TokenPools.sol";
 import "../token/ILivepeerToken.sol";
 import "../token/IMinter.sol";
 import "../rounds/IRoundsManager.sol";
@@ -14,6 +15,7 @@ import "zeppelin-solidity/contracts/math/SafeMath.sol";
 contract BondingManager is ManagerProxyTarget, IBondingManager {
     using SafeMath for uint256;
     using TranscoderPools for TranscoderPools.TranscoderPools;
+    using TokenPools for TokenPools.Data;
 
     // Time between unbonding and possible withdrawl in rounds
     uint64 public unbondingPeriod;
@@ -28,40 +30,21 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         uint8 pendingBlockRewardCut;                         // Pending block reward cut for next round if the transcoder is active
         uint8 pendingFeeShare;                               // Pending fee share for next round if the transcoder is active
         uint256 pendingPricePerSegment;                      // Pending price per segment for next round if the transcoder is active
-        mapping (uint256 => TokenPools) tokenPoolsPerRound;  // Mapping of round => token pools for the round
+        mapping (uint256 => TokenPools.Data) tokenPoolsPerRound;  // Mapping of round => token pools for the round
     }
 
     // The various states a transcoder can be in
     enum TranscoderStatus { NotRegistered, Registered, Resigned }
 
-    // Represents rewards and fees to be distributed to delegators
-    struct TokenPools {
-        RewardPool rewardPool;
-        ClaimFees[] feePool;
-    }
-
-    // Represents rewards to be distributed to delegators
-    struct RewardPool {
-        uint256 rewards;
-        uint256 transcoderTotalStake;
-    }
-
-    // Represents fees to be distributed to delegators
-    struct ClaimFees {
-        uint256 claimBlock;
-        uint256 fees;
-        uint256 transcoderTotalStake;
-    }
-
     // Represents a delegator's current state
     struct Delegator {
-        uint256 bondedAmount;              // The amount of bonded tokens
-        address delegateAddress;           // The address delegated to
-        uint256 delegatedAmount;           // The amount of tokens delegated to the delegator
-        uint256 startRound;                // The round the delegator transitions to bonded phase
-        uint256 delegateBlock;             // The block the delegator bonds to somone
-        uint256 withdrawRound;             // The round at which a delegator can withdraw
-        uint256 lastStakeUpdateRound;      // The last round the delegator transitioned states
+        uint256 bondedAmount;                    // The amount of bonded tokens
+        uint256 unbondedAmount;                  // The amount of unbonded tokens
+        address delegateAddress;                 // The address delegated to
+        uint256 delegatedAmount;                 // The amount of tokens delegated to the delegator
+        uint256 startRound;                      // The round the delegator transitions to bonded phase and is delegated to someone
+        uint256 withdrawRound;                   // The round at which a delegator can withdraw
+        uint256 lastClaimTokenPoolsSharesRound;  // The last round during which the delegator claimed its share of a transcoder's reward and fee pools
     }
 
     // The various states a delegator can be in
@@ -71,7 +54,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     mapping (address => Delegator) delegators;
     mapping (address => Transcoder) transcoders;
 
-    // Active and candidate transcoder pools
+    // Candidate and reserve transcoder pools
     TranscoderPools.TranscoderPools transcoderPools;
 
     // Current active transcoders for current round
@@ -101,18 +84,9 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         _;
     }
 
-    // Update delegator stake with rewards and fees from past rounds
-    modifier updateDelegatorStakeWithRewardsAndFees() {
-        Delegator storage del = delegators[msg.sender];
-
-        if (delegatorStatus(msg.sender) == DelegatorStatus.Bonded && transcoderStatus(del.delegateAddress) == TranscoderStatus.Registered) {
-            uint256 rewardsAndFees = delegatorTokenPoolsShare(del);
-            del.bondedAmount = del.bondedAmount.add(rewardsAndFees);
-            delegators[del.delegateAddress].delegatedAmount = delegators[del.delegateAddress].delegatedAmount.add(rewardsAndFees);
-        }
-
-        del.lastStakeUpdateRound = roundsManager().currentRound();
-
+    // Automatically claim token pools shares from lastClaimTokenPoolsSharesRound through the current round
+    modifier autoClaimTokenPoolsShares() {
+        updateDelegatorWithTokenPoolsShares(msg.sender, roundsManager().currentRound());
         _;
     }
 
@@ -193,7 +167,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         afterInitialization
         whenSystemNotPaused
         currentRoundInitialized
-        updateDelegatorStakeWithRewardsAndFees
+        autoClaimTokenPoolsShares
         returns (bool)
     {
         Delegator storage del = delegators[msg.sender];
@@ -202,8 +176,6 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             // New delegate
             // Set start round
             del.startRound = roundsManager().currentRound().add(1);
-            // Set delegate block
-            del.delegateBlock = block.number;
         }
 
         // Amount to delegate
@@ -213,8 +185,6 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             // Changing delegate
             // Set start round
             del.startRound = roundsManager().currentRound().add(1);
-            // Set delegate block
-            del.delegateBlock = block.number;
             // Update amount to delegate with previous delegation amount
             delegationAmount = delegationAmount.add(del.bondedAmount);
             // Decrease old delegate's delegated amount
@@ -240,9 +210,19 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         }
 
         if (_amount > 0) {
-            // Only transfer tokens if _amount is greater than 0
-            // Transfer the token to the Minter
-            livepeerToken().transferFrom(msg.sender, minter(), _amount);
+            if (_amount > del.unbondedAmount) {
+                // If amount to bond is greater than the delegator's unbonded amount
+                // use the delegator's unbonded amount and transfer the rest from the sender
+                uint256 transferAmount = _amount.sub(del.unbondedAmount);
+                // Set unbonded amount to 0
+                del.unbondedAmount = 0;
+                // Transfer the token to the Minter
+                livepeerToken().transferFrom(msg.sender, minter(), transferAmount);
+            } else {
+                // If the amount to bond is less than or equal to the delegator's unbonded amount
+                // just use the delegator's unbonded amount
+                del.unbondedAmount = del.unbondedAmount.sub(_amount);
+            }
         }
 
         return true;
@@ -257,7 +237,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         afterInitialization
         whenSystemNotPaused
         currentRoundInitialized
-        updateDelegatorStakeWithRewardsAndFees
+        autoClaimTokenPoolsShares
         returns (bool)
     {
         // Sender must be in bonded state
@@ -285,14 +265,32 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     /**
      * @dev Withdraws withdrawable funds back to the caller after unbonding period.
      */
-    function withdraw() external afterInitialization whenSystemNotPaused currentRoundInitialized returns (bool) {
-        // Delegator must be unbonded
-        require(delegatorStatus(msg.sender) == DelegatorStatus.Unbonded);
+    function withdraw()
+        external
+        afterInitialization
+        whenSystemNotPaused
+        currentRoundInitialized
+        autoClaimTokenPoolsShares
+        returns (bool)
+    {
+        // Delegator must either have unbonded tokens or be in the unbonded state
+        require(delegators[msg.sender].unbondedAmount > 0 || delegatorStatus(msg.sender) == DelegatorStatus.Unbonded);
 
-        // Ask Minter to transfer tokens to sender
-        minter().transferTokens(msg.sender, delegators[msg.sender].bondedAmount);
+        uint256 amount = 0;
 
-        delete delegators[msg.sender];
+        if (delegators[msg.sender].unbondedAmount > 0) {
+            // Withdraw unbonded amount
+            amount = amount.add(delegators[msg.sender].unbondedAmount);
+            delegators[msg.sender].unbondedAmount = 0;
+        }
+
+        if (delegatorStatus(msg.sender) == DelegatorStatus.Unbonded) {
+            // Withdraw bonded amount which is now unbonded
+            amount = amount.add(delegators[msg.sender].bondedAmount);
+            delete delegators[msg.sender];
+        }
+
+        minter().transferTokens(msg.sender, amount);
 
         return true;
     }
@@ -352,10 +350,11 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // Set last round that transcoder called reward
         transcoders[msg.sender].lastRewardRound = currentRound;
 
-        // Mint token reward
-        uint256 mintedTokens = minter().mint(activeTranscoders[activeTranscoderPositions[msg.sender]].key, totalActiveTranscoderStake);
+        // Create reward based on active transcoder's stake relative to the total active stake
+        // rewardTokens = (current mintable tokens for the round * active transcoder stake) / total active stake
+        uint256 rewardTokens = minter().createReward(activeTranscoders[activeTranscoderPositions[msg.sender]].key, totalActiveTranscoderStake);
 
-        updateTranscoderWithRewards(msg.sender, mintedTokens, currentRound);
+        updateTranscoderWithRewards(msg.sender, rewardTokens, currentRound);
 
         return true;
     }
@@ -365,11 +364,10 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * @param _transcoder Transcoder address
      * @param _fees Fees from verified job claims
      */
-    function updateTranscoderFeePool(
+    function updateTranscoderWithFees(
         address _transcoder,
         uint256 _fees,
-        uint256 _claimBlock,
-        uint256 _transcoderTotalStake
+        uint256 _round
     )
         external
         afterInitialization
@@ -380,7 +378,18 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // Transcoder must be registered
         require(transcoderStatus(_transcoder) == TranscoderStatus.Registered);
 
-        updateTranscoderWithFees(_transcoder, _fees, roundsManager().currentRound(), _claimBlock, _transcoderTotalStake);
+        Transcoder storage t = transcoders[_transcoder];
+        Delegator storage del = delegators[_transcoder];
+
+        TokenPools.Data storage tokenPools = t.tokenPoolsPerRound[_round];
+        // Add fees to fee pool
+        tokenPools.feePool = tokenPools.feePool.add(_fees);
+        // Compute claimable and unclaimable fees
+        uint256 unclaimableFees = tokenPools.unclaimableFees(_fees);
+        // Add unclaimable fees to the redistribution pool
+        if (unclaimableFees > 0) {
+            minter().addToRedistributionPool(unclaimableFees);
+        }
 
         return true;
     }
@@ -409,7 +418,20 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
         uint256 penalty = delegators[_transcoder].bondedAmount.mul(_slashAmount).div(100);
 
-        decreaseTranscoderStake(_transcoder, penalty);
+        Delegator storage del = delegators[_transcoder];
+
+        if (penalty > del.bondedAmount) {
+            // Decrease transcoder's total stake by transcoder's stake
+            transcoderPools.decreaseTranscoderStake(_transcoder, del.bondedAmount);
+            // Set transcoder's bond to 0 since
+            // the penalty is greater than its stake
+            del.bondedAmount = 0;
+        } else {
+            // Decrease transcoder's total stake by the penalty
+            transcoderPools.decreaseTranscoderStake(_transcoder, penalty);
+            // Decrease transcoder's stake
+            del.bondedAmount = del.bondedAmount.sub(penalty);
+        }
 
         // Set withdraw round for delegators
         transcoders[msg.sender].delegatorWithdrawRound = roundsManager().currentRound().add(unbondingPeriod);
@@ -417,9 +439,18 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // Remove transcoder from pools
         transcoderPools.removeTranscoder(_transcoder);
 
-        if (_finder != address(0)) {
-            // Award finder fee
-            minter().transferTokens(_finder, penalty.mul(_finderFee).div(100));
+        // Add slashed amount to the redistribution pool
+        if (penalty > 0) {
+            uint256 redistributedAmount = penalty;
+
+            if (_finder != address(0)) {
+                // Award finder fee
+                uint256 finderAmount = penalty.mul(_finderFee).div(100);
+                redistributedAmount = redistributedAmount.sub(finderAmount);
+                minter().transferTokens(_finder, finderAmount);
+            }
+
+            minter().addToRedistributionPool(redistributedAmount);
         }
 
         return true;
@@ -430,7 +461,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * Returns address of elected active transcoder and its price per segment
      * @param _maxPricePerSegment Max price (in LPT base units) per segment of a stream
      */
-    function electActiveTranscoder(uint256 _maxPricePerSegment) external constant returns (address) {
+    function electActiveTranscoder(uint256 _maxPricePerSegment) external returns (address) {
         // Create array to store available transcoders charging an acceptable price per segment
         Node.Node[] memory availableTranscoders = new Node.Node[](activeTranscoders.length);
         // Keep track of the actual number of available transcoders
@@ -451,6 +482,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             // There is no currently available transcoder that charges a price per segment less than or equal to the max price per segment for a job
             return address(0);
         } else {
+            address electedTranscoder = availableTranscoders[numAvailableTranscoders - 1].id;
+
             // Pseudorandomly pick an available transcoder weighted by its stake relative to the total stake of all available transcoders
             uint256 r = uint256(block.blockhash(block.number - 1)) % totalAvailableTranscoderStake;
             uint256 s = 0;
@@ -459,27 +492,84 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
                 s = s.add(availableTranscoders[j].key);
 
                 if (s > r) {
-                    return availableTranscoders[j].id;
+                    electedTranscoder = availableTranscoders[j].id;
+                    break;
                 }
             }
 
-            return availableTranscoders[numAvailableTranscoders - 1].id;
-        }
+            // Set total stake for fee pool for current round
+            uint256 currentRound = roundsManager().currentRound();
+            TokenPools.Data storage tokenPools = transcoders[electedTranscoder].tokenPoolsPerRound[currentRound];
+            if (tokenPools.totalStake == 0) {
+                tokenPools.init(activeTranscoderTotalStake(electedTranscoder), transcoders[electedTranscoder].blockRewardCut, transcoders[electedTranscoder].feeShare);
+            }
 
-        return address(0);
+            return electedTranscoder;
+        }
     }
 
     /*
-     * @dev Returns bonded stake for a delegator. Accounts for token distribution since last state transition
+     * @dev Claim token pools shares for a delegator from its lastClaimTokenPoolsSharesRound through the end round
+     * @param _endRound The last round for which to claim token pools shares for a delegator
+     */
+    function claimTokenPoolsShares(uint256 _endRound) external returns (bool) {
+        require(delegators[msg.sender].lastClaimTokenPoolsSharesRound < _endRound);
+
+        return updateDelegatorWithTokenPoolsShares(msg.sender, _endRound);
+    }
+
+    /*
+     * @dev Returns bonded stake for a delegator. Includes reward pool shares since lastClaimTokenPoolsSharesRound
      * @param _delegator Address of delegator
      */
     function delegatorStake(address _delegator) public constant returns (uint256) {
         Delegator storage del = delegators[_delegator];
 
+        // Add rewards from the rounds during which the delegator was bonded to a transcoder
         if (delegatorStatus(_delegator) == DelegatorStatus.Bonded && transcoderStatus(del.delegateAddress) == TranscoderStatus.Registered) {
-            return del.bondedAmount.add(delegatorTokenPoolsShare(del));
+            uint256 currentRound = roundsManager().currentRound();
+            uint256 currentBondedAmount = del.bondedAmount;
+
+            for (uint256 i = del.lastClaimTokenPoolsSharesRound + 1; i <= currentRound; i++) {
+                TokenPools.Data storage tokenPools = transcoders[del.delegateAddress].tokenPoolsPerRound[i];
+                bool isTranscoder = _delegator == del.delegateAddress;
+                // Calculate and add reward pool share from this round
+                currentBondedAmount = currentBondedAmount.add(tokenPools.rewardPoolShare(currentBondedAmount, isTranscoder));
+            }
+
+            return currentBondedAmount;
         } else {
             return del.bondedAmount;
+        }
+    }
+
+    /*
+     * @dev Returns unbonded amount for a delegator. Includes fee pool shares since lastClaimTokenPoolsSharesRound
+     * @param _delegator Address of delegator
+     */
+    function delegatorUnbondedAmount(address _delegator) public constant returns (uint256) {
+        Delegator storage del = delegators[_delegator];
+
+        // Add fees from the rounds during which the delegator was bonded to a transcoder
+        if (delegatorStatus(_delegator) == DelegatorStatus.Bonded && transcoderStatus(del.delegateAddress) == TranscoderStatus.Registered) {
+            uint256 currentRound = roundsManager().currentRound();
+            uint256 currentUnbondedAmount = del.unbondedAmount;
+            uint256 currentBondedAmount = del.bondedAmount;
+
+            for (uint256 i = del.lastClaimTokenPoolsSharesRound + 1; i <= currentRound; i++) {
+                TokenPools.Data storage tokenPools = transcoders[del.delegateAddress].tokenPoolsPerRound[i];
+
+                bool isTranscoder = _delegator == del.delegateAddress;
+                // Calculate and add fee pool share from this round
+                currentUnbondedAmount = currentUnbondedAmount.add(tokenPools.feePoolShare(currentBondedAmount, isTranscoder));
+                // Calculate new bonded amount with rewards from this round. Updated bonded amount used
+                // to calculate fee pool share in next round
+                currentBondedAmount = currentBondedAmount.add(tokenPools.rewardPoolShare(currentBondedAmount, isTranscoder));
+            }
+
+            return currentUnbondedAmount;
+        } else {
+            return del.unbondedAmount;
         }
     }
 
@@ -589,10 +679,30 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         return transcoders[_transcoder].pendingPricePerSegment;
     }
 
+    function getTranscoderRewardPoolForRound(address _transcoder, uint256 _round) public constant returns (uint256) {
+        return transcoders[_transcoder].tokenPoolsPerRound[_round].rewardPool;
+    }
+
+    function getTranscoderFeePoolForRound(address _transcoder, uint256 _round) public constant returns (uint256) {
+        return transcoders[_transcoder].tokenPoolsPerRound[_round].feePool;
+    }
+
+    function getTranscoderTotalStakeForRound(address _transcoder, uint256 _round) public constant returns (uint256) {
+        return transcoders[_transcoder].tokenPoolsPerRound[_round].totalStake;
+    }
+
+    function getTranscoderUsedStakeForRound(address _transcoder, uint256 _round) public constant returns (uint256) {
+        return transcoders[_transcoder].tokenPoolsPerRound[_round].usedStake;
+    }
+
     // Delegator getters
 
     function getDelegatorBondedAmount(address _delegator) public constant returns (uint256) {
         return delegators[_delegator].bondedAmount;
+    }
+
+    function getDelegatorUnbondedAmount(address _delegator) public constant returns (uint256) {
+        return delegators[_delegator].unbondedAmount;
     }
 
     function getDelegatorDelegateAddress(address _delegator) public constant returns (address) {
@@ -607,16 +717,12 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         return delegators[_delegator].startRound;
     }
 
-    function getDelegatorDelegateBlock(address _delegator) public constant returns (uint256) {
-        return delegators[_delegator].delegateBlock;
-    }
-
     function getDelegatorWithdrawRound(address _delegator) public constant returns (uint256) {
         return delegators[_delegator].withdrawRound;
     }
 
-    function getDelegatorLastStakeUpdateRound(address _delegator) public constant returns (uint256) {
-        return delegators[_delegator].lastStakeUpdateRound;
+    function getDelegatorLastClaimTokenPoolsSharesRound(address _delegator) public constant returns (uint256) {
+        return delegators[_delegator].lastClaimTokenPoolsSharesRound;
     }
 
     /*
@@ -650,149 +756,71 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     }
 
     /*
-     * @dev Increase a transcoder's stake as a delegator and its total stake in the transcoder pools
-     * @param _transcoder Address of transcoder
-     * @param _totalAmount Total amount to increase transcoder's total stake
-     * @param _transcoderShare Transcoder's share of the total amount
-     * @param _round Round that transcoder's stake is increased
-     */
-    function increaseTranscoderStake(address _transcoder, uint256 _totalAmount, uint256 _transcoderShare, uint256 _round) internal returns (bool) {
-        delegators[_transcoder].bondedAmount = delegators[_transcoder].bondedAmount.add(_transcoderShare);
-        delegators[_transcoder].delegatedAmount = delegators[_transcoder].delegatedAmount.add(_totalAmount);
-
-        if (delegatorStatus(_transcoder) == DelegatorStatus.Unbonded) {
-            // Set delegator fields if transcoder is not a bonded delegator
-            delegators[_transcoder].delegateAddress = _transcoder;
-            delegators[_transcoder].startRound = _round;
-            delegators[_transcoder].delegateBlock = block.number;
-            delegators[_transcoder].withdrawRound = 0;
-            delegators[_transcoder].lastStakeUpdateRound = _round;
-        }
-
-        transcoderPools.increaseTranscoderStake(_transcoder, _totalAmount);
-
-        return true;
-    }
-
-    /*
-     * @dev Decrease a transcoder's stake as a delegator and its total stake in the transcoder pools
-     * @param _transcoder Address of transcoder
-     * @param _totalAmount Total amount to decrease transcoder's total stake
-     */
-    function decreaseTranscoderStake(address _transcoder, uint256 _totalAmount) internal returns (bool) {
-        Delegator storage del = delegators[_transcoder];
-
-        if (_totalAmount > del.bondedAmount) {
-            // Decrease transcoder's total stake by transcoder's stake
-            transcoderPools.decreaseTranscoderStake(_transcoder, del.bondedAmount);
-            // Set transcoder's bond to 0 since
-            // the penalty is greater than its stake
-            del.bondedAmount = 0;
-        } else {
-            // Decrease transcoder's total stake by the penalty
-            transcoderPools.decreaseTranscoderStake(_transcoder, _totalAmount);
-            // Decrease transcoder's stake
-            del.bondedAmount = del.bondedAmount.sub(_totalAmount);
-        }
-
-        return true;
-    }
-
-    /*
      * @dev Update a transcoder with rewards
      * @param _transcoder Address of transcoder
      * @param _rewards Amount of rewards
      * @param _round Round that transcoder is updated
      */
     function updateTranscoderWithRewards(address _transcoder, uint256 _rewards, uint256 _round) internal returns (bool) {
-        uint256 transcoderRewardShare = _rewards.mul(transcoders[_transcoder].blockRewardCut).div(100);
+        Transcoder storage t = transcoders[_transcoder];
+        Delegator storage del = delegators[_transcoder];
 
-        // Update transcoder's reward pool for the round
-        RewardPool storage rewardPool = transcoders[_transcoder].tokenPoolsPerRound[_round].rewardPool;
-        rewardPool.rewards = rewardPool.rewards.add(_rewards.sub(transcoderRewardShare));
-
-        if (rewardPool.transcoderTotalStake == 0) {
-            rewardPool.transcoderTotalStake = transcoderTotalStake(_transcoder);
+        TokenPools.Data storage tokenPools = t.tokenPoolsPerRound[_round];
+        // Lock in total stake, feeShare and blockRewardCut
+        if (tokenPools.totalStake == 0) {
+            tokenPools.init(activeTranscoderTotalStake(_transcoder), t.blockRewardCut, t.feeShare);
         }
 
-        increaseTranscoderStake(_transcoder, _rewards, transcoderRewardShare, _round);
+        // Add rewards to reward pool
+        tokenPools.rewardPool = tokenPools.rewardPool.add(_rewards);
+        // Compute claimable and unclaimable rewards
+        uint256 unclaimableRewards = tokenPools.unclaimableRewards(_rewards);
+        uint256 claimableRewards = _rewards.sub(unclaimableRewards);
+        // Update transcoder's delegated amount with claimable rewards
+        del.delegatedAmount = del.delegatedAmount.add(claimableRewards);
+        // Update transcoder's total stake with claimable rewards
+        transcoderPools.increaseTranscoderStake(_transcoder, claimableRewards);
+        // Add unclaimable rewards to the redistribution pool
+        if (unclaimableRewards > 0) {
+            minter().addToRedistributionPool(unclaimableRewards);
+        }
 
         return true;
     }
 
     /*
-     * @dev Update a transcoder with fees
-     * @param _transcoder Address of transcoder
-     * @param _fees Amount of fees
-     * @param _round Round that transcoder is updated
-     * @param _claimBlock Block of the claim that fees are associated with
-     * @param _transcoderTotalStake Transcoder's total stake at the claim block
+     * @dev Update a delegator with token pools shares from its lastClaimTokenPoolsSharesRound through a given round
+     * @param _delegator Delegator address
+     * @param _endRound The last round for which to update a delegator's stake with token pools shares
      */
-    function updateTranscoderWithFees(address _transcoder, uint256 _fees, uint256 _round, uint256 _claimBlock, uint256 _transcoderTotalStake) internal returns (bool) {
-        uint256 delegatorsFeeShare = _fees.mul(transcoders[_transcoder].feeShare).div(100);
+    function updateDelegatorWithTokenPoolsShares(address _delegator, uint256 _endRound) internal returns (bool) {
+        Delegator storage del = delegators[_delegator];
 
-        // Update transcoder's fee pool for the round
-        transcoders[_transcoder].tokenPoolsPerRound[_round].feePool.push(
-            ClaimFees({
-                claimBlock: _claimBlock,
-                fees: delegatorsFeeShare,
-                transcoderTotalStake: _transcoderTotalStake
-            })
-        );
+        uint256 currentBondedAmount = del.bondedAmount;
+        uint256 currentUnbondedAmount = del.unbondedAmount;
 
-        increaseTranscoderStake(_transcoder, _fees, _fees.sub(delegatorsFeeShare), _round);
+        for (uint256 i = del.lastClaimTokenPoolsSharesRound + 1; i <= _endRound; i++) {
+            TokenPools.Data storage tokenPools = transcoders[del.delegateAddress].tokenPoolsPerRound[i];
+
+            bool isTranscoder = _delegator == del.delegateAddress;
+            uint256 fees = tokenPools.feePoolShare(currentBondedAmount, isTranscoder);
+            uint256 rewards = tokenPools.rewardPoolShare(currentBondedAmount, isTranscoder);
+
+            // Update used stake for token pools for the round
+            tokenPools.usedStake = tokenPools.usedStake.add(currentBondedAmount);
+
+            currentUnbondedAmount = currentUnbondedAmount.add(fees);
+            currentBondedAmount = currentBondedAmount.add(rewards);
+        }
+
+        // Rewards are bonded by default
+        del.bondedAmount = currentBondedAmount;
+        // Fees are unbonded by default
+        del.unbondedAmount = currentUnbondedAmount;
+
+        del.lastClaimTokenPoolsSharesRound = _endRound;
 
         return true;
-    }
-
-     /*
-     * @dev Computes token distribution for delegator since its last state transition
-     * @param _delegator Address of delegator
-     */
-    function delegatorTokenPoolsShare(Delegator storage del) internal constant returns (uint256) {
-        uint256 tokens = 0;
-        // Iterate from round that delegator last transitioned states to current round
-        // If the delegator is bonded to a transcoder, it has been bonded to the transcoder since lastStakeUpdateRound
-        for (uint256 i = del.lastStakeUpdateRound; i <= roundsManager().currentRound(); i++) {
-            tokens = tokens.add(delegatorRewardPoolShare(del, i)).add(delegatorFeePoolShare(del, i));
-        }
-
-        return tokens;
-    }
-
-    /*
-     * @dev Computes delegator's share of reward pool for a round
-     */
-    function delegatorRewardPoolShare(Delegator storage del, uint256 _round) internal constant returns (uint256) {
-        RewardPool storage rewardPool = transcoders[del.delegateAddress].tokenPoolsPerRound[_round].rewardPool;
-
-        if (rewardPool.rewards == 0) {
-            return 0;
-        } else {
-            return rewardPool.rewards.mul(del.bondedAmount).div(rewardPool.transcoderTotalStake);
-        }
-    }
-
-    /*
-     * @dev Computes delegator's share of fee pool for a round
-     */
-    function delegatorFeePoolShare(Delegator storage del, uint256 _round) internal constant returns (uint256) {
-        ClaimFees[] storage feePool = transcoders[del.delegateAddress].tokenPoolsPerRound[_round].feePool;
-
-        if (feePool.length == 0) {
-            return 0;
-        } else {
-            uint256 feeShare = 0;
-
-            for (uint256 i = 0; i < feePool.length; i++) {
-                // Fees are only claimable if delegator bonded to transcoder before claim submission
-                if (del.delegateBlock < feePool[i].claimBlock) {
-                    feeShare = feeShare.add(feePool[i].fees.mul(del.bondedAmount).div(feePool[i].transcoderTotalStake));
-                }
-            }
-
-            return feeShare;
-        }
     }
 
     /*

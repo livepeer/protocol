@@ -6,6 +6,7 @@ import "./libraries/JobLib.sol";
 import "../token/ILivepeerToken.sol";
 import "../token/IMinter.sol";
 import "../bonding/IBondingManager.sol";
+import "../rounds/IRoundsManager.sol";
 import "../verification/IVerifiable.sol";
 import "../verification/IVerifier.sol";
 
@@ -50,6 +51,7 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         uint256 maxPricePerSegment;           // Max price (in LPT base units) per segment of a stream
         address broadcasterAddress;           // Address of broadcaster that requestes a transcoding job
         address transcoderAddress;            // Address of transcoder selected for the job
+        uint256 creationRound;                // Round that a job is created
         uint256 endBlock;                     // Block at which the job is ended and considered inactive
         Claim[] claims;                       // Claims submitted for this job
         uint256 escrow;                       // Claim fees before verification and slashing periods are complete
@@ -66,7 +68,6 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         uint256 claimBlock;                                // Block number that claim was submitted
         uint256 endVerificationBlock;                      // End of verification period for this claim
         uint256 endSlashingBlock;                          // End of slashing period for this claim
-        uint256 transcoderTotalStake;                      // Transcoder's total stake at the time of claim
         mapping (uint256 => bool) segmentVerifications;    // Mapping segment number => whether segment was submitted for verification
         ClaimStatus status;                                // Status of claim (pending, slashed, complete)
     }
@@ -175,6 +176,7 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         job.maxPricePerSegment = _maxPricePerSegment;
         job.broadcasterAddress = msg.sender;
         job.transcoderAddress = electedTranscoder;
+        job.creationRound = roundsManager().currentRound();
 
         NewJob(electedTranscoder, msg.sender, numJobs, _streamId, _transcodingOptions);
 
@@ -227,7 +229,6 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         broadcasterDeposits[job.broadcasterAddress] = broadcasterDeposits[job.broadcasterAddress].sub(fees);
         job.escrow = job.escrow.add(fees);
 
-        uint256 transcoderTotalStake = bondingManager().transcoderTotalStake(msg.sender);
         uint256 endVerificationBlock = block.number.add(verificationPeriod);
         uint256 endSlashingBlock = endVerificationBlock.add(slashingPeriod);
 
@@ -237,7 +238,6 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
                 segmentRange: _segmentRange,
                 claimRoot: _claimRoot,
                 claimBlock: block.number,
-                transcoderTotalStake: transcoderTotalStake,
                 endVerificationBlock: endVerificationBlock,
                 endSlashingBlock: endSlashingBlock,
                 status: ClaimStatus.Pending
@@ -436,7 +436,7 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         // Deduct fees from escrow
         job.escrow = job.escrow.sub(fees);
         // Add fees to transcoder's fee pool
-        bondingManager().updateTranscoderFeePool(msg.sender, fees, claim.claimBlock, claim.transcoderTotalStake);
+        bondingManager().updateTranscoderWithFees(msg.sender, fees, job.creationRound);
 
         // Set claim as complete
         claim.status = ClaimStatus.Complete;
@@ -480,6 +480,10 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         return jobs[_jobId].transcoderAddress;
     }
 
+    function getJobCreationRound(uint256 _jobId) public constant returns (uint256) {
+        return jobs[_jobId].creationRound;
+    }
+
     function getJobEndBlock(uint256 _jobId) public constant returns (uint256) {
         return jobs[_jobId].endBlock;
     }
@@ -516,10 +520,6 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
 
     function getClaimEndSlashingBlock(uint256 _jobId, uint256 _claimId) public constant returns (uint256) {
         return jobs[_jobId].claims[_claimId].endSlashingBlock;
-    }
-
-    function getClaimTranscoderTotalStake(uint256 _jobId, uint256 _claimId) public constant returns (uint256) {
-        return jobs[_jobId].claims[_claimId].transcoderTotalStake;
     }
 
     function getClaimStatus(uint256 _jobId, uint256 _claimId) public constant returns (ClaimStatus) {
@@ -562,6 +562,13 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
      */
     function bondingManager() internal constant returns (IBondingManager) {
         return IBondingManager(controller.getContract(keccak256("BondingManager")));
+    }
+
+    /*
+     * @dev Returns RoundsManager
+     */
+    function roundsManager() internal constant returns (IRoundsManager) {
+        return IRoundsManager(controller.getContract(keccak256("RoundsManager")));
     }
 
     /*

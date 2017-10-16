@@ -36,26 +36,34 @@ contract BondingManagerMock is IBondingManager {
     }
 
     function reward() external {
-        minter.mint(activeStake, totalActiveStake);
+        minter.createReward(activeStake, totalActiveStake);
     }
 
     function setActiveTranscoders() external returns (bool) {
         return true;
     }
 
-    function updateTranscoderFeePool(address _transcoder, uint256 _fees, uint256 _claimblock, uint256 _transcoderTotalStake) external returns (bool) {
+    function updateTranscoderWithFees(address _transcoder, uint256 _fees, uint256 _round) external returns (bool) {
         return true;
+    }
+
+    function callAddToRedistributionPool(uint256 _amount) external {
+        minter.addToRedistributionPool(_amount);
     }
 
     function slashTranscoder(address _transcoder, address _finder, uint64 _slashAmount, uint64 _finderFee) external returns (bool) {
         return true;
     }
 
-    function electActiveTranscoder(uint256 _maxPricePerSegment) external constant returns (address) {
+    function electActiveTranscoder(uint256 _maxPricePerSegment) external returns (address) {
         return transcoder;
     }
 
     function transcoderTotalStake(address _transcoder) public constant returns (uint256) {
+        return activeStake;
+    }
+
+    function activeTranscoderTotalStake(address _transcoder) public constant returns (uint256) {
         return activeStake;
     }
 }
