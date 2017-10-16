@@ -37,7 +37,7 @@ contract("Minter", accounts => {
         await fixture.tearDown()
     })
 
-    describe("computeRewards", () => {
+    describe("createRewards", () => {
         it("should throw if sender is not bonding manager", async () => {
             await expectThrow(minter.createReward(10, 100))
         })
@@ -86,6 +86,42 @@ contract("Minter", accounts => {
             const redistributionPool = await minter.redistributionPool.call()
             assert.equal(redistributionPool, expRedistributionPool, "redistribution pool incorrect")
         })
+
+        it("should compute rewards correctly for multiple valid calls", async () => {
+            await fixture.roundsManager.setRoundsPerYear(100)
+
+            // Set up current reward tokens via RoundsManager
+            await fixture.roundsManager.callSetCurrentRewardTokens()
+
+            // Set up reward call via BondingManager
+            await fixture.bondingManager.setActiveTranscoder(accounts[1], 0, 10, 100)
+            await fixture.bondingManager.reward()
+
+            // Set up reward call via BondingManager
+            await fixture.bondingManager.setActiveTranscoder(accounts[1], 0, 20, 100)
+            await fixture.bondingManager.reward()
+
+            const supply = await minter.initialTokenSupply.call()
+            const inflation = await minter.yearlyInflation.call()
+            const mintedTokens = supply.mul(inflation).div(100).floor().div(100).floor()
+            const expBalance = add(minterBalance, add(mintedTokens.mul(10).div(100).floor(), mintedTokens.mul(20).div(100).floor())).toString()
+
+            const balance = await fixture.token.balanceOf(minter.address)
+            assert.equal(balance.toString(), expBalance, "minter token balance is incorrect")
+        })
+
+        it("should throw if all mintable tokens have been minted", async () => {
+            await fixture.roundsManager.setRoundsPerYear(100)
+
+            // Set up current reward tokens via RoundsManager
+            await fixture.roundsManager.callSetCurrentRewardTokens()
+
+            // Set up reward call via BondingManager
+            await fixture.bondingManager.setActiveTranscoder(accounts[1], 0, 100, 100)
+            await fixture.bondingManager.reward()
+
+            await expectThrow(fixture.bondingManager.reward())
+       })
     })
 
     describe("transferTokens", () => {

@@ -19,8 +19,12 @@ contract Minter is Manager, IMinter {
     uint256 public redistributionPool;
     // Current number of mintable tokens. Reset every round
     uint256 public currentMintableTokens;
+    // Current number of minted tokens. Reset every round
+    uint256 public currentMintedTokens;
     // Current number of redistributable tokens. Reset every round
     uint256 public currentRedistributableTokens;
+    // Current number of redistributed tokens. Reset every round
+    uint256 public currentRedistributedTokens;
 
     // Sender must be RoundsManager
     modifier onlyRoundsManager() {
@@ -47,20 +51,25 @@ contract Minter is Manager, IMinter {
 
     /*
      * @dev Create reward based on a fractional portion of the mintable tokens and redistributable funds for a round
-     * @param _fracNum Numerator of fraction
-     * @param _fracDenom Denominator of fraction
+     * @param _fracNum Numerator of fraction (active transcoder's stake)
+     * @param _fracDenom Denominator of fraction (total active stake)
      */
     function createReward(uint256 _fracNum, uint256 _fracDenom) external onlyBondingManager returns (uint256) {
         // Compute fraction of redistributable tokens to include in reward
         uint256 redistributeAmount = currentRedistributableTokens.mul(_fracNum).div(_fracDenom);
-        // Update amount of redistributable tokens for round
-        currentRedistributableTokens = currentRedistributableTokens.sub(redistributeAmount);
+        // Update amount of redistributed tokens for round
+        currentRedistributedTokens = currentRedistributedTokens.add(redistributeAmount);
         redistributionPool = redistributionPool.sub(redistributeAmount);
+        // Redistributed tokens must not exceed redistributable tokens
+        require(currentRedistributedTokens <= currentRedistributableTokens);
 
         // Compute and mint fraction of mintable tokens to include in reward
         uint256 mintAmount = currentMintableTokens.mul(_fracNum).div(_fracDenom);
-        // Update amount of mintable tokens for round
-        currentMintableTokens = currentMintableTokens.sub(mintAmount);
+        // Update amount of minted tokens for round
+        currentMintedTokens = currentMintedTokens.add(mintAmount);
+        // Minted tokens must not exceed mintable tokens
+        require(currentMintedTokens <= currentMintableTokens);
+        // Mint new tokens
         livepeerToken().mint(this, mintAmount);
 
         // Reward = minted tokens + redistributed tokens
@@ -81,7 +90,9 @@ contract Minter is Manager, IMinter {
      */
     function setCurrentRewardTokens() external onlyRoundsManager returns (bool) {
         currentMintableTokens = mintedTokensPerRound();
+        currentMintedTokens = 0;
         currentRedistributableTokens = redistributableTokensPerRound();
+        currentRedistributedTokens = 0;
 
         return true;
     }

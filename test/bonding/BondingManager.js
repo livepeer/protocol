@@ -582,7 +582,11 @@ contract("BondingManager", accounts => {
 
             // Set active transcoders
             await fixture.roundsManager.initializeRound()
+            // Set current round so delegator is bonded
             await fixture.roundsManager.setCurrentRound(jobCreationRound)
+        })
+
+        it("should withdraw unbonded amount", async () => {
             await fixture.jobsManager.callElectActiveTranscoder(pricePerSegment)
 
             await fixture.jobsManager.setDistributeFeesParams(tAddr, fees, jobCreationRound)
@@ -592,9 +596,7 @@ contract("BondingManager", accounts => {
 
             // Call updateTranscoderWithFees via transaction from JobsManager
             await fixture.jobsManager.distributeFees()
-        })
 
-        it("should withdraw unbonded amount", async () => {
             const delegatorsFeeShare = Math.floor((fees * feeShare) / 100)
             const delegatorFeeShare = Math.floor((2000 * delegatorsFeeShare) / transcoderTotalStake)
             const expWithdrawAmount = delegatorFeeShare
@@ -612,8 +614,6 @@ contract("BondingManager", accounts => {
 
         it("should withdraw bonded tokens that are now unbonded", async () => {
             await bondingManager.unbond({from: dAddr})
-            // Withdraw unbonded amount first
-            await bondingManager.withdraw({from: dAddr})
             const unbondingPeriod = await bondingManager.unbondingPeriod.call()
             await fixture.roundsManager.setCurrentRound(7 + unbondingPeriod.toNumber())
             const expWithdrawAmount = 2000
