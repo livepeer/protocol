@@ -14,7 +14,7 @@ contract("Delegation", accounts => {
     })
 
     it("registers transcoder 1", async () => {
-         await bondingManager.transcoder(10, 5, 100, {from: accounts[0]})
+        await bondingManager.transcoder(10, 5, 100, {from: accounts[0]})
 
         assert.equal(await bondingManager.transcoderStatus(accounts[0]), 1, "transcoder 1 status is incorrect")
     })
