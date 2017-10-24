@@ -1,4 +1,4 @@
-pragma solidity ^0.4.13;
+pragma solidity ^0.4.17;
 
 import "./MinHeap.sol";
 import "./MaxHeap.sol";
@@ -27,7 +27,7 @@ library TranscoderPools {
      * Checks if transcoder is in a pool
      * @param _transcoder Address of transcoder
      */
-    function isInPools(TranscoderPools storage self, address _transcoder) constant returns (bool) {
+    function isInPools(TranscoderPools storage self, address _transcoder) view returns (bool) {
         return self.candidateTranscoders.ids[_transcoder] || self.reserveTranscoders.ids[_transcoder];
     }
 
@@ -35,14 +35,14 @@ library TranscoderPools {
      * Checks if transcoder is in active pool
      * @param _transcoder Address of transcoder
      */
-    function isCandidateTranscoder(TranscoderPools storage self, address _transcoder) constant returns (bool) {
+    function isCandidateTranscoder(TranscoderPools storage self, address _transcoder) view returns (bool) {
         return self.candidateTranscoders.ids[_transcoder];
     }
 
     /*
      * Checks if transcoder is in candidate pool
      */
-    function isReserveTranscoder(TranscoderPools storage self, address _transcoder) constant returns (bool) {
+    function isReserveTranscoder(TranscoderPools storage self, address _transcoder) view returns (bool) {
         return self.reserveTranscoders.ids[_transcoder];
     }
 
@@ -50,7 +50,7 @@ library TranscoderPools {
      * Returns address of candidate transcoder at a position in the heap
      * @param _position Position in candidate transcoder heap
      */
-    function getCandidateTranscoderAtPosition(TranscoderPools storage self, uint256 _position) constant returns (address) {
+    function getCandidateTranscoderAtPosition(TranscoderPools storage self, uint256 _position) view returns (address) {
         return self.candidateTranscoders.nodes[_position].id;
     }
 
@@ -58,21 +58,21 @@ library TranscoderPools {
      * Returns address of reserve transcoder at a position in the heap
      * @param _position Position in reserve transcoder heap
      */
-    function getReserveTranscoderAtPosition(TranscoderPools storage self, uint256 _position) constant returns (address) {
+    function getReserveTranscoderAtPosition(TranscoderPools storage self, uint256 _position) view returns (address) {
         return self.reserveTranscoders.nodes[_position].id;
     }
 
     /*
      * Returns current size of candidate pool
      */
-    function getCandidatePoolSize(TranscoderPools storage self) constant returns (uint256) {
+    function getCandidatePoolSize(TranscoderPools storage self) view returns (uint256) {
         return self.candidateTranscoders.nodes.length;
     }
 
     /*
      * Returns current size of reserve pool
      */
-    function getReservePoolSize(TranscoderPools storage self) constant returns (uint256) {
+    function getReservePoolSize(TranscoderPools storage self) view returns (uint256) {
         return self.reserveTranscoders.nodes.length;
     }
 
@@ -248,7 +248,7 @@ library TranscoderPools {
      * Return cumulative stake of transcoder
      * @param _transcoder Address of transcoder
      */
-    function transcoderStake(TranscoderPools storage self, address _transcoder) constant returns (uint256) {
+    function transcoderStake(TranscoderPools storage self, address _transcoder) view returns (uint256) {
         if (self.candidateTranscoders.ids[_transcoder]) {
             // Transcoder in candidate pool
             return self.candidateTranscoders.getKey(_transcoder);

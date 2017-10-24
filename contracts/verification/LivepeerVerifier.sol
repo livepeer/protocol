@@ -1,4 +1,4 @@
-pragma solidity ^0.4.13;
+pragma solidity ^0.4.17;
 
 import "../Manager.sol";
 import "./IVerifier.sol";
@@ -107,7 +107,7 @@ contract LivepeerVerifier is Manager, IVerifier {
     /*
      * @dev Return price of verification which is zero for this implementation
      */
-    function getPrice() public constant returns (uint256) {
+    function getPrice() public view returns (uint256) {
         return 0;
     }
 }

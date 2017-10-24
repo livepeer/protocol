@@ -1,4 +1,4 @@
-pragma solidity ^0.4.13;
+pragma solidity ^0.4.17;
 
 import "zeppelin-solidity/contracts/math/SafeMath.sol";
 
@@ -24,7 +24,7 @@ library TokenPools {
         return true;
     }
 
-    function unclaimableFees(TokenPools.Data storage tokenPools, uint256 _fees) internal constant returns (uint256) {
+    function unclaimableFees(TokenPools.Data storage tokenPools, uint256 _fees) internal view returns (uint256) {
         if (tokenPools.totalStake == 0) {
             return 0;
         } else {
@@ -33,7 +33,7 @@ library TokenPools {
         }
     }
 
-    function unclaimableRewards(TokenPools.Data storage tokenPools, uint256 _rewards) internal constant returns (uint256) {
+    function unclaimableRewards(TokenPools.Data storage tokenPools, uint256 _rewards) internal view returns (uint256) {
         if (tokenPools.totalStake == 0) {
             return 0;
         } else {
@@ -42,7 +42,7 @@ library TokenPools {
         }
     }
 
-    function feePoolShare(TokenPools.Data storage tokenPools, uint256 _stake, bool _isTranscoder) internal constant returns (uint256) {
+    function feePoolShare(TokenPools.Data storage tokenPools, uint256 _stake, bool _isTranscoder) internal view returns (uint256) {
         uint256 transcoderFees = 0;
         uint256 delegatorFees = 0;
 
@@ -58,7 +58,7 @@ library TokenPools {
         }
     }
 
-    function rewardPoolShare(TokenPools.Data storage tokenPools, uint256 _stake, bool _isTranscoder) internal constant returns (uint256) {
+    function rewardPoolShare(TokenPools.Data storage tokenPools, uint256 _stake, bool _isTranscoder) internal view returns (uint256) {
         uint256 transcoderRewards = 0;
         uint256 delegatorRewards = 0;
 

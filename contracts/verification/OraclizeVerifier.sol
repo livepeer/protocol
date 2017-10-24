@@ -1,4 +1,4 @@
-pragma solidity ^0.4.13;
+pragma solidity ^0.4.17;
 
 import "../Manager.sol";
 import "./IVerifier.sol";
@@ -122,7 +122,7 @@ contract OraclizeVerifier is Manager, usingOraclize, IVerifier {
     /*
      * @dev Return price of Oraclize verification
      */
-    function getPrice() public constant returns (uint256) {
+    function getPrice() public view returns (uint256) {
         return oraclize_getPrice("computation").add(gasPrice.mul(gasLimit));
     }
 
@@ -130,7 +130,7 @@ contract OraclizeVerifier is Manager, usingOraclize, IVerifier {
      * @dev Convert a string representing a 32 byte array into a 32 byte array
      * @param _str String representing a 32 byte array
      */
-    function strToBytes32(string _str) internal constant returns (bytes32) {
+    function strToBytes32(string _str) internal pure returns (bytes32) {
         bytes memory byteStr = bytes(_str);
         bytes32 result;
 

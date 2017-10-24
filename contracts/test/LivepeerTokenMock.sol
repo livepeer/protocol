@@ -1,4 +1,4 @@
-pragma solidity ^0.4.13;
+pragma solidity ^0.4.17;
 
 import "../token/ILivepeerToken.sol";
 
@@ -16,7 +16,7 @@ contract LivepeerTokenMock is ILivepeerToken {
         return true;
     }
 
-    function allowance(address _owner, address _spender) public constant returns (uint256) {
+    function allowance(address _owner, address _spender) public view returns (uint256) {
         return 0;
     }
 
@@ -29,7 +29,7 @@ contract LivepeerTokenMock is ILivepeerToken {
         return true;
     }
 
-    function balanceOf(address _who) public constant returns (uint256) {
+    function balanceOf(address _who) public view returns (uint256) {
         return 0;
     }
 

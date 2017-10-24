@@ -1,4 +1,4 @@
-pragma solidity ^0.4.13;
+pragma solidity ^0.4.17;
 
 import "../verification/IVerifier.sol";
 import "../verification/IVerifiable.sol";
@@ -48,7 +48,7 @@ contract VerifierMock is IVerifier {
         return true;
     }
 
-    function getPrice() public constant returns (uint256) {
+    function getPrice() public view returns (uint256) {
         return price;
     }
 }

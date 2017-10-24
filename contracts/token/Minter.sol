@@ -1,4 +1,4 @@
-pragma solidity ^0.4.13;
+pragma solidity ^0.4.17;
 
 import "../Manager.sol";
 import "./IMinter.sol";
@@ -120,28 +120,28 @@ contract Minter is Manager, IMinter {
     /*
      * @dev Return minted tokens per round based on initial token supply, yearly inflation and number of rounds per year
      */
-    function mintedTokensPerRound() internal constant returns (uint256) {
+    function mintedTokensPerRound() internal view returns (uint256) {
         return initialTokenSupply.mul(yearlyInflation).div(100).div(roundsManager().roundsPerYear());
     }
 
     /*
      * @dev Return funds to be redistributed per round based on the total funds available for redistribution and the number of rounds per year
      */
-    function redistributableTokensPerRound() internal constant returns (uint256) {
+    function redistributableTokensPerRound() internal view returns (uint256) {
         return redistributionPool.div(roundsManager().roundsPerYear());
     }
 
     /*
      * @dev Returns LivepeerToken
      */
-    function livepeerToken() internal constant returns (ILivepeerToken) {
+    function livepeerToken() internal view returns (ILivepeerToken) {
         return ILivepeerToken(controller.getContract(keccak256("LivepeerToken")));
     }
 
     /*
      * @dev Returns RoundsManager
      */
-    function roundsManager() internal constant returns (IRoundsManager) {
+    function roundsManager() internal view returns (IRoundsManager) {
         return IRoundsManager(controller.getContract(keccak256("RoundsManager")));
     }
 }

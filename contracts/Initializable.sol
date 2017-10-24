@@ -1,4 +1,4 @@
-pragma solidity ^0.4.13;
+pragma solidity ^0.4.17;
 
 
 contract Initializable {
@@ -20,7 +20,7 @@ contract Initializable {
     /*
      * @dev Return whether contract is initialized
      */
-    function isInitialized() public constant returns (bool) {
+    function isInitialized() public view returns (bool) {
         return initialized;
     }
 
