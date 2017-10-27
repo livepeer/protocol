@@ -77,7 +77,7 @@ contract("ManagerProxy", accounts => {
             await expectThrow(managerProxy.setUint256(6))
         })
 
-        it("should set a uint64", async () => {
+        it("should set a uint256", async () => {
             await managerProxy.initialize(3)
             await managerProxy.setUint256(6)
 
@@ -93,7 +93,7 @@ contract("ManagerProxy", accounts => {
             await expectThrow(managerProxy.setBytes32(hash))
         })
 
-        it("should set a uint64", async () => {
+        it("should set a bytes32", async () => {
             await managerProxy.initialize(3)
             await managerProxy.setBytes32(hash)
 
@@ -109,12 +109,64 @@ contract("ManagerProxy", accounts => {
             await expectThrow(managerProxy.setAddress(addr))
         })
 
-        it("should set a uint64", async () => {
+        it("should set an address", async () => {
             await managerProxy.initialize(3)
             await managerProxy.setAddress(addr)
 
             const value = await managerProxy.addressValue.call()
             assert.equal(value, addr, "address value incorrect")
+        })
+    })
+
+    describe("setting and getting string", () => {
+        const str = "hello"
+
+        it("should fail if not initialized", async () => {
+            await expectThrow(managerProxy.setString(str))
+        })
+
+        it("should set a string", async () => {
+            await managerProxy.initialize(3)
+            await managerProxy.setString(str)
+
+            const value = await managerProxy.stringValue.call()
+            assert.equal(value, str, "string value incorrect")
+        })
+    })
+
+    describe("setting and getting bytes", () => {
+        const h = web3.sha3("hello")
+
+        it("should fail if not initialized", async () => {
+            await expectThrow(managerProxy.setBytes(h))
+        })
+
+        it("should set a bytes", async () => {
+            await managerProxy.initialize(3)
+            await managerProxy.setBytes(h)
+
+            const value = await managerProxy.bytesValue.call()
+            assert.equal(value, h, "bytes value incorrect")
+        })
+    })
+
+    describe("setting and getting a tuple", () => {
+        const v1 = 5
+        const v2 = 6
+        const v3 = web3.sha3("hello")
+
+        it("should fail if not initialized", async () => {
+            await expectThrow(managerProxy.setTuple(v1, v2, v3))
+        })
+
+        it("should set a tuple", async () => {
+            await managerProxy.initialize(3)
+            await managerProxy.setTuple(v1, v2, v3)
+
+            const values = await managerProxy.getTuple()
+            assert.equal(values[0], v1, "tuple value 1 incorrect")
+            assert.equal(values[1], v2, "tuple value 2 incorrect")
+            assert.equal(values[2], v3, "tuple value 3 incorrect")
         })
     })
 
