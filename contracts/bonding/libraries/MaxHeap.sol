@@ -1,4 +1,4 @@
-pragma solidity ^0.4.13;
+pragma solidity ^0.4.17;
 
 import "./Node.sol";
 
@@ -32,28 +32,28 @@ library MaxHeap {
      * Checks if an address is in the heap
      * @param _id Address id
      */
-    function contains(Heap storage self, address _id) constant returns (bool) {
+    function contains(Heap storage self, address _id) view returns (bool) {
         return self.ids[_id];
     }
 
     /*
      * Returns current size of heap
      */
-    function size(Heap storage self) constant returns (uint256) {
+    function size(Heap storage self) view returns (uint256) {
         return self.nodes.length;
     }
 
     /*
      * Checks if heap is full
      */
-    function isFull(Heap storage self) constant returns (bool) {
+    function isFull(Heap storage self) view returns (bool) {
         return self.nodes.length == self.maxSize;
     }
 
     /*
      * Checks if heap is empty
      */
-    function isEmpty(Heap storage self) constant returns (bool) {
+    function isEmpty(Heap storage self) view returns (bool) {
         return self.nodes.length == 0;
     }
 
@@ -61,7 +61,7 @@ library MaxHeap {
      * Returns key for an id
      * @param Address id
      */
-    function getKey(Heap storage self, address _id) constant returns (uint256) {
+    function getKey(Heap storage self, address _id) view returns (uint256) {
         // Check if id is in heap
         require(self.ids[_id]);
 
@@ -71,7 +71,7 @@ library MaxHeap {
     /*
      * Returns the max node in the heap as a address, key pair
      */
-    function max(Heap storage self) constant returns (address, uint256) {
+    function max(Heap storage self) view returns (address, uint256) {
         // Check if heap is empty
         require(self.nodes.length > 0);
 

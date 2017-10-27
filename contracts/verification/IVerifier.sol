@@ -1,4 +1,4 @@
-pragma solidity ^0.4.13;
+pragma solidity ^0.4.17;
 
 
 /**
@@ -14,5 +14,5 @@ contract IVerifier {
         bytes32[2] _dataHashes
     ) external payable returns (bool);
 
-    function getPrice() public constant returns (uint256);
+    function getPrice() public view returns (uint256);
 }

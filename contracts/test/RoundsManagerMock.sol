@@ -1,4 +1,4 @@
-pragma solidity ^0.4.13;
+pragma solidity ^0.4.17;
 
 import "../rounds/IRoundsManager.sol";
 import "../bonding/IBondingManager.sol";
@@ -42,19 +42,19 @@ contract RoundsManagerMock is IRoundsManager {
         minter.setCurrentRewardTokens();
     }
 
-    function currentRound() public constant returns (uint256) {
+    function currentRound() public view returns (uint256) {
         return currentRound;
     }
 
-    function currentRoundStartBlock() public constant returns (uint256) {
+    function currentRoundStartBlock() public view returns (uint256) {
         return currentRoundStartBlock;
     }
 
-    function roundsPerYear() public constant returns (uint256) {
+    function roundsPerYear() public view returns (uint256) {
         return roundsPerYear;
     }
 
-    function currentRoundInitialized() public constant returns (bool) {
+    function currentRoundInitialized() public view returns (bool) {
         return currentRoundInitialized;
     }
 }

@@ -1,4 +1,4 @@
-pragma solidity ^0.4.13;
+pragma solidity ^0.4.17;
 
 import "./IController.sol";
 import "./IManager.sol";
@@ -25,7 +25,7 @@ contract Controller is Pausable, IController {
      * @dev Get contract address for an id
      * @param _id Contract id
      */
-    function getContract(bytes32 _id) public constant returns (address) {
+    function getContract(bytes32 _id) public view returns (address) {
         return registry[_id];
     }
 

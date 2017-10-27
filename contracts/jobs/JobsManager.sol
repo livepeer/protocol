@@ -1,4 +1,4 @@
-pragma solidity ^0.4.13;
+pragma solidity ^0.4.17;
 
 import "../ManagerProxyTarget.sol";
 import "./IJobsManager.sol";
@@ -448,7 +448,7 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
      * @dev Compute status of job
      * @param _jobId Job identifier
      */
-    function jobStatus(uint256 _jobId) public constant returns (JobStatus) {
+    function jobStatus(uint256 _jobId) public view returns (JobStatus) {
         if (jobs[_jobId].endBlock > 0 && jobs[_jobId].endBlock <= block.number) {
             // A job is inactive if its end block is set and the current block is greater than or equal to the job's end block
             return JobStatus.Inactive;
@@ -460,69 +460,69 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
 
     // Job getters
 
-    function getJobStreamId(uint256 _jobId) public constant returns (string) {
+    function getJobStreamId(uint256 _jobId) public view returns (string) {
         return jobs[_jobId].streamId;
     }
 
-    function getJobTranscodingOptions(uint256 _jobId) public constant returns (string) {
+    function getJobTranscodingOptions(uint256 _jobId) public view returns (string) {
         return jobs[_jobId].transcodingOptions;
     }
 
-    function getJobMaxPricePerSegment(uint256 _jobId) public constant returns (uint256) {
+    function getJobMaxPricePerSegment(uint256 _jobId) public view returns (uint256) {
         return jobs[_jobId].maxPricePerSegment;
     }
 
-    function getJobBroadcasterAddress(uint256 _jobId) public constant returns (address) {
+    function getJobBroadcasterAddress(uint256 _jobId) public view returns (address) {
         return jobs[_jobId].broadcasterAddress;
     }
 
-    function getJobTranscoderAddress(uint256 _jobId) public constant returns (address) {
+    function getJobTranscoderAddress(uint256 _jobId) public view returns (address) {
         return jobs[_jobId].transcoderAddress;
     }
 
-    function getJobCreationRound(uint256 _jobId) public constant returns (uint256) {
+    function getJobCreationRound(uint256 _jobId) public view returns (uint256) {
         return jobs[_jobId].creationRound;
     }
 
-    function getJobEndBlock(uint256 _jobId) public constant returns (uint256) {
+    function getJobEndBlock(uint256 _jobId) public view returns (uint256) {
         return jobs[_jobId].endBlock;
     }
 
-    function getJobEscrow(uint256 _jobId) public constant returns (uint256) {
+    function getJobEscrow(uint256 _jobId) public view returns (uint256) {
         return jobs[_jobId].escrow;
     }
 
-    function getJobTotalClaims(uint256 _jobId) public constant returns (uint256) {
+    function getJobTotalClaims(uint256 _jobId) public view returns (uint256) {
         return jobs[_jobId].claims.length;
     }
 
     // Claim getters
 
-    function getClaimStartSegment(uint256 _jobId, uint256 _claimId) public constant returns (uint256) {
+    function getClaimStartSegment(uint256 _jobId, uint256 _claimId) public view returns (uint256) {
         return jobs[_jobId].claims[_claimId].segmentRange[0];
     }
 
-    function getClaimEndSegment(uint256 _jobId, uint256 _claimId) public constant returns (uint256) {
+    function getClaimEndSegment(uint256 _jobId, uint256 _claimId) public view returns (uint256) {
         return jobs[_jobId].claims[_claimId].segmentRange[1];
     }
 
-    function getClaimRoot(uint256 _jobId, uint256 _claimId) public constant returns (bytes32) {
+    function getClaimRoot(uint256 _jobId, uint256 _claimId) public view returns (bytes32) {
         return jobs[_jobId].claims[_claimId].claimRoot;
     }
 
-    function getClaimBlock(uint256 _jobId, uint256 _claimId) public constant returns (uint256) {
+    function getClaimBlock(uint256 _jobId, uint256 _claimId) public view returns (uint256) {
         return jobs[_jobId].claims[_claimId].claimBlock;
     }
 
-    function getClaimEndVerificationBlock(uint256 _jobId, uint256 _claimId) public constant returns (uint256) {
+    function getClaimEndVerificationBlock(uint256 _jobId, uint256 _claimId) public view returns (uint256) {
         return jobs[_jobId].claims[_claimId].endVerificationBlock;
     }
 
-    function getClaimEndSlashingBlock(uint256 _jobId, uint256 _claimId) public constant returns (uint256) {
+    function getClaimEndSlashingBlock(uint256 _jobId, uint256 _claimId) public view returns (uint256) {
         return jobs[_jobId].claims[_claimId].endSlashingBlock;
     }
 
-    function getClaimStatus(uint256 _jobId, uint256 _claimId) public constant returns (ClaimStatus) {
+    function getClaimStatus(uint256 _jobId, uint256 _claimId) public view returns (ClaimStatus) {
         return jobs[_jobId].claims[_claimId].status;
     }
 
@@ -546,35 +546,35 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
     /*
      * @dev Returns LivepeerToken
      */
-    function livepeerToken() internal constant returns (ILivepeerToken) {
+    function livepeerToken() internal view returns (ILivepeerToken) {
         return ILivepeerToken(controller.getContract(keccak256("LivepeerToken")));
     }
 
     /*
      * @dev Returns Minter
      */
-    function minter() internal constant returns (IMinter) {
+    function minter() internal view returns (IMinter) {
         return IMinter(controller.getContract(keccak256("Minter")));
     }
 
     /*
      * @dev Returns BondingManager
      */
-    function bondingManager() internal constant returns (IBondingManager) {
+    function bondingManager() internal view returns (IBondingManager) {
         return IBondingManager(controller.getContract(keccak256("BondingManager")));
     }
 
     /*
      * @dev Returns RoundsManager
      */
-    function roundsManager() internal constant returns (IRoundsManager) {
+    function roundsManager() internal view returns (IRoundsManager) {
         return IRoundsManager(controller.getContract(keccak256("RoundsManager")));
     }
 
     /*
      * @dev Returns Verifier
      */
-    function verifier() internal constant returns (IVerifier) {
+    function verifier() internal view returns (IVerifier) {
         return IVerifier(controller.getContract(keccak256("Verifier")));
     }
 }

@@ -1,4 +1,4 @@
-pragma solidity ^0.4.13;
+pragma solidity ^0.4.17;
 
 
 /*
@@ -13,6 +13,6 @@ contract IBondingManager {
     function electActiveTranscoder(uint256 _maxPricePerSegment) external returns (address);
 
     // Public functions
-    function transcoderTotalStake(address _transcoder) public constant returns (uint256);
-    function activeTranscoderTotalStake(address _transcoder) public constant returns (uint256);
+    function transcoderTotalStake(address _transcoder) public view returns (uint256);
+    function activeTranscoderTotalStake(address _transcoder) public view returns (uint256);
 }

@@ -1,4 +1,4 @@
-pragma solidity ^0.4.13;
+pragma solidity ^0.4.17;
 
 import "../ManagerProxyTarget.sol";
 import "./IBondingManager.sol";
@@ -522,7 +522,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * @dev Returns bonded stake for a delegator. Includes reward pool shares since lastClaimTokenPoolsSharesRound
      * @param _delegator Address of delegator
      */
-    function delegatorStake(address _delegator) public constant returns (uint256) {
+    function delegatorStake(address _delegator) public view returns (uint256) {
         Delegator storage del = delegators[_delegator];
 
         // Add rewards from the rounds during which the delegator was bonded to a transcoder
@@ -547,7 +547,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * @dev Returns unbonded amount for a delegator. Includes fee pool shares since lastClaimTokenPoolsSharesRound
      * @param _delegator Address of delegator
      */
-    function delegatorUnbondedAmount(address _delegator) public constant returns (uint256) {
+    function delegatorUnbondedAmount(address _delegator) public view returns (uint256) {
         Delegator storage del = delegators[_delegator];
 
         // Add fees from the rounds during which the delegator was bonded to a transcoder
@@ -577,7 +577,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * @dev Returns total bonded stake for an active transcoder
      * @param _transcoder Address of a transcoder
      */
-    function activeTranscoderTotalStake(address _transcoder) public constant returns (uint256) {
+    function activeTranscoderTotalStake(address _transcoder) public view returns (uint256) {
         // Must be active transcoder
         require(isActiveTranscoder[_transcoder]);
 
@@ -588,7 +588,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * @dev Returns total bonded stake for a transcoder
      * @param _transcoder Address of transcoder
      */
-    function transcoderTotalStake(address _transcoder) public constant returns (uint256) {
+    function transcoderTotalStake(address _transcoder) public view returns (uint256) {
         return transcoderPools.transcoderStake(_transcoder);
     }
 
@@ -596,7 +596,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * @dev Computes transcoder status
      * @param _transcoder Address of transcoder
      */
-    function transcoderStatus(address _transcoder) public constant returns (TranscoderStatus) {
+    function transcoderStatus(address _transcoder) public view returns (TranscoderStatus) {
         Transcoder storage t = transcoders[_transcoder];
 
         if (t.delegatorWithdrawRound > 0) {
@@ -616,7 +616,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * @dev Computes delegator status
      * @param _delegator Address of delegator
      */
-    function delegatorStatus(address _delegator) public constant returns (DelegatorStatus) {
+    function delegatorStatus(address _delegator) public view returns (DelegatorStatus) {
         Delegator storage del = delegators[_delegator];
 
         if (del.withdrawRound > 0) {
@@ -647,95 +647,95 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
     // Transcoder getters
 
-    function getTranscoderDelegatorWithdrawRound(address _transcoder) public constant returns (uint256) {
+    function getTranscoderDelegatorWithdrawRound(address _transcoder) public view returns (uint256) {
         return transcoders[_transcoder].delegatorWithdrawRound;
     }
 
-    function getTranscoderLastRewardRound(address _transcoder) public constant returns (uint256) {
+    function getTranscoderLastRewardRound(address _transcoder) public view returns (uint256) {
         return transcoders[_transcoder].lastRewardRound;
     }
 
-    function getTranscoderBlockRewardCut(address _transcoder) public constant returns (uint8) {
+    function getTranscoderBlockRewardCut(address _transcoder) public view returns (uint8) {
         return transcoders[_transcoder].blockRewardCut;
     }
 
-    function getTranscoderFeeShare(address _transcoder) public constant returns (uint8) {
+    function getTranscoderFeeShare(address _transcoder) public view returns (uint8) {
         return transcoders[_transcoder].feeShare;
     }
 
-    function getTranscoderPricePerSegment(address _transcoder) public constant returns (uint256) {
+    function getTranscoderPricePerSegment(address _transcoder) public view returns (uint256) {
         return transcoders[_transcoder].pricePerSegment;
     }
 
-    function getTranscoderPendingBlockRewardCut(address _transcoder) public constant returns (uint8) {
+    function getTranscoderPendingBlockRewardCut(address _transcoder) public view returns (uint8) {
         return transcoders[_transcoder].pendingBlockRewardCut;
     }
 
-    function getTranscoderPendingFeeShare(address _transcoder) public constant returns (uint8) {
+    function getTranscoderPendingFeeShare(address _transcoder) public view returns (uint8) {
         return transcoders[_transcoder].pendingFeeShare;
     }
 
-    function getTranscoderPendingPricePerSegment(address _transcoder) public constant returns (uint256) {
+    function getTranscoderPendingPricePerSegment(address _transcoder) public view returns (uint256) {
         return transcoders[_transcoder].pendingPricePerSegment;
     }
 
-    function getTranscoderRewardPoolForRound(address _transcoder, uint256 _round) public constant returns (uint256) {
+    function getTranscoderRewardPoolForRound(address _transcoder, uint256 _round) public view returns (uint256) {
         return transcoders[_transcoder].tokenPoolsPerRound[_round].rewardPool;
     }
 
-    function getTranscoderFeePoolForRound(address _transcoder, uint256 _round) public constant returns (uint256) {
+    function getTranscoderFeePoolForRound(address _transcoder, uint256 _round) public view returns (uint256) {
         return transcoders[_transcoder].tokenPoolsPerRound[_round].feePool;
     }
 
-    function getTranscoderTotalStakeForRound(address _transcoder, uint256 _round) public constant returns (uint256) {
+    function getTranscoderTotalStakeForRound(address _transcoder, uint256 _round) public view returns (uint256) {
         return transcoders[_transcoder].tokenPoolsPerRound[_round].totalStake;
     }
 
-    function getTranscoderUsedStakeForRound(address _transcoder, uint256 _round) public constant returns (uint256) {
+    function getTranscoderUsedStakeForRound(address _transcoder, uint256 _round) public view returns (uint256) {
         return transcoders[_transcoder].tokenPoolsPerRound[_round].usedStake;
     }
 
     // Delegator getters
 
-    function getDelegatorBondedAmount(address _delegator) public constant returns (uint256) {
+    function getDelegatorBondedAmount(address _delegator) public view returns (uint256) {
         return delegators[_delegator].bondedAmount;
     }
 
-    function getDelegatorUnbondedAmount(address _delegator) public constant returns (uint256) {
+    function getDelegatorUnbondedAmount(address _delegator) public view returns (uint256) {
         return delegators[_delegator].unbondedAmount;
     }
 
-    function getDelegatorDelegateAddress(address _delegator) public constant returns (address) {
+    function getDelegatorDelegateAddress(address _delegator) public view returns (address) {
         return delegators[_delegator].delegateAddress;
     }
 
-    function getDelegatorDelegatedAmount(address _delegator) public constant returns (uint256) {
+    function getDelegatorDelegatedAmount(address _delegator) public view returns (uint256) {
         return delegators[_delegator].delegatedAmount;
     }
 
-    function getDelegatorStartRound(address _delegator) public constant returns (uint256) {
+    function getDelegatorStartRound(address _delegator) public view returns (uint256) {
         return delegators[_delegator].startRound;
     }
 
-    function getDelegatorWithdrawRound(address _delegator) public constant returns (uint256) {
+    function getDelegatorWithdrawRound(address _delegator) public view returns (uint256) {
         return delegators[_delegator].withdrawRound;
     }
 
-    function getDelegatorLastClaimTokenPoolsSharesRound(address _delegator) public constant returns (uint256) {
+    function getDelegatorLastClaimTokenPoolsSharesRound(address _delegator) public view returns (uint256) {
         return delegators[_delegator].lastClaimTokenPoolsSharesRound;
     }
 
     /*
      * @dev Return current size of candidate transcoder pool
      */
-    function getCandidatePoolSize() public constant returns (uint256) {
+    function getCandidatePoolSize() public view returns (uint256) {
         return transcoderPools.getCandidatePoolSize();
     }
 
     /*
      * @dev Return current size of reserve transcoder pool
      */
-    function getReservePoolSize() public constant returns (uint256) {
+    function getReservePoolSize() public view returns (uint256) {
         return transcoderPools.getReservePoolSize();
     }
 
@@ -743,7 +743,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * @dev Return candidate transcoder at position in candidate pool
      * @param _position Position in candidate pool
      */
-    function getCandidateTranscoderAtPosition(uint256 _position) public constant returns (address) {
+    function getCandidateTranscoderAtPosition(uint256 _position) public view returns (address) {
         return transcoderPools.getCandidateTranscoderAtPosition(_position);
     }
 
@@ -751,7 +751,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * @dev Return reserve transcoder at postion in reserve pool
      * @param _position Position in reserve pool
      */
-    function getReserveTranscoderAtPosition(uint256 _position) public constant returns (address) {
+    function getReserveTranscoderAtPosition(uint256 _position) public view returns (address) {
         return transcoderPools.getReserveTranscoderAtPosition(_position);
     }
 
@@ -826,28 +826,28 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     /*
      * @dev Return LivepeerToken
      */
-    function livepeerToken() internal constant returns (ILivepeerToken) {
+    function livepeerToken() internal view returns (ILivepeerToken) {
         return ILivepeerToken(controller.getContract(keccak256("LivepeerToken")));
     }
 
     /*
      * @dev Return Minter
      */
-    function minter() internal constant returns (IMinter) {
+    function minter() internal view returns (IMinter) {
         return IMinter(controller.getContract(keccak256("Minter")));
     }
 
     /*
      * @dev Return RoundsManager
      */
-    function roundsManager() internal constant returns (IRoundsManager) {
+    function roundsManager() internal view returns (IRoundsManager) {
         return IRoundsManager(controller.getContract(keccak256("RoundsManager")));
     }
 
     /*
      * @dev Return JobsManager
      */
-    function jobsManager() internal constant returns (IJobsManager) {
+    function jobsManager() internal view returns (IJobsManager) {
         return IJobsManager(controller.getContract(keccak256("JobsManager")));
     }
 }

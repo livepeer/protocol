@@ -1,4 +1,4 @@
-pragma solidity ^0.4.13;
+pragma solidity ^0.4.17;
 
 import "../token/IMinter.sol";
 import "../bonding/IBondingManager.sol";
@@ -59,11 +59,11 @@ contract BondingManagerMock is IBondingManager {
         return transcoder;
     }
 
-    function transcoderTotalStake(address _transcoder) public constant returns (uint256) {
+    function transcoderTotalStake(address _transcoder) public view returns (uint256) {
         return activeStake;
     }
 
-    function activeTranscoderTotalStake(address _transcoder) public constant returns (uint256) {
+    function activeTranscoderTotalStake(address _transcoder) public view returns (uint256) {
         return activeStake;
     }
 }

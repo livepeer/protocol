@@ -1,4 +1,4 @@
-pragma solidity ^0.4.13;
+pragma solidity ^0.4.17;
 
 import "zeppelin-solidity/contracts/ECRecovery.sol";
 import "zeppelin-solidity/contracts/MerkleProof.sol";
@@ -21,7 +21,7 @@ library JobLib {
      * @param _transcodingOptions String containing video profiles for a job
      * @param _pricePerSegment Price in LPT base units per segment
      */
-    function calcFees(uint256 _totalSegments, string _transcodingOptions, uint256 _pricePerSegment) public constant returns (uint256) {
+    function calcFees(uint256 _totalSegments, string _transcodingOptions, uint256 _pricePerSegment) public view returns (uint256) {
         // Calculate total profiles defined in the transcoding options string
         uint256 totalProfiles = bytes(_transcodingOptions).length.div(VIDEO_PROFILE_SIZE);
         return _totalSegments.mul(totalProfiles).mul(_pricePerSegment);
@@ -43,7 +43,7 @@ library JobLib {
         uint64 _verificationRate
     )
         public
-        constant
+        view
         returns (bool)
     {
         // Segment must be in segment range
@@ -66,7 +66,7 @@ library JobLib {
         address _broadcaster
     )
         public
-        constant
+        view
         returns (bool)
     {
         return ECRecovery.recover(personalSegmentHash(_streamId, _segmentNumber, _dataHash), _broadcasterSig) == _broadcaster;
@@ -82,7 +82,7 @@ library JobLib {
         bytes32 _claimRoot
     )
         public
-        constant
+        view
         returns (bool)
     {
         return MerkleProof.verifyProof(_proof, _claimRoot, transcodeReceiptHash(_streamId, _segmentNumber, _dataHash, _transcodedDataHash, _broadcasterSig));
@@ -94,7 +94,7 @@ library JobLib {
      * @param _segmentSequenceNumber Segment sequence number in stream
      * @param _dataHash Content-addressed storage hash of segment data
      */
-    function segmentHash(string _streamId, uint256 _segmentNumber, bytes32 _dataHash) public constant returns (bytes32) {
+    function segmentHash(string _streamId, uint256 _segmentNumber, bytes32 _dataHash) public pure returns (bytes32) {
         return keccak256(_streamId, _segmentNumber, _dataHash);
     }
 
@@ -104,7 +104,7 @@ library JobLib {
      * @param _segmentSequenceNumber Segment sequence number in stream
      * @param _dataHash Content-addrssed storage hash of segment data
      */
-    function personalSegmentHash(string _streamId, uint256 _segmentNumber, bytes32 _dataHash) public constant returns (bytes32) {
+    function personalSegmentHash(string _streamId, uint256 _segmentNumber, bytes32 _dataHash) public pure returns (bytes32) {
         bytes memory prefixBytes = bytes(PERSONAL_HASH_PREFIX);
 
         return keccak256(prefixBytes, segmentHash(_streamId, _segmentNumber, _dataHash));
@@ -126,7 +126,7 @@ library JobLib {
         bytes _broadcasterSig
     )
         public
-        constant
+        pure
         returns (bytes32)
     {
         return keccak256(_streamId, _segmentNumber, _dataHash, _transcodedDataHash, _broadcasterSig);
