@@ -645,84 +645,71 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         }
     }
 
-    // Transcoder getters
+    /*
+     * @dev Return transcoder information
+     * @param _transcoder Address of transcoder
+     */
+    function getTranscoder(
+        address _transcoder
+    )
+        public
+        view
+        returns (uint256, uint256, uint8, uint8, uint256, uint8, uint8, uint256)
+    {
+        Transcoder storage t = transcoders[_transcoder];
 
-    function getTranscoderDelegatorWithdrawRound(address _transcoder) public view returns (uint256) {
-        return transcoders[_transcoder].delegatorWithdrawRound;
+        return (
+            t.delegatorWithdrawRound,
+            t.lastRewardRound,
+            t.blockRewardCut,
+            t.feeShare,
+            t.pricePerSegment,
+            t.pendingBlockRewardCut,
+            t.pendingFeeShare,
+            t.pendingPricePerSegment
+        );
     }
 
-    function getTranscoderLastRewardRound(address _transcoder) public view returns (uint256) {
-        return transcoders[_transcoder].lastRewardRound;
+    /*
+     * @dev Return transcoder's token pools for a given round
+     * @param _transcoder Address of transcoder
+     * @param _round Round number
+     */
+    function getTranscoderTokenPoolsForRound(
+        address _transcoder,
+        uint256 _round
+    )
+        public
+        view
+        returns (uint256, uint256, uint256, uint256)
+    {
+        TokenPools.Data storage tokenPools = transcoders[_transcoder].tokenPoolsPerRound[_round];
+
+        return (tokenPools.rewardPool, tokenPools.feePool, tokenPools.totalStake, tokenPools.usedStake);
     }
 
-    function getTranscoderBlockRewardCut(address _transcoder) public view returns (uint8) {
-        return transcoders[_transcoder].blockRewardCut;
-    }
+    /*
+     * @dev Return delegator info
+     * @param _delegator Address of delegator
+     */
+    function getDelegator(
+        address _delegator
+    )
+        public
+        view
+        returns (uint256, uint256, address, uint256, uint256, uint256, uint256)
+    {
+        Delegator storage del = delegators[_delegator];
 
-    function getTranscoderFeeShare(address _transcoder) public view returns (uint8) {
-        return transcoders[_transcoder].feeShare;
-    }
-
-    function getTranscoderPricePerSegment(address _transcoder) public view returns (uint256) {
-        return transcoders[_transcoder].pricePerSegment;
-    }
-
-    function getTranscoderPendingBlockRewardCut(address _transcoder) public view returns (uint8) {
-        return transcoders[_transcoder].pendingBlockRewardCut;
-    }
-
-    function getTranscoderPendingFeeShare(address _transcoder) public view returns (uint8) {
-        return transcoders[_transcoder].pendingFeeShare;
-    }
-
-    function getTranscoderPendingPricePerSegment(address _transcoder) public view returns (uint256) {
-        return transcoders[_transcoder].pendingPricePerSegment;
-    }
-
-    function getTranscoderRewardPoolForRound(address _transcoder, uint256 _round) public view returns (uint256) {
-        return transcoders[_transcoder].tokenPoolsPerRound[_round].rewardPool;
-    }
-
-    function getTranscoderFeePoolForRound(address _transcoder, uint256 _round) public view returns (uint256) {
-        return transcoders[_transcoder].tokenPoolsPerRound[_round].feePool;
-    }
-
-    function getTranscoderTotalStakeForRound(address _transcoder, uint256 _round) public view returns (uint256) {
-        return transcoders[_transcoder].tokenPoolsPerRound[_round].totalStake;
-    }
-
-    function getTranscoderUsedStakeForRound(address _transcoder, uint256 _round) public view returns (uint256) {
-        return transcoders[_transcoder].tokenPoolsPerRound[_round].usedStake;
-    }
-
-    // Delegator getters
-
-    function getDelegatorBondedAmount(address _delegator) public view returns (uint256) {
-        return delegators[_delegator].bondedAmount;
-    }
-
-    function getDelegatorUnbondedAmount(address _delegator) public view returns (uint256) {
-        return delegators[_delegator].unbondedAmount;
-    }
-
-    function getDelegatorDelegateAddress(address _delegator) public view returns (address) {
-        return delegators[_delegator].delegateAddress;
-    }
-
-    function getDelegatorDelegatedAmount(address _delegator) public view returns (uint256) {
-        return delegators[_delegator].delegatedAmount;
-    }
-
-    function getDelegatorStartRound(address _delegator) public view returns (uint256) {
-        return delegators[_delegator].startRound;
-    }
-
-    function getDelegatorWithdrawRound(address _delegator) public view returns (uint256) {
-        return delegators[_delegator].withdrawRound;
-    }
-
-    function getDelegatorLastClaimTokenPoolsSharesRound(address _delegator) public view returns (uint256) {
-        return delegators[_delegator].lastClaimTokenPoolsSharesRound;
+        return (
+            del.bondedAmount,
+            del.unbondedAmount,
+            del.delegateAddress,
+            del.delegatedAmount,
+            del.startRound,
+            del.withdrawRound,
+            del.lastClaimTokenPoolsSharesRound
+        );
     }
 
     /*
