@@ -467,21 +467,19 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
     )
         public
         view
-        returns (string, string, uint256, address, address, uint256, uint256, uint256, uint256)
+        returns (string streamId, string transcodingOptions, uint256 maxPricePerSegment, address broadcasterAddress, address transcoderAddress, uint256 creationRound, uint256 endBlock, uint256 escrow, uint256 totalClaims)
     {
         Job storage job = jobs[_jobId];
 
-        return (
-            job.streamId,
-            job.transcodingOptions,
-            job.maxPricePerSegment,
-            job.broadcasterAddress,
-            job.transcoderAddress,
-            job.creationRound,
-            job.endBlock,
-            job.escrow,
-            job.claims.length
-        );
+        streamId = job.streamId;
+        transcodingOptions = job.transcodingOptions;
+        maxPricePerSegment = job.maxPricePerSegment;
+        broadcasterAddress = job.broadcasterAddress;
+        transcoderAddress = job.transcoderAddress;
+        creationRound = job.creationRound;
+        endBlock = job.endBlock;
+        escrow = job.escrow;
+        totalClaims = job.claims.length;
     }
 
     /*
@@ -495,18 +493,16 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
     )
         public
         view
-        returns (uint256[2], bytes32, uint256, uint256, uint256, ClaimStatus)
+        returns (uint256[2] segmentRange, bytes32 claimRoot, uint256 claimBlock, uint256 endVerificationBlock, uint256 endSlashingBlock, ClaimStatus status)
     {
         Claim storage claim = jobs[_jobId].claims[_claimId];
 
-        return (
-            claim.segmentRange,
-            claim.claimRoot,
-            claim.claimBlock,
-            claim.endVerificationBlock,
-            claim.endSlashingBlock,
-            claim.status
-        );
+        segmentRange = claim.segmentRange;
+        claimRoot = claim.claimRoot;
+        claimBlock = claim.claimBlock;
+        endVerificationBlock = claim.endVerificationBlock;
+        endSlashingBlock = claim.endSlashingBlock;
+        status = claim.status;
     }
 
     /*

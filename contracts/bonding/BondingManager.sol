@@ -654,20 +654,18 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     )
         public
         view
-        returns (uint256, uint256, uint8, uint8, uint256, uint8, uint8, uint256)
+        returns (uint256 delegatorWithdrawRound, uint256 lastRewardRound, uint8 blockRewardCut, uint8 feeShare, uint256 pricePerSegment, uint8 pendingBlockRewardCut, uint8 pendingFeeShare, uint256 pendingPricePerSegment)
     {
         Transcoder storage t = transcoders[_transcoder];
 
-        return (
-            t.delegatorWithdrawRound,
-            t.lastRewardRound,
-            t.blockRewardCut,
-            t.feeShare,
-            t.pricePerSegment,
-            t.pendingBlockRewardCut,
-            t.pendingFeeShare,
-            t.pendingPricePerSegment
-        );
+        delegatorWithdrawRound = t.delegatorWithdrawRound;
+        lastRewardRound = t.lastRewardRound;
+        blockRewardCut = t.blockRewardCut;
+        feeShare = t.feeShare;
+        pricePerSegment = t.pricePerSegment;
+        pendingBlockRewardCut = t.pendingBlockRewardCut;
+        pendingFeeShare = t.pendingFeeShare;
+        pendingPricePerSegment = t.pendingPricePerSegment;
     }
 
     /*
@@ -681,11 +679,14 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     )
         public
         view
-        returns (uint256, uint256, uint256, uint256)
+        returns (uint256 rewardPool, uint256 feePool, uint256 totalStake, uint256 usedStake)
     {
         TokenPools.Data storage tokenPools = transcoders[_transcoder].tokenPoolsPerRound[_round];
 
-        return (tokenPools.rewardPool, tokenPools.feePool, tokenPools.totalStake, tokenPools.usedStake);
+        rewardPool = tokenPools.rewardPool;
+        feePool = tokenPools.feePool;
+        totalStake = tokenPools.totalStake;
+        usedStake = tokenPools.usedStake;
     }
 
     /*
@@ -697,19 +698,17 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     )
         public
         view
-        returns (uint256, uint256, address, uint256, uint256, uint256, uint256)
+        returns (uint256 bondedAmount, uint256 unbondedAmount, address delegateAddress, uint256 delegatedAmount, uint256 startRound, uint256 withdrawRound, uint256 lastClaimTokenPoolsSharesRound)
     {
         Delegator storage del = delegators[_delegator];
 
-        return (
-            del.bondedAmount,
-            del.unbondedAmount,
-            del.delegateAddress,
-            del.delegatedAmount,
-            del.startRound,
-            del.withdrawRound,
-            del.lastClaimTokenPoolsSharesRound
-        );
+        bondedAmount = del.bondedAmount;
+        unbondedAmount = del.unbondedAmount;
+        delegateAddress = del.delegateAddress;
+        delegatedAmount = del.delegatedAmount;
+        startRound = del.startRound;
+        withdrawRound = del.withdrawRound;
+        lastClaimTokenPoolsSharesRound = del.lastClaimTokenPoolsSharesRound;
     }
 
     /*
