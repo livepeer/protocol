@@ -95,7 +95,7 @@ contract("JobsManager", accounts => {
 
         it("should update broadcaster deposit", async () => {
             await jobsManager.deposit(1000, {from: broadcaster})
-            const bDeposit = await jobsManager.broadcasterDeposits.call(broadcaster)
+            const bDeposit = (await jobsManager.broadcasters.call(broadcaster))[0]
             assert.equal(bDeposit, 1000, "broadcaster deposit incorrect")
         })
     })
@@ -276,7 +276,7 @@ contract("JobsManager", accounts => {
             const fees = maxPricePerSegment * 2 * (segmentRange[1] - segmentRange[0] + 1)
             const expDeposit = deposit - fees
 
-            const newDeposit = await jobsManager.broadcasterDeposits.call(broadcaster)
+            const newDeposit = (await jobsManager.broadcasters.call(broadcaster))[0]
             assert.equal(newDeposit, expDeposit, "deposit is incorrect")
         })
     })
@@ -715,7 +715,7 @@ contract("JobsManager", accounts => {
             const jInfo = await jobsManager.getJob(jobId)
             const jEscrow = jInfo[7]
             assert.equal(jEscrow, 0, "escrow is incorrect")
-            const bDeposit = await jobsManager.broadcasterDeposits.call(broadcaster)
+            const bDeposit = (await jobsManager.broadcasters.call(broadcaster))[0]
             assert.equal(bDeposit, 1000, "broadcaster deposit is incorrect")
             const cInfo = await jobsManager.getClaim(jobId, claimId)
             const cStatus = cInfo[5]
@@ -731,6 +731,60 @@ contract("JobsManager", accounts => {
 
             // Should fail because claim is already slashed
             await expectThrow(jobsManager.missedVerificationSlash(jobId, claimId, segmentNumber, {from: accounts[2]}))
+        })
+    })
+
+    describe("withdraw", () => {
+        beforeEach(async () => {
+            await jobsManager.initialize(
+                VERIFICATION_RATE,
+                JOB_ENDING_PERIOD,
+                VERIFICATION_PERIOD,
+                SLASHING_PERIOD,
+                FAILED_VERIFICATION_SLASH_AMOUNT,
+                MISSED_VERIFICATION_SLASH_AMOUNT,
+                FINDER_FEE
+            )
+            await fixture.bondingManager.setActiveTranscoder(accounts[1], 100, 100, 200)
+            await fixture.token.setApproved(true)
+
+            await jobsManager.deposit(1000, {from: accounts[0]})
+        })
+
+        it("should fail if the broadcaster has an active job", async () => {
+            await jobsManager.job("abc", "abc", 100, {from: accounts[0]})
+
+            await expectThrow(jobsManager.withdraw({from: accounts[0]}))
+        })
+
+        it("should fail if the withdraw block is in the future", async () => {
+            await jobsManager.job("abc", "abc", 100, {from: accounts[0]})
+            await jobsManager.endJob(0, {from: accounts[0]})
+
+            await expectThrow(jobsManager.withdraw({from: accounts[0]}))
+        })
+
+        it("should fail if withdraw block is updated to a block in the future", async () => {
+            await jobsManager.job("abc", "abc", 100, {from: accounts[0]})
+            await jobsManager.endJob(0, {from: accounts[0]})
+
+            const jobEndingPeriod = await jobsManager.jobEndingPeriod.call()
+            await fixture.rpc.wait(jobEndingPeriod.toNumber())
+
+            await jobsManager.job("efg", "efg", 100, {from: accounts[0]})
+            await jobsManager.endJob(1, {from: accounts[0]})
+
+            await expectThrow(jobsManager.withdraw({from: accounts[0]}))
+        })
+
+        it("should succeed if the broadcaster has no active jobs and its withdraw block is in now or in the past", async () => {
+            await jobsManager.job("abc", "abc", 100, {from: accounts[0]})
+            await jobsManager.endJob(0, {from: accounts[0]})
+
+            const jobEndingPeriod = await jobsManager.jobEndingPeriod.call()
+            await fixture.rpc.wait(jobEndingPeriod.toNumber())
+
+            await jobsManager.withdraw({from: accounts[0]})
         })
     })
 })
