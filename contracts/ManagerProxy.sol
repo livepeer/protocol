@@ -15,31 +15,33 @@ contract ManagerProxy is ManagerProxyTarget {
         require(target > 0);
 
         assembly {
-            // Load the free memory pointer at 0x40
-            let calldataMemoryOffset := mload(0x40)
+            // Solidity keeps a free memory pointer at position 0x40 in memory
+            let freeMemoryPtrPosition := 0x40
+            // Load the free memory pointer
+            let calldataMemoryOffset := mload(freeMemoryPtrPosition)
             // Update free memory pointer to after memory space we reserve for calldata
-            mstore(0x40, add(calldataMemoryOffset, calldatasize))
-            // Copy method signature and params of the call to memory
+            mstore(freeMemoryPtrPosition, add(calldataMemoryOffset, calldatasize))
+            // Copy calldata (method signature and params of the call) to memory
             calldatacopy(calldataMemoryOffset, 0x0, calldatasize)
 
-            // Call method on target contract and store result starting at calldataMemoryOffset
+            // Call method on target contract using calldata which is loaded into memory
             let ret := delegatecall(gas, target, calldataMemoryOffset, calldatasize, 0, 0)
 
-            // Load the free memory pointer at 0x40
-            let returndataOffset := mload(0x40)
+            // Load the free memory pointer
+            let returndataMemoryOffset := mload(freeMemoryPtrPosition)
             // Update free memory pointer to after memory space we reserve for returndata
-            mstore(0x40, add(returndataOffset, returndatasize))
-            // Copy returndata to memory
-            returndatacopy(returndataOffset, 0, returndatasize)
+            mstore(freeMemoryPtrPosition, add(returndataMemoryOffset, returndatasize))
+            // Copy returndata (result of the method invoked by the delegatecall) to memory
+            returndatacopy(returndataMemoryOffset, 0x0, returndatasize)
 
             switch ret
             case 0 {
                 // Method call failed - revert
-                // Return any error message contained in returndata
-                revert(returndataOffset, returndatasize)
+                // Return any error message stored in mem[returndataMemoryOffset..(returndataMemoryOffset + returndatasize)]
+                revert(returndataMemoryOffset, returndatasize)
             } default {
-                // Return result of method call stored in mem[returndataOffset..(returndataOffset + returndatasize)]
-                return(returndataOffset, returndatasize)
+                // Return result of method call stored in mem[returndataMemoryOffset..(returndataMemoryOffset + returndatasize)]
+                return(returndataMemoryOffset, returndatasize)
             }
         }
     }
