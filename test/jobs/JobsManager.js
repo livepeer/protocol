@@ -145,19 +145,20 @@ contract("JobsManager", accounts => {
 
             await jobsManager.job(streamId, transcodingOptions, maxPricePerSegment, {from: broadcaster})
 
-            const jMaxPricePerSegment = await jobsManager.getJobMaxPricePerSegment(0)
+            const jInfo = await jobsManager.getJob(0)
+            const jMaxPricePerSegment = jInfo[2]
             assert.equal(jMaxPricePerSegment, maxPricePerSegment, "max price per segment incorrect")
-            const jBroadcasterAddress = await jobsManager.getJobBroadcasterAddress(0)
+            const jBroadcasterAddress = jInfo[3]
             assert.equal(jBroadcasterAddress, broadcaster, "broadcaster address incorrect")
-            const jTranscoderAddress = await jobsManager.getJobTranscoderAddress(0)
+            const jTranscoderAddress = jInfo[4]
             assert.equal(jTranscoderAddress, electedTranscoder, "transcoder address incorrect")
-            const jCreationRound = await jobsManager.getJobCreationRound(0)
+            const jCreationRound = jInfo[5]
             assert.equal(jCreationRound, creationRound, "creation round incorrect")
-            const jEndBlock = await jobsManager.getJobEndBlock(0)
+            const jEndBlock = jInfo[6]
             assert.equal(jEndBlock, 0, "end block incorrect")
-            const jEscrow = await jobsManager.getJobEscrow(0)
+            const jEscrow = jInfo[7]
             assert.equal(jEscrow, 0, "escrow incorrect")
-            const jTotalClaims = await jobsManager.getJobTotalClaims(0)
+            const jTotalClaims = jInfo[8]
             assert.equal(jTotalClaims, 0, "total claims incorrect")
         })
     })
@@ -242,18 +243,21 @@ contract("JobsManager", accounts => {
             const verificationPeriod = await jobsManager.verificationPeriod.call()
             const slashingPeriod = await jobsManager.slashingPeriod.call()
 
-            const cStartSegment = await jobsManager.getClaimStartSegment(jobId, claimId)
+            const cInfo = await jobsManager.getClaim(jobId, claimId)
+            const cStartSegment = cInfo[0][0]
             assert.equal(cStartSegment, segmentRange[0], "segment range start incorrect")
-            const cEndSegment = await jobsManager.getClaimEndSegment(jobId, claimId)
+            const cEndSegment = cInfo[0][1]
             assert.equal(cEndSegment, segmentRange[1], "segment range end incorrect")
-            const cRoot = await jobsManager.getClaimRoot(jobId, claimId)
+            const cRoot = cInfo[1]
             assert.equal(cRoot, claimRoot, "claim root incorrect")
-            const cBlock = await jobsManager.getClaimBlock(jobId, claimId)
+            const cBlock = cInfo[2]
             assert.equal(cBlock, claimBlock, "claim block incorrect")
-            const cEndVerificationBlock = await jobsManager.getClaimEndVerificationBlock(jobId, claimId)
+            const cEndVerificationBlock = cInfo[3]
             assert.equal(cEndVerificationBlock, claimBlock + verificationPeriod.toNumber(), "end verification block incorrect")
-            const cEndSlashingBlock = await jobsManager.getClaimEndSlashingBlock(jobId, claimId)
+            const cEndSlashingBlock = cInfo[4]
             assert.equal(cEndSlashingBlock, claimBlock + verificationPeriod.toNumber() + slashingPeriod.toNumber(), "end slashing block incorrect")
+            const cStatus = cInfo[5]
+            assert.equal(cStatus, 0, "claim status incorrect")
         })
 
         it("should update broadcaster deposit", async () => {
@@ -261,7 +265,8 @@ contract("JobsManager", accounts => {
 
             const fees = maxPricePerSegment * 2 * (segmentRange[1] - segmentRange[0] + 1)
 
-            const jEscrow = await jobsManager.getJobEscrow(jobId)
+            const jInfo = await jobsManager.getJob(jobId)
+            const jEscrow = jInfo[7]
             assert.equal(jEscrow, fees, "escrow is incorrect")
         })
 
@@ -487,9 +492,11 @@ contract("JobsManager", accounts => {
 
             await jobsManager.distributeFees(jobId, claimId, {from: electedTranscoder})
 
-            const jEscrow = await jobsManager.getJobEscrow(jobId)
+            const jInfo = await jobsManager.getJob(jobId)
+            const jEscrow = jInfo[7]
             assert.equal(jEscrow, 0, "escrow is incorrect")
-            const cStatus = await jobsManager.getClaimStatus(jobId, claimId)
+            const cInfo = await jobsManager.getClaim(jobId, claimId)
+            const cStatus = cInfo[5]
             assert.equal(cStatus, 2, "claim status is incorrect")
         })
 
@@ -588,12 +595,15 @@ contract("JobsManager", accounts => {
         it("should update job escrow and claim statuses multiple claims", async () => {
             await jobsManager.batchDistributeFees(jobId, claimIds, {from: electedTranscoder})
 
-            const jEscrow = await jobsManager.getJobEscrow(jobId)
+            const jInfo = await jobsManager.getJob(jobId)
+            const jEscrow = jInfo[7]
             assert.equal(jEscrow, 80, "escrow is incorrect")
 
-            const cStatus0 = await jobsManager.getClaimStatus(jobId, 0)
+            const cInfo0 = await jobsManager.getClaim(jobId, 0)
+            const cStatus0 = cInfo0[5]
             assert.equal(cStatus0, 2, "claim 0 status incorrect")
-            const cStatus1 = await jobsManager.getClaimStatus(jobId, 1)
+            const cInfo1 = await jobsManager.getClaim(jobId, 1)
+            const cStatus1 = cInfo1[5]
             assert.equal(cStatus1, 2, "claim 1 status incorrect")
         })
     })
@@ -702,11 +712,13 @@ contract("JobsManager", accounts => {
 
             await jobsManager.missedVerificationSlash(jobId, claimId, segmentNumber, {from: accounts[2]})
 
-            const jEscrow = await jobsManager.getJobEscrow(jobId)
+            const jInfo = await jobsManager.getJob(jobId)
+            const jEscrow = jInfo[7]
             assert.equal(jEscrow, 0, "escrow is incorrect")
             const bDeposit = await jobsManager.broadcasterDeposits.call(broadcaster)
             assert.equal(bDeposit, 1000, "broadcaster deposit is incorrect")
-            const cStatus = await jobsManager.getClaimStatus(jobId, claimId)
+            const cInfo = await jobsManager.getClaim(jobId, claimId)
+            const cStatus = cInfo[5]
             assert.equal(cStatus, 1, "claim status is incorrect")
         })
 

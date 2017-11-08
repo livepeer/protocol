@@ -458,72 +458,69 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         }
     }
 
-    // Job getters
+    /*
+     * @dev Return job info
+     * @param _jobId Job identifier
+     */
+    function getJob(
+        uint256 _jobId
+    )
+        public
+        view
+        returns (string streamId, string transcodingOptions, uint256 maxPricePerSegment, address broadcasterAddress, address transcoderAddress, uint256 creationRound, uint256 endBlock, uint256 escrow, uint256 totalClaims)
+    {
+        Job storage job = jobs[_jobId];
 
-    function getJobStreamId(uint256 _jobId) public view returns (string) {
-        return jobs[_jobId].streamId;
+        streamId = job.streamId;
+        transcodingOptions = job.transcodingOptions;
+        maxPricePerSegment = job.maxPricePerSegment;
+        broadcasterAddress = job.broadcasterAddress;
+        transcoderAddress = job.transcoderAddress;
+        creationRound = job.creationRound;
+        endBlock = job.endBlock;
+        escrow = job.escrow;
+        totalClaims = job.claims.length;
     }
 
-    function getJobTranscodingOptions(uint256 _jobId) public view returns (string) {
-        return jobs[_jobId].transcodingOptions;
+    /*
+     * @dev Return claim info
+     * @param _jobId Job identifier
+     * @param _claimId Claim identifier
+     */
+    function getClaim(
+        uint256 _jobId,
+        uint256 _claimId
+    )
+        public
+        view
+        returns (uint256[2] segmentRange, bytes32 claimRoot, uint256 claimBlock, uint256 endVerificationBlock, uint256 endSlashingBlock, ClaimStatus status)
+    {
+        Claim storage claim = jobs[_jobId].claims[_claimId];
+
+        segmentRange = claim.segmentRange;
+        claimRoot = claim.claimRoot;
+        claimBlock = claim.claimBlock;
+        endVerificationBlock = claim.endVerificationBlock;
+        endSlashingBlock = claim.endSlashingBlock;
+        status = claim.status;
     }
 
-    function getJobMaxPricePerSegment(uint256 _jobId) public view returns (uint256) {
-        return jobs[_jobId].maxPricePerSegment;
-    }
-
-    function getJobBroadcasterAddress(uint256 _jobId) public view returns (address) {
-        return jobs[_jobId].broadcasterAddress;
-    }
-
-    function getJobTranscoderAddress(uint256 _jobId) public view returns (address) {
-        return jobs[_jobId].transcoderAddress;
-    }
-
-    function getJobCreationRound(uint256 _jobId) public view returns (uint256) {
-        return jobs[_jobId].creationRound;
-    }
-
-    function getJobEndBlock(uint256 _jobId) public view returns (uint256) {
-        return jobs[_jobId].endBlock;
-    }
-
-    function getJobEscrow(uint256 _jobId) public view returns (uint256) {
-        return jobs[_jobId].escrow;
-    }
-
-    function getJobTotalClaims(uint256 _jobId) public view returns (uint256) {
-        return jobs[_jobId].claims.length;
-    }
-
-    // Claim getters
-
-    function getClaimStartSegment(uint256 _jobId, uint256 _claimId) public view returns (uint256) {
-        return jobs[_jobId].claims[_claimId].segmentRange[0];
-    }
-
-    function getClaimEndSegment(uint256 _jobId, uint256 _claimId) public view returns (uint256) {
-        return jobs[_jobId].claims[_claimId].segmentRange[1];
-    }
-
-    function getClaimRoot(uint256 _jobId, uint256 _claimId) public view returns (bytes32) {
-        return jobs[_jobId].claims[_claimId].claimRoot;
-    }
-
-    function getClaimBlock(uint256 _jobId, uint256 _claimId) public view returns (uint256) {
-        return jobs[_jobId].claims[_claimId].claimBlock;
-    }
-
-    function getClaimEndVerificationBlock(uint256 _jobId, uint256 _claimId) public view returns (uint256) {
-        return jobs[_jobId].claims[_claimId].endVerificationBlock;
-    }
-
-    function getClaimEndSlashingBlock(uint256 _jobId, uint256 _claimId) public view returns (uint256) {
-        return jobs[_jobId].claims[_claimId].endSlashingBlock;
-    }
-
-    function getClaimStatus(uint256 _jobId, uint256 _claimId) public view returns (ClaimStatus) {
-        return jobs[_jobId].claims[_claimId].status;
+    /*
+     * @dev Return whether a segment was verified for a claim
+     * @param _jobId Job identifier
+     * @param _claimId Claim identifier
+     * @param _segmentNumber Segment number
+     */
+    function isClaimSegmentVerified(
+        uint256 _jobId,
+        uint256 _claimId,
+        uint256 _segmentNumber
+    )
+        public
+        view
+        returns (bool)
+    {
+        return jobs[_jobId].claims[_claimId].segmentVerifications[_segmentNumber];
     }
 
     /*

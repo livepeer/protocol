@@ -34,7 +34,7 @@
     "eslint": "^4.3.0",
     "eslint-config-google": "^0.9.1",
     "ethereumjs-abi": "^0.6.4",
-    "ethereumjs-testrpc": "^4.1.1",
+    "ethereumjs-testrpc": "^5.0.1",
     "ethereumjs-util": "^5.1.2",
     "solium": "github:AugurProject/Solium",
     "zeppelin-solidity": "^1.3.0"

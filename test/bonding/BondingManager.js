@@ -70,12 +70,10 @@ contract("BondingManager", accounts => {
         it("should create a new transcoder with 0 stake when it has no stake or delegators", async () => {
             await bondingManager.transcoder(blockRewardCut, feeShare, pricePerSegment, {from: tAddr})
 
-            const tBlockRewardCut = await bondingManager.getTranscoderPendingBlockRewardCut(tAddr)
-            const tFeeShare = await bondingManager.getTranscoderPendingFeeShare(tAddr)
-            const tPricePerSegment = await bondingManager.getTranscoderPendingPricePerSegment(tAddr)
-            assert.equal(tBlockRewardCut, blockRewardCut, "pending block reward cut incorrect")
-            assert.equal(tFeeShare, feeShare, "pending fee share incorrect")
-            assert.equal(tPricePerSegment, pricePerSegment, "pending price per segment incorrect")
+            const tInfo = await bondingManager.getTranscoder(tAddr)
+            assert.equal(tInfo[5], blockRewardCut, "pending block reward cut incorrect")
+            assert.equal(tInfo[6], feeShare, "pending fee share incorrect")
+            assert.equal(tInfo[7], pricePerSegment, "pending price per segment incorrect")
 
             const transcoderTotalStake = await bondingManager.transcoderTotalStake(tAddr)
             assert.equal(transcoderTotalStake, 0, "transcoder total stake incorrecet")
@@ -101,12 +99,10 @@ contract("BondingManager", accounts => {
             const newPricePerSegment = 40
             await bondingManager.transcoder(newBlockRewardCut, newFeeShare, newPricePerSegment, {from: tAddr})
 
-            const tBlockRewardCut = await bondingManager.getTranscoderPendingBlockRewardCut(tAddr)
-            const tFeeShare = await bondingManager.getTranscoderPendingFeeShare(tAddr)
-            const tPricePerSegment = await bondingManager.getTranscoderPendingPricePerSegment(tAddr)
-            assert.equal(tBlockRewardCut, newBlockRewardCut, "pending block reward cut incorrect")
-            assert.equal(tFeeShare, newFeeShare, "pending fee share incorrect")
-            assert.equal(tPricePerSegment, newPricePerSegment, "pending price per segment incorrect")
+            const tInfo = await bondingManager.getTranscoder(tAddr)
+            assert.equal(tInfo[5], newBlockRewardCut, "pending block reward cut incorrect")
+            assert.equal(tInfo[6], newFeeShare, "pending fee share incorrect")
+            assert.equal(tInfo[7], newPricePerSegment, "pending price per segment incorrect")
         })
     })
 
@@ -140,7 +136,8 @@ contract("BondingManager", accounts => {
             const withdrawRound = add(currentRound, unbondingPeriod).toString()
 
             await bondingManager.resignAsTranscoder({from: tAddr})
-            const tWithdrawRound = await bondingManager.getTranscoderDelegatorWithdrawRound(tAddr)
+            const tInfo = await bondingManager.getTranscoder(tAddr)
+            const tWithdrawRound = tInfo[0]
             assert.equal(tWithdrawRound, withdrawRound, "withdraw round is incorrect")
         })
 
@@ -183,12 +180,14 @@ contract("BondingManager", accounts => {
         it("should set delegate and increase bonded stake and delegation amount", async () => {
             await bondingManager.bond(100, tAddr0, {from: dAddr})
 
-            const dBondedAmount = await bondingManager.getDelegatorBondedAmount(dAddr)
-            const dDelegate = await bondingManager.getDelegatorDelegateAddress(dAddr)
+            const dInfo = await bondingManager.getDelegator(dAddr)
+            const dBondedAmount = dInfo[0]
+            const dDelegate = dInfo[2]
             assert.equal(dBondedAmount, 100, "bonded amount incorrect")
             assert.equal(dDelegate, tAddr0, "delegate address incorrect")
 
-            const tDelegatedAmount = await bondingManager.getDelegatorDelegatedAmount(tAddr0)
+            const tDInfo = await bondingManager.getDelegator(tAddr0)
+            const tDelegatedAmount = tDInfo[3]
             assert.equal(tDelegatedAmount, 100, "delegated amount incorrect")
         })
 
@@ -197,7 +196,8 @@ contract("BondingManager", accounts => {
             await fixture.roundsManager.setCurrentRound(100)
 
             await bondingManager.bond(0, tAddr1, {from: dAddr})
-            const dStartRound = await bondingManager.getDelegatorStartRound(dAddr)
+            const dInfo = await bondingManager.getDelegator(dAddr)
+            const dStartRound = dInfo[4]
             assert.equal(dStartRound, 101, "start round incorrect")
         })
 
@@ -222,13 +222,15 @@ contract("BondingManager", accounts => {
             // Claim token pool share
             await bondingManager.claimTokenPoolsShares(currentRound, {from: dAddr})
 
-            const startUnbondedAmount = await bondingManager.getDelegatorUnbondedAmount(dAddr)
+            const startDInfo = await bondingManager.getDelegator(dAddr)
+            const startUnbondedAmount = startDInfo[1]
             await bondingManager.bond(15, tAddr0, {from: dAddr})
-            const endUnbondedAmount = await bondingManager.getDelegatorUnbondedAmount(dAddr)
+            const endDInfo = await bondingManager.getDelegator(dAddr)
+            const endUnbondedAmount = endDInfo[1]
 
             assert.equal(startUnbondedAmount.sub(endUnbondedAmount), 15, "unbonded amount used incorrect")
 
-            const bondedAmount = await bondingManager.getDelegatorBondedAmount(dAddr)
+            const bondedAmount = endDInfo[0]
             assert.equal(bondedAmount, 115, "bonded amount incorreect")
         })
     })
@@ -279,7 +281,8 @@ contract("BondingManager", accounts => {
             await fixture.jobsManager.distributeFees()
 
             const expFeePool = fees
-            const feePool = await bondingManager.getTranscoderFeePoolForRound(tAddr, jobCreationRound)
+            const tokenPools = await bondingManager.getTranscoderTokenPoolsForRound(tAddr, jobCreationRound)
+            const feePool = tokenPools[1]
             assert.equal(feePool, expFeePool, "transcoder fee pool incorrect")
         })
     })
@@ -354,9 +357,10 @@ contract("BondingManager", accounts => {
             const expUnbondedAmount = delegatorFeeShare
             await bondingManager.claimTokenPoolsShares(7, {from: dAddr})
 
-            const delegatorStake = await bondingManager.getDelegatorBondedAmount(dAddr)
+            const dInfo = await bondingManager.getDelegator(dAddr)
+            const delegatorStake = dInfo[0]
             assert.equal(delegatorStake.toString(), expDelegatorStake, "delegator stake incorrect")
-            const unbondedAmount = await bondingManager.getDelegatorUnbondedAmount(dAddr)
+            const unbondedAmount = dInfo[1]
             assert.equal(unbondedAmount.toString(), expUnbondedAmount, "delegator unbonded amount incorrect")
         })
 
@@ -378,9 +382,10 @@ contract("BondingManager", accounts => {
             const expUnbondedAmount = add(delegatorFeeShare, transcoderFeeShare)
             await bondingManager.claimTokenPoolsShares(7, {from: tAddr})
 
-            const transcoderStake = await bondingManager.getDelegatorBondedAmount(tAddr)
+            const tDInfo = await bondingManager.getDelegator(tAddr)
+            const transcoderStake = tDInfo[0]
             assert.equal(transcoderStake.toString(), expTranscoderStake, "transcoder stake incorrect")
-            const unbondedAmount = await bondingManager.getDelegatorUnbondedAmount(tAddr)
+            const unbondedAmount = tDInfo[1]
             assert.equal(unbondedAmount.toString(), expUnbondedAmount, "transcoder unbonded amount incorrect")
         })
 
@@ -440,9 +445,10 @@ contract("BondingManager", accounts => {
             const expUnbondedAmount = add(delegatorFeeShare1, delegatorFeeShare2).toString()
             await bondingManager.claimTokenPoolsShares(8, {from: dAddr})
 
-            const delegatorStake = await bondingManager.getDelegatorBondedAmount(dAddr)
+            const dInfo = await bondingManager.getDelegator(dAddr)
+            const delegatorStake = dInfo[0]
             assert.equal(delegatorStake.toString(), expDelegatorStake, "delegator stake incorrect")
-            const unbondedAmount = await bondingManager.getDelegatorUnbondedAmount(dAddr)
+            const unbondedAmount = dInfo[1]
             assert.equal(unbondedAmount.toString(), expUnbondedAmount, "delegator unbonded amount incorrect")
         })
     })
@@ -602,9 +608,11 @@ contract("BondingManager", accounts => {
             const expWithdrawAmount = delegatorFeeShare
 
             await bondingManager.claimTokenPoolsShares(7, {from: dAddr})
-            const startUnbondedAmount = await bondingManager.getDelegatorUnbondedAmount(dAddr)
+            const startDInfo = await bondingManager.getDelegator(dAddr)
+            const startUnbondedAmount = startDInfo[1]
             await bondingManager.withdraw({from: dAddr})
-            const endUnbondedAmount = await bondingManager.getDelegatorUnbondedAmount(dAddr)
+            const endDInfo = await bondingManager.getDelegator(dAddr)
+            const endUnbondedAmount = endDInfo[1]
             assert.equal(startUnbondedAmount.sub(endUnbondedAmount).toNumber(), expWithdrawAmount, "withdraw amount incorrect")
         })
 
@@ -618,9 +626,11 @@ contract("BondingManager", accounts => {
             await fixture.roundsManager.setCurrentRound(7 + unbondingPeriod.toNumber())
             const expWithdrawAmount = 2000
 
-            const startBondedAmount = await bondingManager.getDelegatorBondedAmount(dAddr)
+            const startDInfo = await bondingManager.getDelegator(dAddr)
+            const startBondedAmount = startDInfo[0]
             await bondingManager.withdraw({from: dAddr})
-            const endBondedAmount = await bondingManager.getDelegatorBondedAmount(dAddr)
+            const endDInfo = await bondingManager.getDelegator(dAddr)
+            const endBondedAmount = endDInfo[0]
             assert.equal(startBondedAmount.sub(endBondedAmount).toNumber(), expWithdrawAmount, "withdraw amount incorrect")
         })
 
@@ -643,11 +653,13 @@ contract("BondingManager", accounts => {
             await fixture.roundsManager.setCurrentRound(7 + unbondingPeriod.toNumber())
             const expWithdrawAmount = 2000 + delegatorFeeShare
 
-            const startBondedAmount = await bondingManager.getDelegatorBondedAmount(dAddr)
-            const startUnbondedAmount = await bondingManager.getDelegatorUnbondedAmount(dAddr)
+            const startDInfo = await bondingManager.getDelegator(dAddr)
+            const startBondedAmount = startDInfo[0]
+            const startUnbondedAmount = startDInfo[1]
             await bondingManager.withdraw({from: dAddr})
-            const endBondedAmount = await bondingManager.getDelegatorBondedAmount(dAddr)
-            const endUnbondedAmount = await bondingManager.getDelegatorUnbondedAmount(dAddr)
+            const endDInfo = await bondingManager.getDelegator(dAddr)
+            const endBondedAmount = endDInfo[0]
+            const endUnbondedAmount = endDInfo[1]
             const bondedWithdrawn = startBondedAmount.sub(endBondedAmount).toNumber()
             const unbondedWithdrawn = startUnbondedAmount.sub(endUnbondedAmount).toNumber()
             assert.equal(bondedWithdrawn + unbondedWithdrawn, expWithdrawAmount, "withdraw amount incorrect")
