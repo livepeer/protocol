@@ -1,47 +1,60 @@
-pragma solidity ^0.4.13;
+pragma solidity ^0.4.17;
 
 import "../rounds/IRoundsManager.sol";
 import "../bonding/IBondingManager.sol";
+import "../token/IMinter.sol";
+
 
 contract RoundsManagerMock is IRoundsManager {
-    uint256 public mockCurrentRound;
-    uint256 public mockCurrentRoundStartBlock;
-    uint256 public mockRoundsPerYear;
-    bool public mockCurrentRoundInitialized;
-
     IBondingManager bondingManager;
+    IMinter minter;
 
-    function RoundsManagerMock(address _bondingManager) {
+    uint256 public currentRound;
+    uint256 public currentRoundStartBlock;
+    uint256 public roundsPerYear;
+    bool public currentRoundInitialized;
+
+    function setBondingManager(address _bondingManager) external {
         bondingManager = IBondingManager(_bondingManager);
     }
 
-    function setCurrentRound(uint256 _round) external returns (bool) {
-        mockCurrentRound = _round;
-        return true;
+    function setMinter(address _minter) external {
+        minter = IMinter(_minter);
     }
 
-    function setCurrentRoundInitialized(bool _initialized) external returns (bool) {
-        mockCurrentRoundInitialized = _initialized;
-        return true;
+    function setCurrentRound(uint256 _round) external {
+        currentRound = _round;
+    }
+
+    function setCurrentRoundInitialized(bool _initialized) external {
+        currentRoundInitialized = _initialized;
+    }
+
+    function setRoundsPerYear(uint256 _rounds) external {
+        roundsPerYear = _rounds;
     }
 
     function initializeRound() external returns (bool) {
         return bondingManager.setActiveTranscoders();
     }
 
-    function currentRound() public constant returns (uint256) {
-        return mockCurrentRound;
+    function callSetCurrentRewardTokens() external {
+        minter.setCurrentRewardTokens();
     }
 
-    function currentRoundStartBlock() public constant returns (uint256) {
-        return mockCurrentRoundStartBlock;
+    function currentRound() public view returns (uint256) {
+        return currentRound;
     }
 
-    function roundsPerYear() public constant returns (uint256) {
-        return mockRoundsPerYear;
+    function currentRoundStartBlock() public view returns (uint256) {
+        return currentRoundStartBlock;
     }
 
-    function currentRoundInitialized() public constant returns (bool) {
-        return mockCurrentRoundInitialized;
+    function roundsPerYear() public view returns (uint256) {
+        return roundsPerYear;
+    }
+
+    function currentRoundInitialized() public view returns (bool) {
+        return currentRoundInitialized;
     }
 }

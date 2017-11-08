@@ -1,4 +1,5 @@
-pragma solidity ^0.4.11;
+pragma solidity ^0.4.17;
+
 
 /*
  * @title Interface for JobsManager

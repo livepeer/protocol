@@ -1,23 +1,29 @@
-pragma solidity ^0.4.11;
+pragma solidity ^0.4.17;
 
-import "./Verifier.sol";
-import "./Verifiable.sol";
+import "../Manager.sol";
+import "./IVerifier.sol";
+import "./IVerifiable.sol";
 
+import "zeppelin-solidity/contracts/math/SafeMath.sol";
 import "../../installed_contracts/oraclize/contracts/usingOraclize.sol";
+
 
 /*
  * @title Verifier contract that uses Oraclize for off-chain computation
  */
-contract OraclizeVerifier is Verifier, usingOraclize {
+contract OraclizeVerifier is Manager, usingOraclize, IVerifier {
+    using SafeMath for uint256;
+
     string public verificationCodeHash;
+    uint256 public gasPrice;
+    uint256 public gasLimit;
 
     // Stores parameters for an Oraclize query
     struct OraclizeQuery {
         uint256 jobId;
         uint256 claimId;
         uint256 segmentNumber;
-        string transcodedDataHash;
-        address callbackContract;
+        bytes32 commitHash;
     }
 
     // Stores active Oraclize queries
@@ -29,53 +35,63 @@ contract OraclizeVerifier is Verifier, usingOraclize {
         _;
     }
 
-    // Check if sufficient funds for Oraclize computation
-    modifier sufficientOraclizeFunds() {
-        require(oraclize_getPrice("computation") <= msg.value);
+    // Check if sender is JobsManager
+    modifier onlyJobsManager() {
+        require(msg.sender == controller.getContract(keccak256("JobsManager")));
         _;
     }
 
-    function OraclizeVerifier() {
-        // OAR used for testing purposes
-        OAR = OraclizeAddrResolverI(0x6f485C8BF6fc43eA212E93BBF8ce046C7f1cb475);
-        // Set verification code hash
-        verificationCodeHash = "QmPu23REr93Mfv7m9NPdFLMZz7PzHE1LaXvn4AmQCQgR3u";
+    // Check if sufficient funds for Oraclize computation
+    modifier sufficientPayment() {
+        require(getPrice() <= msg.value);
+        _;
     }
 
     event OraclizeCallback(uint256 indexed jobId, uint256 indexed claimId, uint256 indexed segmentNumber, bytes proof, bool result);
+
+    function OraclizeVerifier(address _controller, string _verificationCodeHash, uint256 _gasPrice, uint256 _gasLimit) Manager(_controller) {
+        // Set verification code hash
+        verificationCodeHash = _verificationCodeHash;
+        // Set callback gas price
+        gasPrice = _gasPrice;
+        oraclize_setCustomGasPrice(_gasPrice);
+        // Set callback gas limit
+        gasLimit = _gasLimit;
+        // Set Oraclize proof type
+        oraclize_setProof(proofType_TLSNotary | proofStorage_IPFS);
+    }
 
     /*
      * @dev Verify implementation that creates an Oraclize computation query
      * @param _jobId Job identifier
      * @param _segmentNumber Segment being verified for job
      * @param _code Content-addressed storage hash of binary to execute off-chain
-     * @param _dataHash Content-addressed storage hash of input data of segment
-     * @param _transcodedDataHash Hash of transcoded segment data
-     * @param _callbackContract Address of Verifiable contract to call back
+     * @param _dataStorageHash Content-addressed storage hash of input data of segment
+     * @param _dataHashes Hash of segment data and hash of transcoded segment data
      */
     function verify(
         uint256 _jobId,
         uint256 _claimId,
         uint256 _segmentNumber,
-        string _dataHash,
-        string _transcodedDataHash,
-        address _callbackContract
+        string _transcodingOptions,
+        string _dataStorageHash,
+        bytes32[2] _dataHashes
     )
         external
         payable
-        sufficientOraclizeFunds
+        onlyJobsManager
+        sufficientPayment
         returns (bool)
     {
         // Create Oraclize query
-        string memory mVerificationCodeHash = verificationCodeHash;
-        bytes32 queryId = oraclize_query("computation", [mVerificationCodeHash, _dataHash], 3000000);
+        string memory codeHashQuery = strConcat("binary(", verificationCodeHash, ").unhexlify()");
+        bytes32 queryId = oraclize_query("computation", [codeHashQuery, _dataStorageHash, _transcodingOptions], gasLimit);
 
         // Store Oraclize query parameters
         oraclizeQueries[queryId].jobId = _jobId;
         oraclizeQueries[queryId].claimId = _claimId;
         oraclizeQueries[queryId].segmentNumber = _segmentNumber;
-        oraclizeQueries[queryId].transcodedDataHash = _transcodedDataHash;
-        oraclizeQueries[queryId].callbackContract = _callbackContract;
+        oraclizeQueries[queryId].commitHash = keccak256(_dataHashes[0], _dataHashes[1]);
 
         return true;
     }
@@ -88,18 +104,40 @@ contract OraclizeVerifier is Verifier, usingOraclize {
     function __callback(bytes32 _queryId, string _result, bytes _proof) onlyOraclize {
         OraclizeQuery memory oc = oraclizeQueries[_queryId];
 
-        // Check if transcoded data hash returned by Oraclize matches originally submitted transcoded data hash
-        if (strCompare(oc.transcodedDataHash, _result) == 0) {
+        // Check if hash returned by Oraclize matches originally submitted commit hash = h(dataHash, transcodedDataHash)
+        if (oc.commitHash == strToBytes32(_result)) {
             // Notify callback contract of successful verification
-            Verifiable(oc.callbackContract).receiveVerification(oc.jobId, oc.claimId, oc.segmentNumber, true);
+            IVerifiable(controller.getContract(keccak256("JobsManager"))).receiveVerification(oc.jobId, oc.claimId, oc.segmentNumber, true);
             OraclizeCallback(oc.jobId, oc.claimId, oc.segmentNumber, _proof, true);
         } else {
             // Notify callback contract of failed verification
-            Verifiable(oc.callbackContract).receiveVerification(oc.jobId, oc.claimId, oc.segmentNumber, false);
+            IVerifiable(controller.getContract(keccak256("JobsManager"))).receiveVerification(oc.jobId, oc.claimId, oc.segmentNumber, false);
             OraclizeCallback(oc.jobId, oc.claimId, oc.segmentNumber, _proof, false);
         }
 
         // Remove Oraclize query
         delete oraclizeQueries[_queryId];
+    }
+
+    /*
+     * @dev Return price of Oraclize verification
+     */
+    function getPrice() public view returns (uint256) {
+        return oraclize_getPrice("computation").add(gasPrice.mul(gasLimit));
+    }
+
+    /*
+     * @dev Convert a string representing a 32 byte array into a 32 byte array
+     * @param _str String representing a 32 byte array
+     */
+    function strToBytes32(string _str) internal pure returns (bytes32) {
+        bytes memory byteStr = bytes(_str);
+        bytes32 result;
+
+        assembly {
+            result := mload(add(byteStr, 32))
+        }
+
+        return result;
     }
 }

@@ -20,26 +20,23 @@ This is a work in progress LivepeerProtocol implementation. See the [Dev Roadmap
 To build and test the Livepeer Protocol locally:
 
 ```
-# Install and Launch TestRPC
-npm install -g ethereumjs-testrpc
-
 # Clone the repo and install dependencies
 git clone https://github.com/livepeer/protocol.git
 cd protocol
 npm install
 
 # Start testrpc
-testrpc
+npm run testrpc
 
 # Run the tests in another console window
-truffle test
+npm run test
 ```
 
 Tests involving verification via Oraclize require [ethereum-bridge](https://github.com/oraclize/ethereum-bridge)
 
 ```
 # Start testrpc
-testrpc
+npm run test
 
 # Start ethereum-bridge in another console window
 git clone https://github.com/oraclize/ethereum-bridge.git

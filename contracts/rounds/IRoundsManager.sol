@@ -1,8 +1,8 @@
-pragma solidity ^0.4.13;
+pragma solidity ^0.4.17;
+
 
 /*
  * @title Interface for RoundsManager
- * TODO: switch to interface type
  */
 contract IRoundsManager {
     // External functions

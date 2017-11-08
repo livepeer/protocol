@@ -1,0 +1,82 @@
+[parity]
+# Local Development Chain
+chain = "/parity/chain-spec.json"
+# Forces Parity to run even if there are known issues regarding consensus. Not recommended.
+no_consensus = true
+# Blockchain and settings will be stored in /parity.
+base_path = "/parity"
+# Parity databases will be stored in /parity/chains.
+db_path = "/parity/chains"
+# Your encrypted private keys will be stored in /parity/keys.
+keys_path = "/parity/keys"
+
+[account]
+# From: [0xd2b1a04170adc3431800ec0d635e3b984b62f6f9, 0xbc4eb23a28cc92044cd3e734c98193e7b5b133f0, 0x0b601b1cf6114bf02521a29fc395ee2249e5c91d, 0xc06c27eeaa494da372ec570ff6aeedc0e216e78c] you'll be able to send
+# transactions without a password.
+unlock = ["0xd2b1a04170adc3431800ec0d635e3b984b62f6f9", "0xbc4eb23a28cc92044cd3e734c98193e7b5b133f0", "0x0b601b1cf6114bf02521a29fc395ee2249e5c91d", "0xc06c27eeaa494da372ec570ff6aeedc0e216e78c"]
+# File at /parity/password.txt should contain passwords to unlock your accounts. One password per line.
+password = ["/parity/password.txt"]
+
+[network]
+# Enable or disable new peers discovery.
+discovery = false
+# Connect only to reserved nodes.
+reserved_only = true
+
+[rpc]
+#  JSON-RPC will be listening for connections on IP 0.0.0.0.
+interface = "all"
+# Only selected APIs will be exposed over this interface.
+apis = ["all"]
+# Allow connections only using specified addresses.
+hosts = ["all"]
+
+[websockets]
+#  JSON-RPC will be listening for connections on IP 0.0.0.0.
+interface = "all"
+# Allows connecting from Origin '*'.
+origins = ["all"]
+# Only selected APIs will be exposed over this interface.
+apis = ["all"]
+# Allow connections only using specified addresses.
+hosts = ["all"]
+
+[ipc]
+# You won't be able to use IPC to interact with Parity.
+disable = true
+
+[secretstore]
+# You won't be able to encrypt and decrypt secrets.
+disable = true
+
+[ipfs]
+# You won't be able to hash-query blockchain data.
+disable = true
+
+[dapps]
+# You won't be able to access any web Dapps.
+disable = true
+
+[mining]
+reseal_min_period = 0
+reseal_max_period = 0
+reseal_on_txs = "all"
+force_sealing = false
+
+min_gas_price = 1
+# Targeting 6700000 gas per block when sealing a new block.
+gas_floor_target = "6700000"
+# Gas limit will be raised at most by 6700000 gas.
+gas_cap = "6700000"
+# Parity will reject transactions above 6700000 gas.
+tx_gas_limit = "6700000"
+# Parity will not save local transaction queue to disk.
+no_persistent_txqueue = true
+
+[footprint]
+# Significant speed up but unclean exit is unrecoverable (disables DB WAL).
+fast_and_loose = true
+
+[snapshots]
+# Disables automatic periodic snapshots.
+disable_periodic = true

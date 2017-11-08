@@ -1,26 +1,20 @@
-pragma solidity ^0.4.13;
+pragma solidity ^0.4.17;
 
+import "../ManagerProxyTarget.sol";
 import "./IJobsManager.sol";
 import "./libraries/JobLib.sol";
-import "./libraries/MerkleProof.sol";
-import "../Manager.sol";
-import "../ContractRegistry.sol";
-import "../LivepeerToken.sol";
+import "../token/ILivepeerToken.sol";
+import "../token/IMinter.sol";
 import "../bonding/IBondingManager.sol";
-import "../verification/Verifiable.sol";
-import "../verification/Verifier.sol";
+import "../rounds/IRoundsManager.sol";
+import "../verification/IVerifiable.sol";
+import "../verification/IVerifier.sol";
 
 import "zeppelin-solidity/contracts/math/SafeMath.sol";
-import "zeppelin-solidity/contracts/ECRecovery.sol";
 
-contract JobsManager is IJobsManager, Verifiable, Manager {
+
+contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
     using SafeMath for uint256;
-
-    // Token address
-    LivepeerToken public token;
-
-    // Verifier address
-    Verifier public verifier;
 
     // % of segments to be verified. 1 / verificationRate == % to be verified
     uint64 public verificationRate;
@@ -55,9 +49,9 @@ contract JobsManager is IJobsManager, Verifiable, Manager {
         string streamId;                      // Unique identifier for stream.
         string transcodingOptions;            // Options used for transcoding
         uint256 maxPricePerSegment;           // Max price (in LPT base units) per segment of a stream
-        uint256 pricePerSegment;              // Set price per segment for job set by a transcoder
         address broadcasterAddress;           // Address of broadcaster that requestes a transcoding job
         address transcoderAddress;            // Address of transcoder selected for the job
+        uint256 creationRound;                // Round that a job is created
         uint256 endBlock;                     // Block at which the job is ended and considered inactive
         Claim[] claims;                       // Claims submitted for this job
         uint256 escrow;                       // Claim fees before verification and slashing periods are complete
@@ -74,7 +68,6 @@ contract JobsManager is IJobsManager, Verifiable, Manager {
         uint256 claimBlock;                                // Block number that claim was submitted
         uint256 endVerificationBlock;                      // End of verification period for this claim
         uint256 endSlashingBlock;                          // End of slashing period for this claim
-        uint256 transcoderTotalStake;                      // Transcoder's total stake at the time of claim
         mapping (uint256 => bool) segmentVerifications;    // Mapping segment number => whether segment was submitted for verification
         ClaimStatus status;                                // Status of claim (pending, slashed, complete)
     }
@@ -89,24 +82,30 @@ contract JobsManager is IJobsManager, Verifiable, Manager {
 
     // Check if sender is Verifier contract
     modifier onlyVerifier() {
-        require(msg.sender == address(verifier));
+        require(IVerifier(msg.sender) == verifier());
         _;
     }
 
+    // Check if job exists
     modifier jobExists(uint256 _jobId) {
         require(_jobId < numJobs);
         _;
     }
 
+    // Check if sender provided enough payment for verification
+    modifier sufficientPayment() {
+        require(msg.value >= verifier().getPrice());
+        _;
+    }
+
     // Events
-    event NewJob(address indexed transcoder, address indexed broadcaster, uint256 jobId);
+    event NewJob(address indexed transcoder, address indexed broadcaster, uint256 jobId, string streamId, string transcodingOptions);
     event NewClaim(address indexed transcoder, uint256 indexed jobId, uint256 claimId);
     event ReceivedVerification(uint256 indexed jobId, uint256 indexed claimId, uint256 segmentNumber, bool result);
 
-    function JobsManager(
-        address _registry,
-        address _token,
-        address _verifier,
+    function JobsManager(address _controller) Manager(_controller) {}
+
+    function initialize(
         uint64 _verificationRate,
         uint256 _jobEndingPeriod,
         uint256 _verificationPeriod,
@@ -115,12 +114,11 @@ contract JobsManager is IJobsManager, Verifiable, Manager {
         uint64 _missedVerificationSlashAmount,
         uint64 _finderFee
     )
-        Manager(_registry)
+        external
+        beforeInitialization
+        returns (bool)
     {
-        // Set LivepeerToken address
-        token = LivepeerToken(_token);
-        // Set Verifier address
-        verifier = Verifier(_verifier);
+        finishInitialization();
 
         verificationRate = _verificationRate;
         jobEndingPeriod = _jobEndingPeriod;
@@ -135,21 +133,22 @@ contract JobsManager is IJobsManager, Verifiable, Manager {
      * @dev Deposit funds for jobs
      * @param _amount Amount to deposit
      */
-    function deposit(uint256 _amount) external whenSystemNotPaused returns (bool) {
+    function deposit(uint256 _amount) external afterInitialization whenSystemNotPaused returns (bool) {
         broadcasterDeposits[msg.sender] = broadcasterDeposits[msg.sender].add(_amount);
-        // Transfer tokens for deposit. Sender needs to approve amount first
-        token.transferFrom(msg.sender, this, _amount);
+        // Transfer tokens for deposit to Minter. Sender needs to approve amount first
+        livepeerToken().transferFrom(msg.sender, minter(), _amount);
 
         return true;
     }
 
     /*
      * @dev Withdraw deposited funds
+     * FIXME: Attacker can withdraw funds before transcoder has a chance to claim them
      */
-    function withdraw() external whenSystemNotPaused returns (bool) {
+    function withdraw() external afterInitialization whenSystemNotPaused returns (bool) {
         uint256 amount = broadcasterDeposits[msg.sender];
         broadcasterDeposits[msg.sender] = 0;
-        token.transfer(msg.sender, amount);
+        minter().transferTokens(msg.sender, amount);
 
         return true;
     }
@@ -162,10 +161,11 @@ contract JobsManager is IJobsManager, Verifiable, Manager {
      */
     function job(string _streamId, string _transcodingOptions, uint256 _maxPricePerSegment)
         external
+        afterInitialization
         whenSystemNotPaused
         returns (bool)
     {
-        var (electedTranscoder, pricePerSegment) = bondingManager().electActiveTranscoder(_maxPricePerSegment);
+        address electedTranscoder = bondingManager().electActiveTranscoder(_maxPricePerSegment);
         /* There must be an elected transcoder */
         require(electedTranscoder != address(0));
 
@@ -174,11 +174,11 @@ contract JobsManager is IJobsManager, Verifiable, Manager {
         job.streamId = _streamId;
         job.transcodingOptions = _transcodingOptions;
         job.maxPricePerSegment = _maxPricePerSegment;
-        job.pricePerSegment = pricePerSegment;
         job.broadcasterAddress = msg.sender;
         job.transcoderAddress = electedTranscoder;
+        job.creationRound = roundsManager().currentRound();
 
-        NewJob(electedTranscoder, msg.sender, numJobs);
+        NewJob(electedTranscoder, msg.sender, numJobs, _streamId, _transcodingOptions);
 
         // Increment number of created jobs
         numJobs = numJobs.add(1);
@@ -190,7 +190,7 @@ contract JobsManager is IJobsManager, Verifiable, Manager {
      * @dev End a job. Can be called by either a broadcaster or transcoder of a job
      * @param _jobId Job identifier
      */
-    function endJob(uint256 _jobId) external whenSystemNotPaused returns (bool) {
+    function endJob(uint256 _jobId) external afterInitialization whenSystemNotPaused returns (bool) {
         Job storage job = jobs[_jobId];
 
         // Job must not already have an end block
@@ -210,6 +210,7 @@ contract JobsManager is IJobsManager, Verifiable, Manager {
      */
     function claimWork(uint256 _jobId, uint256[2] _segmentRange, bytes32 _claimRoot)
         external
+        afterInitialization
         whenSystemNotPaused
         jobExists(_jobId)
         returns (bool)
@@ -224,20 +225,24 @@ contract JobsManager is IJobsManager, Verifiable, Manager {
         require(_segmentRange[1] >= _segmentRange[0]);
 
         // Move fees from broadcaster deposit to escrow
-        uint256 fees = _segmentRange[1].sub(_segmentRange[0]).add(1).mul(job.pricePerSegment);
+        uint256 fees = JobLib.calcFees(_segmentRange[1].sub(_segmentRange[0]).add(1), job.transcodingOptions, job.maxPricePerSegment);
         broadcasterDeposits[job.broadcasterAddress] = broadcasterDeposits[job.broadcasterAddress].sub(fees);
         job.escrow = job.escrow.add(fees);
 
-        job.claims.push(Claim({
-            claimId: job.claims.length,
-            segmentRange: _segmentRange,
-            claimRoot: _claimRoot,
-            claimBlock: block.number,
-            transcoderTotalStake: bondingManager().transcoderTotalStake(msg.sender),
-            endVerificationBlock: block.number.add(verificationPeriod),
-            endSlashingBlock: block.number.add(verificationPeriod).add(slashingPeriod),
-            status: ClaimStatus.Pending
-        }));
+        uint256 endVerificationBlock = block.number.add(verificationPeriod);
+        uint256 endSlashingBlock = endVerificationBlock.add(slashingPeriod);
+
+        job.claims.push(
+            Claim({
+                claimId: job.claims.length,
+                segmentRange: _segmentRange,
+                claimRoot: _claimRoot,
+                claimBlock: block.number,
+                endVerificationBlock: endVerificationBlock,
+                endSlashingBlock: endSlashingBlock,
+                status: ClaimStatus.Pending
+           })
+        );
 
         NewClaim(job.transcoderAddress, _jobId, job.claims.length - 1);
 
@@ -248,8 +253,8 @@ contract JobsManager is IJobsManager, Verifiable, Manager {
      * @dev Submit transcode receipt and invoke transcoding verification
      * @param _jobId Job identifier
      * @param _segmentNumber Segment sequence number in stream
-     * @param _dataHash Content-addressed storage hash of segment data
-     * @param _transcodedDataHash Hash of transcoded segment data
+     * @param _dataStorageHash Content-addressed storage hash of segment data
+     * @param _dataHashes Hash of segment data and hash of transcoded segment data
      * @param _broadcasterSig Broadcaster's signature over segment hash
      * @param _proof Merkle proof for transcode receipt
      */
@@ -257,14 +262,16 @@ contract JobsManager is IJobsManager, Verifiable, Manager {
         uint256 _jobId,
         uint256 _claimId,
         uint256 _segmentNumber,
-        string _dataHash,
-        string _transcodedDataHash,
+        string _dataStorageHash,
+        bytes32[2] _dataHashes,
         bytes _broadcasterSig,
         bytes _proof
     )
         external
         payable
+        afterInitialization
         whenSystemNotPaused
+        sufficientPayment
         returns (bool)
     {
         require(_jobId < numJobs);
@@ -279,16 +286,48 @@ contract JobsManager is IJobsManager, Verifiable, Manager {
 
         // Segment must be eligible for verification
         require(JobLib.shouldVerifySegment(_segmentNumber, claim.segmentRange, claim.claimBlock, verificationRate));
+        // Segment must be signed by broadcaster
+        require(JobLib.validateBroadcasterSig(job.streamId, _segmentNumber, _dataHashes[0], _broadcasterSig, job.broadcasterAddress));
         // Receipt must be valid
-        require(validateReceipt(_jobId, _claimId, _segmentNumber, _dataHash, _transcodedDataHash, _broadcasterSig, _proof));
+        require(JobLib.validateReceipt(job.streamId, _segmentNumber, _dataHashes[0], _dataHashes[1], _broadcasterSig, _proof, claim.claimRoot));
 
         // Mark segment as submitted for verification
         claim.segmentVerifications[_segmentNumber] = true;
 
         // Invoke transcoding verification. This is async and will result in a callback to receiveVerification() which is implemented by this contract
-        verifier.verify(_jobId, _claimId, _segmentNumber, _dataHash, _transcodedDataHash, this);
+        invokeVerification(_jobId, _claimId, _segmentNumber, _dataStorageHash, _dataHashes);
 
         return true;
+    }
+
+    /*
+     * @dev Invoke transcoding verification by calling the Verifier contract
+     * @param _jobId Job identifier
+     * @param _claimId Claim identifier
+     * @param _segmentNumber Segment sequence number in stream
+     * @param _dataStorageHash Content addressable storage hash of segment data
+     * @param _dataHashes Hash of segment data and hash of transcoded segment data
+     */
+    function invokeVerification(
+        uint256 _jobId,
+        uint256 _claimId,
+        uint256 _segmentNumber,
+        string _dataStorageHash,
+        bytes32[2] _dataHashes
+    )
+        internal
+        returns (bool)
+    {
+        IVerifier verifierContract = verifier();
+
+        uint256 price = verifierContract.getPrice();
+
+        // Send payment to verifier if price is greater than zero
+        if (price > 0) {
+            return verifierContract.verify.value(price)(_jobId, _claimId, _segmentNumber, jobs[_jobId].transcodingOptions, _dataStorageHash, _dataHashes);
+        } else {
+            return verifierContract.verify(_jobId, _claimId, _segmentNumber, jobs[_jobId].transcodingOptions, _dataStorageHash, _dataHashes);
+        }
     }
 
     /*
@@ -299,6 +338,7 @@ contract JobsManager is IJobsManager, Verifiable, Manager {
      */
     function receiveVerification(uint256 _jobId, uint256 _claimId, uint256 _segmentNumber, bool _result)
         external
+        afterInitialization
         whenSystemNotPaused
         onlyVerifier
         returns (bool)
@@ -321,6 +361,7 @@ contract JobsManager is IJobsManager, Verifiable, Manager {
      */
     function batchDistributeFees(uint256 _jobId, uint256[] _claimIds)
         external
+        afterInitialization
         whenSystemNotPaused
         returns (bool)
     {
@@ -339,6 +380,7 @@ contract JobsManager is IJobsManager, Verifiable, Manager {
      */
     function missedVerificationSlash(uint256 _jobId, uint256 _claimId, uint256 _segmentNumber)
         external
+        afterInitialization
         whenSystemNotPaused
         jobExists(_jobId)
         returns (bool)
@@ -375,6 +417,7 @@ contract JobsManager is IJobsManager, Verifiable, Manager {
      */
     function distributeFees(uint256 _jobId, uint256 _claimId)
         public
+        afterInitialization
         whenSystemNotPaused
         jobExists(_jobId)
         returns (bool)
@@ -389,13 +432,11 @@ contract JobsManager is IJobsManager, Verifiable, Manager {
         // Slashing period must be over for claim
         require(claim.endSlashingBlock < block.number);
 
-        uint256 fees = claim.segmentRange[1].sub(claim.segmentRange[0]).add(1).mul(job.pricePerSegment);
+        uint256 fees = JobLib.calcFees(claim.segmentRange[1].sub(claim.segmentRange[0]).add(1), job.transcodingOptions, job.maxPricePerSegment);
         // Deduct fees from escrow
         job.escrow = job.escrow.sub(fees);
         // Add fees to transcoder's fee pool
-        bondingManager().updateTranscoderFeePool(msg.sender, fees, claim.claimBlock, claim.transcoderTotalStake);
-        // Send fees to bonding manager
-        token.transfer(address(bondingManager()), fees);
+        bondingManager().updateTranscoderWithFees(msg.sender, fees, job.creationRound);
 
         // Set claim as complete
         claim.status = ClaimStatus.Complete;
@@ -407,7 +448,7 @@ contract JobsManager is IJobsManager, Verifiable, Manager {
      * @dev Compute status of job
      * @param _jobId Job identifier
      */
-    function jobStatus(uint256 _jobId) public constant returns (JobStatus) {
+    function jobStatus(uint256 _jobId) public view returns (JobStatus) {
         if (jobs[_jobId].endBlock > 0 && jobs[_jobId].endBlock <= block.number) {
             // A job is inactive if its end block is set and the current block is greater than or equal to the job's end block
             return JobStatus.Inactive;
@@ -418,47 +459,68 @@ contract JobsManager is IJobsManager, Verifiable, Manager {
     }
 
     /*
-     * @dev Return claim details
+     * @dev Return job info
      * @param _jobId Job identifier
-     * @param _claimId Claim identifier
      */
-    function getClaimDetails(uint256 _jobId, uint256 _claimId)
+    function getJob(
+        uint256 _jobId
+    )
         public
-        constant
-        returns (uint256[2], bytes32, uint256, uint256, uint256, uint256, ClaimStatus)
+        view
+        returns (string streamId, string transcodingOptions, uint256 maxPricePerSegment, address broadcasterAddress, address transcoderAddress, uint256 creationRound, uint256 endBlock, uint256 escrow, uint256 totalClaims)
     {
-        Claim storage claim = jobs[_jobId].claims[_claimId];
+        Job storage job = jobs[_jobId];
 
-        return (claim.segmentRange, claim.claimRoot, claim.claimBlock, claim.endVerificationBlock, claim.endSlashingBlock, claim.transcoderTotalStake, claim.status);
+        streamId = job.streamId;
+        transcodingOptions = job.transcodingOptions;
+        maxPricePerSegment = job.maxPricePerSegment;
+        broadcasterAddress = job.broadcasterAddress;
+        transcoderAddress = job.transcoderAddress;
+        creationRound = job.creationRound;
+        endBlock = job.endBlock;
+        escrow = job.escrow;
+        totalClaims = job.claims.length;
     }
 
     /*
-     * @dev Validate a transcode receipt
+     * @dev Return claim info
      * @param _jobId Job identifier
      * @param _claimId Claim identifier
-     * @param _segmentNumber Segment sequence number in stream
-     * @param _dataHash Content-addressed storage hash of segment data
-     * @param _transcodedDataHash Hash of transcoded segment data
-     * @param _broadcasterSig Broadcaster's signature over segment hash
-     * @param _proof Merkle proof for transcode receipt
      */
-    function validateReceipt(
+    function getClaim(
+        uint256 _jobId,
+        uint256 _claimId
+    )
+        public
+        view
+        returns (uint256[2] segmentRange, bytes32 claimRoot, uint256 claimBlock, uint256 endVerificationBlock, uint256 endSlashingBlock, ClaimStatus status)
+    {
+        Claim storage claim = jobs[_jobId].claims[_claimId];
+
+        segmentRange = claim.segmentRange;
+        claimRoot = claim.claimRoot;
+        claimBlock = claim.claimBlock;
+        endVerificationBlock = claim.endVerificationBlock;
+        endSlashingBlock = claim.endSlashingBlock;
+        status = claim.status;
+    }
+
+    /*
+     * @dev Return whether a segment was verified for a claim
+     * @param _jobId Job identifier
+     * @param _claimId Claim identifier
+     * @param _segmentNumber Segment number
+     */
+    function isClaimSegmentVerified(
         uint256 _jobId,
         uint256 _claimId,
-        uint256 _segmentNumber,
-        string _dataHash,
-        string _transcodedDataHash,
-        bytes _broadcasterSig,
-        bytes _proof
+        uint256 _segmentNumber
     )
-        internal
-        constant
+        public
+        view
         returns (bool)
     {
-        if (ECRecovery.recover(JobLib.personalSegmentHash(jobs[_jobId].streamId, _segmentNumber, _dataHash), _broadcasterSig) != jobs[_jobId].broadcasterAddress) return false;
-        if (!MerkleProof.verifyProof(_proof, jobs[_jobId].claims[_claimId].claimRoot, JobLib.transcodeReceiptHash(jobs[_jobId].streamId, _segmentNumber, _dataHash, _transcodedDataHash, _broadcasterSig))) return false;
-
-        return true;
+        return jobs[_jobId].claims[_claimId].segmentVerifications[_segmentNumber];
     }
 
     /*
@@ -471,7 +533,7 @@ contract JobsManager is IJobsManager, Verifiable, Manager {
         Claim storage claim = job.claims[_claimId];
 
         // Return escrowed fees for claim
-        uint256 fees = claim.segmentRange[1].sub(claim.segmentRange[0]).add(1).mul(job.pricePerSegment);
+        uint256 fees = JobLib.calcFees(claim.segmentRange[1].sub(claim.segmentRange[0]).add(1), job.transcodingOptions, job.maxPricePerSegment);
         job.escrow = job.escrow.sub(fees);
         broadcasterDeposits[job.broadcasterAddress] = broadcasterDeposits[job.broadcasterAddress].add(fees);
 
@@ -479,10 +541,37 @@ contract JobsManager is IJobsManager, Verifiable, Manager {
     }
 
     /*
-     * @dev Returns BondingManager
+     * @dev Returns LivepeerToken
      */
-    function bondingManager() internal constant returns (IBondingManager) {
-        return IBondingManager(ContractRegistry(registry).registry(keccak256("BondingManager")));
+    function livepeerToken() internal view returns (ILivepeerToken) {
+        return ILivepeerToken(controller.getContract(keccak256("LivepeerToken")));
     }
 
+    /*
+     * @dev Returns Minter
+     */
+    function minter() internal view returns (IMinter) {
+        return IMinter(controller.getContract(keccak256("Minter")));
+    }
+
+    /*
+     * @dev Returns BondingManager
+     */
+    function bondingManager() internal view returns (IBondingManager) {
+        return IBondingManager(controller.getContract(keccak256("BondingManager")));
+    }
+
+    /*
+     * @dev Returns RoundsManager
+     */
+    function roundsManager() internal view returns (IRoundsManager) {
+        return IRoundsManager(controller.getContract(keccak256("RoundsManager")));
+    }
+
+    /*
+     * @dev Returns Verifier
+     */
+    function verifier() internal view returns (IVerifier) {
+        return IVerifier(controller.getContract(keccak256("Verifier")));
+    }
 }

@@ -2,6 +2,7 @@
 
 ## Style Guidelines
 
+We use [Solium](https://github.com/duaraghav8/Solium) to enforce Solidity coding conventions and [ESLint](https://eslint.org/) to enforce Javascript coding conventions.
 Below are a few style guidelines to be used when contributing to the Livepeer Protocol.
 
 #### Solidity
