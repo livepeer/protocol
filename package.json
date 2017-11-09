@@ -10,7 +10,9 @@
     "lint": "npm run eslint; npm run solium",
     "eslint": "./node_modules/eslint/bin/eslint.js util/** scripts/** test/**",
     "solium": "./node_modules/solium/bin/solium.js --dir ./contracts",
-    "test": "npm run lint; truffle test",
+    "compile": "rm -rf build/contracts && truffle compile --all",
+    "unit-test": "truffle test test/unit/*",
+    "integration-test": "truffle test test/integration/*",
     "testrpc": "testrpc -l 0x663BE0"
   },
   "repository": {
@@ -34,13 +36,13 @@
     "eslint": "^4.3.0",
     "eslint-config-google": "^0.9.1",
     "ethereumjs-abi": "^0.6.4",
-    "ethereumjs-testrpc": "^5.0.1",
+    "ethereumjs-testrpc": "^6.0.1",
     "ethereumjs-util": "^5.1.2",
     "solium": "github:AugurProject/Solium",
     "zeppelin-solidity": "^1.3.0"
   },
   "dependencies": {
     "mkdirp": "^0.5.1",
-    "truffle": "^4.0.0-beta.2"
+    "truffle": "^4.0.1"
   }
 }

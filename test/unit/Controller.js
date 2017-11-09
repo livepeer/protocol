@@ -1,7 +1,7 @@
-import Fixture from "./helpers/fixture"
+import Fixture from "../helpers/fixture"
 import ethUtil from "ethereumjs-util"
 import ethAbi from "ethereumjs-abi"
-import expectThrow from "./helpers/expectThrow"
+import expectThrow from "../helpers/expectThrow"
 
 const Manager = artifacts.require("Manager")
 const Controller = artifacts.require("Controller")

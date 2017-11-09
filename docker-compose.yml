@@ -1,0 +1,26 @@
+version: "3"
+services:
+  parity-dev:
+    build: ./scripts/parity-dev
+    ports:
+      - "47623:8545"
+  geth-dev:
+    build: ./scripts/geth-dev
+    ports:
+      - "47624:8545"
+  parity-integration-tests:
+    build:
+      context: .
+      dockerfile: Dockerfile-integration-tests
+    environment:
+      - TRUFFLE_NETWORK_NAME=parityDev
+    links:
+      - parity-dev
+  geth-integration-tests:
+    build:
+      context: .
+      dockerfile: Dockerfile-integration-tests
+    environment:
+      - TRUFFLE_NETWORK_NAME=gethDev
+    links:
+      - geth-dev
