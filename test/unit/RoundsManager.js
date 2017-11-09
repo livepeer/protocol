@@ -101,6 +101,9 @@ contract("RoundsManager", accounts => {
             const roundLength = await roundsManager.roundLength.call()
             await fixture.rpc.waitUntilNextBlockMultiple(roundLength.toNumber())
 
+            await roundsManager.initializeRound()
+            await fixture.rpc.waitUntilNextBlockMultiple(roundLength.toNumber())
+
             assert.isNotOk(await roundsManager.currentRoundInitialized(), "not false when last initialized round not set to current round")
         })
     })
