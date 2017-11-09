@@ -17,6 +17,8 @@ This is a work in progress LivepeerProtocol implementation. See the [Dev Roadmap
 
 ## Development
 
+The Livepeer Protocol uses Truffle v4.0.1 and TestRPC v6.0.1.
+
 To build and test the Livepeer Protocol locally:
 
 ```
@@ -29,7 +31,15 @@ npm install
 npm run testrpc
 
 # Run the tests in another console window
-npm run test
+npm run unit-test
+npm run integration-test
+```
+
+To run integration tests using Geth and Parity, you will need to use docker-compose:
+
+```
+cd protocol
+docker-compose up --build
 ```
 
 Tests involving verification via Oraclize require [ethereum-bridge](https://github.com/oraclize/ethereum-bridge)

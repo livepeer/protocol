@@ -6,4 +6,6 @@ test:
   override:
     - npm run testrpc:
         background: true
-    - npm run test
+    - npm run lint
+    - npm run unit-test
+    - npm run integration-test

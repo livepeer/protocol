@@ -1,3 +1,7 @@
+import BigNumber from "bignumber.js"
+
+const TOKEN_UNIT = 10 ** 18
+
 module.exports = {
     bondingManager: {
         numActiveTranscoders: 1,
@@ -17,8 +21,8 @@ module.exports = {
         roundLength: 50
     },
     faucet: {
-        faucetAmount: 100000000000000000000,
-        requestAmount: 1000,
+        faucetAmount: new BigNumber(1000000000000000000000).mul(TOKEN_UNIT),
+        requestAmount: new BigNumber(1000000).mul(TOKEN_UNIT),
         requestWait: 2,
         whitelist: []
     },

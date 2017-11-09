@@ -11,14 +11,10 @@ const IdentityVerifier = artifacts.require("IdentityVerifier")
 const LivepeerVerifier = artifacts.require("LivepeerVerifier")
 const OraclizeVerifier = artifacts.require("OraclizeVerifier")
 const LivepeerToken = artifacts.require("LivepeerToken")
-const ManagerProxy = artifacts.require("ManagerProxy")
 
 module.exports = function(deployer, network) {
     let controller
     let token
-    let bondingManagerProxy
-    let jobsManagerProxy
-    let roundsManagerProxy
 
     deployer.then(() => {
         return Promise.all([
@@ -35,7 +31,7 @@ module.exports = function(deployer, network) {
         ])
     }).then(() => {
         // Register Verifier
-        if (network === "development") {
+        if (network === "development" || network === "parityDev" || network === "gethDev") {
             return controller.setContract(ethUtil.bufferToHex(ethAbi.soliditySHA3(["string"], ["Verifier"])), IdentityVerifier.address)
         } else if (network === "lpTestNet") {
             return controller.setContract(ethUtil.bufferToHex(ethAbi.soliditySHA3(["string"], ["Verifier"])), LivepeerVerifier.address)
@@ -43,34 +39,17 @@ module.exports = function(deployer, network) {
             return controller.setContract(ethUtil.bufferToHex(ethAbi.soliditySHA3(["string"], ["Verifier"])), OraclizeVerifier.address)
         }
     }).then(() => {
-        // Register upgradeable proxy target contracts
+        // Register contracts
         return Promise.all([
-            controller.setContract(ethUtil.bufferToHex(ethAbi.soliditySHA3(["string"], ["BondingManagerTarget"])), BondingManager.address),
-            controller.setContract(ethUtil.bufferToHex(ethAbi.soliditySHA3(["string"], ["JobsManagerTarget"])), JobsManager.address),
-            controller.setContract(ethUtil.bufferToHex(ethAbi.soliditySHA3(["string"], ["RoundsManagerTarget"])), RoundsManager.address)
+            controller.setContract(ethUtil.bufferToHex(ethAbi.soliditySHA3(["string"], ["BondingManager"])), BondingManager.address),
+            controller.setContract(ethUtil.bufferToHex(ethAbi.soliditySHA3(["string"], ["JobsManager"])), JobsManager.address),
+            controller.setContract(ethUtil.bufferToHex(ethAbi.soliditySHA3(["string"], ["RoundsManager"])), RoundsManager.address)
         ])
     }).then(() => {
-        // Deploy proxy contracts
         return Promise.all([
-            ManagerProxy.new(Controller.address, ethUtil.bufferToHex(ethAbi.soliditySHA3(["string"], ["BondingManagerTarget"]))),
-            ManagerProxy.new(Controller.address, ethUtil.bufferToHex(ethAbi.soliditySHA3(["string"], ["JobsManagerTarget"]))),
-            ManagerProxy.new(Controller.address, ethUtil.bufferToHex(ethAbi.soliditySHA3(["string"], ["RoundsManagerTarget"])))
-        ])
-    }).then(proxies => {
-        [bondingManagerProxy, jobsManagerProxy, roundsManagerProxy] = proxies
-
-        // Register proxy contracts
-        return Promise.all([
-            controller.setContract(ethUtil.bufferToHex(ethAbi.soliditySHA3(["string"], ["BondingManager"])), bondingManagerProxy.address),
-            controller.setContract(ethUtil.bufferToHex(ethAbi.soliditySHA3(["string"], ["JobsManager"])), jobsManagerProxy.address),
-            controller.setContract(ethUtil.bufferToHex(ethAbi.soliditySHA3(["string"], ["RoundsManager"])), roundsManagerProxy.address)
-        ])
-    }).then(() => {
-        // Cast proxy contracts into target contracts
-        return Promise.all([
-            BondingManager.at(bondingManagerProxy.address),
-            JobsManager.at(jobsManagerProxy.address),
-            RoundsManager.at(roundsManagerProxy.address)
+            BondingManager.deployed(),
+            JobsManager.deployed(),
+            RoundsManager.deployed()
         ])
     }).then(managers => {
         const [bondingManager, jobsManager, roundsManager] = managers

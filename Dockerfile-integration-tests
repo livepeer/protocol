@@ -1,0 +1,16 @@
+FROM node:8.5.0
+
+WORKDIR /app/
+COPY .babelrc /app/.babelrc
+COPY package.json /app/package.json
+COPY contracts /app/contracts
+COPY installed_contracts /app/installed_contracts
+COPY test /app/test
+COPY utils /app/utils
+COPY migrations /app/migrations
+COPY truffle.js /app/truffle.js
+
+RUN npm install
+RUN npm run compile
+
+ENTRYPOINT npm run integration-test -- --network=$TRUFFLE_NETWORK_NAME
