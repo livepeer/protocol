@@ -58,7 +58,6 @@ module.exports = function(deployer, network) {
             bondingManager.initialize(config.bondingManager.numActiveTranscoders, config.bondingManager.unbondingPeriod),
             jobsManager.initialize(
                 config.jobsManager.verificationRate,
-                config.jobsManager.jobEndingPeriod,
                 config.jobsManager.verificationPeriod,
                 config.jobsManager.slashingPeriod,
                 config.jobsManager.failedVerificationSlashAmount,

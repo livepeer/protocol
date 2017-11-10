@@ -9,7 +9,6 @@ module.exports = {
     },
     jobsManager: {
         verificationRate: 1,
-        jobEndingPeriod: 50,
         verificationPeriod: 50,
         slashingPeriod: 50,
         failedVerificationSlashAmount: 20,

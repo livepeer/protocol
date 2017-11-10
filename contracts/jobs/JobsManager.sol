@@ -22,9 +22,6 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
     // % of verifications you can fail before being slashed
     uint64 public verificationFailureThreshold;
 
-    // Time between when endJob() is called for a job and when the job is considered inactive. Denominated in blocks
-    uint256 public jobEndingPeriod;
-
     // Time after a transcoder calls claimWork() that it has to complete verification of claimed work
     uint256 public verificationPeriod;
 
@@ -42,7 +39,6 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
 
     struct Broadcaster {
         uint256 deposit;         // Deposited tokens for jobs
-        uint256 activeJobs;      // Active jobs that have not been ended
         uint256 withdrawBlock;   // Block at which a deposit can be withdrawn
     }
 
@@ -64,7 +60,7 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
     }
 
     // States of a job
-    enum JobStatus { Inactive, Ended, Active }
+    enum JobStatus { Inactive, Active }
 
     // Represents a transcode claim
     struct Claim {
@@ -113,7 +109,6 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
 
     function initialize(
         uint64 _verificationRate,
-        uint256 _jobEndingPeriod,
         uint256 _verificationPeriod,
         uint256 _slashingPeriod,
         uint64 _failedVerificationSlashAmount,
@@ -127,7 +122,6 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         finishInitialization();
 
         verificationRate = _verificationRate;
-        jobEndingPeriod = _jobEndingPeriod;
         verificationPeriod = _verificationPeriod;
         slashingPeriod = _slashingPeriod;
         failedVerificationSlashAmount = _failedVerificationSlashAmount;
@@ -151,12 +145,11 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
      * @dev Withdraw deposited funds
      */
     function withdraw() external afterInitialization whenSystemNotPaused returns (bool) {
-        // Can only withdraw at or after the withdraw block and if
-        // the broadcaster has no active jobs
-        require(broadcasters[msg.sender].withdrawBlock <= block.number && broadcasters[msg.sender].activeJobs == 0);
+        // Can only withdraw at or after the broadcster's withdraw block
+        require(broadcasters[msg.sender].withdrawBlock <= block.number);
 
         uint256 amount = broadcasters[msg.sender].deposit;
-        broadcasters[msg.sender].deposit = 0;
+        delete broadcasters[msg.sender];
         minter().transferTokens(msg.sender, amount);
 
         return true;
@@ -167,15 +160,19 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
      * @param _streamId Unique stream identifier
      * @param _transcodingOptions Output bitrates, formats, encodings
      * @param _maxPricePerSegment Max price (in LPT base units) to pay for transcoding a segment of a stream
+     * @param _endBlock Block at which this job becomes inactive
      */
-    function job(string _streamId, string _transcodingOptions, uint256 _maxPricePerSegment)
+    function job(string _streamId, string _transcodingOptions, uint256 _maxPricePerSegment, uint256 _endBlock)
         external
         afterInitialization
         whenSystemNotPaused
         returns (bool)
     {
+        // End block must be in the future
+        require(_endBlock > block.number);
+
         address electedTranscoder = bondingManager().electActiveTranscoder(_maxPricePerSegment);
-        /* There must be an elected transcoder */
+        // There must be an elected transcoder
         require(electedTranscoder != address(0));
 
         Job storage job = jobs[numJobs];
@@ -186,43 +183,20 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         job.broadcasterAddress = msg.sender;
         job.transcoderAddress = electedTranscoder;
         job.creationRound = roundsManager().currentRound();
+        job.endBlock = _endBlock;
 
         NewJob(electedTranscoder, msg.sender, numJobs, _streamId, _transcodingOptions);
 
         // Increment number of created jobs
         numJobs = numJobs.add(1);
 
-        // Increment broadcaster's active jobs
-        broadcasters[msg.sender].activeJobs = broadcasters[msg.sender].activeJobs.add(1);
+        if (_endBlock > broadcasters[msg.sender].withdrawBlock) {
+            // Set new withdraw block if job end block is greater than current
+            // broadcaster withdraw block
+            broadcasters[msg.sender].withdrawBlock = _endBlock;
+        }
 
         return true;
-    }
-
-    /*
-     * @dev End a job. Can be called by either a broadcaster or transcoder of a job
-     * @param _jobId Job identifier
-     */
-    function endJob(uint256 _jobId) external afterInitialization whenSystemNotPaused returns (bool) {
-        Job storage job = jobs[_jobId];
-
-        // Job must not already have an end block
-        require(job.endBlock == 0);
-        // Sender must be the job's broadcaster or elected transcoder
-        require(job.broadcasterAddress == msg.sender || job.transcoderAddress == msg.sender);
-
-        // Decrement broadcaster's active jobs
-        broadcasters[msg.sender].activeJobs = broadcasters[msg.sender].activeJobs.sub(1);
-
-        uint256 endBlock = block.number.add(jobEndingPeriod);
-
-        // Set end block for job
-        job.endBlock = block.number.add(jobEndingPeriod);
-        // Set broadcaster's withdraw block
-        if (broadcasters[msg.sender].withdrawBlock < endBlock) {
-            // Set new withdraw block if job end block is greater than current
-            // withdraw block
-            broadcasters[msg.sender].withdrawBlock = endBlock;
-        }
     }
 
     /*
@@ -472,15 +446,9 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
      * @param _jobId Job identifier
      */
     function jobStatus(uint256 _jobId) public view returns (JobStatus) {
-        if (jobs[_jobId].endBlock > 0 && jobs[_jobId].endBlock <= block.number) {
-            if (jobs[_jobId].endBlock <= block.number) {
-                // A job is inactive if its end block is set and the current block is greater than or equal to the job's end block
-                return JobStatus.Inactive;
-            } else {
-                // A job is ended if its end block is set and the current block is less than the job's end block
-                // A transcoder can still claim work and verify segments for an ended job until it becomes inactive
-                return JobStatus.Ended;
-            }
+        if (jobs[_jobId].endBlock <= block.number) {
+            // A job is inactive if its end block is set and the current block is greater than or equal to the job's end block
+            return JobStatus.Inactive;
         } else {
             // A job is active if it does not have an end block
             return JobStatus.Active;
