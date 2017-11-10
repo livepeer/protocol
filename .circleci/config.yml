@@ -13,31 +13,6 @@ jobs:
             chmod +x ~/docker-compose
             sudo mv ~/docker-compose /usr/local/bin/docker-compose
       - setup_remote_docker
-      - restore_cache:
-          key: dependency-cache-{{ .Branch }}-{{ checksum "package.json" }}
       - run:
-          name: npm install
-          command: npm install
-      - save_cache:
-          key: dependency-cache-{{ .Branch }}-{{ checksum "package.json" }}
-          paths:
-            - ./node_modules
-      - run:
-          name: testrpc
-          command: npm run testrpc
-          background: true
-      - run:
-          name: compile
-          command: npm run compile
-      - run:
-          name: lint
-          command: npm run lint
-      - run:
-          name: unit tests
-          command: npm run unit-test -- --network=development
-      - run:
-          name: testrpc integration tests
-          command: npm run integration-test -- --network=development
-      - run:
-          name: geth and parity integration tests
-          command: bash run_integration_tests.sh
+          name: test suite
+          command: bash run_tests.sh
