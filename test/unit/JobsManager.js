@@ -4,12 +4,12 @@ import MerkleTree from "../../utils/merkleTree"
 import batchTranscodeReceiptHashes from "../../utils/batchTranscodeReceipts"
 import {createTranscodingOptions} from "../../utils/videoProfile"
 import Segment from "../../utils/segment"
+import promisify from "es6-promisify"
 import ethUtil from "ethereumjs-util"
 
 const JobsManager = artifacts.require("JobsManager")
 
 const VERIFICATION_RATE = 1
-const JOB_ENDING_PERIOD = 50
 const VERIFICATION_PERIOD = 50
 const SLASHING_PERIOD = 50
 const FAILED_VERIFICATION_SLASH_AMOUNT = 20
@@ -40,7 +40,6 @@ contract("JobsManager", accounts => {
         it("should set parameters", async () => {
             await jobsManager.initialize(
                 VERIFICATION_RATE,
-                JOB_ENDING_PERIOD,
                 VERIFICATION_PERIOD,
                 SLASHING_PERIOD,
                 FAILED_VERIFICATION_SLASH_AMOUNT,
@@ -55,7 +54,6 @@ contract("JobsManager", accounts => {
         it("should fail if already initialized", async () => {
             await jobsManager.initialize(
                 VERIFICATION_RATE,
-                JOB_ENDING_PERIOD,
                 VERIFICATION_PERIOD,
                 SLASHING_PERIOD,
                 FAILED_VERIFICATION_SLASH_AMOUNT,
@@ -66,7 +64,6 @@ contract("JobsManager", accounts => {
             await expectThrow(
                 jobsManager.initialize(
                     VERIFICATION_RATE,
-                    JOB_ENDING_PERIOD,
                     VERIFICATION_PERIOD,
                     SLASHING_PERIOD,
                     FAILED_VERIFICATION_SLASH_AMOUNT,
@@ -83,7 +80,6 @@ contract("JobsManager", accounts => {
         beforeEach(async () => {
             await jobsManager.initialize(
                 VERIFICATION_RATE,
-                JOB_ENDING_PERIOD,
                 VERIFICATION_PERIOD,
                 SLASHING_PERIOD,
                 FAILED_VERIFICATION_SLASH_AMOUNT,
@@ -95,7 +91,7 @@ contract("JobsManager", accounts => {
 
         it("should update broadcaster deposit", async () => {
             await jobsManager.deposit(1000, {from: broadcaster})
-            const bDeposit = await jobsManager.broadcasterDeposits.call(broadcaster)
+            const bDeposit = (await jobsManager.broadcasters.call(broadcaster))[0]
             assert.equal(bDeposit, 1000, "broadcaster deposit incorrect")
         })
     })
@@ -110,7 +106,6 @@ contract("JobsManager", accounts => {
         beforeEach(async () => {
             await jobsManager.initialize(
                 VERIFICATION_RATE,
-                JOB_ENDING_PERIOD,
                 VERIFICATION_PERIOD,
                 SLASHING_PERIOD,
                 FAILED_VERIFICATION_SLASH_AMOUNT,
@@ -133,7 +128,8 @@ contract("JobsManager", accounts => {
                 assert.equal(result.args.transcodingOptions, transcodingOptions, "transcoding options incorrect")
             })
 
-            await jobsManager.job(streamId, transcodingOptions, maxPricePerSegment, {from: broadcaster})
+            const endBlock = web3.eth.blockNumber + 500
+            await jobsManager.job(streamId, transcodingOptions, maxPricePerSegment, endBlock, {from: broadcaster})
         })
 
         it("should create a new job", async () => {
@@ -143,7 +139,8 @@ contract("JobsManager", accounts => {
             const transcoderTotalStake = 100
             await fixture.bondingManager.setActiveTranscoder(accounts[1], 0, transcoderTotalStake, 0)
 
-            await jobsManager.job(streamId, transcodingOptions, maxPricePerSegment, {from: broadcaster})
+            const endBlock = web3.eth.blockNumber + 500
+            await jobsManager.job(streamId, transcodingOptions, maxPricePerSegment, endBlock, {from: broadcaster})
 
             const jInfo = await jobsManager.getJob(0)
             const jMaxPricePerSegment = jInfo[2]
@@ -155,7 +152,7 @@ contract("JobsManager", accounts => {
             const jCreationRound = jInfo[5]
             assert.equal(jCreationRound, creationRound, "creation round incorrect")
             const jEndBlock = jInfo[6]
-            assert.equal(jEndBlock, 0, "end block incorrect")
+            assert.equal(jEndBlock, endBlock, "end block incorrect")
             const jEscrow = jInfo[7]
             assert.equal(jEscrow, 0, "escrow incorrect")
             const jTotalClaims = jInfo[8]
@@ -178,7 +175,6 @@ contract("JobsManager", accounts => {
         beforeEach(async () => {
             await jobsManager.initialize(
                 VERIFICATION_RATE,
-                JOB_ENDING_PERIOD,
                 VERIFICATION_PERIOD,
                 SLASHING_PERIOD,
                 FAILED_VERIFICATION_SLASH_AMOUNT,
@@ -191,16 +187,15 @@ contract("JobsManager", accounts => {
             // Broadcaster deposits fees
             await jobsManager.deposit(deposit, {from: broadcaster})
 
+            const endBlock0 = web3.eth.blockNumber + 50
             // Broadcaster creates job 0
-            await jobsManager.job(streamId, transcodingOptions, maxPricePerSegment, {from: broadcaster})
+            await jobsManager.job(streamId, transcodingOptions, maxPricePerSegment, endBlock0, {from: broadcaster})
+            const endBlock1 = web3.eth.blockNumber + 20
             // Broadcaster creates job 1
-            await jobsManager.job(streamId, transcodingOptions, maxPricePerSegment, {from: broadcaster})
+            await jobsManager.job(streamId, transcodingOptions, maxPricePerSegment, endBlock1, {from: broadcaster})
 
-            // Broadcaster ends job 1
-            await jobsManager.endJob(1, {from: broadcaster})
-            const jobEndingPeriod = await jobsManager.jobEndingPeriod.call()
-            // Fast foward through job ending period
-            await fixture.rpc.wait(jobEndingPeriod.toNumber())
+            // Job 1 ends
+            await fixture.rpc.wait(20)
         })
 
         it("should fail for invalid job id", async () => {
@@ -240,6 +235,7 @@ contract("JobsManager", accounts => {
 
             const claimId = 0
             const claimBlock = web3.eth.blockNumber
+            const blockHash = (await promisify(web3.eth.getBlock)(claimBlock - 1)).hash
             const verificationPeriod = await jobsManager.verificationPeriod.call()
             const slashingPeriod = await jobsManager.slashingPeriod.call()
 
@@ -252,11 +248,13 @@ contract("JobsManager", accounts => {
             assert.equal(cRoot, claimRoot, "claim root incorrect")
             const cBlock = cInfo[2]
             assert.equal(cBlock, claimBlock, "claim block incorrect")
-            const cEndVerificationBlock = cInfo[3]
+            const cBlockHash = cInfo[3]
+            assert.equal(cBlockHash, blockHash, "block hash incorrect")
+            const cEndVerificationBlock = cInfo[4]
             assert.equal(cEndVerificationBlock, claimBlock + verificationPeriod.toNumber(), "end verification block incorrect")
-            const cEndSlashingBlock = cInfo[4]
+            const cEndSlashingBlock = cInfo[5]
             assert.equal(cEndSlashingBlock, claimBlock + verificationPeriod.toNumber() + slashingPeriod.toNumber(), "end slashing block incorrect")
-            const cStatus = cInfo[5]
+            const cStatus = cInfo[6]
             assert.equal(cStatus, 0, "claim status incorrect")
         })
 
@@ -276,7 +274,7 @@ contract("JobsManager", accounts => {
             const fees = maxPricePerSegment * 2 * (segmentRange[1] - segmentRange[0] + 1)
             const expDeposit = deposit - fees
 
-            const newDeposit = await jobsManager.broadcasterDeposits.call(broadcaster)
+            const newDeposit = (await jobsManager.broadcasters.call(broadcaster))[0]
             assert.equal(newDeposit, expDeposit, "deposit is incorrect")
         })
     })
@@ -326,7 +324,6 @@ contract("JobsManager", accounts => {
         beforeEach(async () => {
             await jobsManager.initialize(
                 VERIFICATION_RATE,
-                JOB_ENDING_PERIOD,
                 VERIFICATION_PERIOD,
                 SLASHING_PERIOD,
                 FAILED_VERIFICATION_SLASH_AMOUNT,
@@ -338,16 +335,15 @@ contract("JobsManager", accounts => {
 
             await jobsManager.deposit(1000, {from: broadcaster})
 
+            const endBlock0 = web3.eth.blockNumber + 500
             // Broadcaster creates job 0
-            await jobsManager.job(streamId, transcodingOptions, maxPricePerSegment, {from: broadcaster})
+            await jobsManager.job(streamId, transcodingOptions, maxPricePerSegment, endBlock0, {from: broadcaster})
+            const endBlock1 = web3.eth.blockNumber + 20
             // Broadcaster creates another job 1
-            await jobsManager.job(streamId, transcodingOptions, maxPricePerSegment, {from: broadcaster})
+            await jobsManager.job(streamId, transcodingOptions, maxPricePerSegment, endBlock1, {from: broadcaster})
 
             // Broadcaster ends job 1
-            await jobsManager.endJob(1, {from: broadcaster})
-            const jobEndingPeriod = await jobsManager.jobEndingPeriod.call()
-            // Fast foward through job ending period
-            await fixture.rpc.wait(jobEndingPeriod.toNumber())
+            await fixture.rpc.wait(20)
 
             const segmentRange = [0, 3]
             // Account 1 (transcoder) claims work for job 0
@@ -419,7 +415,6 @@ contract("JobsManager", accounts => {
         beforeEach(async () => {
             await jobsManager.initialize(
                 VERIFICATION_RATE,
-                JOB_ENDING_PERIOD,
                 VERIFICATION_PERIOD,
                 SLASHING_PERIOD,
                 FAILED_VERIFICATION_SLASH_AMOUNT,
@@ -433,8 +428,9 @@ contract("JobsManager", accounts => {
 
             const streamId = "1"
             const transcodingOptions = createTranscodingOptions(["foo", "bar"])
+            const endBlock = web3.eth.blockNumber + 500
             // Broadcaster creates job 0
-            await jobsManager.job(streamId, transcodingOptions, maxPricePerSegment, {from: broadcaster})
+            await jobsManager.job(streamId, transcodingOptions, maxPricePerSegment, endBlock, {from: broadcaster})
 
             const segmentRange = [0, 3]
             const claimRoot = "0x1000000000000000000000000000000000000000000000000000000000000000"
@@ -496,7 +492,7 @@ contract("JobsManager", accounts => {
             const jEscrow = jInfo[7]
             assert.equal(jEscrow, 0, "escrow is incorrect")
             const cInfo = await jobsManager.getClaim(jobId, claimId)
-            const cStatus = cInfo[5]
+            const cStatus = cInfo[6]
             assert.equal(cStatus, 2, "claim status is incorrect")
         })
 
@@ -517,7 +513,6 @@ contract("JobsManager", accounts => {
         beforeEach(async () => {
             await jobsManager.initialize(
                 VERIFICATION_RATE,
-                JOB_ENDING_PERIOD,
                 VERIFICATION_PERIOD,
                 SLASHING_PERIOD,
                 FAILED_VERIFICATION_SLASH_AMOUNT,
@@ -558,7 +553,6 @@ contract("JobsManager", accounts => {
         beforeEach(async () => {
             await jobsManager.initialize(
                 VERIFICATION_RATE,
-                JOB_ENDING_PERIOD,
                 VERIFICATION_PERIOD,
                 SLASHING_PERIOD,
                 FAILED_VERIFICATION_SLASH_AMOUNT,
@@ -572,8 +566,9 @@ contract("JobsManager", accounts => {
 
             const streamId = "1"
             const transcodingOptions = createTranscodingOptions(["foo", "bar"])
+            const endBlock = web3.eth.blockNumber + 500
             // Broadcaster creates job 0
-            await jobsManager.job(streamId, transcodingOptions, maxPricePerSegment, {from: broadcaster})
+            await jobsManager.job(streamId, transcodingOptions, maxPricePerSegment, endBlock, {from: broadcaster})
 
             const segmentRange0 = [0, 3]
             const claimRoot = "0x1000000000000000000000000000000000000000000000000000000000000000"
@@ -600,10 +595,10 @@ contract("JobsManager", accounts => {
             assert.equal(jEscrow, 80, "escrow is incorrect")
 
             const cInfo0 = await jobsManager.getClaim(jobId, 0)
-            const cStatus0 = cInfo0[5]
+            const cStatus0 = cInfo0[6]
             assert.equal(cStatus0, 2, "claim 0 status incorrect")
             const cInfo1 = await jobsManager.getClaim(jobId, 1)
-            const cStatus1 = cInfo1[5]
+            const cStatus1 = cInfo1[6]
             assert.equal(cStatus1, 2, "claim 1 status incorrect")
         })
     })
@@ -652,7 +647,6 @@ contract("JobsManager", accounts => {
         beforeEach(async () => {
             await jobsManager.initialize(
                 VERIFICATION_RATE,
-                JOB_ENDING_PERIOD,
                 VERIFICATION_PERIOD,
                 SLASHING_PERIOD,
                 FAILED_VERIFICATION_SLASH_AMOUNT,
@@ -665,8 +659,9 @@ contract("JobsManager", accounts => {
             await jobsManager.deposit(1000, {from: broadcaster})
 
             const transcodingOptions = createTranscodingOptions(["foo", "bar"])
+            const endBlock = web3.eth.blockNumber + 500
             // Broadcaster creates job 0
-            await jobsManager.job(streamId, transcodingOptions, maxPricePerSegment, {from: broadcaster})
+            await jobsManager.job(streamId, transcodingOptions, maxPricePerSegment, endBlock, {from: broadcaster})
 
             const segmentRange = [0, 3]
             // Account 1 (transcoder) claims work for job 0
@@ -715,10 +710,10 @@ contract("JobsManager", accounts => {
             const jInfo = await jobsManager.getJob(jobId)
             const jEscrow = jInfo[7]
             assert.equal(jEscrow, 0, "escrow is incorrect")
-            const bDeposit = await jobsManager.broadcasterDeposits.call(broadcaster)
+            const bDeposit = (await jobsManager.broadcasters.call(broadcaster))[0]
             assert.equal(bDeposit, 1000, "broadcaster deposit is incorrect")
             const cInfo = await jobsManager.getClaim(jobId, claimId)
-            const cStatus = cInfo[5]
+            const cStatus = cInfo[6]
             assert.equal(cStatus, 1, "claim status is incorrect")
         })
 
@@ -731,6 +726,49 @@ contract("JobsManager", accounts => {
 
             // Should fail because claim is already slashed
             await expectThrow(jobsManager.missedVerificationSlash(jobId, claimId, segmentNumber, {from: accounts[2]}))
+        })
+    })
+
+    describe("withdraw", () => {
+        beforeEach(async () => {
+            await jobsManager.initialize(
+                VERIFICATION_RATE,
+                VERIFICATION_PERIOD,
+                SLASHING_PERIOD,
+                FAILED_VERIFICATION_SLASH_AMOUNT,
+                MISSED_VERIFICATION_SLASH_AMOUNT,
+                FINDER_FEE
+            )
+            await fixture.bondingManager.setActiveTranscoder(accounts[1], 100, 100, 200)
+            await fixture.token.setApproved(true)
+
+            await jobsManager.deposit(1000, {from: accounts[0]})
+        })
+
+        it("should fail if the withdraw block is in the future", async () => {
+            const endBlock = web3.eth.blockNumber + 50
+            await jobsManager.job("abc", "abc", 100, endBlock, {from: accounts[0]})
+
+            await expectThrow(jobsManager.withdraw({from: accounts[0]}))
+        })
+
+        it("should fail if withdraw block is updated to a block in the future", async () => {
+            let endBlock = web3.eth.blockNumber + 50
+            await jobsManager.job("abc", "abc", 100, endBlock, {from: accounts[0]})
+            await fixture.rpc.wait(50)
+
+            endBlock = web3.eth.blockNumber + 50
+            await jobsManager.job("efg", "efg", 100, endBlock, {from: accounts[0]})
+
+            await expectThrow(jobsManager.withdraw({from: accounts[0]}))
+        })
+
+        it("should succeed if the broadcaster has no active jobs and its withdraw block is in now or in the past", async () => {
+            const endBlock = web3.eth.blockNumber + 50
+            await jobsManager.job("abc", "abc", 100, endBlock, {from: accounts[0]})
+            await fixture.rpc.wait(50)
+
+            await jobsManager.withdraw({from: accounts[0]})
         })
     })
 })

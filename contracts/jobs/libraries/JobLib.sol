@@ -29,17 +29,16 @@ library JobLib {
 
     /*
      * Computes whether a segment is eligible for verification based on the last call to claimWork()
-     * @param _segmentSequenceNumber Sequence number of segment in stream
-     * @param _startSegmentSequenceNumber Sequence number of first segment claimed
-     * @param _endSegmentSequenceNumber Sequence number of last segment claimed
-     * @param _lastClaimedWorkBlock Block number when claimWork() was last called
-     * @param _lastClaimedWorkBlockHash Block hash when claimWork() was last called
+     * @param _segmentNumber Sequence number of segment in stream
+     * @param _segmentRange Range of segments claimed
+     * @param _claimBlock Block when claimWork() was called
      * @param _verificationRate Rate at which a particular segment should be verified
      */
     function shouldVerifySegment(
         uint256 _segmentNumber,
         uint256[2] _segmentRange,
         uint256 _claimBlock,
+        bytes32 _claimBlockHash,
         uint64 _verificationRate
     )
         public
@@ -51,13 +50,23 @@ library JobLib {
             return false;
         }
 
-        if (uint256(keccak256(_claimBlock, block.blockhash(_claimBlock), _segmentNumber)) % _verificationRate == 0) {
+        // Use block hash and block number of the block after a claim to determine if a segment
+        // should be verified
+        if (uint256(keccak256(_claimBlock, _claimBlockHash, _segmentNumber)) % _verificationRate == 0) {
             return true;
         } else {
             return false;
         }
     }
 
+    /*
+     * @dev Checks if a segment was signed by a broadcaster address
+     * @param _streamId Stream ID for the segment
+     * @param _segmentNumber Sequence number of segment in the stream
+     * @param _dataHash Hash of segment data
+     * @param _broadcasterSig Broadcaster signature over h(streamId, segmentNumber, dataHash)
+     * @param _broadcaster Broadcaster address
+     */
     function validateBroadcasterSig(
         string _streamId,
         uint256 _segmentNumber,
@@ -72,6 +81,15 @@ library JobLib {
         return ECRecovery.recover(personalSegmentHash(_streamId, _segmentNumber, _dataHash), _broadcasterSig) == _broadcaster;
     }
 
+    /*
+     * @dev Checks if a transcode receipt hash was included in a committed merkle root
+     * @param _streamId StreamID for the segment
+     * @param _segmentNumber Sequence number of segment in the stream
+     * @param _dataHash Hash of segment data
+     * @param _transcodedDataHash Hash of transcoded segment data
+     * @param _broadcasterSig Broadcaster signature over h(streamId, segmentNumber, dataHash)
+     * @param _broadcaster Broadcaster address
+     */
     function validateReceipt(
         string _streamId,
         uint256 _segmentNumber,

@@ -22,9 +22,6 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
     // % of verifications you can fail before being slashed
     uint64 public verificationFailureThreshold;
 
-    // Time between when endJob() is called for a job and when the job is considered inactive. Denominated in blocks
-    uint256 public jobEndingPeriod;
-
     // Time after a transcoder calls claimWork() that it has to complete verification of claimed work
     uint256 public verificationPeriod;
 
@@ -40,8 +37,13 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
     // % of of slashed amount awarded to finder
     uint64 public finderFee;
 
-    // Mapping broadcaster => deposited funds for jobs
-    mapping (address => uint256) public broadcasterDeposits;
+    struct Broadcaster {
+        uint256 deposit;         // Deposited tokens for jobs
+        uint256 withdrawBlock;   // Block at which a deposit can be withdrawn
+    }
+
+    // Mapping broadcaster address => broadcaster info
+    mapping (address => Broadcaster) public broadcasters;
 
     // Represents a transcode job
     struct Job {
@@ -66,6 +68,7 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         uint256[2] segmentRange;                           // Range of segments claimed
         bytes32 claimRoot;                                 // Merkle root of segment transcode proof data
         uint256 claimBlock;                                // Block number that claim was submitted
+        bytes32 blockHash;                                 // Block hash used for challenges
         uint256 endVerificationBlock;                      // End of verification period for this claim
         uint256 endSlashingBlock;                          // End of slashing period for this claim
         mapping (uint256 => bool) segmentVerifications;    // Mapping segment number => whether segment was submitted for verification
@@ -107,7 +110,6 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
 
     function initialize(
         uint64 _verificationRate,
-        uint256 _jobEndingPeriod,
         uint256 _verificationPeriod,
         uint256 _slashingPeriod,
         uint64 _failedVerificationSlashAmount,
@@ -121,7 +123,6 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         finishInitialization();
 
         verificationRate = _verificationRate;
-        jobEndingPeriod = _jobEndingPeriod;
         verificationPeriod = _verificationPeriod;
         slashingPeriod = _slashingPeriod;
         failedVerificationSlashAmount = _failedVerificationSlashAmount;
@@ -134,7 +135,7 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
      * @param _amount Amount to deposit
      */
     function deposit(uint256 _amount) external afterInitialization whenSystemNotPaused returns (bool) {
-        broadcasterDeposits[msg.sender] = broadcasterDeposits[msg.sender].add(_amount);
+        broadcasters[msg.sender].deposit = broadcasters[msg.sender].deposit.add(_amount);
         // Transfer tokens for deposit to Minter. Sender needs to approve amount first
         livepeerToken().transferFrom(msg.sender, minter(), _amount);
 
@@ -143,11 +144,13 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
 
     /*
      * @dev Withdraw deposited funds
-     * FIXME: Attacker can withdraw funds before transcoder has a chance to claim them
      */
     function withdraw() external afterInitialization whenSystemNotPaused returns (bool) {
-        uint256 amount = broadcasterDeposits[msg.sender];
-        broadcasterDeposits[msg.sender] = 0;
+        // Can only withdraw at or after the broadcster's withdraw block
+        require(broadcasters[msg.sender].withdrawBlock <= block.number);
+
+        uint256 amount = broadcasters[msg.sender].deposit;
+        delete broadcasters[msg.sender];
         minter().transferTokens(msg.sender, amount);
 
         return true;
@@ -158,15 +161,19 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
      * @param _streamId Unique stream identifier
      * @param _transcodingOptions Output bitrates, formats, encodings
      * @param _maxPricePerSegment Max price (in LPT base units) to pay for transcoding a segment of a stream
+     * @param _endBlock Block at which this job becomes inactive
      */
-    function job(string _streamId, string _transcodingOptions, uint256 _maxPricePerSegment)
+    function job(string _streamId, string _transcodingOptions, uint256 _maxPricePerSegment, uint256 _endBlock)
         external
         afterInitialization
         whenSystemNotPaused
         returns (bool)
     {
+        // End block must be in the future
+        require(_endBlock > block.number);
+
         address electedTranscoder = bondingManager().electActiveTranscoder(_maxPricePerSegment);
-        /* There must be an elected transcoder */
+        // There must be an elected transcoder
         require(electedTranscoder != address(0));
 
         Job storage job = jobs[numJobs];
@@ -177,29 +184,20 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         job.broadcasterAddress = msg.sender;
         job.transcoderAddress = electedTranscoder;
         job.creationRound = roundsManager().currentRound();
+        job.endBlock = _endBlock;
 
         NewJob(electedTranscoder, msg.sender, numJobs, _streamId, _transcodingOptions);
 
         // Increment number of created jobs
         numJobs = numJobs.add(1);
 
+        if (_endBlock > broadcasters[msg.sender].withdrawBlock) {
+            // Set new withdraw block if job end block is greater than current
+            // broadcaster withdraw block
+            broadcasters[msg.sender].withdrawBlock = _endBlock;
+        }
+
         return true;
-    }
-
-    /*
-     * @dev End a job. Can be called by either a broadcaster or transcoder of a job
-     * @param _jobId Job identifier
-     */
-    function endJob(uint256 _jobId) external afterInitialization whenSystemNotPaused returns (bool) {
-        Job storage job = jobs[_jobId];
-
-        // Job must not already have an end block
-        require(job.endBlock == 0);
-        // Sender must be the job's broadcaster or elected transcoder
-        require(job.broadcasterAddress == msg.sender || job.transcoderAddress == msg.sender);
-
-        // Set end block for job
-        job.endBlock = block.number.add(jobEndingPeriod);
     }
 
     /*
@@ -217,8 +215,8 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
     {
         Job storage job = jobs[_jobId];
 
-        // Job must be active
-        require(jobStatus(_jobId) == JobStatus.Active);
+        // Job cannot be inactive
+        require(jobStatus(_jobId) != JobStatus.Inactive);
         // Sender must be elected transcoder
         require(job.transcoderAddress == msg.sender);
         // Segment range must be valid
@@ -226,7 +224,7 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
 
         // Move fees from broadcaster deposit to escrow
         uint256 fees = JobLib.calcFees(_segmentRange[1].sub(_segmentRange[0]).add(1), job.transcodingOptions, job.maxPricePerSegment);
-        broadcasterDeposits[job.broadcasterAddress] = broadcasterDeposits[job.broadcasterAddress].sub(fees);
+        broadcasters[job.broadcasterAddress].deposit = broadcasters[job.broadcasterAddress].deposit.sub(fees);
         job.escrow = job.escrow.add(fees);
 
         uint256 endVerificationBlock = block.number.add(verificationPeriod);
@@ -238,6 +236,7 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
                 segmentRange: _segmentRange,
                 claimRoot: _claimRoot,
                 claimBlock: block.number,
+                blockHash: block.blockhash(block.number - 1),
                 endVerificationBlock: endVerificationBlock,
                 endSlashingBlock: endSlashingBlock,
                 status: ClaimStatus.Pending
@@ -279,13 +278,13 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         Job storage job = jobs[_jobId];
         Claim storage claim = job.claims[_claimId];
 
-        // Job must be active
-        require(jobStatus(_jobId) == JobStatus.Active);
+        // Job cannot be inactive
+        require(jobStatus(_jobId) != JobStatus.Inactive);
         // Sender must be elected transcoder
         require(job.transcoderAddress == msg.sender);
 
         // Segment must be eligible for verification
-        require(JobLib.shouldVerifySegment(_segmentNumber, claim.segmentRange, claim.claimBlock, verificationRate));
+        require(JobLib.shouldVerifySegment(_segmentNumber, claim.segmentRange, claim.claimBlock, claim.blockHash, verificationRate));
         // Segment must be signed by broadcaster
         require(JobLib.validateBroadcasterSig(job.streamId, _segmentNumber, _dataHashes[0], _broadcasterSig, job.broadcasterAddress));
         // Receipt must be valid
@@ -395,7 +394,7 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         // Claim must be pending
         require(claim.status == ClaimStatus.Pending);
         // Segment must be eligible for verification
-        require(JobLib.shouldVerifySegment(_segmentNumber, claim.segmentRange, claim.claimBlock, verificationRate));
+        require(JobLib.shouldVerifySegment(_segmentNumber, claim.segmentRange, claim.claimBlock, claim.blockHash, verificationRate));
         // Transcoder must have missed verification for the segment
         require(!claim.segmentVerifications[_segmentNumber]);
 
@@ -449,8 +448,8 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
      * @param _jobId Job identifier
      */
     function jobStatus(uint256 _jobId) public view returns (JobStatus) {
-        if (jobs[_jobId].endBlock > 0 && jobs[_jobId].endBlock <= block.number) {
-            // A job is inactive if its end block is set and the current block is greater than or equal to the job's end block
+        if (jobs[_jobId].endBlock <= block.number) {
+            // A job is inactive if the current block is greater than or equal to the job's end block
             return JobStatus.Inactive;
         } else {
             // A job is active if the current block is less than the job's end block
@@ -493,13 +492,14 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
     )
         public
         view
-        returns (uint256[2] segmentRange, bytes32 claimRoot, uint256 claimBlock, uint256 endVerificationBlock, uint256 endSlashingBlock, ClaimStatus status)
+        returns (uint256[2] segmentRange, bytes32 claimRoot, uint256 claimBlock, bytes32 blockHash, uint256 endVerificationBlock, uint256 endSlashingBlock, ClaimStatus status)
     {
         Claim storage claim = jobs[_jobId].claims[_claimId];
 
         segmentRange = claim.segmentRange;
         claimRoot = claim.claimRoot;
         claimBlock = claim.claimBlock;
+        blockHash = claim.blockHash;
         endVerificationBlock = claim.endVerificationBlock;
         endSlashingBlock = claim.endSlashingBlock;
         status = claim.status;
@@ -535,7 +535,7 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         // Return escrowed fees for claim
         uint256 fees = JobLib.calcFees(claim.segmentRange[1].sub(claim.segmentRange[0]).add(1), job.transcodingOptions, job.maxPricePerSegment);
         job.escrow = job.escrow.sub(fees);
-        broadcasterDeposits[job.broadcasterAddress] = broadcasterDeposits[job.broadcasterAddress].add(fees);
+        broadcasters[job.broadcasterAddress].deposit = broadcasters[job.broadcasterAddress].deposit.add(fees);
 
         return true;
     }
