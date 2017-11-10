@@ -4,6 +4,7 @@ import MerkleTree from "../../utils/merkleTree"
 import batchTranscodeReceiptHashes from "../../utils/batchTranscodeReceipts"
 import {createTranscodingOptions} from "../../utils/videoProfile"
 import Segment from "../../utils/segment"
+import promisify from "es6-promisify"
 import ethUtil from "ethereumjs-util"
 
 const JobsManager = artifacts.require("JobsManager")
@@ -234,6 +235,7 @@ contract("JobsManager", accounts => {
 
             const claimId = 0
             const claimBlock = web3.eth.blockNumber
+            const blockHash = (await promisify(web3.eth.getBlock)(claimBlock - 1)).hash
             const verificationPeriod = await jobsManager.verificationPeriod.call()
             const slashingPeriod = await jobsManager.slashingPeriod.call()
 
@@ -246,11 +248,13 @@ contract("JobsManager", accounts => {
             assert.equal(cRoot, claimRoot, "claim root incorrect")
             const cBlock = cInfo[2]
             assert.equal(cBlock, claimBlock, "claim block incorrect")
-            const cEndVerificationBlock = cInfo[3]
+            const cBlockHash = cInfo[3]
+            assert.equal(cBlockHash, blockHash, "block hash incorrect")
+            const cEndVerificationBlock = cInfo[4]
             assert.equal(cEndVerificationBlock, claimBlock + verificationPeriod.toNumber(), "end verification block incorrect")
-            const cEndSlashingBlock = cInfo[4]
+            const cEndSlashingBlock = cInfo[5]
             assert.equal(cEndSlashingBlock, claimBlock + verificationPeriod.toNumber() + slashingPeriod.toNumber(), "end slashing block incorrect")
-            const cStatus = cInfo[5]
+            const cStatus = cInfo[6]
             assert.equal(cStatus, 0, "claim status incorrect")
         })
 
@@ -488,7 +492,7 @@ contract("JobsManager", accounts => {
             const jEscrow = jInfo[7]
             assert.equal(jEscrow, 0, "escrow is incorrect")
             const cInfo = await jobsManager.getClaim(jobId, claimId)
-            const cStatus = cInfo[5]
+            const cStatus = cInfo[6]
             assert.equal(cStatus, 2, "claim status is incorrect")
         })
 
@@ -591,10 +595,10 @@ contract("JobsManager", accounts => {
             assert.equal(jEscrow, 80, "escrow is incorrect")
 
             const cInfo0 = await jobsManager.getClaim(jobId, 0)
-            const cStatus0 = cInfo0[5]
+            const cStatus0 = cInfo0[6]
             assert.equal(cStatus0, 2, "claim 0 status incorrect")
             const cInfo1 = await jobsManager.getClaim(jobId, 1)
-            const cStatus1 = cInfo1[5]
+            const cStatus1 = cInfo1[6]
             assert.equal(cStatus1, 2, "claim 1 status incorrect")
         })
     })
@@ -709,7 +713,7 @@ contract("JobsManager", accounts => {
             const bDeposit = (await jobsManager.broadcasters.call(broadcaster))[0]
             assert.equal(bDeposit, 1000, "broadcaster deposit is incorrect")
             const cInfo = await jobsManager.getClaim(jobId, claimId)
-            const cStatus = cInfo[5]
+            const cStatus = cInfo[6]
             assert.equal(cStatus, 1, "claim status is incorrect")
         })
 

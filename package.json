@@ -33,6 +33,7 @@
     "babel-preset-stage-3": "^6.24.1",
     "babel-register": "^6.24.1",
     "bignumber.js": "^4.0.1",
+    "es6-promisify": "^5.0.0",
     "eslint": "^4.3.0",
     "eslint-config-google": "^0.9.1",
     "ethereumjs-abi": "^0.6.4",
