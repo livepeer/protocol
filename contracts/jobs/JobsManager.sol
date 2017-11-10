@@ -449,10 +449,10 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
      */
     function jobStatus(uint256 _jobId) public view returns (JobStatus) {
         if (jobs[_jobId].endBlock <= block.number) {
-            // A job is inactive if its end block is set and the current block is greater than or equal to the job's end block
+            // A job is inactive if the current block is greater than or equal to the job's end block
             return JobStatus.Inactive;
         } else {
-            // A job is active if it does not have an end block
+            // A job is active if the current block is less than the job's end block
             return JobStatus.Active;
         }
     }
