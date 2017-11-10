@@ -72,6 +72,6 @@ fi
 # Clean up
 docker-compose down
 
-# If both integration tests passed return 0, else return 1
-! (( $PARITY_TEST_EXIT_CODE | $GETH_TEST_EXIT_CODE ))
+# If all tests passed return 0, else return 1
+! (( $LINT_TEST_EXIT_CODE | $UNIT_TEST_EXIT_CODE | $TESTRPC_TEST_EXIT_CODE | $PARITY_TEST_EXIT_CODE | $GETH_TEST_EXIT_CODE ))
 exit $?
