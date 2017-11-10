@@ -10,11 +10,17 @@ services:
     build: ./scripts/geth-dev
     ports:
       - "47624:8545"
+  testrpc:
+    container_name: testrpc
+    build: ./scripts/testrpc
+    ports:
+      - "47625:8545"
   parity-integration-tests:
     container_name: parity-integration-tests
     build:
       context: .
-      dockerfile: Dockerfile-integration-tests
+      dockerfile: Dockerfile-test
+    command: npm run integration-test -- --network=parityDev
     environment:
       - TRUFFLE_NETWORK_NAME=parityDev
     links:
@@ -23,8 +29,35 @@ services:
     container_name: geth-integration-tests
     build:
       context: .
-      dockerfile: Dockerfile-integration-tests
+      dockerfile: Dockerfile-test
+    command: npm run integration-test -- --network=gethDev
     environment:
       - TRUFFLE_NETWORK_NAME=gethDev
     links:
       - geth-dev
+  testrpc-integration-tests:
+    container_name: testrpc-integration-tests
+    build:
+      context: .
+      dockerfile: Dockerfile-test
+    command: npm run integration-test -- --network=testrpc
+    environment:
+      - TRUFFLE_NETWORK_NAME=testrpc
+    links:
+      - testrpc
+  unit-tests:
+    container_name: unit-tests
+    build:
+      context: .
+      dockerfile: Dockerfile-test
+    command: npm run unit-test -- --network=testrpc
+    environment:
+      - TRUFFLE_NETWORK_NAME=testrpc
+    links:
+      - testrpc
+  lint:
+    container_name: lint
+    build:
+      context: .
+      dockerfile: Dockerfile-test
+    command: npm run lint
