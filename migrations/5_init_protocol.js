@@ -31,7 +31,7 @@ module.exports = function(deployer, network) {
         ])
     }).then(() => {
         // Register Verifier
-        if (network === "development" || network === "parityDev" || network === "gethDev") {
+        if (network === "development" || network === "testrpc" || network === "parityDev" || network === "gethDev") {
             return controller.setContract(ethUtil.bufferToHex(ethAbi.soliditySHA3(["string"], ["Verifier"])), IdentityVerifier.address)
         } else if (network === "lpTestNet") {
             return controller.setContract(ethUtil.bufferToHex(ethAbi.soliditySHA3(["string"], ["Verifier"])), LivepeerVerifier.address)

@@ -21,7 +21,7 @@ module.exports = function(deployer, network) {
         ])
     }).then(() => {
         // Deploy Verifier
-        if (network === "development" || network === "parityDev" || network === "gethDev") {
+        if (network === "development" || network === "testrpc" || network === "parityDev" || network === "gethDev") {
             return deployer.deploy(IdentityVerifier, Controller.address)
         } else if (network === "lpTestNet") {
             return deployer.deploy(LivepeerVerifier, Controller.address, config.verifier.solvers, config.verifier.verificationCodeHash)

@@ -1,26 +1,65 @@
 version: "3"
 services:
   parity-dev:
+    container_name: parity-dev
     build: ./scripts/parity-dev
     ports:
       - "47623:8545"
   geth-dev:
+    container_name: geth-dev
     build: ./scripts/geth-dev
     ports:
       - "47624:8545"
-  parity-integration-tests:
-    build:
-      context: .
-      dockerfile: Dockerfile-integration-tests
-    environment:
-      - TRUFFLE_NETWORK_NAME=parityDev
-    links:
-      - parity-dev
+  testrpc:
+    container_name: testrpc
+    build: ./scripts/testrpc
+    ports:
+      - "47625:8545"
+  # Works locally, but not on CircleCI
+  # Add back in once we figure out why
+  # parity-integration-tests:
+  #   container_name: parity-integration-tests
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile-test
+  #   command: npm run integration-test -- --network=parityDev
+  #   environment:
+  #     - TRUFFLE_NETWORK_NAME=parityDev
+  #   links:
+  #     - parity-dev
   geth-integration-tests:
+    container_name: geth-integration-tests
     build:
       context: .
-      dockerfile: Dockerfile-integration-tests
+      dockerfile: Dockerfile-test
+    command: npm run integration-test -- --network=gethDev
     environment:
       - TRUFFLE_NETWORK_NAME=gethDev
     links:
       - geth-dev
+  testrpc-integration-tests:
+    container_name: testrpc-integration-tests
+    build:
+      context: .
+      dockerfile: Dockerfile-test
+    command: npm run integration-test -- --network=testrpc
+    environment:
+      - TRUFFLE_NETWORK_NAME=testrpc
+    links:
+      - testrpc
+  unit-tests:
+    container_name: unit-tests
+    build:
+      context: .
+      dockerfile: Dockerfile-test
+    command: npm run unit-test -- --network=testrpc
+    environment:
+      - TRUFFLE_NETWORK_NAME=testrpc
+    links:
+      - testrpc
+  lint:
+    container_name: lint
+    build:
+      context: .
+      dockerfile: Dockerfile-test
+    command: npm run lint
