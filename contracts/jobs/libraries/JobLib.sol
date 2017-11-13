@@ -38,13 +38,14 @@ library JobLib {
         uint256 _segmentNumber,
         uint256[2] _segmentRange,
         uint256 _claimBlock,
-        bytes32 _claimBlockHash,
         uint64 _verificationRate
     )
         public
         view
         returns (bool)
     {
+        // Claim block + 1 must be within the last 256 blocks from the current block
+        require(block.number < 256 || _claimBlock + 1 >= block.number - 256);
         // Segment must be in segment range
         if (_segmentNumber < _segmentRange[0] || _segmentNumber > _segmentRange[1]) {
             return false;
@@ -52,7 +53,7 @@ library JobLib {
 
         // Use block hash and block number of the block after a claim to determine if a segment
         // should be verified
-        if (uint256(keccak256(_claimBlock, _claimBlockHash, _segmentNumber)) % _verificationRate == 0) {
+        if (uint256(keccak256(_claimBlock + 1, block.blockhash(_claimBlock + 1), _segmentNumber)) % _verificationRate == 0) {
             return true;
         } else {
             return false;

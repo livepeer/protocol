@@ -14,6 +14,7 @@ const VERIFICATION_PERIOD = 50
 const SLASHING_PERIOD = 50
 const FAILED_VERIFICATION_SLASH_AMOUNT = 20
 const MISSED_VERIFICATION_SLASH_AMOUNT = 30
+const DOUBLE_CLAIM_SEGMENT_SLASH_AMOUNT = 40
 const FINDER_FEE = 4
 
 contract("JobsManager", accounts => {
@@ -44,6 +45,7 @@ contract("JobsManager", accounts => {
                 SLASHING_PERIOD,
                 FAILED_VERIFICATION_SLASH_AMOUNT,
                 MISSED_VERIFICATION_SLASH_AMOUNT,
+                DOUBLE_CLAIM_SEGMENT_SLASH_AMOUNT,
                 FINDER_FEE
             )
 
@@ -58,6 +60,7 @@ contract("JobsManager", accounts => {
                 SLASHING_PERIOD,
                 FAILED_VERIFICATION_SLASH_AMOUNT,
                 MISSED_VERIFICATION_SLASH_AMOUNT,
+                DOUBLE_CLAIM_SEGMENT_SLASH_AMOUNT,
                 FINDER_FEE
             )
 
@@ -68,6 +71,7 @@ contract("JobsManager", accounts => {
                     SLASHING_PERIOD,
                     FAILED_VERIFICATION_SLASH_AMOUNT,
                     MISSED_VERIFICATION_SLASH_AMOUNT,
+                    DOUBLE_CLAIM_SEGMENT_SLASH_AMOUNT,
                     FINDER_FEE
                 )
             )
@@ -84,6 +88,7 @@ contract("JobsManager", accounts => {
                 SLASHING_PERIOD,
                 FAILED_VERIFICATION_SLASH_AMOUNT,
                 MISSED_VERIFICATION_SLASH_AMOUNT,
+                DOUBLE_CLAIM_SEGMENT_SLASH_AMOUNT,
                 FINDER_FEE
             )
             await fixture.token.setApproved(true)
@@ -110,6 +115,7 @@ contract("JobsManager", accounts => {
                 SLASHING_PERIOD,
                 FAILED_VERIFICATION_SLASH_AMOUNT,
                 MISSED_VERIFICATION_SLASH_AMOUNT,
+                DOUBLE_CLAIM_SEGMENT_SLASH_AMOUNT,
                 FINDER_FEE
             )
             await fixture.bondingManager.setActiveTranscoder(electedTranscoder, maxPricePerSegment, 100, 200)
@@ -179,6 +185,7 @@ contract("JobsManager", accounts => {
                 SLASHING_PERIOD,
                 FAILED_VERIFICATION_SLASH_AMOUNT,
                 MISSED_VERIFICATION_SLASH_AMOUNT,
+                DOUBLE_CLAIM_SEGMENT_SLASH_AMOUNT,
                 FINDER_FEE
             )
             await fixture.bondingManager.setActiveTranscoder(electedTranscoder, maxPricePerSegment, 100, 200)
@@ -235,7 +242,6 @@ contract("JobsManager", accounts => {
 
             const claimId = 0
             const claimBlock = web3.eth.blockNumber
-            const blockHash = (await promisify(web3.eth.getBlock)(claimBlock - 1)).hash
             const verificationPeriod = await jobsManager.verificationPeriod.call()
             const slashingPeriod = await jobsManager.slashingPeriod.call()
 
@@ -248,13 +254,11 @@ contract("JobsManager", accounts => {
             assert.equal(cRoot, claimRoot, "claim root incorrect")
             const cBlock = cInfo[2]
             assert.equal(cBlock, claimBlock, "claim block incorrect")
-            const cBlockHash = cInfo[3]
-            assert.equal(cBlockHash, blockHash, "block hash incorrect")
-            const cEndVerificationBlock = cInfo[4]
+            const cEndVerificationBlock = cInfo[3]
             assert.equal(cEndVerificationBlock, claimBlock + verificationPeriod.toNumber(), "end verification block incorrect")
-            const cEndSlashingBlock = cInfo[5]
+            const cEndSlashingBlock = cInfo[4]
             assert.equal(cEndSlashingBlock, claimBlock + verificationPeriod.toNumber() + slashingPeriod.toNumber(), "end slashing block incorrect")
-            const cStatus = cInfo[6]
+            const cStatus = cInfo[5]
             assert.equal(cStatus, 0, "claim status incorrect")
         })
 
@@ -328,6 +332,7 @@ contract("JobsManager", accounts => {
                 SLASHING_PERIOD,
                 FAILED_VERIFICATION_SLASH_AMOUNT,
                 MISSED_VERIFICATION_SLASH_AMOUNT,
+                DOUBLE_CLAIM_SEGMENT_SLASH_AMOUNT,
                 FINDER_FEE
             )
             await fixture.bondingManager.setActiveTranscoder(electedTranscoder, maxPricePerSegment, 100, 200)
@@ -348,6 +353,9 @@ contract("JobsManager", accounts => {
             const segmentRange = [0, 3]
             // Account 1 (transcoder) claims work for job 0
             await jobsManager.claimWork(jobId, segmentRange, merkleTree.getHexRoot(), {from: electedTranscoder})
+
+            // Fast forward so that claimBlock + 1 is mined
+            await fixture.rpc.wait(1)
         })
 
         it("should throw for insufficient payment for verification", async () => {
@@ -419,6 +427,7 @@ contract("JobsManager", accounts => {
                 SLASHING_PERIOD,
                 FAILED_VERIFICATION_SLASH_AMOUNT,
                 MISSED_VERIFICATION_SLASH_AMOUNT,
+                DOUBLE_CLAIM_SEGMENT_SLASH_AMOUNT,
                 FINDER_FEE
             )
             await fixture.bondingManager.setActiveTranscoder(electedTranscoder, maxPricePerSegment, 100, 200)
@@ -492,7 +501,7 @@ contract("JobsManager", accounts => {
             const jEscrow = jInfo[7]
             assert.equal(jEscrow, 0, "escrow is incorrect")
             const cInfo = await jobsManager.getClaim(jobId, claimId)
-            const cStatus = cInfo[6]
+            const cStatus = cInfo[5]
             assert.equal(cStatus, 2, "claim status is incorrect")
         })
 
@@ -517,6 +526,7 @@ contract("JobsManager", accounts => {
                 SLASHING_PERIOD,
                 FAILED_VERIFICATION_SLASH_AMOUNT,
                 MISSED_VERIFICATION_SLASH_AMOUNT,
+                DOUBLE_CLAIM_SEGMENT_SLASH_AMOUNT,
                 FINDER_FEE
             )
             await fixture.verifier.setVerifiable(jobsManager.address)
@@ -557,6 +567,7 @@ contract("JobsManager", accounts => {
                 SLASHING_PERIOD,
                 FAILED_VERIFICATION_SLASH_AMOUNT,
                 MISSED_VERIFICATION_SLASH_AMOUNT,
+                DOUBLE_CLAIM_SEGMENT_SLASH_AMOUNT,
                 FINDER_FEE
             )
             await fixture.bondingManager.setActiveTranscoder(electedTranscoder, maxPricePerSegment, 100, 200)
@@ -595,10 +606,10 @@ contract("JobsManager", accounts => {
             assert.equal(jEscrow, 80, "escrow is incorrect")
 
             const cInfo0 = await jobsManager.getClaim(jobId, 0)
-            const cStatus0 = cInfo0[6]
+            const cStatus0 = cInfo0[5]
             assert.equal(cStatus0, 2, "claim 0 status incorrect")
             const cInfo1 = await jobsManager.getClaim(jobId, 1)
-            const cStatus1 = cInfo1[6]
+            const cStatus1 = cInfo1[5]
             assert.equal(cStatus1, 2, "claim 1 status incorrect")
         })
     })
@@ -651,6 +662,7 @@ contract("JobsManager", accounts => {
                 SLASHING_PERIOD,
                 FAILED_VERIFICATION_SLASH_AMOUNT,
                 MISSED_VERIFICATION_SLASH_AMOUNT,
+                DOUBLE_CLAIM_SEGMENT_SLASH_AMOUNT,
                 FINDER_FEE
             )
             await fixture.bondingManager.setActiveTranscoder(electedTranscoder, maxPricePerSegment, 100, 200)
@@ -666,6 +678,9 @@ contract("JobsManager", accounts => {
             const segmentRange = [0, 3]
             // Account 1 (transcoder) claims work for job 0
             await jobsManager.claimWork(jobId, segmentRange, merkleTree.getHexRoot(), {from: electedTranscoder})
+
+            // Fast forward so that claimBlock + 1 is mined
+            // await fixture.rpc.wait(1)
         })
 
         it("should throw if verification period is not over", async () => {
@@ -713,7 +728,7 @@ contract("JobsManager", accounts => {
             const bDeposit = (await jobsManager.broadcasters.call(broadcaster))[0]
             assert.equal(bDeposit, 1000, "broadcaster deposit is incorrect")
             const cInfo = await jobsManager.getClaim(jobId, claimId)
-            const cStatus = cInfo[6]
+            const cStatus = cInfo[5]
             assert.equal(cStatus, 1, "claim status is incorrect")
         })
 
@@ -729,6 +744,67 @@ contract("JobsManager", accounts => {
         })
     })
 
+    describe("doubleClaimSegmentSlash", () => {
+        const broadcaster = accounts[0]
+        const electedTranscoder = accounts[1]
+        const jobId = 0
+        const streamId = "1"
+        const maxPricePerSegment = 10
+
+        beforeEach(async () => {
+            await jobsManager.initialize(
+                VERIFICATION_RATE,
+                VERIFICATION_PERIOD,
+                SLASHING_PERIOD,
+                FAILED_VERIFICATION_SLASH_AMOUNT,
+                MISSED_VERIFICATION_SLASH_AMOUNT,
+                DOUBLE_CLAIM_SEGMENT_SLASH_AMOUNT,
+                FINDER_FEE
+            )
+            await fixture.bondingManager.setActiveTranscoder(electedTranscoder, maxPricePerSegment, 100, 200)
+            await fixture.token.setApproved(true)
+
+            await jobsManager.deposit(1000, {from: broadcaster})
+
+            const transcodingOptions = createTranscodingOptions(["foo", "bar"])
+            const endBlock = web3.eth.blockNumber + 500
+            // Broadcaster creates job 0
+            await jobsManager.job(streamId, transcodingOptions, maxPricePerSegment, endBlock, {from: broadcaster})
+
+            const segmentRange1 = [0, 3]
+            const segmentRange2 = [2, 5]
+            const root = "0x123"
+            // Account 1 (transcoder) claims work for job 0
+            await jobsManager.claimWork(jobId, segmentRange1, root, {from: electedTranscoder})
+            // Account 1 (transcoder) double claims a segment for job 0
+            await jobsManager.claimWork(jobId, segmentRange2, root, {from: electedTranscoder})
+        })
+
+        it("should fail if segment is not in claim 0", async () => {
+            await expectThrow(jobsManager.doubleClaimSegmentSlash(0, 0, 1, 4, {from: accounts[3]}))
+        })
+
+        it("should fail if segment is not in claim 1", async () => {
+            await expectThrow(jobsManager.doubleClaimSegmentSlash(0, 0, 1, 1), {from: accounts[3]})
+        })
+
+        it("should update job escrow and refund broadcaster for the entire job", async () => {
+            await jobsManager.doubleClaimSegmentSlash(0, 0, 1, 3, {from: accounts[3]})
+
+            const jInfo = await jobsManager.getJob(jobId)
+            const jEscrow = jInfo[7]
+            assert.equal(jEscrow, 0, "escrow is incorrect")
+            const bDeposit = (await jobsManager.broadcasters.call(broadcaster))[0]
+            assert.equal(bDeposit, 1000, "broadcaster deposit is incorrect")
+            const c1Info = await jobsManager.getClaim(jobId, 0)
+            const c1Status = c1Info[5]
+            assert.equal(c1Status, 1, "claim 1 status is incorrect")
+            const c2Info = await jobsManager.getClaim(jobId, 1)
+            const c2Status = c2Info[5]
+            assert.equal(c2Status, 1, "claim 2 status is incorrect")
+        })
+    })
+
     describe("withdraw", () => {
         beforeEach(async () => {
             await jobsManager.initialize(
@@ -737,6 +813,7 @@ contract("JobsManager", accounts => {
                 SLASHING_PERIOD,
                 FAILED_VERIFICATION_SLASH_AMOUNT,
                 MISSED_VERIFICATION_SLASH_AMOUNT,
+                DOUBLE_CLAIM_SEGMENT_SLASH_AMOUNT,
                 FINDER_FEE
             )
             await fixture.bondingManager.setActiveTranscoder(accounts[1], 100, 100, 200)

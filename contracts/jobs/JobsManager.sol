@@ -34,6 +34,9 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
     // % of stake slashed for missed verification
     uint64 public missedVerificationSlashAmount;
 
+    // % of stake slashed for double claiming a segment
+    uint64 public doubleClaimSegmentSlashAmount;
+
     // % of of slashed amount awarded to finder
     uint64 public finderFee;
 
@@ -68,7 +71,6 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         uint256[2] segmentRange;                           // Range of segments claimed
         bytes32 claimRoot;                                 // Merkle root of segment transcode proof data
         uint256 claimBlock;                                // Block number that claim was submitted
-        bytes32 blockHash;                                 // Block hash used for challenges
         uint256 endVerificationBlock;                      // End of verification period for this claim
         uint256 endSlashingBlock;                          // End of slashing period for this claim
         mapping (uint256 => bool) segmentVerifications;    // Mapping segment number => whether segment was submitted for verification
@@ -114,6 +116,7 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         uint256 _slashingPeriod,
         uint64 _failedVerificationSlashAmount,
         uint64 _missedVerificationSlashAmount,
+        uint64 _doubleClaimSegmentSlashAmount,
         uint64 _finderFee
     )
         external
@@ -123,10 +126,17 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         finishInitialization();
 
         verificationRate = _verificationRate;
+
+        // Verification period + slashing period currently cannot be longer than 256 blocks
+        // because contracts can only access the last 256 blocks from
+        // the current block
+        require(_verificationPeriod + _slashingPeriod <= 256);
+
         verificationPeriod = _verificationPeriod;
         slashingPeriod = _slashingPeriod;
         failedVerificationSlashAmount = _failedVerificationSlashAmount;
         missedVerificationSlashAmount = _missedVerificationSlashAmount;
+        doubleClaimSegmentSlashAmount = _doubleClaimSegmentSlashAmount;
         finderFee = _finderFee;
     }
 
@@ -236,7 +246,6 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
                 segmentRange: _segmentRange,
                 claimRoot: _claimRoot,
                 claimBlock: block.number,
-                blockHash: block.blockhash(block.number - 1),
                 endVerificationBlock: endVerificationBlock,
                 endSlashingBlock: endSlashingBlock,
                 status: ClaimStatus.Pending
@@ -284,7 +293,7 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         require(job.transcoderAddress == msg.sender);
 
         // Segment must be eligible for verification
-        require(JobLib.shouldVerifySegment(_segmentNumber, claim.segmentRange, claim.claimBlock, claim.blockHash, verificationRate));
+        require(JobLib.shouldVerifySegment(_segmentNumber, claim.segmentRange, claim.claimBlock, verificationRate));
         // Segment must be signed by broadcaster
         require(JobLib.validateBroadcasterSig(job.streamId, _segmentNumber, _dataHashes[0], _broadcasterSig, job.broadcasterAddress));
         // Receipt must be valid
@@ -394,7 +403,7 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         // Claim must be pending
         require(claim.status == ClaimStatus.Pending);
         // Segment must be eligible for verification
-        require(JobLib.shouldVerifySegment(_segmentNumber, claim.segmentRange, claim.claimBlock, claim.blockHash, verificationRate));
+        require(JobLib.shouldVerifySegment(_segmentNumber, claim.segmentRange, claim.claimBlock, verificationRate));
         // Transcoder must have missed verification for the segment
         require(!claim.segmentVerifications[_segmentNumber]);
 
@@ -405,6 +414,49 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
 
         // Set claim as slashed
         claim.status = ClaimStatus.Slashed;
+
+        return true;
+    }
+
+    /*
+     * @dev Slash transcoder for claiming a segment twice
+     * @param _jobId Job identifier
+     * @param _claimId1 Claim 1 identifier
+     * @param _claimId2 Claim 2 identifier
+     * @param _segmentNumber Segment that was claimed twice
+     */
+    function doubleClaimSegmentSlash(
+        uint256 _jobId,
+        uint256 _claimId1,
+        uint256 _claimId2,
+        uint256 _segmentNumber
+    )
+        external
+        afterInitialization
+        whenSystemNotPaused
+        jobExists(_jobId)
+        returns (bool)
+    {
+        Job storage job = jobs[_jobId];
+        Claim storage claim1 = job.claims[_claimId1];
+        Claim storage claim2 = job.claims[_claimId2];
+
+        // Claims must be pending
+        require(claim1.status == ClaimStatus.Pending && claim2.status == ClaimStatus.Pending);
+        // Segment must be in claim 1 segment range
+        require(_segmentNumber >= claim1.segmentRange[0] && _segmentNumber <= claim1.segmentRange[1]);
+        // Segment must be in claim 2 segment range
+        require(_segmentNumber >= claim2.segmentRange[0] && _segmentNumber <= claim2.segmentRange[1]);
+
+        // Slash transcoder and provide finder params
+        bondingManager().slashTranscoder(job.transcoderAddress, msg.sender, doubleClaimSegmentSlashAmount, finderFee);
+
+        refundBroadcaster(_jobId);
+
+        // Set claim 1 as slashed
+        claim1.status = ClaimStatus.Slashed;
+        // Set claim 2 as slashed
+        claim2.status = ClaimStatus.Slashed;
 
         return true;
     }
@@ -492,14 +544,13 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
     )
         public
         view
-        returns (uint256[2] segmentRange, bytes32 claimRoot, uint256 claimBlock, bytes32 blockHash, uint256 endVerificationBlock, uint256 endSlashingBlock, ClaimStatus status)
+        returns (uint256[2] segmentRange, bytes32 claimRoot, uint256 claimBlock, uint256 endVerificationBlock, uint256 endSlashingBlock, ClaimStatus status)
     {
         Claim storage claim = jobs[_jobId].claims[_claimId];
 
         segmentRange = claim.segmentRange;
         claimRoot = claim.claimRoot;
         claimBlock = claim.claimBlock;
-        blockHash = claim.blockHash;
         endVerificationBlock = claim.endVerificationBlock;
         endSlashingBlock = claim.endSlashingBlock;
         status = claim.status;
@@ -534,6 +585,21 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
 
         // Return escrowed fees for claim
         uint256 fees = JobLib.calcFees(claim.segmentRange[1].sub(claim.segmentRange[0]).add(1), job.transcodingOptions, job.maxPricePerSegment);
+        job.escrow = job.escrow.sub(fees);
+        broadcasters[job.broadcasterAddress].deposit = broadcasters[job.broadcasterAddress].deposit.add(fees);
+
+        return true;
+    }
+
+    /*
+     * @dev Refund broadcaster for a job
+     * @param _jobId Job identifier
+     */
+    function refundBroadcaster(uint256 _jobId) internal returns (bool) {
+        Job storage job = jobs[_jobId];
+
+        // Return all escrowed fees for a job
+        uint256 fees = job.escrow;
         job.escrow = job.escrow.sub(fees);
         broadcasters[job.broadcasterAddress].deposit = broadcasters[job.broadcasterAddress].deposit.add(fees);
 
