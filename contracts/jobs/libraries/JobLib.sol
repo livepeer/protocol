@@ -38,7 +38,6 @@ library JobLib {
         uint256 _segmentNumber,
         uint256[2] _segmentRange,
         uint256 _claimBlock,
-        bytes32 _claimBlockHash,
         uint64 _verificationRate
     )
         public
@@ -51,8 +50,9 @@ library JobLib {
         }
 
         // Use block hash and block number of the block after a claim to determine if a segment
-        // should be verified
-        if (uint256(keccak256(_claimBlock, _claimBlockHash, _segmentNumber)) % _verificationRate == 0) {
+        // should be verified. Note: this check will only work if _claimBlock + 1 is within
+        // the last 256 blocks from the current block
+        if (uint256(keccak256(_claimBlock + 1, block.blockhash(_claimBlock + 1), _segmentNumber)) % _verificationRate == 0) {
             return true;
         } else {
             return false;

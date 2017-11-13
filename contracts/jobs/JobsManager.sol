@@ -71,7 +71,6 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         uint256[2] segmentRange;                           // Range of segments claimed
         bytes32 claimRoot;                                 // Merkle root of segment transcode proof data
         uint256 claimBlock;                                // Block number that claim was submitted
-        bytes32 blockHash;                                 // Block hash used for challenges
         uint256 endVerificationBlock;                      // End of verification period for this claim
         uint256 endSlashingBlock;                          // End of slashing period for this claim
         mapping (uint256 => bool) segmentVerifications;    // Mapping segment number => whether segment was submitted for verification
@@ -127,6 +126,12 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         finishInitialization();
 
         verificationRate = _verificationRate;
+
+        // Verification period + slashing period currently cannot be longer than 256 blocks
+        // because contracts can only access the last 256 blocks from
+        // the current block
+        require(_verificationPeriod + _slashingPeriod <= 256);
+
         verificationPeriod = _verificationPeriod;
         slashingPeriod = _slashingPeriod;
         failedVerificationSlashAmount = _failedVerificationSlashAmount;
@@ -241,7 +246,6 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
                 segmentRange: _segmentRange,
                 claimRoot: _claimRoot,
                 claimBlock: block.number,
-                blockHash: block.blockhash(block.number - 1),
                 endVerificationBlock: endVerificationBlock,
                 endSlashingBlock: endSlashingBlock,
                 status: ClaimStatus.Pending
@@ -289,7 +293,7 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         require(job.transcoderAddress == msg.sender);
 
         // Segment must be eligible for verification
-        require(JobLib.shouldVerifySegment(_segmentNumber, claim.segmentRange, claim.claimBlock, claim.blockHash, verificationRate));
+        require(JobLib.shouldVerifySegment(_segmentNumber, claim.segmentRange, claim.claimBlock, verificationRate));
         // Segment must be signed by broadcaster
         require(JobLib.validateBroadcasterSig(job.streamId, _segmentNumber, _dataHashes[0], _broadcasterSig, job.broadcasterAddress));
         // Receipt must be valid
@@ -399,7 +403,7 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         // Claim must be pending
         require(claim.status == ClaimStatus.Pending);
         // Segment must be eligible for verification
-        require(JobLib.shouldVerifySegment(_segmentNumber, claim.segmentRange, claim.claimBlock, claim.blockHash, verificationRate));
+        require(JobLib.shouldVerifySegment(_segmentNumber, claim.segmentRange, claim.claimBlock, verificationRate));
         // Transcoder must have missed verification for the segment
         require(!claim.segmentVerifications[_segmentNumber]);
 
@@ -540,14 +544,13 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
     )
         public
         view
-        returns (uint256[2] segmentRange, bytes32 claimRoot, uint256 claimBlock, bytes32 blockHash, uint256 endVerificationBlock, uint256 endSlashingBlock, ClaimStatus status)
+        returns (uint256[2] segmentRange, bytes32 claimRoot, uint256 claimBlock, uint256 endVerificationBlock, uint256 endSlashingBlock, ClaimStatus status)
     {
         Claim storage claim = jobs[_jobId].claims[_claimId];
 
         segmentRange = claim.segmentRange;
         claimRoot = claim.claimRoot;
         claimBlock = claim.claimBlock;
-        blockHash = claim.blockHash;
         endVerificationBlock = claim.endVerificationBlock;
         endSlashingBlock = claim.endSlashingBlock;
         status = claim.status;
