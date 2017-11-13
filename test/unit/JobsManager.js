@@ -353,6 +353,9 @@ contract("JobsManager", accounts => {
             const segmentRange = [0, 3]
             // Account 1 (transcoder) claims work for job 0
             await jobsManager.claimWork(jobId, segmentRange, merkleTree.getHexRoot(), {from: electedTranscoder})
+
+            // Fast forward so that claimBlock + 1 is mined
+            await fixture.rpc.wait(1)
         })
 
         it("should throw for insufficient payment for verification", async () => {
@@ -675,6 +678,9 @@ contract("JobsManager", accounts => {
             const segmentRange = [0, 3]
             // Account 1 (transcoder) claims work for job 0
             await jobsManager.claimWork(jobId, segmentRange, merkleTree.getHexRoot(), {from: electedTranscoder})
+
+            // Fast forward so that claimBlock + 1 is mined
+            // await fixture.rpc.wait(1)
         })
 
         it("should throw if verification period is not over", async () => {
