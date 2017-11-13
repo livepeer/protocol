@@ -13,6 +13,7 @@ module.exports = {
         slashingPeriod: 50,
         failedVerificationSlashAmount: 20,
         missedVerificationSlashAmount: 30,
+        doubleClaimSegmentSlashAmount: 40,
         finderFee: 4
     },
     roundsManager: {

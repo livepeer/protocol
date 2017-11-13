@@ -62,6 +62,7 @@ module.exports = function(deployer, network) {
                 config.jobsManager.slashingPeriod,
                 config.jobsManager.failedVerificationSlashAmount,
                 config.jobsManager.missedVerificationSlashAmount,
+                config.jobsManager.doubleClaimSegmentSlashAmount,
                 config.jobsManager.finderFee
             ),
             roundsManager.initialize(config.roundsManager.blockTime, config.roundsManager.roundLength)
