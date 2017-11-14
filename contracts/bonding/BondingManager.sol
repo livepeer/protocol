@@ -430,7 +430,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         }
 
         // Decrease total active stake
-        totalActiveStake = totalActiveStake.sub(activeTranscoderTotalStake(_transcoder));
+        totalActiveTranscoderStake = totalActiveTranscoderStake.sub(activeTranscoderTotalStake(_transcoder));
 
         // Remove transcoder from active set
         isActiveTranscoder[_transcoder] = false;
