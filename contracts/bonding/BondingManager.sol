@@ -417,21 +417,23 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         Delegator storage del = delegators[_transcoder];
 
         if (penalty > del.bondedAmount) {
-            // Decrease transcoder's total stake by transcoder's stake
-            transcoderPools.decreaseTranscoderStake(_transcoder, del.bondedAmount);
             // Decrease delegate's delegated amount
             delegators[del.delegateAddress].delegatedAmount = delegators[del.delegateAddress].delegatedAmount.sub(del.bondedAmount);
             // Set transcoder's bond to 0 since
             // the penalty is greater than its stake
             del.bondedAmount = 0;
         } else {
-            // Decrease transcoder's total stake by the penalty
-            transcoderPools.decreaseTranscoderStake(_transcoder, penalty);
             // Decrease delegate's delegated amount
             delegators[del.delegateAddress].delegatedAmount = delegators[del.delegateAddress].delegatedAmount.sub(penalty);
             // Decrease transcoder's stake
             del.bondedAmount = del.bondedAmount.sub(penalty);
         }
+
+        // Decrease total active stake
+        totalActiveStake = totalActiveStake.sub(activeTranscoderTotalStake(_transcoder));
+
+        // Remove transcoder from active set
+        isActiveTranscoder[_transcoder] = false;
 
         // Remove transcoder from pools
         transcoderPools.removeTranscoder(_transcoder);
@@ -467,8 +469,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         uint256 totalAvailableTranscoderStake = 0;
 
         for (uint256 i = 0; i < activeTranscoders.length; i++) {
-            // If a transcoders charges an acceptable price per segment add it to the array of available transcoders
-            if (transcoders[activeTranscoders[i].id].pricePerSegment <= _maxPricePerSegment) {
+            // If a transcoder is active and charges an acceptable price per segment add it to the array of available transcoders
+            if (isActiveTranscoder[activeTranscoders[i].id] && transcoders[activeTranscoders[i].id].pricePerSegment <= _maxPricePerSegment) {
                 availableTranscoders[numAvailableTranscoders] = activeTranscoders[i];
                 numAvailableTranscoders++;
                 totalAvailableTranscoderStake = totalAvailableTranscoderStake.add(activeTranscoders[i].key);
