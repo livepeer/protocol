@@ -419,12 +419,16 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         if (penalty > del.bondedAmount) {
             // Decrease transcoder's total stake by transcoder's stake
             transcoderPools.decreaseTranscoderStake(_transcoder, del.bondedAmount);
+            // Decrease delegate's delegated amount
+            delegators[del.delegateAddress].delegatedAmount = delegators[del.delegateAddress].delegatedAmount.sub(del.bondedAmount);
             // Set transcoder's bond to 0 since
             // the penalty is greater than its stake
             del.bondedAmount = 0;
         } else {
             // Decrease transcoder's total stake by the penalty
             transcoderPools.decreaseTranscoderStake(_transcoder, penalty);
+            // Decrease delegate's delegated amount
+            delegators[del.delegateAddress].delegatedAmount = delegators[del.delegateAddress].delegatedAmount.sub(penalty);
             // Decrease transcoder's stake
             del.bondedAmount = del.bondedAmount.sub(penalty);
         }
