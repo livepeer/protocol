@@ -352,7 +352,7 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         returns (bool)
     {
         if (!_result) {
-            refundBroadcaster(_jobId, _claimId);
+            refundBroadcaster(_jobId);
             // Protocol slashes transcoder for failing verification (no finder)
             bondingManager().slashTranscoder(jobs[_jobId].transcoderAddress, address(0), failedVerificationSlashAmount, 0);
         }
@@ -407,7 +407,7 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         // Transcoder must have missed verification for the segment
         require(!claim.segmentVerifications[_segmentNumber]);
 
-        refundBroadcaster(_jobId, _claimId);
+        refundBroadcaster(_jobId);
 
         // Slash transcoder and provide finder params
         bondingManager().slashTranscoder(job.transcoderAddress, msg.sender, missedVerificationSlashAmount, finderFee);
@@ -572,23 +572,6 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         returns (bool)
     {
         return jobs[_jobId].claims[_claimId].segmentVerifications[_segmentNumber];
-    }
-
-    /*
-     * @dev Refund broadcaster for a claim
-     * @param _jobId Job identifier
-     * @param _claimId Claim identifier
-     */
-    function refundBroadcaster(uint256 _jobId, uint256 _claimId) internal returns (bool) {
-        Job storage job = jobs[_jobId];
-        Claim storage claim = job.claims[_claimId];
-
-        // Return escrowed fees for claim
-        uint256 fees = JobLib.calcFees(claim.segmentRange[1].sub(claim.segmentRange[0]).add(1), job.transcodingOptions, job.maxPricePerSegment);
-        job.escrow = job.escrow.sub(fees);
-        broadcasters[job.broadcasterAddress].deposit = broadcasters[job.broadcasterAddress].deposit.add(fees);
-
-        return true;
     }
 
     /*
