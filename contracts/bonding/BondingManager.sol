@@ -22,7 +22,6 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
     // Represents a transcoder's current state
     struct Transcoder {
-        uint256 delegatorWithdrawRound;                      // The round at which delegators to this transcoder can withdraw if this transcoder resigns
         uint256 lastRewardRound;                             // Last round that the transcoder called reward
         uint8 blockRewardCut;                                // % of block reward cut paid to transcoder by a delegator
         uint8 feeShare;                                      // % of fees paid to delegators by transcoder
@@ -34,7 +33,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     }
 
     // The various states a transcoder can be in
-    enum TranscoderStatus { NotRegistered, Registered, Resigned }
+    enum TranscoderStatus { NotRegistered, Registered }
 
     // Represents a delegator's current state
     struct Delegator {
@@ -117,8 +116,6 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         require(_blockRewardCut <= 100);
         // Fee share must be a valid percentage
         require(_feeShare <= 100);
-        // Sender must not be a resigned transcoder
-        require(transcoderStatus(msg.sender) != TranscoderStatus.Resigned);
 
         Transcoder storage t = transcoders[msg.sender];
         t.pendingBlockRewardCut = _blockRewardCut;
@@ -126,8 +123,6 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         t.pendingPricePerSegment = _pricePerSegment;
 
         if (transcoderStatus(msg.sender) == TranscoderStatus.NotRegistered) {
-            t.delegatorWithdrawRound = 0;
-
             transcoderPools.addTranscoder(msg.sender, delegators[msg.sender].delegatedAmount);
         }
 
@@ -148,8 +143,6 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         require(transcoderStatus(msg.sender) == TranscoderStatus.Registered);
         // Remove transcoder from pools
         transcoderPools.removeTranscoder(msg.sender);
-        // Set delegator withdraw round
-        transcoders[msg.sender].delegatorWithdrawRound = roundsManager().currentRound().add(unbondingPeriod);
 
         return true;
     }
@@ -258,6 +251,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
         // Delegator no longer bonded to anyone
         del.delegateAddress = address(0);
+        // Unbonding delegator does not have a start round
+        del.startRound = 0;
 
         return true;
     }
@@ -287,7 +282,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         if (delegatorStatus(msg.sender) == DelegatorStatus.Unbonded) {
             // Withdraw bonded amount which is now unbonded
             amount = amount.add(delegators[msg.sender].bondedAmount);
-            delete delegators[msg.sender];
+            delegators[msg.sender].bondedAmount = 0;
+            delegators[msg.sender].withdrawRound = 0;
         }
 
         minter().transferTokens(msg.sender, amount);
@@ -421,20 +417,23 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         Delegator storage del = delegators[_transcoder];
 
         if (penalty > del.bondedAmount) {
-            // Decrease transcoder's total stake by transcoder's stake
-            transcoderPools.decreaseTranscoderStake(_transcoder, del.bondedAmount);
+            // Decrease delegate's delegated amount
+            delegators[del.delegateAddress].delegatedAmount = delegators[del.delegateAddress].delegatedAmount.sub(del.bondedAmount);
             // Set transcoder's bond to 0 since
             // the penalty is greater than its stake
             del.bondedAmount = 0;
         } else {
-            // Decrease transcoder's total stake by the penalty
-            transcoderPools.decreaseTranscoderStake(_transcoder, penalty);
+            // Decrease delegate's delegated amount
+            delegators[del.delegateAddress].delegatedAmount = delegators[del.delegateAddress].delegatedAmount.sub(penalty);
             // Decrease transcoder's stake
             del.bondedAmount = del.bondedAmount.sub(penalty);
         }
 
-        // Set withdraw round for delegators
-        transcoders[msg.sender].delegatorWithdrawRound = roundsManager().currentRound().add(unbondingPeriod);
+        // Decrease total active stake
+        totalActiveTranscoderStake = totalActiveTranscoderStake.sub(activeTranscoderTotalStake(_transcoder));
+
+        // Remove transcoder from active set
+        isActiveTranscoder[_transcoder] = false;
 
         // Remove transcoder from pools
         transcoderPools.removeTranscoder(_transcoder);
@@ -470,8 +469,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         uint256 totalAvailableTranscoderStake = 0;
 
         for (uint256 i = 0; i < activeTranscoders.length; i++) {
-            // If a transcoders charges an acceptable price per segment add it to the array of available transcoders
-            if (transcoders[activeTranscoders[i].id].pricePerSegment <= _maxPricePerSegment) {
+            // If a transcoder is active and charges an acceptable price per segment add it to the array of available transcoders
+            if (isActiveTranscoder[activeTranscoders[i].id] && transcoders[activeTranscoders[i].id].pricePerSegment <= _maxPricePerSegment) {
                 availableTranscoders[numAvailableTranscoders] = activeTranscoders[i];
                 numAvailableTranscoders++;
                 totalAvailableTranscoderStake = totalAvailableTranscoderStake.add(activeTranscoders[i].key);
@@ -599,13 +598,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     function transcoderStatus(address _transcoder) public view returns (TranscoderStatus) {
         Transcoder storage t = transcoders[_transcoder];
 
-        if (t.delegatorWithdrawRound > 0) {
-            if (roundsManager().currentRound() >= t.delegatorWithdrawRound) {
-                return TranscoderStatus.NotRegistered;
-            } else {
-                return TranscoderStatus.Resigned;
-            }
-        } else if (transcoderPools.isInPools(_transcoder)) {
+        if (transcoderPools.isInPools(_transcoder)) {
             return TranscoderStatus.Registered;
         } else {
             return TranscoderStatus.NotRegistered;
@@ -622,13 +615,6 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         if (del.withdrawRound > 0) {
             // Delegator called unbond
             if (roundsManager().currentRound() >= del.withdrawRound) {
-                return DelegatorStatus.Unbonded;
-            } else {
-                return DelegatorStatus.Unbonding;
-            }
-        } else if (transcoderStatus(del.delegateAddress) == TranscoderStatus.NotRegistered && transcoders[del.delegateAddress].delegatorWithdrawRound > 0) {
-            // Transcoder resigned
-            if (roundsManager().currentRound() >= transcoders[del.delegateAddress].delegatorWithdrawRound) {
                 return DelegatorStatus.Unbonded;
             } else {
                 return DelegatorStatus.Unbonding;
@@ -654,11 +640,10 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     )
         public
         view
-        returns (uint256 delegatorWithdrawRound, uint256 lastRewardRound, uint8 blockRewardCut, uint8 feeShare, uint256 pricePerSegment, uint8 pendingBlockRewardCut, uint8 pendingFeeShare, uint256 pendingPricePerSegment)
+        returns (uint256 lastRewardRound, uint8 blockRewardCut, uint8 feeShare, uint256 pricePerSegment, uint8 pendingBlockRewardCut, uint8 pendingFeeShare, uint256 pendingPricePerSegment)
     {
         Transcoder storage t = transcoders[_transcoder];
 
-        delegatorWithdrawRound = t.delegatorWithdrawRound;
         lastRewardRound = t.lastRewardRound;
         blockRewardCut = t.blockRewardCut;
         feeShare = t.feeShare;
