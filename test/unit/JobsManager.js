@@ -4,7 +4,6 @@ import MerkleTree from "../../utils/merkleTree"
 import batchTranscodeReceiptHashes from "../../utils/batchTranscodeReceipts"
 import {createTranscodingOptions} from "../../utils/videoProfile"
 import Segment from "../../utils/segment"
-import promisify from "es6-promisify"
 import ethUtil from "ethereumjs-util"
 
 const JobsManager = artifacts.require("JobsManager")
