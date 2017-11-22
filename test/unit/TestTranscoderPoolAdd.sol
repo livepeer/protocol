@@ -1,6 +1,7 @@
 pragma solidity ^0.4.17;
 
 import "../../contracts/test/TranscoderPoolFixture.sol";
+import "../../contracts/test/RevertProxy.sol";
 import "truffle/Assert.sol";
 
 
@@ -9,6 +10,11 @@ contract TestTranscoderPoolAdd {
     uint256[] stakes = [uint256(3), uint256(5), uint256(7), uint256(9), uint256(11), uint256(13)];
 
     TranscoderPoolFixture fixture;
+    RevertProxy proxy;
+
+    function beforeAll() public {
+        proxy = new RevertProxy();
+    }
 
     function beforeEach() public {
         fixture = new TranscoderPoolFixture();
@@ -60,5 +66,54 @@ contract TestTranscoderPoolAdd {
         Assert.equal(fixture.getTranscoderStake(transcoders[1]), stakes[1], "wrong stake");
         Assert.equal(fixture.getNextTranscoder(transcoders[1]), transcoders[2], "wrong next transcoder");
         Assert.equal(fixture.getPrevTranscoder(transcoders[1]), transcoders[0], "wrong prev transcoder");
+    }
+
+    function test_addTranscoder_full() public {
+        fixture.setMaxSize(1);
+        fixture.addTranscoder(transcoders[0], stakes[0], address(0), address(0));
+
+        TranscoderPoolFixture(address(proxy)).addTranscoder(transcoders[1], stakes[1], address(0), address(0));
+        bool result = proxy.execute(address(fixture));
+        Assert.isFalse(result, "did not revert");
+    }
+
+    function test_addTranscdoer_containsTranscoder() public {
+        fixture.addTranscoder(transcoders[0], stakes[0], address(0), address(0));
+
+        TranscoderPoolFixture(address(proxy)).addTranscoder(transcoders[0], stakes[0], address(0), address(0));
+        bool result = proxy.execute(address(fixture));
+        Assert.isFalse(result, "did not revert");
+    }
+
+    function test_addTranscoder_nullTranscoder() public {
+        TranscoderPoolFixture(address(proxy)).addTranscoder(address(0), stakes[0], address(0), address(0));
+        bool result = proxy.execute(address(fixture));
+        Assert.isFalse(result, "did not revert");
+    }
+
+    function test_addTranscoder_zeroStake() public {
+        TranscoderPoolFixture(address(proxy)).addTranscoder(transcoders[0], 0, address(0), address(0));
+        bool result = proxy.execute(address(fixture));
+        Assert.isFalse(result, "did not revert");
+    }
+
+    function test_addTranscoder_invalidWorseTranscoder() public {
+        fixture.addTranscoder(transcoders[0], stakes[0], address(0), address(0));
+        fixture.addTranscoder(transcoders[2], stakes[2], transcoders[0], address(0));
+        fixture.addTranscoder(transcoders[3], stakes[3], transcoders[2], address(0));
+
+        TranscoderPoolFixture(address(proxy)).addTranscoder(transcoders[1], stakes[1], transcoders[2], transcoders[3]);
+        bool result = proxy.execute(address(fixture));
+        Assert.isFalse(result, "did not revert");
+    }
+
+    function test_addTranscoder_invalidBetterTranscoder() public {
+        fixture.addTranscoder(transcoders[0], stakes[0], address(0), address(0));
+        fixture.addTranscoder(transcoders[1], stakes[1], transcoders[0], address(0));
+        fixture.addTranscoder(transcoders[3], stakes[3], transcoders[1], address(0));
+
+        TranscoderPoolFixture(address(proxy)).addTranscoder(transcoders[2], stakes[2], transcoders[0], transcoders[1]);
+        bool result = proxy.execute(address(fixture));
+        Assert.isFalse(result, "did not revert");
     }
 }

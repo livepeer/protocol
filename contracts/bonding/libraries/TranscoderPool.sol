@@ -47,6 +47,8 @@ library TranscoderPool {
         require(!contains(self, _transcoder));
         // Transcoder address must not be null
         require(_transcoder != address(0));
+        // Stake must be non-zero
+        require(_stake > 0);
 
         address worseTranscoder = _worseTranscoder;
         address betterTranscoder = _betterTranscoder;
@@ -156,8 +158,12 @@ library TranscoderPool {
         uint256 newStake = self.nodes[_transcoder].stake.sub(_amount);
         // Remove transcoder from the list
         removeTranscoder(self, _transcoder);
-        // Insert transcoder into the list with its new stake
-        addTranscoder(self, _transcoder, newStake, _worseTranscoder, _betterTranscoder);
+
+        if (newStake > 0) {
+            // Only add transcoder if its new stake is non-zero
+            // Insert transcoder into the list with its new stake
+            addTranscoder(self, _transcoder, newStake, _worseTranscoder, _betterTranscoder);
+        }
     }
 
     /*

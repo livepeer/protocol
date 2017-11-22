@@ -28,6 +28,10 @@ contract TranscoderPoolFixture {
         pool.decreaseTranscoderStake(_transcoder, _amount, _worseTranscoder, _betterTranscoder);
     }
 
+    function contains(address _transcoder) public view returns (bool) {
+        return pool.contains(_transcoder);
+    }
+
     function getSize() public view returns (uint256) {
         return pool.getSize();
     }
