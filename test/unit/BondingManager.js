@@ -4,6 +4,7 @@ import {add, sub} from "../../utils/bn_util"
 
 const BondingManager = artifacts.require("BondingManager")
 
+const NUM_TRANSCODERS = 2
 const NUM_ACTIVE_TRANSCODERS = 1
 const UNBONDING_PERIOD = 2
 
@@ -29,15 +30,15 @@ contract("BondingManager", accounts => {
 
     describe("initialize", () => {
         it("should set parameters", async () => {
-            await bondingManager.initialize(UNBONDING_PERIOD, NUM_ACTIVE_TRANSCODERS)
+            await bondingManager.initialize(UNBONDING_PERIOD, NUM_TRANSCODERS, NUM_ACTIVE_TRANSCODERS)
 
             const unbondingPeriod = await bondingManager.unbondingPeriod.call()
             assert.equal(unbondingPeriod, UNBONDING_PERIOD, "unbondiner period incorrect")
         })
 
         it("should fail if already initialized", async () => {
-            await bondingManager.initialize(UNBONDING_PERIOD, NUM_ACTIVE_TRANSCODERS)
-            await expectThrow(bondingManager.initialize(UNBONDING_PERIOD, NUM_ACTIVE_TRANSCODERS))
+            await bondingManager.initialize(UNBONDING_PERIOD, NUM_TRANSCODERS, NUM_ACTIVE_TRANSCODERS)
+            await expectThrow(bondingManager.initialize(UNBONDING_PERIOD, NUM_TRANSCODERS, NUM_ACTIVE_TRANSCODERS))
         })
     })
 
@@ -48,7 +49,7 @@ contract("BondingManager", accounts => {
         const pricePerSegment = 10
 
         beforeEach(async () => {
-            await bondingManager.initialize(UNBONDING_PERIOD, NUM_ACTIVE_TRANSCODERS)
+            await bondingManager.initialize(UNBONDING_PERIOD, NUM_TRANSCODERS, NUM_ACTIVE_TRANSCODERS)
             await fixture.roundsManager.setCurrentRoundInitialized(true)
         })
 
@@ -114,7 +115,7 @@ contract("BondingManager", accounts => {
             const feeShare = 5
             const pricePerSegment = 100
 
-            await bondingManager.initialize(UNBONDING_PERIOD, NUM_ACTIVE_TRANSCODERS)
+            await bondingManager.initialize(UNBONDING_PERIOD, NUM_TRANSCODERS, NUM_ACTIVE_TRANSCODERS)
             await fixture.roundsManager.setCurrentRoundInitialized(true)
             await bondingManager.transcoder(blockRewardCut, feeShare, pricePerSegment, {from: tAddr})
         })
@@ -129,11 +130,8 @@ contract("BondingManager", accounts => {
         })
 
         it("should remove the transcoder from the transcoder pools", async () => {
-            const oldCandidatePoolSize = await bondingManager.getCandidatePoolSize()
-
             await bondingManager.resignAsTranscoder({from: tAddr})
-            const candidatePoolSize = await bondingManager.getCandidatePoolSize()
-            assert.equal(candidatePoolSize.toString(), sub(oldCandidatePoolSize, 1).toString(), "transcoder not removed from pools")
+            assert.equal(await bondingManager.transcoderStatus(tAddr), 0, "transcoder not removed from pool")
         })
 
         it("should set a transcoder as not registered", async () => {
@@ -153,7 +151,7 @@ contract("BondingManager", accounts => {
             const feeShare = 5
             const pricePerSegment = 10
 
-            await bondingManager.initialize(UNBONDING_PERIOD, NUM_ACTIVE_TRANSCODERS)
+            await bondingManager.initialize(UNBONDING_PERIOD, NUM_TRANSCODERS, NUM_ACTIVE_TRANSCODERS)
             await fixture.jobsManager.setBondingManager(bondingManager.address)
             await fixture.roundsManager.setBondingManager(bondingManager.address)
             await fixture.roundsManager.setCurrentRoundInitialized(true)
@@ -237,7 +235,7 @@ contract("BondingManager", accounts => {
         const currentRound = 7
 
         beforeEach(async () => {
-            await bondingManager.initialize(UNBONDING_PERIOD, NUM_ACTIVE_TRANSCODERS)
+            await bondingManager.initialize(UNBONDING_PERIOD, NUM_TRANSCODERS, NUM_ACTIVE_TRANSCODERS)
             await fixture.jobsManager.setBondingManager(bondingManager.address)
             await fixture.roundsManager.setBondingManager(bondingManager.address)
             await fixture.roundsManager.setCurrentRoundInitialized(true)
@@ -292,7 +290,7 @@ contract("BondingManager", accounts => {
         const mintedTokens = 500
 
         beforeEach(async () => {
-            await bondingManager.initialize(UNBONDING_PERIOD, NUM_ACTIVE_TRANSCODERS)
+            await bondingManager.initialize(UNBONDING_PERIOD, NUM_TRANSCODERS, NUM_ACTIVE_TRANSCODERS)
             await fixture.jobsManager.setBondingManager(bondingManager.address)
             await fixture.roundsManager.setBondingManager(bondingManager.address)
             await fixture.roundsManager.setCurrentRoundInitialized(true)
@@ -309,7 +307,7 @@ contract("BondingManager", accounts => {
 
             // Set active transcoders
             await fixture.roundsManager.initializeRound()
-            // Set the current round to jobCreationRound
+            // // Set the current round to jobCreationRound
             await fixture.roundsManager.setCurrentRound(jobCreationRound)
             // Set the totalStake for the fee pool at jobCreationRound
             await fixture.jobsManager.callElectActiveTranscoder(pricePerSegment)
@@ -319,6 +317,8 @@ contract("BondingManager", accounts => {
 
             // Set current round so delegator is bonded
             await fixture.roundsManager.setCurrentRound(7)
+
+            await fixture.roundsManager.initializeRound()
 
             // Call updateTranscoderFeePool via transaction from JobsManager. Fee pool at jobCreationRound updated with fees
             await fixture.jobsManager.distributeFees()
@@ -453,7 +453,7 @@ contract("BondingManager", accounts => {
         const transcoderTotalStake = 4000
 
         beforeEach(async () => {
-            await bondingManager.initialize(UNBONDING_PERIOD, NUM_ACTIVE_TRANSCODERS)
+            await bondingManager.initialize(UNBONDING_PERIOD, NUM_TRANSCODERS, NUM_ACTIVE_TRANSCODERS)
             await fixture.jobsManager.setBondingManager(bondingManager.address)
             await fixture.roundsManager.setBondingManager(bondingManager.address)
             await fixture.roundsManager.setCurrentRoundInitialized(true)
@@ -473,6 +473,9 @@ contract("BondingManager", accounts => {
 
             // Set current round so delegator is bonded
             await fixture.roundsManager.setCurrentRound(7)
+
+            // Set active transcoders
+            await fixture.roundsManager.initializeRound()
 
             // Set minted tokens for a call to reward
             await fixture.minter.setReward(mintedTokens)
@@ -505,7 +508,7 @@ contract("BondingManager", accounts => {
         const transcoderTotalStake = 4000
 
         beforeEach(async () => {
-            await bondingManager.initialize(UNBONDING_PERIOD, NUM_ACTIVE_TRANSCODERS)
+            await bondingManager.initialize(UNBONDING_PERIOD, NUM_TRANSCODERS, NUM_ACTIVE_TRANSCODERS)
             await fixture.jobsManager.setBondingManager(bondingManager.address)
             await fixture.roundsManager.setBondingManager(bondingManager.address)
             await fixture.roundsManager.setCurrentRoundInitialized(true)
@@ -529,6 +532,8 @@ contract("BondingManager", accounts => {
 
             // Set current round so delegator is bonded
             await fixture.roundsManager.setCurrentRound(7)
+
+            await fixture.roundsManager.initializeRound()
 
             // Call updateTranscoderWithFees via transaction from JobsManager
             await fixture.jobsManager.distributeFees()
@@ -555,7 +560,7 @@ contract("BondingManager", accounts => {
         const currentRound = 6
 
         beforeEach(async () => {
-            await bondingManager.initialize(UNBONDING_PERIOD, NUM_ACTIVE_TRANSCODERS)
+            await bondingManager.initialize(UNBONDING_PERIOD, NUM_TRANSCODERS, NUM_ACTIVE_TRANSCODERS)
             await fixture.jobsManager.setBondingManager(bondingManager.address)
             await fixture.roundsManager.setBondingManager(bondingManager.address)
             await fixture.roundsManager.setCurrentRoundInitialized(true)
@@ -623,7 +628,7 @@ contract("BondingManager", accounts => {
         const transcoderTotalStake = 4000
 
         beforeEach(async () => {
-            await bondingManager.initialize(UNBONDING_PERIOD, NUM_ACTIVE_TRANSCODERS)
+            await bondingManager.initialize(UNBONDING_PERIOD, NUM_TRANSCODERS, NUM_ACTIVE_TRANSCODERS)
             await fixture.jobsManager.setBondingManager(bondingManager.address)
             await fixture.roundsManager.setBondingManager(bondingManager.address)
             await fixture.roundsManager.setCurrentRoundInitialized(true)

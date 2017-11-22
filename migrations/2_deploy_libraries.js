@@ -1,7 +1,4 @@
-const Node = artifacts.require("Node")
-const MinHeap = artifacts.require("MinHeap")
-const MaxHeap = artifacts.require("MaxHeap")
-const TranscoderPools = artifacts.require("TranscoderPools")
+const TranscoderPool = artifacts.require("TranscoderPool")
 const TokenPools = artifacts.require("TokenPools")
 const MerkleProof = artifacts.require("MerkleProof")
 const ECRecovery = artifacts.require("ECRecovery")
@@ -14,30 +11,18 @@ const RoundsManager = artifacts.require("RoundsManager")
 const OraclizeVerifier = artifacts.require("OraclizeVerifier")
 
 module.exports = function(deployer) {
+    deployer.deploy(TranscoderPool)
     deployer.deploy(SafeMath)
     deployer.link(SafeMath, [
         BondingManager,
         JobsManager,
         RoundsManager,
         OraclizeVerifier,
-        MaxHeap,
-        MinHeap
+        TranscoderPool
     ])
 
-    deployer.deploy(Node)
-    deployer.link(Node, [
-        MinHeap,
-        MaxHeap
-    ])
-
-    deployer.deploy(MinHeap)
-    deployer.link(MinHeap, TranscoderPools)
-
-    deployer.deploy(MaxHeap)
-    deployer.link(MaxHeap, TranscoderPools)
-
-    deployer.deploy(TranscoderPools)
-    deployer.link(TranscoderPools, BondingManager)
+    deployer.deploy(TranscoderPool)
+    deployer.link(TranscoderPool, BondingManager)
 
     deployer.deploy(TokenPools)
     deployer.link(TokenPools, BondingManager)

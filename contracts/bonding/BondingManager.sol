@@ -2,7 +2,8 @@ pragma solidity ^0.4.17;
 
 import "../ManagerProxyTarget.sol";
 import "./IBondingManager.sol";
-import "./libraries/TranscoderPools.sol";
+import "./libraries/Node.sol";
+import "./libraries/TranscoderPool.sol";
 import "./libraries/TokenPools.sol";
 import "../token/ILivepeerToken.sol";
 import "../token/IMinter.sol";
@@ -14,11 +15,14 @@ import "zeppelin-solidity/contracts/math/SafeMath.sol";
 
 contract BondingManager is ManagerProxyTarget, IBondingManager {
     using SafeMath for uint256;
-    using TranscoderPools for TranscoderPools.TranscoderPools;
+    using TranscoderPool for TranscoderPool.Data;
     using TokenPools for TokenPools.Data;
 
     // Time between unbonding and possible withdrawl in rounds
     uint64 public unbondingPeriod;
+
+    // Number of active transcoders
+    uint256 public numActiveTranscoders;
 
     // Represents a transcoder's current state
     struct Transcoder {
@@ -53,8 +57,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     mapping (address => Delegator) delegators;
     mapping (address => Transcoder) transcoders;
 
-    // Candidate and reserve transcoder pools
-    TranscoderPools.TranscoderPools transcoderPools;
+    // Candidate and reserve transcoders
+    TranscoderPool.Data transcoderPool;
 
     // Current active transcoders for current round
     Node.Node[] activeTranscoders;
@@ -91,12 +95,16 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
     function BondingManager(address _controller) Manager(_controller) {}
 
-    function initialize(uint64 _unbondingPeriod, uint256 _numActiveTranscoders) external beforeInitialization returns (bool) {
+    function initialize(uint64 _unbondingPeriod, uint256 _numTranscoders, uint256 _numActiveTranscoders) external beforeInitialization returns (bool) {
         finishInitialization();
+        // Number of transcoders must be greater than or equal to number of active transcoders
+        require(_numTranscoders >= _numActiveTranscoders);
         // Set unbonding period
         unbondingPeriod = _unbondingPeriod;
-        // Set up transcoder pools
-        transcoderPools.init(_numActiveTranscoders, _numActiveTranscoders);
+        // Set number of active transcoders
+        numActiveTranscoders = _numActiveTranscoders;
+        // Set up transcoder pool
+        transcoderPool.setMaxSize(_numTranscoders);
     }
 
     /*
@@ -123,7 +131,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         t.pendingPricePerSegment = _pricePerSegment;
 
         if (transcoderStatus(msg.sender) == TranscoderStatus.NotRegistered) {
-            transcoderPools.addTranscoder(msg.sender, delegators[msg.sender].delegatedAmount);
+            transcoderPool.addTranscoder(msg.sender, delegators[msg.sender].delegatedAmount, address(0), address(0));
         }
 
         return true;
@@ -142,7 +150,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // Sender must be registered transcoder
         require(transcoderStatus(msg.sender) == TranscoderStatus.Registered);
         // Remove transcoder from pools
-        transcoderPools.removeTranscoder(msg.sender);
+        transcoderPool.removeTranscoder(msg.sender);
 
         return true;
     }
@@ -186,7 +194,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             if (transcoderStatus(del.delegateAddress) == TranscoderStatus.Registered) {
                 // Previously delegated to a transcoder
                 // Decrease old transcoder's total stake
-                transcoderPools.decreaseTranscoderStake(del.delegateAddress, del.bondedAmount);
+                transcoderPool.decreaseTranscoderStake(del.delegateAddress, del.bondedAmount, address(0), address(0));
             }
         }
 
@@ -199,7 +207,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         if (transcoderStatus(_to) == TranscoderStatus.Registered) {
             // Delegated to a transcoder
             // Increase transcoder's total stake
-            transcoderPools.increaseTranscoderStake(_to, delegationAmount);
+            transcoderPool.increaseTranscoderStake(_to, delegationAmount, address(0), address(0));
         }
 
         if (_amount > 0) {
@@ -246,7 +254,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         if (transcoderStatus(del.delegateAddress) == TranscoderStatus.Registered) {
             // Previously delegated to a transcoder
             // Decrease old transcoder's total stake
-            transcoderPools.decreaseTranscoderStake(del.delegateAddress, del.bondedAmount);
+            transcoderPool.decreaseTranscoderStake(del.delegateAddress, del.bondedAmount, address(0), address(0));
         }
 
         // Delegator no longer bonded to anyone
@@ -295,21 +303,23 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * @dev Set active transcoder set for the current round
      */
     function setActiveTranscoders() external afterInitialization whenSystemNotPaused onlyRoundsManager returns (bool) {
-        if (activeTranscoders.length != transcoderPools.candidateTranscoders.nodes.length) {
+        if (activeTranscoders.length != transcoderPool.getSize()) {
             // Set length of array if it has not already been set
-            activeTranscoders.length = transcoderPools.candidateTranscoders.nodes.length;
+            activeTranscoders.length = transcoderPool.getSize();
         }
 
         uint256 stake = 0;
 
-        for (uint256 i = 0; i < transcoderPools.candidateTranscoders.nodes.length; i++) {
+        address currentTranscoder = transcoderPool.getBestTranscoder();
+        for (uint256 i = 0; i < transcoderPool.getSize(); i++) {
             if (activeTranscoders[i].initialized) {
                 // Set address of old node to not be present in active transcoder set
                 isActiveTranscoder[activeTranscoders[i].id] = false;
             }
 
             // Copy node
-            activeTranscoders[i] = transcoderPools.candidateTranscoders.nodes[i];
+            activeTranscoders[i].id = currentTranscoder;
+            activeTranscoders[i].key = transcoderPool.getTranscoderStake(currentTranscoder);
 
             address activeTranscoder = activeTranscoders[i].id;
 
@@ -322,7 +332,9 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             transcoders[activeTranscoder].feeShare = transcoders[activeTranscoder].pendingFeeShare;
             transcoders[activeTranscoder].pricePerSegment = transcoders[activeTranscoder].pendingPricePerSegment;
 
-            stake = stake.add(transcoderTotalStake(activeTranscoder));
+            stake = stake.add(transcoderPool.getTranscoderStake(currentTranscoder));
+
+            currentTranscoder = transcoderPool.getPrevTranscoder(currentTranscoder);
         }
 
         // Update total stake of all active transcoders
@@ -436,7 +448,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         isActiveTranscoder[_transcoder] = false;
 
         // Remove transcoder from pools
-        transcoderPools.removeTranscoder(_transcoder);
+        transcoderPool.removeTranscoder(_transcoder);
 
         // Add slashed amount to the redistribution pool
         if (penalty > 0) {
@@ -588,7 +600,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * @param _transcoder Address of transcoder
      */
     function transcoderTotalStake(address _transcoder) public view returns (uint256) {
-        return transcoderPools.transcoderStake(_transcoder);
+        return transcoderPool.getTranscoderStake(_transcoder);
     }
 
     /*
@@ -598,7 +610,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     function transcoderStatus(address _transcoder) public view returns (TranscoderStatus) {
         Transcoder storage t = transcoders[_transcoder];
 
-        if (transcoderPools.isInPools(_transcoder)) {
+        if (transcoderPool.contains(_transcoder)) {
             return TranscoderStatus.Registered;
         } else {
             return TranscoderStatus.NotRegistered;
@@ -697,36 +709,6 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     }
 
     /*
-     * @dev Return current size of candidate transcoder pool
-     */
-    function getCandidatePoolSize() public view returns (uint256) {
-        return transcoderPools.getCandidatePoolSize();
-    }
-
-    /*
-     * @dev Return current size of reserve transcoder pool
-     */
-    function getReservePoolSize() public view returns (uint256) {
-        return transcoderPools.getReservePoolSize();
-    }
-
-    /*
-     * @dev Return candidate transcoder at position in candidate pool
-     * @param _position Position in candidate pool
-     */
-    function getCandidateTranscoderAtPosition(uint256 _position) public view returns (address) {
-        return transcoderPools.getCandidateTranscoderAtPosition(_position);
-    }
-
-    /*
-     * @dev Return reserve transcoder at postion in reserve pool
-     * @param _position Position in reserve pool
-     */
-    function getReserveTranscoderAtPosition(uint256 _position) public view returns (address) {
-        return transcoderPools.getReserveTranscoderAtPosition(_position);
-    }
-
-    /*
      * @dev Update a transcoder with rewards
      * @param _transcoder Address of transcoder
      * @param _rewards Amount of rewards
@@ -750,7 +732,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // Update transcoder's delegated amount with claimable rewards
         del.delegatedAmount = del.delegatedAmount.add(claimableRewards);
         // Update transcoder's total stake with claimable rewards
-        transcoderPools.increaseTranscoderStake(_transcoder, claimableRewards);
+        transcoderPool.increaseTranscoderStake(_transcoder, claimableRewards, address(0), address(0));
         // Add unclaimable rewards to the redistribution pool
         if (unclaimableRewards > 0) {
             minter().addToRedistributionPool(unclaimableRewards);
