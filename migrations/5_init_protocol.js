@@ -55,7 +55,7 @@ module.exports = function(deployer, network) {
         const [bondingManager, jobsManager, roundsManager] = managers
 
         return Promise.all([
-            bondingManager.initialize(config.bondingManager.numActiveTranscoders, config.bondingManager.unbondingPeriod),
+            bondingManager.initialize(config.bondingManager.unbondingPeriod, config.bondingManager.numActiveTranscoders),
             jobsManager.initialize(
                 config.jobsManager.verificationRate,
                 config.jobsManager.verificationPeriod,
