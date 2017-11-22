@@ -1,6 +1,6 @@
 import Fixture from "../helpers/fixture"
 import expectThrow from "../helpers/expectThrow"
-import {add, sub} from "../../utils/bn_util"
+import {add} from "../../utils/bn_util"
 
 const BondingManager = artifacts.require("BondingManager")
 

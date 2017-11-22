@@ -60,7 +60,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     TranscoderPool.Data transcoderPool;
 
     // Current active transcoders for current round
-    address[] activeTranscoders;
+    address[] public activeTranscoders;
     // Total stake of all active transcoders
     uint256 public totalActiveTranscoderStake;
 
@@ -698,6 +698,28 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         startRound = del.startRound;
         withdrawRound = del.withdrawRound;
         lastClaimTokenPoolsSharesRound = del.lastClaimTokenPoolsSharesRound;
+    }
+
+    /*
+     * @dev Returns size of transcoder pool
+     */
+    function getTranscoderPoolSize() public view returns (uint256) {
+        return transcoderPool.getSize();
+    }
+
+    /*
+     * @dev Returns transcoder with most stake in pool
+     */
+    function getBestTranscoderInPool() public view returns (address) {
+        return transcoderPool.getBestTranscoder();
+    }
+
+    /*
+     * @dev Returns previous transcoder in pool for a given transcoder
+     * @param _transcoder Address of a transcoder in the pool
+     */
+    function getPrevTranscoderInPool(address _transcoder) public view returns (address) {
+        return transcoderPool.getPrevTranscoder(_transcoder);
     }
 
     /*
