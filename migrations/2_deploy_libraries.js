@@ -1,4 +1,4 @@
-const TranscoderPool = artifacts.require("TranscoderPool")
+const SortedDoublyLL = artifacts.require("SortedDoublyLL")
 const TokenPools = artifacts.require("TokenPools")
 const MerkleProof = artifacts.require("MerkleProof")
 const ECRecovery = artifacts.require("ECRecovery")
@@ -11,18 +11,17 @@ const RoundsManager = artifacts.require("RoundsManager")
 const OraclizeVerifier = artifacts.require("OraclizeVerifier")
 
 module.exports = function(deployer) {
-    deployer.deploy(TranscoderPool)
     deployer.deploy(SafeMath)
     deployer.link(SafeMath, [
         BondingManager,
         JobsManager,
         RoundsManager,
         OraclizeVerifier,
-        TranscoderPool
+        SortedDoublyLL
     ])
 
-    deployer.deploy(TranscoderPool)
-    deployer.link(TranscoderPool, BondingManager)
+    deployer.deploy(SortedDoublyLL)
+    deployer.link(SortedDoublyLL, BondingManager)
 
     deployer.deploy(TokenPools)
     deployer.link(TokenPools, BondingManager)
