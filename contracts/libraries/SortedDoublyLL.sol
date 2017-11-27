@@ -38,6 +38,9 @@ library SortedDoublyLL {
      * @param _size Maximum size
      */
     function setMaxSize(Data storage self, uint256 _size) public {
+        // New max size must be greater than old max size
+        require(_size > self.maxSize);
+
         self.maxSize = _size;
     }
 
@@ -135,43 +138,22 @@ library SortedDoublyLL {
     }
 
     /*
-     * @dev Increase the key of a node in the list
+     * @dev Update the key of a node in the list
      * @param _id Node's id
-     * @param _amount Amount to increase node's key
+     * @param _newKey Node's new key
      * @param _prevId Id of previous node for the new insert position
      * @param _nextId Id of next node for the new insert position
      */
-    function increaseKey(Data storage self, address _id, uint256 _amount, address _prevId, address _nextId) public {
+    function updateKey(Data storage self, address _id, uint256 _newKey, address _prevId, address _nextId) public {
         // List must contain the node
         require(contains(self, _id));
 
-        // Compute the new key
-        uint256 newKey = self.nodes[_id].key.add(_amount);
-        // Remove node from the list
-        remove(self, _id);
-        // Insert node with new key
-        insert(self, _id, newKey, _prevId, _nextId);
-    }
-
-    /*
-     * @dev Decrease the key of a node in the list
-     * @param _id Node's id
-     * @param _amount Amount to decrease node's key
-     * @param _prevId Id of previous node for the new insert position
-     * @param _nextId Id of next node for the new insert position
-     */
-    function decreaseKey(Data storage self, address _id, uint256 _amount, address _prevId, address _nextId) public {
-        // List must contain the node
-        require(contains(self, _id));
-
-        // Compute the new key
-        uint256 newKey = self.nodes[_id].key.sub(_amount);
         // Remove node from the list
         remove(self, _id);
 
-        if (newKey > 0) {
-            // Only insert node if it has a non-zero key
-            insert(self, _id, newKey, _prevId, _nextId);
+        if (_newKey > 0) {
+            // Insert node if it has a non-zero key
+            insert(self, _id, _newKey, _prevId, _nextId);
         }
     }
 

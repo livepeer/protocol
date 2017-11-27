@@ -18,11 +18,23 @@ contract TestSortedDoublyLLInsert {
 
     function beforeEach() public {
         fixture = new SortedDoublyLLFixture();
-        fixture.setMaxSize(10);
+        fixture.setMaxSize(3);
     }
 
     function test_setMaxSize() public {
+        Assert.equal(fixture.getMaxSize(), 3, "wrong max size");
+    }
+
+    function test_setMaxSize_update() public {
+        fixture.setMaxSize(10);
+
         Assert.equal(fixture.getMaxSize(), 10, "wrong max size");
+    }
+
+    function test_setMaxSize_decreaseSize() public {
+        SortedDoublyLLFixture(address(proxy)).setMaxSize(1);
+        bool result = proxy.execute(address(fixture));
+        Assert.isFalse(result, "did not revert");
     }
 
     function test_insert_empty() public {
@@ -69,10 +81,11 @@ contract TestSortedDoublyLLInsert {
     }
 
     function test_insert_full() public {
-        fixture.setMaxSize(1);
         fixture.insert(ids[0], keys[0], address(0), address(0));
+        fixture.insert(ids[1], keys[1], ids[0], address(0));
+        fixture.insert(ids[2], keys[2], ids[1], address(0));
 
-        SortedDoublyLLFixture(address(proxy)).insert(ids[1], keys[1], address(0), address(0));
+        SortedDoublyLLFixture(address(proxy)).insert(ids[3], keys[3], address(0), address(0));
         bool result = proxy.execute(address(fixture));
         Assert.isFalse(result, "did not revert");
     }

@@ -204,7 +204,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             if (transcoderStatus(del.delegateAddress) == TranscoderStatus.Registered) {
                 // Previously delegated to a transcoder
                 // Decrease old transcoder's total stake
-                transcoderPool.decreaseKey(del.delegateAddress, del.bondedAmount, address(0), address(0));
+                transcoderPool.updateKey(del.delegateAddress, transcoderPool.getKey(del.delegateAddress).sub(del.bondedAmount), address(0), address(0));
             }
         }
 
@@ -217,7 +217,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         if (transcoderStatus(_to) == TranscoderStatus.Registered) {
             // Delegated to a transcoder
             // Increase transcoder's total stake
-            transcoderPool.increaseKey(_to, delegationAmount, address(0), address(0));
+            transcoderPool.updateKey(_to, transcoderPool.getKey(del.delegateAddress).add(delegationAmount), address(0), address(0));
         }
 
         if (_amount > 0) {
@@ -264,7 +264,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         if (transcoderStatus(del.delegateAddress) == TranscoderStatus.Registered) {
             // Previously delegated to a transcoder
             // Decrease old transcoder's total stake
-            transcoderPool.decreaseKey(del.delegateAddress, del.bondedAmount, address(0), address(0));
+            transcoderPool.updateKey(del.delegateAddress, transcoderPool.getKey(del.delegateAddress).sub(del.bondedAmount), address(0), address(0));
         }
 
         // Delegator no longer bonded to anyone
@@ -753,7 +753,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // Update transcoder's delegated amount with claimable rewards
         del.delegatedAmount = del.delegatedAmount.add(claimableRewards);
         // Update transcoder's total stake with claimable rewards
-        transcoderPool.increaseKey(_transcoder, claimableRewards, address(0), address(0));
+        uint256 newStake = transcoderPool.getKey(_transcoder).add(claimableRewards);
+        transcoderPool.updateKey(_transcoder, newStake, address(0), address(0));
         // Add unclaimable rewards to the redistribution pool
         if (unclaimableRewards > 0) {
             minter().addToRedistributionPool(unclaimableRewards);

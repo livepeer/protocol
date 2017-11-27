@@ -20,12 +20,8 @@ contract SortedDoublyLLFixture {
         list.remove(_id);
     }
 
-    function increaseKey(address _id, uint256 _amount, address _prevId, address _nextId) public {
-        list.increaseKey(_id, _amount, _prevId, _nextId);
-    }
-
-    function decreaseKey(address _id, uint256 _amount, address _prevId, address _nextId) public {
-        list.decreaseKey(_id, _amount, _prevId, _nextId);
+    function updateKey(address _id, uint256 _newKey, address _prevId, address _nextId) public {
+        list.updateKey(_id, _newKey, _prevId, _nextId);
     }
 
     function contains(address _id) public view returns (bool) {

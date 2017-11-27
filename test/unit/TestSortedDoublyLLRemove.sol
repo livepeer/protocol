@@ -33,6 +33,38 @@ contract TestSortedDoublyLLRemove {
         Assert.equal(fixture.getPrev(ids[2]), ids[0], "wrong prev");
     }
 
+    function test_remove_singleNode() public {
+        fixture.insert(ids[0], keys[0], address(0), address(0));
+
+        fixture.remove(ids[0]);
+        Assert.equal(fixture.contains(ids[0]), false, "should not contain node");
+        Assert.equal(fixture.getSize(), 0, "wrong size");
+        Assert.equal(fixture.getFirst(), address(0), "wrong head");
+        Assert.equal(fixture.getLast(), address(0), "wrong tail");
+    }
+
+    function test_remove_head() public {
+        fixture.insert(ids[0], keys[0], address(0), address(0));
+        fixture.insert(ids[1], keys[1], ids[0], address(0));
+
+        fixture.remove(ids[0]);
+        Assert.equal(fixture.contains(ids[0]), false, "should not contain node");
+        Assert.equal(fixture.getSize(), 1, "wrong size");
+        Assert.equal(fixture.getFirst(), ids[1], "wrong head");
+        Assert.equal(fixture.getPrev(ids[1]), address(0), "wrong prev");
+    }
+
+    function test_remove_tail() public {
+        fixture.insert(ids[0], keys[0], address(0), address(0));
+        fixture.insert(ids[1], keys[1], ids[0], address(0));
+
+        fixture.remove(ids[1]);
+        Assert.equal(fixture.contains(ids[1]), false, "should not contain node");
+        Assert.equal(fixture.getSize(), 1, "wrong size");
+        Assert.equal(fixture.getLast(), ids[0], "wrong prev");
+        Assert.equal(fixture.getNext(ids[0]), address(0), "wrong next");
+    }
+
     function test_remove_notInList() public {
         fixture.insert(ids[0], keys[0], address(0), address(0));
 
