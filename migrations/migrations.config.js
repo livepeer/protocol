@@ -4,6 +4,7 @@ const TOKEN_UNIT = 10 ** 18
 
 module.exports = {
     bondingManager: {
+        numTranscoders: 2,
         numActiveTranscoders: 1,
         unbondingPeriod: 2
     },

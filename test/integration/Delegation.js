@@ -31,12 +31,18 @@ contract("Delegation", accounts => {
     })
 
     it("registers transcoder 1", async () => {
+        const amount = new BigNumber(10).mul(TOKEN_UNIT)
+        await token.approve(bondingManager.address, amount, {from: accounts[0]})
+        await bondingManager.bond(amount, accounts[0], {from: accounts[0]})
         await bondingManager.transcoder(10, 5, 100, {from: accounts[0]})
 
         assert.equal(await bondingManager.transcoderStatus(accounts[0]), 1, "transcoder 1 status is incorrect")
     })
 
     it("registers transcoder 2", async () => {
+        const amount = new BigNumber(10).mul(TOKEN_UNIT)
+        await token.approve(bondingManager.address, amount, {from: accounts[1]})
+        await bondingManager.bond(amount, accounts[1], {from: accounts[1]})
         await bondingManager.transcoder(10, 5, 100, {from: accounts[1]})
 
         assert.equal(await bondingManager.transcoderStatus(accounts[1]), 1, "transcoder 2 status is incorrect")

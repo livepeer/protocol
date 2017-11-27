@@ -1,7 +1,4 @@
-const Node = artifacts.require("Node")
-const MinHeap = artifacts.require("MinHeap")
-const MaxHeap = artifacts.require("MaxHeap")
-const TranscoderPools = artifacts.require("TranscoderPools")
+const SortedDoublyLL = artifacts.require("SortedDoublyLL")
 const TokenPools = artifacts.require("TokenPools")
 const MerkleProof = artifacts.require("MerkleProof")
 const ECRecovery = artifacts.require("ECRecovery")
@@ -20,24 +17,11 @@ module.exports = function(deployer) {
         JobsManager,
         RoundsManager,
         OraclizeVerifier,
-        MaxHeap,
-        MinHeap
+        SortedDoublyLL
     ])
 
-    deployer.deploy(Node)
-    deployer.link(Node, [
-        MinHeap,
-        MaxHeap
-    ])
-
-    deployer.deploy(MinHeap)
-    deployer.link(MinHeap, TranscoderPools)
-
-    deployer.deploy(MaxHeap)
-    deployer.link(MaxHeap, TranscoderPools)
-
-    deployer.deploy(TranscoderPools)
-    deployer.link(TranscoderPools, BondingManager)
+    deployer.deploy(SortedDoublyLL)
+    deployer.link(SortedDoublyLL, BondingManager)
 
     deployer.deploy(TokenPools)
     deployer.link(TokenPools, BondingManager)
