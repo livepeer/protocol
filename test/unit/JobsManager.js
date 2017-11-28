@@ -126,7 +126,6 @@ contract("JobsManager", accounts => {
             e.watch(async (err, result) => {
                 e.stopWatching()
 
-                assert.equal(result.args.transcoder, electedTranscoder, "elected transcoder incorrect")
                 assert.equal(result.args.broadcaster, broadcaster, "broadcaster incorrect")
                 assert.equal(result.args.jobId, 0, "new job id incorrect")
                 assert.equal(result.args.streamId, streamId, "stream id incorrect")
@@ -145,6 +144,7 @@ contract("JobsManager", accounts => {
             await fixture.bondingManager.setActiveTranscoder(accounts[1], 0, transcoderTotalStake, 0)
 
             const endBlock = web3.eth.blockNumber + 500
+            const creationBlock = web3.eth.blockNumber + 1
             await jobsManager.job(streamId, transcodingOptions, maxPricePerSegment, endBlock, {from: broadcaster})
 
             const jInfo = await jobsManager.getJob(0)
@@ -152,15 +152,15 @@ contract("JobsManager", accounts => {
             assert.equal(jMaxPricePerSegment, maxPricePerSegment, "max price per segment incorrect")
             const jBroadcasterAddress = jInfo[3]
             assert.equal(jBroadcasterAddress, broadcaster, "broadcaster address incorrect")
-            const jTranscoderAddress = jInfo[4]
-            assert.equal(jTranscoderAddress, electedTranscoder, "transcoder address incorrect")
             const jCreationRound = jInfo[5]
             assert.equal(jCreationRound, creationRound, "creation round incorrect")
-            const jEndBlock = jInfo[6]
+            const jCreationBlock = jInfo[6]
+            assert.equal(jCreationBlock, creationBlock, "creation block incorrect")
+            const jEndBlock = jInfo[7]
             assert.equal(jEndBlock, endBlock, "end block incorrect")
-            const jEscrow = jInfo[7]
+            const jEscrow = jInfo[8]
             assert.equal(jEscrow, 0, "escrow incorrect")
-            const jTotalClaims = jInfo[8]
+            const jTotalClaims = jInfo[9]
             assert.equal(jTotalClaims, 0, "total claims incorrect")
         })
     })
@@ -193,7 +193,7 @@ contract("JobsManager", accounts => {
             // Broadcaster deposits fees
             await jobsManager.deposit(deposit, {from: broadcaster})
 
-            const endBlock0 = web3.eth.blockNumber + 50
+            const endBlock0 = web3.eth.blockNumber + 400
             // Broadcaster creates job 0
             await jobsManager.job(streamId, transcodingOptions, maxPricePerSegment, endBlock0, {from: broadcaster})
             const endBlock1 = web3.eth.blockNumber + 20
@@ -216,7 +216,21 @@ contract("JobsManager", accounts => {
             await expectThrow(jobsManager.claimWork(inactiveJobId, segmentRange, claimRoot, {from: electedTranscoder}))
         })
 
-        it("should fail if sender is not elected transcoder", async () => {
+        it("should fail if the transcoder is assigned and the sender is not the assigned transcoder", async () => {
+            await jobsManager.claimWork(jobId, segmentRange, claimRoot, {from: electedTranscoder})
+
+            // Account 2 (not elected transcoder) claims work
+            await expectThrow(jobsManager.claimWork(jobId, segmentRange, claimRoot, {from: accounts[2]}))
+        })
+
+        it("should fail if the transcoder is not assigned and it has been more than 256 blocks since the job creation block", async () => {
+            const creationBlock = (await jobsManager.getJob(jobId))[6]
+            await fixture.rpc.wait(256 - (web3.eth.blockNumber - creationBlock.toNumber()))
+
+            await expectThrow(jobsManager.claimWork(jobId, segmentRange, claimRoot, {from: electedTranscoder}))
+        })
+
+        it("should fail if the sender should not be assigned the job", async () => {
             // Account 2 (not elected transcoder) claims work
             await expectThrow(jobsManager.claimWork(jobId, segmentRange, claimRoot, {from: accounts[2]}))
         })
@@ -267,7 +281,7 @@ contract("JobsManager", accounts => {
             const fees = maxPricePerSegment * 2 * (segmentRange[1] - segmentRange[0] + 1)
 
             const jInfo = await jobsManager.getJob(jobId)
-            const jEscrow = jInfo[7]
+            const jEscrow = jInfo[8]
             assert.equal(jEscrow, fees, "escrow is incorrect")
         })
 
@@ -440,6 +454,9 @@ contract("JobsManager", accounts => {
             // Broadcaster creates job 0
             await jobsManager.job(streamId, transcodingOptions, maxPricePerSegment, endBlock, {from: broadcaster})
 
+            // Wait for job creation block + 1 to be mined
+            await fixture.rpc.wait(1)
+
             const segmentRange = [0, 3]
             const claimRoot = "0x1000000000000000000000000000000000000000000000000000000000000000"
             // Account 1 (transcoder) claims work for job 0
@@ -497,7 +514,7 @@ contract("JobsManager", accounts => {
             await jobsManager.distributeFees(jobId, claimId, {from: electedTranscoder})
 
             const jInfo = await jobsManager.getJob(jobId)
-            const jEscrow = jInfo[7]
+            const jEscrow = jInfo[8]
             assert.equal(jEscrow, 0, "escrow is incorrect")
             const cInfo = await jobsManager.getClaim(jobId, claimId)
             const cStatus = cInfo[5]
@@ -580,6 +597,9 @@ contract("JobsManager", accounts => {
             // Broadcaster creates job 0
             await jobsManager.job(streamId, transcodingOptions, maxPricePerSegment, endBlock, {from: broadcaster})
 
+            // Wait for job creation block + 1 to be mined
+            await fixture.rpc.wait(1)
+
             const segmentRange0 = [0, 3]
             const claimRoot = "0x1000000000000000000000000000000000000000000000000000000000000000"
             // Transcoder submits claim 0
@@ -601,7 +621,7 @@ contract("JobsManager", accounts => {
             await jobsManager.batchDistributeFees(jobId, claimIds, {from: electedTranscoder})
 
             const jInfo = await jobsManager.getJob(jobId)
-            const jEscrow = jInfo[7]
+            const jEscrow = jInfo[8]
             assert.equal(jEscrow, 80, "escrow is incorrect")
 
             const cInfo0 = await jobsManager.getClaim(jobId, 0)
@@ -674,12 +694,12 @@ contract("JobsManager", accounts => {
             // Broadcaster creates job 0
             await jobsManager.job(streamId, transcodingOptions, maxPricePerSegment, endBlock, {from: broadcaster})
 
+            // Wait for job creation block + 1 to be mined
+            await fixture.rpc.wait(1)
+
             const segmentRange = [0, 3]
             // Account 1 (transcoder) claims work for job 0
             await jobsManager.claimWork(jobId, segmentRange, merkleTree.getHexRoot(), {from: electedTranscoder})
-
-            // Fast forward so that claimBlock + 1 is mined
-            // await fixture.rpc.wait(1)
         })
 
         it("should throw if verification period is not over", async () => {
@@ -722,7 +742,7 @@ contract("JobsManager", accounts => {
             await jobsManager.missedVerificationSlash(jobId, claimId, segmentNumber, {from: accounts[2]})
 
             const jInfo = await jobsManager.getJob(jobId)
-            const jEscrow = jInfo[7]
+            const jEscrow = jInfo[8]
             assert.equal(jEscrow, 0, "escrow is incorrect")
             const bDeposit = (await jobsManager.broadcasters.call(broadcaster))[0]
             assert.equal(bDeposit, 1000, "broadcaster deposit is incorrect")
@@ -770,6 +790,9 @@ contract("JobsManager", accounts => {
             // Broadcaster creates job 0
             await jobsManager.job(streamId, transcodingOptions, maxPricePerSegment, endBlock, {from: broadcaster})
 
+            // Wait for job creation block + 1 to be mined
+            await fixture.rpc.wait(1)
+
             const segmentRange1 = [0, 3]
             const segmentRange2 = [2, 5]
             const root = "0x123"
@@ -791,7 +814,7 @@ contract("JobsManager", accounts => {
             await jobsManager.doubleClaimSegmentSlash(0, 0, 1, 3, {from: accounts[3]})
 
             const jInfo = await jobsManager.getJob(jobId)
-            const jEscrow = jInfo[7]
+            const jEscrow = jInfo[8]
             assert.equal(jEscrow, 0, "escrow is incorrect")
             const bDeposit = (await jobsManager.broadcasters.call(broadcaster))[0]
             assert.equal(bDeposit, 1000, "broadcaster deposit is incorrect")

@@ -193,7 +193,6 @@ contract("BondingManager", accounts => {
             await bondingManager.bond(100, tAddr0, {from: dAddr})
 
             const fees = 300
-            const pricePerSegment = 10
             const jobCreationRound = 6
             const currentRound = 7
 
@@ -202,7 +201,6 @@ contract("BondingManager", accounts => {
             // Set active transcoders
             await fixture.roundsManager.setCurrentRound(jobCreationRound)
             await fixture.roundsManager.initializeRound()
-            await fixture.jobsManager.callElectActiveTranscoder(pricePerSegment)
             await fixture.roundsManager.setCurrentRound(currentRound)
 
             // Call updateTranscoderWithFees via transaction from JobsManager
@@ -259,7 +257,6 @@ contract("BondingManager", accounts => {
             // Set active transcoders
             await fixture.roundsManager.setCurrentRound(jobCreationRound)
             await fixture.roundsManager.initializeRound()
-            await fixture.jobsManager.callElectActiveTranscoder(pricePerSegment)
             await fixture.roundsManager.setCurrentRound(currentRound)
         })
 
@@ -313,11 +310,9 @@ contract("BondingManager", accounts => {
             await fixture.roundsManager.initializeRound()
             await fixture.roundsManager.setCurrentRound(6)
             await fixture.roundsManager.initializeRound()
-            // // Set the current round to jobCreationRound
+            // Set the current round to jobCreationRound
             await fixture.roundsManager.setCurrentRound(jobCreationRound)
             await fixture.roundsManager.initializeRound()
-            // Set the totalStake for the fee pool at jobCreationRound
-            await fixture.jobsManager.callElectActiveTranscoder(pricePerSegment)
 
             // Set params for distribute fees
             await fixture.jobsManager.setDistributeFeesParams(tAddr, fees, jobCreationRound)
@@ -393,8 +388,6 @@ contract("BondingManager", accounts => {
             await fixture.roundsManager.setCurrentRound(jobCreationRound2)
             // Set active transcoders
             await fixture.roundsManager.initializeRound()
-            // Set the totalStake for the fee pool at jobCreationRound2
-            await fixture.jobsManager.callElectActiveTranscoder(pricePerSegment)
 
             // Set params for distribute fees
             await fixture.jobsManager.setDistributeFeesParams(tAddr, fees2, jobCreationRound2)
@@ -530,7 +523,6 @@ contract("BondingManager", accounts => {
             await fixture.roundsManager.initializeRound()
             await fixture.roundsManager.setCurrentRound(jobCreationRound)
             await fixture.roundsManager.initializeRound()
-            await fixture.jobsManager.callElectActiveTranscoder(pricePerSegment)
 
             await fixture.jobsManager.setDistributeFeesParams(tAddr, fees, jobCreationRound)
 
@@ -649,8 +641,6 @@ contract("BondingManager", accounts => {
         })
 
         it("should withdraw unbonded amount", async () => {
-            await fixture.jobsManager.callElectActiveTranscoder(pricePerSegment)
-
             await fixture.jobsManager.setDistributeFeesParams(tAddr, fees, jobCreationRound)
 
             // Call updateTranscoderWithFees via transaction from JobsManager
@@ -688,8 +678,6 @@ contract("BondingManager", accounts => {
         })
 
         it("should withdraw both bonded and unbonded tokens", async () => {
-            await fixture.jobsManager.callElectActiveTranscoder(pricePerSegment)
-
             await fixture.jobsManager.setDistributeFeesParams(tAddr, fees, jobCreationRound)
 
             // Call updateTranscoderWithFees via transaction from JobsManager

@@ -55,7 +55,7 @@ contract BondingManagerMock is IBondingManager {
         return true;
     }
 
-    function electActiveTranscoder(uint256 _maxPricePerSegment) external returns (address) {
+    function electActiveTranscoder(uint256 _maxPricePerSegment, uint256 _block, uint256 _round) external view returns (address) {
         return transcoder;
     }
 
@@ -63,7 +63,7 @@ contract BondingManagerMock is IBondingManager {
         return activeStake;
     }
 
-    function activeTranscoderTotalStake(address _transcoder) public view returns (uint256) {
+    function activeTranscoderTotalStake(address _transcoder, uint256 _round) public view returns (uint256) {
         return activeStake;
     }
 }

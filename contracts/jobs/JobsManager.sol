@@ -57,6 +57,7 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         address broadcasterAddress;           // Address of broadcaster that requestes a transcoding job
         address transcoderAddress;            // Address of transcoder selected for the job
         uint256 creationRound;                // Round that a job is created
+        uint256 creationBlock;                // Block that a job is created
         uint256 endBlock;                     // Block at which the job is ended and considered inactive
         Claim[] claims;                       // Claims submitted for this job
         uint256 escrow;                       // Claim fees before verification and slashing periods are complete
@@ -104,7 +105,7 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
     }
 
     // Events
-    event NewJob(address indexed transcoder, address indexed broadcaster, uint256 jobId, string streamId, string transcodingOptions);
+    event NewJob(address indexed broadcaster, uint256 jobId, string streamId, string transcodingOptions, uint256 maxPricePerSegment, uint256 creationBlock);
     event NewClaim(address indexed transcoder, uint256 indexed jobId, uint256 claimId);
     event ReceivedVerification(uint256 indexed jobId, uint256 indexed claimId, uint256 segmentNumber, bool result);
 
@@ -182,21 +183,17 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         // End block must be in the future
         require(_endBlock > block.number);
 
-        address electedTranscoder = bondingManager().electActiveTranscoder(_maxPricePerSegment);
-        // There must be an elected transcoder
-        require(electedTranscoder != address(0));
-
         Job storage job = jobs[numJobs];
         job.jobId = numJobs;
         job.streamId = _streamId;
         job.transcodingOptions = _transcodingOptions;
         job.maxPricePerSegment = _maxPricePerSegment;
         job.broadcasterAddress = msg.sender;
-        job.transcoderAddress = electedTranscoder;
         job.creationRound = roundsManager().currentRound();
+        job.creationBlock = block.number;
         job.endBlock = _endBlock;
 
-        NewJob(electedTranscoder, msg.sender, numJobs, _streamId, _transcodingOptions);
+        NewJob(msg.sender, numJobs, _streamId, _transcodingOptions, _maxPricePerSegment, block.number);
 
         // Increment number of created jobs
         numJobs = numJobs.add(1);
@@ -227,10 +224,19 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
 
         // Job cannot be inactive
         require(jobStatus(_jobId) != JobStatus.Inactive);
-        // Sender must be elected transcoder
-        require(job.transcoderAddress == msg.sender);
         // Segment range must be valid
         require(_segmentRange[1] >= _segmentRange[0]);
+
+        if (job.transcoderAddress != address(0)) {
+            // If transcoder already assigned, check if sender is
+            // the assigned transcoder
+            require(job.transcoderAddress == msg.sender);
+        } else {
+            // If transcoder is not already assigned, check if sender
+            // should be assigned and that job creation block has been mined and it has been <= 256 blocks since the job creation block
+            require(block.number > job.creationBlock && block.number <= job.creationBlock + 256 && bondingManager().electActiveTranscoder(job.maxPricePerSegment, job.creationBlock, job.creationRound) == msg.sender);
+            job.transcoderAddress = msg.sender;
+        }
 
         // Move fees from broadcaster deposit to escrow
         uint256 fees = JobLib.calcFees(_segmentRange[1].sub(_segmentRange[0]).add(1), job.transcodingOptions, job.maxPricePerSegment);
@@ -518,7 +524,7 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
     )
         public
         view
-        returns (string streamId, string transcodingOptions, uint256 maxPricePerSegment, address broadcasterAddress, address transcoderAddress, uint256 creationRound, uint256 endBlock, uint256 escrow, uint256 totalClaims)
+        returns (string streamId, string transcodingOptions, uint256 maxPricePerSegment, address broadcasterAddress, address transcoderAddress, uint256 creationRound, uint256 creationBlock, uint256 endBlock, uint256 escrow, uint256 totalClaims)
     {
         Job storage job = jobs[_jobId];
 
@@ -528,6 +534,7 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         broadcasterAddress = job.broadcasterAddress;
         transcoderAddress = job.transcoderAddress;
         creationRound = job.creationRound;
+        creationBlock = job.creationBlock;
         endBlock = job.endBlock;
         escrow = job.escrow;
         totalClaims = job.claims.length;
