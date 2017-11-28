@@ -233,8 +233,8 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
             require(job.transcoderAddress == msg.sender);
         } else {
             // If transcoder is not already assigned, check if sender
-            // should be assigned and that it has been <= 256 blocks since the job creation block
-            require(block.number <= job.creationBlock + 256 && bondingManager().electActiveTranscoder(job.maxPricePerSegment, job.creationBlock + 1) == msg.sender);
+            // should be assigned and that job creation block + 1 has been mined and it has been <= 256 blocks since the job creation block
+            require(block.number > job.creationBlock + 1 && block.number <= job.creationBlock + 256 && bondingManager().electActiveTranscoder(job.maxPricePerSegment, job.creationBlock + 1) == msg.sender);
             job.transcoderAddress = msg.sender;
         }
 

@@ -223,6 +223,13 @@ contract("JobsManager", accounts => {
             await expectThrow(jobsManager.claimWork(jobId, segmentRange, claimRoot, {from: accounts[2]}))
         })
 
+        it("should fail if the transcoder is not assigned and job creation block + 1 has not been mined", async () => {
+            const endBlock = web3.eth.blockNumber + 100
+            await jobsManager.job(streamId, transcodingOptions, maxPricePerSegment, endBlock, {from: broadcaster})
+
+            await expectThrow(jobsManager.claimWork(2, segmentRange, claimRoot, {from: electedTranscoder}))
+        })
+
         it("should fail if the transcoder is not assigned and it has been more than 256 blocks since the job creation block", async () => {
             const creationBlock = (await jobsManager.getJob(jobId))[6]
             await fixture.rpc.wait(256 - (web3.eth.blockNumber - creationBlock.toNumber()))
@@ -454,6 +461,9 @@ contract("JobsManager", accounts => {
             // Broadcaster creates job 0
             await jobsManager.job(streamId, transcodingOptions, maxPricePerSegment, endBlock, {from: broadcaster})
 
+            // Wait for job creation block + 1 to be mined
+            await fixture.rpc.wait(1)
+
             const segmentRange = [0, 3]
             const claimRoot = "0x1000000000000000000000000000000000000000000000000000000000000000"
             // Account 1 (transcoder) claims work for job 0
@@ -594,6 +604,9 @@ contract("JobsManager", accounts => {
             // Broadcaster creates job 0
             await jobsManager.job(streamId, transcodingOptions, maxPricePerSegment, endBlock, {from: broadcaster})
 
+            // Wait for job creation block + 1 to be mined
+            await fixture.rpc.wait(1)
+
             const segmentRange0 = [0, 3]
             const claimRoot = "0x1000000000000000000000000000000000000000000000000000000000000000"
             // Transcoder submits claim 0
@@ -688,12 +701,12 @@ contract("JobsManager", accounts => {
             // Broadcaster creates job 0
             await jobsManager.job(streamId, transcodingOptions, maxPricePerSegment, endBlock, {from: broadcaster})
 
+            // Wait for job creation block + 1 to be mined
+            await fixture.rpc.wait(1)
+
             const segmentRange = [0, 3]
             // Account 1 (transcoder) claims work for job 0
             await jobsManager.claimWork(jobId, segmentRange, merkleTree.getHexRoot(), {from: electedTranscoder})
-
-            // Fast forward so that claimBlock + 1 is mined
-            // await fixture.rpc.wait(1)
         })
 
         it("should throw if verification period is not over", async () => {
@@ -783,6 +796,9 @@ contract("JobsManager", accounts => {
             const endBlock = web3.eth.blockNumber + 500
             // Broadcaster creates job 0
             await jobsManager.job(streamId, transcodingOptions, maxPricePerSegment, endBlock, {from: broadcaster})
+
+            // Wait for job creation block + 1 to be mined
+            await fixture.rpc.wait(1)
 
             const segmentRange1 = [0, 3]
             const segmentRange2 = [2, 5]
