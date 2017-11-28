@@ -223,13 +223,6 @@ contract("JobsManager", accounts => {
             await expectThrow(jobsManager.claimWork(jobId, segmentRange, claimRoot, {from: accounts[2]}))
         })
 
-        it("should fail if the transcoder is not assigned and job creation block + 1 has not been mined", async () => {
-            const endBlock = web3.eth.blockNumber + 100
-            await jobsManager.job(streamId, transcodingOptions, maxPricePerSegment, endBlock, {from: broadcaster})
-
-            await expectThrow(jobsManager.claimWork(2, segmentRange, claimRoot, {from: electedTranscoder}))
-        })
-
         it("should fail if the transcoder is not assigned and it has been more than 256 blocks since the job creation block", async () => {
             const creationBlock = (await jobsManager.getJob(jobId))[6]
             await fixture.rpc.wait(256 - (web3.eth.blockNumber - creationBlock.toNumber()))

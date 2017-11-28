@@ -59,10 +59,15 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     // Candidate and reserve transcoders
     SortedDoublyLL.Data transcoderPool;
 
-    // Current active transcoders for current round
-    address[] public activeTranscoders;
-    // Total stake of all active transcoders
-    uint256 public totalActiveTranscoderStake;
+    // Represents the active transcoder set
+    struct ActiveTranscoderSet {
+        address[] transcoders;
+        mapping (address => bool) isActive;
+        uint256 totalStake;
+    }
+
+    // Keep track of active transcoder set for each round
+    mapping (uint256 => ActiveTranscoderSet) public activeTranscoderSet;
 
     // Only the RoundsManager can call
     modifier onlyRoundsManager() {
@@ -100,8 +105,6 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         numActiveTranscoders = _numActiveTranscoders;
         // Set up transcoder pool
         transcoderPool.setMaxSize(_numTranscoders);
-        // Set length of active transcoders array
-        activeTranscoders.length = _numActiveTranscoders;
      }
 
     /*
@@ -159,6 +162,13 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     {
         // Sender must be registered transcoder
         require(transcoderStatus(msg.sender) == TranscoderStatus.Registered);
+
+        uint256 currentRound = roundsManager().currentRound();
+        if (activeTranscoderSet[currentRound].isActive[msg.sender]) {
+            // If transcoder is active for the round set it as inactive
+            activeTranscoderSet[currentRound].isActive[msg.sender] = false;
+        }
+
         // Remove transcoder from pools
         transcoderPool.remove(msg.sender);
 
@@ -320,7 +330,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         address currentTranscoder = transcoderPool.getFirst();
 
         for (uint256 i = 0; i < activeSetSize; i++) {
-            activeTranscoders[i] = currentTranscoder;
+            activeTranscoderSet[currentRound].transcoders.push(currentTranscoder);
+            activeTranscoderSet[currentRound].isActive[currentTranscoder] = true;
 
             uint256 stake = transcoderPool.getKey(currentTranscoder);
             uint8 blockRewardCut = transcoders[currentTranscoder].pendingBlockRewardCut;
@@ -342,7 +353,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         }
 
         // Update total stake of all active transcoders
-        totalActiveTranscoderStake = totalStake;
+        activeTranscoderSet[currentRound].totalStake = totalStake;
 
         return true;
     }
@@ -352,10 +363,10 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * Active transcoders call this once per cycle when it is their turn.
      */
     function reward() external afterInitialization whenSystemNotPaused currentRoundInitialized returns (bool) {
-        // Sender must be an active transcoder
-        require(isActiveTranscoder(msg.sender));
-
         uint256 currentRound = roundsManager().currentRound();
+
+        // Sender must be an active transcoder
+        require(activeTranscoderSet[currentRound].isActive[msg.sender]);
 
         // Transcoder must not have called reward for this round already
         require(transcoders[msg.sender].lastRewardRound != currentRound);
@@ -364,7 +375,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
         // Create reward based on active transcoder's stake relative to the total active stake
         // rewardTokens = (current mintable tokens for the round * active transcoder stake) / total active stake
-        uint256 rewardTokens = minter().createReward(activeTranscoderTotalStake(msg.sender), totalActiveTranscoderStake);
+        uint256 rewardTokens = minter().createReward(activeTranscoderTotalStake(msg.sender, currentRound), activeTranscoderSet[currentRound].totalStake);
 
         updateTranscoderWithRewards(msg.sender, rewardTokens, currentRound);
 
@@ -445,9 +456,13 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             del.bondedAmount = del.bondedAmount.sub(penalty);
         }
 
-        if (isActiveTranscoder(_transcoder)) {
-            // Decrease total active stake
-            totalActiveTranscoderStake = totalActiveTranscoderStake.sub(activeTranscoderTotalStake(_transcoder));
+        uint256 currentRound = roundsManager().currentRound();
+
+        if (activeTranscoderSet[currentRound].isActive[_transcoder]) {
+            // Set transcoder as inactive
+            activeTranscoderSet[currentRound].isActive[_transcoder] = false;
+            // Decrease total active stake for the round
+            activeTranscoderSet[currentRound].totalStake = activeTranscoderSet[currentRound].totalStake.sub(activeTranscoderTotalStake(_transcoder, currentRound));
         }
 
         // Remove transcoder from pools
@@ -475,8 +490,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * Returns address of elected active transcoder and its price per segment
      * @param _maxPricePerSegment Max price (in LPT base units) per segment of a stream
      */
-    function electActiveTranscoder(uint256 _maxPricePerSegment, uint256 _block) external view returns (address) {
-        uint256 activeSetSize = Math.min256(numActiveTranscoders, transcoderPool.getSize());
+    function electActiveTranscoder(uint256 _maxPricePerSegment, uint256 _block, uint256 _round) external view returns (address) {
+        uint256 activeSetSize = activeTranscoderSet[_round].transcoders.length;
         // Create array to store available transcoders charging an acceptable price per segment
         address[] memory availableTranscoders = new address[](activeSetSize);
         // Keep track of the actual number of available transcoders
@@ -485,12 +500,12 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         uint256 totalAvailableTranscoderStake = 0;
 
         for (uint256 i = 0; i < activeSetSize; i++) {
-            address activeTranscoder = activeTranscoders[i];
+            address activeTranscoder = activeTranscoderSet[_round].transcoders[i];
             // If a transcoder is active and charges an acceptable price per segment add it to the array of available transcoders
-            if (isActiveTranscoder(activeTranscoder) && transcoders[activeTranscoder].pricePerSegment <= _maxPricePerSegment) {
-                availableTranscoders[numAvailableTranscoders] = activeTranscoders[i];
+            if (activeTranscoderSet[_round].isActive[activeTranscoder] && transcoders[activeTranscoder].pricePerSegment <= _maxPricePerSegment) {
+                availableTranscoders[numAvailableTranscoders] = activeTranscoder;
                 numAvailableTranscoders++;
-                totalAvailableTranscoderStake = totalAvailableTranscoderStake.add(activeTranscoderTotalStake(activeTranscoder));
+                totalAvailableTranscoderStake = totalAvailableTranscoderStake.add(activeTranscoderTotalStake(activeTranscoder, _round));
             }
         }
 
@@ -505,7 +520,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             uint256 s = 0;
 
             for (uint256 j = 0; j < numAvailableTranscoders; j++) {
-                s = s.add(activeTranscoderTotalStake(availableTranscoders[j]));
+                s = s.add(activeTranscoderTotalStake(availableTranscoders[j], _round));
 
                 if (s > r) {
                     electedTranscoder = availableTranscoders[j];
@@ -582,21 +597,15 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         }
     }
 
-    function isActiveTranscoder(address _transcoder) public view returns (bool) {
-        uint256 currentRound = roundsManager().currentRound();
-        return transcoderPool.contains(_transcoder) && transcoders[_transcoder].tokenPoolsPerRound[currentRound].totalStake > 0;
-    }
-
     /*
      * @dev Returns total bonded stake for an active transcoder
      * @param _transcoder Address of a transcoder
      */
-    function activeTranscoderTotalStake(address _transcoder) public view returns (uint256) {
+    function activeTranscoderTotalStake(address _transcoder, uint256 _round) public view returns (uint256) {
         // Must be active transcoder
-        require(isActiveTranscoder(_transcoder));
+        require(activeTranscoderSet[_round].isActive[_transcoder]);
 
-        uint256 currentRound = roundsManager().currentRound();
-        return transcoders[_transcoder].tokenPoolsPerRound[currentRound].totalStake;
+        return transcoders[_transcoder].tokenPoolsPerRound[_round].totalStake;
     }
 
     /*
