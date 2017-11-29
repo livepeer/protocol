@@ -29,28 +29,8 @@ contract("ManagerProxy", accounts => {
         await fixture.tearDown()
     })
 
-    describe("initialize", () => {
-        it("should set a value", async () => {
-            await managerProxy.initialize(3)
-
-            const value = await managerProxy.initValue.call()
-            assert.equal(value, 3, "value incorrect")
-        })
-
-        it("should fail if already initialized", async () => {
-            await managerProxy.initialize(3)
-
-            await expectThrow(managerProxy.initialize(3))
-        })
-    })
-
     describe("setting and getting uint8", () => {
-        it("should fail if not initialized", async () => {
-            await expectThrow(managerProxy.setUint8(4))
-        })
-
         it("should set a uint8", async () => {
-            await managerProxy.initialize(3)
             await managerProxy.setUint8(4)
 
             const value = await managerProxy.uint8Value.call()
@@ -59,12 +39,7 @@ contract("ManagerProxy", accounts => {
     })
 
     describe("setting and getting uint64", () => {
-        it("should fail if not initialized", async () => {
-            await expectThrow(managerProxy.setUint64(5))
-        })
-
         it("should set a uint64", async () => {
-            await managerProxy.initialize(3)
             await managerProxy.setUint64(5)
 
             const value = await managerProxy.uint64Value.call()
@@ -73,12 +48,7 @@ contract("ManagerProxy", accounts => {
     })
 
     describe("setting and getting uint256", () => {
-        it("should fail if not initialized", async () => {
-            await expectThrow(managerProxy.setUint256(6))
-        })
-
         it("should set a uint256", async () => {
-            await managerProxy.initialize(3)
             await managerProxy.setUint256(6)
 
             const value = await managerProxy.uint256Value.call()
@@ -89,12 +59,7 @@ contract("ManagerProxy", accounts => {
     describe("setting and getting bytes32", () => {
         const hash = web3.sha3("hello")
 
-        it("should fail if not initialized", async () => {
-            await expectThrow(managerProxy.setBytes32(hash))
-        })
-
         it("should set a bytes32", async () => {
-            await managerProxy.initialize(3)
             await managerProxy.setBytes32(hash)
 
             const value = await managerProxy.bytes32Value.call()
@@ -105,12 +70,7 @@ contract("ManagerProxy", accounts => {
     describe("setting and getting address", () => {
         const addr = accounts[1]
 
-        it("should fail if not initialized", async () => {
-            await expectThrow(managerProxy.setAddress(addr))
-        })
-
         it("should set an address", async () => {
-            await managerProxy.initialize(3)
             await managerProxy.setAddress(addr)
 
             const value = await managerProxy.addressValue.call()
@@ -121,12 +81,7 @@ contract("ManagerProxy", accounts => {
     describe("setting and getting string", () => {
         const str = "hello"
 
-        it("should fail if not initialized", async () => {
-            await expectThrow(managerProxy.setString(str))
-        })
-
         it("should set a string", async () => {
-            await managerProxy.initialize(3)
             await managerProxy.setString(str)
 
             const value = await managerProxy.stringValue.call()
@@ -137,12 +92,7 @@ contract("ManagerProxy", accounts => {
     describe("setting and getting bytes", () => {
         const h = web3.sha3("hello")
 
-        it("should fail if not initialized", async () => {
-            await expectThrow(managerProxy.setBytes(h))
-        })
-
         it("should set a bytes", async () => {
-            await managerProxy.initialize(3)
             await managerProxy.setBytes(h)
 
             const value = await managerProxy.bytesValue.call()
@@ -155,12 +105,7 @@ contract("ManagerProxy", accounts => {
         const v2 = 6
         const v3 = web3.sha3("hello")
 
-        it("should fail if not initialized", async () => {
-            await expectThrow(managerProxy.setTuple(v1, v2, v3))
-        })
-
         it("should set a tuple", async () => {
-            await managerProxy.initialize(3)
             await managerProxy.setTuple(v1, v2, v3)
 
             const values = await managerProxy.getTuple()
@@ -172,17 +117,11 @@ contract("ManagerProxy", accounts => {
 
     describe("non-storage upgrade", () => {
         beforeEach(async () => {
-            await managerProxy.initialize(3)
             await managerProxy.setUint8(4)
             await managerProxy.setUint64(5)
             await managerProxy.setUint256(6)
             await managerProxy.setBytes32(web3.sha3("hello"))
             await managerProxy.setAddress(accounts[1])
-        })
-
-        it("should fail to initialize since proxy is initialized", async () => {
-            await fixture.deployAndRegister(ManagerProxyTargetMockV2, "ManagerProxyTarget", [fixture.controller.address])
-            await expectThrow(managerProxy.initialize(5))
         })
 
         it("should preserve state in proxy contract", async () => {
@@ -243,17 +182,11 @@ contract("ManagerProxy", accounts => {
 
     describe("storage upgrade with superset of original storage variables", () => {
         beforeEach(async () => {
-            await managerProxy.initialize(3)
             await managerProxy.setUint8(4)
             await managerProxy.setUint64(5)
             await managerProxy.setUint256(6)
             await managerProxy.setBytes32(web3.sha3("hello"))
             await managerProxy.setAddress(accounts[1])
-        })
-
-        it("should fail to initialize since proxy is initialized", async () => {
-            await fixture.deployAndRegister(ManagerProxyTargetMockV3, "ManagerProxyTarget", [fixture.controller.address])
-            await expectThrow(managerProxy.initialize(5))
         })
 
         it("should set a key value pair in mapping", async () => {

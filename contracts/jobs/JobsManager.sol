@@ -86,12 +86,6 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
     // Number of jobs created. Also used for sequential identifiers
     uint256 public numJobs;
 
-    // Check if sender is Verifier contract
-    modifier onlyVerifier() {
-        require(IVerifier(msg.sender) == verifier());
-        _;
-    }
-
     // Check if job exists
     modifier jobExists(uint256 _jobId) {
         require(_jobId < numJobs);
@@ -111,7 +105,7 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
 
     function JobsManager(address _controller) Manager(_controller) {}
 
-    function initialize(
+    function setParameters(
         uint64 _verificationRate,
         uint256 _verificationPeriod,
         uint256 _slashingPeriod,
@@ -121,11 +115,9 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         uint64 _finderFee
     )
         external
-        beforeInitialization
+        onlyAuthorized
         returns (bool)
     {
-        finishInitialization();
-
         verificationRate = _verificationRate;
 
         // Verification period + slashing period currently cannot be longer than 256 blocks
@@ -145,7 +137,7 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
      * @dev Deposit funds for jobs
      * @param _amount Amount to deposit
      */
-    function deposit(uint256 _amount) external afterInitialization whenSystemNotPaused returns (bool) {
+    function deposit(uint256 _amount) external whenSystemNotPaused returns (bool) {
         broadcasters[msg.sender].deposit = broadcasters[msg.sender].deposit.add(_amount);
         // Transfer tokens for deposit to Minter. Sender needs to approve amount first
         livepeerToken().transferFrom(msg.sender, minter(), _amount);
@@ -156,7 +148,7 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
     /*
      * @dev Withdraw deposited funds
      */
-    function withdraw() external afterInitialization whenSystemNotPaused returns (bool) {
+    function withdraw() external whenSystemNotPaused returns (bool) {
         // Can only withdraw at or after the broadcster's withdraw block
         require(broadcasters[msg.sender].withdrawBlock <= block.number);
 
@@ -176,7 +168,6 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
      */
     function job(string _streamId, string _transcodingOptions, uint256 _maxPricePerSegment, uint256 _endBlock)
         external
-        afterInitialization
         whenSystemNotPaused
         returns (bool)
     {
@@ -215,7 +206,6 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
      */
     function claimWork(uint256 _jobId, uint256[2] _segmentRange, bytes32 _claimRoot)
         external
-        afterInitialization
         whenSystemNotPaused
         jobExists(_jobId)
         returns (bool)
@@ -283,7 +273,6 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
     )
         external
         payable
-        afterInitialization
         whenSystemNotPaused
         sufficientPayment
         returns (bool)
@@ -352,9 +341,8 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
      */
     function receiveVerification(uint256 _jobId, uint256 _claimId, uint256 _segmentNumber, bool _result)
         external
-        afterInitialization
         whenSystemNotPaused
-        onlyVerifier
+        onlyAuthorized
         returns (bool)
     {
         if (!_result) {
@@ -375,7 +363,6 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
      */
     function batchDistributeFees(uint256 _jobId, uint256[] _claimIds)
         external
-        afterInitialization
         whenSystemNotPaused
         returns (bool)
     {
@@ -394,7 +381,6 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
      */
     function missedVerificationSlash(uint256 _jobId, uint256 _claimId, uint256 _segmentNumber)
         external
-        afterInitialization
         whenSystemNotPaused
         jobExists(_jobId)
         returns (bool)
@@ -438,7 +424,6 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         uint256 _segmentNumber
     )
         external
-        afterInitialization
         whenSystemNotPaused
         jobExists(_jobId)
         returns (bool)
@@ -474,7 +459,6 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
      */
     function distributeFees(uint256 _jobId, uint256 _claimId)
         public
-        afterInitialization
         whenSystemNotPaused
         jobExists(_jobId)
         returns (bool)

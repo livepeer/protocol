@@ -25,7 +25,10 @@ contract("JobsManager", accounts => {
         await fixture.deployController()
         await fixture.deployMocks()
 
-        jobsManager = await JobsManager.new(fixture.controller.address)
+        jobsManager = await fixture.deployAndRegister(JobsManager, "JobsManager", fixture.controller.address)
+        fixture.jobsManager = jobsManager
+
+        await fixture.addPermissions()
     })
 
     beforeEach(async () => {
@@ -36,9 +39,9 @@ contract("JobsManager", accounts => {
         await fixture.tearDown()
     })
 
-    describe("initialize", () => {
+    describe("setParameters", () => {
         it("should set parameters", async () => {
-            await jobsManager.initialize(
+            await jobsManager.setParameters(
                 VERIFICATION_RATE,
                 VERIFICATION_PERIOD,
                 SLASHING_PERIOD,
@@ -52,28 +55,17 @@ contract("JobsManager", accounts => {
             assert.equal(verificationRate, VERIFICATION_RATE, "verification rate incorrect")
         })
 
-        it("should fail if already initialized", async () => {
-            await jobsManager.initialize(
+        it("should fail if caller is not authorized", async () => {
+            await expectThrow(jobsManager.setParameters(
                 VERIFICATION_RATE,
                 VERIFICATION_PERIOD,
                 SLASHING_PERIOD,
                 FAILED_VERIFICATION_SLASH_AMOUNT,
                 MISSED_VERIFICATION_SLASH_AMOUNT,
                 DOUBLE_CLAIM_SEGMENT_SLASH_AMOUNT,
-                FINDER_FEE
-            )
-
-            await expectThrow(
-                jobsManager.initialize(
-                    VERIFICATION_RATE,
-                    VERIFICATION_PERIOD,
-                    SLASHING_PERIOD,
-                    FAILED_VERIFICATION_SLASH_AMOUNT,
-                    MISSED_VERIFICATION_SLASH_AMOUNT,
-                    DOUBLE_CLAIM_SEGMENT_SLASH_AMOUNT,
-                    FINDER_FEE
-                )
-            )
+                FINDER_FEE,
+                {from: accounts[1]}
+            ))
         })
     })
 
@@ -81,7 +73,7 @@ contract("JobsManager", accounts => {
         const broadcaster = accounts[0]
 
         beforeEach(async () => {
-            await jobsManager.initialize(
+            await jobsManager.setParameters(
                 VERIFICATION_RATE,
                 VERIFICATION_PERIOD,
                 SLASHING_PERIOD,
@@ -108,7 +100,7 @@ contract("JobsManager", accounts => {
         const maxPricePerSegment = 100
 
         beforeEach(async () => {
-            await jobsManager.initialize(
+            await jobsManager.setParameters(
                 VERIFICATION_RATE,
                 VERIFICATION_PERIOD,
                 SLASHING_PERIOD,
@@ -178,7 +170,7 @@ contract("JobsManager", accounts => {
         const claimRoot = "0x1000000000000000000000000000000000000000000000000000000000000000"
 
         beforeEach(async () => {
-            await jobsManager.initialize(
+            await jobsManager.setParameters(
                 VERIFICATION_RATE,
                 VERIFICATION_PERIOD,
                 SLASHING_PERIOD,
@@ -339,7 +331,7 @@ contract("JobsManager", accounts => {
         const correctProof = merkleTree.getHexProof(tReceiptHashes[0])
 
         beforeEach(async () => {
-            await jobsManager.initialize(
+            await jobsManager.setParameters(
                 VERIFICATION_RATE,
                 VERIFICATION_PERIOD,
                 SLASHING_PERIOD,
@@ -434,7 +426,7 @@ contract("JobsManager", accounts => {
         const maxPricePerSegment = 10
 
         beforeEach(async () => {
-            await jobsManager.initialize(
+            await jobsManager.setParameters(
                 VERIFICATION_RATE,
                 VERIFICATION_PERIOD,
                 SLASHING_PERIOD,
@@ -536,7 +528,7 @@ contract("JobsManager", accounts => {
 
     describe("receiveVerification", () => {
         beforeEach(async () => {
-            await jobsManager.initialize(
+            await jobsManager.setParameters(
                 VERIFICATION_RATE,
                 VERIFICATION_PERIOD,
                 SLASHING_PERIOD,
@@ -577,7 +569,7 @@ contract("JobsManager", accounts => {
         const maxPricePerSegment = 10
 
         beforeEach(async () => {
-            await jobsManager.initialize(
+            await jobsManager.setParameters(
                 VERIFICATION_RATE,
                 VERIFICATION_PERIOD,
                 SLASHING_PERIOD,
@@ -675,7 +667,7 @@ contract("JobsManager", accounts => {
         const correctProof = merkleTree.getHexProof(tReceiptHashes[0])
 
         beforeEach(async () => {
-            await jobsManager.initialize(
+            await jobsManager.setParameters(
                 VERIFICATION_RATE,
                 VERIFICATION_PERIOD,
                 SLASHING_PERIOD,
@@ -771,7 +763,7 @@ contract("JobsManager", accounts => {
         const maxPricePerSegment = 10
 
         beforeEach(async () => {
-            await jobsManager.initialize(
+            await jobsManager.setParameters(
                 VERIFICATION_RATE,
                 VERIFICATION_PERIOD,
                 SLASHING_PERIOD,
@@ -829,7 +821,7 @@ contract("JobsManager", accounts => {
 
     describe("withdraw", () => {
         beforeEach(async () => {
-            await jobsManager.initialize(
+            await jobsManager.setParameters(
                 VERIFICATION_RATE,
                 VERIFICATION_PERIOD,
                 SLASHING_PERIOD,

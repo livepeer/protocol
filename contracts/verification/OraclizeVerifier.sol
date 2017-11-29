@@ -35,12 +35,6 @@ contract OraclizeVerifier is Manager, usingOraclize, IVerifier {
         _;
     }
 
-    // Check if sender is JobsManager
-    modifier onlyJobsManager() {
-        require(msg.sender == controller.getContract(keccak256("JobsManager")));
-        _;
-    }
-
     // Check if sufficient funds for Oraclize computation
     modifier sufficientPayment() {
         require(getPrice() <= msg.value);
@@ -61,6 +55,11 @@ contract OraclizeVerifier is Manager, usingOraclize, IVerifier {
         oraclize_setProof(proofType_TLSNotary | proofStorage_IPFS);
     }
 
+    function setParameters(string _verificationCodeHash) external onlyAuthorized {
+        // Set verification code hash
+        verificationCodeHash = _verificationCodeHash;
+    }
+
     /*
      * @dev Verify implementation that creates an Oraclize computation query
      * @param _jobId Job identifier
@@ -79,7 +78,8 @@ contract OraclizeVerifier is Manager, usingOraclize, IVerifier {
     )
         external
         payable
-        onlyJobsManager
+        onlyAuthorized
+        whenSystemNotPaused
         sufficientPayment
         returns (bool)
     {
@@ -101,7 +101,7 @@ contract OraclizeVerifier is Manager, usingOraclize, IVerifier {
      * @param _queryId Oraclize query identifier
      * @param _result Result of Oraclize computation
      */
-    function __callback(bytes32 _queryId, string _result, bytes _proof) onlyOraclize {
+    function __callback(bytes32 _queryId, string _result, bytes _proof) onlyOraclize whenSystemNotPaused {
         OraclizeQuery memory oc = oraclizeQueries[_queryId];
 
         // Check if hash returned by Oraclize matches originally submitted commit hash = h(dataHash, transcodedDataHash)

@@ -7,7 +7,6 @@ import "./libraries/TokenPools.sol";
 import "../token/ILivepeerToken.sol";
 import "../token/IMinter.sol";
 import "../rounds/IRoundsManager.sol";
-import "../jobs/IJobsManager.sol";
 
 import "zeppelin-solidity/contracts/math/Math.sol";
 import "zeppelin-solidity/contracts/math/SafeMath.sol";
@@ -69,18 +68,6 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     // Keep track of active transcoder set for each round
     mapping (uint256 => ActiveTranscoderSet) public activeTranscoderSet;
 
-    // Only the RoundsManager can call
-    modifier onlyRoundsManager() {
-        require(IRoundsManager(msg.sender) == roundsManager());
-        _;
-    }
-
-    // Only the JobsManager can call
-    modifier onlyJobsManager() {
-        require(IJobsManager(msg.sender) == jobsManager());
-        _;
-    }
-
     // Check if current round is initialized
     modifier currentRoundInitialized() {
         require(roundsManager().currentRoundInitialized());
@@ -95,8 +82,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
     function BondingManager(address _controller) Manager(_controller) {}
 
-    function initialize(uint64 _unbondingPeriod, uint256 _numTranscoders, uint256 _numActiveTranscoders) external beforeInitialization returns (bool) {
-        finishInitialization();
+    function setParameters(uint64 _unbondingPeriod, uint256 _numTranscoders, uint256 _numActiveTranscoders) external onlyAuthorized returns (bool) {
         // Number of transcoders must be greater than or equal to number of active transcoders
         require(_numTranscoders >= _numActiveTranscoders);
         // Set unbonding period
@@ -105,7 +91,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         numActiveTranscoders = _numActiveTranscoders;
         // Set up transcoder pool
         transcoderPool.setMaxSize(_numTranscoders);
-     }
+    }
 
     /*
      * @dev The sender is declaring themselves as a candidate for active transcoding.
@@ -115,7 +101,6 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      */
     function transcoder(uint8 _blockRewardCut, uint8 _feeShare, uint256 _pricePerSegment)
         external
-        afterInitialization
         whenSystemNotPaused
         currentRoundInitialized
         returns (bool)
@@ -155,7 +140,6 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      */
     function resignAsTranscoder()
         external
-        afterInitialization
         whenSystemNotPaused
         currentRoundInitialized
         returns (bool)
@@ -185,7 +169,6 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         address _to
     )
         external
-        afterInitialization
         whenSystemNotPaused
         currentRoundInitialized
         autoClaimTokenPoolsShares
@@ -255,7 +238,6 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      */
     function unbond()
         external
-        afterInitialization
         whenSystemNotPaused
         currentRoundInitialized
         autoClaimTokenPoolsShares
@@ -290,7 +272,6 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      */
     function withdraw()
         external
-        afterInitialization
         whenSystemNotPaused
         currentRoundInitialized
         autoClaimTokenPoolsShares
@@ -322,7 +303,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     /*
      * @dev Set active transcoder set for the current round
      */
-    function setActiveTranscoders() external afterInitialization whenSystemNotPaused onlyRoundsManager returns (bool) {
+    function setActiveTranscoders() external whenSystemNotPaused onlyAuthorized returns (bool) {
         uint256 currentRound = roundsManager().currentRound();
         uint256 activeSetSize = Math.min256(numActiveTranscoders, transcoderPool.getSize());
 
@@ -362,7 +343,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * @dev Distribute the token rewards to transcoder and delegates.
      * Active transcoders call this once per cycle when it is their turn.
      */
-    function reward() external afterInitialization whenSystemNotPaused currentRoundInitialized returns (bool) {
+    function reward() external whenSystemNotPaused currentRoundInitialized returns (bool) {
         uint256 currentRound = roundsManager().currentRound();
 
         // Sender must be an active transcoder
@@ -393,9 +374,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         uint256 _round
     )
         external
-        afterInitialization
         whenSystemNotPaused
-        onlyJobsManager
+        onlyAuthorized
         returns (bool)
     {
         // Transcoder must be registered
@@ -431,9 +411,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         uint64 _finderFee
     )
         external
-        afterInitialization
         whenSystemNotPaused
-        onlyJobsManager
+        onlyAuthorized
         returns (bool)
     {
         // Transcoder must be valid
@@ -826,12 +805,5 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      */
     function roundsManager() internal view returns (IRoundsManager) {
         return IRoundsManager(controller.getContract(keccak256("RoundsManager")));
-    }
-
-    /*
-     * @dev Return JobsManager
-     */
-    function jobsManager() internal view returns (IJobsManager) {
-        return IJobsManager(controller.getContract(keccak256("JobsManager")));
     }
 }

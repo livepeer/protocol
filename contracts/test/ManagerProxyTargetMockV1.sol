@@ -18,41 +18,35 @@ contract ManagerProxyTargetMockV1 is ManagerProxyTarget {
 
     function ManagerProxyTargetMockV1(address _controller) Manager(_controller) {}
 
-    function initialize(uint256 _value) external beforeInitialization returns (bool) {
-        finishInitialization();
-
-        initValue = _value;
-    }
-
-    function setUint8(uint8 _value) external afterInitialization {
+    function setUint8(uint8 _value) external {
         uint8Value = _value;
     }
 
-    function setUint64(uint64 _value) external afterInitialization {
+    function setUint64(uint64 _value) external {
         uint64Value = _value;
     }
 
-    function setUint256(uint256 _value) external afterInitialization {
+    function setUint256(uint256 _value) external {
         uint256Value = _value;
     }
 
-    function setBytes32(bytes32 _value) external afterInitialization {
+    function setBytes32(bytes32 _value) external {
         bytes32Value = _value;
     }
 
-    function setAddress(address _value) external afterInitialization {
+    function setAddress(address _value) external {
         addressValue = _value;
     }
 
-    function setString(string _value) external afterInitialization {
+    function setString(string _value) external {
         stringValue = _value;
     }
 
-    function setBytes(bytes _value) external afterInitialization {
+    function setBytes(bytes _value) external {
         bytesValue = _value;
     }
 
-    function setTuple(uint256 _value1, uint256 _value2, bytes32 _value3) external afterInitialization {
+    function setTuple(uint256 _value1, uint256 _value2, bytes32 _value3) external {
         tupleValue1 = _value1;
         tupleValue2 = _value2;
         tupleValue3 = _value3;

@@ -22,18 +22,19 @@ contract RoundsManager is ManagerProxyTarget, IRoundsManager {
 
     function RoundsManager(address _controller) Manager(_controller) {}
 
-    function initialize(uint256 _blockTime, uint256 _roundLength) external beforeInitialization returns (bool) {
-        finishInitialization();
-
+    function setParameters(uint256 _blockTime, uint256 _roundLength) external onlyAuthorized returns (bool) {
         blockTime = _blockTime;
         roundLength = _roundLength;
-        lastInitializedRound = currentRound();
+
+        if (lastInitializedRound == 0) {
+            lastInitializedRound = currentRound();
+        }
     }
 
     /*
      * @dev Initialize the current round. Called once at the start of any round
      */
-    function initializeRound() external afterInitialization whenSystemNotPaused returns (bool) {
+    function initializeRound() external whenSystemNotPaused returns (bool) {
         // Check if already called for the current round
         // Will exit here to avoid large gas consumption if it has been called for the current round already
         // FIXME: replace with revert() after the Byzantium update which will return gas to the sender
