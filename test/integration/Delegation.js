@@ -1,22 +1,33 @@
 import BigNumber from "bignumber.js"
 import {contractId} from "../../utils/helpers"
+import RPC from "../../utils/rpc"
 
 const Controller = artifacts.require("Controller")
 const BondingManager = artifacts.require("BondingManager")
+const RoundsManager = artifacts.require("RoundsManager")
 const LivepeerToken = artifacts.require("LivepeerToken")
 const LivepeerTokenFaucet = artifacts.require("LivepeerTokenFaucet")
 
 contract("Delegation", accounts => {
+    let fixture
+
     let controller
     let bondingManager
+    let roundsManager
     let token
 
     const TOKEN_UNIT = 10 ** 18
 
     before(async () => {
+        fixture = new RPC(web3)
+
         controller = await Controller.deployed()
+
         const bondingManagerAddr = await controller.getContract(contractId("BondingManager"))
         bondingManager = await BondingManager.at(bondingManagerAddr)
+
+        const roundsManagerAddr = await controller.getContract(contractId("RoundsManager"))
+        roundsManager = await RoundsManager.at(roundsManagerAddr)
 
         const tokenAddr = await controller.getContract(contractId("LivepeerToken"))
         token = await LivepeerToken.at(tokenAddr)
@@ -28,6 +39,10 @@ contract("Delegation", accounts => {
         await faucet.request({from: accounts[1]})
         await faucet.request({from: accounts[2]})
         await faucet.request({from: accounts[3]})
+
+        const roundLength = await roundsManager.roundLength.call()
+        await fixture.waitUntilNextBlockMultiple(roundLength.toNumber())
+        await roundsManager.initializeRound()
     })
 
     it("registers transcoder 1", async () => {

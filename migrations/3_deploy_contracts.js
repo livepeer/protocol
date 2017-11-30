@@ -46,7 +46,7 @@ module.exports = function(deployer, network) {
         const controller = await deploy(deployer, Controller)
 
         const token = await deployAndRegister(deployer, controller, LivepeerToken, "LivepeerToken")
-        const minter = await deployAndRegister(deployer, controller, Minter, "Minter", config.minter.initialTokenSupply, config.minter.yearlyInflation)
+        const minter = await deployAndRegister(deployer, controller, Minter, "Minter", controller.address, config.minter.initialTokenSupply, config.minter.yearlyInflation)
 
         let verifier
 

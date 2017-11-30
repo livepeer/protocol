@@ -20,7 +20,7 @@ contract RoundsManager is ManagerProxyTarget, IRoundsManager {
     // Last initialized round. After first round, this is the last round during which initializeRound() was called
     uint256 public lastInitializedRound;
 
-    function RoundsManager(address _controller) Manager(_controller) {}
+    function RoundsManager(address _controller) public Manager(_controller) {}
 
     function setParameters(uint256 _blockTime, uint256 _roundLength) external onlyAuthorized returns (bool) {
         blockTime = _blockTime;
@@ -36,11 +36,7 @@ contract RoundsManager is ManagerProxyTarget, IRoundsManager {
      */
     function initializeRound() external whenSystemNotPaused returns (bool) {
         // Check if already called for the current round
-        // Will exit here to avoid large gas consumption if it has been called for the current round already
-        // FIXME: replace with revert() after the Byzantium update which will return gas to the sender
-        if (lastInitializedRound == currentRound()) {
-            return false;
-        }
+        require(lastInitializedRound < currentRound());
 
         // Set current round as initialized
         lastInitializedRound = currentRound();

@@ -74,7 +74,7 @@ contract Minter is Manager, IMinter {
     /*
      * @dev Set the reward token amounts for the round. Only callable by the RoundsManager
      */
-    function setCurrentRewardTokens() external onlyAuthorized whenSystemNotPaused returns (bool) {
+    function setCurrentRewardTokens() external whenSystemNotPaused returns (bool) {
         currentMintableTokens = mintedTokensPerRound();
         currentMintedTokens = 0;
         currentRedistributableTokens = redistributableTokensPerRound();
