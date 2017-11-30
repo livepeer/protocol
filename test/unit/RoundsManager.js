@@ -18,8 +18,6 @@ contract("RoundsManager", accounts => {
 
         roundsManager = await fixture.deployAndRegister(RoundsManager, "RoundsManager", fixture.controller.address)
         fixture.roundsManager = roundsManager
-
-        await fixture.addPermissions()
     })
 
     beforeEach(async () => {

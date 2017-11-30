@@ -23,8 +23,6 @@ contract("Minter", accounts => {
         minter = await fixture.deployAndRegister(Minter, "Minter", fixture.controller.address, INITIAL_TOKEN_SUPPLY, INITIAL_YEARLY_INFLATION)
         fixture.minter = minter
 
-        await fixture.addPermissions()
-
         await fixture.token.mint(minter.address, minterBalance)
         await fixture.token.transferOwnership(minter.address)
         await fixture.bondingManager.setMinter(minter.address)

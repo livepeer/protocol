@@ -36,25 +36,6 @@ export default class Fixture {
         return contract
     }
 
-    async addPermissions() {
-        const owner = await this.controller.owner()
-
-        await this.controller.addPermission(owner, this.bondingManager.address, functionSig("setParameters(uint64,uint256,uint256)"))
-        await this.controller.addPermission(owner, this.jobsManager.address, functionSig("setParameters(uint64,uint256,uint256,uint64,uint64,uint64,uint64)"))
-        await this.controller.addPermission(owner, this.roundsManager.address, functionSig("setParameters(uint256,uint256)"))
-
-        await this.controller.addPermission(this.jobsManager.address, this.bondingManager.address, functionSig("updateTranscoderWithFees(address,uint256,uint256)"))
-        await this.controller.addPermission(this.roundsManager.address, this.bondingManager.address, functionSig("setActiveTranscoders()"))
-
-        await this.controller.addPermission(this.verifier.address, this.jobsManager.address, functionSig("receiveVerification(uint256,uint256,uint256,bool)"))
-
-        await this.controller.addPermission(this.bondingManager.address, this.minter.address, functionSig("createReward(uint256,uint256)"))
-        await this.controller.addPermission(this.bondingManager.address, this.minter.address, functionSig("transferTokens(address,uint256)"))
-        await this.controller.addPermission(this.bondingManager.address, this.minter.address, functionSig("addToRedistributionPool(uint256)"))
-        await this.controller.addPermission(this.jobsManager.address, this.minter.address, functionSig("transferTokens(address,uint256)"))
-        await this.controller.addPermission(this.roundsManager.address, this.minter.address, functionSig("setCurrentRewardTokens()"))
-    }
-
     async setUp() {
         this.currentSnapshotId = await this.rpc.snapshot()
     }

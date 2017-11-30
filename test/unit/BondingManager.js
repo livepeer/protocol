@@ -19,8 +19,6 @@ contract("BondingManager", accounts => {
 
         bondingManager = await fixture.deployAndRegister(BondingManager, "BondingManager", fixture.controller.address)
         fixture.bondingManager = bondingManager
-
-        await fixture.addPermissions()
     })
 
     beforeEach(async () => {
@@ -31,16 +29,12 @@ contract("BondingManager", accounts => {
         await fixture.tearDown()
     })
 
-    describe("setParameters", () => {
+    describe("set parameters", () => {
         it("should set parameters", async () => {
             await bondingManager.setParameters(UNBONDING_PERIOD, NUM_TRANSCODERS, NUM_ACTIVE_TRANSCODERS)
 
             const unbondingPeriod = await bondingManager.unbondingPeriod.call()
             assert.equal(unbondingPeriod, UNBONDING_PERIOD, "unbonding period incorrect")
-        })
-
-        it("should fail if caller is not authorized", async () => {
-            await expectThrow(bondingManager.setParameters(5, 3, 1, {from: accounts[1]}))
         })
     })
 
@@ -112,6 +106,7 @@ contract("BondingManager", accounts => {
             const pricePerSegment = 100
 
             await bondingManager.setParameters(UNBONDING_PERIOD, NUM_TRANSCODERS, NUM_ACTIVE_TRANSCODERS)
+
             await fixture.roundsManager.setCurrentRoundInitialized(true)
             await fixture.token.setApproved(true)
             await bondingManager.bond(2000, tAddr, {from: tAddr})
@@ -145,6 +140,7 @@ contract("BondingManager", accounts => {
             const pricePerSegment = 10
 
             await bondingManager.setParameters(UNBONDING_PERIOD, NUM_TRANSCODERS, NUM_ACTIVE_TRANSCODERS)
+
             await fixture.jobsManager.setBondingManager(bondingManager.address)
             await fixture.roundsManager.setBondingManager(bondingManager.address)
             await fixture.roundsManager.setCurrentRoundInitialized(true)
@@ -229,6 +225,7 @@ contract("BondingManager", accounts => {
 
         beforeEach(async () => {
             await bondingManager.setParameters(UNBONDING_PERIOD, NUM_TRANSCODERS, NUM_ACTIVE_TRANSCODERS)
+
             await fixture.jobsManager.setBondingManager(bondingManager.address)
             await fixture.roundsManager.setBondingManager(bondingManager.address)
             await fixture.roundsManager.setCurrentRoundInitialized(true)
@@ -284,6 +281,7 @@ contract("BondingManager", accounts => {
 
         beforeEach(async () => {
             await bondingManager.setParameters(UNBONDING_PERIOD, NUM_TRANSCODERS, NUM_ACTIVE_TRANSCODERS)
+
             await fixture.jobsManager.setBondingManager(bondingManager.address)
             await fixture.roundsManager.setBondingManager(bondingManager.address)
             await fixture.roundsManager.setCurrentRoundInitialized(true)
@@ -441,6 +439,7 @@ contract("BondingManager", accounts => {
 
         beforeEach(async () => {
             await bondingManager.setParameters(UNBONDING_PERIOD, NUM_TRANSCODERS, NUM_ACTIVE_TRANSCODERS)
+
             await fixture.jobsManager.setBondingManager(bondingManager.address)
             await fixture.roundsManager.setBondingManager(bondingManager.address)
             await fixture.roundsManager.setCurrentRoundInitialized(true)
@@ -496,6 +495,7 @@ contract("BondingManager", accounts => {
 
         beforeEach(async () => {
             await bondingManager.setParameters(UNBONDING_PERIOD, NUM_TRANSCODERS, NUM_ACTIVE_TRANSCODERS)
+
             await fixture.jobsManager.setBondingManager(bondingManager.address)
             await fixture.roundsManager.setBondingManager(bondingManager.address)
             await fixture.roundsManager.setCurrentRoundInitialized(true)
@@ -544,6 +544,7 @@ contract("BondingManager", accounts => {
 
         beforeEach(async () => {
             await bondingManager.setParameters(UNBONDING_PERIOD, NUM_TRANSCODERS, NUM_ACTIVE_TRANSCODERS)
+
             await fixture.jobsManager.setBondingManager(bondingManager.address)
             await fixture.roundsManager.setBondingManager(bondingManager.address)
             await fixture.roundsManager.setCurrentRoundInitialized(true)
@@ -612,6 +613,7 @@ contract("BondingManager", accounts => {
 
         beforeEach(async () => {
             await bondingManager.setParameters(UNBONDING_PERIOD, NUM_TRANSCODERS, NUM_ACTIVE_TRANSCODERS)
+
             await fixture.jobsManager.setBondingManager(bondingManager.address)
             await fixture.roundsManager.setBondingManager(bondingManager.address)
             await fixture.roundsManager.setCurrentRoundInitialized(true)

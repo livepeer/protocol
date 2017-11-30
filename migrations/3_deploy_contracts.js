@@ -1,6 +1,6 @@
 const config = require("./migrations.config.js")
 const BigNumber = require("bignumber.js")
-const {contractId, functionSig} = require("../utils/helpers")
+const {contractId} = require("../utils/helpers")
 
 const Controller = artifacts.require("Controller")
 const Minter = artifacts.require("Minter")
@@ -48,14 +48,12 @@ module.exports = function(deployer, network) {
         const token = await deployAndRegister(deployer, controller, LivepeerToken, "LivepeerToken")
         const minter = await deployAndRegister(deployer, controller, Minter, "Minter", controller.address, config.minter.initialTokenSupply, config.minter.yearlyInflation)
 
-        let verifier
-
         if (network === "development" || network === "testrpc" || network == "parityDev" || network === "gethDev") {
-            verifier = await deployAndRegister(deployer, controller, IdentityVerifier, "Verifier", controller.address)
+            await deployAndRegister(deployer, controller, IdentityVerifier, "Verifier", controller.address)
         } else if (network === "lpTestNet") {
-            verifier = await deployAndRegister(deployer, controller, LivepeerVerifier, "Verifier", controller.address, config.verifier.verificationCodeHash)
+            await deployAndRegister(deployer, controller, LivepeerVerifier, "Verifier", controller.address, config.verifier.verificationCodeHash)
         } else {
-            verifier = await deployAndRegister(deployer, controller, OraclizeVerifier, "Verifier", controller.address, config.verifier.verificationCodeHash, config.verifier.gasPrice, config.verifier.gasLimit)
+            await deployAndRegister(deployer, controller, OraclizeVerifier, "Verifier", controller.address, config.verifier.verificationCodeHash, config.verifier.gasPrice, config.verifier.gasLimit)
         }
 
         if (network === "development" || network === "testrpc" || network === "parityDev" || network == "gethDev" || network === "lpTestNet") {
@@ -72,28 +70,7 @@ module.exports = function(deployer, network) {
         const jobsManager = await deployProxyAndRegister(deployer, controller, JobsManager, "JobsManager", controller.address)
         const roundsManager = await deployProxyAndRegister(deployer, controller, RoundsManager, "RoundsManager", controller.address)
 
-        const owner = await controller.owner()
-
-        deployer.logger.log("Adding permissions...")
-
-        await controller.addPermission(owner, bondingManager.address, functionSig("setParameters(uint64,uint256,uint256)"))
-        await controller.addPermission(owner, jobsManager.address, functionSig("setParameters(uint64,uint256,uint256,uint64,uint64,uint64,uint64)"))
-        await controller.addPermission(owner, roundsManager.address, functionSig("setParameters(uint256,uint256)"))
-        await controller.addPermission(owner, minter.address, functionSig("setParameters(uint256)"))
-        await controller.addPermission(owner, verifier.address, functionSig("setParameters(string)"))
-
-        await controller.addPermission(jobsManager.address, bondingManager.address, functionSig("updateTranscoderWithFees(address,uint256,uint256)"))
-        await controller.addPermission(roundsManager.address, bondingManager.address, functionSig("setActiveTranscoders()"))
-
-        await controller.addPermission(verifier.address, jobsManager.address, functionSig("receiveVerification(uint256,uint256,uint256,bool)"))
-
-        await controller.addPermission(bondingManager.address, minter.address, functionSig("createReward(uint256,uint256)"))
-        await controller.addPermission(bondingManager.address, minter.address, functionSig("transferTokens(address,uint256)"))
-        await controller.addPermission(bondingManager.address, minter.address, functionSig("addToRedistributionPool(uint256)"))
-        await controller.addPermission(jobsManager.address, minter.address, functionSig("transferTokens(address,uint256)"))
-        await controller.addPermission(jobsManager.address, minter.address, functionSig("setCurrentRewardTokens()"))
-
-        deployer.logger.log("Setting parameters for manager contracts..")
+        deployer.logger.log("Initializing contracts...")
 
         await bondingManager.setParameters(config.bondingManager.unbondingPeriod, config.bondingManager.numTranscoders, config.bondingManager.numActiveTranscoders)
         await jobsManager.setParameters(
@@ -107,7 +84,11 @@ module.exports = function(deployer, network) {
         )
         await roundsManager.setParameters(config.roundsManager.blockTime, config.roundsManager.roundLength)
 
+        deployer.logger.log("Transferring ownership of the LivepeerToken to the Minter...")
+
         await token.transferOwnership(minter.address)
+
+        deployer.logger.log("Unpausing the Controller...")
 
         await controller.unpause()
     })

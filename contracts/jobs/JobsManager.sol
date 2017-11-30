@@ -86,6 +86,12 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
     // Number of jobs created. Also used for sequential identifiers
     uint256 public numJobs;
 
+    // Check if sender is Verifier
+    modifier onlyVerifier() {
+        require(msg.sender == controller.getContract(keccak256("Verifier")));
+        _;
+    }
+
     // Check if job exists
     modifier jobExists(uint256 _jobId) {
         require(_jobId < numJobs);
@@ -103,7 +109,7 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
     event NewClaim(address indexed transcoder, uint256 indexed jobId, uint256 claimId);
     event ReceivedVerification(uint256 indexed jobId, uint256 indexed claimId, uint256 segmentNumber, bool result);
 
-    function JobsManager(address _controller) Manager(_controller) {}
+    function JobsManager(address _controller) public Manager(_controller) {}
 
     function setParameters(
         uint64 _verificationRate,
@@ -115,11 +121,9 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         uint64 _finderFee
     )
         external
-        onlyAuthorized
-        returns (bool)
+        onlyControllerOwner
     {
         verificationRate = _verificationRate;
-
         // Verification period + slashing period currently cannot be longer than 256 blocks
         // because contracts can only access the last 256 blocks from
         // the current block
@@ -130,6 +134,44 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         failedVerificationSlashAmount = _failedVerificationSlashAmount;
         missedVerificationSlashAmount = _missedVerificationSlashAmount;
         doubleClaimSegmentSlashAmount = _doubleClaimSegmentSlashAmount;
+        finderFee = _finderFee;
+    }
+
+    function setVerificationRate(uint64 _verificationRate) external onlyControllerOwner {
+        verificationRate = _verificationRate;
+    }
+
+    function setVerificationPeriod(uint256 _verificationPeriod) external onlyControllerOwner {
+        // Verification period + slashing period currently cannot be longer than 256 blocks
+        // because contracts can only access the last 256 blocks from
+        // the current block
+        require(_verificationPeriod + slashingPeriod <= 256);
+
+        verificationPeriod = _verificationPeriod;
+    }
+
+    function setSlashingPeriod(uint256 _slashingPeriod) external onlyControllerOwner {
+        // Verification period + slashing period currently cannot be longer than 256 blocks
+        // because contracts can only access the last 256 blocks from
+        // the current block
+        require(verificationPeriod + _slashingPeriod <= 256);
+
+        slashingPeriod = _slashingPeriod;
+    }
+
+    function setFailedVerificationSlashAmount(uint64 _failedVerificationSlashAmount) external onlyControllerOwner {
+        failedVerificationSlashAmount = _failedVerificationSlashAmount;
+    }
+
+    function setMissedVerificationSlashAmount(uint64 _missedVerificationSlashAmount) external onlyControllerOwner {
+        missedVerificationSlashAmount = _missedVerificationSlashAmount;
+    }
+
+    function setDoubleClaimSegmentSlashAmount(uint64 _doubleClaimSegmentSlashAmount) external onlyControllerOwner {
+        doubleClaimSegmentSlashAmount = _doubleClaimSegmentSlashAmount;
+    }
+
+    function setFinderFee(uint64 _finderFee) external onlyControllerOwner {
         finderFee = _finderFee;
     }
 
@@ -342,7 +384,7 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
     function receiveVerification(uint256 _jobId, uint256 _claimId, uint256 _segmentNumber, bool _result)
         external
         whenSystemNotPaused
-        onlyAuthorized
+        onlyVerifier
         returns (bool)
     {
         if (!_result) {

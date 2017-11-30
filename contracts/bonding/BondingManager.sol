@@ -68,6 +68,18 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     // Keep track of active transcoder set for each round
     mapping (uint256 => ActiveTranscoderSet) public activeTranscoderSet;
 
+    // Check if sender is JobsManager
+    modifier onlyJobsManager() {
+        require(msg.sender == controller.getContract(keccak256("JobsManager")));
+        _;
+    }
+
+    // Check if sender is RoundsManager
+    modifier onlyRoundsManager() {
+        require(msg.sender == controller.getContract(keccak256("RoundsManager")));
+        _;
+    }
+
     // Check if current round is initialized
     modifier currentRoundInitialized() {
         require(roundsManager().currentRoundInitialized());
@@ -80,17 +92,34 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         _;
     }
 
-    function BondingManager(address _controller) Manager(_controller) {}
+    function BondingManager(address _controller) public Manager(_controller) {}
 
-    function setParameters(uint64 _unbondingPeriod, uint256 _numTranscoders, uint256 _numActiveTranscoders) external onlyAuthorized returns (bool) {
-        // Number of transcoders must be greater than or equal to number of active transcoders
-        require(_numTranscoders >= _numActiveTranscoders);
-        // Set unbonding period
+    function setParameters(uint64 _unbondingPeriod, uint256 _numTranscoders, uint256 _numActiveTranscoders) external onlyControllerOwner {
         unbondingPeriod = _unbondingPeriod;
-        // Set number of active transcoders
-        numActiveTranscoders = _numActiveTranscoders;
-        // Set up transcoder pool
+
+        // Max number of transcoders must be greater than or equal to number of active transcoders
+        require(_numTranscoders >= _numActiveTranscoders);
+
         transcoderPool.setMaxSize(_numTranscoders);
+        numActiveTranscoders = _numActiveTranscoders;
+    }
+
+    function setUnbondingPeriod(uint64 _unbondingPeriod) external onlyControllerOwner {
+        unbondingPeriod = _unbondingPeriod;
+    }
+
+    function setNumTranscoders(uint256 _numTranscoders) external onlyControllerOwner {
+        // Max number of transcoders must be greater than or equal to number of active transcoders
+        require(_numTranscoders >= numActiveTranscoders);
+
+        transcoderPool.setMaxSize(_numTranscoders);
+    }
+
+    function setNumActiveTranscoders(uint256 _numActiveTranscoders) external onlyControllerOwner {
+        // Number of active transcoders cannot exceed max number of transcoders
+        require(_numActiveTranscoders <= transcoderPool.getMaxSize());
+
+        numActiveTranscoders = _numActiveTranscoders;
     }
 
     /*
@@ -303,7 +332,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     /*
      * @dev Set active transcoder set for the current round
      */
-    function setActiveTranscoders() external whenSystemNotPaused onlyAuthorized returns (bool) {
+    function setActiveTranscoders() external whenSystemNotPaused onlyRoundsManager returns (bool) {
         uint256 currentRound = roundsManager().currentRound();
         uint256 activeSetSize = Math.min256(numActiveTranscoders, transcoderPool.getSize());
 
@@ -375,14 +404,13 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     )
         external
         whenSystemNotPaused
-        onlyAuthorized
+        onlyJobsManager
         returns (bool)
     {
         // Transcoder must be registered
         require(transcoderStatus(_transcoder) == TranscoderStatus.Registered);
 
         Transcoder storage t = transcoders[_transcoder];
-        Delegator storage del = delegators[_transcoder];
 
         TokenPools.Data storage tokenPools = t.tokenPoolsPerRound[_round];
         // Add fees to fee pool
@@ -412,7 +440,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     )
         external
         whenSystemNotPaused
-        onlyAuthorized
+        onlyJobsManager
         returns (bool)
     {
         // Transcoder must be valid
@@ -600,8 +628,6 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * @param _transcoder Address of transcoder
      */
     function transcoderStatus(address _transcoder) public view returns (TranscoderStatus) {
-        Transcoder storage t = transcoders[_transcoder];
-
         if (transcoderPool.contains(_transcoder)) {
             return TranscoderStatus.Registered;
         } else {

@@ -26,12 +26,32 @@ contract Minter is Manager, IMinter {
     // Current number of redistributed tokens. Reset every round
     uint256 public currentRedistributedTokens;
 
-    function Minter(address _controller, uint256 _initialTokenSupply, uint8 _yearlyInflation) Manager(_controller) {
+    modifier onlyBondingManager() {
+        require(msg.sender == controller.getContract(keccak256("BondingManager")));
+        _;
+    }
+
+    modifier onlyJobsManager() {
+        require(msg.sender == controller.getContract(keccak256("JobsManager")));
+        _;
+    }
+
+    modifier onlyRoundsManager() {
+        require(msg.sender == controller.getContract(keccak256("RoundsManager")));
+        _;
+    }
+
+    modifier onlyBondingManagerOrJobsManager() {
+        require(msg.sender == controller.getContract(keccak256("BondingManager")) || msg.sender == controller.getContract(keccak256("JobsManager")));
+        _;
+    }
+
+    function Minter(address _controller, uint256 _initialTokenSupply, uint8 _yearlyInflation) public Manager(_controller) {
         initialTokenSupply = _initialTokenSupply;
         yearlyInflation = _yearlyInflation;
     }
 
-    function setParameters(uint8 _yearlyInflation) external onlyAuthorized {
+    function setYearlyInflation(uint8 _yearlyInflation) external onlyControllerOwner {
         yearlyInflation = _yearlyInflation;
     }
 
@@ -40,7 +60,7 @@ contract Minter is Manager, IMinter {
      * @param _fracNum Numerator of fraction (active transcoder's stake)
      * @param _fracDenom Denominator of fraction (total active stake)
      */
-    function createReward(uint256 _fracNum, uint256 _fracDenom) external onlyAuthorized whenSystemNotPaused returns (uint256) {
+    function createReward(uint256 _fracNum, uint256 _fracDenom) external onlyBondingManager whenSystemNotPaused returns (uint256) {
         // Compute fraction of redistributable tokens to include in reward
         uint256 redistributeAmount = currentRedistributableTokens.mul(_fracNum).div(_fracDenom);
         // Update amount of redistributed tokens for round
@@ -67,14 +87,14 @@ contract Minter is Manager, IMinter {
      * @param _to Recipient address
      * @param _amount Amount of tokens
      */
-    function transferTokens(address _to, uint256 _amount) external onlyAuthorized whenSystemNotPaused returns (bool) {
+    function transferTokens(address _to, uint256 _amount) external onlyBondingManagerOrJobsManager whenSystemNotPaused returns (bool) {
         return livepeerToken().transfer(_to, _amount);
     }
 
     /*
      * @dev Set the reward token amounts for the round. Only callable by the RoundsManager
      */
-    function setCurrentRewardTokens() external whenSystemNotPaused returns (bool) {
+    function setCurrentRewardTokens() external onlyRoundsManager whenSystemNotPaused returns (bool) {
         currentMintableTokens = mintedTokensPerRound();
         currentMintedTokens = 0;
         currentRedistributableTokens = redistributableTokensPerRound();
@@ -87,7 +107,7 @@ contract Minter is Manager, IMinter {
      * @dev Add funds to the redistribution pool
      * @param _amount Amount of funds to add to the redistribution pool
      */
-    function addToRedistributionPool(uint256 _amount) external onlyAuthorized whenSystemNotPaused returns (bool) {
+    function addToRedistributionPool(uint256 _amount) external onlyBondingManager whenSystemNotPaused returns (bool) {
         redistributionPool = redistributionPool.add(_amount);
 
         return true;

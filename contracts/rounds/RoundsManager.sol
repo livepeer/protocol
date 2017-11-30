@@ -22,13 +22,21 @@ contract RoundsManager is ManagerProxyTarget, IRoundsManager {
 
     function RoundsManager(address _controller) public Manager(_controller) {}
 
-    function setParameters(uint256 _blockTime, uint256 _roundLength) external onlyAuthorized returns (bool) {
+    function setParameters(uint256 _blockTime, uint256 _roundLength) external onlyControllerOwner {
         blockTime = _blockTime;
         roundLength = _roundLength;
 
         if (lastInitializedRound == 0) {
             lastInitializedRound = currentRound();
         }
+    }
+
+    function setBlockTime(uint256 _blockTime) external onlyControllerOwner {
+        blockTime = _blockTime;
+    }
+
+    function setRoundLength(uint256 _roundLength) external onlyControllerOwner {
+        roundLength = _roundLength;
     }
 
     /*

@@ -8,6 +8,10 @@ import "./IVerifiable.sol";
 contract LivepeerVerifier is Manager, IVerifier {
     // IPFS hash of verification computation archive
     string public verificationCodeHash;
+    // Solvers that can submit results for requests
+    address[] public solvers;
+    // Track if an address is a solver
+    mapping (address => bool) public isSolver;
 
     struct Request {
         uint256 jobId;
@@ -22,12 +26,32 @@ contract LivepeerVerifier is Manager, IVerifier {
     event VerifyRequest(uint256 indexed requestId, uint256 indexed jobId, uint256 indexed claimId, uint256 segmentNumber, string transcodingOptions, string dataStorageHash, bytes32 dataHash, bytes32 transcodedDataHash);
     event Callback(uint256 indexed requestId, uint256 indexed jobId, uint256 indexed claimId, uint256 segmentNumber, bool result);
 
-    function LivepeerVerifier(address _controller, string _verificationCodeHash) Manager(_controller) {
+    // Check if sender is JobsManager
+    modifier onlyJobsManager() {
+        require(msg.sender == controller.getContract(keccak256("JobsManager")));
+        _;
+    }
+
+    // Check if sender is a solver
+    modifier onlySolvers() {
+        require(isSolver[msg.sender]);
+        _;
+    }
+
+    function LivepeerVerifier(address _controller, address[] _solvers, string _verificationCodeHash) Manager(_controller) {
+        // Set solvers
+        for (uint256 i = 0; i < _solvers.length; i++) {
+            // Address must not already be a solver and must not be a null address
+            require(!isSolver[_solvers[i]] && _solvers[i] != address(0));
+
+            isSolver[_solvers[i]] = true;
+        }
+        solvers = _solvers;
         // Set verification code hash
         verificationCodeHash = _verificationCodeHash;
     }
 
-    function setParameters(string _verificationCodeHash) external onlyAuthorized {
+    function setVerificationCodeHash(string _verificationCodeHash) external onlyControllerOwner {
         verificationCodeHash = _verificationCodeHash;
     }
 
@@ -44,7 +68,7 @@ contract LivepeerVerifier is Manager, IVerifier {
     )
         external
         payable
-        onlyAuthorized
+        onlyJobsManager
         whenSystemNotPaused
         returns (bool)
     {
@@ -67,7 +91,7 @@ contract LivepeerVerifier is Manager, IVerifier {
      * @param _requestId Request identifier
      * @param _result Result of verification computation - keccak256 hash of transcoded segment data
      */
-    function __callback(uint256 _requestId, bytes32 _result) external onlyAuthorized whenSystemNotPaused returns (bool) {
+    function __callback(uint256 _requestId, bytes32 _result) external onlySolvers whenSystemNotPaused returns (bool) {
         Request memory q = requests[_requestId];
 
         // Check if transcoded data hash returned by solver matches originally submitted transcoded data hash

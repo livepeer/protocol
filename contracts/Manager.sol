@@ -8,53 +8,32 @@ contract Manager is IManager {
     // Controller that contract is registered with
     IController public controller;
 
-    bool public paused = false;
-
-    event Pause();
-    event Unpause();
-
+    // Check if sender is controller
     modifier onlyController() {
         require(msg.sender == address(controller));
         _;
     }
 
-    modifier onlyAuthorized() {
-        require(isAuthorized(msg.sender, msg.sig));
+    // Check if sender is controller owner
+    modifier onlyControllerOwner() {
+        require(msg.sender == controller.owner());
         _;
     }
 
     // Check if controller and contract are not paused
     modifier whenSystemNotPaused() {
-        require(!controller.paused() && !paused);
+        require(!controller.paused());
         _;
     }
 
     // Check if controller or contract are paused
     modifier whenSystemPaused() {
-        require(controller.paused() || paused);
+        require(controller.paused());
         _;
     }
 
     function Manager(address _controller) {
         controller = IController(_controller);
-    }
-
-    /*
-     * @dev Pause contract. Only callable by controller owner
-     */
-    function pause() public onlyAuthorized whenSystemNotPaused {
-        paused = true;
-
-        Pause();
-    }
-
-    /*
-     * @dev Unpause contract. Only callable by controller owner
-     */
-    function unpause() public onlyAuthorized whenSystemPaused {
-        paused = false;
-
-        Unpause();
     }
 
     /*
@@ -65,15 +44,5 @@ contract Manager is IManager {
         controller = IController(_controller);
 
         return true;
-    }
-
-    /*
-     * @dev Check if caller is authorized and has the function permission for this contract
-     * @param _src Source address (caller)
-     * @param _sig Function signature at this contract
-     */
-    function isAuthorized(address _src, bytes4 _sig) internal view returns (bool) {
-        // Check if controller contains a permission for the caller
-        return controller.hasPermission(_src, address(this), _sig);
     }
 }
