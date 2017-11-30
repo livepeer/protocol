@@ -20,13 +20,13 @@ contract Manager is IManager {
         _;
     }
 
-    // Check if controller and contract are not paused
+    // Check if controller is not paused
     modifier whenSystemNotPaused() {
         require(!controller.paused());
         _;
     }
 
-    // Check if controller or contract are paused
+    // Check if controller is paused
     modifier whenSystemPaused() {
         require(controller.paused());
         _;

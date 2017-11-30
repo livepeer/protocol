@@ -19,9 +19,6 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
     // % of segments to be verified. 1 / verificationRate == % to be verified
     uint64 public verificationRate;
 
-    // % of verifications you can fail before being slashed
-    uint64 public verificationFailureThreshold;
-
     // Time after a transcoder calls claimWork() that it has to complete verification of claimed work
     uint256 public verificationPeriod;
 
@@ -111,6 +108,16 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
 
     function JobsManager(address _controller) public Manager(_controller) {}
 
+    /*
+     * @dev Batch set protocol parameters. Only callable by the controller owner
+     * @param _verificationRate % of segments to be verified
+     * @param _verificationPeriod Number of blocks to complete verification of claimed work
+     * @param _slashingPeriod Number of blocks after the verification period to submit slashing proofs
+     * @param _failedVerificationSlashAmount % of stake slashed for failed verification
+     * @param _missedVerificationSlashAmount % of stake slashed for missed verification
+     * @param _doubleClaimSegmentSlashAmount % of stake slashed of double claiming a segment
+     * @param _finderFee % of slashed amount awawded to finder
+     */
     function setParameters(
         uint64 _verificationRate,
         uint256 _verificationPeriod,
@@ -137,10 +144,18 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         finderFee = _finderFee;
     }
 
+    /*
+     * @dev Set verification rate. Only callable by the controller owner
+     * @param _verificationRate % of segments to be verified
+     */
     function setVerificationRate(uint64 _verificationRate) external onlyControllerOwner {
         verificationRate = _verificationRate;
     }
 
+    /*
+     * @dev Set verification period. Only callable by the controller owner
+     * @param _verificationPeriod Number of blocks to complete verification of claimed work
+     */
     function setVerificationPeriod(uint256 _verificationPeriod) external onlyControllerOwner {
         // Verification period + slashing period currently cannot be longer than 256 blocks
         // because contracts can only access the last 256 blocks from
@@ -150,6 +165,10 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         verificationPeriod = _verificationPeriod;
     }
 
+    /*
+     * @dev Set slashing period. Only callable by the controller owner
+     * @param _slashingPeriod Number of blocks after the verification period to submit slashing proofs
+     */
     function setSlashingPeriod(uint256 _slashingPeriod) external onlyControllerOwner {
         // Verification period + slashing period currently cannot be longer than 256 blocks
         // because contracts can only access the last 256 blocks from
@@ -159,18 +178,34 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         slashingPeriod = _slashingPeriod;
     }
 
+    /*
+     * @dev Set failed verification slash amount. Only callable by the controller owner
+     * @param _failedVerificationSlashAmount % of stake slashed for failed verification
+     */
     function setFailedVerificationSlashAmount(uint64 _failedVerificationSlashAmount) external onlyControllerOwner {
         failedVerificationSlashAmount = _failedVerificationSlashAmount;
     }
 
+    /*
+     * @dev Set missed verification slash amount. Only callable by the controller owner
+     * @param _missedVerificationSlashAmount % of stake slashed for missed verification
+     */
     function setMissedVerificationSlashAmount(uint64 _missedVerificationSlashAmount) external onlyControllerOwner {
         missedVerificationSlashAmount = _missedVerificationSlashAmount;
     }
 
+    /*
+     * @dev Set double claim slash amount. Only callable by the controller owner
+     * @param _doubleClaimSegmentSlashAmount % of stake slashed for double claiming a segment
+     */
     function setDoubleClaimSegmentSlashAmount(uint64 _doubleClaimSegmentSlashAmount) external onlyControllerOwner {
         doubleClaimSegmentSlashAmount = _doubleClaimSegmentSlashAmount;
     }
 
+    /*
+     * @dev Set finder fee. Only callable by the controller owner
+     * @param _finderFee % of slashed amount awarded to finder
+     */
     function setFinderFee(uint64 _finderFee) external onlyControllerOwner {
         finderFee = _finderFee;
     }

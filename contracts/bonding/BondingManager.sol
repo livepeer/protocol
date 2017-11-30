@@ -94,6 +94,12 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
     function BondingManager(address _controller) public Manager(_controller) {}
 
+    /*
+     * @dev Batch set protocol parameters. Only callable by the controller owner
+     * @param _unbondingPeriod Rounds between unbonding and possible withdrawl
+     * @param _numTranscoders Max number of registered transcoders
+     * @param _numActiveTranscoders Number of active transcoders
+     */
     function setParameters(uint64 _unbondingPeriod, uint256 _numTranscoders, uint256 _numActiveTranscoders) external onlyControllerOwner {
         unbondingPeriod = _unbondingPeriod;
 
@@ -104,10 +110,18 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         numActiveTranscoders = _numActiveTranscoders;
     }
 
+    /*
+     * @dev Set unbonding period. Only callable by the controller owner
+     * @param _unbondingPeriod Rounds between unbonding and possible withdrawal
+     */
     function setUnbondingPeriod(uint64 _unbondingPeriod) external onlyControllerOwner {
         unbondingPeriod = _unbondingPeriod;
     }
 
+    /*
+     * @dev Set max number of registered transcoders. Only callable by the controller owner
+     * @param _numTranscoders Max number of registered transcoders
+     */
     function setNumTranscoders(uint256 _numTranscoders) external onlyControllerOwner {
         // Max number of transcoders must be greater than or equal to number of active transcoders
         require(_numTranscoders >= numActiveTranscoders);
@@ -115,6 +129,10 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         transcoderPool.setMaxSize(_numTranscoders);
     }
 
+    /*
+     * @dev Set number of active transcoders. Only callable by the controller owner
+     * @param _numActiveTranscoders Number of active transcoders
+     */
     function setNumActiveTranscoders(uint256 _numActiveTranscoders) external onlyControllerOwner {
         // Number of active transcoders cannot exceed max number of transcoders
         require(_numActiveTranscoders <= transcoderPool.getMaxSize());

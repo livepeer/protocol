@@ -22,6 +22,11 @@ contract RoundsManager is ManagerProxyTarget, IRoundsManager {
 
     function RoundsManager(address _controller) public Manager(_controller) {}
 
+    /*
+     * @dev Batch set protocol parameters. Only callable by the controller owner
+     * @param _blockTime Time between blocks
+     * @param _roundLength Round length in blocks
+     */
     function setParameters(uint256 _blockTime, uint256 _roundLength) external onlyControllerOwner {
         blockTime = _blockTime;
         roundLength = _roundLength;
@@ -31,10 +36,18 @@ contract RoundsManager is ManagerProxyTarget, IRoundsManager {
         }
     }
 
+    /*
+     * @dev Set block time. Only callable by the controller owner
+     * @param _blockTime Time between blocks
+     */
     function setBlockTime(uint256 _blockTime) external onlyControllerOwner {
         blockTime = _blockTime;
     }
 
+    /*
+     * @dev Set round length. Only callable by the controller owner
+     * @param _roundLength Round length in blocks
+     */
     function setRoundLength(uint256 _roundLength) external onlyControllerOwner {
         roundLength = _roundLength;
     }
