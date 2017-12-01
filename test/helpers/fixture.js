@@ -1,6 +1,7 @@
 import RPC from "../../utils/rpc"
 import ethUtil from "ethereumjs-util"
 import ethAbi from "ethereumjs-abi"
+import {functionSig} from "../../utils/helpers"
 
 const Controller = artifacts.require("Controller")
 const LivepeerTokenMock = artifacts.require("LivepeerTokenMock")
@@ -17,6 +18,7 @@ export default class Fixture {
 
     async deployController() {
         this.controller = await Controller.new()
+        await this.controller.unpause()
     }
 
     async deployMocks() {
@@ -28,7 +30,7 @@ export default class Fixture {
         this.verifier = await this.deployAndRegister(VerifierMock, "Verifier")
     }
 
-    async deployAndRegister(artifact, name, args = []) {
+    async deployAndRegister(artifact, name, ...args) {
         const contract = await artifact.new(...args)
         await this.controller.setContract(this.contractId(name), contract.address)
         return contract

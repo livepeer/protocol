@@ -9,7 +9,6 @@ import "./IVerifiable.sol";
  * @title Verifier contract that always returns true
  */
 contract IdentityVerifier is Manager, IVerifier {
-    // Check that sender is JobsManager
     modifier onlyJobsManager() {
         require(msg.sender == controller.getContract(keccak256("JobsManager")));
         _;
@@ -35,6 +34,7 @@ contract IdentityVerifier is Manager, IVerifier {
     )
         external
         onlyJobsManager
+        whenSystemNotPaused
         payable
         returns (bool)
     {

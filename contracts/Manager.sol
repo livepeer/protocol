@@ -8,9 +8,15 @@ contract Manager is IManager {
     // Controller that contract is registered with
     IController public controller;
 
-    // Check if sender is the controller
+    // Check if sender is controller
     modifier onlyController() {
-        require(IController(msg.sender) == controller);
+        require(msg.sender == address(controller));
+        _;
+    }
+
+    // Check if sender is controller owner
+    modifier onlyControllerOwner() {
+        require(msg.sender == controller.owner());
         _;
     }
 
@@ -22,7 +28,7 @@ contract Manager is IManager {
 
     // Check if controller is paused
     modifier whenSystemPaused() {
-        require(!controller.paused());
+        require(controller.paused());
         _;
     }
 

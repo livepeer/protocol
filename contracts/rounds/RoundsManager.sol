@@ -20,26 +20,44 @@ contract RoundsManager is ManagerProxyTarget, IRoundsManager {
     // Last initialized round. After first round, this is the last round during which initializeRound() was called
     uint256 public lastInitializedRound;
 
-    function RoundsManager(address _controller) Manager(_controller) {}
+    function RoundsManager(address _controller) public Manager(_controller) {}
 
-    function initialize(uint256 _blockTime, uint256 _roundLength) external beforeInitialization returns (bool) {
-        finishInitialization();
-
+    /*
+     * @dev Batch set protocol parameters. Only callable by the controller owner
+     * @param _blockTime Time between blocks
+     * @param _roundLength Round length in blocks
+     */
+    function setParameters(uint256 _blockTime, uint256 _roundLength) external onlyControllerOwner {
         blockTime = _blockTime;
         roundLength = _roundLength;
-        lastInitializedRound = currentRound();
+
+        if (lastInitializedRound == 0) {
+            lastInitializedRound = currentRound();
+        }
+    }
+
+    /*
+     * @dev Set block time. Only callable by the controller owner
+     * @param _blockTime Time between blocks
+     */
+    function setBlockTime(uint256 _blockTime) external onlyControllerOwner {
+        blockTime = _blockTime;
+    }
+
+    /*
+     * @dev Set round length. Only callable by the controller owner
+     * @param _roundLength Round length in blocks
+     */
+    function setRoundLength(uint256 _roundLength) external onlyControllerOwner {
+        roundLength = _roundLength;
     }
 
     /*
      * @dev Initialize the current round. Called once at the start of any round
      */
-    function initializeRound() external afterInitialization whenSystemNotPaused returns (bool) {
+    function initializeRound() external whenSystemNotPaused returns (bool) {
         // Check if already called for the current round
-        // Will exit here to avoid large gas consumption if it has been called for the current round already
-        // FIXME: replace with revert() after the Byzantium update which will return gas to the sender
-        if (lastInitializedRound == currentRound()) {
-            return false;
-        }
+        require(lastInitializedRound < currentRound());
 
         // Set current round as initialized
         lastInitializedRound = currentRound();

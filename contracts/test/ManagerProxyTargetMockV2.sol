@@ -13,29 +13,23 @@ contract ManagerProxyTargetMockV2 is ManagerProxyTarget {
 
     function ManagerProxyTargetMockV2(address _controller) Manager(_controller) {}
 
-    function initialize(uint256 _value) external beforeInitialization returns (bool) {
-        finishInitialization();
-
-        initValue = _value;
-    }
-
-    function setUint8(uint8 _value) external afterInitialization {
+    function setUint8(uint8 _value) external {
         uint8Value = _value + 5;
     }
 
-    function setUint64(uint64 _value) external afterInitialization {
+    function setUint64(uint64 _value) external {
         uint64Value = _value + 5;
     }
 
-    function setUint256(uint256 _value) external afterInitialization {
+    function setUint256(uint256 _value) external {
         uint256Value = _value + 5;
     }
 
-    function setBytes32(bytes32 _value) external afterInitialization {
+    function setBytes32(bytes32 _value) external {
         bytes32Value = keccak256(_value);
     }
 
-    function setAddress(address _value) external afterInitialization {
+    function setAddress(address _value) external {
         addressValue = address(0);
     }
 }

@@ -1,6 +1,6 @@
 import Fixture from "../helpers/fixture"
-import expectThrow from "../helpers/expectThrow"
 import {mul, div} from "../../utils/bn_util"
+import expectThrow from "../helpers/expectThrow"
 
 const RoundsManager = artifacts.require("RoundsManager")
 
@@ -16,7 +16,8 @@ contract("RoundsManager", accounts => {
         await fixture.deployController()
         await fixture.deployMocks()
 
-        roundsManager = await RoundsManager.new(fixture.controller.address)
+        roundsManager = await fixture.deployAndRegister(RoundsManager, "RoundsManager", fixture.controller.address)
+        fixture.roundsManager = roundsManager
     })
 
     beforeEach(async () => {
@@ -27,9 +28,9 @@ contract("RoundsManager", accounts => {
         await fixture.tearDown()
     })
 
-    describe("initialize", () => {
+    describe("setParameters", () => {
         it("should set parameters", async () => {
-            await roundsManager.initialize(BLOCK_TIME, ROUND_LENGTH)
+            await roundsManager.setParameters(BLOCK_TIME, ROUND_LENGTH)
 
             const blockTime = await roundsManager.blockTime.call()
             assert.equal(blockTime, BLOCK_TIME, "block time incorrect")
@@ -37,15 +38,14 @@ contract("RoundsManager", accounts => {
             assert.equal(roundLength, ROUND_LENGTH, "round length incorrect")
         })
 
-        it("should fail if already initialized", async () => {
-            await roundsManager.initialize(BLOCK_TIME, ROUND_LENGTH)
-            await expectThrow(roundsManager.initialize(BLOCK_TIME, ROUND_LENGTH))
+        it("should fail if caller is not authorized", async () => {
+            await expectThrow(roundsManager.setParameters(BLOCK_TIME, ROUND_LENGTH, {from: accounts[1]}))
         })
     })
 
     describe("currentRound", () => {
         beforeEach(async () => {
-            await roundsManager.initialize(BLOCK_TIME, ROUND_LENGTH)
+            await roundsManager.setParameters(BLOCK_TIME, ROUND_LENGTH)
         })
 
         it("returns the correct round", async () => {
@@ -60,7 +60,7 @@ contract("RoundsManager", accounts => {
 
     describe("currentRoundStartBlock", () => {
         beforeEach(async () => {
-            await roundsManager.initialize(BLOCK_TIME, ROUND_LENGTH)
+            await roundsManager.setParameters(BLOCK_TIME, ROUND_LENGTH)
         })
 
         it("returns the correct current round start block", async () => {
@@ -75,7 +75,7 @@ contract("RoundsManager", accounts => {
 
     describe("roundsPerYear", () => {
         beforeEach(async () => {
-            await roundsManager.initialize(BLOCK_TIME, ROUND_LENGTH)
+            await roundsManager.setParameters(BLOCK_TIME, ROUND_LENGTH)
         })
 
         it("returns the correct number of calls per year", async () => {
@@ -89,7 +89,7 @@ contract("RoundsManager", accounts => {
 
     describe("currentRoundInitialized", () => {
         beforeEach(async () => {
-            await roundsManager.initialize(BLOCK_TIME, ROUND_LENGTH)
+            await roundsManager.setParameters(BLOCK_TIME, ROUND_LENGTH)
         })
 
         it("returns true if last initialized round is current round", async () => {
@@ -110,7 +110,7 @@ contract("RoundsManager", accounts => {
 
     describe("initializeRound", () => {
         beforeEach(async () => {
-            await roundsManager.initialize(BLOCK_TIME, ROUND_LENGTH)
+            await roundsManager.setParameters(BLOCK_TIME, ROUND_LENGTH)
         })
 
         it("should set last initialized round to the current round", async () => {

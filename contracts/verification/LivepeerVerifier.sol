@@ -23,6 +23,9 @@ contract LivepeerVerifier is Manager, IVerifier {
     mapping (uint256 => Request) public requests;
     uint256 public requestCount;
 
+    event VerifyRequest(uint256 indexed requestId, uint256 indexed jobId, uint256 indexed claimId, uint256 segmentNumber, string transcodingOptions, string dataStorageHash, bytes32 dataHash, bytes32 transcodedDataHash);
+    event Callback(uint256 indexed requestId, uint256 indexed jobId, uint256 indexed claimId, uint256 segmentNumber, bool result);
+
     // Check if sender is JobsManager
     modifier onlyJobsManager() {
         require(msg.sender == controller.getContract(keccak256("JobsManager")));
@@ -35,9 +38,6 @@ contract LivepeerVerifier is Manager, IVerifier {
         _;
     }
 
-    event VerifyRequest(uint256 indexed requestId, uint256 indexed jobId, uint256 indexed claimId, uint256 segmentNumber, string transcodingOptions, string dataStorageHash, bytes32 dataHash, bytes32 transcodedDataHash);
-    event Callback(uint256 indexed requestId, uint256 indexed jobId, uint256 indexed claimId, uint256 segmentNumber, bool result);
-
     function LivepeerVerifier(address _controller, address[] _solvers, string _verificationCodeHash) Manager(_controller) {
         // Set solvers
         for (uint256 i = 0; i < _solvers.length; i++) {
@@ -48,6 +48,10 @@ contract LivepeerVerifier is Manager, IVerifier {
         }
         solvers = _solvers;
         // Set verification code hash
+        verificationCodeHash = _verificationCodeHash;
+    }
+
+    function setVerificationCodeHash(string _verificationCodeHash) external onlyControllerOwner {
         verificationCodeHash = _verificationCodeHash;
     }
 
@@ -65,6 +69,7 @@ contract LivepeerVerifier is Manager, IVerifier {
         external
         payable
         onlyJobsManager
+        whenSystemNotPaused
         returns (bool)
     {
         // Store request parameters
@@ -86,7 +91,7 @@ contract LivepeerVerifier is Manager, IVerifier {
      * @param _requestId Request identifier
      * @param _result Result of verification computation - keccak256 hash of transcoded segment data
      */
-    function __callback(uint256 _requestId, bytes32 _result) external onlySolvers returns (bool) {
+    function __callback(uint256 _requestId, bytes32 _result) external onlySolvers whenSystemNotPaused returns (bool) {
         Request memory q = requests[_requestId];
 
         // Check if transcoded data hash returned by solver matches originally submitted transcoded data hash

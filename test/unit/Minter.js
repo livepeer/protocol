@@ -20,7 +20,8 @@ contract("Minter", accounts => {
         await fixture.deployMocks()
         fixture.token = await fixture.deployAndRegister(LivepeerToken, "LivepeerToken")
 
-        minter = await Minter.new(fixture.controller.address, INITIAL_TOKEN_SUPPLY, INITIAL_YEARLY_INFLATION)
+        minter = await fixture.deployAndRegister(Minter, "Minter", fixture.controller.address, INITIAL_TOKEN_SUPPLY, INITIAL_YEARLY_INFLATION)
+        fixture.minter = minter
 
         await fixture.token.mint(minter.address, minterBalance)
         await fixture.token.transferOwnership(minter.address)

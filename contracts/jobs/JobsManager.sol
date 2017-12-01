@@ -19,9 +19,6 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
     // % of segments to be verified. 1 / verificationRate == % to be verified
     uint64 public verificationRate;
 
-    // % of verifications you can fail before being slashed
-    uint64 public verificationFailureThreshold;
-
     // Time after a transcoder calls claimWork() that it has to complete verification of claimed work
     uint256 public verificationPeriod;
 
@@ -86,9 +83,9 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
     // Number of jobs created. Also used for sequential identifiers
     uint256 public numJobs;
 
-    // Check if sender is Verifier contract
+    // Check if sender is Verifier
     modifier onlyVerifier() {
-        require(IVerifier(msg.sender) == verifier());
+        require(msg.sender == controller.getContract(keccak256("Verifier")));
         _;
     }
 
@@ -109,9 +106,19 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
     event NewClaim(address indexed transcoder, uint256 indexed jobId, uint256 claimId);
     event ReceivedVerification(uint256 indexed jobId, uint256 indexed claimId, uint256 segmentNumber, bool result);
 
-    function JobsManager(address _controller) Manager(_controller) {}
+    function JobsManager(address _controller) public Manager(_controller) {}
 
-    function initialize(
+    /*
+     * @dev Batch set protocol parameters. Only callable by the controller owner
+     * @param _verificationRate % of segments to be verified
+     * @param _verificationPeriod Number of blocks to complete verification of claimed work
+     * @param _slashingPeriod Number of blocks after the verification period to submit slashing proofs
+     * @param _failedVerificationSlashAmount % of stake slashed for failed verification
+     * @param _missedVerificationSlashAmount % of stake slashed for missed verification
+     * @param _doubleClaimSegmentSlashAmount % of stake slashed of double claiming a segment
+     * @param _finderFee % of slashed amount awawded to finder
+     */
+    function setParameters(
         uint64 _verificationRate,
         uint256 _verificationPeriod,
         uint256 _slashingPeriod,
@@ -121,13 +128,9 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         uint64 _finderFee
     )
         external
-        beforeInitialization
-        returns (bool)
+        onlyControllerOwner
     {
-        finishInitialization();
-
         verificationRate = _verificationRate;
-
         // Verification period + slashing period currently cannot be longer than 256 blocks
         // because contracts can only access the last 256 blocks from
         // the current block
@@ -142,10 +145,76 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
     }
 
     /*
+     * @dev Set verification rate. Only callable by the controller owner
+     * @param _verificationRate % of segments to be verified
+     */
+    function setVerificationRate(uint64 _verificationRate) external onlyControllerOwner {
+        verificationRate = _verificationRate;
+    }
+
+    /*
+     * @dev Set verification period. Only callable by the controller owner
+     * @param _verificationPeriod Number of blocks to complete verification of claimed work
+     */
+    function setVerificationPeriod(uint256 _verificationPeriod) external onlyControllerOwner {
+        // Verification period + slashing period currently cannot be longer than 256 blocks
+        // because contracts can only access the last 256 blocks from
+        // the current block
+        require(_verificationPeriod + slashingPeriod <= 256);
+
+        verificationPeriod = _verificationPeriod;
+    }
+
+    /*
+     * @dev Set slashing period. Only callable by the controller owner
+     * @param _slashingPeriod Number of blocks after the verification period to submit slashing proofs
+     */
+    function setSlashingPeriod(uint256 _slashingPeriod) external onlyControllerOwner {
+        // Verification period + slashing period currently cannot be longer than 256 blocks
+        // because contracts can only access the last 256 blocks from
+        // the current block
+        require(verificationPeriod + _slashingPeriod <= 256);
+
+        slashingPeriod = _slashingPeriod;
+    }
+
+    /*
+     * @dev Set failed verification slash amount. Only callable by the controller owner
+     * @param _failedVerificationSlashAmount % of stake slashed for failed verification
+     */
+    function setFailedVerificationSlashAmount(uint64 _failedVerificationSlashAmount) external onlyControllerOwner {
+        failedVerificationSlashAmount = _failedVerificationSlashAmount;
+    }
+
+    /*
+     * @dev Set missed verification slash amount. Only callable by the controller owner
+     * @param _missedVerificationSlashAmount % of stake slashed for missed verification
+     */
+    function setMissedVerificationSlashAmount(uint64 _missedVerificationSlashAmount) external onlyControllerOwner {
+        missedVerificationSlashAmount = _missedVerificationSlashAmount;
+    }
+
+    /*
+     * @dev Set double claim slash amount. Only callable by the controller owner
+     * @param _doubleClaimSegmentSlashAmount % of stake slashed for double claiming a segment
+     */
+    function setDoubleClaimSegmentSlashAmount(uint64 _doubleClaimSegmentSlashAmount) external onlyControllerOwner {
+        doubleClaimSegmentSlashAmount = _doubleClaimSegmentSlashAmount;
+    }
+
+    /*
+     * @dev Set finder fee. Only callable by the controller owner
+     * @param _finderFee % of slashed amount awarded to finder
+     */
+    function setFinderFee(uint64 _finderFee) external onlyControllerOwner {
+        finderFee = _finderFee;
+    }
+
+    /*
      * @dev Deposit funds for jobs
      * @param _amount Amount to deposit
      */
-    function deposit(uint256 _amount) external afterInitialization whenSystemNotPaused returns (bool) {
+    function deposit(uint256 _amount) external whenSystemNotPaused returns (bool) {
         broadcasters[msg.sender].deposit = broadcasters[msg.sender].deposit.add(_amount);
         // Transfer tokens for deposit to Minter. Sender needs to approve amount first
         livepeerToken().transferFrom(msg.sender, minter(), _amount);
@@ -156,7 +225,7 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
     /*
      * @dev Withdraw deposited funds
      */
-    function withdraw() external afterInitialization whenSystemNotPaused returns (bool) {
+    function withdraw() external whenSystemNotPaused returns (bool) {
         // Can only withdraw at or after the broadcster's withdraw block
         require(broadcasters[msg.sender].withdrawBlock <= block.number);
 
@@ -176,7 +245,6 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
      */
     function job(string _streamId, string _transcodingOptions, uint256 _maxPricePerSegment, uint256 _endBlock)
         external
-        afterInitialization
         whenSystemNotPaused
         returns (bool)
     {
@@ -215,7 +283,6 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
      */
     function claimWork(uint256 _jobId, uint256[2] _segmentRange, bytes32 _claimRoot)
         external
-        afterInitialization
         whenSystemNotPaused
         jobExists(_jobId)
         returns (bool)
@@ -283,7 +350,6 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
     )
         external
         payable
-        afterInitialization
         whenSystemNotPaused
         sufficientPayment
         returns (bool)
@@ -352,7 +418,6 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
      */
     function receiveVerification(uint256 _jobId, uint256 _claimId, uint256 _segmentNumber, bool _result)
         external
-        afterInitialization
         whenSystemNotPaused
         onlyVerifier
         returns (bool)
@@ -375,7 +440,6 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
      */
     function batchDistributeFees(uint256 _jobId, uint256[] _claimIds)
         external
-        afterInitialization
         whenSystemNotPaused
         returns (bool)
     {
@@ -394,7 +458,6 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
      */
     function missedVerificationSlash(uint256 _jobId, uint256 _claimId, uint256 _segmentNumber)
         external
-        afterInitialization
         whenSystemNotPaused
         jobExists(_jobId)
         returns (bool)
@@ -438,7 +501,6 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         uint256 _segmentNumber
     )
         external
-        afterInitialization
         whenSystemNotPaused
         jobExists(_jobId)
         returns (bool)
@@ -474,7 +536,6 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
      */
     function distributeFees(uint256 _jobId, uint256 _claimId)
         public
-        afterInitialization
         whenSystemNotPaused
         jobExists(_jobId)
         returns (bool)

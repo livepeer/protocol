@@ -29,15 +29,15 @@ contract OraclizeVerifier is Manager, usingOraclize, IVerifier {
     // Stores active Oraclize queries
     mapping (bytes32 => OraclizeQuery) oraclizeQueries;
 
-    // Check if sender is Oraclize
-    modifier onlyOraclize() {
-        require(msg.sender == oraclize_cbAddress());
-        _;
-    }
-
     // Check if sender is JobsManager
     modifier onlyJobsManager() {
         require(msg.sender == controller.getContract(keccak256("JobsManager")));
+        _;
+    }
+
+    // Check if sender is Oraclize
+    modifier onlyOraclize() {
+        require(msg.sender == oraclize_cbAddress());
         _;
     }
 
@@ -49,7 +49,7 @@ contract OraclizeVerifier is Manager, usingOraclize, IVerifier {
 
     event OraclizeCallback(uint256 indexed jobId, uint256 indexed claimId, uint256 indexed segmentNumber, bytes proof, bool result);
 
-    function OraclizeVerifier(address _controller, string _verificationCodeHash, uint256 _gasPrice, uint256 _gasLimit) Manager(_controller) {
+    function OraclizeVerifier(address _controller, string _verificationCodeHash, uint256 _gasPrice, uint256 _gasLimit) public Manager(_controller) {
         // Set verification code hash
         verificationCodeHash = _verificationCodeHash;
         // Set callback gas price
@@ -59,6 +59,10 @@ contract OraclizeVerifier is Manager, usingOraclize, IVerifier {
         gasLimit = _gasLimit;
         // Set Oraclize proof type
         oraclize_setProof(proofType_TLSNotary | proofStorage_IPFS);
+    }
+
+    function setVerificationCodeHash(string _verificationCodeHash) external onlyControllerOwner {
+        verificationCodeHash = _verificationCodeHash;
     }
 
     /*
@@ -80,6 +84,7 @@ contract OraclizeVerifier is Manager, usingOraclize, IVerifier {
         external
         payable
         onlyJobsManager
+        whenSystemNotPaused
         sufficientPayment
         returns (bool)
     {
@@ -101,7 +106,7 @@ contract OraclizeVerifier is Manager, usingOraclize, IVerifier {
      * @param _queryId Oraclize query identifier
      * @param _result Result of Oraclize computation
      */
-    function __callback(bytes32 _queryId, string _result, bytes _proof) onlyOraclize {
+    function __callback(bytes32 _queryId, string _result, bytes _proof) onlyOraclize whenSystemNotPaused {
         OraclizeQuery memory oc = oraclizeQueries[_queryId];
 
         // Check if hash returned by Oraclize matches originally submitted commit hash = h(dataHash, transcodedDataHash)
