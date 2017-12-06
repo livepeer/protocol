@@ -15,6 +15,7 @@ contract BondingManagerMock is IBondingManager {
     uint256 public activeStake;
     uint256 public totalActiveStake;
     uint256 public withdrawAmount;
+    uint256 public totalBonded;
 
     function setMinter(address _minter) external {
         minter = IMinter(_minter);
@@ -25,6 +26,14 @@ contract BondingManagerMock is IBondingManager {
         pricePerSegment = _pricePerSegment;
         activeStake = _activeStake;
         totalActiveStake = _totalActiveStake;
+    }
+
+    function setTotalBonded(uint256 _amount) external {
+        totalBonded = _amount;
+    }
+
+    function getTotalBonded() public view returns (uint256) {
+        return totalBonded;
     }
 
     function setWithdrawAmount(uint256 _amount) external {
@@ -51,7 +60,7 @@ contract BondingManagerMock is IBondingManager {
         minter.addToRedistributionPool(_amount);
     }
 
-    function slashTranscoder(address _transcoder, address _finder, uint64 _slashAmount, uint64 _finderFee) external returns (bool) {
+    function slashTranscoder(address _transcoder, address _finder, uint256 _slashAmount, uint256 _finderFee) external returns (bool) {
         return true;
     }
 

@@ -1,6 +1,8 @@
 import BigNumber from "bignumber.js"
 
 const TOKEN_UNIT = 10 ** 18
+const PERC_DIVISOR = 1000000
+const PERC_MULTIPLIER = PERC_DIVISOR / 100
 
 module.exports = {
     bondingManager: {
@@ -12,13 +14,12 @@ module.exports = {
         verificationRate: 1,
         verificationPeriod: 50,
         slashingPeriod: 50,
-        failedVerificationSlashAmount: 20,
-        missedVerificationSlashAmount: 30,
-        doubleClaimSegmentSlashAmount: 40,
-        finderFee: 4
+        failedVerificationSlashAmount: 20 * PERC_MULTIPLIER,
+        missedVerificationSlashAmount: 30 * PERC_MULTIPLIER,
+        doubleClaimSegmentSlashAmount: 40 * PERC_MULTIPLIER,
+        finderFee: 4 * PERC_MULTIPLIER
     },
     roundsManager: {
-        blockTime: 1,
         roundLength: 50
     },
     faucet: {
@@ -28,8 +29,9 @@ module.exports = {
         whitelist: []
     },
     minter: {
-        initialTokenSupply: 10000000 * Math.pow(10, 18),
-        yearlyInflation: 26
+        inflation: 26 * PERC_MULTIPLIER,
+        inflationChange: .02 * PERC_MULTIPLIER,
+        targetBondingRate: 50 * PERC_MULTIPLIER
     },
     verifier: {
         verificationCodeHash: "QmZmvi1BaYSdxM1Tgwhi2mURabh46xCkzuH9PWeAkAZZGc",

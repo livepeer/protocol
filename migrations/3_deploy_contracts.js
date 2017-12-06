@@ -46,7 +46,16 @@ module.exports = function(deployer, network) {
         const controller = await deploy(deployer, Controller)
 
         const token = await deployAndRegister(deployer, controller, LivepeerToken, "LivepeerToken")
-        const minter = await deployAndRegister(deployer, controller, Minter, "Minter", controller.address, config.minter.initialTokenSupply, config.minter.yearlyInflation)
+        const minter = await deployAndRegister(
+            deployer,
+            controller,
+            Minter,
+            "Minter",
+            controller.address,
+            config.minter.inflation,
+            config.minter.inflationChange,
+            config.minter.targetBondingRate
+        )
 
         if (network === "development" || network === "testrpc" || network == "parityDev" || network === "gethDev") {
             await deployAndRegister(deployer, controller, IdentityVerifier, "Verifier", controller.address)
@@ -82,7 +91,7 @@ module.exports = function(deployer, network) {
             config.jobsManager.doubleClaimSegmentSlashAmount,
             config.jobsManager.finderFee
         )
-        await roundsManager.setParameters(config.roundsManager.blockTime, config.roundsManager.roundLength)
+        await roundsManager.setParameters(config.roundsManager.roundLength)
 
         deployer.logger.log("Transferring ownership of the LivepeerToken to the Minter...")
 

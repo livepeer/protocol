@@ -8,6 +8,9 @@ const NUM_TRANSCODERS = 2
 const NUM_ACTIVE_TRANSCODERS = 1
 const UNBONDING_PERIOD = 2
 
+const PERC_DIVISOR = 1000000
+const PERC_MULTIPLIER = PERC_DIVISOR / 100
+
 contract("BondingManager", accounts => {
     let fixture
     let bondingManager
@@ -40,8 +43,8 @@ contract("BondingManager", accounts => {
 
     describe("transcoder", () => {
         const tAddr = accounts[1]
-        const blockRewardCut = 10
-        const feeShare = 5
+        const blockRewardCut = 10 * PERC_MULTIPLIER
+        const feeShare = 5 * PERC_MULTIPLIER
         const pricePerSegment = 10
 
         beforeEach(async () => {
@@ -53,13 +56,13 @@ contract("BondingManager", accounts => {
             await expectThrow(bondingManager.transcoder(blockRewardCut, feeShare, pricePerSegment), {from: tAddr})
         })
 
-        it("should fail if blockRewardCut > 100", async () => {
-            const invalidBlockRewardCut = 101
+        it("should fail if blockRewardCut is an invalid percentage", async () => {
+            const invalidBlockRewardCut = 101 * PERC_MULTIPLIER
             await expectThrow(bondingManager.transcoder(invalidBlockRewardCut, feeShare, pricePerSegment, {from: tAddr}))
         })
 
         it("should fail if feeShare > 100", async () => {
-            const invalidFeeShare = 101
+            const invalidFeeShare = 101 * PERC_MULTIPLIER
             await expectThrow(bondingManager.transcoder(blockRewardCut, invalidFeeShare, pricePerSegment, {from: tAddr}))
         })
 
@@ -85,8 +88,8 @@ contract("BondingManager", accounts => {
             await bondingManager.transcoder(blockRewardCut, feeShare, pricePerSegment, {from: tAddr})
 
             // Update transcoder config
-            const newBlockRewardCut = 15
-            const newFeeShare = 20
+            const newBlockRewardCut = 15 * PERC_MULTIPLIER
+            const newFeeShare = 20 * PERC_MULTIPLIER
             const newPricePerSegment = 40
             await bondingManager.transcoder(newBlockRewardCut, newFeeShare, newPricePerSegment, {from: tAddr})
 
@@ -101,8 +104,8 @@ contract("BondingManager", accounts => {
         const tAddr = accounts[1]
 
         beforeEach(async () => {
-            const blockRewardCut = 10
-            const feeShare = 5
+            const blockRewardCut = 10 * PERC_MULTIPLIER
+            const feeShare = 5 * PERC_MULTIPLIER
             const pricePerSegment = 100
 
             await bondingManager.setParameters(UNBONDING_PERIOD, NUM_TRANSCODERS, NUM_ACTIVE_TRANSCODERS)
@@ -135,8 +138,8 @@ contract("BondingManager", accounts => {
         const dAddr = accounts[3]
 
         beforeEach(async () => {
-            const blockRewardCut = 10
-            const feeShare = 5
+            const blockRewardCut = 10 * PERC_MULTIPLIER
+            const feeShare = 5 * PERC_MULTIPLIER
             const pricePerSegment = 10
 
             await bondingManager.setParameters(UNBONDING_PERIOD, NUM_TRANSCODERS, NUM_ACTIVE_TRANSCODERS)
@@ -153,7 +156,7 @@ contract("BondingManager", accounts => {
             await bondingManager.transcoder(blockRewardCut, feeShare, pricePerSegment, {from: tAddr1})
         })
 
-        it("should set delegate and increase bonded stake and delegation amount", async () => {
+        it("should set delegate and increase bonded stake and delegation amount and total bonded", async () => {
             await bondingManager.bond(100, tAddr0, {from: dAddr})
 
             const dInfo = await bondingManager.getDelegator(dAddr)
@@ -165,6 +168,9 @@ contract("BondingManager", accounts => {
             const tDInfo = await bondingManager.getDelegator(tAddr0)
             const tDelegatedAmount = tDInfo[3]
             assert.equal(tDelegatedAmount, 200, "delegated amount incorrect")
+
+            const totalBonded = await bondingManager.getTotalBonded()
+            assert.equal(totalBonded, 300, "total bonded incorrect")
         })
 
         it("should update start round when moving bond", async () => {
@@ -214,8 +220,8 @@ contract("BondingManager", accounts => {
         const dAddr = accounts[2]
 
         // Transcoder rates
-        const blockRewardCut = 10
-        const feeShare = 5
+        const blockRewardCut = 10 * PERC_MULTIPLIER
+        const feeShare = 5 * PERC_MULTIPLIER
         const pricePerSegment = 10
 
         // Mock fees params
@@ -267,8 +273,8 @@ contract("BondingManager", accounts => {
         const dAddr = accounts[2]
 
         // Transcoder rates
-        const blockRewardCut = 10
-        const feeShare = 5
+        const blockRewardCut = 10 * PERC_MULTIPLIER
+        const feeShare = 5 * PERC_MULTIPLIER
         const pricePerSegment = 10
 
         // Mock distribute fees params
@@ -319,11 +325,11 @@ contract("BondingManager", accounts => {
 
         it("should update the delegator's stake and unbonded amount through the end round", async () => {
             // 15
-            const delegatorsFeeShare = Math.floor((fees * feeShare) / 100)
+            const delegatorsFeeShare = Math.floor((fees * feeShare) / PERC_DIVISOR)
             // 7
             const delegatorFeeShare = Math.floor((2000 * delegatorsFeeShare) / transcoderTotalStake)
             // 450
-            const delegatorsRewardShare = Math.floor((mintedTokens * (100 - blockRewardCut)) / 100)
+            const delegatorsRewardShare = Math.floor((mintedTokens * (PERC_DIVISOR - blockRewardCut)) / PERC_DIVISOR)
             // 225
             const delegatorRewardShare = Math.floor((2000 * delegatorsRewardShare) / transcoderTotalStake)
 
@@ -340,13 +346,13 @@ contract("BondingManager", accounts => {
 
         it("should update the transcoder's stake and unbonded amount through the end round", async () => {
             // 15
-            const delegatorsFeeShare = Math.floor((fees * feeShare) / 100)
+            const delegatorsFeeShare = Math.floor((fees * feeShare) / PERC_DIVISOR)
             // 7
             const delegatorFeeShare = Math.floor((2000 * delegatorsFeeShare) / transcoderTotalStake)
             // 285
             const transcoderFeeShare = fees - delegatorsFeeShare
             // 450
-            const delegatorsRewardShare = Math.floor((mintedTokens * (100 - blockRewardCut)) / 100)
+            const delegatorsRewardShare = Math.floor((mintedTokens * (PERC_DIVISOR - blockRewardCut)) / PERC_DIVISOR)
             // 225
             const delegatorRewardShare = Math.floor((2000 * delegatorsRewardShare) / transcoderTotalStake)
             // 50
@@ -392,22 +398,22 @@ contract("BondingManager", accounts => {
             await bondingManager.reward({from: tAddr})
 
             // 15
-            const delegatorsFeeShare1 = Math.floor((fees * feeShare) / 100)
+            const delegatorsFeeShare1 = Math.floor((fees * feeShare) / PERC_DIVISOR)
             // 7
             const delegatorFeeShare1 = Math.floor((2000 * delegatorsFeeShare1) / transcoderTotalStake)
 
             // 450
-            const delegatorsRewardShare1 = Math.floor((mintedTokens * (100 - blockRewardCut)) / 100)
+            const delegatorsRewardShare1 = Math.floor((mintedTokens * (PERC_DIVISOR - blockRewardCut)) / PERC_DIVISOR)
             // 225
             const delegatorRewardShare1 = Math.floor((2000 * delegatorsRewardShare1) / transcoderTotalStake)
 
             // 20
-            const delegatorsFeeShare2 = Math.floor((fees2 * feeShare) / 100)
+            const delegatorsFeeShare2 = Math.floor((fees2 * feeShare) / PERC_DIVISOR)
             // 9
             const delegatorFeeShare2 = Math.floor((add(2000, delegatorRewardShare1) * delegatorsFeeShare2) / transcoderTotalStake2)
 
             // 540
-            const delegatorsRewardShare2 = Math.floor((mintedTokens2 * (100 - blockRewardCut)) / 100)
+            const delegatorsRewardShare2 = Math.floor((mintedTokens2 * (PERC_DIVISOR - blockRewardCut)) / PERC_DIVISOR)
             // 267
             const delegatorRewardShare2 = Math.floor((add(2000, delegatorRewardShare1).toNumber() * delegatorsRewardShare2) / transcoderTotalStake2)
 
@@ -430,8 +436,8 @@ contract("BondingManager", accounts => {
         const dAddr = accounts[2]
 
         // Transcoder rates
-        const blockRewardCut = 10
-        const feeShare = 5
+        const blockRewardCut = 10 * PERC_MULTIPLIER
+        const feeShare = 5 * PERC_MULTIPLIER
         const pricePerSegment = 10
 
         const mintedTokens = 500
@@ -471,7 +477,7 @@ contract("BondingManager", accounts => {
         })
 
         it("should compute delegator's stake with latest rewards", async () => {
-            const delegatorsRewardShare = Math.floor((mintedTokens * (100 - blockRewardCut)) / 100)
+            const delegatorsRewardShare = Math.floor((mintedTokens * (PERC_DIVISOR - blockRewardCut)) / PERC_DIVISOR)
             const delegatorRewardShare = Math.floor((2000 * delegatorsRewardShare) / transcoderTotalStake)
             const expDelegatorStake = add(2000, delegatorRewardShare).toString()
             const delegatorStake = await bondingManager.delegatorStake(dAddr)
@@ -484,8 +490,8 @@ contract("BondingManager", accounts => {
         const dAddr = accounts[2]
 
         // Transcoder rates
-        const blockRewardCut = 10
-        const feeShare = 5
+        const blockRewardCut = 10 * PERC_MULTIPLIER
+        const feeShare = 5 * PERC_MULTIPLIER
         const pricePerSegment = 10
 
         // Mock distribute fees params
@@ -523,7 +529,7 @@ contract("BondingManager", accounts => {
         })
 
         it("should compute delegator's unbonded amount with latest fees", async () => {
-            const delegatorsFeeShare = Math.floor((fees * feeShare) / 100)
+            const delegatorsFeeShare = Math.floor((fees * feeShare) / PERC_DIVISOR)
             const delegatorFeeShare = Math.floor((2000 * delegatorsFeeShare) / transcoderTotalStake)
             const expUnbondedAmount = delegatorFeeShare
             const unbondedAmount = await bondingManager.delegatorUnbondedAmount(dAddr)
@@ -536,8 +542,8 @@ contract("BondingManager", accounts => {
         const dAddr = accounts[2]
 
         // Transcoder rates
-        const blockRewardCut = 10
-        const feeShare = 5
+        const blockRewardCut = 10 * PERC_MULTIPLIER
+        const feeShare = 5 * PERC_MULTIPLIER
         const pricePerSegment = 10
 
         const currentRound = 6
@@ -574,6 +580,13 @@ contract("BondingManager", accounts => {
             assert.equal(dInfo[5], expWithdrawRound.toNumber(), "withdraw round incorrect")
         })
 
+        it("should reduce total bonded", async () => {
+            const startTotalBonded = await bondingManager.getTotalBonded()
+            await bondingManager.unbond({from: dAddr})
+            const endTotalBonded = await bondingManager.getTotalBonded()
+            assert.equal(startTotalBonded.sub(endTotalBonded), 2000, "total bonded incorrect")
+        })
+
         it("should set start round to 0", async () => {
             await bondingManager.unbond({from: dAddr})
 
@@ -602,8 +615,8 @@ contract("BondingManager", accounts => {
         const dAddr = accounts[2]
 
         // Transcoder rates
-        const blockRewardCut = 10
-        const feeShare = 5
+        const blockRewardCut = 10 * PERC_MULTIPLIER
+        const feeShare = 5 * PERC_MULTIPLIER
         const pricePerSegment = 10
 
         // Mock distribute fees params
@@ -640,7 +653,7 @@ contract("BondingManager", accounts => {
             // Call updateTranscoderWithFees via transaction from JobsManager
             await fixture.jobsManager.distributeFees()
 
-            const delegatorsFeeShare = Math.floor((fees * feeShare) / 100)
+            const delegatorsFeeShare = Math.floor((fees * feeShare) / PERC_DIVISOR)
             const delegatorFeeShare = Math.floor((2000 * delegatorsFeeShare) / transcoderTotalStake)
             const expWithdrawAmount = delegatorFeeShare
 
@@ -677,7 +690,7 @@ contract("BondingManager", accounts => {
             // Call updateTranscoderWithFees via transaction from JobsManager
             await fixture.jobsManager.distributeFees()
 
-            const delegatorsFeeShare = Math.floor((fees * feeShare) / 100)
+            const delegatorsFeeShare = Math.floor((fees * feeShare) / PERC_DIVISOR)
             const delegatorFeeShare = Math.floor((2000 * delegatorsFeeShare) / transcoderTotalStake)
 
             await bondingManager.unbond({from: dAddr})

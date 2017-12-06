@@ -11,9 +11,6 @@ import "zeppelin-solidity/contracts/math/SafeMath.sol";
 contract RoundsManager is ManagerProxyTarget, IRoundsManager {
     using SafeMath for uint256;
 
-    // Time between blocks. For testing purposes
-    uint256 public blockTime;
-
     // Round length in blocks
     uint256 public roundLength;
 
@@ -27,21 +24,12 @@ contract RoundsManager is ManagerProxyTarget, IRoundsManager {
      * @param _blockTime Time between blocks
      * @param _roundLength Round length in blocks
      */
-    function setParameters(uint256 _blockTime, uint256 _roundLength) external onlyControllerOwner {
-        blockTime = _blockTime;
+    function setParameters(uint256 _roundLength) external onlyControllerOwner {
         roundLength = _roundLength;
 
         if (lastInitializedRound == 0) {
             lastInitializedRound = currentRound();
         }
-    }
-
-    /*
-     * @dev Set block time. Only callable by the controller owner
-     * @param _blockTime Time between blocks
-     */
-    function setBlockTime(uint256 _blockTime) external onlyControllerOwner {
-        blockTime = _blockTime;
     }
 
     /*
@@ -80,14 +68,6 @@ contract RoundsManager is ManagerProxyTarget, IRoundsManager {
      */
     function currentRoundStartBlock() public constant returns (uint256) {
         return currentRound().mul(roundLength);
-    }
-
-    /*
-     * @dev Return number of reward calls per year
-     */
-    function roundsPerYear() public constant returns (uint256) {
-        uint256 secondsInYear = 1 years;
-        return secondsInYear.div(blockTime).div(roundLength);
     }
 
     /*

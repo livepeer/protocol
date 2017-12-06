@@ -26,16 +26,16 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
     uint256 public slashingPeriod;
 
     // % of stake slashed for failed verification
-    uint64 public failedVerificationSlashAmount;
+    uint256 public failedVerificationSlashAmount;
 
     // % of stake slashed for missed verification
-    uint64 public missedVerificationSlashAmount;
+    uint256 public missedVerificationSlashAmount;
 
     // % of stake slashed for double claiming a segment
-    uint64 public doubleClaimSegmentSlashAmount;
+    uint256 public doubleClaimSegmentSlashAmount;
 
     // % of of slashed amount awarded to finder
-    uint64 public finderFee;
+    uint256 public finderFee;
 
     struct Broadcaster {
         uint256 deposit;         // Deposited tokens for jobs
@@ -122,10 +122,10 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         uint64 _verificationRate,
         uint256 _verificationPeriod,
         uint256 _slashingPeriod,
-        uint64 _failedVerificationSlashAmount,
-        uint64 _missedVerificationSlashAmount,
-        uint64 _doubleClaimSegmentSlashAmount,
-        uint64 _finderFee
+        uint256 _failedVerificationSlashAmount,
+        uint256 _missedVerificationSlashAmount,
+        uint256 _doubleClaimSegmentSlashAmount,
+        uint256 _finderFee
     )
         external
         onlyControllerOwner
@@ -182,7 +182,10 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
      * @dev Set failed verification slash amount. Only callable by the controller owner
      * @param _failedVerificationSlashAmount % of stake slashed for failed verification
      */
-    function setFailedVerificationSlashAmount(uint64 _failedVerificationSlashAmount) external onlyControllerOwner {
+    function setFailedVerificationSlashAmount(uint256 _failedVerificationSlashAmount) external onlyControllerOwner {
+        // Must be a valid percentage
+        require(_failedVerificationSlashAmount <= PERC_DIVISOR);
+
         failedVerificationSlashAmount = _failedVerificationSlashAmount;
     }
 
@@ -190,7 +193,10 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
      * @dev Set missed verification slash amount. Only callable by the controller owner
      * @param _missedVerificationSlashAmount % of stake slashed for missed verification
      */
-    function setMissedVerificationSlashAmount(uint64 _missedVerificationSlashAmount) external onlyControllerOwner {
+    function setMissedVerificationSlashAmount(uint256 _missedVerificationSlashAmount) external onlyControllerOwner {
+        // Must be a valid percentage
+        require(_missedVerificationSlashAmount <= PERC_DIVISOR);
+
         missedVerificationSlashAmount = _missedVerificationSlashAmount;
     }
 
@@ -198,7 +204,10 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
      * @dev Set double claim slash amount. Only callable by the controller owner
      * @param _doubleClaimSegmentSlashAmount % of stake slashed for double claiming a segment
      */
-    function setDoubleClaimSegmentSlashAmount(uint64 _doubleClaimSegmentSlashAmount) external onlyControllerOwner {
+    function setDoubleClaimSegmentSlashAmount(uint256 _doubleClaimSegmentSlashAmount) external onlyControllerOwner {
+        // Must be a valid percentage
+        require(_doubleClaimSegmentSlashAmount <= PERC_DIVISOR);
+
         doubleClaimSegmentSlashAmount = _doubleClaimSegmentSlashAmount;
     }
 
@@ -206,7 +215,10 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
      * @dev Set finder fee. Only callable by the controller owner
      * @param _finderFee % of slashed amount awarded to finder
      */
-    function setFinderFee(uint64 _finderFee) external onlyControllerOwner {
+    function setFinderFee(uint256 _finderFee) external onlyControllerOwner {
+        // Must be a valid percentage
+        require(_finderFee <= PERC_DIVISOR);
+
         finderFee = _finderFee;
     }
 
