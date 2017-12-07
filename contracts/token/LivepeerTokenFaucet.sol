@@ -48,26 +48,22 @@ contract LivepeerTokenFaucet is Ownable {
      * @dev Add an address to the whitelist
      * @param _addr Address to be whitelisted
      */
-    function addToWhitelist(address _addr) external onlyOwner returns (bool) {
+    function addToWhitelist(address _addr) external onlyOwner {
         isWhitelisted[_addr] = true;
-
-        return true;
     }
 
     /*
      * @dev Remove an address from the whitelist
      * @param _addr Address to be removed from whitelist
      */
-    function removeFromWhitelist(address _addr) external onlyOwner returns (bool) {
+    function removeFromWhitelist(address _addr) external onlyOwner {
         isWhitelisted[_addr] = false;
-
-        return true;
     }
 
     /*
      * @dev Request an amount of token to be sent to sender
      */
-    function request() external validRequest returns (bool) {
+    function request() external validRequest {
         if (!isWhitelisted[msg.sender]) {
             nextValidRequest[msg.sender] = block.timestamp + requestWait * 1 hours;
         }
@@ -75,7 +71,5 @@ contract LivepeerTokenFaucet is Ownable {
         token.transfer(msg.sender, requestAmount);
 
         Request(msg.sender, requestAmount);
-
-        return true;
     }
 }

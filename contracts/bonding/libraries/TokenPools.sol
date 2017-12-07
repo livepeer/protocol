@@ -18,12 +18,10 @@ library TokenPools {
         uint256 transcoderFeeShare;        // Fee share for the fee pool
     }
 
-    function init(TokenPools.Data storage tokenPools, uint256 _stake, uint256 _blockRewardCut, uint256 _feeShare) internal returns (bool) {
+    function init(TokenPools.Data storage tokenPools, uint256 _stake, uint256 _blockRewardCut, uint256 _feeShare) internal {
         tokenPools.totalStake = _stake;
         tokenPools.transcoderBlockRewardCut = _blockRewardCut;
         tokenPools.transcoderFeeShare = _feeShare;
-
-        return true;
     }
 
     function unclaimableFees(TokenPools.Data storage tokenPools, uint256 _fees) internal view returns (uint256) {

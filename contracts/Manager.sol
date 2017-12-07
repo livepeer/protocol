@@ -35,7 +35,7 @@ contract Manager is IManager {
         _;
     }
 
-    function Manager(address _controller) {
+    function Manager(address _controller) public {
         controller = IController(_controller);
     }
 
@@ -43,9 +43,9 @@ contract Manager is IManager {
      * @dev Set controller. Only callable by current controller
      * @param _controller Controller contract address
      */
-    function setController(address _controller) external onlyController returns (bool) {
+    function setController(address _controller) external onlyController {
         controller = IController(_controller);
 
-        return true;
+        SetController(_controller);
     }
 }

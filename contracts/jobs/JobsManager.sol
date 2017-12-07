@@ -101,11 +101,6 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         _;
     }
 
-    // Events
-    event NewJob(address indexed broadcaster, uint256 jobId, string streamId, string transcodingOptions, uint256 maxPricePerSegment, uint256 creationBlock);
-    event NewClaim(address indexed transcoder, uint256 indexed jobId, uint256 claimId);
-    event ReceivedVerification(uint256 indexed jobId, uint256 indexed claimId, uint256 segmentNumber, bool result);
-
     function JobsManager(address _controller) public Manager(_controller) {}
 
     /*
@@ -142,6 +137,8 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         missedVerificationSlashAmount = _missedVerificationSlashAmount;
         doubleClaimSegmentSlashAmount = _doubleClaimSegmentSlashAmount;
         finderFee = _finderFee;
+
+        ParameterUpdate("all");
     }
 
     /*
@@ -150,6 +147,8 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
      */
     function setVerificationRate(uint64 _verificationRate) external onlyControllerOwner {
         verificationRate = _verificationRate;
+
+        ParameterUpdate("verificationRate");
     }
 
     /*
@@ -163,6 +162,8 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         require(_verificationPeriod + slashingPeriod <= 256);
 
         verificationPeriod = _verificationPeriod;
+
+        ParameterUpdate("verificationPeriod");
     }
 
     /*
@@ -176,6 +177,8 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         require(verificationPeriod + _slashingPeriod <= 256);
 
         slashingPeriod = _slashingPeriod;
+
+        ParameterUpdate("slashingPeriod");
     }
 
     /*
@@ -187,6 +190,8 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         require(_failedVerificationSlashAmount <= PERC_DIVISOR);
 
         failedVerificationSlashAmount = _failedVerificationSlashAmount;
+
+        ParameterUpdate("failedVerificationSlashAmount");
     }
 
     /*
@@ -198,6 +203,8 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         require(_missedVerificationSlashAmount <= PERC_DIVISOR);
 
         missedVerificationSlashAmount = _missedVerificationSlashAmount;
+
+        ParameterUpdate("missedVerificationSlashAmount");
     }
 
     /*
@@ -209,6 +216,8 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         require(_doubleClaimSegmentSlashAmount <= PERC_DIVISOR);
 
         doubleClaimSegmentSlashAmount = _doubleClaimSegmentSlashAmount;
+
+        ParameterUpdate("doubleClaimSegmentSlashAmount");
     }
 
     /*
@@ -226,26 +235,22 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
      * @dev Deposit funds for jobs
      * @param _amount Amount to deposit
      */
-    function deposit(uint256 _amount) external whenSystemNotPaused returns (bool) {
+    function deposit(uint256 _amount) external whenSystemNotPaused {
         broadcasters[msg.sender].deposit = broadcasters[msg.sender].deposit.add(_amount);
         // Transfer tokens for deposit to Minter. Sender needs to approve amount first
         livepeerToken().transferFrom(msg.sender, minter(), _amount);
-
-        return true;
     }
 
     /*
      * @dev Withdraw deposited funds
      */
-    function withdraw() external whenSystemNotPaused returns (bool) {
+    function withdraw() external whenSystemNotPaused {
         // Can only withdraw at or after the broadcster's withdraw block
         require(broadcasters[msg.sender].withdrawBlock <= block.number);
 
         uint256 amount = broadcasters[msg.sender].deposit;
         delete broadcasters[msg.sender];
         minter().transferTokens(msg.sender, amount);
-
-        return true;
     }
 
     /*
@@ -258,7 +263,6 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
     function job(string _streamId, string _transcodingOptions, uint256 _maxPricePerSegment, uint256 _endBlock)
         external
         whenSystemNotPaused
-        returns (bool)
     {
         // End block must be in the future
         require(_endBlock > block.number);
@@ -283,8 +287,6 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
             // broadcaster withdraw block
             broadcasters[msg.sender].withdrawBlock = _endBlock;
         }
-
-        return true;
     }
 
     /*
@@ -297,7 +299,6 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         external
         whenSystemNotPaused
         jobExists(_jobId)
-        returns (bool)
     {
         Job storage job = jobs[_jobId];
 
@@ -338,8 +339,6 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         );
 
         NewClaim(job.transcoderAddress, _jobId, job.claims.length - 1);
-
-        return true;
     }
 
     /*
@@ -364,7 +363,6 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         payable
         whenSystemNotPaused
         sufficientPayment
-        returns (bool)
     {
         require(_jobId < numJobs);
 
@@ -389,7 +387,7 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         // Invoke transcoding verification. This is async and will result in a callback to receiveVerification() which is implemented by this contract
         invokeVerification(_jobId, _claimId, _segmentNumber, _dataStorageHash, _dataHashes);
 
-        return true;
+        Verify(msg.sender, _jobId, _claimId, _segmentNumber);
     }
 
     /*
@@ -408,7 +406,6 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         bytes32[2] _dataHashes
     )
         internal
-        returns (bool)
     {
         IVerifier verifierContract = verifier();
 
@@ -416,9 +413,9 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
 
         // Send payment to verifier if price is greater than zero
         if (price > 0) {
-            return verifierContract.verify.value(price)(_jobId, _claimId, _segmentNumber, jobs[_jobId].transcodingOptions, _dataStorageHash, _dataHashes);
+            verifierContract.verify.value(price)(_jobId, _claimId, _segmentNumber, jobs[_jobId].transcodingOptions, _dataStorageHash, _dataHashes);
         } else {
-            return verifierContract.verify(_jobId, _claimId, _segmentNumber, jobs[_jobId].transcodingOptions, _dataStorageHash, _dataHashes);
+            verifierContract.verify(_jobId, _claimId, _segmentNumber, jobs[_jobId].transcodingOptions, _dataStorageHash, _dataHashes);
         }
     }
 
@@ -432,7 +429,6 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         external
         whenSystemNotPaused
         onlyVerifier
-        returns (bool)
     {
         if (!_result) {
             refundBroadcaster(_jobId);
@@ -441,8 +437,6 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         }
 
         ReceivedVerification(_jobId, _claimId, _segmentNumber, _result);
-
-        return true;
     }
 
     /*
@@ -453,13 +447,10 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
     function batchDistributeFees(uint256 _jobId, uint256[] _claimIds)
         external
         whenSystemNotPaused
-        returns (bool)
     {
         for (uint256 i = 0; i < _claimIds.length; i++) {
             distributeFees(_jobId, _claimIds[i]);
         }
-
-        return true;
     }
 
     /*
@@ -472,7 +463,6 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         external
         whenSystemNotPaused
         jobExists(_jobId)
-        returns (bool)
     {
         Job storage job = jobs[_jobId];
         Claim storage claim = job.claims[_claimId];
@@ -495,8 +485,6 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
 
         // Set claim as slashed
         claim.status = ClaimStatus.Slashed;
-
-        return true;
     }
 
     /*
@@ -515,7 +503,6 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         external
         whenSystemNotPaused
         jobExists(_jobId)
-        returns (bool)
     {
         Job storage job = jobs[_jobId];
         Claim storage claim1 = job.claims[_claimId1];
@@ -537,8 +524,6 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         claim1.status = ClaimStatus.Slashed;
         // Set claim 2 as slashed
         claim2.status = ClaimStatus.Slashed;
-
-        return true;
     }
 
     /*
@@ -550,7 +535,6 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         public
         whenSystemNotPaused
         jobExists(_jobId)
-        returns (bool)
     {
         Job storage job = jobs[_jobId];
         Claim storage claim = job.claims[_claimId];
@@ -571,7 +555,7 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         // Set claim as complete
         claim.status = ClaimStatus.Complete;
 
-        return true;
+        DistributeFees(msg.sender, _jobId, _claimId, fees);
     }
 
     /*
@@ -658,15 +642,13 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
      * @dev Refund broadcaster for a job
      * @param _jobId Job identifier
      */
-    function refundBroadcaster(uint256 _jobId) internal returns (bool) {
+    function refundBroadcaster(uint256 _jobId) internal {
         Job storage job = jobs[_jobId];
 
         // Return all escrowed fees for a job
         uint256 fees = job.escrow;
         job.escrow = job.escrow.sub(fees);
         broadcasters[job.broadcasterAddress].deposit = broadcasters[job.broadcasterAddress].deposit.add(fees);
-
-        return true;
     }
 
     /*

@@ -12,5 +12,5 @@ contract IVerifiable {
         uint256 _claimId,
         uint256 _segmentNumber,
         bool _result
-    ) external returns (bool);
+    ) external;
 }

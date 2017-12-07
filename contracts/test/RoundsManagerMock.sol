@@ -29,8 +29,8 @@ contract RoundsManagerMock is IRoundsManager {
         currentRoundInitialized = _initialized;
     }
 
-    function initializeRound() external returns (bool) {
-        return bondingManager.setActiveTranscoders();
+    function initializeRound() external {
+        bondingManager.setActiveTranscoders();
     }
 
     function callSetCurrentRewardTokens() external {

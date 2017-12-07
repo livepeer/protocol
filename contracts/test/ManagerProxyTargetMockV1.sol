@@ -16,7 +16,7 @@ contract ManagerProxyTargetMockV1 is ManagerProxyTarget {
     uint256 public tupleValue2;
     bytes32 public tupleValue3;
 
-    function ManagerProxyTargetMockV1(address _controller) Manager(_controller) {}
+    function ManagerProxyTargetMockV1(address _controller) public Manager(_controller) {}
 
     function setUint8(uint8 _value) external {
         uint8Value = _value;

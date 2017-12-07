@@ -68,6 +68,8 @@ contract Minter is Manager, IMinter {
         require(_targetBondingRate <= PERC_DIVISOR);
 
         targetBondingRate = _targetBondingRate;
+
+        ParameterUpdate("targetBondingRate");
     }
 
     /*
@@ -102,14 +104,14 @@ contract Minter is Manager, IMinter {
      * @param _to Recipient address
      * @param _amount Amount of tokens
      */
-    function transferTokens(address _to, uint256 _amount) external onlyBondingManagerOrJobsManager whenSystemNotPaused returns (bool) {
-        return livepeerToken().transfer(_to, _amount);
+    function transferTokens(address _to, uint256 _amount) external onlyBondingManagerOrJobsManager whenSystemNotPaused {
+        livepeerToken().transfer(_to, _amount);
     }
 
     /*
      * @dev Set the reward token amounts for the round. Only callable by the RoundsManager
      */
-    function setCurrentRewardTokens() external onlyRoundsManager whenSystemNotPaused returns (bool) {
+    function setCurrentRewardTokens() external onlyRoundsManager whenSystemNotPaused {
         setInflation();
 
         currentMintableTokens = mintedTokensPerRound();
@@ -117,7 +119,7 @@ contract Minter is Manager, IMinter {
         currentRedistributableTokens = redistributableTokensPerRound();
         currentRedistributedTokens = 0;
 
-        return true;
+        SetCurrentRewardTokens(currentMintableTokens, currentRedistributableTokens, roundsManager().currentRound());
     }
 
     /*
@@ -137,16 +139,16 @@ contract Minter is Manager, IMinter {
                 inflation -= inflationChange;
             }
         }
+
+        NewInflation(inflation, roundsManager().currentRound());
     }
 
     /*
      * @dev Add funds to the redistribution pool
      * @param _amount Amount of funds to add to the redistribution pool
      */
-    function addToRedistributionPool(uint256 _amount) external onlyBondingManager whenSystemNotPaused returns (bool) {
+    function addToRedistributionPool(uint256 _amount) external onlyBondingManager whenSystemNotPaused {
         redistributionPool = redistributionPool.add(_amount);
-
-        return true;
     }
 
     /*

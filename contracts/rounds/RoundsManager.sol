@@ -30,6 +30,8 @@ contract RoundsManager is ManagerProxyTarget, IRoundsManager {
         if (lastInitializedRound == 0) {
             lastInitializedRound = currentRound();
         }
+
+        ParameterUpdate("all");
     }
 
     /*
@@ -38,53 +40,57 @@ contract RoundsManager is ManagerProxyTarget, IRoundsManager {
      */
     function setRoundLength(uint256 _roundLength) external onlyControllerOwner {
         roundLength = _roundLength;
+
+        ParameterUpdate("roundLength");
     }
 
     /*
      * @dev Initialize the current round. Called once at the start of any round
      */
-    function initializeRound() external whenSystemNotPaused returns (bool) {
+    function initializeRound() external whenSystemNotPaused {
+        uint256 currRound = currentRound();
+
         // Check if already called for the current round
-        require(lastInitializedRound < currentRound());
+        require(lastInitializedRound < currRound);
 
         // Set current round as initialized
-        lastInitializedRound = currentRound();
+        lastInitializedRound = currRound;
 
         bondingManager().setActiveTranscoders();
         minter().setCurrentRewardTokens();
 
-        return true;
+        NewRound(currRound);
     }
 
     /*
      * @dev Return current round
      */
-    function currentRound() public constant returns (uint256) {
+    function currentRound() public view returns (uint256) {
         return block.number.div(roundLength);
     }
 
     /*
      * @dev Return start block of current round
      */
-    function currentRoundStartBlock() public constant returns (uint256) {
+    function currentRoundStartBlock() public view returns (uint256) {
         return currentRound().mul(roundLength);
     }
 
     /*
      * @dev Check if current round is initialized i.e. block.number / roundLength == lastInitializedRound
      */
-    function currentRoundInitialized() public constant returns (bool) {
+    function currentRoundInitialized() public view returns (bool) {
         return lastInitializedRound == currentRound();
     }
 
     /*
      * @dev Return BondingManager contract (interface)
      */
-    function bondingManager() internal constant returns (IBondingManager) {
+    function bondingManager() internal view returns (IBondingManager) {
         return IBondingManager(controller.getContract(keccak256("BondingManager")));
     }
 
-    function minter() internal constant returns (IMinter) {
+    function minter() internal view returns (IMinter) {
         return IMinter(controller.getContract(keccak256("Minter")));
     }
 }

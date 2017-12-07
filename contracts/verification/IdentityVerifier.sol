@@ -36,13 +36,10 @@ contract IdentityVerifier is Manager, IVerifier {
         onlyJobsManager
         whenSystemNotPaused
         payable
-        returns (bool)
     {
         // Check if receiveVerification on callback contract succeeded
         IVerifiable verifiableContract = IVerifiable(msg.sender);
         verifiableContract.receiveVerification(_jobId, _claimId, _segmentNumber, true);
-
-        return true;
     }
 
     /*
