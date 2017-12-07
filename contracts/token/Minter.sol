@@ -4,6 +4,7 @@ import "../Manager.sol";
 import "./IMinter.sol";
 import "./ILivepeerToken.sol";
 import "../rounds/IRoundsManager.sol";
+import "../bonding/IBondingManager.sol";
 
 import "zeppelin-solidity/contracts/math/SafeMath.sol";
 
@@ -11,10 +12,13 @@ import "zeppelin-solidity/contracts/math/SafeMath.sol";
 contract Minter is Manager, IMinter {
     using SafeMath for uint256;
 
-    // Token supply at the start of the protocol
-    uint256 public initialTokenSupply;
-    // Upper bound yearly inflation rate
-    uint8 public yearlyInflation;
+    // Per round inflation rate
+    uint256 public inflation;
+    // Change in inflation rate per round until the target bonding rate is achieved
+    uint256 public inflationChange;
+    // Target bonding rate
+    uint256 public targetBondingRate;
+
     // Tokens that are redistributed as a part of rewards
     uint256 public redistributionPool;
     // Current number of mintable tokens. Reset every round
@@ -46,13 +50,24 @@ contract Minter is Manager, IMinter {
         _;
     }
 
-    function Minter(address _controller, uint256 _initialTokenSupply, uint8 _yearlyInflation) public Manager(_controller) {
-        initialTokenSupply = _initialTokenSupply;
-        yearlyInflation = _yearlyInflation;
+    function Minter(address _controller, uint256 _inflation, uint256 _inflationChange, uint256 _targetBondingRate) public Manager(_controller) {
+        // Inflation must be valid percentage
+        require(_inflation <= PERC_DIVISOR);
+        // Inflation change must be valid percentage
+        require(_inflationChange <= PERC_DIVISOR);
+        // Target bonding rate must be valid percentage
+        require(_targetBondingRate <= PERC_DIVISOR);
+
+        inflation = _inflation;
+        inflationChange = _inflationChange;
+        targetBondingRate = _targetBondingRate;
     }
 
-    function setYearlyInflation(uint8 _yearlyInflation) external onlyControllerOwner {
-        yearlyInflation = _yearlyInflation;
+    function setTargetBondingRate(uint256 _targetBondingRate) external onlyControllerOwner {
+        // Must be valid percentage
+        require(_targetBondingRate <= PERC_DIVISOR);
+
+        targetBondingRate = _targetBondingRate;
     }
 
     /*
@@ -95,12 +110,33 @@ contract Minter is Manager, IMinter {
      * @dev Set the reward token amounts for the round. Only callable by the RoundsManager
      */
     function setCurrentRewardTokens() external onlyRoundsManager whenSystemNotPaused returns (bool) {
+        setInflation();
+
         currentMintableTokens = mintedTokensPerRound();
         currentMintedTokens = 0;
         currentRedistributableTokens = redistributableTokensPerRound();
         currentRedistributedTokens = 0;
 
         return true;
+    }
+
+    /*
+     * @dev Set inflation based upon the current bonding rate
+     */
+    function setInflation() internal {
+        uint256 currentBondingRate = (bondingManager().getTotalBonded() * PERC_DIVISOR) / livepeerToken().totalSupply();
+
+        if (currentBondingRate < targetBondingRate) {
+            // Bonding rate is below the target - increase inflation
+            inflation = inflation.add(inflationChange);
+        } else if (currentBondingRate > targetBondingRate) {
+            // Bonding rate is above the target - decrease inflation
+            if (inflationChange > inflation) {
+                inflation = 0;
+            } else {
+                inflation -= inflationChange;
+            }
+        }
     }
 
     /*
@@ -114,17 +150,18 @@ contract Minter is Manager, IMinter {
     }
 
     /*
-     * @dev Return minted tokens per round based on initial token supply, yearly inflation and number of rounds per year
+     * @dev Return minted tokens per round based current inflation and token supply
      */
     function mintedTokensPerRound() internal view returns (uint256) {
-        return initialTokenSupply.mul(yearlyInflation).div(100).div(roundsManager().roundsPerYear());
+        uint256 currentSupply = livepeerToken().totalSupply();
+        return currentSupply.mul(inflation).div(PERC_DIVISOR);
     }
 
     /*
-     * @dev Return funds to be redistributed per round based on the total funds available for redistribution and the number of rounds per year
+     * @dev Return redistributable tokens per round
      */
     function redistributableTokensPerRound() internal view returns (uint256) {
-        return redistributionPool.div(roundsManager().roundsPerYear());
+        return redistributionPool.div(100);
     }
 
     /*
@@ -139,5 +176,12 @@ contract Minter is Manager, IMinter {
      */
     function roundsManager() internal view returns (IRoundsManager) {
         return IRoundsManager(controller.getContract(keccak256("RoundsManager")));
+    }
+
+    /*
+     * @dev Returns BondingManager
+     */
+    function bondingManager() internal view returns (IBondingManager) {
+        return IBondingManager(controller.getContract(keccak256("BondingManager")));
     }
 }

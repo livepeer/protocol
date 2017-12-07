@@ -11,6 +11,5 @@ contract IRoundsManager {
     // Public functions
     function currentRound() public constant returns (uint256);
     function currentRoundStartBlock() public constant returns (uint256);
-    function roundsPerYear() public constant returns (uint256);
     function currentRoundInitialized() public constant returns (bool);
 }

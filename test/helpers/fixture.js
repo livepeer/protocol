@@ -1,7 +1,6 @@
 import RPC from "../../utils/rpc"
 import ethUtil from "ethereumjs-util"
 import ethAbi from "ethereumjs-abi"
-import {functionSig} from "../../utils/helpers"
 
 const Controller = artifacts.require("Controller")
 const LivepeerTokenMock = artifacts.require("LivepeerTokenMock")

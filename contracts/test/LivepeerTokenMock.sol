@@ -7,13 +7,16 @@ import "zeppelin-solidity/contracts/token/StandardToken.sol";
 
 contract LivepeerTokenMock is ILivepeerToken {
     bool public approved;
+    address public mintedTo;
+    uint256 public minted;
 
     function setApproved(bool _value) external {
         approved = _value;
     }
 
     function mint(address _to, uint256 _amount) public returns (bool) {
-        return true;
+        mintedTo = _to;
+        minted = _amount;
     }
 
     function allowance(address _owner, address _spender) public view returns (uint256) {
@@ -35,5 +38,9 @@ contract LivepeerTokenMock is ILivepeerToken {
 
     function transfer(address _to, uint256 _value) public returns (bool) {
         return true;
+    }
+
+    function setTotalSupply(uint256 _totalSupply) external {
+        totalSupply = _totalSupply;
     }
 }

@@ -8,6 +8,9 @@ contract Manager is IManager {
     // Controller that contract is registered with
     IController public controller;
 
+    // Divisor used for representing percentages
+    uint256 public constant PERC_DIVISOR = 1000000;
+
     // Check if sender is controller
     modifier onlyController() {
         require(msg.sender == address(controller));

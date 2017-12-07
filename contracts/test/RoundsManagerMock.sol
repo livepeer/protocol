@@ -11,7 +11,6 @@ contract RoundsManagerMock is IRoundsManager {
 
     uint256 public currentRound;
     uint256 public currentRoundStartBlock;
-    uint256 public roundsPerYear;
     bool public currentRoundInitialized;
 
     function setBondingManager(address _bondingManager) external {
@@ -30,10 +29,6 @@ contract RoundsManagerMock is IRoundsManager {
         currentRoundInitialized = _initialized;
     }
 
-    function setRoundsPerYear(uint256 _rounds) external {
-        roundsPerYear = _rounds;
-    }
-
     function initializeRound() external returns (bool) {
         return bondingManager.setActiveTranscoders();
     }
@@ -48,10 +43,6 @@ contract RoundsManagerMock is IRoundsManager {
 
     function currentRoundStartBlock() public view returns (uint256) {
         return currentRoundStartBlock;
-    }
-
-    function roundsPerYear() public view returns (uint256) {
-        return roundsPerYear;
     }
 
     function currentRoundInitialized() public view returns (bool) {
