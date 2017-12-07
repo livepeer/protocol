@@ -172,7 +172,6 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         t.pendingFeeShare = _feeShare;
         t.pendingPricePerSegment = _pricePerSegment;
 
-        uint256 currentRound = roundsManager().currentRound();
         uint256 delegatedAmount = delegators[msg.sender].delegatedAmount;
 
         // Check if transcoder is not already registered
@@ -185,14 +184,14 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
                     // Kick out last transcoder pool
                     transcoderPool.remove(lastTranscoder);
 
-                    TranscoderEvicted(lastTranscoder, currentRound);
+                    TranscoderEvicted(lastTranscoder);
                 }
             }
 
             transcoderPool.insert(msg.sender, delegatedAmount, address(0), address(0));
         }
 
-        TranscoderUpdate(msg.sender, _blockRewardCut, _feeShare, _pricePerSegment, currentRound);
+        TranscoderUpdate(msg.sender, _blockRewardCut, _feeShare, _pricePerSegment);
     }
 
     /*
@@ -215,7 +214,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // Remove transcoder from pools
         transcoderPool.remove(msg.sender);
 
-        TranscoderResigned(msg.sender, currentRound);
+        TranscoderResigned(msg.sender);
     }
 
     /**
@@ -292,7 +291,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             }
         }
 
-        Bond(_to, msg.sender, currentRound);
+        Bond(_to, msg.sender);
     }
 
     /*
@@ -325,7 +324,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             transcoderPool.updateKey(del.delegateAddress, transcoderPool.getKey(del.delegateAddress).sub(del.bondedAmount), address(0), address(0));
         }
 
-        Unbond(del.delegateAddress, msg.sender, currentRound);
+        Unbond(del.delegateAddress, msg.sender);
 
         // Delegator no longer bonded to anyone
         del.delegateAddress = address(0);
@@ -361,6 +360,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         }
 
         minter().transferTokens(msg.sender, amount);
+
+        Withdraw(msg.sender);
     }
 
     /*
@@ -421,7 +422,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
         updateTranscoderWithRewards(msg.sender, rewardTokens, currentRound);
 
-        Reward(msg.sender, rewardTokens, currentRound);
+        Reward(msg.sender, rewardTokens);
     }
 
     /*
@@ -514,7 +515,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             minter().addToRedistributionPool(redistributedAmount);
         }
 
-        TranscoderSlashed(_transcoder, penalty, currentRound);
+        TranscoderSlashed(_transcoder, penalty);
     }
 
     /*

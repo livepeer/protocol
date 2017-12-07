@@ -119,7 +119,7 @@ contract Minter is Manager, IMinter {
         currentRedistributableTokens = redistributableTokensPerRound();
         currentRedistributedTokens = 0;
 
-        SetCurrentRewardTokens(currentMintableTokens, currentRedistributableTokens, roundsManager().currentRound());
+        SetCurrentRewardTokens(currentMintableTokens, currentRedistributableTokens);
     }
 
     /*
@@ -140,7 +140,7 @@ contract Minter is Manager, IMinter {
             }
         }
 
-        NewInflation(inflation, roundsManager().currentRound());
+        NewInflation(inflation);
     }
 
     /*

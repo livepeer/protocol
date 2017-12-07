@@ -239,6 +239,8 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         broadcasters[msg.sender].deposit = broadcasters[msg.sender].deposit.add(_amount);
         // Transfer tokens for deposit to Minter. Sender needs to approve amount first
         livepeerToken().transferFrom(msg.sender, minter(), _amount);
+
+        Deposit(msg.sender, _amount);
     }
 
     /*
@@ -251,6 +253,8 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         uint256 amount = broadcasters[msg.sender].deposit;
         delete broadcasters[msg.sender];
         minter().transferTokens(msg.sender, amount);
+
+        Withdraw(msg.sender);
     }
 
     /*
@@ -430,13 +434,17 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         whenSystemNotPaused
         onlyVerifier
     {
+        address transcoder = jobs[_jobId].transcoderAddress;
+
         if (!_result) {
             refundBroadcaster(_jobId);
             // Protocol slashes transcoder for failing verification (no finder)
-            bondingManager().slashTranscoder(jobs[_jobId].transcoderAddress, address(0), failedVerificationSlashAmount, 0);
-        }
+            bondingManager().slashTranscoder(transcoder, address(0), failedVerificationSlashAmount, 0);
 
-        ReceivedVerification(_jobId, _claimId, _segmentNumber, _result);
+            PassedVerification(transcoder, _jobId, _claimId, _segmentNumber);
+        } else {
+            FailedVerification(transcoder, _jobId, _claimId, _segmentNumber);
+        }
     }
 
     /*
