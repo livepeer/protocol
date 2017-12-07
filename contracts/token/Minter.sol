@@ -114,7 +114,7 @@ contract Minter is Manager, IMinter {
 
         currentMintableTokens = mintedTokensPerRound();
         currentMintedTokens = 0;
-        currentRedistributableTokens = redistributionPool;
+        currentRedistributableTokens = redistributableTokensPerRound();
         currentRedistributedTokens = 0;
 
         return true;
@@ -126,17 +126,17 @@ contract Minter is Manager, IMinter {
     function setInflation() internal {
         uint256 currentBondingRate = (bondingManager().getTotalBonded() * PERC_DIVISOR) / livepeerToken().totalSupply();
 
-        uint256 newInflation = inflation;
-
         if (currentBondingRate < targetBondingRate) {
             // Bonding rate is below the target - increase inflation
-            newInflation = newInflation.add(inflationChange);
+            inflation = inflation.add(inflationChange);
         } else if (currentBondingRate > targetBondingRate) {
             // Bonding rate is above the target - decrease inflation
-            newInflation = newInflation.sub(inflationChange);
+            if (inflationChange > inflation) {
+                inflation = 0;
+            } else {
+                inflation -= inflationChange;
+            }
         }
-
-        inflation = newInflation;
     }
 
     /*
@@ -155,6 +155,13 @@ contract Minter is Manager, IMinter {
     function mintedTokensPerRound() internal view returns (uint256) {
         uint256 currentSupply = livepeerToken().totalSupply();
         return currentSupply.mul(inflation).div(PERC_DIVISOR);
+    }
+
+    /*
+     * @dev Return redistributable tokens per round
+     */
+    function redistributableTokensPerRound() internal view returns (uint256) {
+        return redistributionPool.div(100);
     }
 
     /*

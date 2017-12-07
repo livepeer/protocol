@@ -18,13 +18,10 @@ contract("Minter", accounts => {
         fixture = new Fixture(web3)
         await fixture.deployController()
         await fixture.deployMocks()
-        // fixture.token = await fixture.deployAndRegister(LivepeerToken, "LivepeerToken")
 
         minter = await fixture.deployAndRegister(Minter, "Minter", fixture.controller.address, INFLATION, INFLATION_CHANGE, TARGET_BONDING_RATE)
         fixture.minter = minter
 
-        // await fixture.token.mint(minter.address, minterBalance)
-        // await fixture.token.transferOwnership(minter.address)
         await fixture.bondingManager.setMinter(minter.address)
         await fixture.jobsManager.setMinter(minter.address)
         await fixture.roundsManager.setMinter(minter.address)
@@ -83,7 +80,7 @@ contract("Minter", accounts => {
             const minted = await fixture.token.minted.call()
             assert.equal(minted, mintedTokens.mul(10).div(100).floor().toNumber(), "wrong minted amount")
 
-            const redistributedTokens = (100000 * 10) / 100
+            const redistributedTokens = ((100000 / 100) * 10) / 100
             const expRedistributionPool = 100000 - redistributedTokens
 
             const redistributionPool = await minter.redistributionPool.call()
@@ -176,6 +173,22 @@ contract("Minter", accounts => {
             const endInflation = await minter.inflation.call()
 
             assert.equal(startInflation.sub(endInflation).toNumber(), await minter.inflationChange.call(), "inflation rate did not change correctly")
+        })
+
+        it("should set the inflation rate to 0 if the inflation change is greater than the inflation and the current bonding rate is above the target bonding rate", async () => {
+            minter = await fixture.deployAndRegister(Minter, "Minter", fixture.controller.address, INFLATION_CHANGE - 1, INFLATION_CHANGE, TARGET_BONDING_RATE)
+            fixture.minter = minter
+
+            await fixture.roundsManager.setMinter(minter.address)
+
+            await fixture.token.setTotalSupply(1000)
+            await fixture.bondingManager.setTotalBonded(600)
+
+            // Call setCurrentRewardTokens via RoundsManager
+            await fixture.roundsManager.callSetCurrentRewardTokens()
+            const endInflation = await minter.inflation.call()
+
+            assert.equal(endInflation, 0, "inflation rate not set to 0")
         })
 
         it("should maintain the inflation rate if the current bonding rate is equal to the target bonding rate", async () => {
