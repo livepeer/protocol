@@ -31,11 +31,11 @@ contract JobsManagerMock is IJobsManager {
         minter = IMinter(_minter);
     }
 
-    function setBondingManager(address _bondingManager) {
+    function setBondingManager(address _bondingManager) external {
         bondingManager = IBondingManager(_bondingManager);
     }
 
-    function setVerifier(address _verifier) {
+    function setVerifier(address _verifier) external {
         verifier = IVerifier(_verifier);
     }
 
@@ -82,11 +82,11 @@ contract JobsManagerMock is IJobsManager {
         withdrawAmount = _amount;
     }
 
-    function distributeFees() public returns (bool) {
+    function distributeFees() external {
         return bondingManager.updateTranscoderWithFees(transcoder, fees, round);
     }
 
-    function missedVerificationSlash() public returns (bool) {
+    function missedVerificationSlash() external {
         return bondingManager.slashTranscoder(transcoder, finder, slashAmount, finderFee);
     }
 
@@ -98,7 +98,5 @@ contract JobsManagerMock is IJobsManager {
         verifier.verify.value(msg.value)(jobId, claimId, segmentNumber, transcodingOptions, dataStorageHash, dataHashes);
     }
 
-    function receiveVerification(uint256 _jobId, uint256 _claimId, uint256 _segmentNumber, bool _result) external returns (bool) {
-        return true;
-    }
+    function receiveVerification(uint256 _jobId, uint256 _claimId, uint256 _segmentNumber, bool _result) external {}
 }

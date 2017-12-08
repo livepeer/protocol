@@ -111,6 +111,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
         transcoderPool.setMaxSize(_numTranscoders);
         numActiveTranscoders = _numActiveTranscoders;
+
+        ParameterUpdate("all");
     }
 
     /*
@@ -119,6 +121,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      */
     function setUnbondingPeriod(uint64 _unbondingPeriod) external onlyControllerOwner {
         unbondingPeriod = _unbondingPeriod;
+
+        ParameterUpdate("unbondingPeriod");
     }
 
     /*
@@ -130,6 +134,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         require(_numTranscoders >= numActiveTranscoders);
 
         transcoderPool.setMaxSize(_numTranscoders);
+
+        ParameterUpdate("numTranscoders");
     }
 
     /*
@@ -141,6 +147,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         require(_numActiveTranscoders <= transcoderPool.getMaxSize());
 
         numActiveTranscoders = _numActiveTranscoders;
+
+        ParameterUpdate("numActiveTranscoders");
     }
 
     /*
@@ -153,7 +161,6 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         external
         whenSystemNotPaused
         currentRoundInitialized
-        returns (bool)
     {
         // Block reward cut must be a valid percentage
         require(_blockRewardCut <= PERC_DIVISOR);
@@ -176,13 +183,15 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
                     // More stake than the last transcoder in the pool
                     // Kick out last transcoder pool
                     transcoderPool.remove(lastTranscoder);
+
+                    TranscoderEvicted(lastTranscoder);
                 }
             }
 
             transcoderPool.insert(msg.sender, delegatedAmount, address(0), address(0));
         }
 
-        return true;
+        TranscoderUpdate(msg.sender, _blockRewardCut, _feeShare, _pricePerSegment);
     }
 
     /*
@@ -192,7 +201,6 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         external
         whenSystemNotPaused
         currentRoundInitialized
-        returns (bool)
     {
         // Sender must be registered transcoder
         require(transcoderStatus(msg.sender) == TranscoderStatus.Registered);
@@ -206,7 +214,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // Remove transcoder from pools
         transcoderPool.remove(msg.sender);
 
-        return true;
+        TranscoderResigned(msg.sender);
     }
 
     /**
@@ -222,14 +230,15 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         whenSystemNotPaused
         currentRoundInitialized
         autoClaimTokenPoolsShares
-        returns (bool)
     {
         Delegator storage del = delegators[msg.sender];
+
+        uint256 currentRound = roundsManager().currentRound();
 
         if (delegatorStatus(msg.sender) == DelegatorStatus.Unbonded) {
             // New delegate
             // Set start round
-            del.startRound = roundsManager().currentRound().add(1);
+            del.startRound = currentRound.add(1);
         }
 
         // Amount to delegate
@@ -238,7 +247,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         if (del.delegateAddress != address(0) && _to != del.delegateAddress) {
             // Changing delegate
             // Set start round
-            del.startRound = roundsManager().currentRound().add(1);
+            del.startRound = currentRound.add(1);
             // Update amount to delegate with previous delegation amount
             delegationAmount = delegationAmount.add(del.bondedAmount);
             // Decrease old delegate's delegated amount
@@ -282,7 +291,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             }
         }
 
-        return true;
+        Bond(_to, msg.sender);
     }
 
     /*
@@ -294,15 +303,16 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         whenSystemNotPaused
         currentRoundInitialized
         autoClaimTokenPoolsShares
-        returns (bool)
     {
         // Sender must be in bonded state
         require(delegatorStatus(msg.sender) == DelegatorStatus.Bonded);
 
         Delegator storage del = delegators[msg.sender];
 
+        uint256 currentRound = roundsManager().currentRound();
+
         // Transition to unbonding phase
-        del.withdrawRound = roundsManager().currentRound().add(unbondingPeriod);
+        del.withdrawRound = currentRound.add(unbondingPeriod);
         // Decrease delegate's delegated amount
         delegators[del.delegateAddress].delegatedAmount = delegators[del.delegateAddress].delegatedAmount.sub(del.bondedAmount);
         // Update total bonded tokens
@@ -314,12 +324,12 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             transcoderPool.updateKey(del.delegateAddress, transcoderPool.getKey(del.delegateAddress).sub(del.bondedAmount), address(0), address(0));
         }
 
+        Unbond(del.delegateAddress, msg.sender);
+
         // Delegator no longer bonded to anyone
         del.delegateAddress = address(0);
         // Unbonding delegator does not have a start round
         del.startRound = 0;
-
-        return true;
     }
 
     /**
@@ -330,7 +340,6 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         whenSystemNotPaused
         currentRoundInitialized
         autoClaimTokenPoolsShares
-        returns (bool)
     {
         // Delegator must either have unbonded tokens or be in the unbonded state
         require(delegators[msg.sender].unbondedAmount > 0 || delegatorStatus(msg.sender) == DelegatorStatus.Unbonded);
@@ -352,13 +361,13 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
         minter().transferTokens(msg.sender, amount);
 
-        return true;
+        Withdraw(msg.sender);
     }
 
     /*
      * @dev Set active transcoder set for the current round
      */
-    function setActiveTranscoders() external whenSystemNotPaused onlyRoundsManager returns (bool) {
+    function setActiveTranscoders() external whenSystemNotPaused onlyRoundsManager {
         uint256 currentRound = roundsManager().currentRound();
         uint256 activeSetSize = Math.min256(numActiveTranscoders, transcoderPool.getSize());
 
@@ -390,15 +399,13 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
         // Update total stake of all active transcoders
         activeTranscoderSet[currentRound].totalStake = totalStake;
-
-        return true;
     }
 
     /*
      * @dev Distribute the token rewards to transcoder and delegates.
      * Active transcoders call this once per cycle when it is their turn.
      */
-    function reward() external whenSystemNotPaused currentRoundInitialized returns (bool) {
+    function reward() external whenSystemNotPaused currentRoundInitialized {
         uint256 currentRound = roundsManager().currentRound();
 
         // Sender must be an active transcoder
@@ -415,7 +422,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
         updateTranscoderWithRewards(msg.sender, rewardTokens, currentRound);
 
-        return true;
+        Reward(msg.sender, rewardTokens);
     }
 
     /*
@@ -431,7 +438,6 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         external
         whenSystemNotPaused
         onlyJobsManager
-        returns (bool)
     {
         // Transcoder must be registered
         require(transcoderStatus(_transcoder) == TranscoderStatus.Registered);
@@ -447,8 +453,6 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         if (unclaimableFees > 0) {
             minter().addToRedistributionPool(unclaimableFees);
         }
-
-        return true;
     }
 
     /*
@@ -467,31 +471,23 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         external
         whenSystemNotPaused
         onlyJobsManager
-        returns (bool)
     {
         // Transcoder must be valid
         require(transcoderStatus(_transcoder) == TranscoderStatus.Registered);
 
         uint256 penalty = delegators[_transcoder].bondedAmount.mul(_slashAmount).div(PERC_DIVISOR);
+        if (penalty > del.bondedAmount) {
+            penalty = del.bondedAmount;
+        }
 
         Delegator storage del = delegators[_transcoder];
 
-        if (penalty > del.bondedAmount) {
-            // Decrease delegate's delegated amount
-            delegators[del.delegateAddress].delegatedAmount = delegators[del.delegateAddress].delegatedAmount.sub(del.bondedAmount);
-            // Update total bonded tokens
-            totalBonded = totalBonded.sub(del.bondedAmount);
-            // Set transcoder's bond to 0 since
-            // the penalty is greater than its stake
-            del.bondedAmount = 0;
-        } else {
-            // Decrease delegate's delegated amount
-            delegators[del.delegateAddress].delegatedAmount = delegators[del.delegateAddress].delegatedAmount.sub(penalty);
-            // Update total bonded tokens
-            totalBonded = totalBonded.sub(penalty);
-            // Decrease transcoder's stake
-            del.bondedAmount = del.bondedAmount.sub(penalty);
-        }
+        // Decrease delegate's delegated amount
+        delegators[del.delegateAddress].delegatedAmount = delegators[del.delegateAddress].delegatedAmount.sub(penalty);
+        // Update total bonded tokens
+        totalBonded = totalBonded.sub(penalty);
+        // Decrease transcoder's stake
+        del.bondedAmount = del.bondedAmount.sub(penalty);
 
         uint256 currentRound = roundsManager().currentRound();
 
@@ -519,7 +515,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             minter().addToRedistributionPool(redistributedAmount);
         }
 
-        return true;
+        TranscoderSlashed(_transcoder, penalty);
     }
 
     /*
@@ -573,10 +569,10 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * @dev Claim token pools shares for a delegator from its lastClaimTokenPoolsSharesRound through the end round
      * @param _endRound The last round for which to claim token pools shares for a delegator
      */
-    function claimTokenPoolsShares(uint256 _endRound) external returns (bool) {
+    function claimTokenPoolsShares(uint256 _endRound) external {
         require(delegators[msg.sender].lastClaimTokenPoolsSharesRound < _endRound);
 
-        return updateDelegatorWithTokenPoolsShares(msg.sender, _endRound);
+        updateDelegatorWithTokenPoolsShares(msg.sender, _endRound);
     }
 
     /*
@@ -791,7 +787,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * @param _rewards Amount of rewards
      * @param _round Round that transcoder is updated
      */
-    function updateTranscoderWithRewards(address _transcoder, uint256 _rewards, uint256 _round) internal returns (bool) {
+    function updateTranscoderWithRewards(address _transcoder, uint256 _rewards, uint256 _round) internal {
         Transcoder storage t = transcoders[_transcoder];
         Delegator storage del = delegators[_transcoder];
 
@@ -812,8 +808,6 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         if (unclaimableRewards > 0) {
             minter().addToRedistributionPool(unclaimableRewards);
         }
-
-        return true;
     }
 
     /*
@@ -821,7 +815,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * @param _delegator Delegator address
      * @param _endRound The last round for which to update a delegator's stake with token pools shares
      */
-    function updateDelegatorWithTokenPoolsShares(address _delegator, uint256 _endRound) internal returns (bool) {
+    function updateDelegatorWithTokenPoolsShares(address _delegator, uint256 _endRound) internal {
         Delegator storage del = delegators[_delegator];
 
         uint256 currentBondedAmount = del.bondedAmount;
@@ -847,8 +841,6 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         del.unbondedAmount = currentUnbondedAmount;
 
         del.lastClaimTokenPoolsSharesRound = _endRound;
-
-        return true;
     }
 
     /*

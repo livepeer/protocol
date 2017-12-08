@@ -5,11 +5,13 @@ pragma solidity ^0.4.17;
  * @title Interface for RoundsManager
  */
 contract IRoundsManager {
+    event NewRound(uint256 round);
+
     // External functions
-    function initializeRound() external returns (bool);
+    function initializeRound() external;
 
     // Public functions
-    function currentRound() public constant returns (uint256);
-    function currentRoundStartBlock() public constant returns (uint256);
-    function currentRoundInitialized() public constant returns (bool);
+    function currentRound() public view returns (uint256);
+    function currentRoundStartBlock() public view returns (uint256);
+    function currentRoundInitialized() public view returns (bool);
 }

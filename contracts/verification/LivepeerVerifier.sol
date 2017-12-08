@@ -38,7 +38,7 @@ contract LivepeerVerifier is Manager, IVerifier {
         _;
     }
 
-    function LivepeerVerifier(address _controller, address[] _solvers, string _verificationCodeHash) Manager(_controller) {
+    function LivepeerVerifier(address _controller, address[] _solvers, string _verificationCodeHash) public Manager(_controller) {
         // Set solvers
         for (uint256 i = 0; i < _solvers.length; i++) {
             // Address must not already be a solver and must not be a null address
@@ -70,7 +70,6 @@ contract LivepeerVerifier is Manager, IVerifier {
         payable
         onlyJobsManager
         whenSystemNotPaused
-        returns (bool)
     {
         // Store request parameters
         requests[requestCount].jobId = _jobId;
@@ -82,8 +81,6 @@ contract LivepeerVerifier is Manager, IVerifier {
 
         // Update request count
         requestCount++;
-
-        return true;
     }
 
     /*
@@ -91,7 +88,7 @@ contract LivepeerVerifier is Manager, IVerifier {
      * @param _requestId Request identifier
      * @param _result Result of verification computation - keccak256 hash of transcoded segment data
      */
-    function __callback(uint256 _requestId, bytes32 _result) external onlySolvers whenSystemNotPaused returns (bool) {
+    function __callback(uint256 _requestId, bytes32 _result) external onlySolvers whenSystemNotPaused {
         Request memory q = requests[_requestId];
 
         // Check if transcoded data hash returned by solver matches originally submitted transcoded data hash
@@ -105,8 +102,6 @@ contract LivepeerVerifier is Manager, IVerifier {
 
         // Remove request
         delete requests[_requestId];
-
-        return true;
     }
 
     /*

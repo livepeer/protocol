@@ -20,10 +20,10 @@ contract Controller is Pausable, IController {
      * @param _id Contract id (keccak256 hash of contract name)
      * @param _contract Contract address
      */
-    function setContract(bytes32 _id, address _contract) external onlyOwner returns (bool) {
+    function setContract(bytes32 _id, address _contract) external onlyOwner {
         registry[_id] = _contract;
 
-        return true;
+        SetContract(_id, _contract);
     }
 
     /*
@@ -31,7 +31,7 @@ contract Controller is Pausable, IController {
      * @param _id Contract id (keccak256 hash of contract name)
      * @param _controller Controller address
      */
-    function updateController(bytes32 _id, address _controller) external onlyOwner returns (bool) {
+    function updateController(bytes32 _id, address _controller) external onlyOwner {
         return IManager(registry[_id]).setController(_controller);
     }
 

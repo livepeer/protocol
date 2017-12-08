@@ -86,7 +86,6 @@ contract OraclizeVerifier is Manager, usingOraclize, IVerifier {
         onlyJobsManager
         whenSystemNotPaused
         sufficientPayment
-        returns (bool)
     {
         // Create Oraclize query
         string memory codeHashQuery = strConcat("binary(", verificationCodeHash, ").unhexlify()");
@@ -97,8 +96,6 @@ contract OraclizeVerifier is Manager, usingOraclize, IVerifier {
         oraclizeQueries[queryId].claimId = _claimId;
         oraclizeQueries[queryId].segmentNumber = _segmentNumber;
         oraclizeQueries[queryId].commitHash = keccak256(_dataHashes[0], _dataHashes[1]);
-
-        return true;
     }
 
     /*

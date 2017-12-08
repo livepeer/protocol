@@ -12,7 +12,7 @@ contract ManagerProxyTargetMockV3 is ManagerProxyTarget {
     address public addressValue;
     mapping (uint256 => uint256) public kvMap;
 
-    function ManagerProxyTargetMockV3(address _controller) Manager(_controller) {}
+    function ManagerProxyTargetMockV3(address _controller) public Manager(_controller) {}
 
     function setUint8(uint8 _value) external {
         uint8Value = _value;

@@ -43,10 +43,7 @@ contract VerifierMock is IVerifier {
     )
         external
         payable
-        returns (bool)
-    {
-        return true;
-    }
+    {}
 
     function getPrice() public view returns (uint256) {
         return price;
