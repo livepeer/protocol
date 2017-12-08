@@ -12,6 +12,7 @@ contract RoundsManagerMock is IRoundsManager {
     uint256 public currentRound;
     uint256 public currentRoundStartBlock;
     bool public currentRoundInitialized;
+    bool public currentRoundLocked;
 
     function setBondingManager(address _bondingManager) external {
         bondingManager = IBondingManager(_bondingManager);
@@ -23,6 +24,10 @@ contract RoundsManagerMock is IRoundsManager {
 
     function setCurrentRound(uint256 _round) external {
         currentRound = _round;
+    }
+
+    function setCurrentRoundLocked(bool _locked) external {
+        currentRoundLocked = _locked;
     }
 
     function setCurrentRoundInitialized(bool _initialized) external {
@@ -47,5 +52,9 @@ contract RoundsManagerMock is IRoundsManager {
 
     function currentRoundInitialized() public view returns (bool) {
         return currentRoundInitialized;
+    }
+
+    function currentRoundLocked() public view returns (bool) {
+        return currentRoundLocked;
     }
 }

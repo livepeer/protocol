@@ -91,7 +91,7 @@ module.exports = function(deployer, network) {
             config.jobsManager.doubleClaimSegmentSlashAmount,
             config.jobsManager.finderFee
         )
-        await roundsManager.setParameters(config.roundsManager.roundLength)
+        await roundsManager.setParameters(config.roundsManager.roundLength, config.roundsManager.roundLockAmount)
 
         deployer.logger.log("Transferring ownership of the LivepeerToken to the Minter...")
 

@@ -4,7 +4,11 @@ import expectThrow from "../helpers/expectThrow"
 
 const RoundsManager = artifacts.require("RoundsManager")
 
+const PERC_DIVISOR = 1000000
+const PERC_MULTIPLIER = PERC_DIVISOR / 100
+
 const ROUND_LENGTH = 50
+const ROUND_LOCK_AMOUNT = 10 * PERC_MULTIPLIER
 
 contract("RoundsManager", accounts => {
     let fixture
@@ -29,20 +33,20 @@ contract("RoundsManager", accounts => {
 
     describe("setParameters", () => {
         it("should set parameters", async () => {
-            await roundsManager.setParameters(ROUND_LENGTH)
+            await roundsManager.setParameters(ROUND_LENGTH, ROUND_LOCK_AMOUNT)
 
             const roundLength = await roundsManager.roundLength.call()
             assert.equal(roundLength, ROUND_LENGTH, "round length incorrect")
         })
 
         it("should fail if caller is not authorized", async () => {
-            await expectThrow(roundsManager.setParameters(ROUND_LENGTH, {from: accounts[1]}))
+            await expectThrow(roundsManager.setParameters(ROUND_LENGTH, ROUND_LOCK_AMOUNT, {from: accounts[1]}))
         })
     })
 
     describe("currentRound", () => {
         beforeEach(async () => {
-            await roundsManager.setParameters(ROUND_LENGTH)
+            await roundsManager.setParameters(ROUND_LENGTH, ROUND_LOCK_AMOUNT)
         })
 
         it("returns the correct round", async () => {
@@ -57,7 +61,7 @@ contract("RoundsManager", accounts => {
 
     describe("currentRoundStartBlock", () => {
         beforeEach(async () => {
-            await roundsManager.setParameters(ROUND_LENGTH)
+            await roundsManager.setParameters(ROUND_LENGTH, ROUND_LOCK_AMOUNT)
         })
 
         it("returns the correct current round start block", async () => {
@@ -72,7 +76,7 @@ contract("RoundsManager", accounts => {
 
     describe("currentRoundInitialized", () => {
         beforeEach(async () => {
-            await roundsManager.setParameters(ROUND_LENGTH)
+            await roundsManager.setParameters(ROUND_LENGTH, ROUND_LOCK_AMOUNT)
         })
 
         it("returns true if last initialized round is current round", async () => {
@@ -93,7 +97,7 @@ contract("RoundsManager", accounts => {
 
     describe("initializeRound", () => {
         beforeEach(async () => {
-            await roundsManager.setParameters(ROUND_LENGTH)
+            await roundsManager.setParameters(ROUND_LENGTH, ROUND_LOCK_AMOUNT)
         })
 
         it("should set last initialized round to the current round", async () => {
@@ -108,6 +112,31 @@ contract("RoundsManager", accounts => {
 
             const lastInitializedRound = await roundsManager.lastInitializedRound.call()
             assert.equal(lastInitializedRound.toString(), currentRound, "last initialized round not set to current round")
+        })
+    })
+
+    describe("currentRoundLocked", () => {
+        beforeEach(async () => {
+            await roundsManager.setParameters(ROUND_LENGTH, ROUND_LOCK_AMOUNT)
+        })
+
+        it("returns false if not in the lock period", async () => {
+            // Fast forward 1 round
+            const roundLength = await roundsManager.roundLength.call()
+            await fixture.rpc.waitUntilNextBlockMultiple(roundLength.toNumber())
+
+            assert.isNotOk(await roundsManager.currentRoundLocked(), "not false when not in lock period")
+        })
+
+        it("returns true if in the lock period", async () => {
+            // Fast forward 1 round
+            const roundLength = await roundsManager.roundLength.call()
+            await fixture.rpc.waitUntilNextBlockMultiple(roundLength.toNumber())
+            const roundLockAmount = await roundsManager.roundLockAmount.call()
+            const roundLockBlocks = roundLength.mul(roundLockAmount).div(PERC_DIVISOR).floor()
+            await fixture.rpc.wait(roundLength.sub(roundLockBlocks).toNumber())
+
+            assert.isOk(await roundsManager.currentRoundLocked(), "not true when in lock period")
         })
     })
 })

@@ -52,6 +52,11 @@ contract("BondingManager", accounts => {
             await fixture.roundsManager.setCurrentRoundInitialized(true)
         })
 
+        it("should fail if the current round is locked", async () => {
+            await fixture.roundsManager.setCurrentRoundLocked(true)
+            await expectThrow(bondingManager.transcoder(blockRewardCut, feeShare, pricePerSegment), {from: tAddr})
+        })
+
         it("should fail with zero delegated amount", async () => {
             await expectThrow(bondingManager.transcoder(blockRewardCut, feeShare, pricePerSegment), {from: tAddr})
         })
