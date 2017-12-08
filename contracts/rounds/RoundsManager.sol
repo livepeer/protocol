@@ -15,6 +15,8 @@ contract RoundsManager is ManagerProxyTarget, IRoundsManager {
     uint256 public roundLength;
 
     // Lock period of a round as a % of round length
+    // Transcoders cannot join the transcoder pool or change their rates during the lock period at the end of a round
+    // The lock period provides delegators time to review transcoder information without changes
     // # of blocks in the lock period = (roundLength * roundLockAmount) / PERC_DIVISOR
     uint256 public roundLockAmount;
 
