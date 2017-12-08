@@ -14,4 +14,5 @@ contract IRoundsManager {
     function currentRound() public view returns (uint256);
     function currentRoundStartBlock() public view returns (uint256);
     function currentRoundInitialized() public view returns (bool);
+    function currentRoundLocked() public view returns (bool);
 }

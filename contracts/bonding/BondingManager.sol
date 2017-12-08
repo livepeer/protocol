@@ -162,6 +162,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         whenSystemNotPaused
         currentRoundInitialized
     {
+        // Only callable if current round is not locked
+        require(!roundsManager().currentRoundLocked());
         // Block reward cut must be a valid percentage
         require(_blockRewardCut <= PERC_DIVISOR);
         // Fee share must be a valid percentage

@@ -14,6 +14,10 @@ contract RoundsManager is ManagerProxyTarget, IRoundsManager {
     // Round length in blocks
     uint256 public roundLength;
 
+    // Lock period of a round as a % of round length
+    // # of blocks in the lock period = (roundLength * roundLockAmount) / PERC_DIVISOR
+    uint256 public roundLockAmount;
+
     // Last initialized round. After first round, this is the last round during which initializeRound() was called
     uint256 public lastInitializedRound;
 
@@ -21,11 +25,14 @@ contract RoundsManager is ManagerProxyTarget, IRoundsManager {
 
     /*
      * @dev Batch set protocol parameters. Only callable by the controller owner
-     * @param _blockTime Time between blocks
      * @param _roundLength Round length in blocks
      */
-    function setParameters(uint256 _roundLength) external onlyControllerOwner {
+    function setParameters(uint256 _roundLength, uint256 _roundLockAmount) external onlyControllerOwner {
+        // Must be a valid percentage
+        require(_roundLockAmount <= PERC_DIVISOR);
+
         roundLength = _roundLength;
+        roundLockAmount = _roundLockAmount;
 
         if (lastInitializedRound == 0) {
             lastInitializedRound = currentRound();
@@ -81,6 +88,13 @@ contract RoundsManager is ManagerProxyTarget, IRoundsManager {
      */
     function currentRoundInitialized() public view returns (bool) {
         return lastInitializedRound == currentRound();
+    }
+
+    /*
+     * @dev Check if we are in the lock period of the current round
+     */
+    function currentRoundLocked() public view returns (bool) {
+        return block.number.sub(currentRoundStartBlock()) >= roundLength.sub(roundLength.mul(roundLockAmount).div(PERC_DIVISOR));
     }
 
     /*

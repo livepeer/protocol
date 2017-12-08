@@ -20,7 +20,8 @@ module.exports = {
         finderFee: 4 * PERC_MULTIPLIER
     },
     roundsManager: {
-        roundLength: 50
+        roundLength: 50,
+        roundLockAmount: 100000
     },
     faucet: {
         faucetAmount: new BigNumber(1000000000000000000000).mul(TOKEN_UNIT),
