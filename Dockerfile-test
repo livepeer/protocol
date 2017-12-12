@@ -13,5 +13,5 @@ COPY utils /app/utils
 COPY migrations /app/migrations
 COPY truffle.js /app/truffle.js
 
-RUN npm install
+RUN npm install --only=production
 RUN npm run compile

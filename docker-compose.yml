@@ -1,18 +1,15 @@
 version: "3"
 services:
   parity-dev:
-    container_name: parity-dev
-    build: ./scripts/parity-dev
+    image: livepeer/parity-dev:latest
     ports:
       - "47623:8545"
   geth-dev:
-    container_name: geth-dev
-    build: ./scripts/geth-dev
+    image: livepeer/geth-dev:latest
     ports:
       - "47624:8545"
   testrpc:
-    container_name: testrpc
-    build: ./scripts/testrpc
+    image: livepeer/testrpc:latest
     ports:
       - "47625:8545"
   # Works locally, but not on CircleCI

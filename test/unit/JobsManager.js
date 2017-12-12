@@ -98,6 +98,8 @@ contract("JobsManager", accounts => {
                 FINDER_FEE
             )
             await fixture.bondingManager.setActiveTranscoder(electedTranscoder, maxPricePerSegment, 100, 200)
+
+            await fixture.roundsManager.setBlockNum(100)
         })
 
         it("should create a NewJob event", async () => {
@@ -112,7 +114,7 @@ contract("JobsManager", accounts => {
                 assert.equal(result.args.transcodingOptions, transcodingOptions, "transcoding options incorrect")
             })
 
-            const endBlock = web3.eth.blockNumber + 500
+            const endBlock = 100 + 500
             await jobsManager.job(streamId, transcodingOptions, maxPricePerSegment, endBlock, {from: broadcaster})
         })
 
@@ -123,8 +125,8 @@ contract("JobsManager", accounts => {
             const transcoderTotalStake = 100
             await fixture.bondingManager.setActiveTranscoder(accounts[1], 0, transcoderTotalStake, 0)
 
-            const endBlock = web3.eth.blockNumber + 500
-            const creationBlock = web3.eth.blockNumber + 1
+            const endBlock = 100 + 500
+            const creationBlock = 100
             await jobsManager.job(streamId, transcodingOptions, maxPricePerSegment, endBlock, {from: broadcaster})
 
             const jInfo = await jobsManager.getJob(0)
@@ -173,15 +175,17 @@ contract("JobsManager", accounts => {
             // Broadcaster deposits fees
             await jobsManager.deposit(deposit, {from: broadcaster})
 
-            const endBlock0 = web3.eth.blockNumber + 400
+            await fixture.roundsManager.setBlockNum(100)
+
+            const endBlock0 = 100 + 400
             // Broadcaster creates job 0
             await jobsManager.job(streamId, transcodingOptions, maxPricePerSegment, endBlock0, {from: broadcaster})
-            const endBlock1 = web3.eth.blockNumber + 20
+            const endBlock1 = 100 + 20
             // Broadcaster creates job 1
             await jobsManager.job(streamId, transcodingOptions, maxPricePerSegment, endBlock1, {from: broadcaster})
 
             // Job 1 ends
-            await fixture.rpc.wait(20)
+            await fixture.roundsManager.mineBlocks(20)
         })
 
         it("should fail for invalid job id", async () => {
@@ -205,7 +209,7 @@ contract("JobsManager", accounts => {
 
         it("should fail if the transcoder is not assigned and it has been more than 256 blocks since the job creation block", async () => {
             const creationBlock = (await jobsManager.getJob(jobId))[6]
-            await fixture.rpc.wait(256 - (web3.eth.blockNumber - creationBlock.toNumber()))
+            await fixture.roundsManager.mineBlocks(256 - (100 - creationBlock.toNumber()))
 
             await expectThrow(jobsManager.claimWork(jobId, segmentRange, claimRoot, {from: electedTranscoder}))
         })
@@ -234,7 +238,7 @@ contract("JobsManager", accounts => {
             await jobsManager.claimWork(jobId, segmentRange, claimRoot, {from: electedTranscoder})
 
             const claimId = 0
-            const claimBlock = web3.eth.blockNumber
+            const claimBlock = await fixture.roundsManager.blockNum()
             const verificationPeriod = await jobsManager.verificationPeriod.call()
             const slashingPeriod = await jobsManager.slashingPeriod.call()
 
@@ -246,11 +250,11 @@ contract("JobsManager", accounts => {
             const cRoot = cInfo[1]
             assert.equal(cRoot, claimRoot, "claim root incorrect")
             const cBlock = cInfo[2]
-            assert.equal(cBlock, claimBlock, "claim block incorrect")
+            assert.equal(cBlock, claimBlock.toNumber(), "claim block incorrect")
             const cEndVerificationBlock = cInfo[3]
-            assert.equal(cEndVerificationBlock, claimBlock + verificationPeriod.toNumber(), "end verification block incorrect")
+            assert.equal(cEndVerificationBlock, claimBlock.add(verificationPeriod).toNumber(), "end verification block incorrect")
             const cEndSlashingBlock = cInfo[4]
-            assert.equal(cEndSlashingBlock, claimBlock + verificationPeriod.toNumber() + slashingPeriod.toNumber(), "end slashing block incorrect")
+            assert.equal(cEndSlashingBlock, claimBlock.add(verificationPeriod).add(slashingPeriod).toNumber(), "end slashing block incorrect")
             const cStatus = cInfo[5]
             assert.equal(cStatus, 0, "claim status incorrect")
         })
@@ -333,22 +337,24 @@ contract("JobsManager", accounts => {
 
             await jobsManager.deposit(1000, {from: broadcaster})
 
-            const endBlock0 = web3.eth.blockNumber + 500
+            await fixture.roundsManager.setBlockNum(100)
+
+            const endBlock0 = 100 + 500
             // Broadcaster creates job 0
             await jobsManager.job(streamId, transcodingOptions, maxPricePerSegment, endBlock0, {from: broadcaster})
-            const endBlock1 = web3.eth.blockNumber + 20
+            const endBlock1 = 100 + 20
             // Broadcaster creates another job 1
             await jobsManager.job(streamId, transcodingOptions, maxPricePerSegment, endBlock1, {from: broadcaster})
 
             // Broadcaster ends job 1
-            await fixture.rpc.wait(20)
+            await fixture.roundsManager.mineBlocks(20)
 
             const segmentRange = [0, 3]
             // Account 1 (transcoder) claims work for job 0
             await jobsManager.claimWork(jobId, segmentRange, merkleTree.getHexRoot(), {from: electedTranscoder})
 
             // Fast forward so that claimBlock + 1 is mined
-            await fixture.rpc.wait(1)
+            await fixture.roundsManager.mineBlocks(1)
         })
 
         it("should throw for insufficient payment for verification", async () => {
@@ -428,14 +434,16 @@ contract("JobsManager", accounts => {
 
             await jobsManager.deposit(1000, {from: broadcaster})
 
+            await fixture.roundsManager.setBlockNum(100)
+
             const streamId = "1"
             const transcodingOptions = createTranscodingOptions(["foo", "bar"])
-            const endBlock = web3.eth.blockNumber + 500
+            const endBlock = 100 + 500
             // Broadcaster creates job 0
             await jobsManager.job(streamId, transcodingOptions, maxPricePerSegment, endBlock, {from: broadcaster})
 
             // Wait for job creation block + 1 to be mined
-            await fixture.rpc.wait(1)
+            await fixture.roundsManager.mineBlocks(1)
 
             const segmentRange = [0, 3]
             const claimRoot = "0x1000000000000000000000000000000000000000000000000000000000000000"
@@ -450,7 +458,7 @@ contract("JobsManager", accounts => {
         it("should fail if slashing period is not over", async () => {
             // Fast foward through verification period
             const verificationPeriod = await jobsManager.verificationPeriod.call()
-            await fixture.rpc.wait(verificationPeriod.toNumber())
+            await fixture.roundsManager.mineBlocks(verificationPeriod.toNumber() + 1)
 
             await expectThrow(jobsManager.distributeFees(jobId, claimId, {from: electedTranscoder}))
         })
@@ -459,7 +467,7 @@ contract("JobsManager", accounts => {
             // Fast foward through verificaiton and slashing period
             const verificationPeriod = await jobsManager.verificationPeriod.call()
             const slashingPeriod = await jobsManager.slashingPeriod.call()
-            await fixture.rpc.wait(verificationPeriod.add(slashingPeriod).toNumber())
+            await fixture.roundsManager.mineBlocks(verificationPeriod.add(slashingPeriod).toNumber() + 1)
 
             const invalidJobId = 1
             await expectThrow(jobsManager.distributeFees(invalidJobId, claimId, {from: electedTranscoder}))
@@ -469,7 +477,7 @@ contract("JobsManager", accounts => {
             // Fast foward through verificaiton and slashing period
             const verificationPeriod = await jobsManager.verificationPeriod.call()
             const slashingPeriod = await jobsManager.slashingPeriod.call()
-            await fixture.rpc.wait(verificationPeriod.add(slashingPeriod).toNumber())
+            await fixture.roundsManager.mineBlocks(verificationPeriod.add(slashingPeriod).toNumber() + 1)
 
             const invalidClaimId = 1
             await expectThrow(jobsManager.distributeFees(jobId, invalidClaimId, {from: electedTranscoder}))
@@ -479,7 +487,7 @@ contract("JobsManager", accounts => {
             // Fast foward through verificaiton and slashing period
             const verificationPeriod = await jobsManager.verificationPeriod.call()
             const slashingPeriod = await jobsManager.slashingPeriod.call()
-            await fixture.rpc.wait(verificationPeriod.add(slashingPeriod).toNumber())
+            await fixture.roundsManager.mineBlocks(verificationPeriod.add(slashingPeriod).toNumber() + 1)
 
             // Should fail because account 2 is not the elected transcoder
             await expectThrow(jobsManager.distributeFees(jobId, claimId, {from: accounts[2]}))
@@ -489,7 +497,7 @@ contract("JobsManager", accounts => {
             // Fast foward through verificaiton and slashing period
             const verificationPeriod = await jobsManager.verificationPeriod.call()
             const slashingPeriod = await jobsManager.slashingPeriod.call()
-            await fixture.rpc.wait(verificationPeriod.add(slashingPeriod).toNumber())
+            await fixture.roundsManager.mineBlocks(verificationPeriod.add(slashingPeriod).toNumber() + 1)
 
             await jobsManager.distributeFees(jobId, claimId, {from: electedTranscoder})
 
@@ -505,7 +513,7 @@ contract("JobsManager", accounts => {
             // Fast foward through verificaiton and slashing period
             const verificationPeriod = await jobsManager.verificationPeriod.call()
             const slashingPeriod = await jobsManager.slashingPeriod.call()
-            await fixture.rpc.wait(verificationPeriod.add(slashingPeriod).toNumber())
+            await fixture.roundsManager.mineBlocks(verificationPeriod.add(slashingPeriod).toNumber() + 1)
 
             await jobsManager.distributeFees(jobId, claimId, {from: electedTranscoder})
 
@@ -571,14 +579,16 @@ contract("JobsManager", accounts => {
 
             await jobsManager.deposit(1000, {from: broadcaster})
 
+            await fixture.roundsManager.setBlockNum(100)
+
             const streamId = "1"
             const transcodingOptions = createTranscodingOptions(["foo", "bar"])
-            const endBlock = web3.eth.blockNumber + 500
+            const endBlock = 100 + 500
             // Broadcaster creates job 0
             await jobsManager.job(streamId, transcodingOptions, maxPricePerSegment, endBlock, {from: broadcaster})
 
             // Wait for job creation block + 1 to be mined
-            await fixture.rpc.wait(1)
+            await fixture.roundsManager.mineBlocks(1)
 
             const segmentRange0 = [0, 3]
             const claimRoot = "0x1000000000000000000000000000000000000000000000000000000000000000"
@@ -594,7 +604,7 @@ contract("JobsManager", accounts => {
             // Fast foward through verification period and slashing period
             const verificationPeriod = await jobsManager.verificationPeriod.call()
             const slashingPeriod = await jobsManager.slashingPeriod.call()
-            await fixture.rpc.wait(verificationPeriod.add(slashingPeriod).toNumber())
+            await fixture.roundsManager.mineBlocks(verificationPeriod.add(slashingPeriod).toNumber() + 1)
         })
 
         it("should update job escrow and claim statuses multiple claims", async () => {
@@ -669,13 +679,15 @@ contract("JobsManager", accounts => {
 
             await jobsManager.deposit(1000, {from: broadcaster})
 
+            await fixture.roundsManager.setBlockNum(100)
+
             const transcodingOptions = createTranscodingOptions(["foo", "bar"])
-            const endBlock = web3.eth.blockNumber + 500
+            const endBlock = 100 + 500
             // Broadcaster creates job 0
             await jobsManager.job(streamId, transcodingOptions, maxPricePerSegment, endBlock, {from: broadcaster})
 
             // Wait for job creation block + 1 to be mined
-            await fixture.rpc.wait(1)
+            await fixture.roundsManager.mineBlocks(1)
 
             const segmentRange = [0, 3]
             // Account 1 (transcoder) claims work for job 0
@@ -689,7 +701,7 @@ contract("JobsManager", accounts => {
         it("should throw if segment is not eligible for verification", async () => {
             // Fast foward through verification period
             const verificationPeriod = await jobsManager.verificationPeriod.call()
-            await fixture.rpc.wait(verificationPeriod.toNumber())
+            await fixture.roundsManager.mineBlocks(verificationPeriod.toNumber() + 1)
 
             const invalidSegmentNumber = 99
             await expectThrow(jobsManager.missedVerificationSlash(jobId, claimId, invalidSegmentNumber, {from: accounts[2]}))
@@ -699,7 +711,7 @@ contract("JobsManager", accounts => {
             // Fast forward through slashing period
             const verificationPeriod = await jobsManager.verificationPeriod.call()
             const slashingPeriod = await jobsManager.slashingPeriod.call()
-            await fixture.rpc.wait(verificationPeriod.add(slashingPeriod).toNumber())
+            await fixture.roundsManager.mineBlocks(verificationPeriod.add(slashingPeriod).toNumber() + 1)
 
             await expectThrow(jobsManager.missedVerificationSlash(jobId, claimId, segmentNumber, {from: accounts[2]}))
         })
@@ -709,7 +721,7 @@ contract("JobsManager", accounts => {
             await jobsManager.verify(jobId, claimId, segmentNumber, dataStorageHash, correctDataHashes, correctSig, correctProof, {from: electedTranscoder})
             // Fast foward through verification period
             const verificationPeriod = await jobsManager.verificationPeriod.call()
-            await fixture.rpc.wait(verificationPeriod.toNumber())
+            await fixture.roundsManager.mineBlocks(verificationPeriod.toNumber() + 1)
 
             await expectThrow(jobsManager.missedVerificationSlash(jobId, claimId, segmentNumber, {from: accounts[2]}))
         })
@@ -717,7 +729,7 @@ contract("JobsManager", accounts => {
         it("should update job escrow, refund broadcaster deposit and set claim as slashed", async () => {
             // Fast foward through verification period
             const verificationPeriod = await jobsManager.verificationPeriod.call()
-            await fixture.rpc.wait(verificationPeriod.toNumber())
+            await fixture.roundsManager.mineBlocks(verificationPeriod.toNumber() + 1)
 
             await jobsManager.missedVerificationSlash(jobId, claimId, segmentNumber, {from: accounts[2]})
 
@@ -734,7 +746,7 @@ contract("JobsManager", accounts => {
         it("should throw if claim is not pending", async () => {
             // Fast foward through verification period
             const verificationPeriod = await jobsManager.verificationPeriod.call()
-            await fixture.rpc.wait(verificationPeriod.toNumber())
+            await fixture.roundsManager.mineBlocks(verificationPeriod.toNumber() + 1)
 
             await jobsManager.missedVerificationSlash(jobId, claimId, segmentNumber, {from: accounts[2]})
 
@@ -765,13 +777,15 @@ contract("JobsManager", accounts => {
 
             await jobsManager.deposit(1000, {from: broadcaster})
 
+            await fixture.roundsManager.setBlockNum(100)
+
             const transcodingOptions = createTranscodingOptions(["foo", "bar"])
-            const endBlock = web3.eth.blockNumber + 500
+            const endBlock = 100 + 500
             // Broadcaster creates job 0
             await jobsManager.job(streamId, transcodingOptions, maxPricePerSegment, endBlock, {from: broadcaster})
 
             // Wait for job creation block + 1 to be mined
-            await fixture.rpc.wait(1)
+            await fixture.roundsManager.mineBlocks(1)
 
             const segmentRange1 = [0, 3]
             const segmentRange2 = [2, 5]
@@ -822,30 +836,32 @@ contract("JobsManager", accounts => {
             await fixture.token.setApproved(true)
 
             await jobsManager.deposit(1000, {from: accounts[0]})
+
+            await fixture.roundsManager.setBlockNum(100)
         })
 
         it("should fail if the withdraw block is in the future", async () => {
-            const endBlock = web3.eth.blockNumber + 50
+            const endBlock = 100 + 50
             await jobsManager.job("abc", "abc", 100, endBlock, {from: accounts[0]})
 
             await expectThrow(jobsManager.withdraw({from: accounts[0]}))
         })
 
         it("should fail if withdraw block is updated to a block in the future", async () => {
-            let endBlock = web3.eth.blockNumber + 50
+            let endBlock = 100 + 50
             await jobsManager.job("abc", "abc", 100, endBlock, {from: accounts[0]})
-            await fixture.rpc.wait(50)
+            await fixture.roundsManager.mineBlocks(50)
 
-            endBlock = web3.eth.blockNumber + 50
+            endBlock = 150 + 50
             await jobsManager.job("efg", "efg", 100, endBlock, {from: accounts[0]})
 
             await expectThrow(jobsManager.withdraw({from: accounts[0]}))
         })
 
         it("should succeed if the broadcaster has no active jobs and its withdraw block is in now or in the past", async () => {
-            const endBlock = web3.eth.blockNumber + 50
+            const endBlock = 100 + 50
             await jobsManager.job("abc", "abc", 100, endBlock, {from: accounts[0]})
-            await fixture.rpc.wait(50)
+            await fixture.roundsManager.mineBlocks(50)
 
             await jobsManager.withdraw({from: accounts[0]})
         })

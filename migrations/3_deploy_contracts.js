@@ -7,6 +7,7 @@ const Minter = artifacts.require("Minter")
 const BondingManager = artifacts.require("BondingManager")
 const JobsManager = artifacts.require("JobsManager")
 const RoundsManager = artifacts.require("RoundsManager")
+const AdjustableRoundsManager = artifacts.require("AdjustableRoundsManager")
 const IdentityVerifier = artifacts.require("IdentityVerifier")
 const LivepeerVerifier = artifacts.require("LivepeerVerifier")
 const OraclizeVerifier = artifacts.require("OraclizeVerifier")
@@ -57,7 +58,7 @@ module.exports = function(deployer, network) {
             config.minter.targetBondingRate
         )
 
-        if (network === "development" || network === "testrpc" || network == "parityDev" || network === "gethDev") {
+        if (network === "development" || network === "testrpc" || network === "parityDev" || network === "gethDev") {
             await deployAndRegister(deployer, controller, IdentityVerifier, "Verifier", controller.address)
         } else if (network === "lpTestNet") {
             await deployAndRegister(deployer, controller, LivepeerVerifier, "Verifier", controller.address, config.verifier.verificationCodeHash)
@@ -77,7 +78,14 @@ module.exports = function(deployer, network) {
 
         const bondingManager = await deployProxyAndRegister(deployer, controller, BondingManager, "BondingManager", controller.address)
         const jobsManager = await deployProxyAndRegister(deployer, controller, JobsManager, "JobsManager", controller.address)
-        const roundsManager = await deployProxyAndRegister(deployer, controller, RoundsManager, "RoundsManager", controller.address)
+
+        let roundsManager
+
+        if (network === "development" || network === "testrpc" || network === "parityDev" || network === "gethDev") {
+            roundsManager = await deployProxyAndRegister(deployer, controller, AdjustableRoundsManager, "RoundsManager", controller.address)
+        } else {
+            roundsManager = await deployProxyAndRegister(deployer, controller, RoundsManager, "RoundsManager", controller.address)
+        }
 
         deployer.logger.log("Initializing contracts...")
 

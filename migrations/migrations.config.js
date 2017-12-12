@@ -6,8 +6,8 @@ const PERC_MULTIPLIER = PERC_DIVISOR / 100
 
 module.exports = {
     bondingManager: {
-        numTranscoders: 2,
-        numActiveTranscoders: 1,
+        numTranscoders: 10,
+        numActiveTranscoders: 5,
         unbondingPeriod: 2
     },
     jobsManager: {
