@@ -44,8 +44,6 @@ library JobLib {
         view
         returns (bool)
     {
-        // Claim block + 1 must be within the last 256 blocks from the current block
-        require(block.number < 256 || _claimBlock + 1 >= block.number - 256);
         // Segment must be in segment range
         if (_segmentNumber < _segmentRange[0] || _segmentNumber > _segmentRange[1]) {
             return false;

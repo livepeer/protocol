@@ -11,6 +11,7 @@ contract IRoundsManager {
     function initializeRound() external;
 
     // Public functions
+    function blockNum() public view returns (uint256);
     function currentRound() public view returns (uint256);
     function currentRoundStartBlock() public view returns (uint256);
     function currentRoundInitialized() public view returns (bool);

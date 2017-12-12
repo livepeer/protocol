@@ -820,27 +820,29 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     function updateDelegatorWithTokenPoolsShares(address _delegator, uint256 _endRound) internal {
         Delegator storage del = delegators[_delegator];
 
-        uint256 currentBondedAmount = del.bondedAmount;
-        uint256 currentUnbondedAmount = del.unbondedAmount;
+        if (del.lastClaimTokenPoolsSharesRound > 0) {
+            uint256 currentBondedAmount = del.bondedAmount;
+            uint256 currentUnbondedAmount = del.unbondedAmount;
 
-        for (uint256 i = del.lastClaimTokenPoolsSharesRound + 1; i <= _endRound; i++) {
-            TokenPools.Data storage tokenPools = transcoders[del.delegateAddress].tokenPoolsPerRound[i];
+            for (uint256 i = del.lastClaimTokenPoolsSharesRound + 1; i <= _endRound; i++) {
+                TokenPools.Data storage tokenPools = transcoders[del.delegateAddress].tokenPoolsPerRound[i];
 
-            bool isTranscoder = _delegator == del.delegateAddress;
-            uint256 fees = tokenPools.feePoolShare(currentBondedAmount, isTranscoder);
-            uint256 rewards = tokenPools.rewardPoolShare(currentBondedAmount, isTranscoder);
+                bool isTranscoder = _delegator == del.delegateAddress;
+                uint256 fees = tokenPools.feePoolShare(currentBondedAmount, isTranscoder);
+                uint256 rewards = tokenPools.rewardPoolShare(currentBondedAmount, isTranscoder);
 
-            // Update used stake for token pools for the round
-            tokenPools.usedStake = tokenPools.usedStake.add(currentBondedAmount);
+                // Update used stake for token pools for the round
+                tokenPools.usedStake = tokenPools.usedStake.add(currentBondedAmount);
 
-            currentUnbondedAmount = currentUnbondedAmount.add(fees);
-            currentBondedAmount = currentBondedAmount.add(rewards);
+                currentUnbondedAmount = currentUnbondedAmount.add(fees);
+                currentBondedAmount = currentBondedAmount.add(rewards);
+            }
+
+            // Rewards are bonded by default
+            del.bondedAmount = currentBondedAmount;
+            // Fees are unbonded by default
+            del.unbondedAmount = currentUnbondedAmount;
         }
-
-        // Rewards are bonded by default
-        del.bondedAmount = currentBondedAmount;
-        // Fees are unbonded by default
-        del.unbondedAmount = currentUnbondedAmount;
 
         del.lastClaimTokenPoolsSharesRound = _endRound;
     }

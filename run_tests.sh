@@ -59,17 +59,17 @@ fi
 #     printf "${GREEN}Parity integration tests passed${NC}\n"
 # fi
 
-# echo "Starting Geth integration tests..."
-# # Wait for geth-integration-tests
-# GETH_TEST_EXIT_CODE=`docker wait geth-integration-tests`
-# # Output geth-integration-tests logs
-# docker logs geth-integration-tests
-# # Check geth-integration-tests output
-# if [ -z ${GETH_TEST_EXIT_CODE+x} ] || [ "$GETH_TEST_EXIT_CODE" -ne 0 ] ; then
-#     printf "${RED}Geth integration tests failed${NC} - Exit Code: $GETH_TEST_EXIT_CODE\n"
-# else
-#     printf "${GREEN}Geth integration tests passed${NC}\n"
-# fi
+echo "Starting Geth integration tests..."
+# Wait for geth-integration-tests
+GETH_TEST_EXIT_CODE=`docker wait geth-integration-tests`
+# Output geth-integration-tests logs
+docker logs geth-integration-tests
+# Check geth-integration-tests output
+if [ -z ${GETH_TEST_EXIT_CODE+x} ] || [ "$GETH_TEST_EXIT_CODE" -ne 0 ] ; then
+    printf "${RED}Geth integration tests failed${NC} - Exit Code: $GETH_TEST_EXIT_CODE\n"
+else
+    printf "${GREEN}Geth integration tests passed${NC}\n"
+fi
 
 # Clean up
 docker-compose down

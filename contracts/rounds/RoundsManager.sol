@@ -72,10 +72,17 @@ contract RoundsManager is ManagerProxyTarget, IRoundsManager {
     }
 
     /*
+     * @dev Return current block number
+     */
+    function blockNum() public view returns (uint256) {
+        return block.number;
+    }
+
+    /*
      * @dev Return current round
      */
     function currentRound() public view returns (uint256) {
-        return block.number.div(roundLength);
+        return blockNum().div(roundLength);
     }
 
     /*
@@ -96,7 +103,7 @@ contract RoundsManager is ManagerProxyTarget, IRoundsManager {
      * @dev Check if we are in the lock period of the current round
      */
     function currentRoundLocked() public view returns (bool) {
-        return block.number.sub(currentRoundStartBlock()) >= roundLength.sub(roundLength.mul(roundLockAmount).div(PERC_DIVISOR));
+        return blockNum().sub(currentRoundStartBlock()) >= roundLength.sub(roundLength.mul(roundLockAmount).div(PERC_DIVISOR));
     }
 
     /*

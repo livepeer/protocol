@@ -9,6 +9,7 @@ contract RoundsManagerMock is IRoundsManager {
     IBondingManager bondingManager;
     IMinter minter;
 
+    uint256 public blockNum;
     uint256 public currentRound;
     uint256 public currentRoundStartBlock;
     bool public currentRoundInitialized;
@@ -20,6 +21,14 @@ contract RoundsManagerMock is IRoundsManager {
 
     function setMinter(address _minter) external {
         minter = IMinter(_minter);
+    }
+
+    function mineBlocks(uint256 _blocks) external {
+        blockNum += _blocks;
+    }
+
+    function setBlockNum(uint256 _blockNum) external {
+        blockNum = _blockNum;
     }
 
     function setCurrentRound(uint256 _round) external {
@@ -40,6 +49,10 @@ contract RoundsManagerMock is IRoundsManager {
 
     function callSetCurrentRewardTokens() external {
         minter.setCurrentRewardTokens();
+    }
+
+    function blockNum() public view returns (uint256) {
+        return blockNum;
     }
 
     function currentRound() public view returns (uint256) {
