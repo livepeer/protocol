@@ -126,7 +126,12 @@ contract Minter is Manager, IMinter {
      * @dev Set inflation based upon the current bonding rate
      */
     function setInflation() internal {
-        uint256 currentBondingRate = (bondingManager().getTotalBonded() * PERC_DIVISOR) / livepeerToken().totalSupply();
+        uint256 currentBondingRate = 0;
+        uint256 totalSupply = livepeerToken().totalSupply();
+
+        if (totalSupply > 0) {
+            currentBondingRate = (bondingManager().getTotalBonded() * PERC_DIVISOR) / totalSupply;
+        }
 
         if (currentBondingRate < targetBondingRate) {
             // Bonding rate is below the target - increase inflation

@@ -61,7 +61,7 @@ module.exports = function(deployer, network) {
         if (network === "development" || network === "testrpc" || network === "parityDev" || network === "gethDev") {
             await deployAndRegister(deployer, controller, IdentityVerifier, "Verifier", controller.address)
         } else if (network === "lpTestNet") {
-            await deployAndRegister(deployer, controller, LivepeerVerifier, "Verifier", controller.address, config.verifier.verificationCodeHash)
+            await deployAndRegister(deployer, controller, LivepeerVerifier, "Verifier", controller.address, config.verifier.solvers, config.verifier.verificationCodeHash)
         } else {
             await deployAndRegister(deployer, controller, OraclizeVerifier, "Verifier", controller.address, config.verifier.verificationCodeHash, config.verifier.gasPrice, config.verifier.gasLimit)
         }
