@@ -784,6 +784,23 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     }
 
     /*
+     * @dev Return total active stake for a round
+     * @param _round Round number
+     */
+    function getTotalActiveStake(uint256 _round) public view returns (uint256) {
+        return activeTranscoderSet[_round].totalStake;
+    }
+
+    /*
+     * @dev Return whether a transcoder was active during a round
+     * @param _transcoder Transcoder address
+     * @param _round Round number
+     */
+    function isActiveTranscoder(address _transcoder, uint256 _round) public view returns (bool) {
+        return activeTranscoderSet[_round].isActive[_transcoder];
+    }
+
+    /*
      * @dev Update a transcoder with rewards
      * @param _transcoder Address of transcoder
      * @param _rewards Amount of rewards
