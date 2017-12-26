@@ -1,4 +1,5 @@
 import Fixture from "../helpers/fixture"
+import BigNumber from "bignumber.js"
 import expectThrow from "../helpers/expectThrow"
 
 const Minter = artifacts.require("Minter")
@@ -85,6 +86,32 @@ contract("Minter", accounts => {
 
             const redistributionPool = await minter.redistributionPool.call()
             assert.equal(redistributionPool, expRedistributionPool, "redistribution pool incorrect")
+        })
+
+        it("should compute rewards correctly for large fraction = 1", async () => {
+            // If we compute the output of createReward as: (mintedTokens * fracNum) / fracDenom where all the values are bigAmount
+            // we would overflow when we try to to do mintedTokens * fracNum
+            // Instead we compute the output of createReward as: (mintedTokens * ((fracNum * PERC_DIVISOR) / fracDenom)) / PERC_DIVISOR
+            // fracNum * PERC_DIVISOR has less of a chance of overflowing since PERC_DIVISOR is bounded in magnitude
+            const bigAmount = new BigNumber("10000000000000000000000000000000000000000000000")
+            await fixture.token.setTotalSupply(bigAmount)
+            await fixture.bondingManager.setTotalBonded(bigAmount)
+            // Set up current reward tokens via RoundsManager
+            await fixture.roundsManager.callSetCurrentRewardTokens()
+
+            const supply = await fixture.token.totalSupply.call()
+            const inflation = await minter.inflation.call()
+            const mintedTokens = supply.mul(inflation).div(PERC_DIVISOR).floor()
+            const expMinted = mintedTokens.mul(bigAmount.mul(PERC_DIVISOR).div(bigAmount).floor()).div(PERC_DIVISOR).floor()
+
+            // Set up reward call via BondingManager
+            await fixture.bondingManager.setActiveTranscoder(accounts[1], 0, bigAmount, bigAmount)
+            await fixture.bondingManager.reward()
+
+            let mintedTo = await fixture.token.mintedTo.call()
+            assert.equal(mintedTo, minter.address, "wrong minted to address")
+            let minted = await fixture.token.minted.call()
+            assert.equal(minted.toString(), expMinted.toString(), "wrong minted amount")
         })
 
         it("should compute rewards correctly for multiple valid calls", async () => {
