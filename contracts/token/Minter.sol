@@ -78,8 +78,10 @@ contract Minter is Manager, IMinter {
      * @param _fracDenom Denominator of fraction (total active stake)
      */
     function createReward(uint256 _fracNum, uint256 _fracDenom) external onlyBondingManager whenSystemNotPaused returns (uint256) {
+        uint256 percPoints = _fracNum.mul(PERC_DIVISOR).div(_fracDenom);
+
         // Compute fraction of redistributable tokens to include in reward
-        uint256 redistributeAmount = currentRedistributableTokens.mul(_fracNum).div(_fracDenom);
+        uint256 redistributeAmount = currentRedistributableTokens.mul(percPoints).div(PERC_DIVISOR);
         // Update amount of redistributed tokens for round
         currentRedistributedTokens = currentRedistributedTokens.add(redistributeAmount);
         redistributionPool = redistributionPool.sub(redistributeAmount);
@@ -87,7 +89,7 @@ contract Minter is Manager, IMinter {
         require(currentRedistributedTokens <= currentRedistributableTokens);
 
         // Compute and mint fraction of mintable tokens to include in reward
-        uint256 mintAmount = currentMintableTokens.mul(_fracNum).div(_fracDenom);
+        uint256 mintAmount = currentMintableTokens.mul(percPoints).div(PERC_DIVISOR);
         // Update amount of minted tokens for round
         currentMintedTokens = currentMintedTokens.add(mintAmount);
         // Minted tokens must not exceed mintable tokens
