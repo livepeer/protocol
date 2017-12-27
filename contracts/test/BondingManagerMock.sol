@@ -40,8 +40,12 @@ contract BondingManagerMock is IBondingManager {
         withdrawAmount = _amount;
     }
 
-    function withdraw() external {
-        minter.transferTokens(msg.sender, withdrawAmount);
+    function withdraw(bool _unbonded, address _recipient) external {
+        if (_unbonded) {
+            minter.transferETH(_recipient, withdrawAmount);
+        } else {
+            minter.transferTokens(_recipient, withdrawAmount);
+        }
     }
 
     function reward() external {

@@ -347,22 +347,22 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // Delegator must either have unbonded tokens or be in the unbonded state
         require(delegators[msg.sender].unbondedAmount > 0 || delegatorStatus(msg.sender) == DelegatorStatus.Unbonded);
 
-        uint256 amount = 0;
-
         if (delegators[msg.sender].unbondedAmount > 0) {
-            // Withdraw unbonded amount
-            amount = amount.add(delegators[msg.sender].unbondedAmount);
+            // Withdraw unbonded amount (ETH)
+            uint256 unbondedAmount = delegators[msg.sender].unbondedAmount;
             delegators[msg.sender].unbondedAmount = 0;
+
+            minter().transferETH(msg.sender, unbondedAmount);
         }
 
         if (delegatorStatus(msg.sender) == DelegatorStatus.Unbonded) {
-            // Withdraw bonded amount which is now unbonded
-            amount = amount.add(delegators[msg.sender].bondedAmount);
+            // Withdraw bonded amount (LPT)
+            uint256 bondedAmount = delegators[msg.sender].bondedAmount;
             delegators[msg.sender].bondedAmount = 0;
             delegators[msg.sender].withdrawRound = 0;
-        }
 
-        minter().transferTokens(msg.sender, amount);
+            minter().transferTokens(msg.sender, bondedAmount);
+        }
 
         Withdraw(msg.sender);
     }

@@ -108,6 +108,22 @@ contract Minter is Manager, IMinter {
     }
 
     /*
+     * @dev Transfer ETH to a recipient
+     * @param _to Recipient address
+     * @param _amount Amount of ETH
+     */
+    function transferETH(address _to, uint256 _amount) external onlyBondingManagerOrJobsManager whenSystemNotPaused {
+        _to.transfer(_amount);
+    }
+
+    /*
+     * @dev Receive ETH from JobsManager
+     */
+    function receiveETH() external payable onlyJobsManager whenSystemNotPaused returns (bool) {
+        return true;
+    }
+
+    /*
      * @dev Set the reward token amounts for the round. Only callable by the RoundsManager
      */
     function setCurrentRewardTokens() external onlyRoundsManager whenSystemNotPaused {

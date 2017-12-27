@@ -74,7 +74,7 @@ contract("JobsManager", accounts => {
         })
 
         it("should update broadcaster deposit", async () => {
-            await jobsManager.deposit(1000, {from: broadcaster})
+            await jobsManager.deposit({from: broadcaster, value: 1000})
             const bDeposit = (await jobsManager.broadcasters.call(broadcaster))[0]
             assert.equal(bDeposit, 1000, "broadcaster deposit incorrect")
         })
@@ -173,7 +173,7 @@ contract("JobsManager", accounts => {
             await fixture.token.setApproved(true)
 
             // Broadcaster deposits fees
-            await jobsManager.deposit(deposit, {from: broadcaster})
+            await jobsManager.deposit({from: broadcaster, value: deposit})
 
             await fixture.roundsManager.setBlockNum(100)
 
@@ -335,7 +335,7 @@ contract("JobsManager", accounts => {
             await fixture.bondingManager.setActiveTranscoder(electedTranscoder, maxPricePerSegment, 100, 200)
             await fixture.token.setApproved(true)
 
-            await jobsManager.deposit(1000, {from: broadcaster})
+            await jobsManager.deposit({from: broadcaster, value: 1000})
 
             await fixture.roundsManager.setBlockNum(100)
 
@@ -432,7 +432,7 @@ contract("JobsManager", accounts => {
             await fixture.bondingManager.setActiveTranscoder(electedTranscoder, maxPricePerSegment, 100, 200)
             await fixture.token.setApproved(true)
 
-            await jobsManager.deposit(1000, {from: broadcaster})
+            await jobsManager.deposit({from: broadcaster, value: 1000})
 
             await fixture.roundsManager.setBlockNum(100)
 
@@ -577,7 +577,7 @@ contract("JobsManager", accounts => {
             await fixture.bondingManager.setActiveTranscoder(electedTranscoder, maxPricePerSegment, 100, 200)
             await fixture.token.setApproved(true)
 
-            await jobsManager.deposit(1000, {from: broadcaster})
+            await jobsManager.deposit({from: broadcaster, value: 1000})
 
             await fixture.roundsManager.setBlockNum(100)
 
@@ -677,7 +677,7 @@ contract("JobsManager", accounts => {
             await fixture.bondingManager.setActiveTranscoder(electedTranscoder, maxPricePerSegment, 100, 200)
             await fixture.token.setApproved(true)
 
-            await jobsManager.deposit(1000, {from: broadcaster})
+            await jobsManager.deposit({from: broadcaster, value: 1000})
 
             await fixture.roundsManager.setBlockNum(100)
 
@@ -775,7 +775,7 @@ contract("JobsManager", accounts => {
             await fixture.bondingManager.setActiveTranscoder(electedTranscoder, maxPricePerSegment, 100, 200)
             await fixture.token.setApproved(true)
 
-            await jobsManager.deposit(1000, {from: broadcaster})
+            await jobsManager.deposit({from: broadcaster, value: 1000})
 
             await fixture.roundsManager.setBlockNum(100)
 
@@ -835,7 +835,7 @@ contract("JobsManager", accounts => {
             await fixture.bondingManager.setActiveTranscoder(accounts[1], 100, 100, 200)
             await fixture.token.setApproved(true)
 
-            await jobsManager.deposit(1000, {from: accounts[0]})
+            await jobsManager.deposit({from: accounts[0], value: 1000})
 
             await fixture.roundsManager.setBlockNum(100)
         })
