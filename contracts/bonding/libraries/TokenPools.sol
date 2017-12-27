@@ -10,45 +10,54 @@ library TokenPools {
 
     // Represents rewards and fees to be distributed to delegators
     struct Data {
-        uint256 rewardPool;                // Reward tokens in the pool. (totalStake - stakeUsed) / totalStake = % of claimable rewards in the pool
-        uint256 feePool;                   // Fee tokens in the pool. (totalStake - stakeUsed) / totalStake = % of claimable fees in the pool
+        uint256 rewardPool;                // Rewards in the pool
+        uint256 feePool;                   // Fees in the pool
         uint256 totalStake;                // Transcoder's total stake during the pool's round
-        uint256 usedStake;                 // Staked used to claim from fee and reward pools
+        uint256 claimableStake;            // Stake that can be used to claim portions of the fee and reward pool
         uint256 transcoderBlockRewardCut;  // Block reward cut for the reward pool
         uint256 transcoderFeeShare;        // Fee share for the fee pool
     }
 
     function init(TokenPools.Data storage tokenPools, uint256 _stake, uint256 _blockRewardCut, uint256 _feeShare) internal {
         tokenPools.totalStake = _stake;
+        tokenPools.claimableStake = _stake;
         tokenPools.transcoderBlockRewardCut = _blockRewardCut;
         tokenPools.transcoderFeeShare = _feeShare;
     }
 
-    function unclaimableFees(TokenPools.Data storage tokenPools, uint256 _fees) internal view returns (uint256) {
-        if (tokenPools.totalStake == 0) {
-            return 0;
-        } else {
-            uint256 delegatorsFeeShare = _fees.mul(tokenPools.transcoderFeeShare).div(PERC_DIVISOR);
-            return delegatorsFeeShare.mul(tokenPools.usedStake).div(tokenPools.totalStake);
-        }
+    function hasClaimableShares(TokenPools.Data storage tokenPools) internal view returns (bool) {
+        return tokenPools.claimableStake > 0;
     }
 
-    function unclaimableRewards(TokenPools.Data storage tokenPools, uint256 _rewards) internal view returns (uint256) {
-        if (tokenPools.totalStake == 0) {
-            return 0;
-        } else {
-            uint256 delegatorsRewardShare = _rewards.mul(PERC_DIVISOR.sub(tokenPools.transcoderBlockRewardCut)).div(PERC_DIVISOR);
-            return delegatorsRewardShare.mul(tokenPools.usedStake).div(tokenPools.totalStake);
+    function claimShare(TokenPools.Data storage tokenPools, uint256 _stake, bool _isTranscoder) internal returns (uint256, uint256) {
+        uint256 fees = 0;
+        uint256 rewards = 0;
+
+        if (tokenPools.feePool > 0) {
+            // Compute fee share
+            fees = feePoolShare(tokenPools, _stake, _isTranscoder);
+            tokenPools.feePool = tokenPools.feePool.sub(fees);
         }
+
+        if (tokenPools.rewardPool > 0) {
+            // Compute reward share
+            rewards = rewardPoolShare(tokenPools, _stake, _isTranscoder);
+            tokenPools.rewardPool = tokenPools.rewardPool.sub(rewards);
+        }
+
+        // Update remaning claimable stake for token pools
+        tokenPools.claimableStake = tokenPools.claimableStake.sub(_stake);
+
+        return (fees, rewards);
     }
 
     function feePoolShare(TokenPools.Data storage tokenPools, uint256 _stake, bool _isTranscoder) internal view returns (uint256) {
         uint256 transcoderFees = 0;
         uint256 delegatorFees = 0;
 
-        if (tokenPools.totalStake > 0) {
+        if (tokenPools.claimableStake > 0) {
             transcoderFees = tokenPools.feePool.mul(PERC_DIVISOR.sub(tokenPools.transcoderFeeShare)).div(PERC_DIVISOR);
-            delegatorFees = tokenPools.feePool.sub(transcoderFees).mul(_stake).div(tokenPools.totalStake);
+            delegatorFees = tokenPools.feePool.sub(transcoderFees).mul(_stake).div(tokenPools.claimableStake);
         }
 
         if (_isTranscoder) {
@@ -62,9 +71,9 @@ library TokenPools {
         uint256 transcoderRewards = 0;
         uint256 delegatorRewards = 0;
 
-        if (tokenPools.totalStake > 0) {
+        if (tokenPools.claimableStake > 0) {
             transcoderRewards = tokenPools.rewardPool.mul(tokenPools.transcoderBlockRewardCut).div(PERC_DIVISOR);
-            delegatorRewards = tokenPools.rewardPool.sub(transcoderRewards).mul(_stake).div(tokenPools.totalStake);
+            delegatorRewards = tokenPools.rewardPool.sub(transcoderRewards).mul(_stake).div(tokenPools.claimableStake);
         }
 
         if (_isTranscoder) {

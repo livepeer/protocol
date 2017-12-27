@@ -434,6 +434,72 @@ contract("BondingManager", accounts => {
             const unbondedAmount = dInfo[1]
             assert.equal(unbondedAmount.toString(), expUnbondedAmount, "delegator unbonded amount incorrect")
         })
+
+        it("should update delegator's stake and unbonded amount through the end round with a larger portion of rewards and fees after another delegator unbonds before the rewards and fees are released", async () => {
+            const transcoderTotalStake2 = 6000 + mintedTokens
+            const fees2 = 400
+            const mintedTokens2 = 600
+            const jobCreationRound2 = 8
+            const dAddr2 = accounts[3]
+
+            // Delegator 2 bonds
+            await bondingManager.bond(2000, tAddr, {from: dAddr2})
+
+            await fixture.roundsManager.setCurrentRound(jobCreationRound2)
+            await fixture.roundsManager.initializeRound()
+
+            // Delegator 1 claims shares through round 7
+            await bondingManager.claimTokenPoolsShares(7, {from: dAddr})
+            // Delegator 2 claims shares through round 8
+            await bondingManager.claimTokenPoolsShares(jobCreationRound2, {from: dAddr2})
+
+            // Calculate current claimable stake
+            let claimableStake = transcoderTotalStake2 - 2000
+
+            let tokenPools = await bondingManager.getTranscoderTokenPoolsForRound(tAddr, jobCreationRound2)
+            assert.equal(tokenPools[3], claimableStake, "wrong claimable stake for token pools")
+
+            // Set params for distribute fees
+            await fixture.jobsManager.setDistributeFeesParams(tAddr, fees2, jobCreationRound2)
+            // Call updateTranscoderFeePool via transaction from JobsManager. Fee pool at jobCreationRound2 updated with fees2
+            await fixture.jobsManager.distributeFees()
+            // Set minted tokens for a call to reward
+            await fixture.minter.setReward(mintedTokens2)
+            // Transcoder calls reward
+            await bondingManager.reward({from: tAddr})
+
+            // Get Delegator 1 current stake
+            const delegatorStake = (await bondingManager.getDelegator(dAddr))[0]
+            // Get Delegator 1 unbonded amount
+            const unbondedAmount = (await bondingManager.getDelegator(dAddr))[1]
+
+            const delegatorsFeeShare = Math.floor((fees2 * feeShare) / PERC_DIVISOR)
+            const delegatorFeeShare = Math.floor((delegatorStake * delegatorsFeeShare) / claimableStake)
+
+            const delegatorsRewardShare = Math.floor((mintedTokens2 * (PERC_DIVISOR - blockRewardCut)) / PERC_DIVISOR)
+            const delegatorRewardShare = Math.floor((delegatorStake * delegatorsRewardShare) / claimableStake)
+
+            const expDelegatorStake = add(delegatorStake, delegatorRewardShare).toString()
+            const expUnbondedAmount = add(unbondedAmount, delegatorFeeShare).toString()
+
+            await bondingManager.claimTokenPoolsShares(jobCreationRound2, {from: dAddr})
+
+            const dInfo = await bondingManager.getDelegator(dAddr)
+            assert.equal(dInfo[0].toString(), expDelegatorStake, "delegator stake incorrect")
+            assert.equal(dInfo[1].toString(), expUnbondedAmount, "delegator unbonded amount incorrect")
+
+            claimableStake -= delegatorStake
+            tokenPools = await bondingManager.getTranscoderTokenPoolsForRound(tAddr, jobCreationRound2)
+            assert.equal(tokenPools[0], mintedTokens2 - delegatorRewardShare, "wrong reward pool for token pools")
+            assert.equal(tokenPools[1], fees2 - delegatorFeeShare, "wrong fee pool for token pools")
+            assert.equal(tokenPools[3], claimableStake, "wrong claimable stake for token pools")
+
+            await bondingManager.claimTokenPoolsShares(jobCreationRound2, {from: tAddr})
+            tokenPools = await bondingManager.getTranscoderTokenPoolsForRound(tAddr, jobCreationRound2)
+            assert.equal(tokenPools[0], 0, "wrong reward pool for token pools")
+            assert.equal(tokenPools[1], 0, "wrong fee pool for token pools")
+            assert.equal(tokenPools[3], 0, "wrong claimable stake for token pools")
+        })
     })
 
     describe("delegatorStake", async () => {
