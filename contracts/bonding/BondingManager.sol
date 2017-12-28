@@ -499,9 +499,18 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
         // Award finder fee
         if (penalty > 0 && _finder != address(0)) {
-            // Award finder fee
-            uint256 finderAmount = penalty.mul(_finderFee).div(PERC_DIVISOR);
-            minter().transferTokens(_finder, finderAmount);
+            uint256 burnAmount = penalty;
+
+            if (_finder != address(0)) {
+                // Award finder fee
+                uint256 finderAmount = penalty.mul(_finderFee).div(PERC_DIVISOR);
+                minter().transferTokens(_finder, finderAmount);
+
+                burnAmount = burnAmount.sub(finderAmount);
+            }
+
+            // Minter burns the remaining slashed funds
+            minter().burnTokens(burnAmount);
         }
 
         TranscoderSlashed(_transcoder, penalty);

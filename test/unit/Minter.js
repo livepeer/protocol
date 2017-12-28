@@ -146,6 +146,19 @@ contract("Minter", accounts => {
         })
     })
 
+    describe("burnTokens", () => {
+        it("should throw if sender is not bonding manager", async () => {
+            await expectThrow(minter.burnTokens(100, {from: accounts[1]}))
+        })
+
+        it("should burn an amount of tokens", async () => {
+            await fixture.bondingManager.callBurnTokens(100)
+
+            const burned = await fixture.token.burned.call()
+            assert.equal(burned, 100, "wrong burned amount")
+        })
+    })
+
     describe("setCurrentRewardTokens", () => {
         it("should throw if sender is not rounds manager", async () => {
             await expectThrow(minter.setCurrentRewardTokens())

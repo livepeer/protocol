@@ -101,6 +101,14 @@ contract Minter is Manager, IMinter {
     }
 
     /*
+     * @dev Burn tokens
+     * @param _amount Amount of tokens to burn
+     */
+    function burnTokens(uint256 _amount) external onlyBondingManager whenSystemNotPaused {
+        livepeerToken().burn(_amount);
+    }
+
+    /*
      * @dev Set the reward token amounts for the round. Only callable by the RoundsManager
      */
     function setCurrentRewardTokens() external onlyRoundsManager whenSystemNotPaused {

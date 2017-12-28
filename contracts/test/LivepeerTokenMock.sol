@@ -9,6 +9,7 @@ contract LivepeerTokenMock is ILivepeerToken {
     bool public approved;
     address public mintedTo;
     uint256 public minted;
+    uint256 public burned;
 
     function setApproved(bool _value) external {
         approved = _value;
@@ -17,6 +18,10 @@ contract LivepeerTokenMock is ILivepeerToken {
     function mint(address _to, uint256 _amount) public returns (bool) {
         mintedTo = _to;
         minted = _amount;
+    }
+
+    function burn(uint256 _amount) public {
+        burned = _amount;
     }
 
     function allowance(address _owner, address _spender) public view returns (uint256) {
