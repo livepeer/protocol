@@ -402,37 +402,97 @@ contract("BondingManager", accounts => {
             // Transcoder calls reward
             await bondingManager.reward({from: tAddr})
 
-            // 15
-            const delegatorsFeeShare1 = Math.floor((fees * feeShare) / PERC_DIVISOR)
-            // 7
-            const delegatorFeeShare1 = Math.floor((2000 * delegatorsFeeShare1) / transcoderTotalStake)
+            const percPoints1 = Math.floor((2000 * PERC_DIVISOR) / transcoderTotalStake)
+            const transcoderFeeShare1 = Math.floor((fees * (PERC_DIVISOR - feeShare)) / PERC_DIVISOR)
+            const delegatorsFeeShare1 = fees - transcoderFeeShare1
+            const delegatorFeeShare1 = Math.floor((percPoints1 * delegatorsFeeShare1) / PERC_DIVISOR)
+            const transcoderRewardShare1 = Math.floor((mintedTokens * blockRewardCut) / PERC_DIVISOR)
+            const delegatorsRewardShare1 = mintedTokens - transcoderRewardShare1
+            const delegatorRewardShare1 = Math.floor((percPoints1 * delegatorsRewardShare1) / PERC_DIVISOR)
 
-            // 450
-            const delegatorsRewardShare1 = Math.floor((mintedTokens * (PERC_DIVISOR - blockRewardCut)) / PERC_DIVISOR)
-            // 225
-            const delegatorRewardShare1 = Math.floor((2000 * delegatorsRewardShare1) / transcoderTotalStake)
+            const percPoints2 = Math.floor((add(2000, delegatorRewardShare1) * PERC_DIVISOR) / transcoderTotalStake2)
+            const transcoderFeeShare2 = Math.floor((fees2 * (PERC_DIVISOR - feeShare)) / PERC_DIVISOR)
+            const delegatorsFeeShare2 = fees2 - transcoderFeeShare2
+            const delegatorFeeShare2 = Math.floor((percPoints2 * delegatorsFeeShare2) / PERC_DIVISOR)
+            const transcoderRewardShare2 = Math.floor((mintedTokens2 * blockRewardCut) / PERC_DIVISOR)
+            const delegatorsRewardShare2 = mintedTokens2 - transcoderRewardShare2
+            const delegatorRewardShare2 = Math.floor((percPoints2 * delegatorsRewardShare2) / PERC_DIVISOR)
 
-            // 20
-            const delegatorsFeeShare2 = Math.floor((fees2 * feeShare) / PERC_DIVISOR)
-            // 9
-            const delegatorFeeShare2 = Math.floor((add(2000, delegatorRewardShare1) * delegatorsFeeShare2) / transcoderTotalStake2)
-
-            // 540
-            const delegatorsRewardShare2 = Math.floor((mintedTokens2 * (PERC_DIVISOR - blockRewardCut)) / PERC_DIVISOR)
-            // 267
-            const delegatorRewardShare2 = Math.floor((add(2000, delegatorRewardShare1).toNumber() * delegatorsRewardShare2) / transcoderTotalStake2)
-
-            // 2492
-            const expDelegatorStake = add(2000, delegatorRewardShare1, delegatorRewardShare2).toString()
-            // 18
-            const expUnbondedAmount = add(delegatorFeeShare1, delegatorFeeShare2).toString()
+            const expDelegatorStake = add(2000, delegatorRewardShare1, delegatorRewardShare2)
+            const expUnbondedAmount = add(delegatorFeeShare1, delegatorFeeShare2)
             await bondingManager.claimTokenPoolsShares(8, {from: dAddr})
 
             const dInfo = await bondingManager.getDelegator(dAddr)
-            const delegatorStake = dInfo[0]
-            assert.equal(delegatorStake.toString(), expDelegatorStake, "delegator stake incorrect")
-            const unbondedAmount = dInfo[1]
-            assert.equal(unbondedAmount.toString(), expUnbondedAmount, "delegator unbonded amount incorrect")
+            assert.equal(dInfo[0].toString(), expDelegatorStake, "delegator stake incorrect")
+            assert.equal(dInfo[1].toString(), expUnbondedAmount, "delegator unbonded amount incorrect")
+        })
+
+        it("should update delegator's stake and unbonded amount through the end round with a larger portion of rewards and fees after another delegator unbonds before the rewards and fees are released", async () => {
+            const transcoderTotalStake2 = 6000 + mintedTokens
+            const fees2 = 400
+            const mintedTokens2 = 600
+            const jobCreationRound2 = 8
+            const dAddr2 = accounts[3]
+
+            // Delegator 2 bonds
+            await bondingManager.bond(2000, tAddr, {from: dAddr2})
+
+            await fixture.roundsManager.setCurrentRound(jobCreationRound2)
+            await fixture.roundsManager.initializeRound()
+
+            // Delegator 1 claims shares through round 7
+            await bondingManager.claimTokenPoolsShares(7, {from: dAddr})
+            // Delegator 2 claims shares through round 8
+            await bondingManager.claimTokenPoolsShares(jobCreationRound2, {from: dAddr2})
+
+            // Calculate current claimable stake
+            let claimableStake = transcoderTotalStake2 - 2000
+
+            let tokenPools = await bondingManager.getTranscoderTokenPoolsForRound(tAddr, jobCreationRound2)
+            assert.equal(tokenPools[3], claimableStake, "wrong claimable stake for token pools")
+
+            // Set params for distribute fees
+            await fixture.jobsManager.setDistributeFeesParams(tAddr, fees2, jobCreationRound2)
+            // Call updateTranscoderFeePool via transaction from JobsManager. Fee pool at jobCreationRound2 updated with fees2
+            await fixture.jobsManager.distributeFees()
+            // Set minted tokens for a call to reward
+            await fixture.minter.setReward(mintedTokens2)
+            // Transcoder calls reward
+            await bondingManager.reward({from: tAddr})
+
+            // Get Delegator 1 current stake
+            const delegatorStake = (await bondingManager.getDelegator(dAddr))[0]
+            // Get Delegator 1 unbonded amount
+            const unbondedAmount = (await bondingManager.getDelegator(dAddr))[1]
+
+            const percPoints = Math.floor((delegatorStake * PERC_DIVISOR) / claimableStake)
+            const transcoderFeeShare = Math.floor((fees2 * (PERC_DIVISOR - feeShare)) / PERC_DIVISOR)
+            const delegatorsFeeShare = fees2 - transcoderFeeShare
+            const delegatorFeeShare = Math.floor((percPoints * delegatorsFeeShare) / PERC_DIVISOR)
+            const transcoderRewardShare = Math.floor((mintedTokens2 * blockRewardCut) / PERC_DIVISOR)
+            const delegatorsRewardShare = mintedTokens2 - transcoderRewardShare
+            const delegatorRewardShare = Math.floor((percPoints * delegatorsRewardShare) / PERC_DIVISOR)
+
+            const expDelegatorStake = add(delegatorStake, delegatorRewardShare).toString()
+            const expUnbondedAmount = add(unbondedAmount, delegatorFeeShare).toString()
+
+            await bondingManager.claimTokenPoolsShares(jobCreationRound2, {from: dAddr})
+
+            const dInfo = await bondingManager.getDelegator(dAddr)
+            assert.equal(dInfo[0].toString(), expDelegatorStake, "delegator stake incorrect")
+            assert.equal(dInfo[1].toString(), expUnbondedAmount, "delegator unbonded amount incorrect")
+
+            claimableStake -= delegatorStake
+            tokenPools = await bondingManager.getTranscoderTokenPoolsForRound(tAddr, jobCreationRound2)
+            assert.equal(tokenPools[0], mintedTokens2 - delegatorRewardShare, "wrong reward pool for token pools")
+            assert.equal(tokenPools[1], fees2 - delegatorFeeShare, "wrong fee pool for token pools")
+            assert.equal(tokenPools[3], claimableStake, "wrong claimable stake for token pools")
+
+            await bondingManager.claimTokenPoolsShares(jobCreationRound2, {from: tAddr})
+            tokenPools = await bondingManager.getTranscoderTokenPoolsForRound(tAddr, jobCreationRound2)
+            assert.equal(tokenPools[0], 0, "wrong reward pool for token pools")
+            assert.equal(tokenPools[1], 0, "wrong fee pool for token pools")
+            assert.equal(tokenPools[3], 0, "wrong claimable stake for token pools")
         })
     })
 

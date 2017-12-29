@@ -5,6 +5,7 @@ import "./IMinter.sol";
 import "./ILivepeerToken.sol";
 import "../rounds/IRoundsManager.sol";
 import "../bonding/IBondingManager.sol";
+import "../libraries/MathUtils.sol";
 
 import "zeppelin-solidity/contracts/math/SafeMath.sol";
 
@@ -19,16 +20,10 @@ contract Minter is Manager, IMinter {
     // Target bonding rate
     uint256 public targetBondingRate;
 
-    // Tokens that are redistributed as a part of rewards
-    uint256 public redistributionPool;
     // Current number of mintable tokens. Reset every round
     uint256 public currentMintableTokens;
     // Current number of minted tokens. Reset every round
     uint256 public currentMintedTokens;
-    // Current number of redistributable tokens. Reset every round
-    uint256 public currentRedistributableTokens;
-    // Current number of redistributed tokens. Reset every round
-    uint256 public currentRedistributedTokens;
 
     modifier onlyBondingManager() {
         require(msg.sender == controller.getContract(keccak256("BondingManager")));
@@ -52,11 +47,11 @@ contract Minter is Manager, IMinter {
 
     function Minter(address _controller, uint256 _inflation, uint256 _inflationChange, uint256 _targetBondingRate) public Manager(_controller) {
         // Inflation must be valid percentage
-        require(_inflation <= PERC_DIVISOR);
+        require(MathUtils.validPerc(_inflation));
         // Inflation change must be valid percentage
-        require(_inflationChange <= PERC_DIVISOR);
+        require(MathUtils.validPerc(_inflationChange));
         // Target bonding rate must be valid percentage
-        require(_targetBondingRate <= PERC_DIVISOR);
+        require(MathUtils.validPerc(_targetBondingRate));
 
         inflation = _inflation;
         inflationChange = _inflationChange;
@@ -65,11 +60,15 @@ contract Minter is Manager, IMinter {
 
     function setTargetBondingRate(uint256 _targetBondingRate) external onlyControllerOwner {
         // Must be valid percentage
-        require(_targetBondingRate <= PERC_DIVISOR);
+        require(MathUtils.validPerc(_targetBondingRate));
 
         targetBondingRate = _targetBondingRate;
 
         ParameterUpdate("targetBondingRate");
+    }
+
+    function transferTokenOwnership(address _newOwner) external onlyControllerOwner {
+        livepeerToken().transferOwnership(_newOwner);
     }
 
     /*
@@ -78,18 +77,8 @@ contract Minter is Manager, IMinter {
      * @param _fracDenom Denominator of fraction (total active stake)
      */
     function createReward(uint256 _fracNum, uint256 _fracDenom) external onlyBondingManager whenSystemNotPaused returns (uint256) {
-        uint256 percPoints = _fracNum.mul(PERC_DIVISOR).div(_fracDenom);
-
-        // Compute fraction of redistributable tokens to include in reward
-        uint256 redistributeAmount = currentRedistributableTokens.mul(percPoints).div(PERC_DIVISOR);
-        // Update amount of redistributed tokens for round
-        currentRedistributedTokens = currentRedistributedTokens.add(redistributeAmount);
-        redistributionPool = redistributionPool.sub(redistributeAmount);
-        // Redistributed tokens must not exceed redistributable tokens
-        require(currentRedistributedTokens <= currentRedistributableTokens);
-
         // Compute and mint fraction of mintable tokens to include in reward
-        uint256 mintAmount = currentMintableTokens.mul(percPoints).div(PERC_DIVISOR);
+        uint256 mintAmount = MathUtils.percOf(currentMintableTokens, _fracNum, _fracDenom);
         // Update amount of minted tokens for round
         currentMintedTokens = currentMintedTokens.add(mintAmount);
         // Minted tokens must not exceed mintable tokens
@@ -97,8 +86,8 @@ contract Minter is Manager, IMinter {
         // Mint new tokens
         livepeerToken().mint(this, mintAmount);
 
-        // Reward = minted tokens + redistributed tokens
-        return mintAmount.add(redistributeAmount);
+        // Reward = minted tokens
+        return mintAmount;
     }
 
     /*
@@ -111,6 +100,14 @@ contract Minter is Manager, IMinter {
     }
 
     /*
+     * @dev Burn tokens
+     * @param _amount Amount of tokens to burn
+     */
+    function burnTokens(uint256 _amount) external onlyBondingManager whenSystemNotPaused {
+        livepeerToken().burn(_amount);
+    }
+
+    /*
      * @dev Set the reward token amounts for the round. Only callable by the RoundsManager
      */
     function setCurrentRewardTokens() external onlyRoundsManager whenSystemNotPaused {
@@ -118,10 +115,8 @@ contract Minter is Manager, IMinter {
 
         currentMintableTokens = mintedTokensPerRound();
         currentMintedTokens = 0;
-        currentRedistributableTokens = redistributableTokensPerRound();
-        currentRedistributedTokens = 0;
 
-        SetCurrentRewardTokens(currentMintableTokens, currentRedistributableTokens);
+        SetCurrentRewardTokens(currentMintableTokens);
     }
 
     /*
@@ -132,7 +127,8 @@ contract Minter is Manager, IMinter {
         uint256 totalSupply = livepeerToken().totalSupply();
 
         if (totalSupply > 0) {
-            currentBondingRate = (bondingManager().getTotalBonded() * PERC_DIVISOR) / totalSupply;
+            uint256 totalBonded = bondingManager().getTotalBonded();
+            currentBondingRate = MathUtils.percPoints(totalBonded, totalSupply);
         }
 
         if (currentBondingRate < targetBondingRate) {
@@ -151,26 +147,11 @@ contract Minter is Manager, IMinter {
     }
 
     /*
-     * @dev Add funds to the redistribution pool
-     * @param _amount Amount of funds to add to the redistribution pool
-     */
-    function addToRedistributionPool(uint256 _amount) external onlyBondingManager whenSystemNotPaused {
-        redistributionPool = redistributionPool.add(_amount);
-    }
-
-    /*
      * @dev Return minted tokens per round based current inflation and token supply
      */
     function mintedTokensPerRound() internal view returns (uint256) {
         uint256 currentSupply = livepeerToken().totalSupply();
-        return currentSupply.mul(inflation).div(PERC_DIVISOR);
-    }
-
-    /*
-     * @dev Return redistributable tokens per round
-     */
-    function redistributableTokensPerRound() internal view returns (uint256) {
-        return redistributionPool.div(100);
+        return MathUtils.percOf(currentSupply, inflation);
     }
 
     /*

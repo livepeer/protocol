@@ -4,7 +4,9 @@ const MerkleProof = artifacts.require("MerkleProof")
 const ECRecovery = artifacts.require("ECRecovery")
 const JobLib = artifacts.require("JobLib")
 const SafeMath = artifacts.require("SafeMath")
+const MathUtils = artifacts.require("MathUtils")
 
+const Minter = artifacts.require("Minter")
 const JobsManager = artifacts.require("JobsManager")
 const BondingManager = artifacts.require("BondingManager")
 const RoundsManager = artifacts.require("RoundsManager")
@@ -17,7 +19,17 @@ module.exports = function(deployer) {
         JobsManager,
         RoundsManager,
         OraclizeVerifier,
-        SortedDoublyLL
+        SortedDoublyLL,
+        MathUtils
+    ])
+
+    deployer.deploy(MathUtils)
+    deployer.link(MathUtils, [
+        BondingManager,
+        JobsManager,
+        RoundsManager,
+        Minter,
+        TokenPools
     ])
 
     deployer.deploy(SortedDoublyLL)

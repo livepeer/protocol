@@ -16,6 +16,8 @@ contract MinterMock is IMinter {
 
     function transferTokens(address _to, uint256 _amount) external {}
 
+    function burnTokens(uint256 _amount) external {}
+
     function addToRedistributionPool(uint256 _amount) external {}
 
     function setCurrentRewardTokens() external {}

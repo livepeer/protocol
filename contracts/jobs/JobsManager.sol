@@ -9,6 +9,7 @@ import "../bonding/IBondingManager.sol";
 import "../rounds/IRoundsManager.sol";
 import "../verification/IVerifiable.sol";
 import "../verification/IVerifier.sol";
+import "../libraries/MathUtils.sol";
 
 import "zeppelin-solidity/contracts/math/SafeMath.sol";
 
@@ -187,7 +188,7 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
      */
     function setFailedVerificationSlashAmount(uint256 _failedVerificationSlashAmount) external onlyControllerOwner {
         // Must be a valid percentage
-        require(_failedVerificationSlashAmount <= PERC_DIVISOR);
+        require(MathUtils.validPerc(_failedVerificationSlashAmount));
 
         failedVerificationSlashAmount = _failedVerificationSlashAmount;
 
@@ -200,7 +201,7 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
      */
     function setMissedVerificationSlashAmount(uint256 _missedVerificationSlashAmount) external onlyControllerOwner {
         // Must be a valid percentage
-        require(_missedVerificationSlashAmount <= PERC_DIVISOR);
+        require(MathUtils.validPerc(_missedVerificationSlashAmount));
 
         missedVerificationSlashAmount = _missedVerificationSlashAmount;
 
@@ -213,7 +214,7 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
      */
     function setDoubleClaimSegmentSlashAmount(uint256 _doubleClaimSegmentSlashAmount) external onlyControllerOwner {
         // Must be a valid percentage
-        require(_doubleClaimSegmentSlashAmount <= PERC_DIVISOR);
+        require(MathUtils.validPerc(_doubleClaimSegmentSlashAmount));
 
         doubleClaimSegmentSlashAmount = _doubleClaimSegmentSlashAmount;
 
@@ -226,7 +227,7 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
      */
     function setFinderFee(uint256 _finderFee) external onlyControllerOwner {
         // Must be a valid percentage
-        require(_finderFee <= PERC_DIVISOR);
+        require(MathUtils.validPerc(_finderFee));
 
         finderFee = _finderFee;
     }

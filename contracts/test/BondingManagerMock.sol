@@ -48,13 +48,13 @@ contract BondingManagerMock is IBondingManager {
         minter.createReward(activeStake, totalActiveStake);
     }
 
+    function callBurnTokens(uint256 _amount) external {
+        minter.burnTokens(_amount);
+    }
+
     function setActiveTranscoders() external {}
 
     function updateTranscoderWithFees(address _transcoder, uint256 _fees, uint256 _round) external {}
-
-    function callAddToRedistributionPool(uint256 _amount) external {
-        minter.addToRedistributionPool(_amount);
-    }
 
     function slashTranscoder(address _transcoder, address _finder, uint256 _slashAmount, uint256 _finderFee) external {}
 

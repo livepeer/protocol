@@ -41,7 +41,7 @@ contract("Minter", accounts => {
             await expectThrow(minter.createReward(10, 100))
         })
 
-        it("should compute rewards when redistributionPool = 0", async () => {
+        it("should compute rewards", async () => {
             await fixture.token.setTotalSupply(1000)
             await fixture.bondingManager.setTotalBonded(200)
             // Set up current reward tokens via RoundsManager
@@ -59,33 +59,6 @@ contract("Minter", accounts => {
             assert.equal(mintedTo, minter.address, "wrong minted to address")
             const minted = await fixture.token.minted.call()
             assert.equal(minted, mintedTokens.mul(10).div(100).floor().toNumber(), "wrong minted amount")
-        })
-
-        it("should compute rewards and update the redistributionPool when redistributionPool > 0", async () => {
-            await fixture.token.setTotalSupply(1000000)
-            await fixture.bondingManager.setTotalBonded(200000)
-            // Set up current reward tokens via RoundsManager
-            await fixture.bondingManager.callAddToRedistributionPool(100000)
-            await fixture.roundsManager.callSetCurrentRewardTokens()
-
-            // Set up reward call via BondingManager
-            await fixture.bondingManager.setActiveTranscoder(accounts[1], 0, 10, 100)
-            await fixture.bondingManager.reward()
-
-            const supply = await fixture.token.totalSupply.call()
-            const inflation = await minter.inflation.call()
-            const mintedTokens = supply.mul(inflation).div(PERC_DIVISOR).floor()
-
-            const mintedTo = await fixture.token.mintedTo.call()
-            assert.equal(mintedTo, minter.address, "wrong minted to address")
-            const minted = await fixture.token.minted.call()
-            assert.equal(minted, mintedTokens.mul(10).div(100).floor().toNumber(), "wrong minted amount")
-
-            const redistributedTokens = ((100000 / 100) * 10) / 100
-            const expRedistributionPool = 100000 - redistributedTokens
-
-            const redistributionPool = await minter.redistributionPool.call()
-            assert.equal(redistributionPool, expRedistributionPool, "redistribution pool incorrect")
         })
 
         it("should compute rewards correctly for large fraction = 1", async () => {
@@ -170,6 +143,19 @@ contract("Minter", accounts => {
         it("should transfer tokens to receiving address when sender is jobs manager", async () => {
             await fixture.jobsManager.setWithdrawAmount(100)
             await fixture.jobsManager.withdraw({from: accounts[1]})
+        })
+    })
+
+    describe("burnTokens", () => {
+        it("should throw if sender is not bonding manager", async () => {
+            await expectThrow(minter.burnTokens(100, {from: accounts[1]}))
+        })
+
+        it("should burn an amount of tokens", async () => {
+            await fixture.bondingManager.callBurnTokens(100)
+
+            const burned = await fixture.token.burned.call()
+            assert.equal(burned, 100, "wrong burned amount")
         })
     })
 
