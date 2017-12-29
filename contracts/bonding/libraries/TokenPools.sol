@@ -57,7 +57,11 @@ library TokenPools {
 
         if (tokenPools.claimableStake > 0) {
             transcoderFees = tokenPools.feePool.mul(PERC_DIVISOR.sub(tokenPools.transcoderFeeShare)).div(PERC_DIVISOR);
-            delegatorFees = tokenPools.feePool.sub(transcoderFees).mul(_stake).div(tokenPools.claimableStake);
+
+            // Compute delegator's claimable stake percentage
+            uint256 percPoints = _stake.mul(PERC_DIVISOR).div(tokenPools.claimableStake);
+            // Compute delegator's fees according to claimable stake percentage
+            delegatorFees = tokenPools.feePool.sub(transcoderFees).mul(percPoints).div(PERC_DIVISOR);
         }
 
         if (_isTranscoder) {
@@ -73,7 +77,11 @@ library TokenPools {
 
         if (tokenPools.claimableStake > 0) {
             transcoderRewards = tokenPools.rewardPool.mul(tokenPools.transcoderBlockRewardCut).div(PERC_DIVISOR);
-            delegatorRewards = tokenPools.rewardPool.sub(transcoderRewards).mul(_stake).div(tokenPools.claimableStake);
+
+            // Compute delegator's claimable stake percentage
+            uint256 percPoints = _stake.mul(PERC_DIVISOR).div(tokenPools.claimableStake);
+            // Compute delegator's rewards according to claimable stake percentage
+            delegatorRewards = tokenPools.rewardPool.sub(transcoderRewards).mul(percPoints).div(PERC_DIVISOR);
         }
 
         if (_isTranscoder) {
