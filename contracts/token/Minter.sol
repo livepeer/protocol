@@ -5,6 +5,7 @@ import "./IMinter.sol";
 import "./ILivepeerToken.sol";
 import "../rounds/IRoundsManager.sol";
 import "../bonding/IBondingManager.sol";
+import "../libraries/MathUtils.sol";
 
 import "zeppelin-solidity/contracts/math/SafeMath.sol";
 
@@ -46,11 +47,11 @@ contract Minter is Manager, IMinter {
 
     function Minter(address _controller, uint256 _inflation, uint256 _inflationChange, uint256 _targetBondingRate) public Manager(_controller) {
         // Inflation must be valid percentage
-        require(_inflation <= PERC_DIVISOR);
+        require(MathUtils.validPerc(_inflation));
         // Inflation change must be valid percentage
-        require(_inflationChange <= PERC_DIVISOR);
+        require(MathUtils.validPerc(_inflationChange));
         // Target bonding rate must be valid percentage
-        require(_targetBondingRate <= PERC_DIVISOR);
+        require(MathUtils.validPerc(_targetBondingRate));
 
         inflation = _inflation;
         inflationChange = _inflationChange;
@@ -59,7 +60,7 @@ contract Minter is Manager, IMinter {
 
     function setTargetBondingRate(uint256 _targetBondingRate) external onlyControllerOwner {
         // Must be valid percentage
-        require(_targetBondingRate <= PERC_DIVISOR);
+        require(MathUtils.validPerc(_targetBondingRate));
 
         targetBondingRate = _targetBondingRate;
 
@@ -76,10 +77,8 @@ contract Minter is Manager, IMinter {
      * @param _fracDenom Denominator of fraction (total active stake)
      */
     function createReward(uint256 _fracNum, uint256 _fracDenom) external onlyBondingManager whenSystemNotPaused returns (uint256) {
-        uint256 percPoints = _fracNum.mul(PERC_DIVISOR).div(_fracDenom);
-
         // Compute and mint fraction of mintable tokens to include in reward
-        uint256 mintAmount = currentMintableTokens.mul(percPoints).div(PERC_DIVISOR);
+        uint256 mintAmount = MathUtils.percOf(currentMintableTokens, _fracNum, _fracDenom);
         // Update amount of minted tokens for round
         currentMintedTokens = currentMintedTokens.add(mintAmount);
         // Minted tokens must not exceed mintable tokens
@@ -128,7 +127,8 @@ contract Minter is Manager, IMinter {
         uint256 totalSupply = livepeerToken().totalSupply();
 
         if (totalSupply > 0) {
-            currentBondingRate = (bondingManager().getTotalBonded() * PERC_DIVISOR) / totalSupply;
+            uint256 totalBonded = bondingManager().getTotalBonded();
+            currentBondingRate = MathUtils.percPoints(totalBonded, totalSupply);
         }
 
         if (currentBondingRate < targetBondingRate) {
@@ -151,7 +151,7 @@ contract Minter is Manager, IMinter {
      */
     function mintedTokensPerRound() internal view returns (uint256) {
         uint256 currentSupply = livepeerToken().totalSupply();
-        return currentSupply.mul(inflation).div(PERC_DIVISOR);
+        return MathUtils.percOf(currentSupply, inflation);
     }
 
     /*

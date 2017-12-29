@@ -4,6 +4,7 @@ import "../ManagerProxyTarget.sol";
 import "./IRoundsManager.sol";
 import "../bonding/IBondingManager.sol";
 import "../token/IMinter.sol";
+import "../libraries/MathUtils.sol";
 
 import "zeppelin-solidity/contracts/math/SafeMath.sol";
 
@@ -31,7 +32,7 @@ contract RoundsManager is ManagerProxyTarget, IRoundsManager {
      */
     function setParameters(uint256 _roundLength, uint256 _roundLockAmount) external onlyControllerOwner {
         // Must be a valid percentage
-        require(_roundLockAmount <= PERC_DIVISOR);
+        require(MathUtils.validPerc(_roundLockAmount));
 
         roundLength = _roundLength;
         roundLockAmount = _roundLockAmount;
@@ -103,7 +104,8 @@ contract RoundsManager is ManagerProxyTarget, IRoundsManager {
      * @dev Check if we are in the lock period of the current round
      */
     function currentRoundLocked() public view returns (bool) {
-        return blockNum().sub(currentRoundStartBlock()) >= roundLength.sub(roundLength.mul(roundLockAmount).div(PERC_DIVISOR));
+        uint256 lockedBlocks = MathUtils.percOf(roundLength, roundLockAmount);
+        return blockNum().sub(currentRoundStartBlock()) >= roundLength.sub(lockedBlocks);
     }
 
     /*

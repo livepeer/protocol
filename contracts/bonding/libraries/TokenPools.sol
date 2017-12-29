@@ -1,12 +1,12 @@
 pragma solidity ^0.4.17;
 
+import "../../libraries/MathUtils.sol";
+
 import "zeppelin-solidity/contracts/math/SafeMath.sol";
 
 
 library TokenPools {
     using SafeMath for uint256;
-
-    uint256 public constant PERC_DIVISOR = 1000000;
 
     // Represents rewards and fees to be distributed to delegators
     struct Data {
@@ -56,12 +56,9 @@ library TokenPools {
         uint256 delegatorFees = 0;
 
         if (tokenPools.claimableStake > 0) {
-            transcoderFees = tokenPools.feePool.mul(PERC_DIVISOR.sub(tokenPools.transcoderFeeShare)).div(PERC_DIVISOR);
-
-            // Compute delegator's claimable stake percentage
-            uint256 percPoints = _stake.mul(PERC_DIVISOR).div(tokenPools.claimableStake);
-            // Compute delegator's fees according to claimable stake percentage
-            delegatorFees = tokenPools.feePool.sub(transcoderFees).mul(percPoints).div(PERC_DIVISOR);
+            uint256 delegatorsFees = MathUtils.percOf(tokenPools.feePool, tokenPools.transcoderFeeShare);
+            transcoderFees = tokenPools.feePool.sub(delegatorsFees);
+            delegatorFees = MathUtils.percOf(delegatorsFees, _stake, tokenPools.claimableStake);
         }
 
         if (_isTranscoder) {
@@ -76,12 +73,8 @@ library TokenPools {
         uint256 delegatorRewards = 0;
 
         if (tokenPools.claimableStake > 0) {
-            transcoderRewards = tokenPools.rewardPool.mul(tokenPools.transcoderBlockRewardCut).div(PERC_DIVISOR);
-
-            // Compute delegator's claimable stake percentage
-            uint256 percPoints = _stake.mul(PERC_DIVISOR).div(tokenPools.claimableStake);
-            // Compute delegator's rewards according to claimable stake percentage
-            delegatorRewards = tokenPools.rewardPool.sub(transcoderRewards).mul(percPoints).div(PERC_DIVISOR);
+            transcoderRewards = MathUtils.percOf(tokenPools.rewardPool, tokenPools.transcoderBlockRewardCut);
+            delegatorRewards = MathUtils.percOf(tokenPools.rewardPool.sub(transcoderRewards), _stake, tokenPools.claimableStake);
         }
 
         if (_isTranscoder) {

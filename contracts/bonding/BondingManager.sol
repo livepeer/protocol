@@ -3,6 +3,7 @@ pragma solidity ^0.4.17;
 import "../ManagerProxyTarget.sol";
 import "./IBondingManager.sol";
 import "../libraries/SortedDoublyLL.sol";
+import "../libraries/MathUtils.sol";
 import "./libraries/TokenPools.sol";
 import "../token/ILivepeerToken.sol";
 import "../token/IMinter.sol";
@@ -165,9 +166,9 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // Only callable if current round is not locked
         require(!roundsManager().currentRoundLocked());
         // Block reward cut must be a valid percentage
-        require(_blockRewardCut <= PERC_DIVISOR);
+        require(MathUtils.validPerc(_blockRewardCut));
         // Fee share must be a valid percentage
-        require(_feeShare <= PERC_DIVISOR);
+        require(MathUtils.validPerc(_feeShare));
 
         Transcoder storage t = transcoders[msg.sender];
         t.pendingBlockRewardCut = _blockRewardCut;
@@ -471,7 +472,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // Transcoder must be valid
         require(transcoderStatus(_transcoder) == TranscoderStatus.Registered);
 
-        uint256 penalty = delegators[_transcoder].bondedAmount.mul(_slashAmount).div(PERC_DIVISOR);
+        uint256 penalty = MathUtils.percOf(delegators[_transcoder].bondedAmount, _slashAmount);
         if (penalty > del.bondedAmount) {
             penalty = del.bondedAmount;
         }
@@ -503,7 +504,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
             if (_finder != address(0)) {
                 // Award finder fee
-                uint256 finderAmount = penalty.mul(_finderFee).div(PERC_DIVISOR);
+                uint256 finderAmount = MathUtils.percOf(penalty, _finderFee);
                 minter().transferTokens(_finder, finderAmount);
 
                 burnAmount = burnAmount.sub(finderAmount);
