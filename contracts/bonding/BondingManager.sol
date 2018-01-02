@@ -575,10 +575,10 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     }
 
     /*
-     * @dev Returns bonded stake for a delegator. Includes reward pool shares since lastClaimTokenPoolsSharesRound
+     * @dev Returns pending bonded stake for a delegator. Includes reward pool shares since lastClaimTokenPoolsSharesRound
      * @param _delegator Address of delegator
      */
-    function delegatorStake(address _delegator) public view returns (uint256) {
+    function pendingStake(address _delegator) public view returns (uint256) {
         Delegator storage del = delegators[_delegator];
 
         // Add rewards from the rounds during which the delegator was bonded to a transcoder
@@ -603,10 +603,10 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     }
 
     /*
-     * @dev Returns fees for a delegator. Includes fee pool shares since lastClaimTokenPoolsSharesRound
+     * @dev Returns pending fees for a delegator. Includes fee pool shares since lastClaimTokenPoolsSharesRound
      * @param _delegator Address of delegator
      */
-    function delegatorFees(address _delegator) public view returns (uint256) {
+    function pendingFees(address _delegator) public view returns (uint256) {
         Delegator storage del = delegators[_delegator];
 
         // Add fees from the rounds during which the delegator was bonded to a transcoder

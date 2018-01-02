@@ -465,7 +465,7 @@ contract("BondingManager", accounts => {
         })
     })
 
-    describe("delegatorStake", async () => {
+    describe("pendingStake", async () => {
         const tAddr = accounts[1]
         const dAddr = accounts[2]
 
@@ -514,12 +514,12 @@ contract("BondingManager", accounts => {
             const delegatorsRewardShare = Math.floor((mintedTokens * (PERC_DIVISOR - blockRewardCut)) / PERC_DIVISOR)
             const delegatorRewardShare = Math.floor((2000 * delegatorsRewardShare) / transcoderTotalStake)
             const expDelegatorStake = add(2000, delegatorRewardShare).toString()
-            const delegatorStake = await bondingManager.delegatorStake(dAddr)
-            assert.equal(delegatorStake.toString(), expDelegatorStake, "delegator stake incorrect")
+            const pendingStake = await bondingManager.pendingStake(dAddr)
+            assert.equal(pendingStake.toString(), expDelegatorStake, "delegator stake incorrect")
         })
     })
 
-    describe("delegatorFees", () => {
+    describe("pendingFees", () => {
         const tAddr = accounts[1]
         const dAddr = accounts[2]
 
@@ -562,11 +562,11 @@ contract("BondingManager", accounts => {
             await fixture.jobsManager.distributeFees()
         })
 
-        it("should compute delegator's colellected fees with latest fee shares", async () => {
+        it("should compute delegator's collected fees with latest fee shares", async () => {
             const delegatorsFeeShare = Math.floor((fees * feeShare) / PERC_DIVISOR)
             const delegatorFeeShare = Math.floor((2000 * delegatorsFeeShare) / transcoderTotalStake)
             const expFees = delegatorFeeShare
-            const dFees = await bondingManager.delegatorFees(dAddr)
+            const dFees = await bondingManager.pendingFees(dAddr)
             assert.equal(dFees, expFees, "delegator fees incorrect")
         })
     })
