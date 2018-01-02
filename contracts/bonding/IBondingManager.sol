@@ -13,7 +13,8 @@ contract IBondingManager {
     event Reward(address indexed transcoder, uint256 amount);
     event Bond(address indexed delegate, address indexed delegator);
     event Unbond(address indexed delegate, address indexed delegator);
-    event Withdraw(address indexed delegator);
+    event WithdrawStake(address indexed delegator);
+    event WithdrawFees(address indexed delegator);
 
     // External functions
     function setActiveTranscoders() external;

@@ -146,9 +146,9 @@ contract("Minter", accounts => {
         })
     })
 
-    describe("transferETH", () => {
+    describe("withdrawETH", () => {
         it("should throw if sender is not bonding manager or jobs manager", async () => {
-            await expectThrow(minter.transferETH(accounts[1], 100))
+            await expectThrow(minter.withdrawETH(accounts[1], 100))
         })
 
         it("should transfer ETH to receiving address when sender is bonding manager", async () => {
@@ -174,9 +174,9 @@ contract("Minter", accounts => {
         })
     })
 
-    describe("receiveETH", () => {
+    describe("depositETH", () => {
         it("should throw if sender is not jobs manager", async () => {
-            await expectThrow(minter.receiveETH({from: accounts[1]}))
+            await expectThrow(minter.depositETH({from: accounts[1]}))
         })
 
         it("should receive ETH from the jobs manager", async () => {

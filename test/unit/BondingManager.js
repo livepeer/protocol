@@ -675,7 +675,7 @@ contract("BondingManager", accounts => {
         })
     })
 
-    describe("withdraw", () => {
+    describe("withdrawStake", () => {
         const tAddr = accounts[1]
         const dAddr = accounts[2]
 
@@ -712,6 +712,77 @@ contract("BondingManager", accounts => {
             await fixture.roundsManager.initializeRound()
         })
 
+        it("should throw if delegator is not yet unbonded", async () => {
+            await expectThrow(bondingManager.withdrawStake({from: dAddr}))
+        })
+
+        it("should withdraw bonded tokens", async () => {
+            await bondingManager.unbond({from: dAddr})
+            const unbondingPeriod = await bondingManager.unbondingPeriod.call()
+            await fixture.roundsManager.setCurrentRound(7 + unbondingPeriod.toNumber())
+            const expWithdrawAmount = 2000
+
+            const startDInfo = await bondingManager.getDelegator(dAddr)
+            const startBondedAmount = startDInfo[0]
+            await bondingManager.withdrawStake({from: dAddr})
+            const endDInfo = await bondingManager.getDelegator(dAddr)
+            const endBondedAmount = endDInfo[0]
+            assert.equal(startBondedAmount.sub(endBondedAmount).toNumber(), expWithdrawAmount, "withdraw amount incorrect")
+        })
+
+        it("should set withdraw round to 0", async () => {
+            await bondingManager.unbond({from: dAddr})
+            const unbondingPeriod = await bondingManager.unbondingPeriod.call()
+            await fixture.roundsManager.setCurrentRound(7 + unbondingPeriod.toNumber())
+
+            await bondingManager.withdrawStake({from: dAddr})
+
+            const dInfo = await bondingManager.getDelegator(dAddr)
+            assert.equal(dInfo[5], 0, "delegator withdraw round not set to 0")
+        })
+    })
+
+    describe("withdrawFees", () => {
+        const tAddr = accounts[1]
+        const dAddr = accounts[2]
+
+        // Transcoder rates
+        const blockRewardCut = 10 * PERC_MULTIPLIER
+        const feeShare = 5 * PERC_MULTIPLIER
+        const pricePerSegment = 10
+
+        // Mock distribute fees params
+        const fees = 300
+        const jobCreationRound = 7
+        const transcoderTotalStake = 4000
+
+        beforeEach(async () => {
+            await bondingManager.setParameters(UNBONDING_PERIOD, NUM_TRANSCODERS, NUM_ACTIVE_TRANSCODERS)
+
+            await fixture.jobsManager.setBondingManager(bondingManager.address)
+            await fixture.roundsManager.setBondingManager(bondingManager.address)
+            await fixture.roundsManager.setCurrentRoundInitialized(true)
+            await fixture.roundsManager.setCurrentRound(5)
+            await fixture.token.setApproved(true)
+
+            // Transcoder bonds
+            await bondingManager.bond(2000, tAddr, {from: tAddr})
+            // Register transcoder
+            await bondingManager.transcoder(blockRewardCut, feeShare, pricePerSegment, {from: tAddr})
+
+            // Delegator bonds to transcoder
+            await bondingManager.bond(2000, tAddr, {from: dAddr})
+
+            await fixture.roundsManager.setCurrentRound(6)
+            await fixture.roundsManager.initializeRound()
+            await fixture.roundsManager.setCurrentRound(jobCreationRound)
+            await fixture.roundsManager.initializeRound()
+        })
+
+        it("should throw if delegator has no fees", async () => {
+            await expectThrow(bondingManager.withdrawFees({from: dAddr}))
+        })
+
         it("should withdraw unbonded amount", async () => {
             await fixture.jobsManager.setDistributeFeesParams(tAddr, fees, jobCreationRound)
 
@@ -725,65 +796,10 @@ contract("BondingManager", accounts => {
             await bondingManager.claimTokenPoolsShares(7, {from: dAddr})
             const startDInfo = await bondingManager.getDelegator(dAddr)
             const startUnbondedAmount = startDInfo[1]
-            await bondingManager.withdraw({from: dAddr})
+            await bondingManager.withdrawFees({from: dAddr})
             const endDInfo = await bondingManager.getDelegator(dAddr)
             const endUnbondedAmount = endDInfo[1]
             assert.equal(startUnbondedAmount.sub(endUnbondedAmount).toNumber(), expWithdrawAmount, "withdraw amount incorrect")
-        })
-
-        it("should throw if unbonded amount is zero and bonded tokens are not yet unbonded", async () => {
-            await expectThrow(bondingManager.withdraw({from: dAddr}))
-        })
-
-        it("should withdraw bonded tokens that are now unbonded", async () => {
-            await bondingManager.unbond({from: dAddr})
-            const unbondingPeriod = await bondingManager.unbondingPeriod.call()
-            await fixture.roundsManager.setCurrentRound(7 + unbondingPeriod.toNumber())
-            const expWithdrawAmount = 2000
-
-            const startDInfo = await bondingManager.getDelegator(dAddr)
-            const startBondedAmount = startDInfo[0]
-            await bondingManager.withdraw({from: dAddr})
-            const endDInfo = await bondingManager.getDelegator(dAddr)
-            const endBondedAmount = endDInfo[0]
-            assert.equal(startBondedAmount.sub(endBondedAmount).toNumber(), expWithdrawAmount, "withdraw amount incorrect")
-        })
-
-        it("should withdraw both bonded and unbonded tokens", async () => {
-            await fixture.jobsManager.setDistributeFeesParams(tAddr, fees, jobCreationRound)
-
-            // Call updateTranscoderWithFees via transaction from JobsManager
-            await fixture.jobsManager.distributeFees()
-
-            const delegatorsFeeShare = Math.floor((fees * feeShare) / PERC_DIVISOR)
-            const delegatorFeeShare = Math.floor((2000 * delegatorsFeeShare) / transcoderTotalStake)
-
-            await bondingManager.unbond({from: dAddr})
-            const unbondingPeriod = await bondingManager.unbondingPeriod.call()
-            await fixture.roundsManager.setCurrentRound(7 + unbondingPeriod.toNumber())
-            const expWithdrawAmount = 2000 + delegatorFeeShare
-
-            const startDInfo = await bondingManager.getDelegator(dAddr)
-            const startBondedAmount = startDInfo[0]
-            const startUnbondedAmount = startDInfo[1]
-            await bondingManager.withdraw({from: dAddr})
-            const endDInfo = await bondingManager.getDelegator(dAddr)
-            const endBondedAmount = endDInfo[0]
-            const endUnbondedAmount = endDInfo[1]
-            const bondedWithdrawn = startBondedAmount.sub(endBondedAmount).toNumber()
-            const unbondedWithdrawn = startUnbondedAmount.sub(endUnbondedAmount).toNumber()
-            assert.equal(bondedWithdrawn + unbondedWithdrawn, expWithdrawAmount, "withdraw amount incorrect")
-        })
-
-        it("should set withdraw round to 0", async () => {
-            await bondingManager.unbond({from: dAddr})
-            const unbondingPeriod = await bondingManager.unbondingPeriod.call()
-            await fixture.roundsManager.setCurrentRound(7 + unbondingPeriod.toNumber())
-
-            await bondingManager.withdraw({from: dAddr})
-
-            const dInfo = await bondingManager.getDelegator(dAddr)
-            assert.equal(dInfo[5], 0, "delegator withdraw round not set to 0")
         })
     })
 })

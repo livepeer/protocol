@@ -238,7 +238,7 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
     function deposit() external payable whenSystemNotPaused {
         broadcasters[msg.sender].deposit = broadcasters[msg.sender].deposit.add(msg.value);
         // Transfer ETH for deposit to Minter
-        minter().receiveETH.value(msg.value)();
+        minter().depositETH.value(msg.value)();
 
         Deposit(msg.sender, msg.value);
     }
@@ -252,7 +252,7 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
 
         uint256 amount = broadcasters[msg.sender].deposit;
         delete broadcasters[msg.sender];
-        minter().transferETH(msg.sender, amount);
+        minter().withdrawETH(msg.sender, amount);
 
         Withdraw(msg.sender);
     }

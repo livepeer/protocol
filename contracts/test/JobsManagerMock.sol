@@ -91,12 +91,12 @@ contract JobsManagerMock is IJobsManager {
     }
 
     function deposit() external payable {
-        minter.receiveETH.value(msg.value)();
+        minter.depositETH.value(msg.value)();
     }
 
     function withdraw(bool _unbonded, address _recipient) external {
         if (_unbonded) {
-            minter.transferETH(_recipient, withdrawAmount);
+            minter.withdrawETH(_recipient, withdrawAmount);
         } else {
             minter.transferTokens(_recipient, withdrawAmount);
         }

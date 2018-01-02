@@ -336,35 +336,46 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     }
 
     /**
-     * @dev Withdraws withdrawable funds back to the caller after unbonding period.
+     * @dev Withdraws bonded stake to the caller after unbonding period.
      */
-    function withdraw()
+    function withdrawStake()
         external
         whenSystemNotPaused
         currentRoundInitialized
         autoClaimTokenPoolsShares
     {
-        // Delegator must either have unbonded tokens or be in the unbonded state
-        require(delegators[msg.sender].unbondedAmount > 0 || delegatorStatus(msg.sender) == DelegatorStatus.Unbonded);
+        // Delegator must be in the unbonded state
+        require(delegatorStatus(msg.sender) == DelegatorStatus.Unbonded);
 
-        if (delegators[msg.sender].unbondedAmount > 0) {
-            // Withdraw unbonded amount (ETH)
-            uint256 unbondedAmount = delegators[msg.sender].unbondedAmount;
-            delegators[msg.sender].unbondedAmount = 0;
+        uint256 amount = delegators[msg.sender].bondedAmount;
+        delegators[msg.sender].bondedAmount = 0;
+        delegators[msg.sender].withdrawRound = 0;
 
-            minter().transferETH(msg.sender, unbondedAmount);
-        }
+        // Tell Minter to transfer stake (LPT) to the delegator
+        minter().transferTokens(msg.sender, amount);
 
-        if (delegatorStatus(msg.sender) == DelegatorStatus.Unbonded) {
-            // Withdraw bonded amount (LPT)
-            uint256 bondedAmount = delegators[msg.sender].bondedAmount;
-            delegators[msg.sender].bondedAmount = 0;
-            delegators[msg.sender].withdrawRound = 0;
+        WithdrawStake(msg.sender);
+    }
 
-            minter().transferTokens(msg.sender, bondedAmount);
-        }
+    /**
+     * @dev Withdraws fees to the caller
+     */
+    function withdrawFees()
+        external
+        whenSystemNotPaused
+        currentRoundInitialized
+        autoClaimTokenPoolsShares
+    {
+        // Delegator must have fees
+        require(delegators[msg.sender].unbondedAmount > 0);
 
-        Withdraw(msg.sender);
+        uint256 amount = delegators[msg.sender].unbondedAmount;
+        delegators[msg.sender].unbondedAmount = 0;
+
+        // Tell Minter to transfer fees (ETH) to the delegator
+        minter().withdrawETH(msg.sender, amount);
+
+        WithdrawFees(msg.sender);
     }
 
     /*
