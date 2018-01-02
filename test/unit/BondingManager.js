@@ -187,37 +187,6 @@ contract("BondingManager", accounts => {
             const dStartRound = dInfo[4]
             assert.equal(dStartRound, 101, "start round incorrect")
         })
-
-        it("should use the unbonded amount if the amount to bond is less than or equal to the unbonded amount", async () => {
-            await bondingManager.bond(100, tAddr0, {from: dAddr})
-
-            const fees = 300
-            const jobCreationRound = 6
-            const currentRound = 7
-
-            await fixture.jobsManager.setDistributeFeesParams(tAddr0, fees, jobCreationRound)
-
-            // Set active transcoders
-            await fixture.roundsManager.setCurrentRound(jobCreationRound)
-            await fixture.roundsManager.initializeRound()
-            await fixture.roundsManager.setCurrentRound(currentRound)
-
-            // Call updateTranscoderWithFees via transaction from JobsManager
-            await fixture.jobsManager.distributeFees()
-            // Claim token pool share
-            await bondingManager.claimTokenPoolsShares(currentRound, {from: dAddr})
-
-            const startDInfo = await bondingManager.getDelegator(dAddr)
-            const startUnbondedAmount = startDInfo[1]
-            await bondingManager.bond(15, tAddr0, {from: dAddr})
-            const endDInfo = await bondingManager.getDelegator(dAddr)
-            const endUnbondedAmount = endDInfo[1]
-
-            assert.equal(startUnbondedAmount.sub(endUnbondedAmount), 7, "unbonded amount used incorrect")
-
-            const bondedAmount = endDInfo[0]
-            assert.equal(bondedAmount, 115, "bonded amount incorreect")
-        })
     })
 
     describe("updateTranscoderWithFees", async () => {
@@ -550,7 +519,7 @@ contract("BondingManager", accounts => {
         })
     })
 
-    describe("delegatorUnbondedAmount", () => {
+    describe("delegatorFees", () => {
         const tAddr = accounts[1]
         const dAddr = accounts[2]
 
@@ -593,12 +562,12 @@ contract("BondingManager", accounts => {
             await fixture.jobsManager.distributeFees()
         })
 
-        it("should compute delegator's unbonded amount with latest fees", async () => {
+        it("should compute delegator's colellected fees with latest fee shares", async () => {
             const delegatorsFeeShare = Math.floor((fees * feeShare) / PERC_DIVISOR)
             const delegatorFeeShare = Math.floor((2000 * delegatorsFeeShare) / transcoderTotalStake)
-            const expUnbondedAmount = delegatorFeeShare
-            const unbondedAmount = await bondingManager.delegatorUnbondedAmount(dAddr)
-            assert.equal(unbondedAmount, expUnbondedAmount, "delegator unbonded amount incorrect")
+            const expFees = delegatorFeeShare
+            const dFees = await bondingManager.delegatorFees(dAddr)
+            assert.equal(dFees, expFees, "delegator fees incorrect")
         })
     })
 
