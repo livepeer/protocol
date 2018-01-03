@@ -18,6 +18,12 @@ contract MinterMock is IMinter {
 
     function burnTokens(uint256 _amount) external {}
 
+    function withdrawETH(address _to, uint256 _amount) external {}
+
+    function depositETH() external payable returns (bool) {
+        return true;
+    }
+
     function addToRedistributionPool(uint256 _amount) external {}
 
     function setCurrentRewardTokens() external {}

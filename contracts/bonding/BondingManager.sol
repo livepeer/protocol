@@ -41,7 +41,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     // Represents a delegator's current state
     struct Delegator {
         uint256 bondedAmount;                    // The amount of bonded tokens
-        uint256 unbondedAmount;                  // The amount of unbonded tokens
+        uint256 fees;                            // The amount of fees collected
         address delegateAddress;                 // The address delegated to
         uint256 delegatedAmount;                 // The amount of tokens delegated to the delegator
         uint256 startRound;                      // The round the delegator transitions to bonded phase and is delegated to someone
@@ -279,19 +279,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         }
 
         if (_amount > 0) {
-            if (_amount > del.unbondedAmount) {
-                // If amount to bond is greater than the delegator's unbonded amount
-                // use the delegator's unbonded amount and transfer the rest from the sender
-                uint256 transferAmount = _amount.sub(del.unbondedAmount);
-                // Set unbonded amount to 0
-                del.unbondedAmount = 0;
-                // Transfer the token to the Minter
-                livepeerToken().transferFrom(msg.sender, minter(), transferAmount);
-            } else {
-                // If the amount to bond is less than or equal to the delegator's unbonded amount
-                // just use the delegator's unbonded amount
-                del.unbondedAmount = del.unbondedAmount.sub(_amount);
-            }
+            // Transfer the LPT to the Minter
+            livepeerToken().transferFrom(msg.sender, minter(), _amount);
         }
 
         Bond(_to, msg.sender);
@@ -336,35 +325,46 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     }
 
     /**
-     * @dev Withdraws withdrawable funds back to the caller after unbonding period.
+     * @dev Withdraws bonded stake to the caller after unbonding period.
      */
-    function withdraw()
+    function withdrawStake()
         external
         whenSystemNotPaused
         currentRoundInitialized
         autoClaimTokenPoolsShares
     {
-        // Delegator must either have unbonded tokens or be in the unbonded state
-        require(delegators[msg.sender].unbondedAmount > 0 || delegatorStatus(msg.sender) == DelegatorStatus.Unbonded);
+        // Delegator must be in the unbonded state
+        require(delegatorStatus(msg.sender) == DelegatorStatus.Unbonded);
 
-        uint256 amount = 0;
+        uint256 amount = delegators[msg.sender].bondedAmount;
+        delegators[msg.sender].bondedAmount = 0;
+        delegators[msg.sender].withdrawRound = 0;
 
-        if (delegators[msg.sender].unbondedAmount > 0) {
-            // Withdraw unbonded amount
-            amount = amount.add(delegators[msg.sender].unbondedAmount);
-            delegators[msg.sender].unbondedAmount = 0;
-        }
-
-        if (delegatorStatus(msg.sender) == DelegatorStatus.Unbonded) {
-            // Withdraw bonded amount which is now unbonded
-            amount = amount.add(delegators[msg.sender].bondedAmount);
-            delegators[msg.sender].bondedAmount = 0;
-            delegators[msg.sender].withdrawRound = 0;
-        }
-
+        // Tell Minter to transfer stake (LPT) to the delegator
         minter().transferTokens(msg.sender, amount);
 
-        Withdraw(msg.sender);
+        WithdrawStake(msg.sender);
+    }
+
+    /**
+     * @dev Withdraws fees to the caller
+     */
+    function withdrawFees()
+        external
+        whenSystemNotPaused
+        currentRoundInitialized
+        autoClaimTokenPoolsShares
+    {
+        // Delegator must have fees
+        require(delegators[msg.sender].fees > 0);
+
+        uint256 amount = delegators[msg.sender].fees;
+        delegators[msg.sender].fees = 0;
+
+        // Tell Minter to transfer fees (ETH) to the delegator
+        minter().withdrawETH(msg.sender, amount);
+
+        WithdrawFees(msg.sender);
     }
 
     /*
@@ -575,10 +575,10 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     }
 
     /*
-     * @dev Returns bonded stake for a delegator. Includes reward pool shares since lastClaimTokenPoolsSharesRound
+     * @dev Returns pending bonded stake for a delegator. Includes reward pool shares since lastClaimTokenPoolsSharesRound
      * @param _delegator Address of delegator
      */
-    function delegatorStake(address _delegator) public view returns (uint256) {
+    function pendingStake(address _delegator) public view returns (uint256) {
         Delegator storage del = delegators[_delegator];
 
         // Add rewards from the rounds during which the delegator was bonded to a transcoder
@@ -603,16 +603,16 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     }
 
     /*
-     * @dev Returns unbonded amount for a delegator. Includes fee pool shares since lastClaimTokenPoolsSharesRound
+     * @dev Returns pending fees for a delegator. Includes fee pool shares since lastClaimTokenPoolsSharesRound
      * @param _delegator Address of delegator
      */
-    function delegatorUnbondedAmount(address _delegator) public view returns (uint256) {
+    function pendingFees(address _delegator) public view returns (uint256) {
         Delegator storage del = delegators[_delegator];
 
         // Add fees from the rounds during which the delegator was bonded to a transcoder
         if (delegatorStatus(_delegator) == DelegatorStatus.Bonded && transcoderStatus(del.delegateAddress) == TranscoderStatus.Registered) {
             uint256 currentRound = roundsManager().currentRound();
-            uint256 currentUnbondedAmount = del.unbondedAmount;
+            uint256 currentFees = del.fees;
             uint256 currentBondedAmount = del.bondedAmount;
 
             for (uint256 i = del.lastClaimTokenPoolsSharesRound + 1; i <= currentRound; i++) {
@@ -621,16 +621,16 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
                 if (tokenPools.hasClaimableShares()) {
                     bool isTranscoder = _delegator == del.delegateAddress;
                     // Calculate and add fee pool share from this round
-                    currentUnbondedAmount = currentUnbondedAmount.add(tokenPools.feePoolShare(currentBondedAmount, isTranscoder));
+                    currentFees = currentFees.add(tokenPools.feePoolShare(currentBondedAmount, isTranscoder));
                     // Calculate new bonded amount with rewards from this round. Updated bonded amount used
                     // to calculate fee pool share in next round
                     currentBondedAmount = currentBondedAmount.add(tokenPools.rewardPoolShare(currentBondedAmount, isTranscoder));
                 }
             }
 
-            return currentUnbondedAmount;
+            return currentFees;
         } else {
-            return del.unbondedAmount;
+            return del.fees;
         }
     }
 
@@ -743,12 +743,12 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     )
         public
         view
-        returns (uint256 bondedAmount, uint256 unbondedAmount, address delegateAddress, uint256 delegatedAmount, uint256 startRound, uint256 withdrawRound, uint256 lastClaimTokenPoolsSharesRound)
+        returns (uint256 bondedAmount, uint256 fees, address delegateAddress, uint256 delegatedAmount, uint256 startRound, uint256 withdrawRound, uint256 lastClaimTokenPoolsSharesRound)
     {
         Delegator storage del = delegators[_delegator];
 
         bondedAmount = del.bondedAmount;
-        unbondedAmount = del.unbondedAmount;
+        fees = del.fees;
         delegateAddress = del.delegateAddress;
         delegatedAmount = del.delegatedAmount;
         startRound = del.startRound;
@@ -834,18 +834,17 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
         if (del.lastClaimTokenPoolsSharesRound > 0) {
             uint256 currentBondedAmount = del.bondedAmount;
-            uint256 currentUnbondedAmount = del.unbondedAmount;
+            uint256 currentFees = del.fees;
 
             for (uint256 i = del.lastClaimTokenPoolsSharesRound + 1; i <= _endRound; i++) {
                 TokenPools.Data storage tokenPools = transcoders[del.delegateAddress].tokenPoolsPerRound[i];
-
 
                 if (tokenPools.hasClaimableShares()) {
                     bool isTranscoder = _delegator == del.delegateAddress;
 
                     var (fees, rewards) = tokenPools.claimShare(currentBondedAmount, isTranscoder);
 
-                    currentUnbondedAmount = currentUnbondedAmount.add(fees);
+                    currentFees = currentFees.add(fees);
                     currentBondedAmount = currentBondedAmount.add(rewards);
                 }
             }
@@ -853,7 +852,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             // Rewards are bonded by default
             del.bondedAmount = currentBondedAmount;
             // Fees are unbonded by default
-            del.unbondedAmount = currentUnbondedAmount;
+            del.fees = currentFees;
         }
 
         del.lastClaimTokenPoolsSharesRound = _endRound;

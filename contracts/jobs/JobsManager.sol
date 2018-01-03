@@ -233,15 +233,14 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
     }
 
     /*
-     * @dev Deposit funds for jobs
-     * @param _amount Amount to deposit
+     * @dev Deposit ETH for jobs
      */
-    function deposit(uint256 _amount) external whenSystemNotPaused {
-        broadcasters[msg.sender].deposit = broadcasters[msg.sender].deposit.add(_amount);
-        // Transfer tokens for deposit to Minter. Sender needs to approve amount first
-        livepeerToken().transferFrom(msg.sender, minter(), _amount);
+    function deposit() external payable whenSystemNotPaused {
+        broadcasters[msg.sender].deposit = broadcasters[msg.sender].deposit.add(msg.value);
+        // Transfer ETH for deposit to Minter
+        minter().depositETH.value(msg.value)();
 
-        Deposit(msg.sender, _amount);
+        Deposit(msg.sender, msg.value);
     }
 
     /*
@@ -253,7 +252,7 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
 
         uint256 amount = broadcasters[msg.sender].deposit;
         delete broadcasters[msg.sender];
-        minter().transferTokens(msg.sender, amount);
+        minter().withdrawETH(msg.sender, amount);
 
         Withdraw(msg.sender);
     }

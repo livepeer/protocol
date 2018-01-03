@@ -90,8 +90,16 @@ contract JobsManagerMock is IJobsManager {
         return bondingManager.slashTranscoder(transcoder, finder, slashAmount, finderFee);
     }
 
-    function withdraw() external {
-        minter.transferTokens(msg.sender, withdrawAmount);
+    function deposit() external payable {
+        minter.depositETH.value(msg.value)();
+    }
+
+    function withdraw(bool _unbonded, address _recipient) external {
+        if (_unbonded) {
+            minter.withdrawETH(_recipient, withdrawAmount);
+        } else {
+            minter.transferTokens(_recipient, withdrawAmount);
+        }
     }
 
     function callVerify() external payable {

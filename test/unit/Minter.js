@@ -137,12 +137,54 @@ contract("Minter", accounts => {
 
         it("should transfer tokens to receiving address when sender is bonding manager", async () => {
             await fixture.bondingManager.setWithdrawAmount(100)
-            await fixture.bondingManager.withdraw({from: accounts[1]})
+            await fixture.bondingManager.withdraw(false, accounts[1], {from: accounts[1]})
         })
 
         it("should transfer tokens to receiving address when sender is jobs manager", async () => {
             await fixture.jobsManager.setWithdrawAmount(100)
-            await fixture.jobsManager.withdraw({from: accounts[1]})
+            await fixture.jobsManager.withdraw(false, accounts[1], {from: accounts[1]})
+        })
+    })
+
+    describe("withdrawETH", () => {
+        it("should throw if sender is not bonding manager or jobs manager", async () => {
+            await expectThrow(minter.withdrawETH(accounts[1], 100))
+        })
+
+        it("should transfer ETH to receiving address when sender is bonding manager", async () => {
+            await fixture.jobsManager.deposit({from: accounts[0], value: 100})
+            await fixture.bondingManager.setWithdrawAmount(100)
+
+            const startBalance = web3.eth.getBalance(accounts[1])
+            await fixture.bondingManager.withdraw(true, accounts[1], {from: accounts[2]})
+            const endBalance = web3.eth.getBalance(accounts[1])
+
+            assert.equal(endBalance.sub(startBalance), 100, "balance did not update correctly")
+        })
+
+        it("should transfer ETH to receiving address when sender is jobs manager", async () => {
+            await fixture.jobsManager.deposit({from: accounts[0], value: 100})
+            await fixture.jobsManager.setWithdrawAmount(100)
+
+            const startBalance = web3.eth.getBalance(accounts[1])
+            await fixture.jobsManager.withdraw(true, accounts[1], {from: accounts[2]})
+            const endBalance = web3.eth.getBalance(accounts[1])
+
+            assert.equal(endBalance.sub(startBalance).toNumber(), 100, "balance did not update correctly")
+        })
+    })
+
+    describe("depositETH", () => {
+        it("should throw if sender is not jobs manager", async () => {
+            await expectThrow(minter.depositETH({from: accounts[1]}))
+        })
+
+        it("should receive ETH from the jobs manager", async () => {
+            const startBalance = web3.eth.getBalance(minter.address)
+            await fixture.jobsManager.deposit({from: accounts[0], value: 100})
+            const endBalance = web3.eth.getBalance(minter.address)
+
+            assert.equal(endBalance.sub(startBalance), 100, "minter balance did not update corretly")
         })
     })
 
