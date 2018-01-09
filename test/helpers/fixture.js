@@ -31,7 +31,8 @@ export default class Fixture {
 
     async deployAndRegister(artifact, name, ...args) {
         const contract = await artifact.new(...args)
-        await this.controller.setContract(this.contractId(name), contract.address)
+        const commitHash = "0x123"
+        await this.controller.setContractInfo(this.contractId(name), contract.address, commitHash)
         return contract
     }
 

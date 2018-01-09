@@ -31,19 +31,22 @@ contract("Controller", accounts => {
         await fixture.tearDown()
     })
 
-    describe("setContract", () => {
+    describe("setContractInfo", () => {
         it("should throw when caller is not the owner", async () => {
             const randomAddress = "0x0000000000000000000000000000000000001234"
-            await expectThrow(controller.setContract(ethUtil.bufferToHex(ethAbi.soliditySHA3(["string"], ["Manager"])), randomAddress, {from: accounts[1]}))
+            const commitHash = "0x1230000000000000000000000000000000000000"
+            await expectThrow(controller.setContractInfo(ethUtil.bufferToHex(ethAbi.soliditySHA3(["string"], ["Manager"])), randomAddress, commitHash, {from: accounts[1]}))
         })
 
-        it("should set a registry contract", async () => {
+        it("should set contract info", async () => {
             const contractId = ethUtil.bufferToHex(ethAbi.soliditySHA3(["string"], ["Manager"]))
             const manager = await Manager.new(controller.address)
-            await controller.setContract(contractId, manager.address)
+            const commitHash = "0x1230000000000000000000000000000000000000"
+            await controller.setContractInfo(contractId, manager.address, commitHash)
 
-            const contractAddr = await controller.getContract(contractId)
-            assert.equal(contractAddr, manager.address, "did not register contract address correctly")
+            const cInfo = await controller.getContractInfo(contractId)
+            assert.equal(cInfo[0], manager.address, "did not register contract address correctly")
+            assert.equal(cInfo[1], commitHash, "did not register commit hash correctly")
         })
     })
 
@@ -54,7 +57,8 @@ contract("Controller", accounts => {
         beforeEach(async () => {
             contractId = ethUtil.bufferToHex(ethAbi.soliditySHA3(["string"], ["Manager"]))
             manager = await Manager.new(controller.address)
-            await controller.setContract(contractId, manager.address)
+            const commitHash = "0x1230000000000000000000000000000000000000"
+            await controller.setContractInfo(contractId, manager.address, commitHash)
         })
 
         it("should throw when caller is not the owner", async () => {

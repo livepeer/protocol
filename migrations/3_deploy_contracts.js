@@ -1,4 +1,6 @@
 const config = require("./migrations.config.js")
+const path = require("path")
+const {Repository} = require("nodegit")
 const BigNumber = require("bignumber.js")
 const {contractId} = require("../utils/helpers")
 
@@ -15,6 +17,13 @@ const LivepeerToken = artifacts.require("LivepeerToken")
 const LivepeerTokenFaucet = artifacts.require("LivepeerTokenFaucet")
 const ManagerProxy = artifacts.require("ManagerProxy")
 
+const getGitHeadCommitHash = async () => {
+    const repoRootPath = path.resolve(__dirname, "..")
+    const repo = await Repository.open(repoRootPath)
+    const headCommit = await repo.getHeadCommit()
+    return "0x" + headCommit.sha()
+}
+
 const deploy = async (deployer, artifact, ...args) => {
     await deployer.deploy(artifact, ...args)
     return await artifact.deployed()
@@ -22,7 +31,8 @@ const deploy = async (deployer, artifact, ...args) => {
 
 const deployAndRegister = async (deployer, controller, artifact, name, ...args) => {
     const contract = await deploy(deployer, artifact, ...args)
-    await controller.setContract(contractId(name), contract.address)
+    const commitHash = await getGitHeadCommitHash()
+    await controller.setContractInfo(contractId(name), contract.address, commitHash)
     return contract
 }
 
@@ -37,7 +47,8 @@ const deployProxyAndRegister = async (deployer, controller, targetArtifact, name
     const proxy = await ManagerProxy.new(controller.address, contractId(targetName))
     deployer.logger.log("Proxy contract for " + name + ": " + proxy.address)
 
-    await controller.setContract(contractId(name), proxy.address)
+    const commitHash = await getGitHeadCommitHash()
+    await controller.setContractInfo(contractId(name), proxy.address, commitHash)
 
     return await targetArtifact.at(proxy.address)
 }

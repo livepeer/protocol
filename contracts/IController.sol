@@ -4,9 +4,9 @@ import "zeppelin-solidity/contracts/lifecycle/Pausable.sol";
 
 
 contract IController is Pausable {
-    event SetContract(bytes32 id, address contractAddr);
+    event SetContractInfo(bytes32 id, address contractAddress, bytes20 gitCommitHash);
 
-    function setContract(bytes32 _id, address _contract) external;
+    function setContractInfo(bytes32 _id, address _contractAddress, bytes20 _gitCommitHash) external;
     function updateController(bytes32 _id, address _controller) external;
     function getContract(bytes32 _id) public view returns (address);
 }
