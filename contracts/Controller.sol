@@ -7,8 +7,14 @@ import "zeppelin-solidity/contracts/lifecycle/Pausable.sol";
 
 
 contract Controller is Pausable, IController {
-    // Track contract ids and their mapped addresses
-    mapping (bytes32 => address) registry;
+    // Track information about a registered contract
+    struct ContractInfo {
+        address contractAddress;                 // Address of contract
+        bytes20 gitCommitHash;                   // SHA1 hash of head Git commit during registration of this contract
+    }
+
+    // Track contract ids and contract info
+    mapping (bytes32 => ContractInfo) registry;
 
     function Controller() public {
         // Start system as paused
@@ -20,10 +26,11 @@ contract Controller is Pausable, IController {
      * @param _id Contract id (keccak256 hash of contract name)
      * @param _contract Contract address
      */
-    function setContract(bytes32 _id, address _contract) external onlyOwner {
-        registry[_id] = _contract;
+    function setContractInfo(bytes32 _id, address _contractAddress, bytes20 _gitCommitHash) external onlyOwner {
+        registry[_id].contractAddress = _contractAddress;
+        registry[_id].gitCommitHash = _gitCommitHash;
 
-        SetContract(_id, _contract);
+        SetContractInfo(_id, _contractAddress, _gitCommitHash);
     }
 
     /*
@@ -32,7 +39,15 @@ contract Controller is Pausable, IController {
      * @param _controller Controller address
      */
     function updateController(bytes32 _id, address _controller) external onlyOwner {
-        return IManager(registry[_id]).setController(_controller);
+        return IManager(registry[_id].contractAddress).setController(_controller);
+    }
+
+    /*
+     * @dev Return contract info for a given contract id
+     * @param _id Contract id (keccak256 hash of contract name)
+     */
+    function getContractInfo(bytes32 _id) public view returns (address, bytes20) {
+        return (registry[_id].contractAddress, registry[_id].gitCommitHash);
     }
 
     /*
@@ -40,6 +55,6 @@ contract Controller is Pausable, IController {
      * @param _id Contract id
      */
     function getContract(bytes32 _id) public view returns (address) {
-        return registry[_id];
+        return registry[_id].contractAddress;
     }
 }
