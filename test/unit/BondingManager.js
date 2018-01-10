@@ -654,9 +654,7 @@ contract("BondingManager", accounts => {
         const pricePerSegment = 10
 
         // Mock distribute fees params
-        const fees = 300
         const jobCreationRound = 7
-        const transcoderTotalStake = 4000
 
         beforeEach(async () => {
             await bondingManager.setParameters(UNBONDING_PERIOD, NUM_TRANSCODERS, NUM_ACTIVE_TRANSCODERS)
