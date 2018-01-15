@@ -56,6 +56,8 @@ contract LivepeerVerifier is Manager, IVerifier {
     }
 
     function addSolver(address _solver) external onlyControllerOwner {
+        // Must not be null address
+        require(_solver != address(0));
         // Must not already be a solver
         require(!isSolver[_solver]);
 

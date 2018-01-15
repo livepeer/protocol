@@ -38,6 +38,10 @@ contract("LivepeerVerifier", accounts => {
     })
 
     describe("addSolver", () => {
+        it("should fail for null address", async () => {
+            await expectThrow(verifier.addSolver("0x0"))
+        })
+
         it("should fail if solver is already whitelisted", async () => {
             await expectThrow(verifier.addSolver(accounts[0]))
         })
