@@ -67,6 +67,15 @@ contract Minter is Manager, IMinter {
         ParameterUpdate("targetBondingRate");
     }
 
+    function setInflationChange(uint256 _inflationChange) external onlyControllerOwner {
+        // Must be valid percentage
+        require(MathUtils.validPerc(_inflationChange));
+
+        inflationChange = _inflationChange;
+
+        ParameterUpdate("inflationChange");
+    }
+
     function transferTokenOwnership(address _newOwner) external onlyControllerOwner {
         livepeerToken().transferOwnership(_newOwner);
     }
