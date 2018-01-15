@@ -28,11 +28,10 @@ module.exports = {
             gas: 6700000
         },
         lpTestNet: {
-            from: "0x0161e041aad467a890839d5b08b138c1e6373072",
             host: "localhost",
             port: 8545,
-            network_id: 777,
-            gas: 6700000
+            network_id: 858585,
+            gas: 6600000
         }
     },
     solc: {

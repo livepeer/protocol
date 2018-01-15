@@ -55,6 +55,14 @@ contract LivepeerVerifier is Manager, IVerifier {
         verificationCodeHash = _verificationCodeHash;
     }
 
+    function addSolver(address _solver) external onlyControllerOwner {
+        // Must not already be a solver
+        require(!isSolver[_solver]);
+
+        solvers.push(_solver);
+        isSolver[_solver] = true;
+    }
+
     /*
      * @dev Fire VerifyRequest event which solvers should listen for to retrieve verification parameters
      */
