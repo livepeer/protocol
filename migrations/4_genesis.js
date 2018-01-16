@@ -6,7 +6,7 @@ const Controller = artifacts.require("Controller")
 const ManagerProxy = artifacts.require("ManagerProxy")
 const LivepeerToken = artifacts.require("LivepeerToken")
 const GenesisManager = artifacts.require("GenesisManager")
-const MockTokenDistribution = artifacts.require("MockTokenDistribution")
+const TokenDistributionMock = artifacts.require("TokenDistributionMock")
 
 module.exports = function(deployer, network) {
     deployer.then(async () => {
@@ -20,7 +20,7 @@ module.exports = function(deployer, network) {
 
         const token = await LivepeerToken.at(tokenAddr)
 
-        const tokenDistribution = await lpDeployer.deploy(MockTokenDistribution, tokenAddr, faucetAddr, genesis.tokenDistribution.endTime)
+        const tokenDistribution = await lpDeployer.deploy(TokenDistributionMock, tokenAddr, faucetAddr, genesis.tokenDistribution.endTime)
         const genesisManager = await lpDeployer.deploy(GenesisManager, tokenAddr, tokenDistribution.address, genesis.bankMultisig, minterAddr)
 
         deployer.logger.log("Transferring ownership of the LivepeerToken to the GenesisManager...")
@@ -60,16 +60,16 @@ module.exports = function(deployer, network) {
             return genesisManager.addCommunityGrant(grant.receiver, grant.amount)
         }))
 
-        // deployer.logger.log("Finalizing token distribution...")
+        deployer.logger.log("Finalizing token distribution...")
 
-        // await tokenDistribution.finalize()
+        await tokenDistribution.finalize()
 
-        // deployer.logger.log("Ending genesis and transferring ownership of the LivepeerToken to the protocol Minter...")
+        deployer.logger.log("Ending genesis and transferring ownership of the LivepeerToken to the protocol Minter...")
 
-        // await genesisManager.end()
+        await genesisManager.end()
 
-        // deployer.logger.log("Unpausing the Controller and starting the protocol...")
+        deployer.logger.log("Unpausing the Controller and starting the protocol...")
 
-        // await controller.unpause()
+        await controller.unpause()
     })
 }

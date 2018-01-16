@@ -238,6 +238,9 @@ contract GenesisManager is Ownable {
      * @dev Start genesis
      */
     function start() external onlyOwner atStage(Stages.GenesisAllocation) {
+        // Token distribution must not be over
+        require(!tokenDistribution.isOver());
+
         // Mint the initial supply
         token.mint(this, initialSupply);
 
