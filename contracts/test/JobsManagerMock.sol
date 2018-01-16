@@ -39,7 +39,16 @@ contract JobsManagerMock is IJobsManager {
         verifier = IVerifier(_verifier);
     }
 
-    function setVerifyParams(uint256 _jobId, uint256 _claimId, uint256 _segmentNumber, string _transcodingOptions, string _dataStorageHash, bytes32[2] _dataHashes) external {
+    function setVerifyParams(
+        uint256 _jobId,
+        uint256 _claimId,
+        uint256 _segmentNumber,
+        string _transcodingOptions,
+        string _dataStorageHash,
+        bytes32[2] _dataHashe
+    )
+        external
+    {
         jobId = _jobId;
         claimId = _claimId;
         segmentNumber = _segmentNumber;
@@ -103,7 +112,14 @@ contract JobsManagerMock is IJobsManager {
     }
 
     function callVerify() external payable {
-        verifier.verify.value(msg.value)(jobId, claimId, segmentNumber, transcodingOptions, dataStorageHash, dataHashes);
+        verifier.verify.value(msg.value)(
+            jobId,
+            claimId,
+            segmentNumber,
+            transcodingOptions,
+            dataStorageHash,
+            dataHashes
+        );
     }
 
     function receiveVerification(uint256 _jobId, uint256 _claimId, uint256 _segmentNumber, bool _result) external {}

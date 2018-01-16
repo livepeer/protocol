@@ -103,7 +103,8 @@ contract OraclizeVerifier is Manager, usingOraclize, IVerifier {
      * @param _queryId Oraclize query identifier
      * @param _result Result of Oraclize computation
      */
-    function __callback(bytes32 _queryId, string _result, bytes _proof) onlyOraclize whenSystemNotPaused {
+    // solium-disable-next-line mixedcase
+    function __callback(bytes32 _queryId, string _result, bytes _proof) public onlyOraclize whenSystemNotPaused {
         OraclizeQuery memory oc = oraclizeQueries[_queryId];
 
         // Check if hash returned by Oraclize matches originally submitted commit hash = h(dataHash, transcodedDataHash)

@@ -42,7 +42,7 @@
     "ethereumjs-util": "^5.1.2",
     "mkdirp": "^0.5.1",
     "nodegit": "^0.20.3",
-    "solium": "github:AugurProject/Solium",
+    "solium": "^1.1.2",
     "truffle": "^4.0.1",
     "zeppelin-solidity": "^1.3.0"
   }

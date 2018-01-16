@@ -14,7 +14,7 @@ contract IdentityVerifier is Manager, IVerifier {
         _;
     }
 
-    function IdentityVerifier(address _controller) Manager(_controller) {}
+    function IdentityVerifier(address _controller) public Manager(_controller) {}
 
     /*
      * @dev Verify implementation that always returns true. Used primarily for testing purposes

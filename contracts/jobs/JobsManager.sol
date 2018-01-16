@@ -283,7 +283,14 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         job.creationBlock = blockNum;
         job.endBlock = _endBlock;
 
-        NewJob(msg.sender, numJobs, _streamId, _transcodingOptions, _maxPricePerSegment, blockNum);
+        NewJob(
+            msg.sender,
+            numJobs,
+            _streamId,
+            _transcodingOptions,
+            _maxPricePerSegment,
+            blockNum
+        );
 
         // Increment number of created jobs
         numJobs = numJobs.add(1);
@@ -388,9 +395,27 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         // Segment must be eligible for verification
         require(JobLib.shouldVerifySegment(_segmentNumber, claim.segmentRange, claim.claimBlock, verificationRate));
         // Segment must be signed by broadcaster
-        require(JobLib.validateBroadcasterSig(job.streamId, _segmentNumber, _dataHashes[0], _broadcasterSig, job.broadcasterAddress));
+        require(
+            JobLib.validateBroadcasterSig(
+                job.streamId,
+                _segmentNumber,
+                _dataHashes[0],
+                _broadcasterSig,
+                job.broadcasterAddress
+            )
+        );
         // Receipt must be valid
-        require(JobLib.validateReceipt(job.streamId, _segmentNumber, _dataHashes[0], _dataHashes[1], _broadcasterSig, _proof, claim.claimRoot));
+        require(
+            JobLib.validateReceipt(
+                job.streamId,
+                _segmentNumber,
+                _dataHashes[0],
+                _dataHashes[1],
+                _broadcasterSig,
+                _proof,
+                claim.claimRoot
+           )
+        );
 
         // Mark segment as submitted for verification
         claim.segmentVerifications[_segmentNumber] = true;
@@ -424,9 +449,23 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
 
         // Send payment to verifier if price is greater than zero
         if (price > 0) {
-            verifierContract.verify.value(price)(_jobId, _claimId, _segmentNumber, jobs[_jobId].transcodingOptions, _dataStorageHash, _dataHashes);
+            verifierContract.verify.value(price)(
+                _jobId,
+                _claimId,
+                _segmentNumber,
+                jobs[_jobId].transcodingOptions,
+                _dataStorageHash,
+                _dataHashes
+            );
         } else {
-            verifierContract.verify(_jobId, _claimId, _segmentNumber, jobs[_jobId].transcodingOptions, _dataStorageHash, _dataHashes);
+            verifierContract.verify(
+                _jobId,
+                _claimId,
+                _segmentNumber,
+                jobs[_jobId].transcodingOptions,
+                _dataStorageHash,
+                _dataHashes
+            );
         }
     }
 
