@@ -51,7 +51,7 @@ contract("Delegation", accounts => {
     })
 
     it("registers transcoder 1 that self bonds", async () => {
-        const amount = new BigNumber(10).mul(TOKEN_UNIT)
+        const amount = new BigNumber(1).mul(TOKEN_UNIT)
         await token.approve(bondingManager.address, amount, {from: transcoder1})
         await bondingManager.bond(amount, transcoder1, {from: transcoder1})
         await bondingManager.transcoder(10, 5, 100, {from: transcoder1})
@@ -60,7 +60,7 @@ contract("Delegation", accounts => {
     })
 
     it("registers transcoder 2 that self bonds", async () => {
-        const amount = new BigNumber(10).mul(TOKEN_UNIT)
+        const amount = new BigNumber(1).mul(TOKEN_UNIT)
         await token.approve(bondingManager.address, amount, {from: transcoder2})
         await bondingManager.bond(amount, transcoder2, {from: transcoder2})
         await bondingManager.transcoder(10, 5, 100, {from: transcoder2})
@@ -69,7 +69,7 @@ contract("Delegation", accounts => {
     })
 
     it("delegator 1 bonds to transcoder 1", async () => {
-        const amount = new BigNumber(10).mul(TOKEN_UNIT)
+        const amount = new BigNumber(1).mul(TOKEN_UNIT)
         await token.approve(bondingManager.address, amount, {from: delegator1})
         await bondingManager.bond(amount, transcoder1, {from: delegator1})
 
@@ -78,7 +78,7 @@ contract("Delegation", accounts => {
     })
 
     it("delegator 2 bonds to transcoder 1", async () => {
-        const amount = new BigNumber(10).mul(TOKEN_UNIT)
+        const amount = new BigNumber(1).mul(TOKEN_UNIT)
         await token.approve(bondingManager.address, amount, {from: delegator2})
         await bondingManager.bond(amount, transcoder1, {from: delegator2})
 

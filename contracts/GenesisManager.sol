@@ -121,6 +121,22 @@ contract GenesisManager is Ownable {
     }
 
     /**
+     * @dev Start genesis
+     */
+    function start() external onlyOwner atStage(Stages.GenesisAllocation) {
+        // Token distribution must not be over
+        require(!tokenDistribution.isOver());
+
+        // Mint the initial supply
+        token.mint(this, initialSupply);
+
+        // Transfer the crowd supply to the token distribution contract
+        token.transfer(tokenDistribution, crowdSupply);
+
+        stage = Stages.GenesisStart;
+    }
+
+    /**
      * @dev Add a team grant for tokens with a vesting schedule
      * @param _receiver Grant receiver
      * @param _amount Amount of tokens included in the grant
@@ -193,6 +209,7 @@ contract GenesisManager is Ownable {
         // The grant's vesting schedule starts when the token distribution ends
         uint256 startTime = tokenDistribution.getEndTime();
         // Create a vesting holder contract to act as the holder of the grant's tokens
+        // Note: the vesting grant is revokable
         TokenVesting holder = new TokenVesting(_receiver, startTime, _timeToCliff, _vestingDuration, true);
         vestingHolders[_receiver] = holder;
 
@@ -232,22 +249,6 @@ contract GenesisManager is Ownable {
         timeLockedHolders[_receiver] = holder;
 
         token.transfer(holder, _amount);
-    }
-
-    /**
-     * @dev Start genesis
-     */
-    function start() external onlyOwner atStage(Stages.GenesisAllocation) {
-        // Token distribution must not be over
-        require(!tokenDistribution.isOver());
-
-        // Mint the initial supply
-        token.mint(this, initialSupply);
-
-        // Transfer the crowd supply to the token distribution contract
-        token.transfer(tokenDistribution, crowdSupply);
-
-        stage = Stages.GenesisStart;
     }
 
     /**

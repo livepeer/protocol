@@ -11,11 +11,11 @@ module.exports = {
         unbondingPeriod: 2
     },
     jobsManager: {
-        verificationRate: 1000,
+        verificationRate: 100,
         verificationPeriod: 50,
         slashingPeriod: 50,
         failedVerificationSlashAmount: 1,
-        missedVerificationSlashAmount: .01 * PERC_MULTIPLIER,
+        missedVerificationSlashAmount: .1 * PERC_MULTIPLIER,
         doubleClaimSegmentSlashAmount: 3 * PERC_MULTIPLIER,
         finderFee: 5 * PERC_MULTIPLIER
     },
