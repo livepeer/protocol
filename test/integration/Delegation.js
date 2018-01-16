@@ -89,8 +89,8 @@ contract("Delegation", accounts => {
     it("delegator 1 delegates to transcoder 2", async () => {
         await bondingManager.bond(0, transcoder2, {from: delegator1})
 
-        const bond = (await bondingManager.getDelegator(delegator1))[2]
-        assert.equal(bond, transcoder2, "delegator 1 delegate incorrect")
+        const delegate = (await bondingManager.getDelegator(delegator1))[2]
+        assert.equal(delegate, transcoder2, "delegator 1 delegate incorrect")
     })
 
     it("delegator 2 delegates to transcoder 2", async () => {

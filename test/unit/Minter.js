@@ -36,6 +36,19 @@ contract("Minter", accounts => {
         await fixture.tearDown()
     })
 
+    describe("setInflationChange", () => {
+        it("should fail if not called by the Controller's owner", async () => {
+            await expectThrow(minter.setInflationChange(5, {from: accounts[4]}))
+        })
+
+        it("should set the inflation change", async () => {
+            await minter.setInflationChange(.1 * PERC_MULTIPLIER)
+
+            const inflationChange = await minter.inflationChange.call()
+            assert.equal(inflationChange, .1 * PERC_MULTIPLIER, "wrong inflation change")
+        })
+    })
+
     describe("createRewards", () => {
         it("should throw if sender is not bonding manager", async () => {
             await expectThrow(minter.createReward(10, 100))
