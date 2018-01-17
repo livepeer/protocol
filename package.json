@@ -47,6 +47,7 @@
     "nodegit": "^0.20.3",
     "solium": "^1.1.2",
     "truffle": "^4.0.4",
+    "truffle-hdwallet-provider-privkey": "github:yondonfu/truffle-hdwallet-provider-privkey",
     "zeppelin-solidity": "^1.5.0"
   }
 }
