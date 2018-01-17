@@ -12,7 +12,7 @@ services:
     container_name: parity-integration-tests
     build:
       context: .
-      dockerfile: Dockerfile-test
+      dockerfile: Dockerfile
     command: npm run test:integration -- --network=parityDev
     links:
       - parity-dev
@@ -20,7 +20,7 @@ services:
     container_name: geth-integration-tests
     build:
       context: .
-      dockerfile: Dockerfile-test
+      dockerfile: Dockerfile
     command: npm run test:integration -- --network=gethDev
     links:
       - geth-dev
