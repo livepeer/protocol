@@ -3,6 +3,8 @@ jobs:
   build:
     docker:
       - image: circleci/node:6.10
+    environment:
+      - IMAGE_LATEST: "livepeer/protocol:latest"
     steps:
       - checkout
       - run:
@@ -15,5 +17,18 @@ jobs:
       - setup_remote_docker:
           version: 17.09.0-ce
       - run:
-          name: test suite
-          command: bash run_tests.sh
+          name: Build docker image
+          command: |
+            docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
+            docker pull $IMAGE_LATEST
+            npm run docker:build
+            npm run docker:push
+      - run:
+          name: Run linting
+          command: npm run docker:run:lint
+      - run:
+          name: Run unit tests
+          command: npm run docker:run:test:unit
+      - run:
+          name: Run integration tests
+          command: npm run docker:run:test:integration

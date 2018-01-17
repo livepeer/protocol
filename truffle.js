@@ -9,8 +9,8 @@ module.exports = {
             network_id: "*", // Match any network id
             gas: 6700000
         },
-        testrpc: {
-            host: "testrpc",
+        ganacheDev: {
+            host: "ganache-dev",
             port: 8545,
             network_id: "*",
             gas: 6700000

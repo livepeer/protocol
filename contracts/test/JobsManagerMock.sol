@@ -45,7 +45,7 @@ contract JobsManagerMock is IJobsManager {
         uint256 _segmentNumber,
         string _transcodingOptions,
         string _dataStorageHash,
-        bytes32[2] _dataHashe
+        bytes32[2] _dataHashes
     )
         external
     {

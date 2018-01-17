@@ -1,5 +1,5 @@
-import Fixture from "../test/helpers/fixture"
-import expectThrow from "../test/helpers/expectThrow"
+import Fixture from "../helpers/fixture"
+import expectThrow from "../helpers/expectThrow"
 import ethUtil from "ethereumjs-util"
 import ethAbi from "ethereumjs-abi"
 
