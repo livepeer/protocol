@@ -8,6 +8,7 @@ contract RevertProxy {
         data = msg.data;
     }
 
+    // solium-disable security/no-low-level-calls
     function execute(address _target) external returns (bool) {
         return _target.call(data);
     }

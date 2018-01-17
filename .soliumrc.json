@@ -6,7 +6,6 @@
     "arg-overflow": ["error", 5],
     "function-order": "off",
     "security/no-block-members": "off",
-    "security/no-low-level-calls": "off",
     "security/no-inline-assembly": "off"
   }
 }
