@@ -10,17 +10,13 @@ services:
       - "47624:8545"
   parity-integration-tests:
     container_name: parity-integration-tests
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: livepeer/protocol:latest
     command: npm run test:integration -- --network=parityDev
     links:
       - parity-dev
   geth-integration-tests:
     container_name: geth-integration-tests
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: livepeer/protocol:latest
     command: npm run test:integration -- --network=gethDev
     links:
       - geth-dev
