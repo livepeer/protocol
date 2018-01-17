@@ -1,8 +1,5 @@
 const config = require("./migrations.config.js")
-const path = require("path")
-const {Repository} = require("nodegit")
-const BigNumber = require("bignumber.js")
-const {contractId} = require("../utils/helpers")
+const ContractDeployer = require("../utils/contractDeployer")
 
 const Controller = artifacts.require("Controller")
 const Minter = artifacts.require("Minter")
@@ -17,85 +14,33 @@ const LivepeerToken = artifacts.require("LivepeerToken")
 const LivepeerTokenFaucet = artifacts.require("LivepeerTokenFaucet")
 const ManagerProxy = artifacts.require("ManagerProxy")
 
-const getGitHeadCommitHash = async () => {
-    const repoRootPath = path.resolve(__dirname, "..")
-    const repo = await Repository.open(repoRootPath)
-    const headCommit = await repo.getHeadCommit()
-    return "0x" + headCommit.sha()
-}
-
-const deploy = async (deployer, artifact, ...args) => {
-    await deployer.deploy(artifact, ...args)
-    return await artifact.deployed()
-}
-
-const deployAndRegister = async (deployer, controller, artifact, name, ...args) => {
-    const contract = await deploy(deployer, artifact, ...args)
-    const commitHash = await getGitHeadCommitHash()
-    await controller.setContractInfo(contractId(name), contract.address, commitHash)
-    return contract
-}
-
-const deployProxyAndRegister = async (deployer, controller, targetArtifact, name, ...args) => {
-    deployer.logger.log("Deploying proxy for " + name + "...")
-
-    const targetName = name + "Target"
-
-    const target = await deployAndRegister(deployer, controller, targetArtifact, targetName, ...args)
-    deployer.logger.log("Target contract for " + name + ": " + target.address)
-
-    const proxy = await ManagerProxy.new(controller.address, contractId(targetName))
-    deployer.logger.log("Proxy contract for " + name + ": " + proxy.address)
-
-    const commitHash = await getGitHeadCommitHash()
-    await controller.setContractInfo(contractId(name), proxy.address, commitHash)
-
-    return await targetArtifact.at(proxy.address)
-}
-
 module.exports = function(deployer, network) {
     deployer.then(async () => {
-        const controller = await deploy(deployer, Controller)
+        const lpDeployer = new ContractDeployer(deployer, Controller, ManagerProxy)
 
-        const token = await deployAndRegister(deployer, controller, LivepeerToken, "LivepeerToken")
-        const minter = await deployAndRegister(
-            deployer,
-            controller,
-            Minter,
-            "Minter",
-            controller.address,
-            config.minter.inflation,
-            config.minter.inflationChange,
-            config.minter.targetBondingRate
-        )
+        const controller = await lpDeployer.deployController()
+        const token = await lpDeployer.deployAndRegister(LivepeerToken, "LivepeerToken")
+        await lpDeployer.deployAndRegister(Minter, "Minter", controller.address, config.minter.inflation, config.minter.inflationChange, config.minter.targetBondingRate)
 
         if (network === "development" || network === "testrpc" || network === "parityDev" || network === "gethDev") {
-            await deployAndRegister(deployer, controller, IdentityVerifier, "Verifier", controller.address)
+            await lpDeployer.deployAndRegister(IdentityVerifier, "Verifier", controller.address)
         } else if (network === "lpTestNet") {
-            await deployAndRegister(deployer, controller, LivepeerVerifier, "Verifier", controller.address, config.verifier.solvers, config.verifier.verificationCodeHash)
+            await lpDeployer.deployAndRegister(LivepeerVerifier, "Verifier", controller.address, config.verifier.solvers, config.verifier.verificationCodeHash)
         } else {
-            await deployAndRegister(deployer, controller, OraclizeVerifier, "Verifier", controller.address, config.verifier.verificationCodeHash, config.verifier.gasPrice, config.verifier.gasLimit)
+            await lpDeployer.deployAndRegister(OraclizeVerifier, "Verifier", controller.address, config.verifier.verificationCodeHash, config.verifier.gasPrice, config.verifier.gasLimit)
         }
 
-        if (network === "development" || network === "testrpc" || network === "parityDev" || network == "gethDev" || network === "lpTestNet") {
-            const faucet = await deployAndRegister(deployer, controller, LivepeerTokenFaucet, "LivepeerTokenFaucet", token.address, config.faucet.requestAmount, config.faucet.requestWait)
+        await lpDeployer.deployAndRegister(LivepeerTokenFaucet, "LivepeerTokenFaucet", token.address, config.faucet.requestAmount, config.faucet.requestWait)
 
-            await token.mint(faucet.address, new BigNumber(config.faucet.faucetAmount))
-
-            await Promise.all(config.faucet.whitelist.map(addr => {
-                return faucet.addToWhitelist(addr)
-            }))
-        }
-
-        const bondingManager = await deployProxyAndRegister(deployer, controller, BondingManager, "BondingManager", controller.address)
-        const jobsManager = await deployProxyAndRegister(deployer, controller, JobsManager, "JobsManager", controller.address)
+        const bondingManager = await lpDeployer.deployProxyAndRegister(BondingManager, "BondingManager", controller.address)
+        const jobsManager = await lpDeployer.deployProxyAndRegister(JobsManager, "JobsManager", controller.address)
 
         let roundsManager
 
         if (network === "development" || network === "testrpc" || network === "parityDev" || network === "gethDev") {
-            roundsManager = await deployProxyAndRegister(deployer, controller, AdjustableRoundsManager, "RoundsManager", controller.address)
+            roundsManager = await lpDeployer.deployProxyAndRegister(AdjustableRoundsManager, "RoundsManager", controller.address)
         } else {
-            roundsManager = await deployProxyAndRegister(deployer, controller, RoundsManager, "RoundsManager", controller.address)
+            roundsManager = await lpDeployer.deployProxyAndRegister(RoundsManager, "RoundsManager", controller.address)
         }
 
         deployer.logger.log("Initializing contracts...")
@@ -111,13 +56,5 @@ module.exports = function(deployer, network) {
             config.jobsManager.finderFee
         )
         await roundsManager.setParameters(config.roundsManager.roundLength, config.roundsManager.roundLockAmount)
-
-        deployer.logger.log("Transferring ownership of the LivepeerToken to the Minter...")
-
-        await token.transferOwnership(minter.address)
-
-        deployer.logger.log("Unpausing the Controller...")
-
-        await controller.unpause()
     })
 }

@@ -24,15 +24,14 @@ module.exports = {
         roundLockAmount: 100000
     },
     faucet: {
-        faucetAmount: new BigNumber(10000000).mul(TOKEN_UNIT),
         requestAmount: new BigNumber(10).mul(TOKEN_UNIT),
-        requestWait: 2,
+        requestWait: 1,
         whitelist: []
     },
     minter: {
         inflation: .0137 * PERC_MULTIPLIER,
         inflationChange: .001 * PERC_MULTIPLIER,
-        targetBondingRate: 10 * PERC_MULTIPLIER
+        targetBondingRate: 1.5 * PERC_MULTIPLIER
     },
     verifier: {
         verificationCodeHash: "QmZmvi1BaYSdxM1Tgwhi2mURabh46xCkzuH9PWeAkAZZGc",
