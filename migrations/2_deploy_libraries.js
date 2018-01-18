@@ -10,7 +10,6 @@ const Minter = artifacts.require("Minter")
 const JobsManager = artifacts.require("JobsManager")
 const BondingManager = artifacts.require("BondingManager")
 const RoundsManager = artifacts.require("RoundsManager")
-const OraclizeVerifier = artifacts.require("OraclizeVerifier")
 
 module.exports = function(deployer) {
     deployer.deploy(SafeMath)
@@ -18,7 +17,6 @@ module.exports = function(deployer) {
         BondingManager,
         JobsManager,
         RoundsManager,
-        OraclizeVerifier,
         SortedDoublyLL,
         MathUtils
     ])

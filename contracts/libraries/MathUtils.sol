@@ -13,7 +13,7 @@ library MathUtils {
      * @dev Returns whether an amount is a valid percentage out of PERC_DIVISOR
      * @param _amount Amount that is supposed to be a percentage
      */
-    function validPerc(uint256 _amount) internal view returns (bool) {
+    function validPerc(uint256 _amount) internal pure returns (bool) {
         return _amount <= PERC_DIVISOR;
     }
 
@@ -23,7 +23,7 @@ library MathUtils {
      * @param _fracNum Numerator of fraction representing the percentage
      * @param _fracDenom Denominator of fraction representing the percentage
      */
-    function percOf(uint256 _amount, uint256 _fracNum, uint256 _fracDenom) internal view returns (uint256) {
+    function percOf(uint256 _amount, uint256 _fracNum, uint256 _fracDenom) internal pure returns (uint256) {
         return _amount.mul(percPoints(_fracNum, _fracDenom)).div(PERC_DIVISOR);
     }
 
@@ -32,7 +32,7 @@ library MathUtils {
      * @param _amount Amount to take the percentage of
      * @param _fracNum Numerator of fraction representing the percentage with PERC_DIVISOR as the denominator
      */
-    function percOf(uint256 _amount, uint256 _fracNum) internal view returns (uint256) {
+    function percOf(uint256 _amount, uint256 _fracNum) internal pure returns (uint256) {
         return _amount.mul(_fracNum).div(PERC_DIVISOR);
     }
 
@@ -41,7 +41,7 @@ library MathUtils {
      * @param _fracNum Numerator of fraction represeting the percentage
      * @param _fracDenom Denominator of fraction represeting the percentage
      */
-    function percPoints(uint256 _fracNum, uint256 _fracDenom) internal view returns (uint256) {
+    function percPoints(uint256 _fracNum, uint256 _fracDenom) internal pure returns (uint256) {
         return _fracNum.mul(PERC_DIVISOR).div(_fracDenom);
     }
 }

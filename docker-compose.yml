@@ -8,55 +8,15 @@ services:
     image: livepeer/geth-dev:latest
     ports:
       - "47624:8545"
-  testrpc:
-    image: livepeer/testrpc:latest
-    ports:
-      - "47625:8545"
-  # Works locally, but not on CircleCI
-  # Add back in once we figure out why
-  # parity-integration-tests:
-  #   container_name: parity-integration-tests
-  #   build:
-  #     context: .
-  #     dockerfile: Dockerfile-test
-  #   command: npm run integration-test -- --network=parityDev
-  #   environment:
-  #     - TRUFFLE_NETWORK_NAME=parityDev
-  #   links:
-  #     - parity-dev
+  parity-integration-tests:
+    container_name: parity-integration-tests
+    image: livepeer/protocol:latest
+    command: npm run test:integration -- --network=parityDev
+    links:
+      - parity-dev
   geth-integration-tests:
     container_name: geth-integration-tests
-    build:
-      context: .
-      dockerfile: Dockerfile-test
-    command: npm run integration-test -- --network=gethDev
-    environment:
-      - TRUFFLE_NETWORK_NAME=gethDev
+    image: livepeer/protocol:latest
+    command: npm run test:integration -- --network=gethDev
     links:
       - geth-dev
-  testrpc-integration-tests:
-    container_name: testrpc-integration-tests
-    build:
-      context: .
-      dockerfile: Dockerfile-test
-    command: npm run integration-test -- --network=testrpc
-    environment:
-      - TRUFFLE_NETWORK_NAME=testrpc
-    links:
-      - testrpc
-  unit-tests:
-    container_name: unit-tests
-    build:
-      context: .
-      dockerfile: Dockerfile-test
-    command: npm run unit-test -- --network=testrpc
-    environment:
-      - TRUFFLE_NETWORK_NAME=testrpc
-    links:
-      - testrpc
-  lint:
-    container_name: lint
-    build:
-      context: .
-      dockerfile: Dockerfile-test
-    command: npm run lint

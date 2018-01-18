@@ -12,7 +12,9 @@ contract IVerifier {
         string _transcodingOptions,
         string _dataStorageHash,
         bytes32[2] _dataHashes
-    ) external payable;
+    )
+        external
+        payable;
 
     function getPrice() public view returns (uint256);
 }

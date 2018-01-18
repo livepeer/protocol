@@ -1,18 +1,14 @@
 require("babel-register")
 require("babel-polyfill")
 
+const HDWalletProvider = require("truffle-hdwallet-provider-privkey")
+
 module.exports = {
     networks: {
         development: {
             host: "localhost",
             port: 8545,
             network_id: "*", // Match any network id
-            gas: 6700000
-        },
-        testrpc: {
-            host: "testrpc",
-            port: 8545,
-            network_id: "*",
             gas: 6700000
         },
         parityDev: {
@@ -28,8 +24,9 @@ module.exports = {
             gas: 6700000
         },
         lpTestNet: {
-            host: "localhost",
-            port: 8545,
+            provider: () => {
+                return new HDWalletProvider(process.env.LPTESTNET_PRIV_KEY, "http://ethrpc-testnet.livepeer.org:8545")
+            },
             network_id: 858585,
             gas: 6600000
         }

@@ -24,7 +24,5 @@ contract MinterMock is IMinter {
         return true;
     }
 
-    function addToRedistributionPool(uint256 _amount) external {}
-
     function setCurrentRewardTokens() external {}
 }

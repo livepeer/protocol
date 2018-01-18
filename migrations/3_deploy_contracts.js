@@ -9,7 +9,6 @@ const RoundsManager = artifacts.require("RoundsManager")
 const AdjustableRoundsManager = artifacts.require("AdjustableRoundsManager")
 const IdentityVerifier = artifacts.require("IdentityVerifier")
 const LivepeerVerifier = artifacts.require("LivepeerVerifier")
-const OraclizeVerifier = artifacts.require("OraclizeVerifier")
 const LivepeerToken = artifacts.require("LivepeerToken")
 const LivepeerTokenFaucet = artifacts.require("LivepeerTokenFaucet")
 const ManagerProxy = artifacts.require("ManagerProxy")
@@ -24,10 +23,8 @@ module.exports = function(deployer, network) {
 
         if (network === "development" || network === "testrpc" || network === "parityDev" || network === "gethDev") {
             await lpDeployer.deployAndRegister(IdentityVerifier, "Verifier", controller.address)
-        } else if (network === "lpTestNet") {
-            await lpDeployer.deployAndRegister(LivepeerVerifier, "Verifier", controller.address, config.verifier.solvers, config.verifier.verificationCodeHash)
         } else {
-            await lpDeployer.deployAndRegister(OraclizeVerifier, "Verifier", controller.address, config.verifier.verificationCodeHash, config.verifier.gasPrice, config.verifier.gasLimit)
+            await lpDeployer.deployAndRegister(LivepeerVerifier, "Verifier", controller.address, config.verifier.solvers, config.verifier.verificationCodeHash)
         }
 
         await lpDeployer.deployAndRegister(LivepeerTokenFaucet, "LivepeerTokenFaucet", token.address, config.faucet.requestAmount, config.faucet.requestWait)

@@ -87,7 +87,16 @@ contract LivepeerVerifier is Manager, IVerifier {
         requests[requestCount].segmentNumber = _segmentNumber;
         requests[requestCount].commitHash = keccak256(_dataHashes[0], _dataHashes[1]);
 
-        VerifyRequest(requestCount, _jobId, _claimId, _segmentNumber, _transcodingOptions, _dataStorageHash, _dataHashes[0], _dataHashes[1]);
+        VerifyRequest(
+            requestCount,
+            _jobId,
+            _claimId,
+            _segmentNumber,
+            _transcodingOptions,
+            _dataStorageHash,
+            _dataHashes[0],
+            _dataHashes[1]
+        );
 
         // Update request count
         requestCount++;
@@ -98,6 +107,7 @@ contract LivepeerVerifier is Manager, IVerifier {
      * @param _requestId Request identifier
      * @param _result Result of verification computation - keccak256 hash of transcoded segment data
      */
+    // solium-disable-next-line mixedcase
     function __callback(uint256 _requestId, bytes32 _result) external onlySolvers whenSystemNotPaused {
         Request memory q = requests[_requestId];
 

@@ -21,7 +21,7 @@ library JobLib {
      * @param _transcodingOptions String containing video profiles for a job
      * @param _pricePerSegment Price in LPT base units per segment
      */
-    function calcFees(uint256 _totalSegments, string _transcodingOptions, uint256 _pricePerSegment) public view returns (uint256) {
+    function calcFees(uint256 _totalSegments, string _transcodingOptions, uint256 _pricePerSegment) public pure returns (uint256) {
         // Calculate total profiles defined in the transcoding options string
         uint256 totalProfiles = bytes(_transcodingOptions).length.div(VIDEO_PROFILE_SIZE);
         return _totalSegments.mul(totalProfiles).mul(_pricePerSegment);
@@ -74,7 +74,7 @@ library JobLib {
         address _broadcaster
     )
         public
-        view
+        pure
         returns (bool)
     {
         return ECRecovery.recover(personalSegmentHash(_streamId, _segmentNumber, _dataHash), _broadcasterSig) == _broadcaster;
@@ -99,7 +99,7 @@ library JobLib {
         bytes32 _claimRoot
     )
         public
-        view
+        pure
         returns (bool)
     {
         return MerkleProof.verifyProof(_proof, _claimRoot, transcodeReceiptHash(_streamId, _segmentNumber, _dataHash, _transcodedDataHash, _broadcasterSig));
