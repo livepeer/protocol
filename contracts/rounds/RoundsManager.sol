@@ -80,6 +80,13 @@ contract RoundsManager is ManagerProxyTarget, IRoundsManager {
     }
 
     /*
+     * @dev Return blockhash for a block
+     */
+    function blockHash(uint256 _block) public view returns (bytes32) {
+        return block.blockhash(_block);
+    }
+
+    /*
      * @dev Return current round
      */
     function currentRound() public view returns (uint256) {

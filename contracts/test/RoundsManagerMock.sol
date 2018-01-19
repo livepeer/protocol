@@ -10,6 +10,7 @@ contract RoundsManagerMock is IRoundsManager {
     IMinter minter;
 
     uint256 public blockNum;
+    bytes32 public blockHash;
     uint256 public currentRound;
     uint256 public currentRoundStartBlock;
     bool public currentRoundInitialized;
@@ -53,6 +54,10 @@ contract RoundsManagerMock is IRoundsManager {
 
     function blockNum() public view returns (uint256) {
         return blockNum;
+    }
+
+    function blockHash(uint256 _block) public view returns (bytes32) {
+        return blockHash;
     }
 
     function currentRound() public view returns (uint256) {

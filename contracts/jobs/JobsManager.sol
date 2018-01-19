@@ -393,7 +393,7 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         // Claim block + 1 must be within the last 256 blocks from the current block
         require(blockNum < 256 || claim.claimBlock + 1 >= blockNum - 256);
         // Segment must be eligible for verification
-        require(JobLib.shouldVerifySegment(_segmentNumber, claim.segmentRange, claim.claimBlock, verificationRate));
+        require(JobLib.shouldVerifySegment(_segmentNumber, claim.segmentRange, claim.claimBlock + 1, roundsManager().blockHash(claim.claimBlock + 1), verificationRate));
         // Segment must be signed by broadcaster
         require(
             JobLib.validateBroadcasterSig(
@@ -531,7 +531,7 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         // Claim block + 1 must be within the last 256 blocks from the current block
         require(blockNum < 256 || claim.claimBlock >= blockNum - 256);
         // Segment must be eligible for verification
-        require(JobLib.shouldVerifySegment(_segmentNumber, claim.segmentRange, claim.claimBlock, verificationRate));
+        require(JobLib.shouldVerifySegment(_segmentNumber, claim.segmentRange, claim.claimBlock + 1, roundsManager().blockHash(claim.claimBlock + 1), verificationRate));
         // Transcoder must have missed verification for the segment
         require(!claim.segmentVerifications[_segmentNumber]);
 
