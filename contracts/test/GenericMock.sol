@@ -11,9 +11,10 @@ contract GenericMock {
         bytes32 bytes32Value;
         bool boolValue;
         MockValueType valueType;
+        bool set;
     }
 
-    enum MockValueType { Uint256, Bytes32, Bool, None }
+    enum MockValueType { Uint256, Bytes32, Bool }
 
     // Track function selectors and mapped mock values
     mapping (bytes4 => MockValue) mockValues;
@@ -35,6 +36,7 @@ contract GenericMock {
     function setMockUint256(bytes4 _func, uint256 _value) external returns (bool) {
         mockValues[_func].valueType = MockValueType.Uint256;
         mockValues[_func].uint256Value = _value;
+        mockValues[_func].set = true;
     }
 
     /*
@@ -45,6 +47,7 @@ contract GenericMock {
     function setMockBytes32(bytes4 _func, bytes32 _value) external {
         mockValues[_func].valueType = MockValueType.Bytes32;
         mockValues[_func].bytes32Value = _value;
+        mockValues[_func].set = true;
     }
 
     /*
@@ -55,6 +58,7 @@ contract GenericMock {
     function setMockBool(bytes4 _func, bool _value) external {
         mockValues[_func].valueType = MockValueType.Bool;
         mockValues[_func].boolValue = _value;
+        mockValues[_func].set = true;
     }
 
     /*
@@ -64,15 +68,17 @@ contract GenericMock {
         bytes4 func;
         assembly { func := calldataload(0) }
 
-        if (mockValues[func].valueType == MockValueType.Uint256) {
-            mLoadAndReturn(mockValues[func].uint256Value);
-        } else if (mockValues[func].valueType == MockValueType.Bytes32) {
-            mLoadAndReturn(mockValues[func].bytes32Value);
-        } else if (mockValues[func].valueType == MockValueType.Bool) {
-            mLoadAndReturn(mockValues[func].boolValue);
+        if (!mockValues[func].set) {
+            // If mock value not set, default to return a bool with value false
+            mLoadAndReturn(false);
         } else {
-            // No type set - no mock value
-            revert();
+            if (mockValues[func].valueType == MockValueType.Uint256) {
+                mLoadAndReturn(mockValues[func].uint256Value);
+            } else if (mockValues[func].valueType == MockValueType.Bytes32) {
+                mLoadAndReturn(mockValues[func].bytes32Value);
+            } else if (mockValues[func].valueType == MockValueType.Bool) {
+                mLoadAndReturn(mockValues[func].boolValue);
+            }
         }
     }
 
