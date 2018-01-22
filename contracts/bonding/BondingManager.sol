@@ -521,8 +521,10 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * @dev Pseudorandomly elect a currently active transcoder that charges a price per segment less than or equal to the max price per segment for a job
      * Returns address of elected active transcoder and its price per segment
      * @param _maxPricePerSegment Max price (in LPT base units) per segment of a stream
+     * @param _blockHash Job creation block hash used as a pseudorandom seed for assigning an active transcoder
+     * @param _round Job creation round
      */
-    function electActiveTranscoder(uint256 _maxPricePerSegment, bytes32 _rand, uint256 _round) external view returns (address) {
+    function electActiveTranscoder(uint256 _maxPricePerSegment, bytes32 _blockHash, uint256 _round) external view returns (address) {
         uint256 activeSetSize = activeTranscoderSet[_round].transcoders.length;
         // Create array to store available transcoders charging an acceptable price per segment
         address[] memory availableTranscoders = new address[](activeSetSize);
@@ -548,7 +550,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             address electedTranscoder = availableTranscoders[numAvailableTranscoders - 1];
 
             // Pseudorandomly pick an available transcoder weighted by its stake relative to the total stake of all available transcoders
-            uint256 r = uint256(_rand) % totalAvailableTranscoderStake;
+            uint256 r = uint256(_blockHash) % totalAvailableTranscoderStake;
             uint256 s = 0;
 
             for (uint256 j = 0; j < numAvailableTranscoders; j++) {
