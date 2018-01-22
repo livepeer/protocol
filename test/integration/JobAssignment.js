@@ -90,22 +90,22 @@ contract("JobAssignment", accounts => {
         let jobID
         let job
         let jobCreationRound
-        let challengeHash
+        let rand
         let electedTranscoder
 
         let jobsCreated = 0
 
         while (jobsCreated < 100) {
-            // Set challenge hash
-            challengeHash = web3.eth.getBlock(web3.eth.blockNumber).hash
-            await roundsManager.setBlockHash(challengeHash)
+            // Set rand hash
+            rand = web3.eth.getBlock(web3.eth.blockNumber).hash
+            await roundsManager.setBlockHash(rand)
 
             await jobsManager.job(streamId, transcodingOptions, maxPricePerSegment, endBlock)
             jobID = (await jobsManager.numJobs.call()).sub(1)
             job = await jobsManager.getJob(jobID)
             jobCreationRound = job[5]
 
-            electedTranscoder = await bondingManager.electActiveTranscoder(maxPricePerSegment, challengeHash, jobCreationRound)
+            electedTranscoder = await bondingManager.electActiveTranscoder(maxPricePerSegment, rand, jobCreationRound)
 
             switch (electedTranscoder) {
               case transcoder1:
@@ -164,22 +164,22 @@ contract("JobAssignment", accounts => {
         let jobID
         let job
         let jobCreationRound
-        let challengeHash
+        let rand
         let electedTranscoder
 
         let jobsCreated = 0
 
         while (jobsCreated < 5) {
-            // Set challenge hash
-            challengeHash = web3.eth.getBlock(web3.eth.blockNumber).hash
-            await roundsManager.setBlockHash(challengeHash)
+            // Set rand hash
+            rand = web3.eth.getBlock(web3.eth.blockNumber).hash
+            await roundsManager.setBlockHash(rand)
 
             await jobsManager.job(streamId, transcodingOptions, maxPricePerSegment, endBlock)
             jobID = (await jobsManager.numJobs.call()).sub(1)
             job = await jobsManager.getJob(jobID)
             jobCreationRound = job[5]
 
-            electedTranscoder = await bondingManager.electActiveTranscoder(maxPricePerSegment, challengeHash, jobCreationRound)
+            electedTranscoder = await bondingManager.electActiveTranscoder(maxPricePerSegment, rand, jobCreationRound)
 
             switch (electedTranscoder) {
               case transcoder1:

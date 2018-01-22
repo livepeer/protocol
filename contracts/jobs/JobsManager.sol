@@ -392,10 +392,10 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         require(job.transcoderAddress == msg.sender);
 
         uint256 blockNum = roundsManager().blockNum();
-        // Claim block + 1 must be within the last 256 blocks from the current block
-        require(blockNum < 256 || claim.claimBlock + 1 >= blockNum - 256);
+        uint256 challengeBlock = claim.claimBlock + 1;
         // Segment must be eligible for verification
-        require(JobLib.shouldVerifySegment(_segmentNumber, claim.segmentRange, claim.claimBlock + 1, roundsManager().blockHash(claim.claimBlock + 1), verificationRate));
+        // roundsManager().blockHash() ensures that the challenge block is within the last 256 blocks from the current block
+        require(JobLib.shouldVerifySegment(_segmentNumber, claim.segmentRange, challengeBlock, roundsManager().blockHash(challengeBlock), verificationRate));
         // Segment must be signed by broadcaster
         require(
             JobLib.validateBroadcasterSig(
@@ -524,16 +524,16 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         Claim storage claim = job.claims[_claimId];
 
         uint256 blockNum = roundsManager().blockNum();
+        uint256 challengeBlock = claim.claimBlock + 1;
         // Must be after verification period
         require(blockNum > claim.endVerificationBlock);
         // Must be before end of slashing period
         require(blockNum <= claim.endSlashingBlock);
         // Claim must be pending
         require(claim.status == ClaimStatus.Pending);
-        // Claim block + 1 must be within the last 256 blocks from the current block
-        require(blockNum < 256 || claim.claimBlock >= blockNum - 256);
         // Segment must be eligible for verification
-        require(JobLib.shouldVerifySegment(_segmentNumber, claim.segmentRange, claim.claimBlock + 1, roundsManager().blockHash(claim.claimBlock + 1), verificationRate));
+        // roundsManager().blockHash() ensures that the challenge block is within the last 256 blocks from the current block
+        require(JobLib.shouldVerifySegment(_segmentNumber, claim.segmentRange, challengeBlock, roundsManager().blockHash(challengeBlock), verificationRate));
         // Transcoder must have missed verification for the segment
         require(!claim.segmentVerifications[_segmentNumber]);
 
