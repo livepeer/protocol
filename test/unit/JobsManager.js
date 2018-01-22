@@ -207,13 +207,6 @@ contract("JobsManager", accounts => {
             await expectThrow(jobsManager.claimWork(jobId, segmentRange, claimRoot, {from: accounts[2]}))
         })
 
-        it("should fail if the transcoder is not assigned and it has been more than 256 blocks since the job creation block", async () => {
-            const creationBlock = (await jobsManager.getJob(jobId))[6]
-            await fixture.roundsManager.mineBlocks(256 - (100 - creationBlock.toNumber()))
-
-            await expectThrow(jobsManager.claimWork(jobId, segmentRange, claimRoot, {from: electedTranscoder}))
-        })
-
         it("should fail if the sender should not be assigned the job", async () => {
             // Account 2 (not elected transcoder) claims work
             await expectThrow(jobsManager.claimWork(jobId, segmentRange, claimRoot, {from: accounts[2]}))

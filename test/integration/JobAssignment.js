@@ -87,25 +87,25 @@ contract("JobAssignment", accounts => {
         // Broadcaster makes a deposit for jobs
         await jobsManager.deposit({from: broadcaster, value: 100000})
 
+        let jobID
         let job
-        let jobCreationBlock
         let jobCreationRound
         let challengeHash
         let electedTranscoder
 
-        let numJobs = 0
+        let jobsCreated = 0
 
-        while (numJobs < 100) {
+        while (jobsCreated < 100) {
             // Set challenge hash
             challengeHash = web3.eth.getBlock(web3.eth.blockNumber).hash
             await roundsManager.setBlockHash(challengeHash)
 
             await jobsManager.job(streamId, transcodingOptions, maxPricePerSegment, endBlock)
-            job = await jobsManager.getJob(numJobs)
-            jobCreationBlock = job[6]
+            jobID = (await jobsManager.numJobs.call()).sub(1)
+            job = await jobsManager.getJob(jobID)
             jobCreationRound = job[5]
 
-            electedTranscoder = await bondingManager.electActiveTranscoder(maxPricePerSegment, jobCreationBlock, jobCreationRound)
+            electedTranscoder = await bondingManager.electActiveTranscoder(maxPricePerSegment, challengeHash, jobCreationRound)
 
             switch (electedTranscoder) {
               case transcoder1:
@@ -128,17 +128,17 @@ contract("JobAssignment", accounts => {
                 await roundsManager.initializeRound()
             }
 
-            numJobs++
+            jobsCreated++
         }
 
-        const transcoder1JobShare = transcoder1JobCount / numJobs
-        const transcoder2JobShare = transcoder2JobCount / numJobs
-        const transcoder3JobShare = transcoder3JobCount / numJobs
+        const transcoder1JobShare = transcoder1JobCount / jobsCreated
+        const transcoder2JobShare = transcoder2JobCount / jobsCreated
+        const transcoder3JobShare = transcoder3JobCount / jobsCreated
         const acceptableDelta = .1
 
         assert.equal(nullAddressJobCount, 0, "should not be any unassigned jobs")
         assert.isAbove(transcoder1JobShare, transcoder2JobShare, "transcoder 1 job share should be > transcoder 2 job share")
-        assert.isAbove(transcoder2JobShare, transcoder3JobShare, "transcoder 2 job share should be > transcdoer 3 job share")
+        assert.isAbove(transcoder2JobShare, transcoder3JobShare, "transcoder 2 job share should be > transcoder 3 job share")
         assert.isAtMost(Math.abs(transcoder1JobShare - .5), acceptableDelta, "transcoder 1 job share not within acceptable delta")
         assert.isAtMost(Math.abs(transcoder2JobShare - .3), acceptableDelta, "transcoder 2 job share not within acceptable delta")
         assert.isAtMost(Math.abs(transcoder3JobShare - .2), acceptableDelta, "transcoder 3 job share not within acceptable delta")
@@ -161,25 +161,25 @@ contract("JobAssignment", accounts => {
         const maxPricePerSegment = 1
         const endBlock = (await roundsManager.blockNum()).add(1000)
 
+        let jobID
         let job
-        let jobCreationBlock
         let jobCreationRound
         let challengeHash
         let electedTranscoder
 
-        let numJobs = 0
+        let jobsCreated = 0
 
-        while (numJobs < 50) {
+        while (jobsCreated < 5) {
             // Set challenge hash
             challengeHash = web3.eth.getBlock(web3.eth.blockNumber).hash
             await roundsManager.setBlockHash(challengeHash)
 
             await jobsManager.job(streamId, transcodingOptions, maxPricePerSegment, endBlock)
-            job = await jobsManager.getJob(numJobs)
-            jobCreationBlock = job[6]
+            jobID = (await jobsManager.numJobs.call()).sub(1)
+            job = await jobsManager.getJob(jobID)
             jobCreationRound = job[5]
 
-            electedTranscoder = await bondingManager.electActiveTranscoder(maxPricePerSegment, jobCreationBlock, jobCreationRound)
+            electedTranscoder = await bondingManager.electActiveTranscoder(maxPricePerSegment, challengeHash, jobCreationRound)
 
             switch (electedTranscoder) {
               case transcoder1:
@@ -202,17 +202,11 @@ contract("JobAssignment", accounts => {
                 await roundsManager.initializeRound()
             }
 
-            numJobs++
+            jobsCreated++
         }
-
-        const transcoder2JobShare = transcoder2JobCount / numJobs
-        const transcoder3JobShare = transcoder3JobCount / numJobs
-        const acceptableDelta = .1
 
         assert.equal(nullAddressJobCount, 0, "should not be any unassigned jobs")
         assert.equal(transcoder1JobCount, 0, "transcoder 1 should not be assigned jobs if its price is too high")
-        assert.isAbove(transcoder2JobShare, transcoder3JobShare, "transcoder 2 job share should be > transcoder 3 job share")
-        assert.isAtMost(Math.abs(transcoder2JobShare - .6), acceptableDelta, "transcoder 2 job share not within acceptable delta")
-        assert.isAtMost(Math.abs(transcoder3JobShare - .4), acceptableDelta, "transcoder 3 job share not within acceptable delta")
+        assert.notEqual(transcoder2JobCount + transcoder3JobCount, 0, "transcoder 2 and 3 should have been assigned jobs")
     })
 })
