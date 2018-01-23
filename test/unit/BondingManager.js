@@ -61,6 +61,14 @@ contract("BondingManager", accounts => {
             await expectThrow(bondingManager.transcoder(blockRewardCut, feeShare, pricePerSegment), {from: tAddr})
         })
 
+        it("should fail if transcoder is not bonded to self", async () => {
+            await fixture.token.setApproved(true)
+            await bondingManager.bond(2000, tAddr, {from: accounts[2]})
+
+            // Fails because transcoder has non zero delegated stake but is not bonded to self
+            await expectThrow(bondingManager.transcoder(blockRewardCut, feeShare, pricePerSegment), {from: tAddr})
+        })
+
         it("should fail if blockRewardCut is an invalid percentage", async () => {
             const invalidBlockRewardCut = 101 * PERC_MULTIPLIER
             await expectThrow(bondingManager.transcoder(invalidBlockRewardCut, feeShare, pricePerSegment, {from: tAddr}))
@@ -102,38 +110,6 @@ contract("BondingManager", accounts => {
             assert.equal(tInfo[4], newBlockRewardCut, "pending block reward cut incorrect")
             assert.equal(tInfo[5], newFeeShare, "pending fee share incorrect")
             assert.equal(tInfo[6], newPricePerSegment, "pending price per segment incorrect")
-        })
-    })
-
-    describe("resignAsTranscoder", () => {
-        const tAddr = accounts[1]
-
-        beforeEach(async () => {
-            const blockRewardCut = 10 * PERC_MULTIPLIER
-            const feeShare = 5 * PERC_MULTIPLIER
-            const pricePerSegment = 100
-
-            await bondingManager.setParameters(UNBONDING_PERIOD, NUM_TRANSCODERS, NUM_ACTIVE_TRANSCODERS)
-
-            await fixture.roundsManager.setCurrentRoundInitialized(true)
-            await fixture.token.setApproved(true)
-            await bondingManager.bond(2000, tAddr, {from: tAddr})
-            await bondingManager.transcoder(blockRewardCut, feeShare, pricePerSegment, {from: tAddr})
-        })
-
-        it("should throw if transcoder is not registered", async () => {
-            await expectThrow(bondingManager.resignAsTranscoder({from: accounts[2]}))
-        })
-
-        it("should remove the transcoder from the transcoder pools", async () => {
-            await bondingManager.resignAsTranscoder({from: tAddr})
-            assert.equal(await bondingManager.transcoderStatus(tAddr), 0, "transcoder not removed from pool")
-        })
-
-        it("should set a transcoder as not registered", async () => {
-            await bondingManager.resignAsTranscoder({from: tAddr})
-            const transcoderStatus = await bondingManager.transcoderStatus(tAddr)
-            assert.equal(transcoderStatus, 0, "transcoder is not not registered")
         })
     })
 
@@ -599,10 +575,10 @@ contract("BondingManager", accounts => {
             // Delegator bonds to transcoder
             await bondingManager.bond(2000, tAddr, {from: dAddr})
 
-            // Set active transcoders
-            await fixture.roundsManager.initializeRound()
             // Set current round so delegator is bonded
             await fixture.roundsManager.setCurrentRound(currentRound)
+            // Set active transcoders
+            await fixture.roundsManager.initializeRound()
         })
 
         it("should set withdraw round to current block + unbonding period", async () => {
@@ -641,6 +617,20 @@ contract("BondingManager", accounts => {
             const endDelegatedAmount = (await bondingManager.getDelegator(tAddr))[3]
 
             assert.equal(startDelegatedAmount.sub(endDelegatedAmount), 2000, "delegate's delegated amount did not decrease by bonded amount")
+        })
+
+        it("should resign transcoder if caller is a registered transcoder", async () => {
+            await bondingManager.unbond({from: tAddr})
+
+            assert.equal(await bondingManager.transcoderStatus(tAddr), 0, "transcoder not removed from pool")
+        })
+
+        it("should set transcoder as inactive for the current round if caller is a registered transcoder", async () => {
+            assert.isOk(await bondingManager.isActiveTranscoder(tAddr, currentRound), "transcoder should be active")
+
+            await bondingManager.unbond({from: tAddr})
+
+            assert.isNotOk(await bondingManager.isActiveTranscoder(tAddr, currentRound), "transcoder should be inactive")
         })
     })
 
