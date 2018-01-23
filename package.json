@@ -13,12 +13,12 @@
     "ganache": "./node_modules/.bin/ganache-cli -l 0x663BE0",
     "compile": "rm -rf build/contracts && truffle compile --all",
     "test:unit": "bash scripts/run_ganache.sh && truffle test test/unit/*",
-    "test:integration": "truffle test test/integration/*",
+    "test:integration": "bash scripts/run_ganache.sh && truffle test test/integration/*",
     "docker:build": "docker build --cache-from livepeer/protocol:latest --tag livepeer/protocol:latest -f Dockerfile .",
     "docker:push": "docker push livepeer/protocol:latest",
     "docker:run:lint": "docker run --rm --entrypoint=npm livepeer/protocol:latest run lint",
     "docker:run:test:unit": "docker run --rm --entrypoint=npm livepeer/protocol:latest run test:unit",
-    "docker:run:test:integration": "bash scripts/run_integration_tests.sh"
+    "docker:run:test:integration": "docker run --rm --entrypoint=npm livepeer/protocol:latest run test:integration"
   },
   "repository": {
     "type": "git",

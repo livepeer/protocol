@@ -327,9 +327,11 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
             // the assigned transcoder
             require(job.transcoderAddress == msg.sender);
         } else {
-            // If transcoder is not already assigned, check if sender
-            // should be assigned and that job creation block has been mined and it has been <= 256 blocks since the job creation block
-            require(blockNum > job.creationBlock && blockNum <= job.creationBlock + 256 && bondingManager().electActiveTranscoder(job.maxPricePerSegment, job.creationBlock, job.creationRound) == msg.sender);
+            // If transcoder is not already assigned, check if sender should be assigned
+            // roundsManager.blockHash() will ensure that the job creation block has been mined and it has not
+            // been more than 256 blocks since the creation block
+            require(bondingManager().electActiveTranscoder(job.maxPricePerSegment, roundsManager().blockHash(job.creationBlock), job.creationRound) == msg.sender);
+
             job.transcoderAddress = msg.sender;
         }
 
@@ -390,10 +392,10 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         require(job.transcoderAddress == msg.sender);
 
         uint256 blockNum = roundsManager().blockNum();
-        // Claim block + 1 must be within the last 256 blocks from the current block
-        require(blockNum < 256 || claim.claimBlock + 1 >= blockNum - 256);
+        uint256 challengeBlock = claim.claimBlock + 1;
         // Segment must be eligible for verification
-        require(JobLib.shouldVerifySegment(_segmentNumber, claim.segmentRange, claim.claimBlock, verificationRate));
+        // roundsManager().blockHash() ensures that the challenge block is within the last 256 blocks from the current block
+        require(JobLib.shouldVerifySegment(_segmentNumber, claim.segmentRange, challengeBlock, roundsManager().blockHash(challengeBlock), verificationRate));
         // Segment must be signed by broadcaster
         require(
             JobLib.validateBroadcasterSig(
@@ -522,16 +524,16 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         Claim storage claim = job.claims[_claimId];
 
         uint256 blockNum = roundsManager().blockNum();
+        uint256 challengeBlock = claim.claimBlock + 1;
         // Must be after verification period
         require(blockNum > claim.endVerificationBlock);
         // Must be before end of slashing period
         require(blockNum <= claim.endSlashingBlock);
         // Claim must be pending
         require(claim.status == ClaimStatus.Pending);
-        // Claim block + 1 must be within the last 256 blocks from the current block
-        require(blockNum < 256 || claim.claimBlock >= blockNum - 256);
         // Segment must be eligible for verification
-        require(JobLib.shouldVerifySegment(_segmentNumber, claim.segmentRange, claim.claimBlock, verificationRate));
+        // roundsManager().blockHash() ensures that the challenge block is within the last 256 blocks from the current block
+        require(JobLib.shouldVerifySegment(_segmentNumber, claim.segmentRange, challengeBlock, roundsManager().blockHash(challengeBlock), verificationRate));
         // Transcoder must have missed verification for the segment
         require(!claim.segmentVerifications[_segmentNumber]);
 

@@ -20,7 +20,7 @@ contract IBondingManager {
     function setActiveTranscoders() external;
     function updateTranscoderWithFees(address _transcoder, uint256 _fees, uint256 _round) external;
     function slashTranscoder(address _transcoder, address _finder, uint256 _slashAmount, uint256 _finderFee) external;
-    function electActiveTranscoder(uint256 _maxPricePerSegment, uint256 _block, uint256 _round) external view returns (address);
+    function electActiveTranscoder(uint256 _maxPricePerSegment, bytes32 _blockHash, uint256 _round) external view returns (address);
 
     // Public functions
     function transcoderTotalStake(address _transcoder) public view returns (uint256);

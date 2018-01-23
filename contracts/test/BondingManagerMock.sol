@@ -62,7 +62,7 @@ contract BondingManagerMock is IBondingManager {
 
     function slashTranscoder(address _transcoder, address _finder, uint256 _slashAmount, uint256 _finderFee) external {}
 
-    function electActiveTranscoder(uint256 _maxPricePerSegment, uint256 _block, uint256 _round) external view returns (address) {
+    function electActiveTranscoder(uint256 _maxPricePerSegment, bytes32 _blockHash, uint256 _round) external view returns (address) {
         return transcoder;
     }
 

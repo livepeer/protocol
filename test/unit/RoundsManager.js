@@ -139,4 +139,56 @@ contract("RoundsManager", accounts => {
             assert.isOk(await roundsManager.currentRoundLocked(), "not true when in lock period")
         })
     })
+
+    describe("blockNum", () => {
+        beforeEach(async () => {
+            await roundsManager.setParameters(ROUND_LENGTH, ROUND_LOCK_AMOUNT)
+        })
+
+        it("should return the current block number", async () => {
+            const currentBlock = web3.eth.blockNumber
+            assert.equal(await roundsManager.blockNum(), currentBlock, "wrong block number")
+        })
+    })
+
+    describe("blockHash", () => {
+        beforeEach(async () => {
+            await roundsManager.setParameters(ROUND_LENGTH, ROUND_LOCK_AMOUNT)
+        })
+
+        it("should fail if block >= 256 and is more than 256 blocks in the past", async () => {
+            await fixture.rpc.wait(256)
+
+            const currentBlock = web3.eth.blockNumber
+            await expectThrow(roundsManager.blockHash(currentBlock - 257))
+        })
+
+        it("should fail if block is the current block", async () => {
+            const currentBlock = web3.eth.blockNumber
+            await expectThrow(roundsManager.blockHash(currentBlock))
+        })
+
+        it("should fail if block is in the future", async () => {
+            const currentBlock = web3.eth.blockNumber
+            await expectThrow(roundsManager.blockHash(currentBlock + 1))
+        })
+
+        it("should return the hash for the block if the block is < 256", async () => {
+            const previousBlock = web3.eth.blockNumber - 1
+            const previousBlockHash = web3.eth.getBlock(previousBlock).hash
+
+            const blockHash = await roundsManager.blockHash(previousBlock)
+            assert.equal(blockHash, previousBlockHash, "wrong block hash")
+        })
+
+        it("should return the hash for the block if the block is >= 256", async () => {
+            await fixture.rpc.wait(256)
+
+            const previousBlock = web3.eth.blockNumber - 1
+            const previousBlockHash = web3.eth.getBlock(previousBlock).hash
+
+            const blockHash = await roundsManager.blockHash(previousBlock)
+            assert.equal(blockHash, previousBlockHash, "wrong block hash")
+        })
+    })
 })
