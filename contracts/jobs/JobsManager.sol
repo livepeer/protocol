@@ -391,7 +391,6 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         // Sender must be elected transcoder
         require(job.transcoderAddress == msg.sender);
 
-        uint256 blockNum = roundsManager().blockNum();
         uint256 challengeBlock = claim.claimBlock + 1;
         // Segment must be eligible for verification
         // roundsManager().blockHash() ensures that the challenge block is within the last 256 blocks from the current block

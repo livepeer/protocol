@@ -170,12 +170,17 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // Fee share must be a valid percentage
         require(MathUtils.validPerc(_feeShare));
 
+        Delegator storage del = delegators[msg.sender];
+
+        // Must have a non-zero amount bonded to self
+        require(del.delegateAddress == msg.sender && del.bondedAmount > 0);
+
         Transcoder storage t = transcoders[msg.sender];
         t.pendingBlockRewardCut = _blockRewardCut;
         t.pendingFeeShare = _feeShare;
         t.pendingPricePerSegment = _pricePerSegment;
 
-        uint256 delegatedAmount = delegators[msg.sender].delegatedAmount;
+        uint256 delegatedAmount = del.delegatedAmount;
 
         // Check if transcoder is not already registered
         if (transcoderStatus(msg.sender) == TranscoderStatus.NotRegistered) {
@@ -195,29 +200,6 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         }
 
         TranscoderUpdate(msg.sender, _blockRewardCut, _feeShare, _pricePerSegment);
-    }
-
-    /*
-     * @dev Remove the sender as a transcoder
-     */
-    function resignAsTranscoder()
-        external
-        whenSystemNotPaused
-        currentRoundInitialized
-    {
-        // Sender must be registered transcoder
-        require(transcoderStatus(msg.sender) == TranscoderStatus.Registered);
-
-        uint256 currentRound = roundsManager().currentRound();
-        if (activeTranscoderSet[currentRound].isActive[msg.sender]) {
-            // If transcoder is active for the round set it as inactive
-            activeTranscoderSet[currentRound].isActive[msg.sender] = false;
-        }
-
-        // Remove transcoder from pools
-        transcoderPool.remove(msg.sender);
-
-        TranscoderResigned(msg.sender);
     }
 
     /**
@@ -316,12 +298,18 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             transcoderPool.updateKey(del.delegateAddress, transcoderPool.getKey(del.delegateAddress).sub(del.bondedAmount), address(0), address(0));
         }
 
-        Unbond(del.delegateAddress, msg.sender);
-
         // Delegator no longer bonded to anyone
         del.delegateAddress = address(0);
         // Unbonding delegator does not have a start round
         del.startRound = 0;
+
+        // If caller is a registered transcoder, resign
+        // In the future, with partial unbonding there would be a check for 0 bonded stake as well
+        if (transcoderStatus(msg.sender) == TranscoderStatus.Registered) {
+            resignTranscoder(msg.sender);
+        }
+
+        Unbond(del.delegateAddress, msg.sender);
     }
 
     /**
@@ -802,6 +790,22 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      */
     function isActiveTranscoder(address _transcoder, uint256 _round) public view returns (bool) {
         return activeTranscoderSet[_round].isActive[_transcoder];
+    }
+
+    /*
+     * @dev Remove transcoder
+     */
+    function resignTranscoder(address _transcoder) internal {
+        uint256 currentRound = roundsManager().currentRound();
+        if (activeTranscoderSet[currentRound].isActive[_transcoder]) {
+            // If transcoder is active for the round set it as inactive
+            activeTranscoderSet[currentRound].isActive[_transcoder] = false;
+        }
+
+        // Remove transcoder from pools
+        transcoderPool.remove(_transcoder);
+
+        TranscoderResigned(_transcoder);
     }
 
     /*
