@@ -57,15 +57,18 @@ contract("BondingManager", accounts => {
             await expectThrow(bondingManager.transcoder(blockRewardCut, feeShare, pricePerSegment), {from: tAddr})
         })
 
-        it("should fail with zero delegated amount", async () => {
-            await expectThrow(bondingManager.transcoder(blockRewardCut, feeShare, pricePerSegment), {from: tAddr})
-        })
-
         it("should fail if transcoder is not bonded to self", async () => {
             await fixture.token.setApproved(true)
             await bondingManager.bond(2000, tAddr, {from: accounts[2]})
 
             // Fails because transcoder has non zero delegated stake but is not bonded to self
+            await expectThrow(bondingManager.transcoder(blockRewardCut, feeShare, pricePerSegment), {from: tAddr})
+        })
+
+        it("should fail if transcoder does not have a non-zero amount bonded to self", async () => {
+            await bondingManager.bond(0, tAddr, {from: tAddr})
+
+            // Fails because transcoder is delegated to self but has zero bonded stake
             await expectThrow(bondingManager.transcoder(blockRewardCut, feeShare, pricePerSegment), {from: tAddr})
         })
 

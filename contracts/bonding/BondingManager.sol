@@ -172,8 +172,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
         Delegator storage del = delegators[msg.sender];
 
-        // Must be bonded to self
-        require(del.delegateAddress == msg.sender);
+        // Must have a non-zero amount bonded to self
+        require(del.delegateAddress == msg.sender && del.bondedAmount > 0);
 
         Transcoder storage t = transcoders[msg.sender];
         t.pendingBlockRewardCut = _blockRewardCut;
