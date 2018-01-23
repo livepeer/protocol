@@ -48,6 +48,6 @@
     "solium": "^1.1.2",
     "truffle": "^4.0.4",
     "truffle-hdwallet-provider-privkey": "github:yondonfu/truffle-hdwallet-provider-privkey",
-    "zeppelin-solidity": "^1.5.0"
+    "zeppelin-solidity": "1.5.0"
   }
 }
