@@ -44,7 +44,6 @@
     "ethereumjs-util": "^5.1.2",
     "ganache-cli": "^6.0.3",
     "mkdirp": "^0.5.1",
-    "nodegit": "^0.20.3",
     "solium": "^1.1.2",
     "truffle": "^4.0.4",
     "truffle-hdwallet-provider-privkey": "github:yondonfu/truffle-hdwallet-provider-privkey",
