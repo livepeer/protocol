@@ -1,5 +1,5 @@
-const path = require("path")
-const {Repository} = require("nodegit")
+const util = require("util")
+const exec = util.promisify(require("child_process").exec)
 const {contractId} = require("./helpers")
 
 class ContractDeployer {
@@ -10,10 +10,9 @@ class ContractDeployer {
     }
 
     async getGitHeadCommitHash() {
-        const repoRootPath = path.resolve(__dirname, "..")
-        const repo = await Repository.open(repoRootPath)
-        const headCommit = await repo.getHeadCommit()
-        return `0x${headCommit.sha()}`
+        const { stdout, stderr } = await exec("git rev-parse HEAD")
+        if (stderr) throw new Error(stderr)
+        return `0x${stdout}`
     }
 
     async deployController() {
