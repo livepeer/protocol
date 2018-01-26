@@ -10,9 +10,9 @@ class ContractDeployer {
     }
 
     async getGitHeadCommitHash() {
-        const { stdout, stderr } = await exec("git rev-parse HEAD")
+        const {stdout, stderr} = await exec("git rev-parse HEAD")
         if (stderr) throw new Error(stderr)
-        return `0x${stdout}`
+        return `0x${stdout.trim()}`
     }
 
     async deployController() {
