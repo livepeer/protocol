@@ -7,7 +7,6 @@ const BondingManager = artifacts.require("BondingManager")
 const JobsManager = artifacts.require("JobsManager")
 const RoundsManager = artifacts.require("RoundsManager")
 const AdjustableRoundsManager = artifacts.require("AdjustableRoundsManager")
-const IdentityVerifier = artifacts.require("IdentityVerifier")
 const LivepeerVerifier = artifacts.require("LivepeerVerifier")
 const LivepeerToken = artifacts.require("LivepeerToken")
 const LivepeerTokenFaucet = artifacts.require("LivepeerTokenFaucet")
@@ -20,13 +19,7 @@ module.exports = function(deployer, network) {
         const controller = await lpDeployer.deployController()
         const token = await lpDeployer.deployAndRegister(LivepeerToken, "LivepeerToken")
         await lpDeployer.deployAndRegister(Minter, "Minter", controller.address, config.minter.inflation, config.minter.inflationChange, config.minter.targetBondingRate)
-
-        if (network === "development" || network === "testrpc" || network === "parityDev" || network === "gethDev") {
-            await lpDeployer.deployAndRegister(IdentityVerifier, "Verifier", controller.address)
-        } else {
-            await lpDeployer.deployAndRegister(LivepeerVerifier, "Verifier", controller.address, config.verifier.solvers, config.verifier.verificationCodeHash)
-        }
-
+        await lpDeployer.deployAndRegister(LivepeerVerifier, "Verifier", controller.address, config.verifier.solvers, config.verifier.verificationCodeHash)
         await lpDeployer.deployAndRegister(LivepeerTokenFaucet, "LivepeerTokenFaucet", token.address, config.faucet.requestAmount, config.faucet.requestWait)
 
         const bondingManager = await lpDeployer.deployProxyAndRegister(BondingManager, "BondingManager", controller.address)

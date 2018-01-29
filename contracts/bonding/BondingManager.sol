@@ -477,24 +477,25 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         uint256 currentRound = roundsManager().currentRound();
 
         if (activeTranscoderSet[currentRound].isActive[_transcoder]) {
-            // Set transcoder as inactive
-            activeTranscoderSet[currentRound].isActive[_transcoder] = false;
             // Decrease total active stake for the round
             activeTranscoderSet[currentRound].totalStake = activeTranscoderSet[currentRound].totalStake.sub(activeTranscoderTotalStake(_transcoder, currentRound));
+            // Set transcoder as inactive
+            activeTranscoderSet[currentRound].isActive[_transcoder] = false;
         }
 
         // Remove transcoder from pools
         transcoderPool.remove(_transcoder);
 
-        // Award finder fee
-        if (penalty > 0 && _finder != address(0)) {
+        // Account for penalty
+        if (penalty > 0) {
             uint256 burnAmount = penalty;
 
+            // Award finder fee if there is a finder address
             if (_finder != address(0)) {
-                // Award finder fee
                 uint256 finderAmount = MathUtils.percOf(penalty, _finderFee);
                 minter().transferTokens(_finder, finderAmount);
 
+                // Subtract finder fee from the amount to be burned
                 burnAmount = burnAmount.sub(finderAmount);
             }
 

@@ -1,0 +1,152 @@
+import {contractId} from "../../utils/helpers"
+import batchTranscodeReceiptHashes from "../../utils/batchTranscodeReceipts"
+import MerkleTree from "../../utils/merkleTree"
+import {createTranscodingOptions} from "../../utils/videoProfile"
+import Segment from "../../utils/segment"
+import ethUtil from "ethereumjs-util"
+
+const Controller = artifacts.require("Controller")
+const BondingManager = artifacts.require("BondingManager")
+const JobsManager = artifacts.require("JobsManager")
+const AdjustableRoundsManager = artifacts.require("AdjustableRoundsManager")
+const LivepeerVerifier = artifacts.require("LivepeerVerifier")
+const Minter = artifacts.require("Minter")
+const LivepeerToken = artifacts.require("LivepeerToken")
+const LivepeerTokenFaucet = artifacts.require("LivepeerTokenFaucet")
+
+contract("FailedVerificationSlashing", accounts => {
+    let controller
+    let bondingManager
+    let roundsManager
+    let jobsManager
+    let token
+    let verifier
+    let minter
+
+    let transcoder
+    let delegator1
+    let delegator2
+    let solver
+    let broadcaster
+
+    let roundLength
+
+    before(async () => {
+        transcoder = accounts[0]
+        delegator1 = accounts[1]
+        delegator2 = accounts[2]
+        solver = accounts[3]
+        broadcaster = accounts[3]
+
+        controller = await Controller.deployed()
+
+        const bondingManagerAddr = await controller.getContract(contractId("BondingManager"))
+        bondingManager = await BondingManager.at(bondingManagerAddr)
+
+        const roundsManagerAddr = await controller.getContract(contractId("RoundsManager"))
+        roundsManager = await AdjustableRoundsManager.at(roundsManagerAddr)
+
+        const jobsManagerAddr = await controller.getContract(contractId("JobsManager"))
+        jobsManager = await JobsManager.at(jobsManagerAddr)
+
+        // Set verification rate to 1 out of 1 segments, so every segment is challenged
+        await jobsManager.setVerificationRate(1)
+        // Set failed verification slash amount to 20%
+        await jobsManager.setFailedVerificationSlashAmount(200000)
+
+        const verifierAddr = await controller.getContract(contractId("Verifier"))
+        verifier = await LivepeerVerifier.at(verifierAddr)
+
+        // Whitelist a solver address
+        await verifier.addSolver(solver)
+
+        const minterAddr = await controller.getContract(contractId("Minter"))
+        minter = await Minter.at(minterAddr)
+
+        const tokenAddr = await controller.getContract(contractId("LivepeerToken"))
+        token = await LivepeerToken.at(tokenAddr)
+
+        const faucetAddr = await controller.getContract(contractId("LivepeerTokenFaucet"))
+        const faucet = await LivepeerTokenFaucet.at(faucetAddr)
+
+        await faucet.request({from: transcoder})
+        await faucet.request({from: delegator1})
+        await faucet.request({from: delegator2})
+
+        roundLength = await roundsManager.roundLength.call()
+        await roundsManager.mineBlocks(roundLength.toNumber() * 1000)
+        await roundsManager.initializeRound()
+
+        await token.approve(bondingManager.address, 1000, {from: transcoder})
+        await bondingManager.bond(1000, transcoder, {from: transcoder})
+        await bondingManager.transcoder(10, 5, 1, {from: transcoder})
+
+        await token.approve(bondingManager.address, 1000, {from: delegator1})
+        await bondingManager.bond(1000, transcoder, {from: delegator1})
+
+        await token.approve(bondingManager.address, 1000, {from: delegator2})
+        await bondingManager.bond(1000, transcoder, {from: delegator2})
+
+        // Fast forward to new round with locked in active transcoder set
+        await roundsManager.mineBlocks(roundLength.toNumber())
+        await roundsManager.initializeRound()
+    })
+
+    it("solver should slash a transcoder for failing verification", async () => {
+        await jobsManager.deposit({from: broadcaster, value: 1000})
+
+        const endBlock = (await roundsManager.blockNum()).add(100)
+        await jobsManager.job("foo", createTranscodingOptions(["foo", "bar"]), 1, endBlock, {from: broadcaster})
+
+        const rand = web3.eth.getBlock(web3.eth.blockNumber).hash
+        await roundsManager.mineBlocks(1)
+        await roundsManager.setBlockHash(rand)
+
+        // Segment data hashes
+        const dataHashes = [
+            "0x80084bf2fba02475726feb2cab2d8215eab14bc6bdd8bfb2c8151257032ecd8b",
+            "0xb039179a8a4ce2c252aa6f2f25798251c19b75fc1508d9d511a191e0487d64a7",
+            "0x263ab762270d3b73d3e2cddf9acc893bb6bd41110347e5d5e4bd1d3c128ea90a",
+            "0x4ce8765e720c576f6f5a34ca380b3de5f0912e6e3cc5355542c363891e54594b"
+        ]
+
+        // Segments
+        const segments = dataHashes.map((dataHash, idx) => new Segment("foo", idx, dataHash, broadcaster))
+
+        // Transcoded data hashes
+        const tDataHashes = [
+            "0x42538602949f370aa331d2c07a1ee7ff26caac9cc676288f94b82eb2188b8465",
+            "0xa0b37b8bfae8e71330bd8e278e4a45ca916d00475dd8b85e9352533454c9fec8",
+            "0x9f2898da52dedaca29f05bcac0c8e43e4b9f7cb5707c14cc3f35a567232cec7c",
+            "0x5a082c81a7e4d5833ee20bd67d2f4d736f679da33e4bebd3838217cb27bec1d3"
+        ]
+
+        // Transcode receipts
+        const tReceiptHashes = batchTranscodeReceiptHashes(segments, tDataHashes)
+
+        // Build merkle tree
+        const merkleTree = new MerkleTree(tReceiptHashes)
+
+        const minterStartBalance = await token.balanceOf(minter.address)
+
+        await jobsManager.claimWork(0, [0, 3], merkleTree.getHexRoot(), {from: transcoder})
+        // Mine the claim block and the claim block + 1
+        await roundsManager.mineBlocks(2)
+        await jobsManager.verify(0, 0, 0, "bar", [dataHashes[0], tDataHashes[0]], ethUtil.bufferToHex(segments[0].signedHash()), merkleTree.getHexProof(tReceiptHashes[0]), {from: transcoder})
+        await verifier.__callback(0, web3.sha3("wrong hash"), {from: solver})
+
+        // Check that the transcoder is penalized
+        const currentRound = await roundsManager.currentRound()
+        const failedVerificationSlashAmount = await jobsManager.failedVerificationSlashAmount.call()
+        const penalty = Math.floor((1000 * failedVerificationSlashAmount.toNumber()) / 1000000)
+        const expTransStakeRemaining = 1000 - penalty
+        const minterEndBalance = await token.balanceOf(minter.address)
+        const burned = minterStartBalance.sub(minterEndBalance).toNumber()
+        const trans = await bondingManager.getDelegator(transcoder)
+
+        assert.isNotOk(await bondingManager.isActiveTranscoder(transcoder, currentRound), "transcoder should be inactive")
+        assert.equal(await bondingManager.transcoderStatus(transcoder), 0, "transcoder should not be registered")
+        assert.equal(trans[0], expTransStakeRemaining, "wrong transcoder stake remaining")
+        assert.equal(burned, penalty, "wrong amount burned")
+    })
+})
