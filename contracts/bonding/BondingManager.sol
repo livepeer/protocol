@@ -457,9 +457,6 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         whenSystemNotPaused
         onlyJobsManager
     {
-        // Transcoder must be valid
-        require(transcoderStatus(_transcoder) == TranscoderStatus.Registered);
-
         uint256 penalty = MathUtils.percOf(delegators[_transcoder].bondedAmount, _slashAmount);
         if (penalty > del.bondedAmount) {
             penalty = del.bondedAmount;

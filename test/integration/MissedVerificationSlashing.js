@@ -3,28 +3,25 @@ import batchTranscodeReceiptHashes from "../../utils/batchTranscodeReceipts"
 import MerkleTree from "../../utils/merkleTree"
 import {createTranscodingOptions} from "../../utils/videoProfile"
 import Segment from "../../utils/segment"
-import ethUtil from "ethereumjs-util"
 
 const Controller = artifacts.require("Controller")
 const BondingManager = artifacts.require("BondingManager")
 const JobsManager = artifacts.require("JobsManager")
 const AdjustableRoundsManager = artifacts.require("AdjustableRoundsManager")
-const LivepeerVerifier = artifacts.require("LivepeerVerifier")
 const LivepeerToken = artifacts.require("LivepeerToken")
 const LivepeerTokenFaucet = artifacts.require("LivepeerTokenFaucet")
 
-contract("FailedVerificationSlashing", accounts => {
+contract("MissedVerificationSlashing", accounts => {
     let controller
     let bondingManager
     let roundsManager
     let jobsManager
     let token
-    let verifier
 
     let transcoder
     let delegator1
     let delegator2
-    let solver
+    let watcher
     let broadcaster
 
     let roundLength
@@ -33,7 +30,7 @@ contract("FailedVerificationSlashing", accounts => {
         transcoder = accounts[0]
         delegator1 = accounts[1]
         delegator2 = accounts[2]
-        solver = accounts[3]
+        watcher = accounts[3]
         broadcaster = accounts[3]
 
         controller = await Controller.deployed()
@@ -49,14 +46,8 @@ contract("FailedVerificationSlashing", accounts => {
 
         // Set verification rate to 1 out of 1 segments, so every segment is challenged
         await jobsManager.setVerificationRate(1)
-        // Set failed verification slash amount to 20%
-        await jobsManager.setFailedVerificationSlashAmount(200000)
-
-        const verifierAddr = await controller.getContract(contractId("Verifier"))
-        verifier = await LivepeerVerifier.at(verifierAddr)
-
-        // Whitelist a solver address
-        await verifier.addSolver(solver)
+        // Set missed verification slash amount to 20%
+        await jobsManager.setMissedVerificationSlashAmount(200000)
 
         const tokenAddr = await controller.getContract(contractId("LivepeerToken"))
         token = await LivepeerToken.at(tokenAddr)
@@ -87,13 +78,13 @@ contract("FailedVerificationSlashing", accounts => {
         await roundsManager.initializeRound()
     })
 
-    it("solver should slash a transcoder for failing verification", async () => {
+    it("watcher should slash a transcoder for missing verification", async () => {
         await jobsManager.deposit({from: broadcaster, value: 1000})
 
         const endBlock = (await roundsManager.blockNum()).add(100)
         await jobsManager.job("foo", createTranscodingOptions(["foo", "bar"]), 1, endBlock, {from: broadcaster})
 
-        const rand = web3.eth.getBlock(web3.eth.blockNumber).hash
+        let rand = web3.eth.getBlock(web3.eth.blockNumber).hash
         await roundsManager.mineBlocks(1)
         await roundsManager.setBlockHash(rand)
 
@@ -125,27 +116,38 @@ contract("FailedVerificationSlashing", accounts => {
         const tokenStartSupply = await token.totalSupply.call()
 
         await jobsManager.claimWork(0, [0, 3], merkleTree.getHexRoot(), {from: transcoder})
-        // Mine the claim block and the claim block + 1
-        await roundsManager.mineBlocks(2)
-        await jobsManager.verify(0, 0, 0, "bar", [dataHashes[0], tDataHashes[0]], ethUtil.bufferToHex(segments[0].signedHash()), merkleTree.getHexProof(tReceiptHashes[0]), {from: transcoder})
-        await verifier.__callback(0, web3.sha3("wrong hash"), {from: solver})
+        // Wait through the verification period
+        const verificationPeriod = await jobsManager.verificationPeriod.call()
+        await roundsManager.mineBlocks(verificationPeriod.toNumber() + 1)
+        // Make sure the round is initialized
+        await roundsManager.initializeRound()
+
+        rand = web3.eth.getBlock(web3.eth.blockNumber).hash
+        await roundsManager.setBlockHash(rand)
+        // Watcher slashes transcoder for missing verification
+        // transcoder should have submitted every segment for verification because the verification rate was 1 out of 1 segments
+        await jobsManager.missedVerificationSlash(0, 0, 0, {from: watcher})
 
         // Check that the transcoder is penalized
         const currentRound = await roundsManager.currentRound()
-        const failedVerificationSlashAmount = await jobsManager.failedVerificationSlashAmount.call()
-        const penalty = Math.floor((1000 * failedVerificationSlashAmount.toNumber()) / 1000000)
+        const missedVerificationSlashAmount = await jobsManager.missedVerificationSlashAmount.call()
+        const penalty = Math.floor((1000 * missedVerificationSlashAmount.toNumber()) / 1000000)
         const expTransStakeRemaining = 1000 - penalty
         const expDelegatedStakeRemaining = (1000 + 1000 + 1000) - penalty
         const expTotalBondedRemaining = expDelegatedStakeRemaining
         const tokenEndSupply = await token.totalSupply.call()
+        const finderFeeAmount = await jobsManager.finderFee.call()
+        const finderFee = Math.floor((penalty * finderFeeAmount) / 1000000)
         const burned = tokenStartSupply.sub(tokenEndSupply).toNumber()
         const trans = await bondingManager.getDelegator(transcoder)
 
         assert.isNotOk(await bondingManager.isActiveTranscoder(transcoder, currentRound), "transcoder should be inactive")
         assert.equal(await bondingManager.transcoderStatus(transcoder), 0, "transcoder should not be registered")
         assert.equal(trans[0], expTransStakeRemaining, "wrong transcoder stake remaining")
-        assert.equal(trans[3], expDelegatedStakeRemaining, "wrong delegated stake remaining")
-        assert.equal(burned, penalty, "wrong amount burned")
+        assert.equal(burned, penalty - finderFee, "wrong amount burned")
+
+        // Check that the finder was rewarded
+        assert.equal(await token.balanceOf(watcher), finderFee, "wrong finder fee")
 
         // Check that the broadcaster was refunded
         assert.equal((await jobsManager.getJob(0))[8], 0, "job escrow should be 0")
