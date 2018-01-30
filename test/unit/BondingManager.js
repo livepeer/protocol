@@ -280,6 +280,10 @@ contract("BondingManager", accounts => {
             await bondingManager.reward({from: tAddr})
         })
 
+        it("should fail if the end round is after the current round", async () => {
+            await expectThrow(bondingManager.claimTokenPoolsShares(8, {from: dAddr}))
+        })
+
         it("should update the delegator's stake and unbonded amount through the end round", async () => {
             // 15
             const delegatorsFeeShare = Math.floor((fees * feeShare) / PERC_DIVISOR)
