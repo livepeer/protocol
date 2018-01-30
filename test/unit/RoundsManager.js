@@ -1,26 +1,26 @@
-import Fixture from "../helpers/fixture"
-import {div} from "../../utils/bn_util"
+import Fixture from "./helpers/Fixture"
 import expectThrow from "../helpers/expectThrow"
 
 const RoundsManager = artifacts.require("RoundsManager")
-
-const PERC_DIVISOR = 1000000
-const PERC_MULTIPLIER = PERC_DIVISOR / 100
-
-const ROUND_LENGTH = 50
-const ROUND_LOCK_AMOUNT = 10 * PERC_MULTIPLIER
 
 contract("RoundsManager", accounts => {
     let fixture
     let roundsManager
 
+    const PERC_DIVISOR = 1000000
+    const PERC_MULTIPLIER = PERC_DIVISOR / 100
+
+    const ROUND_LENGTH = 50
+    const ROUND_LOCK_AMOUNT = 10 * PERC_MULTIPLIER
+
     before(async () => {
         fixture = new Fixture(web3)
-        await fixture.deployController()
-        await fixture.deployMocks()
+        await fixture.deploy()
 
         roundsManager = await fixture.deployAndRegister(RoundsManager, "RoundsManager", fixture.controller.address)
-        fixture.roundsManager = roundsManager
+
+        await roundsManager.setRoundLength(ROUND_LENGTH)
+        await roundsManager.setRoundLockAmount(ROUND_LOCK_AMOUNT)
     })
 
     beforeEach(async () => {
@@ -31,120 +31,83 @@ contract("RoundsManager", accounts => {
         await fixture.tearDown()
     })
 
-    describe("setParameters", () => {
-        it("should set parameters", async () => {
-            await roundsManager.setParameters(ROUND_LENGTH, ROUND_LOCK_AMOUNT)
-
-            const roundLength = await roundsManager.roundLength.call()
-            assert.equal(roundLength, ROUND_LENGTH, "round length incorrect")
+    describe("setRoundLength", () => {
+        it("should fail if caller is not the Controller owner", async () => {
+            await expectThrow(roundsManager.setRoundLength(10, {from: accounts[2]}))
         })
 
-        it("should fail if caller is not authorized", async () => {
-            await expectThrow(roundsManager.setParameters(ROUND_LENGTH, ROUND_LOCK_AMOUNT, {from: accounts[1]}))
-        })
-    })
-
-    describe("currentRound", () => {
-        beforeEach(async () => {
-            await roundsManager.setParameters(ROUND_LENGTH, ROUND_LOCK_AMOUNT)
+        it("should fail if provided roundLength == 0", async () => {
+            await expectThrow(roundsManager.setRoundLength(0))
         })
 
-        it("returns the correct round", async () => {
+        it("should set roundLength and lastRoundLengthUpdateRound when increasing roundLength", async () => {
             const blockNum = web3.eth.blockNumber
             const roundLength = await roundsManager.roundLength.call()
-            const expCurrentRound = div(blockNum, roundLength).floor().toString()
+            const expLastUpdateRound = Math.floor(blockNum / roundLength.toNumber())
+            const expLastUpdateStartBlock = expLastUpdateRound * roundLength.toNumber()
 
-            const currentRound = await roundsManager.currentRound()
-            assert.equal(currentRound.toString(), expCurrentRound, "current round is incorrect")
-        })
-    })
+            await roundsManager.setRoundLength(60)
 
-    describe("currentRoundStartBlock", () => {
-        beforeEach(async () => {
-            await roundsManager.setParameters(ROUND_LENGTH, ROUND_LOCK_AMOUNT)
+            assert.equal(await roundsManager.roundLength.call(), 60, "wrong roundLength")
+            assert.equal(await roundsManager.lastRoundLengthUpdateRound.call(), expLastUpdateRound, "wrong lastRoundLengthUpdateRound")
+            assert.equal(await roundsManager.lastRoundLengthUpdateStartBlock.call(), expLastUpdateStartBlock, "wrong lastRoundLengthUpdateStartBlock")
         })
 
-        it("returns the correct current round start block", async () => {
+        it("should set roundLength and lastRoundLengthUpdateRound when decreasing roundLength", async () => {
             const blockNum = web3.eth.blockNumber
             const roundLength = await roundsManager.roundLength.call()
-            const expStartBlock = div(blockNum, roundLength).floor().times(roundLength).toString()
+            const expLastUpdateRound = Math.floor(blockNum / roundLength.toNumber())
+            const expLastUpdateStartBlock = expLastUpdateRound * roundLength.toNumber()
 
-            const startBlock = await roundsManager.currentRoundStartBlock()
-            assert.equal(startBlock.toString(), expStartBlock, "current round start block is incorrect")
+            await roundsManager.setRoundLength(40)
+
+            assert.equal(await roundsManager.roundLength.call(), 40, "wrong roundLength")
+            assert.equal(await roundsManager.lastRoundLengthUpdateRound.call(), expLastUpdateRound, "wrong lastRoundLengthUpdateRound")
+            assert.equal(await roundsManager.lastRoundLengthUpdateStartBlock.call(), expLastUpdateStartBlock, "wrong lastRoundLengthUpdateStartBlock")
         })
     })
 
-    describe("currentRoundInitialized", () => {
-        beforeEach(async () => {
-            await roundsManager.setParameters(ROUND_LENGTH, ROUND_LOCK_AMOUNT)
+    describe("setRoundLockAmount", () => {
+        it("should fail if caller is not the Controller owner", async () => {
+            await expectThrow(roundsManager.setRoundLockAmount(50, {from: accounts[2]}))
         })
 
-        it("returns true if last initialized round is current round", async () => {
-            assert.isOk(await roundsManager.currentRoundInitialized(), "not true when last initialized round set to current round")
-        })
+        it("should set roundLockAmount", async () => {
+            await roundsManager.setRoundLockAmount(50)
 
-        it("returns false if last initialized round is not current round", async () => {
-            // Fast forward 1 round
-            const roundLength = await roundsManager.roundLength.call()
-            await fixture.rpc.waitUntilNextBlockMultiple(roundLength.toNumber())
-
-            await roundsManager.initializeRound()
-            await fixture.rpc.waitUntilNextBlockMultiple(roundLength.toNumber())
-
-            assert.isNotOk(await roundsManager.currentRoundInitialized(), "not false when last initialized round not set to current round")
+            assert.equal(await roundsManager.roundLockAmount.call(), 50, "wrong round lock amount")
         })
     })
 
     describe("initializeRound", () => {
-        beforeEach(async () => {
-            await roundsManager.setParameters(ROUND_LENGTH, ROUND_LOCK_AMOUNT)
-        })
-
-        it("should set last initialized round to the current round", async () => {
-            // Fast forward 1 round
+        it("should fail if system is paused", async () => {
             const roundLength = await roundsManager.roundLength.call()
             await fixture.rpc.waitUntilNextBlockMultiple(roundLength.toNumber())
+            await fixture.controller.pause()
 
-            const blockNum = web3.eth.blockNumber
-            const currentRound = div(blockNum, roundLength).floor().toString()
+            await expectThrow(roundsManager.initializeRound())
+        })
+
+        it("should fail if current round is already initialized", async () => {
+            const roundLength = await roundsManager.roundLength.call()
+            await fixture.rpc.waitUntilNextBlockMultiple(roundLength.toNumber())
+            await roundsManager.initializeRound()
+
+            await expectThrow(roundsManager.initializeRound())
+        })
+
+        it("should set the current round as initialized", async () => {
+            const roundLength = await roundsManager.roundLength.call()
+            await fixture.rpc.waitUntilNextBlockMultiple(roundLength.toNumber())
 
             await roundsManager.initializeRound()
 
-            const lastInitializedRound = await roundsManager.lastInitializedRound.call()
-            assert.equal(lastInitializedRound.toString(), currentRound, "last initialized round not set to current round")
-        })
-    })
-
-    describe("currentRoundLocked", () => {
-        beforeEach(async () => {
-            await roundsManager.setParameters(ROUND_LENGTH, ROUND_LOCK_AMOUNT)
-        })
-
-        it("returns false if not in the lock period", async () => {
-            // Fast forward 1 round
-            const roundLength = await roundsManager.roundLength.call()
-            await fixture.rpc.waitUntilNextBlockMultiple(roundLength.toNumber())
-
-            assert.isNotOk(await roundsManager.currentRoundLocked(), "not false when not in lock period")
-        })
-
-        it("returns true if in the lock period", async () => {
-            // Fast forward 1 round
-            const roundLength = await roundsManager.roundLength.call()
-            await fixture.rpc.waitUntilNextBlockMultiple(roundLength.toNumber())
-            const roundLockAmount = await roundsManager.roundLockAmount.call()
-            const roundLockBlocks = roundLength.mul(roundLockAmount).div(PERC_DIVISOR).floor()
-            await fixture.rpc.wait(roundLength.sub(roundLockBlocks).toNumber())
-
-            assert.isOk(await roundsManager.currentRoundLocked(), "not true when in lock period")
+            const currentRound = await roundsManager.currentRound()
+            assert.equal(await roundsManager.lastInitializedRound(), currentRound.toNumber(), "wrong lastInitializedRound")
         })
     })
 
     describe("blockNum", () => {
-        beforeEach(async () => {
-            await roundsManager.setParameters(ROUND_LENGTH, ROUND_LOCK_AMOUNT)
-        })
-
         it("should return the current block number", async () => {
             const currentBlock = web3.eth.blockNumber
             assert.equal(await roundsManager.blockNum(), currentBlock, "wrong block number")
@@ -152,11 +115,12 @@ contract("RoundsManager", accounts => {
     })
 
     describe("blockHash", () => {
-        beforeEach(async () => {
-            await roundsManager.setParameters(ROUND_LENGTH, ROUND_LOCK_AMOUNT)
+        it("should fail if block is in the future", async () => {
+            const currentBlock = web3.eth.blockNumber
+            await expectThrow(roundsManager.blockHash(currentBlock + 1))
         })
 
-        it("should fail if block >= 256 and is more than 256 blocks in the past", async () => {
+        it("should fail if the current block >= 256 and the block is more than 256 blocks in the past", async () => {
             await fixture.rpc.wait(256)
 
             const currentBlock = web3.eth.blockNumber
@@ -168,12 +132,7 @@ contract("RoundsManager", accounts => {
             await expectThrow(roundsManager.blockHash(currentBlock))
         })
 
-        it("should fail if block is in the future", async () => {
-            const currentBlock = web3.eth.blockNumber
-            await expectThrow(roundsManager.blockHash(currentBlock + 1))
-        })
-
-        it("should return the hash for the block if the block is < 256", async () => {
+        it("should return the block hash if the current block is < 256", async () => {
             const previousBlock = web3.eth.blockNumber - 1
             const previousBlockHash = web3.eth.getBlock(previousBlock).hash
 
@@ -181,7 +140,7 @@ contract("RoundsManager", accounts => {
             assert.equal(blockHash, previousBlockHash, "wrong block hash")
         })
 
-        it("should return the hash for the block if the block is >= 256", async () => {
+        it("should return the block hash if the current block is >= 256 and the block is not more than 256 blocks in the past", async () => {
             await fixture.rpc.wait(256)
 
             const previousBlock = web3.eth.blockNumber - 1
@@ -189,6 +148,130 @@ contract("RoundsManager", accounts => {
 
             const blockHash = await roundsManager.blockHash(previousBlock)
             assert.equal(blockHash, previousBlockHash, "wrong block hash")
+        })
+    })
+
+    describe("currentRound", () => {
+        it("should return the current round", async () => {
+            const blockNum = web3.eth.blockNumber
+            const roundLength = await roundsManager.roundLength.call()
+            const expCurrentRound = Math.floor(blockNum / roundLength.toNumber())
+
+            assert.equal(await roundsManager.currentRound(), expCurrentRound, "wrong current round")
+        })
+
+        it("should return the current round after roundLength was increased and there is a new round", async () => {
+            const currentRound = await roundsManager.currentRound()
+
+            await roundsManager.setRoundLength(60)
+            await fixture.rpc.wait(60)
+
+            assert.equal(await roundsManager.currentRound(), currentRound.toNumber() + 1, "wrong current round after roundLength increase and new round")
+        })
+
+        it("should return the current round after roundLength was increased but there are no new rounds yet", async () => {
+            const currentRound = await roundsManager.currentRound()
+
+            await roundsManager.setRoundLength(60)
+
+            assert.equal(await roundsManager.currentRound(), currentRound.toNumber(), "wrong current round after roundLength increase and no new rounds")
+        })
+
+        it("should return the current round after roundLength was decreased and there is a new round", async () => {
+            const currentRound = await roundsManager.currentRound()
+
+            await roundsManager.setRoundLength(40)
+            await fixture.rpc.wait(40)
+
+            assert.equal(await roundsManager.currentRound(), currentRound.toNumber() + 1, "wrong current round after roundLength decrease and new round")
+        })
+
+        it("should return the current round after roundLength was decreased but there are no new rounds yet", async () => {
+            const currentRound = await roundsManager.currentRound()
+
+            await roundsManager.setRoundLength(40)
+
+            assert.equal(await roundsManager.currentRound(), currentRound.toNumber(), "wrong current round after roundLength decrease and no new rounds")
+        })
+    })
+
+    describe("currentRoundStartBlock", () => {
+        it("should return the start block of the current round", async () => {
+            const blockNum = web3.eth.blockNumber
+            const roundLength = await roundsManager.roundLength.call()
+            const expStartBlock = Math.floor(blockNum / roundLength.toNumber()) * roundLength.toNumber()
+
+            assert.equal(await roundsManager.currentRoundStartBlock(), expStartBlock, "current round start block is incorrect")
+        })
+
+        it("should return the start block of the current round after roundLength increase and there is a new round", async () => {
+            const currentRoundStartBlock = await roundsManager.currentRoundStartBlock()
+
+            await roundsManager.setRoundLength(60)
+            await fixture.rpc.wait(60)
+
+            assert.equal(await roundsManager.currentRoundStartBlock(), currentRoundStartBlock.toNumber() + 60, "wrong current round start block after roundLength increase and new round")
+        })
+
+        it("should return the start block of the current round after roundLength increase and there are no new rounds", async () => {
+            const currentRoundStartBlock = await roundsManager.currentRoundStartBlock()
+
+            await roundsManager.setRoundLength(60)
+
+            assert.equal(await roundsManager.currentRoundStartBlock(), currentRoundStartBlock.toNumber(), "wrong current round start block after roundLength increase and no new rounds")
+        })
+
+        it("should return the start block of the current round after roundLength decrease and there is a new round", async () => {
+            const currentRoundStartBlock = await roundsManager.currentRoundStartBlock()
+
+            await roundsManager.setRoundLength(40)
+            await fixture.rpc.wait(40)
+
+            assert.equal(await roundsManager.currentRoundStartBlock(), currentRoundStartBlock.toNumber() + 40, "wrong current round start block after roundLength decrease and new round")
+        })
+
+        it("should return the start block of the current block after roundLength decrease and there are no new rounds", async () => {
+            const currentRoundStartBlock = await roundsManager.currentRoundStartBlock()
+
+            await roundsManager.setRoundLength(40)
+
+            assert.equal(await roundsManager.currentRoundStartBlock(), currentRoundStartBlock.toNumber(), "wrong current round start block after roundLength decrease and no new rounds")
+        })
+    })
+
+    describe("currentRoundInitialized", () => {
+        it("should return true if the current round is initialized", async () => {
+            const roundLength = await roundsManager.roundLength.call()
+            await fixture.rpc.waitUntilNextBlockMultiple(roundLength.toNumber())
+            await roundsManager.initializeRound()
+
+            assert.isOk(await roundsManager.currentRoundInitialized(), "not true when current round initialized")
+        })
+
+        it("should return false if the current round is not initialized", async () => {
+            const roundLength = await roundsManager.roundLength.call()
+            await fixture.rpc.waitUntilNextBlockMultiple(roundLength.toNumber())
+
+            assert.isNotOk(await roundsManager.currentRoundInitialized(), "not false when current round not initialized")
+        })
+    })
+
+    describe("currentRoundLocked", () => {
+        it("should return true if the current round is locked", async () => {
+            const roundLength = await roundsManager.roundLength.call()
+            await fixture.rpc.waitUntilNextBlockMultiple(roundLength.toNumber())
+            const roundLockAmount = await roundsManager.roundLockAmount.call()
+            const roundLockBlocks = roundLength.mul(roundLockAmount).div(PERC_DIVISOR).floor()
+            await fixture.rpc.wait(roundLength.sub(roundLockBlocks).toNumber())
+
+            assert.isOk(await roundsManager.currentRoundLocked(), "not true when in lock period")
+        })
+
+        it("should return false if the current round is not locked", async () => {
+            const roundLength = await roundsManager.roundLength.call()
+            await fixture.rpc.waitUntilNextBlockMultiple(roundLength.toNumber())
+
+            assert.isNotOk(await roundsManager.currentRoundLocked(), "not false when not in lock period")
         })
     })
 })
