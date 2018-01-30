@@ -104,7 +104,7 @@ contract Minter is Manager, IMinter {
      * @param _to Recipient address
      * @param _amount Amount of tokens
      */
-    function transferTokens(address _to, uint256 _amount) external onlyBondingManagerOrJobsManager whenSystemNotPaused {
+    function transferTokens(address _to, uint256 _amount) external onlyBondingManager whenSystemNotPaused {
         livepeerToken().transfer(_to, _amount);
     }
 

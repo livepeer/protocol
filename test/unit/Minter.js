@@ -144,18 +144,13 @@ contract("Minter", accounts => {
     })
 
     describe("transferTokens", () => {
-        it("should throw if sender is not bonding manager or jobs manager", async () => {
+        it("should throw if sender is not bonding manager", async () => {
             await expectThrow(minter.transferTokens(accounts[1], 100))
         })
 
         it("should transfer tokens to receiving address when sender is bonding manager", async () => {
             await fixture.bondingManager.setWithdrawAmount(100)
             await fixture.bondingManager.withdraw(false, accounts[1], {from: accounts[1]})
-        })
-
-        it("should transfer tokens to receiving address when sender is jobs manager", async () => {
-            await fixture.jobsManager.setWithdrawAmount(100)
-            await fixture.jobsManager.withdraw(false, accounts[1], {from: accounts[1]})
         })
     })
 
