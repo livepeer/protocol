@@ -464,12 +464,16 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
         Delegator storage del = delegators[_transcoder];
 
-        // Decrease delegate's delegated amount
-        delegators[del.delegateAddress].delegatedAmount = delegators[del.delegateAddress].delegatedAmount.sub(penalty);
-        // Update total bonded tokens
-        totalBonded = totalBonded.sub(penalty);
-        // Decrease transcoder's stake
+        // Decrease bonded stake
         del.bondedAmount = del.bondedAmount.sub(penalty);
+
+        // If still bonded
+        // - Decrease delegate's delegated amount
+        // - Decrease total bonded tokens
+        if (delegatorStatus(_transcoder) == DelegatorStatus.Bonded) {
+            delegators[del.delegateAddress].delegatedAmount = delegators[del.delegateAddress].delegatedAmount.sub(penalty);
+            totalBonded = totalBonded.sub(penalty);
+        }
 
         uint256 currentRound = roundsManager().currentRound();
 
@@ -480,8 +484,10 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             activeTranscoderSet[currentRound].isActive[_transcoder] = false;
         }
 
-        // Remove transcoder from pools
-        transcoderPool.remove(_transcoder);
+        // If registered transcoder, remove from pool
+        if (transcoderStatus(_transcoder) == TranscoderStatus.Registered) {
+            transcoderPool.remove(_transcoder);
+        }
 
         // Account for penalty
         if (penalty > 0) {
