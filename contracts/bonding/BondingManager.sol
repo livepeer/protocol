@@ -797,6 +797,14 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     }
 
     /*
+     * @dev Return whether a transcoder is registered
+     * @param _transcoder Transcoder address
+     */
+    function isRegisteredTranscoder(address _transcoder) public view returns (bool) {
+        return transcoderStatus(_transcoder) == TranscoderStatus.Registered;
+    }
+
+    /*
      * @dev Remove transcoder
      */
     function resignTranscoder(address _transcoder) internal {

@@ -3,6 +3,7 @@ import batchTranscodeReceiptHashes from "../../utils/batchTranscodeReceipts"
 import MerkleTree from "../../utils/merkleTree"
 import {createTranscodingOptions} from "../../utils/videoProfile"
 import Segment from "../../utils/segment"
+import expectThrow from "../helpers/expectThrow"
 
 const Controller = artifacts.require("Controller")
 const BondingManager = artifacts.require("BondingManager")
@@ -157,7 +158,7 @@ contract("SlashingEdgeCases", accounts => {
         assert.equal(await bondingManager.getTotalBonded(), expTotalBondedRemaining, "wrong total bonded amount")
     })
 
-    it("transcoder that is slashed should still be slashable if it claims work and faults again", async () => {
+    it("transcoder that is slashed should not be able to claims work", async () => {
         await token.approve(bondingManager.address, 1000, {from: transcoder2})
         await bondingManager.bond(1000, transcoder2, {from: transcoder2})
         await bondingManager.transcoder(10, 15, 1, {from: transcoder2})
@@ -198,9 +199,6 @@ contract("SlashingEdgeCases", accounts => {
         // Build merkle tree
         const merkleTree = new MerkleTree(tReceiptHashes)
 
-        const tokenStartSupply = await token.totalSupply.call()
-        const watcherStartBalance = await token.balanceOf(watcher)
-
         // Transcoder claims segments 0 through 3
         await jobsManager.claimWork(1, [0, 3], merkleTree.getHexRoot(), {from: transcoder2})
         // Transcoder claims segments 0 through 3 again
@@ -212,58 +210,8 @@ contract("SlashingEdgeCases", accounts => {
         // Transcoder claimed segments 0 through 3 twice
         await jobsManager.doubleClaimSegmentSlash(1, 0, 1, 0, {from: watcher})
 
-        // Transcoder claims again after it was slashed
-        await jobsManager.claimWork(1, [0, 3], merkleTree.getHexRoot(), {from: transcoder2})
-        // Wait through the verification period
-        const verificationPeriod = await jobsManager.verificationPeriod.call()
-        await roundsManager.mineBlocks(verificationPeriod.toNumber() + 1)
-        // Make sure the round is initialized
-        await roundsManager.initializeRound()
-
-        rand = web3.eth.getBlock(web3.eth.blockNumber).hash
-        await roundsManager.setBlockHash(rand)
-        // Watcher slashes transcoder for missing verification
-        // transcoder should have submitted every segment for verification because the verification rate was 1 out of 1 segments
-        await jobsManager.missedVerificationSlash(1, 2, 0, {from: watcher})
-
-        // Check that the transcoder is penalized twice (once for double claiming and once for missing verification)
-        const currentRound = await roundsManager.currentRound()
-        const doubleClaimSegmentSlashAmount = await jobsManager.doubleClaimSegmentSlashAmount.call()
-        const missedVerificationSlashAmount = await jobsManager.missedVerificationSlashAmount.call()
-        const penalty1 = Math.floor((1000 * doubleClaimSegmentSlashAmount.toNumber()) / 1000000)
-        const transStakeRemaining1 = 1000 - penalty1
-        const penalty2 = Math.floor((transStakeRemaining1 * missedVerificationSlashAmount.toNumber()) / 1000000)
-        const expTransStakeRemaining = transStakeRemaining1 - penalty2
-        const expDelegatedStakeRemaining = expTransStakeRemaining
-        const expTotalBondedRemaining = expTransStakeRemaining
-        const tokenEndSupply = await token.totalSupply.call()
-        const watcherEndBalance = await token.balanceOf(watcher)
-        const finderFeeAmount = await jobsManager.finderFee.call()
-        const finderFee1 = Math.floor((penalty1 * finderFeeAmount) / 1000000)
-        const finderFee2 = Math.floor((penalty2 * finderFeeAmount) / 1000000)
-        const burned = tokenStartSupply.sub(tokenEndSupply).toNumber()
-        const trans = await bondingManager.getDelegator(transcoder2)
-
-        assert.isNotOk(await bondingManager.isActiveTranscoder(transcoder2, currentRound), "transcoder should be inactive")
-        assert.equal(await bondingManager.transcoderStatus(transcoder2), 0, "transcoder should not be registered")
-        assert.equal(trans[0], expTransStakeRemaining, "wrong transcoder stake remaining")
-        assert.equal(trans[3], expDelegatedStakeRemaining, "wrong delegated stake remaining")
-        assert.equal(burned, (penalty1 + penalty2) - (finderFee1 + finderFee2), "wrong amount burned")
-
-        // Check that the finder was rewarded
-        assert.equal(watcherEndBalance.sub(watcherStartBalance), finderFee1 + finderFee2, "wrong finder fee")
-
-        // Check that the broadcaster was refunded for both jobs
-        assert.equal((await jobsManager.getJob(0))[8], 0, "job escrow should be 0")
-        assert.equal((await jobsManager.getJob(1))[8], 0, "job escrow should be 0")
-        assert.equal((await jobsManager.broadcasters.call(broadcaster))[0], 1000)
-
-        // Check that the total stake for the round is updated
-        // activeTranscoderSet.call(round) only returns the active stake and not the array of transcoder addresses
-        // because Solidity does not return nested arrays in structs
-        assert.equal(await bondingManager.activeTranscoderSet.call(currentRound), 0, "wrong active stake remaining")
-
-        // Check that the total tokens bonded is updated
-        assert.equal(await bondingManager.getTotalBonded(), expTotalBondedRemaining, "wrong total bonded amount")
+        // Transcoder tries to submit another transcode claim to drain the broadcaster but fails
+        // because it is no longer registered
+        await expectThrow(jobsManager.claimWork(1, [0, 3], merkleTree.getHexRoot(), {from: transcoder2}))
     })
 })

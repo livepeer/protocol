@@ -25,5 +25,6 @@ contract IBondingManager {
     // Public functions
     function transcoderTotalStake(address _transcoder) public view returns (uint256);
     function activeTranscoderTotalStake(address _transcoder, uint256 _round) public view returns (uint256);
+    function isRegisteredTranscoder(address _transcoder) public view returns (bool);
     function getTotalBonded() public view returns (uint256);
 }

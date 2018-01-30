@@ -319,6 +319,8 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         require(jobStatus(_jobId) != JobStatus.Inactive);
         // Segment range must be valid
         require(_segmentRange[1] >= _segmentRange[0]);
+        // Caller must be registered transcoder
+        require(bondingManager().isRegisteredTranscoder(msg.sender));
 
         uint256 blockNum = roundsManager().blockNum();
 
