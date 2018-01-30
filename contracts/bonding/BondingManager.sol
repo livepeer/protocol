@@ -751,6 +751,13 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     }
 
     /*
+     * @dev Returns max size of transcoder pool
+     */
+    function getTranscoderPoolMaxSize() public view returns (uint256) {
+        return transcoderPool.getMaxSize();
+    }
+
+    /*
      * @dev Returns size of transcoder pool
      */
     function getTranscoderPoolSize() public view returns (uint256) {

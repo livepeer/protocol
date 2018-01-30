@@ -38,6 +38,10 @@ contract("BondingManager", accounts => {
 
             const unbondingPeriod = await bondingManager.unbondingPeriod.call()
             assert.equal(unbondingPeriod, UNBONDING_PERIOD, "unbonding period incorrect")
+            const poolMaxSize = await bondingManager.getTranscoderPoolMaxSize()
+            assert.equal(poolMaxSize, NUM_TRANSCODERS, "wrong transcoder pool max size")
+            const numActiveTranscoders = await bondingManager.numActiveTranscoders.call()
+            assert.equal(numActiveTranscoders, NUM_ACTIVE_TRANSCODERS, "wrong numActiveTranscoders")
         })
     })
 
