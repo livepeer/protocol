@@ -216,6 +216,9 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         currentRoundInitialized
         autoClaimTokenPoolsShares
     {
+        // Caller cannot be in the unbonding state
+        require(delegatorStatus(msg.sender) != DelegatorStatus.Unbonding);
+
         Delegator storage del = delegators[msg.sender];
 
         uint256 currentRound = roundsManager().currentRound();
@@ -302,6 +305,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         del.delegateAddress = address(0);
         // Unbonding delegator does not have a start round
         del.startRound = 0;
+        // Unbonding delegator's last claim round is reset
+        del.lastClaimTokenPoolsSharesRound = 0;
 
         // If caller is a registered transcoder, resign
         // In the future, with partial unbonding there would be a check for 0 bonded stake as well
