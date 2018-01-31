@@ -105,48 +105,13 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
     function JobsManager(address _controller) public Manager(_controller) {}
 
     /*
-     * @dev Batch set protocol parameters. Only callable by the controller owner
-     * @param _verificationRate % of segments to be verified
-     * @param _verificationPeriod Number of blocks to complete verification of claimed work
-     * @param _slashingPeriod Number of blocks after the verification period to submit slashing proofs
-     * @param _failedVerificationSlashAmount % of stake slashed for failed verification
-     * @param _missedVerificationSlashAmount % of stake slashed for missed verification
-     * @param _doubleClaimSegmentSlashAmount % of stake slashed of double claiming a segment
-     * @param _finderFee % of slashed amount awawded to finder
-     */
-    function setParameters(
-        uint64 _verificationRate,
-        uint256 _verificationPeriod,
-        uint256 _slashingPeriod,
-        uint256 _failedVerificationSlashAmount,
-        uint256 _missedVerificationSlashAmount,
-        uint256 _doubleClaimSegmentSlashAmount,
-        uint256 _finderFee
-    )
-        external
-        onlyControllerOwner
-    {
-        verificationRate = _verificationRate;
-        // Verification period + slashing period currently cannot be longer than 256 blocks
-        // because contracts can only access the last 256 blocks from
-        // the current block
-        require(_verificationPeriod + _slashingPeriod <= 256);
-
-        verificationPeriod = _verificationPeriod;
-        slashingPeriod = _slashingPeriod;
-        failedVerificationSlashAmount = _failedVerificationSlashAmount;
-        missedVerificationSlashAmount = _missedVerificationSlashAmount;
-        doubleClaimSegmentSlashAmount = _doubleClaimSegmentSlashAmount;
-        finderFee = _finderFee;
-
-        ParameterUpdate("all");
-    }
-
-    /*
      * @dev Set verification rate. Only callable by the controller owner
-     * @param _verificationRate % of segments to be verified
+     * @param _verificationRate Verification rate such that 1 / verificationRate of segments are challenged
      */
     function setVerificationRate(uint64 _verificationRate) external onlyControllerOwner {
+        // verificationRate cannot be 0
+        require(_verificationRate > 0);
+
         verificationRate = _verificationRate;
 
         ParameterUpdate("verificationRate");
@@ -527,9 +492,9 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         uint256 blockNum = roundsManager().blockNum();
         uint256 challengeBlock = claim.claimBlock + 1;
         // Must be after verification period
-        require(blockNum > claim.endVerificationBlock);
+        require(blockNum >= claim.endVerificationBlock);
         // Must be before end of slashing period
-        require(blockNum <= claim.endSlashingBlock);
+        require(blockNum < claim.endSlashingBlock);
         // Claim must be pending
         require(claim.status == ClaimStatus.Pending);
         // Segment must be eligible for verification
@@ -568,8 +533,10 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         Claim storage claim1 = job.claims[_claimId1];
         Claim storage claim2 = job.claims[_claimId2];
 
-        // Claims must be pending
-        require(claim1.status == ClaimStatus.Pending && claim2.status == ClaimStatus.Pending);
+        // Claim 1 must not be slashed
+        require(claim1.status != ClaimStatus.Slashed);
+        // Claim 2 must not be slashed
+        require(claim2.status != ClaimStatus.Slashed);
         // Segment must be in claim 1 segment range
         require(_segmentNumber >= claim1.segmentRange[0] && _segmentNumber <= claim1.segmentRange[1]);
         // Segment must be in claim 2 segment range
@@ -604,7 +571,7 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         // Claim must not be complete
         require(claim.status == ClaimStatus.Pending);
         // Slashing period must be over for claim
-        require(claim.endSlashingBlock < roundsManager().blockNum());
+        require(claim.endSlashingBlock <= roundsManager().blockNum());
 
         uint256 fees = JobLib.calcFees(claim.segmentRange[1].sub(claim.segmentRange[0]).add(1), job.transcodingOptions, job.maxPricePerSegment);
         // Deduct fees from escrow

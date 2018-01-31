@@ -10,11 +10,12 @@ contract GenericMock {
         uint256 uint256Value;
         bytes32 bytes32Value;
         bool boolValue;
+        address addressValue;
         MockValueType valueType;
         bool set;
     }
 
-    enum MockValueType { Uint256, Bytes32, Bool }
+    enum MockValueType { Uint256, Bytes32, Bool, Address }
 
     // Track function selectors and mapped mock values
     mapping (bytes4 => MockValue) mockValues;
@@ -63,9 +64,20 @@ contract GenericMock {
     }
 
     /*
+     * @dev Set a mock address value for a function
+     * @param _func Function selector (bytes4(keccak256(FUNCTION_SIGNATURE)))
+     * @param _value Mock address value
+     */
+    function setMockAddress(bytes4 _func, address _value) external {
+        mockValues[_func].valueType = MockValueType.Address;
+        mockValues[_func].addressValue = _value;
+        mockValues[_func].set = true;
+    }
+
+    /*
      * @dev Return mock value for a functione
      */
-    function() public {
+    function() public payable {
         bytes4 func;
         assembly { func := calldataload(0) }
 
@@ -79,6 +91,8 @@ contract GenericMock {
                 mLoadAndReturn(mockValues[func].bytes32Value);
             } else if (mockValues[func].valueType == MockValueType.Bool) {
                 mLoadAndReturn(mockValues[func].boolValue);
+            } else if (mockValues[func].valueType == MockValueType.Address) {
+                mLoadAndReturn(mockValues[func].addressValue);
             }
         }
     }
@@ -114,6 +128,19 @@ contract GenericMock {
      * @param _value Bool value
      */
     function mLoadAndReturn(bool _value) private pure {
+        assembly {
+            let memOffset := mload(0x40)
+            mstore(0x40, add(memOffset, 32))
+            mstore(memOffset, _value)
+            return(memOffset, 32)
+        }
+    }
+
+    /*
+     * @dev Load an address value into memory and return it
+     * @param _value Address value
+     */
+    function mLoadAndReturn(address _value) private pure {
         assembly {
             let memOffset := mload(0x40)
             mstore(0x40, add(memOffset, 32))

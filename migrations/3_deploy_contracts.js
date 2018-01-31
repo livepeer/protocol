@@ -36,15 +36,15 @@ module.exports = function(deployer, network) {
         deployer.logger.log("Initializing contracts...")
 
         await bondingManager.setParameters(config.bondingManager.unbondingPeriod, config.bondingManager.numTranscoders, config.bondingManager.numActiveTranscoders)
-        await jobsManager.setParameters(
-            config.jobsManager.verificationRate,
-            config.jobsManager.verificationPeriod,
-            config.jobsManager.slashingPeriod,
-            config.jobsManager.failedVerificationSlashAmount,
-            config.jobsManager.missedVerificationSlashAmount,
-            config.jobsManager.doubleClaimSegmentSlashAmount,
-            config.jobsManager.finderFee
-        )
+
+        // Set JobsManager parameters
+        await jobsManager.setVerificationRate(config.jobsManager.verificationRate)
+        await jobsManager.setVerificationPeriod(config.jobsManager.verificationPeriod)
+        await jobsManager.setSlashingPeriod(config.jobsManager.slashingPeriod)
+        await jobsManager.setFailedVerificationSlashAmount(config.jobsManager.failedVerificationSlashAmount)
+        await jobsManager.setMissedVerificationSlashAmount(config.jobsManager.missedVerificationSlashAmount)
+        await jobsManager.setDoubleClaimSegmentSlashAmount(config.jobsManager.doubleClaimSegmentSlashAmount)
+        await jobsManager.setFinderFee(config.jobsManager.finderFee)
 
         // Set RoundsManager parameters
         await roundsManager.setRoundLength(config.roundsManager.roundLength)
