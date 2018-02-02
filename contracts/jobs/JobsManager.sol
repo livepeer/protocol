@@ -319,6 +319,8 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         require(jobStatus(_jobId) != JobStatus.Inactive);
         // Segment range must be valid
         require(_segmentRange[1] >= _segmentRange[0]);
+        // Caller must be registered transcoder
+        require(bondingManager().isRegisteredTranscoder(msg.sender));
 
         uint256 blockNum = roundsManager().blockNum();
 
@@ -488,9 +490,9 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
             // Protocol slashes transcoder for failing verification (no finder)
             bondingManager().slashTranscoder(transcoder, address(0), failedVerificationSlashAmount, 0);
 
-            PassedVerification(transcoder, _jobId, _claimId, _segmentNumber);
-        } else {
             FailedVerification(transcoder, _jobId, _claimId, _segmentNumber);
+        } else {
+            PassedVerification(transcoder, _jobId, _claimId, _segmentNumber);
         }
     }
 

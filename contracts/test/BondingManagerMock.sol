@@ -73,4 +73,8 @@ contract BondingManagerMock is IBondingManager {
     function activeTranscoderTotalStake(address _transcoder, uint256 _round) public view returns (uint256) {
         return activeStake;
     }
+
+    function isRegisteredTranscoder(address _transcoder) public view returns (bool) {
+        return true;
+    }
 }

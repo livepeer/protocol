@@ -26,7 +26,7 @@ contract AdjustableRoundsManager is RoundsManager {
     }
 
     function blockHash(uint256 _block) public view returns (bytes32) {
-        require(_block <= blockNum() - 256);
+        require(_block >= blockNum() - 256);
 
         return hash;
     }

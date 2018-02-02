@@ -457,9 +457,6 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         whenSystemNotPaused
         onlyJobsManager
     {
-        // Transcoder must be valid
-        require(transcoderStatus(_transcoder) == TranscoderStatus.Registered);
-
         uint256 penalty = MathUtils.percOf(delegators[_transcoder].bondedAmount, _slashAmount);
         if (penalty > del.bondedAmount) {
             penalty = del.bondedAmount;
@@ -467,34 +464,41 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
         Delegator storage del = delegators[_transcoder];
 
-        // Decrease delegate's delegated amount
-        delegators[del.delegateAddress].delegatedAmount = delegators[del.delegateAddress].delegatedAmount.sub(penalty);
-        // Update total bonded tokens
-        totalBonded = totalBonded.sub(penalty);
-        // Decrease transcoder's stake
+        // Decrease bonded stake
         del.bondedAmount = del.bondedAmount.sub(penalty);
+
+        // If still bonded
+        // - Decrease delegate's delegated amount
+        // - Decrease total bonded tokens
+        if (delegatorStatus(_transcoder) == DelegatorStatus.Bonded) {
+            delegators[del.delegateAddress].delegatedAmount = delegators[del.delegateAddress].delegatedAmount.sub(penalty);
+            totalBonded = totalBonded.sub(penalty);
+        }
 
         uint256 currentRound = roundsManager().currentRound();
 
         if (activeTranscoderSet[currentRound].isActive[_transcoder]) {
-            // Set transcoder as inactive
-            activeTranscoderSet[currentRound].isActive[_transcoder] = false;
             // Decrease total active stake for the round
             activeTranscoderSet[currentRound].totalStake = activeTranscoderSet[currentRound].totalStake.sub(activeTranscoderTotalStake(_transcoder, currentRound));
+            // Set transcoder as inactive
+            activeTranscoderSet[currentRound].isActive[_transcoder] = false;
         }
 
-        // Remove transcoder from pools
-        transcoderPool.remove(_transcoder);
+        // If registered transcoder, remove from pool
+        if (transcoderStatus(_transcoder) == TranscoderStatus.Registered) {
+            transcoderPool.remove(_transcoder);
+        }
 
-        // Award finder fee
-        if (penalty > 0 && _finder != address(0)) {
+        // Account for penalty
+        if (penalty > 0) {
             uint256 burnAmount = penalty;
 
+            // Award finder fee if there is a finder address
             if (_finder != address(0)) {
-                // Award finder fee
                 uint256 finderAmount = MathUtils.percOf(penalty, _finderFee);
                 minter().transferTokens(_finder, finderAmount);
 
+                // Subtract finder fee from the amount to be burned
                 burnAmount = burnAmount.sub(finderAmount);
             }
 
@@ -790,6 +794,14 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      */
     function isActiveTranscoder(address _transcoder, uint256 _round) public view returns (bool) {
         return activeTranscoderSet[_round].isActive[_transcoder];
+    }
+
+    /*
+     * @dev Return whether a transcoder is registered
+     * @param _transcoder Transcoder address
+     */
+    function isRegisteredTranscoder(address _transcoder) public view returns (bool) {
+        return transcoderStatus(_transcoder) == TranscoderStatus.Registered;
     }
 
     /*
