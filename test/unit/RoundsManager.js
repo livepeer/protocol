@@ -40,11 +40,27 @@ contract("RoundsManager", accounts => {
             await expectThrow(roundsManager.setRoundLength(0))
         })
 
-        it("should set roundLength and lastRoundLengthUpdateRound when increasing roundLength", async () => {
+        it("should set roundLength before lastRoundLengthUpdateRound and lastRoundLengthUpdateStartBlock when roundLength = 0", async () => {
+            const newRoundsManager = await RoundsManager.new(fixture.controller.address)
+            const blockNum = web3.eth.blockNumber
+            const expLastUpdateRound = Math.floor(blockNum / 50)
+            const expLastUpdateStartBlock = expLastUpdateRound * 50
+
+            await newRoundsManager.setRoundLength(50)
+
+            assert.equal(await newRoundsManager.roundLength.call(), 50, "wrong roundLength")
+            assert.equal(await newRoundsManager.lastRoundLengthUpdateRound.call(), expLastUpdateRound, "wrong lastRoundLengthUpdateRound")
+            assert.equal(await newRoundsManager.lastRoundLengthUpdateStartBlock.call(), expLastUpdateStartBlock, "wrong lastRoundLengthUpdateStartBlock")
+        })
+
+        it("should set roundLength, lastRoundLengthUpdateRound and lastRoundLengthUpdateStartBlock when increasing roundLength", async () => {
+            const lastUpdateRound = (await roundsManager.lastRoundLengthUpdateRound.call()).toNumber()
+            const lastUpdateStartBlock = (await roundsManager.lastRoundLengthUpdateStartBlock.call()).toNumber()
+
             const blockNum = web3.eth.blockNumber
             const roundLength = await roundsManager.roundLength.call()
-            const expLastUpdateRound = Math.floor(blockNum / roundLength.toNumber())
-            const expLastUpdateStartBlock = expLastUpdateRound * roundLength.toNumber()
+            const expLastUpdateRound = lastUpdateRound + Math.floor((blockNum - lastUpdateStartBlock) / roundLength.toNumber())
+            const expLastUpdateStartBlock = lastUpdateStartBlock + Math.floor((blockNum - lastUpdateStartBlock) / roundLength.toNumber())
 
             await roundsManager.setRoundLength(60)
 
@@ -53,17 +69,67 @@ contract("RoundsManager", accounts => {
             assert.equal(await roundsManager.lastRoundLengthUpdateStartBlock.call(), expLastUpdateStartBlock, "wrong lastRoundLengthUpdateStartBlock")
         })
 
-        it("should set roundLength and lastRoundLengthUpdateRound when decreasing roundLength", async () => {
+        it("should set roundLength, lastRoundLengthUpdateRound and lastRoundLengthUpdateStartBlock when decreasing roundLength", async () => {
+            const lastUpdateRound = (await roundsManager.lastRoundLengthUpdateRound.call()).toNumber()
+            const lastUpdateStartBlock = (await roundsManager.lastRoundLengthUpdateStartBlock.call()).toNumber()
+
             const blockNum = web3.eth.blockNumber
             const roundLength = await roundsManager.roundLength.call()
-            const expLastUpdateRound = Math.floor(blockNum / roundLength.toNumber())
-            const expLastUpdateStartBlock = expLastUpdateRound * roundLength.toNumber()
+            const expLastUpdateRound = lastUpdateRound + Math.floor((blockNum - lastUpdateStartBlock) / roundLength.toNumber())
+            const expLastUpdateStartBlock = lastUpdateStartBlock + Math.floor((blockNum - lastUpdateStartBlock) / roundLength.toNumber())
 
             await roundsManager.setRoundLength(40)
 
             assert.equal(await roundsManager.roundLength.call(), 40, "wrong roundLength")
             assert.equal(await roundsManager.lastRoundLengthUpdateRound.call(), expLastUpdateRound, "wrong lastRoundLengthUpdateRound")
             assert.equal(await roundsManager.lastRoundLengthUpdateStartBlock.call(), expLastUpdateStartBlock, "wrong lastRoundLengthUpdateStartBlock")
+        })
+
+        it("should set roundLength, lastRoundLengthUpdateRound and lastRoundLengthUpdateStartBlock multiple times", async () => {
+            const lastUpdateRound0 = (await roundsManager.lastRoundLengthUpdateRound.call()).toNumber()
+            const lastUpdateStartBlock0 = (await roundsManager.lastRoundLengthUpdateStartBlock.call()).toNumber()
+
+            await fixture.rpc.waitUntilNextBlockMultiple(50)
+            await roundsManager.setRoundLength(100)
+
+            const lastUpdateRound1 = lastUpdateRound0 + Math.floor((web3.eth.blockNumber - lastUpdateStartBlock0) / 50)
+            const lastUpdateStartBlock1 = lastUpdateStartBlock0 + Math.floor((web3.eth.blockNumber - lastUpdateStartBlock0) / 50) * 50
+
+            await fixture.rpc.wait(50)
+            await roundsManager.setRoundLength(50)
+
+            const lastUpdateRound2 = lastUpdateRound1 + Math.floor((web3.eth.blockNumber - lastUpdateStartBlock1) / 100)
+            const lastUpdateStartBlock2 = lastUpdateStartBlock1 + Math.floor((web3.eth.blockNumber - lastUpdateStartBlock1) / 100) * 100
+
+            assert.isAtLeast(lastUpdateRound2, lastUpdateRound1, "lastRoundLengthUpdateRound cannot decrease")
+            assert.isAtLeast(lastUpdateStartBlock2, lastUpdateStartBlock1, "lastRoundLengthUpdateStartBlock cannot decrease")
+            assert.equal(await roundsManager.roundLength.call(), 50, "wrong roundLength")
+            assert.equal(await roundsManager.lastRoundLengthUpdateRound.call(), lastUpdateRound2, "wrong lastRoundLengthUpdateRound")
+            assert.equal(await roundsManager.lastRoundLengthUpdateStartBlock.call(), lastUpdateStartBlock2, "wrong lastRoundLengthUpdateStartBlock")
+
+            await fixture.rpc.wait(20)
+            await roundsManager.setRoundLength(20)
+
+            const lastUpdateRound3 = lastUpdateRound2 + Math.floor((web3.eth.blockNumber - lastUpdateStartBlock2) / 50)
+            const lastUpdateStartBlock3 = lastUpdateStartBlock2 + Math.floor((web3.eth.blockNumber - lastUpdateStartBlock2) / 50) * 50
+
+            assert.isAtLeast(lastUpdateRound3, lastUpdateRound2, "lastRoundLengthUpdateRound cannot decrease")
+            assert.isAtLeast(lastUpdateStartBlock3, lastUpdateStartBlock2, "lastRoundLengthUpdateStartBlock cannot decrease")
+            assert.equal(await roundsManager.roundLength.call(), 20, "wrong roundLength")
+            assert.equal(await roundsManager.lastRoundLengthUpdateRound.call(), lastUpdateRound3, "wrong lastRoundLengthUpdateRound")
+            assert.equal(await roundsManager.lastRoundLengthUpdateStartBlock.call(), lastUpdateStartBlock3, "wrong lastRoundLengthUpdateStartBlock")
+
+            await fixture.rpc.wait(30)
+            await roundsManager.setRoundLength(100)
+
+            const lastUpdateRound4 = lastUpdateRound3 + Math.floor((web3.eth.blockNumber - lastUpdateStartBlock3) / 20)
+            const lastUpdateStartBlock4 = lastUpdateStartBlock3 + Math.floor((web3.eth.blockNumber - lastUpdateStartBlock3) / 20) * 20
+
+            assert.isAtLeast(lastUpdateRound4, lastUpdateRound3, "lastRoundLengthUpdateRound cannot decrease")
+            assert.isAtLeast(lastUpdateStartBlock4, lastUpdateStartBlock3, "lastRoundLengthUpdateStartBlock cannot decrease")
+            assert.equal(await roundsManager.roundLength.call(), 100, "wrong roundLength")
+            assert.equal(await roundsManager.lastRoundLengthUpdateRound.call(), lastUpdateRound4, "wrong lastRoundLengthUpdateRound")
+            assert.equal(await roundsManager.lastRoundLengthUpdateStartBlock.call(), lastUpdateStartBlock4, "wrong lastRoundLengthUpdateStartBlock")
         })
     })
 

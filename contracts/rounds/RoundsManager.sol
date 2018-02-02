@@ -49,12 +49,12 @@ contract RoundsManager is ManagerProxyTarget, IRoundsManager {
             // lastRoundLengthUpdateRound and lastRoundLengthUpdateStartBlock
             roundLength = _roundLength;
             lastRoundLengthUpdateRound = currentRound();
-            lastRoundLengthUpdateStartBlock = lastRoundLengthUpdateRound.mul(roundLength);
+            lastRoundLengthUpdateStartBlock = currentRoundStartBlock();
         } else {
             // If updating roundLength, set roundLength after
             // lastRoundLengthUpdateRound and lastRoundLengthUpdateStartBlock
             lastRoundLengthUpdateRound = currentRound();
-            lastRoundLengthUpdateStartBlock = lastRoundLengthUpdateRound.mul(roundLength);
+            lastRoundLengthUpdateStartBlock = currentRoundStartBlock();
             roundLength = _roundLength;
         }
 
