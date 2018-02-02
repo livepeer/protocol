@@ -1,14 +1,23 @@
 pragma solidity ^0.4.17;
 
+import "../IController.sol";
 
+
+/**
+ * @title Minter interface
+ */
 contract IMinter {
-    event NewInflation(uint256 inflation);
-    event SetCurrentRewardTokens(uint256 mintableTokens);
+    // Events
+    event SetCurrentRewardTokens(uint256 currentMintableTokens, uint256 currentInflation);
 
+    // External functions
     function createReward(uint256 _fracNum, uint256 _fracDenom) external returns (uint256);
-    function transferTokens(address _to, uint256 _amount) external;
-    function burnTokens(uint256 _amount) external;
+    function trustedTransferTokens(address _to, uint256 _amount) external;
+    function trustedBurnTokens(uint256 _amount) external;
+    function trustedWithdrawETH(address _to, uint256 _amount) external;
     function depositETH() external payable returns (bool);
-    function withdrawETH(address _to, uint256 _amount) external;
     function setCurrentRewardTokens() external;
+
+    // Public functions
+    function getController() public view returns (IController);
 }

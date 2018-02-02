@@ -1,6 +1,7 @@
 pragma solidity ^0.4.17;
 
 import "../token/IMinter.sol";
+import "../IController.sol";
 
 
 contract MinterMock is IMinter {
@@ -14,15 +15,19 @@ contract MinterMock is IMinter {
         return reward;
     }
 
-    function transferTokens(address _to, uint256 _amount) external {}
+    function trustedTransferTokens(address _to, uint256 _amount) external {}
 
-    function burnTokens(uint256 _amount) external {}
+    function trustedBurnTokens(uint256 _amount) external {}
 
-    function withdrawETH(address _to, uint256 _amount) external {}
+    function trustedWithdrawETH(address _to, uint256 _amount) external {}
 
     function depositETH() external payable returns (bool) {
         return true;
     }
 
     function setCurrentRewardTokens() external {}
+
+    function getController() public view returns (IController) {
+        return IController(address(0));
+    }
 }

@@ -105,9 +105,9 @@ contract JobsManagerMock is IJobsManager {
 
     function withdraw(bool _unbonded, address _recipient) external {
         if (_unbonded) {
-            minter.withdrawETH(_recipient, withdrawAmount);
+            minter.trustedWithdrawETH(_recipient, withdrawAmount);
         } else {
-            minter.transferTokens(_recipient, withdrawAmount);
+            minter.trustedTransferTokens(_recipient, withdrawAmount);
         }
     }
 

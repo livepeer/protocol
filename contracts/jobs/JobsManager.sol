@@ -217,7 +217,7 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
 
         uint256 amount = broadcasters[msg.sender].deposit;
         delete broadcasters[msg.sender];
-        minter().withdrawETH(msg.sender, amount);
+        minter().trustedWithdrawETH(msg.sender, amount);
 
         Withdraw(msg.sender);
     }

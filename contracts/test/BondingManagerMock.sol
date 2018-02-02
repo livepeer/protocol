@@ -42,9 +42,9 @@ contract BondingManagerMock is IBondingManager {
 
     function withdraw(bool _unbonded, address _recipient) external {
         if (_unbonded) {
-            minter.withdrawETH(_recipient, withdrawAmount);
+            minter.trustedWithdrawETH(_recipient, withdrawAmount);
         } else {
-            minter.transferTokens(_recipient, withdrawAmount);
+            minter.trustedTransferTokens(_recipient, withdrawAmount);
         }
     }
 
@@ -53,7 +53,7 @@ contract BondingManagerMock is IBondingManager {
     }
 
     function callBurnTokens(uint256 _amount) external {
-        minter.burnTokens(_amount);
+        minter.trustedBurnTokens(_amount);
     }
 
     function setActiveTranscoders() external {}
