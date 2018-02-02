@@ -4,7 +4,7 @@ pragma solidity ^0.4.17;
 /**
  * @title RoundsManager interface
  */
-interface IRoundsManager {
+contract IRoundsManager {
     // Events
     event NewRound(uint256 round);
 

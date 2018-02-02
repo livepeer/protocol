@@ -109,49 +109,50 @@ contract("RoundsManager", accounts => {
 
     describe("blockNum", () => {
         it("should return the current block number", async () => {
-            const currentBlock = web3.eth.blockNumber
-            assert.equal(await roundsManager.blockNum(), currentBlock, "wrong block number")
+            const latestBlock = web3.eth.blockNumber
+            // Note that the current block from the context of the contract is the block to be mined
+            assert.equal(await roundsManager.blockNum(), latestBlock + 1, "wrong block number")
         })
     })
 
     describe("blockHash", () => {
         it("should fail if block is in the future", async () => {
-            const currentBlock = web3.eth.blockNumber
-            await expectThrow(roundsManager.blockHash(currentBlock + 1))
+            const latestBlock = web3.eth.blockNumber
+            // Note that current block = latestBlock + 1, so latestBlock + 2 is in the future
+            await expectThrow(roundsManager.blockHash(latestBlock + 2))
         })
 
         it("should fail if the current block >= 256 and the block is more than 256 blocks in the past", async () => {
             await fixture.rpc.wait(256)
 
-            const currentBlock = web3.eth.blockNumber
-            await expectThrow(roundsManager.blockHash(currentBlock - 257))
+            const latestBlock = web3.eth.blockNumber
+            // Note that current block = latestBlock + 1, so latestBlock - 256 = current block - 257
+            await expectThrow(roundsManager.blockHash(latestBlock - 256))
         })
 
         it("should fail if block is the current block", async () => {
-            const currentBlock = web3.eth.blockNumber
-            await expectThrow(roundsManager.blockHash(currentBlock))
-        })
-
-        it("should return the block hash if the current block is < 256", async () => {
-            const previousBlock = web3.eth.blockNumber - 1
-            const previousBlockHash = web3.eth.getBlock(previousBlock).hash
-
-            const blockHash = await roundsManager.blockHash(previousBlock)
-            assert.equal(blockHash, previousBlockHash, "wrong block hash")
+            const latestBlock = web3.eth.blockNumber
+            // Note that current block = latestBlock + 1
+            await expectThrow(roundsManager.blockHash(latestBlock + 1))
         })
 
         it("should return the block hash if the current block is >= 256 and the block is not more than 256 blocks in the past", async () => {
             await fixture.rpc.wait(256)
 
-            const previousBlock = web3.eth.blockNumber - 1
-            const previousBlockHash = web3.eth.getBlock(previousBlock).hash
+            const pastBlock = web3.eth.blockNumber - 1
+            const pastBlockHash = web3.eth.getBlock(pastBlock).hash
 
-            const blockHash = await roundsManager.blockHash(previousBlock)
-            assert.equal(blockHash, previousBlockHash, "wrong block hash")
+            const blockHash = await roundsManager.blockHash(pastBlock)
+            assert.equal(blockHash, pastBlockHash, "wrong block hash")
         })
     })
 
     describe("currentRound", () => {
+        beforeEach(async () => {
+            const roundLength = await roundsManager.roundLength.call()
+            await fixture.rpc.waitUntilNextBlockMultiple(roundLength.toNumber())
+        })
+
         it("should return the current round", async () => {
             const blockNum = web3.eth.blockNumber
             const roundLength = await roundsManager.roundLength.call()
@@ -196,6 +197,11 @@ contract("RoundsManager", accounts => {
     })
 
     describe("currentRoundStartBlock", () => {
+        beforeEach(async () => {
+            const roundLength = await roundsManager.roundLength.call()
+            await fixture.rpc.waitUntilNextBlockMultiple(roundLength.toNumber())
+        })
+
         it("should return the start block of the current round", async () => {
             const blockNum = web3.eth.blockNumber
             const roundLength = await roundsManager.roundLength.call()
@@ -240,26 +246,31 @@ contract("RoundsManager", accounts => {
     })
 
     describe("currentRoundInitialized", () => {
-        it("should return true if the current round is initialized", async () => {
+        beforeEach(async () => {
             const roundLength = await roundsManager.roundLength.call()
             await fixture.rpc.waitUntilNextBlockMultiple(roundLength.toNumber())
+        })
+
+        it("should return true if the current round is initialized", async () => {
             await roundsManager.initializeRound()
 
             assert.isOk(await roundsManager.currentRoundInitialized(), "not true when current round initialized")
         })
 
         it("should return false if the current round is not initialized", async () => {
-            const roundLength = await roundsManager.roundLength.call()
-            await fixture.rpc.waitUntilNextBlockMultiple(roundLength.toNumber())
-
             assert.isNotOk(await roundsManager.currentRoundInitialized(), "not false when current round not initialized")
         })
     })
 
     describe("currentRoundLocked", () => {
-        it("should return true if the current round is locked", async () => {
-            const roundLength = await roundsManager.roundLength.call()
+        let roundLength
+
+        beforeEach(async () => {
+            roundLength = await roundsManager.roundLength.call()
             await fixture.rpc.waitUntilNextBlockMultiple(roundLength.toNumber())
+        })
+
+        it("should return true if the current round is locked", async () => {
             const roundLockAmount = await roundsManager.roundLockAmount.call()
             const roundLockBlocks = roundLength.mul(roundLockAmount).div(PERC_DIVISOR).floor()
             await fixture.rpc.wait(roundLength.sub(roundLockBlocks).toNumber())
@@ -268,9 +279,6 @@ contract("RoundsManager", accounts => {
         })
 
         it("should return false if the current round is not locked", async () => {
-            const roundLength = await roundsManager.roundLength.call()
-            await fixture.rpc.waitUntilNextBlockMultiple(roundLength.toNumber())
-
             assert.isNotOk(await roundsManager.currentRoundLocked(), "not false when not in lock period")
         })
     })
