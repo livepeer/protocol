@@ -42,7 +42,7 @@
     "eslint-config-google": "^0.9.1",
     "ethereumjs-abi": "^0.6.4",
     "ethereumjs-util": "^5.1.2",
-    "ganache-cli": "^6.0.3",
+    "ganache-cli": "^6.1.0-beta.0",
     "mkdirp": "^0.5.1",
     "solium": "^1.1.2",
     "truffle": "^4.0.4",

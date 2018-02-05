@@ -45,6 +45,9 @@ module.exports = function(deployer, network) {
             config.jobsManager.doubleClaimSegmentSlashAmount,
             config.jobsManager.finderFee
         )
-        await roundsManager.setParameters(config.roundsManager.roundLength, config.roundsManager.roundLockAmount)
+
+        // Set RoundsManager parameters
+        await roundsManager.setRoundLength(config.roundsManager.roundLength)
+        await roundsManager.setRoundLockAmount(config.roundsManager.roundLockAmount)
     })
 }
