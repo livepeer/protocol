@@ -1,35 +1,42 @@
-import Fixture from "../helpers/fixture"
+import Fixture from "./helpers/Fixture"
 import expectThrow from "../helpers/expectThrow"
+import {functionSig, functionEncodedABI} from "../../utils/helpers"
+import {constants} from "../../utils/constants"
 import MerkleTree from "../../utils/merkleTree"
-import batchTranscodeReceiptHashes from "../../utils/batchTranscodeReceipts"
-import {createTranscodingOptions} from "../../utils/videoProfile"
 import Segment from "../../utils/segment"
+import batchTranscodeReceiptHashes from "../../utils/batchTranscodeReceipts"
 import ethUtil from "ethereumjs-util"
 
 const JobsManager = artifacts.require("JobsManager")
-
-const PERC_DIVISOR = 1000000
-const PERC_MULTIPLIER = PERC_DIVISOR / 100
-
-const VERIFICATION_RATE = 1
-const VERIFICATION_PERIOD = 50
-const SLASHING_PERIOD = 50
-const FAILED_VERIFICATION_SLASH_AMOUNT = 20 * PERC_MULTIPLIER
-const MISSED_VERIFICATION_SLASH_AMOUNT = 30 * PERC_MULTIPLIER
-const DOUBLE_CLAIM_SEGMENT_SLASH_AMOUNT = 40 * PERC_MULTIPLIER
-const FINDER_FEE = 4 * PERC_MULTIPLIER
 
 contract("JobsManager", accounts => {
     let fixture
     let jobsManager
 
+    const PERC_DIVISOR = 1000000
+    const PERC_MULTIPLIER = PERC_DIVISOR / 100
+
+    const VERIFICATION_RATE = 1
+    const VERIFICATION_PERIOD = 50
+    const SLASHING_PERIOD = 50
+    const FAILED_VERIFICATION_SLASH_AMOUNT = 20 * PERC_MULTIPLIER
+    const MISSED_VERIFICATION_SLASH_AMOUNT = 30 * PERC_MULTIPLIER
+    const DOUBLE_CLAIM_SEGMENT_SLASH_AMOUNT = 40 * PERC_MULTIPLIER
+    const FINDER_FEE = 4 * PERC_MULTIPLIER
+
     before(async () => {
         fixture = new Fixture(web3)
-        await fixture.deployController()
-        await fixture.deployMocks()
+        await fixture.deploy()
 
         jobsManager = await fixture.deployAndRegister(JobsManager, "JobsManager", fixture.controller.address)
-        fixture.jobsManager = jobsManager
+
+        await jobsManager.setVerificationRate(VERIFICATION_RATE)
+        await jobsManager.setVerificationPeriod(VERIFICATION_PERIOD)
+        await jobsManager.setSlashingPeriod(SLASHING_PERIOD)
+        await jobsManager.setFailedVerificationSlashAmount(FAILED_VERIFICATION_SLASH_AMOUNT)
+        await jobsManager.setMissedVerificationSlashAmount(MISSED_VERIFICATION_SLASH_AMOUNT)
+        await jobsManager.setDoubleClaimSegmentSlashAmount(DOUBLE_CLAIM_SEGMENT_SLASH_AMOUNT)
+        await jobsManager.setFinderFee(FINDER_FEE)
     })
 
     beforeEach(async () => {
@@ -40,176 +47,288 @@ contract("JobsManager", accounts => {
         await fixture.tearDown()
     })
 
-    describe("setParameters", () => {
-        it("should set parameters", async () => {
-            await jobsManager.setParameters(
-                VERIFICATION_RATE,
-                VERIFICATION_PERIOD,
-                SLASHING_PERIOD,
-                FAILED_VERIFICATION_SLASH_AMOUNT,
-                MISSED_VERIFICATION_SLASH_AMOUNT,
-                DOUBLE_CLAIM_SEGMENT_SLASH_AMOUNT,
-                FINDER_FEE
-            )
+    describe("setVerificationRate", () => {
+        it("should fail if caller is not Controller owner", async () => {
+            await expectThrow(jobsManager.setVerificationRate(5, {from: accounts[2]}))
+        })
 
-            const verificationRate = await jobsManager.verificationRate.call()
-            assert.equal(verificationRate, VERIFICATION_RATE, "verification rate incorrect")
+        it("should fail if provided rate is 0", async () => {
+            await expectThrow(jobsManager.setVerificationRate(0))
+        })
+
+        it("should set verificationRate", async () => {
+            await jobsManager.setVerificationRate(10)
+
+            assert.equal(await jobsManager.verificationRate.call(), 10, "wrong verificationRate")
+        })
+    })
+
+    describe("setVerificationPeriod", () => {
+        it("should fail if caller is not Controller owner", async () => {
+            await expectThrow(jobsManager.setVerificationPeriod(60, {from: accounts[2]}))
+        })
+
+        it("should fail if provided verificationPeriod + current slashingPeriod > 256", async () => {
+            const slashingPeriod = await jobsManager.slashingPeriod.call()
+            await expectThrow(jobsManager.setVerificationPeriod((256 - slashingPeriod.toNumber()) + 1))
+        })
+
+        it("should set verificationPeriod", async () => {
+            await jobsManager.setVerificationPeriod(60)
+
+            assert.equal(await jobsManager.verificationPeriod.call(), 60, "wrong verificationPeriod")
+        })
+    })
+
+    describe("setSlashingPeriod", () => {
+        it("should fail if caller is not Controller owner", async () => {
+            await expectThrow(jobsManager.setSlashingPeriod(60, {from: accounts[2]}))
+        })
+
+        it("should fail if provided slashingPeriod + current verificationPeriod > 256", async () => {
+            const verificationPeriod = await jobsManager.verificationPeriod.call()
+            await expectThrow(jobsManager.setVerificationPeriod((256 - verificationPeriod.toNumber()) + 1))
+        })
+
+        it("should set slashingPeriod", async () => {
+            await jobsManager.setSlashingPeriod(60)
+
+            assert.equal(await jobsManager.slashingPeriod.call(), 60, "wrong slashingPeriod")
+        })
+    })
+
+    describe("setFailedVerificationSlashAmount", () => {
+        it("should fail if caller is not Controller owner", async () => {
+            await expectThrow(jobsManager.setFailedVerificationSlashAmount(15 * PERC_MULTIPLIER, {from: accounts[2]}))
+        })
+
+        it("should fail if provided failedVerificationSlashAmount is invalid percentage", async () => {
+            await expectThrow(jobsManager.setFailedVerificationSlashAmount(PERC_DIVISOR + 1))
+        })
+
+        it("should set failedVerificationSlashAmount", async () => {
+            await jobsManager.setFailedVerificationSlashAmount(15 * PERC_MULTIPLIER)
+
+            assert.equal(await jobsManager.failedVerificationSlashAmount.call(), 15 * PERC_MULTIPLIER, "wrong failedVerificationSlashAmount")
+        })
+    })
+
+    describe("setMissedVerificationSlashAmount", () => {
+        it("should fail if caller is not Controller owner", async () => {
+            await expectThrow(jobsManager.setMissedVerificationSlashAmount(15 * PERC_MULTIPLIER, {from: accounts[2]}))
+        })
+
+        it("should fail if provided missedVerificationSlashAmount is invalid percentage", async () => {
+            await expectThrow(jobsManager.setMissedVerificationSlashAmount(PERC_DIVISOR + 1))
+        })
+
+        it("should set missedVerificationSlashAmount", async () => {
+            await jobsManager.setMissedVerificationSlashAmount(15 * PERC_MULTIPLIER)
+
+            assert.equal(await jobsManager.missedVerificationSlashAmount.call(), 15 * PERC_MULTIPLIER, "wrong failedVerificationSlashAmount")
+        })
+    })
+
+    describe("setDoubleClaimSegmentSlashAmount", () => {
+        it("should fail if caller is not Controller owner", async () => {
+            await expectThrow(jobsManager.setDoubleClaimSegmentSlashAmount(15 * PERC_MULTIPLIER, {from: accounts[2]}))
+        })
+
+        it("should fail if provided doubleClaimSegmentSlashAmount is invalid percentage", async () => {
+            await expectThrow(jobsManager.setDoubleClaimSegmentSlashAmount(PERC_DIVISOR + 1))
+        })
+
+        it("should set doubleClaimSegmentSlashAmount", async () => {
+            await jobsManager.setDoubleClaimSegmentSlashAmount(15 * PERC_MULTIPLIER)
+
+            assert.equal(await jobsManager.doubleClaimSegmentSlashAmount.call(), 15 * PERC_MULTIPLIER, "wrong doubleClaimSegmentSlashAmount")
+        })
+    })
+
+    describe("setFinderFee", () => {
+        it("should fail if caller is not Controller owner", async () => {
+            await expectThrow(jobsManager.setFinderFee(10 * PERC_MULTIPLIER, {from: accounts[2]}))
+        })
+
+        it("should fail if provided finderFee is invalid percentage", async () => {
+            await expectThrow(jobsManager.setFinderFee(PERC_DIVISOR + 1))
+        })
+
+        it("should set finderFee", async () => {
+            await jobsManager.setFinderFee(10 * PERC_MULTIPLIER)
+
+            assert.equal(await jobsManager.finderFee.call(), 10 * PERC_MULTIPLIER, "wrong finderFee")
         })
     })
 
     describe("deposit", () => {
         const broadcaster = accounts[0]
 
+        it("should increase broadcaster's deposit", async () => {
+            await jobsManager.deposit({from: broadcaster, value: 1000})
+
+            const bInfo = await jobsManager.broadcasters.call(broadcaster)
+            assert.equal(bInfo[0], 1000, "wrong deposit")
+        })
+    })
+
+    describe("withdraw", () => {
+        const broadcaster = accounts[0]
+        const currentBlock = 100
+        const endBlock = 150
+
         beforeEach(async () => {
-            await jobsManager.setParameters(
-                VERIFICATION_RATE,
-                VERIFICATION_PERIOD,
-                SLASHING_PERIOD,
-                FAILED_VERIFICATION_SLASH_AMOUNT,
-                MISSED_VERIFICATION_SLASH_AMOUNT,
-                DOUBLE_CLAIM_SEGMENT_SLASH_AMOUNT,
-                FINDER_FEE
-            )
-            await fixture.token.setApproved(true)
+            await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), currentBlock)
+
+            await jobsManager.deposit({from: broadcaster, value: 1000})
+            const transcodingOptions = web3.sha3("foo").slice(0, 10) // 0x + first 4 bytes
+            await jobsManager.job("foo", transcodingOptions, 1, endBlock, {from: broadcaster})
         })
 
-        it("should update broadcaster deposit", async () => {
-            await jobsManager.deposit({from: broadcaster, value: 1000})
-            const bDeposit = (await jobsManager.broadcasters.call(broadcaster))[0]
-            assert.equal(bDeposit, 1000, "broadcaster deposit incorrect")
+        it("should fail if broadcaster's withdraw block is in the future", async () => {
+            await expectThrow(jobsManager.withdraw({from: broadcaster}))
+        })
+
+        it("should zero out broadcaster's deposit and withdraw block", async () => {
+            // Fast forward through end block
+            await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), endBlock)
+
+            await jobsManager.withdraw({from: broadcaster})
+
+            const bInfo = await jobsManager.broadcasters.call(broadcaster)
+            assert.equal(bInfo[0], 0, "wrong deposit")
+            assert.equal(bInfo[1], 0, "wrong withdraw block")
         })
     })
 
     describe("job", () => {
         const broadcaster = accounts[0]
-        const electedTranscoder = accounts[1]
-        const streamId = "1"
-        const transcodingOptions = createTranscodingOptions(["foo", "bar"])
-        const maxPricePerSegment = 100
+        const currentBlock = 100
+        const currentRound = 2
+        const transcodingOptions = web3.sha3("foo").slice(0, 10) // 0x + first 4 bytes
 
         beforeEach(async () => {
-            await jobsManager.setParameters(
-                VERIFICATION_RATE,
-                VERIFICATION_PERIOD,
-                SLASHING_PERIOD,
-                FAILED_VERIFICATION_SLASH_AMOUNT,
-                MISSED_VERIFICATION_SLASH_AMOUNT,
-                DOUBLE_CLAIM_SEGMENT_SLASH_AMOUNT,
-                FINDER_FEE
-            )
-            await fixture.bondingManager.setActiveTranscoder(electedTranscoder, maxPricePerSegment, 100, 200)
-
-            await fixture.roundsManager.setBlockNum(100)
+            await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), currentBlock)
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
         })
 
-        it("should create a NewJob event", async () => {
+        it("should fail if end block is not in the future", async () => {
+            await expectThrow(jobsManager.job("foo", transcodingOptions, 1, currentBlock, {from: broadcaster}))
+        })
+
+        it("should create a transcode job", async () => {
+            await jobsManager.job("foo", transcodingOptions, 1, currentBlock + 50, {from: broadcaster})
+
+            const jInfo = await jobsManager.getJob(0)
+            assert.equal(jInfo[0], "foo", "wrong streamId")
+            assert.equal(jInfo[1], transcodingOptions, "wrong transcodingOptions")
+            assert.equal(jInfo[2], 1, "wrong maxPricePerSegment")
+            assert.equal(jInfo[3], broadcaster, "wrong broadcasterAddress")
+            assert.equal(jInfo[4], constants.NULL_ADDRESS, "wrong transcoderAddress")
+            assert.equal(jInfo[5], currentRound, "wrong creationRound")
+            assert.equal(jInfo[6], currentBlock, "wrong creationBlock")
+            assert.equal(jInfo[7], currentBlock + 50, "wrong endBlock")
+            assert.equal(jInfo[8], 0, "wrong escrow")
+            assert.equal(jInfo[9], 0, "wrong totalClaims")
+        })
+
+        it("should create a new NewJob event", async () => {
             const e = jobsManager.NewJob({})
 
             e.watch(async (err, result) => {
                 e.stopWatching()
 
-                assert.equal(result.args.broadcaster, broadcaster, "broadcaster incorrect")
-                assert.equal(result.args.jobId, 0, "new job id incorrect")
-                assert.equal(result.args.streamId, streamId, "stream id incorrect")
-                assert.equal(result.args.transcodingOptions, transcodingOptions, "transcoding options incorrect")
+                assert.equal(result.args.broadcaster, broadcaster, "wrong broadcaster")
+                assert.equal(result.args.jobId, 0, "wrong jobId")
+                assert.equal(result.args.streamId, "foo", "wrong streamId")
+                assert.equal(result.args.transcodingOptions, transcodingOptions, "wrong transcodingOptions")
             })
 
-            const endBlock = 100 + 500
-            await jobsManager.job(streamId, transcodingOptions, maxPricePerSegment, endBlock, {from: broadcaster})
+            await jobsManager.job("foo", transcodingOptions, 1, currentBlock + 50, {from: broadcaster})
         })
 
-        it("should create a new job", async () => {
-            const creationRound = 100
-            await fixture.roundsManager.setCurrentRound(creationRound)
+        it("should set the broadcaster's withdraw block to the job's end block if the job's end block > broadcaster's withdraw block", async () => {
+            await jobsManager.deposit({from: broadcaster, value: 1000})
+            await jobsManager.job("foo", transcodingOptions, 1, currentBlock + 50, {from: broadcaster})
 
-            const transcoderTotalStake = 100
-            await fixture.bondingManager.setActiveTranscoder(accounts[1], 0, transcoderTotalStake, 0)
+            const bInfo = await jobsManager.broadcasters.call(broadcaster)
+            assert.equal(bInfo[1], currentBlock + 50, "wrong broadcaster withdrawBlock")
+        })
 
-            const endBlock = 100 + 500
-            const creationBlock = 100
-            await jobsManager.job(streamId, transcodingOptions, maxPricePerSegment, endBlock, {from: broadcaster})
+        it("should not change the broadcaster's withdraw block if the job's end block <= broadcaster's withdraw block", async () => {
+            await jobsManager.deposit({from: broadcaster, value: 1000})
+            await jobsManager.job("foo", transcodingOptions, 1, currentBlock + 50, {from: broadcaster})
+            await jobsManager.job("foo", transcodingOptions, 1, currentBlock + 50, {from: broadcaster})
 
-            const jInfo = await jobsManager.getJob(0)
-            const jMaxPricePerSegment = jInfo[2]
-            assert.equal(jMaxPricePerSegment, maxPricePerSegment, "max price per segment incorrect")
-            const jBroadcasterAddress = jInfo[3]
-            assert.equal(jBroadcasterAddress, broadcaster, "broadcaster address incorrect")
-            const jCreationRound = jInfo[5]
-            assert.equal(jCreationRound, creationRound, "creation round incorrect")
-            const jCreationBlock = jInfo[6]
-            assert.equal(jCreationBlock, creationBlock, "creation block incorrect")
-            const jEndBlock = jInfo[7]
-            assert.equal(jEndBlock, endBlock, "end block incorrect")
-            const jEscrow = jInfo[8]
-            assert.equal(jEscrow, 0, "escrow incorrect")
-            const jTotalClaims = jInfo[9]
-            assert.equal(jTotalClaims, 0, "total claims incorrect")
+            const bInfo = await jobsManager.broadcasters.call(broadcaster)
+            assert.equal(bInfo[1], currentBlock + 50, "wrong broadcaster withdrawBlock")
         })
     })
 
     describe("claimWork", () => {
         const broadcaster = accounts[0]
-        const deposit = 1000
-
-        const electedTranscoder = accounts[1]
-        const streamId = "1"
-        const transcodingOptions = createTranscodingOptions(["foo", "bar"])
-        const maxPricePerSegment = 10
-        const jobId = 0
+        const transcoder = accounts[1]
+        const currentBlock = 100
+        const currentRound = 2
+        const transcodingOptions = web3.sha3("foo").slice(0, 10) // 0x + first 4 bytes
         const segmentRange = [0, 3]
-        const claimRoot = "0x1000000000000000000000000000000000000000000000000000000000000000"
+        const claimRoot = web3.sha3("foo")
 
         beforeEach(async () => {
-            await jobsManager.setParameters(
-                VERIFICATION_RATE,
-                VERIFICATION_PERIOD,
-                SLASHING_PERIOD,
-                FAILED_VERIFICATION_SLASH_AMOUNT,
-                MISSED_VERIFICATION_SLASH_AMOUNT,
-                DOUBLE_CLAIM_SEGMENT_SLASH_AMOUNT,
-                FINDER_FEE
-            )
-            await fixture.bondingManager.setActiveTranscoder(electedTranscoder, maxPricePerSegment, 100, 200)
-            await fixture.token.setApproved(true)
+            await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), currentBlock)
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
+            await fixture.bondingManager.setMockAddress(functionSig("electActiveTranscoder(uint256,bytes32,uint256)"), transcoder)
+            await fixture.bondingManager.setMockBool(functionSig("isRegisteredTranscoder(address)"), true)
 
-            // Broadcaster deposits fees
-            await jobsManager.deposit({from: broadcaster, value: deposit})
-
-            await fixture.roundsManager.setBlockNum(100)
-
-            const endBlock0 = 100 + 400
+            await jobsManager.deposit({from: broadcaster, value: 1000})
             // Broadcaster creates job 0
-            await jobsManager.job(streamId, transcodingOptions, maxPricePerSegment, endBlock0, {from: broadcaster})
-            const endBlock1 = 100 + 20
+            await jobsManager.job("foo", transcodingOptions, 1, currentBlock + 20, {from: broadcaster})
             // Broadcaster creates job 1
-            await jobsManager.job(streamId, transcodingOptions, maxPricePerSegment, endBlock1, {from: broadcaster})
-
-            // Job 1 ends
-            await fixture.roundsManager.mineBlocks(20)
+            await jobsManager.job("foo", transcodingOptions, 1, currentBlock + 50, {from: broadcaster})
         })
 
-        it("should fail for invalid job id", async () => {
+        it("should fail if the job does not exist", async () => {
             const invalidJobId = 2
-            // Transcoder claims work for invalid job id
-            await expectThrow(jobsManager.claimWork(invalidJobId, segmentRange, claimRoot, {from: electedTranscoder}))
+            await expectThrow(jobsManager.claimWork(invalidJobId, segmentRange, claimRoot, {from: transcoder}))
         })
 
-        it("should fail for inactive job", async () => {
-            const inactiveJobId = 1
-            // Transcoder claims work for inactive job
-            await expectThrow(jobsManager.claimWork(inactiveJobId, segmentRange, claimRoot, {from: electedTranscoder}))
+        it("should fail if the job is inactive", async () => {
+            await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), currentBlock + 20)
+            const inactiveJobId = 0
+            await expectThrow(jobsManager.claimWork(inactiveJobId, segmentRange, claimRoot, {from: transcoder}))
         })
 
-        it("should fail if the transcoder is assigned and the sender is not the assigned transcoder", async () => {
-            await jobsManager.claimWork(jobId, segmentRange, claimRoot, {from: electedTranscoder})
-
-            // Account 2 (not elected transcoder) claims work
-            await expectThrow(jobsManager.claimWork(jobId, segmentRange, claimRoot, {from: accounts[2]}))
+        it("should fail if segment range is invalid", async () => {
+            await expectThrow(jobsManager.claimWork(1, [3, 0], claimRoot, {from: transcoder}))
         })
 
-        it("should fail if the sender should not be assigned the job", async () => {
-            // Account 2 (not elected transcoder) claims work
-            await expectThrow(jobsManager.claimWork(jobId, segmentRange, claimRoot, {from: accounts[2]}))
+        it("should fail if the transcoder address is set and does not match caller address", async () => {
+            // First claim - set transcoder address
+            await jobsManager.claimWork(1, segmentRange, claimRoot, {from: transcoder})
+
+            await expectThrow(jobsManager.claimWork(1, segmentRange, claimRoot, {from: accounts[2]}))
+        })
+
+        it("should fail if the transcoder address is not set and the caller is not assigned", async () => {
+            await expectThrow(jobsManager.claimWork(1, segmentRange, claimRoot, {from: accounts[2]}))
+        })
+
+        it("should set the transcoder address if this is the first claim and the caller is assigned", async () => {
+            await jobsManager.claimWork(1, segmentRange, claimRoot, {from: transcoder})
+
+            const jInfo = await jobsManager.getJob(1)
+            assert.equal(jInfo[4], transcoder, "wrong transcoderAddress")
+        })
+
+        it("should transfer fees to job escrow and decrease broadcaster deposit", async () => {
+            await jobsManager.claimWork(1, segmentRange, claimRoot, {from: transcoder})
+
+            const fees = (transcodingOptions.slice(2).length / 8) * (segmentRange[1] - segmentRange[0] + 1)
+
+            const jInfo = await jobsManager.getJob(1)
+            assert.equal(jInfo[8].toNumber(), fees, "wrong job escrow")
+            const bInfo = await jobsManager.broadcasters.call(broadcaster)
+            assert.equal(bInfo[0], 1000 - fees, "wrong broadcaster deposit")
         })
 
         it("should create a NewClaim event", async () => {
@@ -218,70 +337,39 @@ contract("JobsManager", accounts => {
             e.watch(async (err, result) => {
                 e.stopWatching()
 
-                assert.equal(result.args.transcoder, accounts[1], "transcoder incorrect")
-                assert.equal(result.args.jobId, 0, "job id incorrect")
+                assert.equal(result.args.transcoder, transcoder, "transcoder incorrect")
+                assert.equal(result.args.jobId, 1, "job id incorrect")
                 assert.equal(result.args.claimId, 0, "claim id incorrect")
             })
 
-            // Transcoder claims work
-            await jobsManager.claimWork(jobId, segmentRange, claimRoot, {from: electedTranscoder})
+            await jobsManager.claimWork(1, segmentRange, claimRoot, {from: transcoder})
         })
 
-        it("should create claim for job", async () => {
-            await jobsManager.claimWork(jobId, segmentRange, claimRoot, {from: electedTranscoder})
-
-            const claimId = 0
-            const claimBlock = await fixture.roundsManager.blockNum()
+        it("should create a transcode claim", async () => {
+            const claimBlock = currentBlock + 1
             const verificationPeriod = await jobsManager.verificationPeriod.call()
             const slashingPeriod = await jobsManager.slashingPeriod.call()
+            await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), claimBlock)
+            await jobsManager.claimWork(1, segmentRange, claimRoot, {from: transcoder})
 
-            const cInfo = await jobsManager.getClaim(jobId, claimId)
-            const cStartSegment = cInfo[0][0]
-            assert.equal(cStartSegment, segmentRange[0], "segment range start incorrect")
-            const cEndSegment = cInfo[0][1]
-            assert.equal(cEndSegment, segmentRange[1], "segment range end incorrect")
-            const cRoot = cInfo[1]
-            assert.equal(cRoot, claimRoot, "claim root incorrect")
-            const cBlock = cInfo[2]
-            assert.equal(cBlock, claimBlock.toNumber(), "claim block incorrect")
-            const cEndVerificationBlock = cInfo[3]
-            assert.equal(cEndVerificationBlock, claimBlock.add(verificationPeriod).toNumber(), "end verification block incorrect")
-            const cEndSlashingBlock = cInfo[4]
-            assert.equal(cEndSlashingBlock, claimBlock.add(verificationPeriod).add(slashingPeriod).toNumber(), "end slashing block incorrect")
-            const cStatus = cInfo[5]
-            assert.equal(cStatus, 0, "claim status incorrect")
-        })
-
-        it("should update broadcaster deposit", async () => {
-            await jobsManager.claimWork(jobId, segmentRange, claimRoot, {from: electedTranscoder})
-
-            const fees = maxPricePerSegment * 2 * (segmentRange[1] - segmentRange[0] + 1)
-
-            const jInfo = await jobsManager.getJob(jobId)
-            const jEscrow = jInfo[8]
-            assert.equal(jEscrow, fees, "escrow is incorrect")
-        })
-
-        it("should update job escrow", async () => {
-            await jobsManager.claimWork(jobId, segmentRange, claimRoot, {from: electedTranscoder})
-
-            const fees = maxPricePerSegment * 2 * (segmentRange[1] - segmentRange[0] + 1)
-            const expDeposit = deposit - fees
-
-            const newDeposit = (await jobsManager.broadcasters.call(broadcaster))[0]
-            assert.equal(newDeposit, expDeposit, "deposit is incorrect")
+            const cInfo = await jobsManager.getClaim(1, 0)
+            assert.equal(cInfo[0][0], segmentRange[0], "wrong segment range start")
+            assert.equal(cInfo[0][1], segmentRange[1], "wrong segment range end")
+            assert.equal(cInfo[1], claimRoot, "wrong claimRoot")
+            assert.equal(cInfo[2], claimBlock, "wrong claimBlock")
+            assert.equal(cInfo[3], claimBlock + verificationPeriod.toNumber(), "wrong endVerificationBlock")
+            assert.equal(cInfo[4], claimBlock + verificationPeriod.toNumber() + slashingPeriod.toNumber(), "wrong endSlashingBlock")
+            assert.equal(cInfo[5], 0, "wrong status")
         })
     })
 
     describe("verify", () => {
         const broadcaster = accounts[0]
-        const electedTranscoder = accounts[1]
-        const jobId = 0
-        const claimId = 0
-        const streamId = "1"
-        const transcodingOptions = "0x123"
-        const maxPricePerSegment = 10
-        const segmentNumber = 0
+        const transcoder = accounts[1]
+        const currentBlock = 100
+        const currentRound = 2
+        const transcodingOptions = web3.sha3("foo").slice(0, 10) // 0x + first 4 bytes
+        const segmentRange = [0, 3]
 
         // Segment data hashes
         const dataHashes = [
@@ -292,7 +380,7 @@ contract("JobsManager", accounts => {
         ]
 
         // Segments
-        const segments = dataHashes.map((dataHash, idx) => new Segment(streamId, idx, dataHash, broadcaster))
+        const segments = dataHashes.map((dataHash, idx) => new Segment("foo", idx, dataHash, broadcaster))
 
         // Transcoded data hashes
         const tDataHashes = [
@@ -316,314 +404,299 @@ contract("JobsManager", accounts => {
         const correctProof = merkleTree.getHexProof(tReceiptHashes[0])
 
         beforeEach(async () => {
-            await jobsManager.setParameters(
-                VERIFICATION_RATE,
-                VERIFICATION_PERIOD,
-                SLASHING_PERIOD,
-                FAILED_VERIFICATION_SLASH_AMOUNT,
-                MISSED_VERIFICATION_SLASH_AMOUNT,
-                DOUBLE_CLAIM_SEGMENT_SLASH_AMOUNT,
-                FINDER_FEE
-            )
-            await fixture.bondingManager.setActiveTranscoder(electedTranscoder, maxPricePerSegment, 100, 200)
-            await fixture.token.setApproved(true)
+            await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), currentBlock)
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
+            await fixture.bondingManager.setMockAddress(functionSig("electActiveTranscoder(uint256,bytes32,uint256)"), transcoder)
+            await fixture.bondingManager.setMockBool(functionSig("isRegisteredTranscoder(address)"), true)
 
             await jobsManager.deposit({from: broadcaster, value: 1000})
-
-            await fixture.roundsManager.setBlockNum(100)
-
-            const endBlock0 = 100 + 500
             // Broadcaster creates job 0
-            await jobsManager.job(streamId, transcodingOptions, maxPricePerSegment, endBlock0, {from: broadcaster})
-            const endBlock1 = 100 + 20
-            // Broadcaster creates another job 1
-            await jobsManager.job(streamId, transcodingOptions, maxPricePerSegment, endBlock1, {from: broadcaster})
+            await jobsManager.job("foo", transcodingOptions, 1, currentBlock + 20, {from: broadcaster})
+            // Broadcaster creates job 1
+            await jobsManager.job("foo", transcodingOptions, 1, currentBlock + 50, {from: broadcaster})
 
-            // Broadcaster ends job 1
-            await fixture.roundsManager.mineBlocks(20)
-
-            const segmentRange = [0, 3]
-            // Account 1 (transcoder) claims work for job 0
-            await jobsManager.claimWork(jobId, segmentRange, merkleTree.getHexRoot(), {from: electedTranscoder})
-
-            // Fast forward so that claimBlock + 1 is mined
-            await fixture.roundsManager.mineBlocks(1)
+            await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), currentBlock + 1)
+            // Transcoder claims work for job 0
+            await jobsManager.claimWork(0, segmentRange, merkleTree.getHexRoot(), {from: transcoder})
+            // Transcoder claims work for job 1
+            await jobsManager.claimWork(1, segmentRange, merkleTree.getHexRoot(), {from: transcoder})
+            // Claim block + 1 is mined
+            await fixture.roundsManager.setMockUint256("blockNum()", currentBlock + 2)
         })
 
-        it("should throw for insufficient payment for verification", async () => {
-            await fixture.verifier.setPrice(10)
-            // Transcoder calls verify with 0 payment
-            await expectThrow(jobsManager.verify(jobId, claimId, segmentNumber, dataStorageHash, correctDataHashes, correctSig, correctProof, {from: electedTranscoder}))
+        it("should fail if insufficient payment is provided", async () => {
+            await fixture.verifier.setMockUint256(functionSig("getPrice()"), 10)
+            await expectThrow(jobsManager.verify(1, 0, 0, dataStorageHash, correctDataHashes, correctSig, correctProof, {from: transcoder}))
         })
 
-        it("should throw for invalid job id", async () => {
+        it("should fail if job does not exist", async () => {
             const invalidJobId = 2
-            // Transcoder calls verify with invalid job id
-            await expectThrow(jobsManager.verify(invalidJobId, claimId, segmentNumber, dataStorageHash, correctDataHashes, correctSig, correctProof, {from: electedTranscoder}))
+            await expectThrow(jobsManager.verify(invalidJobId, 0, 0, dataStorageHash, correctDataHashes, correctSig, correctProof, {from: transcoder}))
         })
 
-        it("should throw for invalid claim id", async () => {
-            const invalidClaimId = 1
-            // Transcoder calls verify with invalid claim id
-            await expectThrow(jobsManager.verify(jobId, invalidClaimId, segmentNumber, dataStorageHash, correctDataHashes, correctSig, correctProof, {from: electedTranscoder}))
+        it("should fail if job is inactive", async () => {
+            await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), currentBlock + 30)
+            await expectThrow(jobsManager.verify(0, 0, 0, dataStorageHash, correctDataHashes, correctSig, correctProof, {from: transcoder}))
         })
 
-        it("should throw for inactive job", async () => {
-            const inactiveJobId = 1
-            // Transcoder calls verify with inactive job
-            await expectThrow(jobsManager.verify(inactiveJobId, claimId, segmentNumber, dataStorageHash, correctDataHashes, correctSig, correctProof, {from: electedTranscoder}))
+        it("should fail if transcoder address for claim does not match caller address", async () => {
+            await expectThrow(jobsManager.verify(1, 0, 0, dataStorageHash, correctDataHashes, correctSig, correctProof, {from: accounts[3]}))
         })
 
-        it("should throw if sender is not elected transcoder", async () => {
-            // Account 2 (not elected transcoder) calls verify
-            await expectThrow(jobsManager.verify(jobId, claimId, segmentNumber, dataStorageHash, correctDataHashes, correctSig, correctProof, {from: accounts[2]}))
-        })
-
-        it("should throw if segment is not eligible for verification", async () => {
+        it("should fail if segment should not be verified because it is not in the claim's segment range", async () => {
             const invalidSegmentNumber = 99
-            // Transcoder calls verify with invalid segment number
-            await expectThrow(jobsManager.verify(jobId, claimId, invalidSegmentNumber, dataStorageHash, correctDataHashes, correctSig, correctProof, {from: electedTranscoder}))
+            await expectThrow(jobsManager.verify(1, 0, invalidSegmentNumber, dataStorageHash, correctDataHashes, correctSig, correctProof, {from: transcoder}))
         })
 
-        it("should throw if segment not signed by broadcaster", async () => {
+        it("should fail if segment should not be verified because it was not challenged", async () => {
+            // Only 1 out of 1000000000000 segments should be verified
+            await jobsManager.setVerificationRate(1000000000000)
+            // The probability of a challenged segment should be so low that this call will fail *most* of the time
+            await expectThrow(jobsManager.verify(1, 0, 0, dataStorageHash, correctDataHashes, correctSig, correctProof, {from: transcoder}))
+        })
+
+        it("should fail if broadcaster signature over segment data is invalid", async () => {
             const badSig = web3.eth.sign(accounts[3], ethUtil.bufferToHex(segments[0].hash()))
-            // This should fail because badSig is signed by Account 3 and not the broadcaster
-            await expectThrow(jobsManager.verify(jobId, claimId, segmentNumber, dataStorageHash, correctDataHashes, badSig, correctProof, {from: electedTranscoder}))
+            // This should fail because badSig is not signed by the broadcaster
+            await expectThrow(jobsManager.verify(1, 0, 0, dataStorageHash, correctDataHashes, badSig, correctProof, {from: transcoder}))
         })
 
-        it("should throw if submitted Merkle proof is invalid", async () => {
-            const badSig = ethUtil.bufferToHex(segments[3].signedHash())
-            // This should fail because badSig is the sig for segment 3 but the receipt being verified is for segment 0
-            await expectThrow(jobsManager.verify(jobId, claimId, segmentNumber, dataStorageHash, correctDataHashes, badSig, correctProof, {from: electedTranscoder}))
+        it("should fail if Merkle proof for transcode receipt is invalid", async () => {
+            const badProof = merkleTree.getHexProof(tReceiptHashes[1])
+            // This should fail becasue badProof is the Merkle proof for tReceiptHashes[1] instead of tReceiptHashes[0]
+            await expectThrow(jobsManager.verify(1, 0, 0, dataStorageHash, correctDataHashes, correctSig, badProof, {from: transcoder}))
         })
 
-        it("should not throw for successful verify call", async () => {
-            // Set price to 100 wei
-            await fixture.verifier.setPrice(100)
-            // Transcoder calls verify with 100 wei payment
-            await jobsManager.verify(jobId, claimId, segmentNumber, dataStorageHash, correctDataHashes, correctSig, correctProof, {from: electedTranscoder, value: 100})
+        it("should mark segment as submitted for verification", async () => {
+            await jobsManager.verify(1, 0, 0, dataStorageHash, correctDataHashes, correctSig, correctProof, {from: transcoder})
+
+            assert.isOk(await jobsManager.isClaimSegmentVerified(1, 0, 0), "claim segment not marked as submitted for verification")
+        })
+
+        it("should forward ETH payment to verifier if price > 0", async () => {
+            await fixture.verifier.setMockUint256(functionSig("getPrice()"), 100)
+            await jobsManager.verify(1, 0, 0, dataStorageHash, correctDataHashes, correctSig, correctProof, {from: transcoder, value: 100})
+
+            assert.equal(web3.eth.getBalance(fixture.verifier.address), 100, "wrong verifier ETH balance")
+        })
+    })
+
+    describe("receiveVerification", () => {
+        const broadcaster = accounts[0]
+        const transcoder = accounts[1]
+        const currentBlock = 100
+        const currentRound = 2
+        const transcodingOptions = web3.sha3("foo").slice(0, 10)
+        const segmentRange = [0, 3]
+        const claimRoot = web3.sha3("foo")
+
+        beforeEach(async () => {
+            await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), currentBlock)
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
+            await fixture.bondingManager.setMockAddress(functionSig("electActiveTranscoder(uint256,bytes32,uint256)"), transcoder)
+            await fixture.bondingManager.setMockBool(functionSig("isRegisteredTranscoder(address)"), true)
+
+            await jobsManager.deposit({from: broadcaster, value: 1000})
+            // Broadcaster creates job 0
+            await jobsManager.job("foo", transcodingOptions, 1, currentBlock + 20, {from: broadcaster})
+
+            await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), currentBlock + 1)
+            // Transcoder claims work for job 0
+            await jobsManager.claimWork(0, segmentRange, claimRoot, {from: transcoder})
+            // Claim block + 1 is mined
+            await fixture.roundsManager.setMockUint256("blockNum()", currentBlock + 2)
+        })
+
+        it("should fail if caller is not the verifier", async () => {
+            await expectThrow(jobsManager.receiveVerification(0, 0, 0, true, {from: transcoder}))
+        })
+
+        it("should refund the broadcaster if the result is false", async () => {
+            // Call receiveVerification from the verifier
+            await fixture.verifier.execute(jobsManager.address, functionEncodedABI("receiveVerification(uint256,uint256,uint256,bool)", ["uint256", "uint256", "uint256", "bool"], [0, 0, 0, false]))
+
+            const bDeposit = (await jobsManager.broadcasters.call(broadcaster))[0]
+            assert.equal(bDeposit, 1000, "broadcaster deposit should be restored")
+            const jEscrow = (await jobsManager.getJob(0))[8]
+            assert.equal(jEscrow, 0, "job escrow should be zero")
+        })
+
+        it("should create a PassedVerification event if the result is true", async () => {
+            const e = jobsManager.PassedVerification({})
+
+            e.watch(async (err, result) => {
+                e.stopWatching()
+
+                assert.equal(result.args.transcoder, transcoder, "transcoder incorrect")
+                assert.equal(result.args.jobId, 0, "job id incorrect")
+                assert.equal(result.args.claimId, 0, "claim id incorrect")
+                assert.equal(result.args.segmentNumber, 0, "segment number incorrect")
+            })
+
+            // Call receiveVerification from the verifier
+            await fixture.verifier.execute(jobsManager.address, functionEncodedABI("receiveVerification(uint256,uint256,uint256,bool)", ["uint256", "uint256", "uint256", "bool"], [0, 0, 0, true]))
         })
     })
 
     describe("distributeFees", () => {
         const broadcaster = accounts[0]
-        const electedTranscoder = accounts[1]
-        const jobId = 0
-        const claimId = 0
-        const maxPricePerSegment = 10
+        const transcoder = accounts[1]
+        const currentBlock = 100
+        const currentRound = 2
+        const transcodingOptions = web3.sha3("foo").slice(0, 10)
+        const segmentRange = [0, 3]
+        const claimRoot = web3.sha3("foo")
 
         beforeEach(async () => {
-            await jobsManager.setParameters(
-                VERIFICATION_RATE,
-                VERIFICATION_PERIOD,
-                SLASHING_PERIOD,
-                FAILED_VERIFICATION_SLASH_AMOUNT,
-                MISSED_VERIFICATION_SLASH_AMOUNT,
-                DOUBLE_CLAIM_SEGMENT_SLASH_AMOUNT,
-                FINDER_FEE
-            )
-            await fixture.bondingManager.setActiveTranscoder(electedTranscoder, maxPricePerSegment, 100, 200)
-            await fixture.token.setApproved(true)
+            await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), currentBlock)
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
+            await fixture.bondingManager.setMockAddress(functionSig("electActiveTranscoder(uint256,bytes32,uint256)"), transcoder)
+            await fixture.bondingManager.setMockBool(functionSig("isRegisteredTranscoder(address)"), true)
 
             await jobsManager.deposit({from: broadcaster, value: 1000})
-
-            await fixture.roundsManager.setBlockNum(100)
-
-            const streamId = "1"
-            const transcodingOptions = createTranscodingOptions(["foo", "bar"])
-            const endBlock = 100 + 500
             // Broadcaster creates job 0
-            await jobsManager.job(streamId, transcodingOptions, maxPricePerSegment, endBlock, {from: broadcaster})
+            await jobsManager.job("foo", transcodingOptions, 1, currentBlock + 20, {from: broadcaster})
 
-            // Wait for job creation block + 1 to be mined
-            await fixture.roundsManager.mineBlocks(1)
-
-            const segmentRange = [0, 3]
-            const claimRoot = "0x1000000000000000000000000000000000000000000000000000000000000000"
-            // Account 1 (transcoder) claims work for job 0
-            await jobsManager.claimWork(jobId, segmentRange, claimRoot, {from: electedTranscoder})
+            await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), currentBlock + 1)
+            // Transcoder claims work for job 0
+            await jobsManager.claimWork(0, segmentRange, claimRoot, {from: transcoder})
         })
 
-        it("should fail if verification period is not over", async () => {
-            await expectThrow(jobsManager.distributeFees(jobId, claimId, {from: electedTranscoder}))
-        })
-
-        it("should fail if slashing period is not over", async () => {
-            // Fast foward through verification period
-            const verificationPeriod = await jobsManager.verificationPeriod.call()
-            await fixture.roundsManager.mineBlocks(verificationPeriod.toNumber() + 1)
-
-            await expectThrow(jobsManager.distributeFees(jobId, claimId, {from: electedTranscoder}))
-        })
-
-        it("should fail for invalid job id", async () => {
-            // Fast foward through verificaiton and slashing period
-            const verificationPeriod = await jobsManager.verificationPeriod.call()
-            const slashingPeriod = await jobsManager.slashingPeriod.call()
-            await fixture.roundsManager.mineBlocks(verificationPeriod.add(slashingPeriod).toNumber() + 1)
+        it("should fail if job does not exist", async () => {
+            // Fast forward through verification period and slashing period
+            const endSlashingBlock = (await jobsManager.getClaim(0, 0))[4]
+            await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), endSlashingBlock)
 
             const invalidJobId = 1
-            await expectThrow(jobsManager.distributeFees(invalidJobId, claimId, {from: electedTranscoder}))
+            await expectThrow(jobsManager.distributeFees(invalidJobId, 0, {from: transcoder}))
         })
 
-        it("should fail for invalid claim id", async () => {
-            // Fast foward through verificaiton and slashing period
+        it("should fail if claim does not exist", async () => {
+            await expectThrow(jobsManager.distributeFees(0, 1, {from: transcoder}))
+        })
+
+        it("should fail if transcoder address does not match caller address", async () => {
+            // Fast forward through verification period and slashing period
+            const endSlashingBlock = (await jobsManager.getClaim(0, 0))[4]
+            await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), endSlashingBlock)
+
+            await expectThrow(jobsManager.distributeFees(0, 0, {from: accounts[3]}))
+        })
+
+        it("should fail if the claim is slashed and thus not pending", async () => {
+            // Fast forward through verification period
+            const endVerificationBlock = (await jobsManager.getClaim(0, 0))[3]
+            await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), endVerificationBlock.add(1))
+
+            await jobsManager.missedVerificationSlash(0, 0, 0, {from: accounts[3]})
+
+            // This should fail because the claim is slashed
+            await expectThrow(jobsManager.distributeFees(0, 0, {from: transcoder}))
+        })
+
+        it("should fail if the claim is complete and thus not pending", async () => {
+            // Fast forward through verification period and slashing period
+            const endSlashingBlock = (await jobsManager.getClaim(0, 0))[4]
+            await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), endSlashingBlock)
+            await jobsManager.distributeFees(0, 0, {from: transcoder})
+
+            // This should fail because the claim is already complete
+            await expectThrow(jobsManager.distributeFees(0, 0, {from: transcoder}))
+        })
+
+        it("should fail if the claim's slashing period is not over", async () => {
+            // Fast forward through verification period and slashing period
             const verificationPeriod = await jobsManager.verificationPeriod.call()
-            const slashingPeriod = await jobsManager.slashingPeriod.call()
-            await fixture.roundsManager.mineBlocks(verificationPeriod.add(slashingPeriod).toNumber() + 1)
+            await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), currentBlock + verificationPeriod.toNumber())
 
-            const invalidClaimId = 1
-            await expectThrow(jobsManager.distributeFees(jobId, invalidClaimId, {from: electedTranscoder}))
+            await expectThrow(jobsManager.distributeFees(0, 0, {from: transcoder}))
         })
 
-        it("should fail if sender is not elected transcoder", async () => {
-            // Fast foward through verificaiton and slashing period
-            const verificationPeriod = await jobsManager.verificationPeriod.call()
-            const slashingPeriod = await jobsManager.slashingPeriod.call()
-            await fixture.roundsManager.mineBlocks(verificationPeriod.add(slashingPeriod).toNumber() + 1)
+        it("should decrease the job's escrow", async () => {
+            // Fast forward through verification period and slashing period
+            const endSlashingBlock = (await jobsManager.getClaim(0, 0))[4]
+            await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), endSlashingBlock)
 
-            // Should fail because account 2 is not the elected transcoder
-            await expectThrow(jobsManager.distributeFees(jobId, claimId, {from: accounts[2]}))
+            await jobsManager.distributeFees(0, 0, {from: transcoder})
+
+            const jEscrow = (await jobsManager.getJob(0))[8]
+            assert.equal(jEscrow, 0, "wrong job escrow")
         })
 
-        it("should update job escrow and set claim as complete", async () => {
-            // Fast foward through verificaiton and slashing period
-            const verificationPeriod = await jobsManager.verificationPeriod.call()
-            const slashingPeriod = await jobsManager.slashingPeriod.call()
-            await fixture.roundsManager.mineBlocks(verificationPeriod.add(slashingPeriod).toNumber() + 1)
+        it("should set the claim as complete", async () => {
+            // Fast forward through verification period and slashing period
+            const endSlashingBlock = (await jobsManager.getClaim(0, 0))[4]
+            await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), endSlashingBlock)
 
-            await jobsManager.distributeFees(jobId, claimId, {from: electedTranscoder})
+            await jobsManager.distributeFees(0, 0, {from: transcoder})
 
-            const jInfo = await jobsManager.getJob(jobId)
-            const jEscrow = jInfo[8]
-            assert.equal(jEscrow, 0, "escrow is incorrect")
-            const cInfo = await jobsManager.getClaim(jobId, claimId)
-            const cStatus = cInfo[5]
-            assert.equal(cStatus, 2, "claim status is incorrect")
-        })
-
-        it("should fail if claim is not pending", async () => {
-            // Fast foward through verificaiton and slashing period
-            const verificationPeriod = await jobsManager.verificationPeriod.call()
-            const slashingPeriod = await jobsManager.slashingPeriod.call()
-            await fixture.roundsManager.mineBlocks(verificationPeriod.add(slashingPeriod).toNumber() + 1)
-
-            await jobsManager.distributeFees(jobId, claimId, {from: electedTranscoder})
-
-            // Should fail because claim is already complete
-            await expectThrow(jobsManager.distributeFees(jobId, claimId, {from: electedTranscoder}))
-        })
-    })
-
-    describe("receiveVerification", () => {
-        beforeEach(async () => {
-            await jobsManager.setParameters(
-                VERIFICATION_RATE,
-                VERIFICATION_PERIOD,
-                SLASHING_PERIOD,
-                FAILED_VERIFICATION_SLASH_AMOUNT,
-                MISSED_VERIFICATION_SLASH_AMOUNT,
-                DOUBLE_CLAIM_SEGMENT_SLASH_AMOUNT,
-                FINDER_FEE
-            )
-            await fixture.verifier.setVerifiable(jobsManager.address)
-        })
-
-        it("should fail if sender is not Verifier", async () => {
-            const jobId = 0
-            const claimId = 0
-            const segmentNumber = 0
-            const result = true
-
-            // Non-verifier calls receiveVerification
-            await expectThrow(jobsManager.receiveVerification(jobId, claimId, segmentNumber, result, {from: accounts[0]}))
-        })
-
-        it("should not fail if sender is Verifier", async () => {
-            const jobId = 0
-            const claimId = 0
-            const segmentNumber = 0
-            const result = true
-
-            await fixture.verifier.setVerificationResult(jobId, claimId, segmentNumber, result)
-            await fixture.verifier.callReceiveVerification()
+            const cStatus = (await jobsManager.getClaim(0, 0))[5]
+            assert.equal(cStatus, 2, "wrong claim status")
         })
     })
 
     describe("batchDistributeFees", () => {
         const broadcaster = accounts[0]
-        const electedTranscoder = accounts[1]
-        const jobId = 0
-        const claimIds = [0, 1]
-        const maxPricePerSegment = 10
+        const transcoder = accounts[1]
+        const currentBlock = 100
+        const currentRound = 2
+        const transcodingOptions = web3.sha3("foo").slice(0, 10)
+        const segmentRange = [0, 3]
+        const claimRoot = web3.sha3("foo")
 
         beforeEach(async () => {
-            await jobsManager.setParameters(
-                VERIFICATION_RATE,
-                VERIFICATION_PERIOD,
-                SLASHING_PERIOD,
-                FAILED_VERIFICATION_SLASH_AMOUNT,
-                MISSED_VERIFICATION_SLASH_AMOUNT,
-                DOUBLE_CLAIM_SEGMENT_SLASH_AMOUNT,
-                FINDER_FEE
-            )
-            await fixture.bondingManager.setActiveTranscoder(electedTranscoder, maxPricePerSegment, 100, 200)
-            await fixture.token.setApproved(true)
+            await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), currentBlock)
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
+            await fixture.bondingManager.setMockAddress(functionSig("electActiveTranscoder(uint256,bytes32,uint256)"), transcoder)
+            await fixture.bondingManager.setMockBool(functionSig("isRegisteredTranscoder(address)"), true)
 
             await jobsManager.deposit({from: broadcaster, value: 1000})
-
-            await fixture.roundsManager.setBlockNum(100)
-
-            const streamId = "1"
-            const transcodingOptions = createTranscodingOptions(["foo", "bar"])
-            const endBlock = 100 + 500
             // Broadcaster creates job 0
-            await jobsManager.job(streamId, transcodingOptions, maxPricePerSegment, endBlock, {from: broadcaster})
+            await jobsManager.job("foo", transcodingOptions, 1, currentBlock + 20, {from: broadcaster})
 
-            // Wait for job creation block + 1 to be mined
-            await fixture.roundsManager.mineBlocks(1)
-
-            const segmentRange0 = [0, 3]
-            const claimRoot = "0x1000000000000000000000000000000000000000000000000000000000000000"
-            // Transcoder submits claim 0
-            await jobsManager.claimWork(jobId, segmentRange0, claimRoot, {from: electedTranscoder})
-            const segmentRange1 = [4, 7]
-            // Transcoder submits claim 1
-            await jobsManager.claimWork(jobId, segmentRange1, claimRoot, {from: electedTranscoder})
-            const segmentRange2 = [8, 11]
-            // Transcoder submits claim 2
-            await jobsManager.claimWork(jobId, segmentRange2, claimRoot, {from: electedTranscoder})
-
-            // Fast foward through verification period and slashing period
-            const verificationPeriod = await jobsManager.verificationPeriod.call()
-            const slashingPeriod = await jobsManager.slashingPeriod.call()
-            await fixture.roundsManager.mineBlocks(verificationPeriod.add(slashingPeriod).toNumber() + 1)
+            await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), currentBlock + 1)
+            // Transcoder claims work for job 0 by submitting claim 0
+            await jobsManager.claimWork(0, segmentRange, claimRoot, {from: transcoder})
+            // Fast forward so the second claim is made later than the first claim
+            await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), currentBlock + 5)
+            // Transcoder claims work for job 0 by submitting claim 1
+            await jobsManager.claimWork(0, segmentRange, claimRoot, {from: transcoder})
         })
 
-        it("should update job escrow and claim statuses multiple claims", async () => {
-            await jobsManager.batchDistributeFees(jobId, claimIds, {from: electedTranscoder})
+        it("should fail if distributeFees fails for any of the claim ids", async () => {
+            // Fast forward through verification period and slashing period of claim 0
+            const endSlashingBlock0 = (await jobsManager.getClaim(0, 0))[4]
+            await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), endSlashingBlock0)
 
-            const jInfo = await jobsManager.getJob(jobId)
-            const jEscrow = jInfo[8]
-            assert.equal(jEscrow, 80, "escrow is incorrect")
+            // This should fail because distributeFees should fail for claim 1 (slashing period not over)
+            await expectThrow(jobsManager.batchDistributeFees(0, [0, 1], {from: transcoder}))
+        })
 
-            const cInfo0 = await jobsManager.getClaim(jobId, 0)
-            const cStatus0 = cInfo0[5]
-            assert.equal(cStatus0, 2, "claim 0 status incorrect")
-            const cInfo1 = await jobsManager.getClaim(jobId, 1)
-            const cStatus1 = cInfo1[5]
-            assert.equal(cStatus1, 2, "claim 1 status incorrect")
+        it("should call distributeFees for each claim id", async () => {
+            // Fast forward through verification period and slashing period of claim 0 and 1j
+            const endSlashingBlock1 = (await jobsManager.getClaim(0, 1))[4]
+            await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), endSlashingBlock1)
+
+            await jobsManager.batchDistributeFees(0, [0, 1], {from: transcoder})
+
+            const jEscrow = (await jobsManager.getJob(0))[8]
+            assert.equal(jEscrow, 0, "wrong job escrow")
+
+            const cStatus0 = (await jobsManager.getClaim(0, 0))[5]
+            assert.equal(cStatus0, 2, "wrong claim 0 status")
+            const cStatus1 = (await jobsManager.getClaim(0, 1))[5]
+            assert.equal(cStatus1, 2, "wrong claim 1 status")
         })
     })
 
     describe("missedVerificationSlash", () => {
         const broadcaster = accounts[0]
-        const electedTranscoder = accounts[1]
-        const jobId = 0
-        const claimId = 0
-        const segmentNumber = 0
-        const streamId = "1"
-        const maxPricePerSegment = 10
+        const transcoder = accounts[1]
+        const watcher = accounts[2]
+        const currentBlock = 100
+        const currentRound = 2
+        const transcodingOptions = web3.sha3("foo").slice(0, 10)
+        const segmentRange = [0, 3]
 
         // Segment data hashes
         const dataHashes = [
@@ -634,7 +707,7 @@ contract("JobsManager", accounts => {
         ]
 
         // Segments
-        const segments = dataHashes.map((dataHash, idx) => new Segment(streamId, idx, dataHash, broadcaster))
+        const segments = dataHashes.map((dataHash, idx) => new Segment("foo", idx, dataHash, broadcaster))
 
         // Transcoded data hashes
         const tDataHashes = [
@@ -658,205 +731,281 @@ contract("JobsManager", accounts => {
         const correctProof = merkleTree.getHexProof(tReceiptHashes[0])
 
         beforeEach(async () => {
-            await jobsManager.setParameters(
-                VERIFICATION_RATE,
-                VERIFICATION_PERIOD,
-                SLASHING_PERIOD,
-                FAILED_VERIFICATION_SLASH_AMOUNT,
-                MISSED_VERIFICATION_SLASH_AMOUNT,
-                DOUBLE_CLAIM_SEGMENT_SLASH_AMOUNT,
-                FINDER_FEE
-            )
-            await fixture.bondingManager.setActiveTranscoder(electedTranscoder, maxPricePerSegment, 100, 200)
-            await fixture.token.setApproved(true)
+            await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), currentBlock)
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
+            await fixture.bondingManager.setMockAddress(functionSig("electActiveTranscoder(uint256,bytes32,uint256)"), transcoder)
+            await fixture.bondingManager.setMockBool(functionSig("isRegisteredTranscoder(address)"), true)
 
             await jobsManager.deposit({from: broadcaster, value: 1000})
-
-            await fixture.roundsManager.setBlockNum(100)
-
-            const transcodingOptions = createTranscodingOptions(["foo", "bar"])
-            const endBlock = 100 + 500
             // Broadcaster creates job 0
-            await jobsManager.job(streamId, transcodingOptions, maxPricePerSegment, endBlock, {from: broadcaster})
+            await jobsManager.job("foo", transcodingOptions, 1, currentBlock + 20, {from: broadcaster})
 
-            // Wait for job creation block + 1 to be mined
-            await fixture.roundsManager.mineBlocks(1)
-
-            const segmentRange = [0, 3]
-            // Account 1 (transcoder) claims work for job 0
-            await jobsManager.claimWork(jobId, segmentRange, merkleTree.getHexRoot(), {from: electedTranscoder})
+            await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), currentBlock + 1)
+            // Transcoder claims work for job 0 by submitting claim 0
+            await jobsManager.claimWork(0, segmentRange, merkleTree.getHexRoot(), {from: transcoder})
+            // Claim block + 1 is mined
+            await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), currentBlock + 2)
         })
 
-        it("should throw if verification period is not over", async () => {
-            await expectThrow(jobsManager.missedVerificationSlash(jobId, claimId, segmentNumber, {from: accounts[2]}))
+        it("should fail if job does not exist", async () => {
+            // Fast forward through verification period
+            const endVerificationBlock = (await jobsManager.getClaim(0, 0))[3]
+            await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), endVerificationBlock.add(1))
+
+            const invalidJobId = 1
+            await expectThrow(jobsManager.missedVerificationSlash(invalidJobId, 0, 0, {from: watcher}))
         })
 
-        it("should throw if segment is not eligible for verification", async () => {
-            // Fast foward through verification period
-            const verificationPeriod = await jobsManager.verificationPeriod.call()
-            await fixture.roundsManager.mineBlocks(verificationPeriod.toNumber() + 1)
-
-            const invalidSegmentNumber = 99
-            await expectThrow(jobsManager.missedVerificationSlash(jobId, claimId, invalidSegmentNumber, {from: accounts[2]}))
+        it("should fail if verification period is not over", async () => {
+            await expectThrow(jobsManager.missedVerificationSlash(0, 0, 0, {from: transcoder}))
         })
 
-        it("should throw if slashing period is over", async () => {
-            // Fast forward through slashing period
-            const verificationPeriod = await jobsManager.verificationPeriod.call()
-            const slashingPeriod = await jobsManager.slashingPeriod.call()
-            await fixture.roundsManager.mineBlocks(verificationPeriod.add(slashingPeriod).toNumber() + 1)
+        it("should fail if slashing period is over", async () => {
+            // Fast forward through verification period and slashing period
+            const endSlashingBlock = (await jobsManager.getClaim(0, 0))[4]
+            await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), endSlashingBlock)
 
-            await expectThrow(jobsManager.missedVerificationSlash(jobId, claimId, segmentNumber, {from: accounts[2]}))
+            await expectThrow(jobsManager.missedVerificationSlash(0, 0, 0, {from: watcher}))
         })
 
-        it("should throw if segment was verified", async () => {
-            // Transcoder calls verify
-            await jobsManager.verify(jobId, claimId, segmentNumber, dataStorageHash, correctDataHashes, correctSig, correctProof, {from: electedTranscoder})
-            // Fast foward through verification period
-            const verificationPeriod = await jobsManager.verificationPeriod.call()
-            await fixture.roundsManager.mineBlocks(verificationPeriod.toNumber() + 1)
+        it("should fail if claim is not pending", async () => {
+            // Fast forward through verification period
+            const endVerificationBlock = (await jobsManager.getClaim(0, 0))[3]
+            await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), endVerificationBlock.add(1))
 
-            await expectThrow(jobsManager.missedVerificationSlash(jobId, claimId, segmentNumber, {from: accounts[2]}))
+            await jobsManager.missedVerificationSlash(0, 0, 0, {from: watcher})
+
+            // This should fail because the claim is already slashed
+            await expectThrow(jobsManager.missedVerificationSlash(0, 0, 0, {from: watcher}))
         })
 
-        it("should update job escrow, refund broadcaster deposit and set claim as slashed", async () => {
-            // Fast foward through verification period
-            const verificationPeriod = await jobsManager.verificationPeriod.call()
-            await fixture.roundsManager.mineBlocks(verificationPeriod.toNumber() + 1)
+        it("should fail if segment was not challenged for verification", async () => {
+            // Fast forward through verification period
+            const endVerificationBlock = (await jobsManager.getClaim(0, 0))[3]
+            await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), endVerificationBlock.add(1))
+            // Only 1 out of 1000000000000 segments should be verified
+            await jobsManager.setVerificationRate(1000000000000)
 
-            await jobsManager.missedVerificationSlash(jobId, claimId, segmentNumber, {from: accounts[2]})
+            // The probability of a challenged segment should be so low that this call will fail *most* of the time
+            await expectThrow(jobsManager.missedVerificationSlash(0, 0, 0, {from: watcher}))
+        })
 
-            const jInfo = await jobsManager.getJob(jobId)
-            const jEscrow = jInfo[8]
-            assert.equal(jEscrow, 0, "escrow is incorrect")
+        it("should fail if segment was submitted for verification", async () => {
+            await jobsManager.verify(0, 0, 0, dataStorageHash, correctDataHashes, correctSig, correctProof, {from: transcoder})
+            // Fast forward through verification period
+            const endVerificationBlock = (await jobsManager.getClaim(0, 0))[3]
+            await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), endVerificationBlock.add(1))
+
+            await expectThrow(jobsManager.missedVerificationSlash(0, 0, 0, {from: watcher}))
+        })
+
+        it("should refund the broadcaster", async () => {
+            // Fast forward through verification period
+            const endVerificationBlock = (await jobsManager.getClaim(0, 0))[3]
+            await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), endVerificationBlock.add(1))
+
+            await jobsManager.missedVerificationSlash(0, 0, 0, {from: watcher})
+
             const bDeposit = (await jobsManager.broadcasters.call(broadcaster))[0]
-            assert.equal(bDeposit, 1000, "broadcaster deposit is incorrect")
-            const cInfo = await jobsManager.getClaim(jobId, claimId)
-            const cStatus = cInfo[5]
-            assert.equal(cStatus, 1, "claim status is incorrect")
+            assert.equal(bDeposit, 1000, "wrong broadcaster deposit")
+            const jEscrow = (await jobsManager.getJob(0))[8]
+            assert.equal(jEscrow, 0, "wrong job escrow")
         })
 
-        it("should throw if claim is not pending", async () => {
-            // Fast foward through verification period
-            const verificationPeriod = await jobsManager.verificationPeriod.call()
-            await fixture.roundsManager.mineBlocks(verificationPeriod.toNumber() + 1)
+        it("should set the claim as slashed", async () => {
+            // Fast forward through verification period
+            const endVerificationBlock = (await jobsManager.getClaim(0, 0))[3]
+            await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), endVerificationBlock.add(1))
 
-            await jobsManager.missedVerificationSlash(jobId, claimId, segmentNumber, {from: accounts[2]})
+            await jobsManager.missedVerificationSlash(0, 0, 0, {from: watcher})
 
-            // Should fail because claim is already slashed
-            await expectThrow(jobsManager.missedVerificationSlash(jobId, claimId, segmentNumber, {from: accounts[2]}))
+            const cStatus = (await jobsManager.getClaim(0, 0))[5]
+            assert.equal(cStatus, 1, "wrong claim status")
         })
     })
 
     describe("doubleClaimSegmentSlash", () => {
         const broadcaster = accounts[0]
-        const electedTranscoder = accounts[1]
-        const jobId = 0
-        const streamId = "1"
-        const maxPricePerSegment = 10
+        const transcoder = accounts[1]
+        const watcher = accounts[2]
+        const currentBlock = 100
+        const currentRound = 2
+        const transcodingOptions = web3.sha3("foo").slice(0, 10)
+        const claimRoot = web3.sha3("foo")
 
         beforeEach(async () => {
-            await jobsManager.setParameters(
-                VERIFICATION_RATE,
-                VERIFICATION_PERIOD,
-                SLASHING_PERIOD,
-                FAILED_VERIFICATION_SLASH_AMOUNT,
-                MISSED_VERIFICATION_SLASH_AMOUNT,
-                DOUBLE_CLAIM_SEGMENT_SLASH_AMOUNT,
-                FINDER_FEE
-            )
-            await fixture.bondingManager.setActiveTranscoder(electedTranscoder, maxPricePerSegment, 100, 200)
-            await fixture.token.setApproved(true)
+            await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), currentBlock)
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
+            await fixture.bondingManager.setMockAddress(functionSig("electActiveTranscoder(uint256,bytes32,uint256)"), transcoder)
+            await fixture.bondingManager.setMockBool(functionSig("isRegisteredTranscoder(address)"), true)
 
             await jobsManager.deposit({from: broadcaster, value: 1000})
-
-            await fixture.roundsManager.setBlockNum(100)
-
-            const transcodingOptions = createTranscodingOptions(["foo", "bar"])
-            const endBlock = 100 + 500
             // Broadcaster creates job 0
-            await jobsManager.job(streamId, transcodingOptions, maxPricePerSegment, endBlock, {from: broadcaster})
+            await jobsManager.job("foo", transcodingOptions, 1, currentBlock + 20, {from: broadcaster})
 
-            // Wait for job creation block + 1 to be mined
-            await fixture.roundsManager.mineBlocks(1)
-
-            const segmentRange1 = [0, 3]
-            const segmentRange2 = [2, 5]
-            const root = "0x123"
-            // Account 1 (transcoder) claims work for job 0
-            await jobsManager.claimWork(jobId, segmentRange1, root, {from: electedTranscoder})
-            // Account 1 (transcoder) double claims a segment for job 0
-            await jobsManager.claimWork(jobId, segmentRange2, root, {from: electedTranscoder})
+            await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), currentBlock + 1)
+            // Transcoder claims work for job 0 by submitting claim 0
+            await jobsManager.claimWork(0, [0, 3], claimRoot, {from: transcoder})
+            // Transcoder claims work for job 0 by submitting claim 1 - overlap in segment range as claim 0
+            await jobsManager.claimWork(0, [0, 2], claimRoot, {from: transcoder})
+            // Claim block + 1 is mined
+            await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), currentBlock + 2)
         })
 
-        it("should fail if segment is not in claim 0", async () => {
-            await expectThrow(jobsManager.doubleClaimSegmentSlash(0, 0, 1, 4, {from: accounts[3]}))
+        it("should fail if job does not exist", async () => {
+            const invalidJobId = 1
+            await expectThrow(jobsManager.doubleClaimSegmentSlash(invalidJobId, 0, 1, 0, {from: watcher}))
         })
 
-        it("should fail if segment is not in claim 1", async () => {
-            await expectThrow(jobsManager.doubleClaimSegmentSlash(0, 0, 1, 1), {from: accounts[3]})
+        it("should fail if claim 0 does not exist", async () => {
+            const invalidClaimId0 = 5
+            await expectThrow(jobsManager.doubleClaimSegmentSlash(0, invalidClaimId0, 1, 0, {from: watcher}))
         })
 
-        it("should update job escrow and refund broadcaster for the entire job", async () => {
-            await jobsManager.doubleClaimSegmentSlash(0, 0, 1, 3, {from: accounts[3]})
+        it("should fail if claim 1 does not exist", async () => {
+            const invalidClaimId1 = 5
+            await expectThrow(jobsManager.doubleClaimSegmentSlash(0, 0, invalidClaimId1, 0, {from: watcher}))
+        })
 
-            const jInfo = await jobsManager.getJob(jobId)
-            const jEscrow = jInfo[8]
-            assert.equal(jEscrow, 0, "escrow is incorrect")
+        it("should fail if claim 0 is slashed", async () => {
+            // Fast forward through verification period
+            const endVerificationBlock = (await jobsManager.getClaim(0, 0))[3]
+            await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), endVerificationBlock.add(1))
+            // Slash transcoder for missed verification with claim 0
+            await jobsManager.missedVerificationSlash(0, 0, 0, {from: watcher})
+
+            // This should fail because claim 0 is already slashed
+            await expectThrow(jobsManager.doubleClaimSegmentSlash(0, 0, 1, 0, {from: watcher}))
+        })
+
+        it("should fail if claim 1 is slashed", async () => {
+            // Fast forward through verification period
+            const endVerificationBlock = (await jobsManager.getClaim(0, 1))[3]
+            await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), endVerificationBlock.add(1))
+            // Slash transcoder for missed verification with claim 1
+            await jobsManager.missedVerificationSlash(0, 1, 0, {from: watcher})
+
+            // This should fail because claim 1 is already slashed
+            await expectThrow(jobsManager.doubleClaimSegmentSlash(0, 0, 1, 0, {from: watcher}))
+        })
+
+        it("should fail if segment is not in segment range of claim 0", async () => {
+            await expectThrow(jobsManager.doubleClaimSegmentSlash(0, 0, 1, 4, {from: watcher}))
+        })
+
+        it("should fail if segment is not in segment range of claim 1", async () => {
+            await expectThrow(jobsManager.doubleClaimSegmentSlash(0, 0, 1, 3, {from: watcher}))
+        })
+
+        it("should refund broadcaster", async () => {
+            await jobsManager.doubleClaimSegmentSlash(0, 0, 1, 0, {from: watcher})
+
             const bDeposit = (await jobsManager.broadcasters.call(broadcaster))[0]
-            assert.equal(bDeposit, 1000, "broadcaster deposit is incorrect")
-            const c1Info = await jobsManager.getClaim(jobId, 0)
-            const c1Status = c1Info[5]
-            assert.equal(c1Status, 1, "claim 1 status is incorrect")
-            const c2Info = await jobsManager.getClaim(jobId, 1)
-            const c2Status = c2Info[5]
-            assert.equal(c2Status, 1, "claim 2 status is incorrect")
+            assert.equal(bDeposit, 1000, "wrong broadcaster deposit")
+            const jEscrow = (await jobsManager.getJob(0))[8]
+            assert.equal(jEscrow, 0, "wrong job escrow")
+        })
+
+        it("should set both claims as slashed", async () => {
+            await jobsManager.doubleClaimSegmentSlash(0, 0, 1, 0, {from: watcher})
+
+            const cStatus0 = (await jobsManager.getClaim(0, 0))[5]
+            assert.equal(cStatus0, 1, "wrong claim 0 status")
+            const cStatus1 = (await jobsManager.getClaim(0, 1))[5]
+            assert.equal(cStatus1, 1, "wrong claim 1 status")
         })
     })
 
-    describe("withdraw", () => {
+    describe("jobStatus", () => {
+        const broadcaster = accounts[0]
+        const currentBlock = 100
+        const currentRound = 2
+        const transcodingOptions = web3.sha3("foo").slice(0, 10) // 0x + first 4 bytes
+
         beforeEach(async () => {
-            await jobsManager.setParameters(
-                VERIFICATION_RATE,
-                VERIFICATION_PERIOD,
-                SLASHING_PERIOD,
-                FAILED_VERIFICATION_SLASH_AMOUNT,
-                MISSED_VERIFICATION_SLASH_AMOUNT,
-                DOUBLE_CLAIM_SEGMENT_SLASH_AMOUNT,
-                FINDER_FEE
-            )
-            await fixture.bondingManager.setActiveTranscoder(accounts[1], 100, 100, 200)
-            await fixture.token.setApproved(true)
+            await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), currentBlock)
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
 
-            await jobsManager.deposit({from: accounts[0], value: 1000})
-
-            await fixture.roundsManager.setBlockNum(100)
+            await jobsManager.job("foo", transcodingOptions, 1, currentBlock + 50, {from: broadcaster})
         })
 
-        it("should fail if the withdraw block is in the future", async () => {
-            const endBlock = 100 + 50
-            await jobsManager.job("abc", "abc", 100, endBlock, {from: accounts[0]})
-
-            await expectThrow(jobsManager.withdraw({from: accounts[0]}))
+        it("should return active if job's end block is in the future", async () => {
+            assert.equal(await jobsManager.jobStatus(0), 1, "wrong job status when job is active")
         })
 
-        it("should fail if withdraw block is updated to a block in the future", async () => {
-            let endBlock = 100 + 50
-            await jobsManager.job("abc", "abc", 100, endBlock, {from: accounts[0]})
-            await fixture.roundsManager.mineBlocks(50)
+        it("should return inactive if job's end block is now or in the past", async () => {
+            // Fast forward through job's end block
+            await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), currentBlock + 50)
 
-            endBlock = 150 + 50
-            await jobsManager.job("efg", "efg", 100, endBlock, {from: accounts[0]})
+            assert.equal(await jobsManager.jobStatus(0), 0, "wrong job status when job is inactive")
+        })
+    })
 
-            await expectThrow(jobsManager.withdraw({from: accounts[0]}))
+    describe("isClaimSegmentVerified", () => {
+        const broadcaster = accounts[0]
+        const transcoder = accounts[1]
+        const currentBlock = 100
+        const currentRound = 2
+        const transcodingOptions = web3.sha3("foo").slice(0, 10) // 0x + first 4 bytes
+        const segmentRange = [0, 3]
+
+        // Segment data hashes
+        const dataHashes = [
+            "0x80084bf2fba02475726feb2cab2d8215eab14bc6bdd8bfb2c8151257032ecd8b",
+            "0xb039179a8a4ce2c252aa6f2f25798251c19b75fc1508d9d511a191e0487d64a7",
+            "0x263ab762270d3b73d3e2cddf9acc893bb6bd41110347e5d5e4bd1d3c128ea90a",
+            "0x4ce8765e720c576f6f5a34ca380b3de5f0912e6e3cc5355542c363891e54594b"
+        ]
+
+        // Segments
+        const segments = dataHashes.map((dataHash, idx) => new Segment("foo", idx, dataHash, broadcaster))
+
+        // Transcoded data hashes
+        const tDataHashes = [
+            "0x42538602949f370aa331d2c07a1ee7ff26caac9cc676288f94b82eb2188b8465",
+            "0xa0b37b8bfae8e71330bd8e278e4a45ca916d00475dd8b85e9352533454c9fec8",
+            "0x9f2898da52dedaca29f05bcac0c8e43e4b9f7cb5707c14cc3f35a567232cec7c",
+            "0x5a082c81a7e4d5833ee20bd67d2f4d736f679da33e4bebd3838217cb27bec1d3"
+        ]
+
+        // Transcode receipts
+        const tReceiptHashes = batchTranscodeReceiptHashes(segments, tDataHashes)
+
+        // Build merkle tree
+        const merkleTree = new MerkleTree(tReceiptHashes)
+
+        const dataStorageHash = "0x123"
+        const correctDataHash = dataHashes[0]
+        const correctTDataHash = tDataHashes[0]
+        const correctDataHashes = [correctDataHash, correctTDataHash]
+        const correctSig = ethUtil.bufferToHex(segments[0].signedHash())
+        const correctProof = merkleTree.getHexProof(tReceiptHashes[0])
+
+        beforeEach(async () => {
+            await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), currentBlock)
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
+            await fixture.bondingManager.setMockAddress(functionSig("electActiveTranscoder(uint256,bytes32,uint256)"), transcoder)
+            await fixture.bondingManager.setMockBool(functionSig("isRegisteredTranscoder(address)"), true)
+
+            await jobsManager.deposit({from: broadcaster, value: 1000})
+            // Broadcaster creates job 0
+            await jobsManager.job("foo", transcodingOptions, 1, currentBlock + 20, {from: broadcaster})
+
+            await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), currentBlock + 1)
+            // Transcoder claims work for job 0
+            await jobsManager.claimWork(0, segmentRange, merkleTree.getHexRoot(), {from: transcoder})
+            // Claim block + 1 is mined
+            await fixture.roundsManager.setMockUint256("blockNum()", currentBlock + 2)
+            // Submit segment 0 for verification
+            await jobsManager.verify(0, 0, 0, dataStorageHash, correctDataHashes, correctSig, correctProof, {from: transcoder})
         })
 
-        it("should succeed if the broadcaster has no active jobs and its withdraw block is in now or in the past", async () => {
-            const endBlock = 100 + 50
-            await jobsManager.job("abc", "abc", 100, endBlock, {from: accounts[0]})
-            await fixture.roundsManager.mineBlocks(50)
+        it("should return true if a segment in a claim has been submitted for verification", async () => {
+            assert.isOk(await jobsManager.isClaimSegmentVerified(0, 0, 0), "not true for segment submitted for verification")
+        })
 
-            await jobsManager.withdraw({from: accounts[0]})
+        it("should return false if a segment in a claim has not been submitted for verification", async () => {
+            assert.isNotOk(await jobsManager.isClaimSegmentVerified(0, 0, 1), "not false for segment submitted for verification")
         })
     })
 })
