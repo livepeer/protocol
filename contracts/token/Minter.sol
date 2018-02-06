@@ -53,6 +53,12 @@ contract Minter is Manager, IMinter {
         _;
     }
 
+    // Checks if caller is either the currently registered Minter or JobsManager
+    modifier onlyMinterOrJobsManager() {
+        require(msg.sender == controller.getContract(keccak256("Minter")) || msg.sender == controller.getContract(keccak256("JobsManager")));
+        _;
+    }
+
     /**
      * @dev Minter constructor
      * @param _inflation Base inflation rate as a percentage of current total token supply
@@ -119,6 +125,8 @@ contract Minter is Manager, IMinter {
         livepeerToken().transferOwnership(_newMinter);
         // Transfer current Minter's token balance to new Minter
         livepeerToken().transfer(_newMinter, livepeerToken().balanceOf(this));
+        // Transfer current Minter's ETH balance to new Minter
+        _newMinter.depositETH.value(this.balance)();
     }
 
     /**
@@ -167,9 +175,9 @@ contract Minter is Manager, IMinter {
     }
 
     /**
-     * @dev Deposit ETH to this contract. Only callable by JobsManager
+     * @dev Deposit ETH to this contract. Only callable by the currently registered Minter or JobsManager
      */
-    function depositETH() external payable onlyJobsManager whenSystemNotPaused returns (bool) {
+    function depositETH() external payable onlyMinterOrJobsManager whenSystemNotPaused returns (bool) {
         return true;
     }
 

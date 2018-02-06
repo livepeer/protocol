@@ -98,13 +98,17 @@ contract("Minter", accounts => {
             await expectThrow(minter.migrateToNewMinter(newMinter.address))
         })
 
-        it("should transfer ownership of the token and current token balance to new minter", async () => {
+        it("should transfer ownership of the token, current token balance and current ETH balance to new minter", async () => {
+            await fixture.jobsManager.execute(minter.address, functionSig("depositETH()"), {from: accounts[1], value: 100})
+
             const newMinter = await GenericMock.new()
             const controllerAddr = await minter.controller.call()
             await newMinter.setMockAddress(functionSig("getController()"), controllerAddr)
 
-            // Just ensure that this does not fail
+            // Just make sure token ownership and token balance transfer do not fail
             await minter.migrateToNewMinter(newMinter.address)
+
+            assert.equal(web3.eth.getBalance(newMinter.address), 100, "wrong new minter balance")
         })
     })
 
@@ -229,8 +233,17 @@ contract("Minter", accounts => {
     })
 
     describe("depositETH", () => {
-        it("should fail if caller is not JobsManager", async () => {
+        it("should fail if caller is not currently registered Minter or JobsManager", async () => {
             await expectThrow(minter.depositETH({from: accounts[1], value: 100}))
+        })
+
+        it("should receive ETH from currently registered Minter", async () => {
+            // Register mock Minter
+            const mockMinter = await fixture.deployAndRegister(GenericMock, "Minter")
+            // Call depositETH on this Minter from currently registered Minter
+            await mockMinter.execute(minter.address, functionSig("depositETH()"), {from: accounts[1], value: 100})
+
+            assert.equal(web3.eth.getBalance(minter.address), 100, "wrong minter balance")
         })
 
         it("should receive ETH from JobsManager", async () => {
