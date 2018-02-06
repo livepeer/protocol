@@ -38,6 +38,10 @@ contract("BondingManager", accounts => {
 
             const unbondingPeriod = await bondingManager.unbondingPeriod.call()
             assert.equal(unbondingPeriod, UNBONDING_PERIOD, "unbonding period incorrect")
+            const poolMaxSize = await bondingManager.getTranscoderPoolMaxSize()
+            assert.equal(poolMaxSize, NUM_TRANSCODERS, "wrong transcoder pool max size")
+            const numActiveTranscoders = await bondingManager.numActiveTranscoders.call()
+            assert.equal(numActiveTranscoders, NUM_ACTIVE_TRANSCODERS, "wrong numActiveTranscoders")
         })
     })
 
@@ -274,6 +278,10 @@ contract("BondingManager", accounts => {
 
             // Transcoder calls reward
             await bondingManager.reward({from: tAddr})
+        })
+
+        it("should fail if the end round is after the current round", async () => {
+            await expectThrow(bondingManager.claimTokenPoolsShares(8, {from: dAddr}))
         })
 
         it("should update the delegator's stake and unbonded amount through the end round", async () => {

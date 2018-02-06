@@ -563,7 +563,10 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * @param _endRound The last round for which to claim token pools shares for a delegator
      */
     function claimTokenPoolsShares(uint256 _endRound) external {
+        // End round must be after the last claim round
         require(delegators[msg.sender].lastClaimTokenPoolsSharesRound < _endRound);
+        // End round must not be after the current round
+        require(_endRound <= roundsManager().currentRound());
 
         updateDelegatorWithTokenPoolsShares(msg.sender, _endRound);
     }
@@ -748,6 +751,13 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         startRound = del.startRound;
         withdrawRound = del.withdrawRound;
         lastClaimTokenPoolsSharesRound = del.lastClaimTokenPoolsSharesRound;
+    }
+
+    /*
+     * @dev Returns max size of transcoder pool
+     */
+    function getTranscoderPoolMaxSize() public view returns (uint256) {
+        return transcoderPool.getMaxSize();
     }
 
     /*
