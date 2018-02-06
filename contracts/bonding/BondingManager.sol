@@ -216,17 +216,20 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         currentRoundInitialized
         autoClaimTokenPoolsShares
     {
-        // Caller cannot be in the unbonding state
-        require(delegatorStatus(msg.sender) != DelegatorStatus.Unbonding);
-
         Delegator storage del = delegators[msg.sender];
 
         uint256 currentRound = roundsManager().currentRound();
 
-        if (delegatorStatus(msg.sender) == DelegatorStatus.Unbonded) {
+        if (delegatorStatus(msg.sender) != DelegatorStatus.Bonded) {
             // New delegate
             // Set start round
             del.startRound = currentRound.add(1);
+        }
+
+        if (delegatorStatus(msg.sender) == DelegatorStatus.Unbonding) {
+            // If transitioning from unbonding state
+            // make sure to zero out withdraw round
+            del.withdrawRound = 0;
         }
 
         // Amount to delegate
