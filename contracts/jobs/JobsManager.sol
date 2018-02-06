@@ -676,6 +676,8 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         uint256 fees = job.escrow;
         job.escrow = job.escrow.sub(fees);
         broadcasters[job.broadcasterAddress].deposit = broadcasters[job.broadcasterAddress].deposit.add(fees);
+        // Set end block of job to current block - job becomes inactive
+        job.endBlock = roundsManager().blockNum();
     }
 
     /*
