@@ -583,7 +583,18 @@ contract("JobsManager", accounts => {
             await expectThrow(jobsManager.distributeFees(0, 0, {from: accounts[3]}))
         })
 
-        it("should fail if the claim is not pending", async () => {
+        it("should fail if the claim is slashed and thus not pending", async () => {
+            // Fast forward through verification period
+            const endVerificationBlock = (await jobsManager.getClaim(0, 0))[3]
+            await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), endVerificationBlock.add(1))
+
+            await jobsManager.missedVerificationSlash(0, 0, 0, {from: accounts[3]})
+
+            // This should fail because the claim is slashed
+            await expectThrow(jobsManager.distributeFees(0, 0, {from: transcoder}))
+        })
+
+        it("should fail if the claim is complete and thus not pending", async () => {
             // Fast forward through verification period and slashing period
             const endSlashingBlock = (await jobsManager.getClaim(0, 0))[4]
             await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), endSlashingBlock)
