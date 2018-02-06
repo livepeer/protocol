@@ -308,8 +308,6 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         del.delegateAddress = address(0);
         // Unbonding delegator does not have a start round
         del.startRound = 0;
-        // Unbonding delegator's last claim round is reset
-        del.lastClaimTokenPoolsSharesRound = 0;
 
         // If caller is a registered transcoder, resign
         // In the future, with partial unbonding there would be a check for 0 bonded stake as well
@@ -867,7 +865,9 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     function updateDelegatorWithTokenPoolsShares(address _delegator, uint256 _endRound) internal {
         Delegator storage del = delegators[_delegator];
 
-        if (del.lastClaimTokenPoolsSharesRound > 0) {
+        // Only will have earnings to claim if you have a delegate
+        // If not delegated, skip the earnings claim process
+        if (del.delegateAddress != address(0)) {
             uint256 currentBondedAmount = del.bondedAmount;
             uint256 currentFees = del.fees;
 

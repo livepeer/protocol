@@ -120,7 +120,7 @@ contract("Delegation", accounts => {
         await roundsManager.mineBlocks(roundLength)
         await roundsManager.initializeRound()
 
-        // Delegator 1 unbonds from transcoders 1
+        // Delegator 1 unbonds from transcoder 1
         await bondingManager.unbond({from: delegator1})
         await roundsManager.mineBlocks(1)
 
@@ -129,7 +129,7 @@ contract("Delegation", accounts => {
         assert.equal(dInfo[2], constants.NULL_ADDRESS, "wrong delegate")
         assert.equal(dInfo[4], 0, "wrong start round")
         assert.equal(dInfo[5], currentRound.add(unbondingPeriod).toNumber(), "wrong withdraw round")
-        assert.equal(dInfo[6], 0, "wrong last claim round")
+        assert.equal(dInfo[6], currentRound.toNumber(), "wrong last claim round")
 
         // Fast forward through unbonding period
         await roundsManager.mineBlocks(unbondingPeriod.mul(roundLength).toNumber())
@@ -143,9 +143,9 @@ contract("Delegation", accounts => {
         const endMinterBalance = await token.balanceOf(minterAddr)
 
         dInfo = await bondingManager.getDelegator(delegator1)
+        currentRound = await roundsManager.currentRound()
         assert.equal(dInfo[0], 0, "wrong bonded amount")
         assert.equal(dInfo[5], 0, "wrong withdraw round")
-        assert.equal(dInfo[6], 0, "wrong last claim round")
         assert.equal(endDelegatorBalance.sub(startDelegatorBalance).toNumber(), 2000, "wrong token balance increase")
         assert.equal(startMinterBalance.sub(endMinterBalance), 2000, "wrong minter balance decrease")
     })
@@ -165,7 +165,7 @@ contract("Delegation", accounts => {
         assert.equal(dInfo[2], constants.NULL_ADDRESS, "wrong delegate")
         assert.equal(dInfo[4], 0, "wrong start round")
         assert.equal(dInfo[5], currentRound.add(unbondingPeriod).toNumber(), "wrong withdraw round")
-        assert.equal(dInfo[6], 0, "wrong last claim round")
+        assert.equal(dInfo[6], currentRound.toNumber(), "wrong last claim round")
 
         // Delegator 2 bonds to transcoder 1 before unbonding period is over
         await bondingManager.bond(0, transcoder1, {from: delegator2})
