@@ -24,6 +24,17 @@ contract("JobsManager", accounts => {
     const DOUBLE_CLAIM_SEGMENT_SLASH_AMOUNT = 40 * PERC_MULTIPLIER
     const FINDER_FEE = 4 * PERC_MULTIPLIER
 
+    const JobStatus = {
+        Inactive: 0,
+        Active: 1
+    }
+
+    const ClaimStatus = {
+        Pending: 0,
+        Slashed: 1,
+        Complete: 2
+    }
+
     before(async () => {
         fixture = new Fixture(web3)
         await fixture.deploy()
@@ -359,7 +370,7 @@ contract("JobsManager", accounts => {
             assert.equal(cInfo[2], claimBlock, "wrong claimBlock")
             assert.equal(cInfo[3], claimBlock + verificationPeriod.toNumber(), "wrong endVerificationBlock")
             assert.equal(cInfo[4], claimBlock + verificationPeriod.toNumber() + slashingPeriod.toNumber(), "wrong endSlashingBlock")
-            assert.equal(cInfo[5], 0, "wrong status")
+            assert.equal(cInfo[5], ClaimStatus.Pending, "wrong status")
         })
     })
 
@@ -421,7 +432,7 @@ contract("JobsManager", accounts => {
             // Transcoder claims work for job 1
             await jobsManager.claimWork(1, segmentRange, merkleTree.getHexRoot(), {from: transcoder})
             // Claim block + 1 is mined
-            await fixture.roundsManager.setMockUint256("blockNum()", currentBlock + 2)
+            await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), currentBlock + 2)
         })
 
         it("should fail if insufficient payment is provided", async () => {
@@ -504,7 +515,7 @@ contract("JobsManager", accounts => {
             // Transcoder claims work for job 0
             await jobsManager.claimWork(0, segmentRange, claimRoot, {from: transcoder})
             // Claim block + 1 is mined
-            await fixture.roundsManager.setMockUint256("blockNum()", currentBlock + 2)
+            await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), currentBlock + 2)
         })
 
         it("should fail if caller is not the verifier", async () => {
@@ -519,6 +530,16 @@ contract("JobsManager", accounts => {
             assert.equal(bDeposit, 1000, "broadcaster deposit should be restored")
             const jEscrow = (await jobsManager.getJob(0))[8]
             assert.equal(jEscrow, 0, "job escrow should be zero")
+        })
+
+        it("should set job as inactive by setting its end block to the current block if the result is false", async () => {
+            // Call receiveVerification from the verifier
+            await fixture.verifier.execute(jobsManager.address, functionEncodedABI("receiveVerification(uint256,uint256,uint256,bool)", ["uint256", "uint256", "uint256", "bool"], [0, 0, 0, false]))
+
+            assert.equal(await jobsManager.jobStatus(0), JobStatus.Inactive, "wrong job status")
+
+            const endBlock = (await jobsManager.getJob(0))[7]
+            assert.equal(endBlock, currentBlock + 2, "wrong job end block")
         })
 
         it("should create a PassedVerification event if the result is true", async () => {
@@ -631,7 +652,7 @@ contract("JobsManager", accounts => {
             await jobsManager.distributeFees(0, 0, {from: transcoder})
 
             const cStatus = (await jobsManager.getClaim(0, 0))[5]
-            assert.equal(cStatus, 2, "wrong claim status")
+            assert.equal(cStatus, ClaimStatus.Complete, "wrong claim status")
         })
     })
 
@@ -683,9 +704,9 @@ contract("JobsManager", accounts => {
             assert.equal(jEscrow, 0, "wrong job escrow")
 
             const cStatus0 = (await jobsManager.getClaim(0, 0))[5]
-            assert.equal(cStatus0, 2, "wrong claim 0 status")
+            assert.equal(cStatus0, ClaimStatus.Complete, "wrong claim 0 status")
             const cStatus1 = (await jobsManager.getClaim(0, 1))[5]
-            assert.equal(cStatus1, 2, "wrong claim 1 status")
+            assert.equal(cStatus1, ClaimStatus.Complete, "wrong claim 1 status")
         })
     })
 
@@ -812,6 +833,19 @@ contract("JobsManager", accounts => {
             assert.equal(jEscrow, 0, "wrong job escrow")
         })
 
+        it("should set job as inactive by setting its end block to the current block", async () => {
+            // Fast forward through verification period
+            const endVerificationBlock = (await jobsManager.getClaim(0, 0))[3]
+            await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), endVerificationBlock.add(1))
+
+            await jobsManager.missedVerificationSlash(0, 0, 0, {from: watcher})
+
+            assert.equal(await jobsManager.jobStatus(0), JobStatus.Inactive, "wrong job status")
+
+            const endBlock = (await jobsManager.getJob(0))[7]
+            assert.equal(endBlock, endVerificationBlock.add(1).toNumber(), "wrong job end block")
+        })
+
         it("should set the claim as slashed", async () => {
             // Fast forward through verification period
             const endVerificationBlock = (await jobsManager.getClaim(0, 0))[3]
@@ -820,7 +854,7 @@ contract("JobsManager", accounts => {
             await jobsManager.missedVerificationSlash(0, 0, 0, {from: watcher})
 
             const cStatus = (await jobsManager.getClaim(0, 0))[5]
-            assert.equal(cStatus, 1, "wrong claim status")
+            assert.equal(cStatus, ClaimStatus.Slashed, "wrong claim status")
         })
     })
 
@@ -906,13 +940,22 @@ contract("JobsManager", accounts => {
             assert.equal(jEscrow, 0, "wrong job escrow")
         })
 
+        it("should set job as inactive by setting its end block to the current block", async () => {
+            await jobsManager.doubleClaimSegmentSlash(0, 0, 1, 0, {from: watcher})
+
+            assert.equal(await jobsManager.jobStatus(0), JobStatus.Inactive, "wrong job status")
+
+            const endBlock = (await jobsManager.getJob(0))[7]
+            assert.equal(endBlock, currentBlock + 2, "wrong job end block")
+        })
+
         it("should set both claims as slashed", async () => {
             await jobsManager.doubleClaimSegmentSlash(0, 0, 1, 0, {from: watcher})
 
             const cStatus0 = (await jobsManager.getClaim(0, 0))[5]
-            assert.equal(cStatus0, 1, "wrong claim 0 status")
+            assert.equal(cStatus0, ClaimStatus.Slashed, "wrong claim 0 status")
             const cStatus1 = (await jobsManager.getClaim(0, 1))[5]
-            assert.equal(cStatus1, 1, "wrong claim 1 status")
+            assert.equal(cStatus1, ClaimStatus.Slashed, "wrong claim 1 status")
         })
     })
 
@@ -930,14 +973,14 @@ contract("JobsManager", accounts => {
         })
 
         it("should return active if job's end block is in the future", async () => {
-            assert.equal(await jobsManager.jobStatus(0), 1, "wrong job status when job is active")
+            assert.equal(await jobsManager.jobStatus(0), JobStatus.Active, "wrong job status when job is active")
         })
 
         it("should return inactive if job's end block is now or in the past", async () => {
             // Fast forward through job's end block
             await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), currentBlock + 50)
 
-            assert.equal(await jobsManager.jobStatus(0), 0, "wrong job status when job is inactive")
+            assert.equal(await jobsManager.jobStatus(0), JobStatus.Inactive, "wrong job status when job is inactive")
         })
     })
 
@@ -995,7 +1038,7 @@ contract("JobsManager", accounts => {
             // Transcoder claims work for job 0
             await jobsManager.claimWork(0, segmentRange, merkleTree.getHexRoot(), {from: transcoder})
             // Claim block + 1 is mined
-            await fixture.roundsManager.setMockUint256("blockNum()", currentBlock + 2)
+            await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), currentBlock + 2)
             // Submit segment 0 for verification
             await jobsManager.verify(0, 0, 0, dataStorageHash, correctDataHashes, correctSig, correctProof, {from: transcoder})
         })
