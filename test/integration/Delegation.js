@@ -13,6 +13,8 @@ contract("Delegation", accounts => {
     let roundsManager
     let token
 
+    let minterAddr
+
     let transcoder1
     let transcoder2
     let delegator1
@@ -36,6 +38,8 @@ contract("Delegation", accounts => {
 
         const tokenAddr = await controller.getContract(contractId("LivepeerToken"))
         token = await LivepeerToken.at(tokenAddr)
+
+        minterAddr = await controller.getContract(contractId("Minter"))
 
         const faucetAddr = await controller.getContract(contractId("LivepeerTokenFaucet"))
         const faucet = await LivepeerTokenFaucet.at(faucetAddr)
@@ -108,6 +112,42 @@ contract("Delegation", accounts => {
 
         const endBond = (await bondingManager.getDelegator(delegator1))[0]
         assert.equal(endBond.sub(startBond), 1000, "delegator 1 bonded amount did not increase correctly")
+    })
+
+    it("delegator 1 unbonds and withdraws its stake", async () => {
+        const unbondingPeriod = await bondingManager.unbondingPeriod.call()
+
+        await roundsManager.mineBlocks(roundLength)
+        await roundsManager.initializeRound()
+
+        // Delegator 1 unbonds from transcoders 1
+        await bondingManager.unbond({from: delegator1})
+        await roundsManager.mineBlocks(1)
+
+        let dInfo = await bondingManager.getDelegator(delegator1)
+        let currentRound = await roundsManager.currentRound()
+        assert.equal(dInfo[2], constants.NULL_ADDRESS, "wrong delegate")
+        assert.equal(dInfo[4], 0, "wrong start round")
+        assert.equal(dInfo[5], currentRound.add(unbondingPeriod).toNumber(), "wrong withdraw round")
+        assert.equal(dInfo[6], 0, "wrong last claim round")
+
+        // Fast forward through unbonding period
+        await roundsManager.mineBlocks(unbondingPeriod.mul(roundLength).toNumber())
+        await roundsManager.initializeRound()
+
+        // Delegator 1 withdraws its stake
+        const startDelegatorBalance = await token.balanceOf(delegator1)
+        const startMinterBalance = await token.balanceOf(minterAddr)
+        await bondingManager.withdrawStake({from: delegator1})
+        const endDelegatorBalance = await token.balanceOf(delegator1)
+        const endMinterBalance = await token.balanceOf(minterAddr)
+
+        dInfo = await bondingManager.getDelegator(delegator1)
+        assert.equal(dInfo[0], 0, "wrong bonded amount")
+        assert.equal(dInfo[5], 0, "wrong withdraw round")
+        assert.equal(dInfo[6], 0, "wrong last claim round")
+        assert.equal(endDelegatorBalance.sub(startDelegatorBalance).toNumber(), 2000, "wrong token balance increase")
+        assert.equal(startMinterBalance.sub(endMinterBalance), 2000, "wrong minter balance decrease")
     })
 
     it("delegator 2 unbonds from transcoder 2 and bonds to transcoder 1", async () => {

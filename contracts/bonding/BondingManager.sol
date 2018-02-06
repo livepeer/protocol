@@ -327,7 +327,6 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         external
         whenSystemNotPaused
         currentRoundInitialized
-        autoClaimTokenPoolsShares
     {
         // Delegator must be in the unbonded state
         require(delegatorStatus(msg.sender) == DelegatorStatus.Unbonded);
