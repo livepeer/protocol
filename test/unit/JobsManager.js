@@ -278,6 +278,7 @@ contract("JobsManager", accounts => {
             await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), currentBlock)
             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
             await fixture.bondingManager.setMockAddress(functionSig("electActiveTranscoder(uint256,bytes32,uint256)"), transcoder)
+            await fixture.bondingManager.setMockBool(functionSig("isRegisteredTranscoder(address)"), true)
 
             await jobsManager.deposit({from: broadcaster, value: 1000})
             // Broadcaster creates job 0
@@ -406,6 +407,7 @@ contract("JobsManager", accounts => {
             await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), currentBlock)
             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
             await fixture.bondingManager.setMockAddress(functionSig("electActiveTranscoder(uint256,bytes32,uint256)"), transcoder)
+            await fixture.bondingManager.setMockBool(functionSig("isRegisteredTranscoder(address)"), true)
 
             await jobsManager.deposit({from: broadcaster, value: 1000})
             // Broadcaster creates job 0
@@ -492,6 +494,7 @@ contract("JobsManager", accounts => {
             await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), currentBlock)
             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
             await fixture.bondingManager.setMockAddress(functionSig("electActiveTranscoder(uint256,bytes32,uint256)"), transcoder)
+            await fixture.bondingManager.setMockBool(functionSig("isRegisteredTranscoder(address)"), true)
 
             await jobsManager.deposit({from: broadcaster, value: 1000})
             // Broadcaster creates job 0
@@ -548,6 +551,7 @@ contract("JobsManager", accounts => {
             await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), currentBlock)
             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
             await fixture.bondingManager.setMockAddress(functionSig("electActiveTranscoder(uint256,bytes32,uint256)"), transcoder)
+            await fixture.bondingManager.setMockBool(functionSig("isRegisteredTranscoder(address)"), true)
 
             await jobsManager.deposit({from: broadcaster, value: 1000})
             // Broadcaster creates job 0
@@ -633,6 +637,7 @@ contract("JobsManager", accounts => {
             await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), currentBlock)
             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
             await fixture.bondingManager.setMockAddress(functionSig("electActiveTranscoder(uint256,bytes32,uint256)"), transcoder)
+            await fixture.bondingManager.setMockBool(functionSig("isRegisteredTranscoder(address)"), true)
 
             await jobsManager.deposit({from: broadcaster, value: 1000})
             // Broadcaster creates job 0
@@ -718,6 +723,7 @@ contract("JobsManager", accounts => {
             await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), currentBlock)
             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
             await fixture.bondingManager.setMockAddress(functionSig("electActiveTranscoder(uint256,bytes32,uint256)"), transcoder)
+            await fixture.bondingManager.setMockBool(functionSig("isRegisteredTranscoder(address)"), true)
 
             await jobsManager.deposit({from: broadcaster, value: 1000})
             // Broadcaster creates job 0
@@ -820,6 +826,7 @@ contract("JobsManager", accounts => {
             await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), currentBlock)
             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
             await fixture.bondingManager.setMockAddress(functionSig("electActiveTranscoder(uint256,bytes32,uint256)"), transcoder)
+            await fixture.bondingManager.setMockBool(functionSig("isRegisteredTranscoder(address)"), true)
 
             await jobsManager.deposit({from: broadcaster, value: 1000})
             // Broadcaster creates job 0
@@ -967,6 +974,7 @@ contract("JobsManager", accounts => {
             await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), currentBlock)
             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
             await fixture.bondingManager.setMockAddress(functionSig("electActiveTranscoder(uint256,bytes32,uint256)"), transcoder)
+            await fixture.bondingManager.setMockBool(functionSig("isRegisteredTranscoder(address)"), true)
 
             await jobsManager.deposit({from: broadcaster, value: 1000})
             // Broadcaster creates job 0
