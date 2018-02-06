@@ -347,9 +347,8 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         payable
         whenSystemNotPaused
         sufficientPayment
+        jobExists(_jobId)
     {
-        require(_jobId < numJobs);
-
         Job storage job = jobs[_jobId];
         Claim storage claim = job.claims[_claimId];
 
