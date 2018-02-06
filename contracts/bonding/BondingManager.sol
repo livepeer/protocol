@@ -879,7 +879,6 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
             // Rewards are bonded by default
             del.bondedAmount = currentBondedAmount;
-            // Fees are unbonded by default
             del.fees = currentFees;
         }
 
