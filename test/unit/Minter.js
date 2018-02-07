@@ -109,6 +109,7 @@ contract("Minter", accounts => {
             await minter.migrateToNewMinter(newMinter.address)
 
             assert.equal(web3.eth.getBalance(newMinter.address), 100, "wrong new minter balance")
+            assert.equal(web3.eth.getBalance(minter.address), 0, "wrong old minter balance")
         })
     })
 
