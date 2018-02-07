@@ -26,7 +26,7 @@ contract GenericMock {
      * @param _data Transaction data to be used to call the target contract
      */
     function execute(address _target, bytes _data) external payable {
-        // solium-disable-next-line security/no-low-level-calls
+        // solium-disable-next-line
         require(_target.call.value(msg.value)(_data));
     }
 
