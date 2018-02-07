@@ -1,4 +1,4 @@
-import Fixture from "./helpers/fixture"
+import Fixture from "./helpers/Fixture"
 import BigNumber from "bignumber.js"
 import expectThrow from "../helpers/expectThrow"
 import {constants} from "../../utils/constants"
