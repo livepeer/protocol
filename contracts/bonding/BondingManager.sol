@@ -337,7 +337,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         delegators[msg.sender].withdrawRound = 0;
 
         // Tell Minter to transfer stake (LPT) to the delegator
-        minter().transferTokens(msg.sender, amount);
+        minter().trustedTransferTokens(msg.sender, amount);
 
         WithdrawStake(msg.sender);
     }
@@ -358,7 +358,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         delegators[msg.sender].fees = 0;
 
         // Tell Minter to transfer fees (ETH) to the delegator
-        minter().withdrawETH(msg.sender, amount);
+        minter().trustedWithdrawETH(msg.sender, amount);
 
         WithdrawFees(msg.sender);
     }
@@ -504,14 +504,14 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             // Award finder fee if there is a finder address
             if (_finder != address(0)) {
                 uint256 finderAmount = MathUtils.percOf(penalty, _finderFee);
-                minter().transferTokens(_finder, finderAmount);
+                minter().trustedTransferTokens(_finder, finderAmount);
 
                 // Subtract finder fee from the amount to be burned
                 burnAmount = burnAmount.sub(finderAmount);
             }
 
             // Minter burns the remaining slashed funds
-            minter().burnTokens(burnAmount);
+            minter().trustedBurnTokens(burnAmount);
         }
 
         TranscoderSlashed(_transcoder, penalty);
