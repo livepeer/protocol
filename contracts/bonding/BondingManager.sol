@@ -220,10 +220,14 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
         uint256 currentRound = roundsManager().currentRound();
 
-        if (delegatorStatus(msg.sender) == DelegatorStatus.Unbonded) {
+        if (delegatorStatus(msg.sender) == DelegatorStatus.Unbonded || delegatorStatus(msg.sender) == DelegatorStatus.Unbonding) {
             // New delegate
             // Set start round
+            // Don't set start round if delegator is in pending state because the start round would not change
             del.startRound = currentRound.add(1);
+            // If transitioning from unbonding or unbonded state
+            // make sure to zero out withdraw round
+            del.withdrawRound = 0;
         }
 
         // Amount to delegate
@@ -243,6 +247,11 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
                 // Decrease old transcoder's total stake
                 transcoderPool.updateKey(del.delegateAddress, transcoderPool.getKey(del.delegateAddress).sub(del.bondedAmount), address(0), address(0));
             }
+        }
+
+        if (del.delegateAddress == address(0)) {
+            // If no existing delegate, delegation amount = bonded stake + amount included in this function call
+            delegationAmount = delegationAmount.add(del.bondedAmount);
         }
 
         del.delegateAddress = _to;
@@ -319,7 +328,6 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         external
         whenSystemNotPaused
         currentRoundInitialized
-        autoClaimTokenPoolsShares
     {
         // Delegator must be in the unbonded state
         require(delegatorStatus(msg.sender) == DelegatorStatus.Unbonded);
@@ -860,7 +868,9 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     function updateDelegatorWithTokenPoolsShares(address _delegator, uint256 _endRound) internal {
         Delegator storage del = delegators[_delegator];
 
-        if (del.lastClaimTokenPoolsSharesRound > 0) {
+        // Only will have earnings to claim if you have a delegate
+        // If not delegated, skip the earnings claim process
+        if (del.delegateAddress != address(0)) {
             uint256 currentBondedAmount = del.bondedAmount;
             uint256 currentFees = del.fees;
 
