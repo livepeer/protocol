@@ -220,14 +220,12 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
         uint256 currentRound = roundsManager().currentRound();
 
-        if (delegatorStatus(msg.sender) != DelegatorStatus.Bonded) {
+        if (delegatorStatus(msg.sender) == DelegatorStatus.Unbonded || delegatorStatus(msg.sender) == DelegatorStatus.Unbonding) {
             // New delegate
             // Set start round
+            // Don't set start round if delegator is in pending state because the start round would not change
             del.startRound = currentRound.add(1);
-        }
-
-        if (delegatorStatus(msg.sender) == DelegatorStatus.Unbonding) {
-            // If transitioning from unbonding state
+            // If transitioning from unbonding or unbonded state
             // make sure to zero out withdraw round
             del.withdrawRound = 0;
         }
@@ -249,6 +247,11 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
                 // Decrease old transcoder's total stake
                 transcoderPool.updateKey(del.delegateAddress, transcoderPool.getKey(del.delegateAddress).sub(del.bondedAmount), address(0), address(0));
             }
+        }
+
+        if (del.delegateAddress == address(0)) {
+            // If no existing delegate, delegation amount = bonded stake + amount included in this function call
+            delegationAmount = delegationAmount.add(del.bondedAmount);
         }
 
         del.delegateAddress = _to;

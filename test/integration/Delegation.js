@@ -130,6 +130,7 @@ contract("Delegation", accounts => {
         assert.equal(dInfo[4], 0, "wrong start round")
         assert.equal(dInfo[5], currentRound.add(unbondingPeriod).toNumber(), "wrong withdraw round")
         assert.equal(dInfo[6], currentRound.toNumber(), "wrong last claim round")
+        assert.equal((await bondingManager.getDelegator(transcoder1))[3], 1000, "wrong transcoder delegated amount")
 
         // Fast forward through unbonding period
         await roundsManager.mineBlocks(unbondingPeriod.mul(roundLength).toNumber())
@@ -166,6 +167,7 @@ contract("Delegation", accounts => {
         assert.equal(dInfo[4], 0, "wrong start round")
         assert.equal(dInfo[5], currentRound.add(unbondingPeriod).toNumber(), "wrong withdraw round")
         assert.equal(dInfo[6], currentRound.toNumber(), "wrong last claim round")
+        assert.equal((await bondingManager.getDelegator(transcoder2))[3], 1000, "wrong transcoder delegated amount")
 
         // Delegator 2 bonds to transcoder 1 before unbonding period is over
         await bondingManager.bond(0, transcoder1, {from: delegator2})
@@ -178,14 +180,26 @@ contract("Delegation", accounts => {
         assert.equal(dInfo[4], currentRound.add(1).toNumber(), "wrong start round")
         assert.equal(dInfo[5], 0, "wrong withdraw round")
         assert.equal(dInfo[6], currentRound.toNumber(), "wrong last claim round")
+        assert.equal((await bondingManager.getDelegator(transcoder1))[3], 2000, "wrong transcoder delegated amount")
     })
 
     it("delegator 2 unbonds, does not withdraw its stake and bonds again far in the future", async () => {
+        const unbondingPeriod = await bondingManager.unbondingPeriod.call()
+
         await roundsManager.mineBlocks(roundLength.toNumber())
         await roundsManager.initializeRound()
 
         // Delegator 2 unbonds from transcoder 1
         await bondingManager.unbond({from: delegator2})
+
+        let dInfo = await bondingManager.getDelegator(delegator2)
+        let currentRound = await roundsManager.currentRound()
+        assert.equal(dInfo[2], constants.NULL_ADDRESS, "wrong delegate")
+        assert.equal(dInfo[4], 0, "wrong start round")
+        assert.equal(dInfo[5], currentRound.add(unbondingPeriod).toNumber(), "wrong withdraw round")
+        assert.equal(dInfo[6], currentRound.toNumber(), "wrong last claim round")
+        assert.equal((await bondingManager.getDelegator(transcoder2))[3], 1000, "wrong transcoder delegated amount")
+
         await roundsManager.mineBlocks(roundLength.toNumber() * 1000)
         await roundsManager.initializeRound()
 
@@ -193,9 +207,12 @@ contract("Delegation", accounts => {
         // Should not have to claim rewards and fees for any rounds and should instead just skip to the current round
         await bondingManager.bond(0, transcoder2, {from: delegator2})
 
-        const dInfo = await bondingManager.getDelegator(delegator2)
-        const currentRound = await roundsManager.currentRound()
+        dInfo = await bondingManager.getDelegator(delegator2)
+        currentRound = await roundsManager.currentRound()
         assert.equal(dInfo[2], transcoder2, "wrong delegate")
+        assert.equal(dInfo[4], currentRound.add(1).toNumber(), "wrong start round")
+        assert.equal(dInfo[5], 0, "wrong withdraw round")
         assert.equal(dInfo[6], currentRound.toNumber(), "wrong last claim round")
+        assert.equal((await bondingManager.getDelegator(transcoder2))[3], 2000, "wrong transcoder delegated amount")
     })
 })
