@@ -70,6 +70,14 @@ contract("Minter", accounts => {
             await expectThrow(minter.migrateToNewMinter(accounts[1], {from: accounts[4]}))
         })
 
+        it("should fail if the system is not paused", async () => {
+            const newMinter = await GenericMock.new()
+            const controllerAddr = await minter.controller.call()
+            await newMinter.setMockAddress(functionSig("getController()"), controllerAddr)
+
+            await expectThrow(minter.migrateToNewMinter(newMinter.address))
+        })
+
         it("should fail if provided new minter is the current minter", async () => {
             await expectThrow(minter.migrateToNewMinter(minter.address))
         })
@@ -104,6 +112,7 @@ contract("Minter", accounts => {
             const newMinter = await GenericMock.new()
             const controllerAddr = await minter.controller.call()
             await newMinter.setMockAddress(functionSig("getController()"), controllerAddr)
+            await fixture.controller.pause()
 
             // Just make sure token ownership and token balance transfer do not fail
             await minter.migrateToNewMinter(newMinter.address)
@@ -220,16 +229,26 @@ contract("Minter", accounts => {
 
         it("should transfer ETH to receiving address when caller is BondingManager", async () => {
             await fixture.jobsManager.execute(minter.address, functionSig("depositETH()"), {from: accounts[1], value: 100})
+            const startBalance = web3.eth.getBalance(accounts[1])
             await fixture.bondingManager.execute(minter.address, functionEncodedABI("trustedWithdrawETH(address,uint256)", ["address", "uint256"], [accounts[1], 100]))
+            const endBalance = web3.eth.getBalance(accounts[1])
 
             assert.equal(web3.eth.getBalance(minter.address), 0, "wrong minter balance")
+            // In practice, this check would not work because it does not factor in the transaction cost that would be incurred by the withdrawing caller
+            // but for the purposes of testing that the value is withdrawn correctly we ignore the transaction cost that would be incurred
+            assert.equal(endBalance.sub(startBalance), 100, "wrong change in withdrawing caller")
         })
 
         it("should transfer ETH to receiving address when caller is JobsManager", async () => {
             await fixture.jobsManager.execute(minter.address, functionSig("depositETH()"), {from: accounts[1], value: 100})
+            const startBalance = web3.eth.getBalance(accounts[1])
             await fixture.jobsManager.execute(minter.address, functionEncodedABI("trustedWithdrawETH(address,uint256)", ["address", "uint256"], [accounts[1], 100]))
+            const endBalance = web3.eth.getBalance(accounts[1])
 
             assert.equal(web3.eth.getBalance(minter.address), 0, "wrong minter balance")
+            // In practice, this check would not work because it does not factor in the transaction cost that would be incurred by the withdrawing caller
+            // but for the purposes of testing that the value is withdrawn correctly we ignore the transaction cost that would be incurred
+            assert.equal(endBalance.sub(startBalance), 100, "wrong change in withdrawing caller")
         })
     })
 

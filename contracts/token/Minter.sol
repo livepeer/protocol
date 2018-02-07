@@ -106,10 +106,10 @@ contract Minter is Manager, IMinter {
 
     /**
      * @dev Migrate to a new Minter by transferring ownership of the token as well
-     * as the current Minter's token balance to the new Minter
+     * as the current Minter's token balance to the new Minter. Only callable by Controller when system is paused
      * @param _newMinter Address of new Minter
      */
-    function migrateToNewMinter(IMinter _newMinter) external onlyControllerOwner {
+    function migrateToNewMinter(IMinter _newMinter) external onlyControllerOwner whenSystemPaused {
         // New Minter cannot be the current Minter
         require(_newMinter != this);
         // Check for null address
