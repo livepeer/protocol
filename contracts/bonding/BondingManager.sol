@@ -286,12 +286,13 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // Update total bonded tokens
         totalBonded = totalBonded.sub(del.bondedAmount);
 
-        // If caller is a registered transcoder, resign
-        // In the future, with partial unbonding there would be a check for 0 bonded stake as well
         if (transcoderStatus(msg.sender) == TranscoderStatus.Registered) {
-            // Registered as a transcoder so must be bonded to self
-            // Instead of updating delegate's total stake, just remove the transcoder from the pool
+            // If caller is a registered transcoder, resign
+            // In the future, with partial unbonding there would be a check for 0 bonded stake as well
             resignTranscoder(msg.sender);
+        } else if (transcoderStatus(del.delegateAddress) == TranscoderStatus.Registered) {
+            // If delegate is a registered transcoder, decrease its delegated stake
+            transcoderPool.updateKey(del.delegateAddress, transcoderPool.getKey(del.delegateAddress).sub(del.bondedAmount), address(0), address(0));
         }
 
         // Delegator no longer bonded to anyone
