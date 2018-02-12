@@ -165,41 +165,76 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         whenSystemNotPaused
         currentRoundInitialized
     {
-        // Only callable if current round is not locked
-        require(!roundsManager().currentRoundLocked());
-        // Block reward cut must be a valid percentage
-        require(MathUtils.validPerc(_blockRewardCut));
-        // Fee share must be a valid percentage
-        require(MathUtils.validPerc(_feeShare));
-
+        Transcoder storage t = transcoders[msg.sender];
         Delegator storage del = delegators[msg.sender];
 
-        // Must have a non-zero amount bonded to self
-        require(del.delegateAddress == msg.sender && del.bondedAmount > 0);
+        if (roundsManager().currentRoundLocked()) {
+            // If it is the lock period of the current round
+            // the lowest price previously set by any transcoder
+            // becomes the price floor and the caller can lower its
+            // own price to a point greater than or equal to the price floor
 
-        Transcoder storage t = transcoders[msg.sender];
-        t.pendingBlockRewardCut = _blockRewardCut;
-        t.pendingFeeShare = _feeShare;
-        t.pendingPricePerSegment = _pricePerSegment;
+            // Caller must already be a registered transcoder
+            require(transcoderStatus(msg.sender) == TranscoderStatus.Registered);
 
-        uint256 delegatedAmount = del.delegatedAmount;
+            // Iterate through the transcoder pool to find the price floor
+            // Since the caller must be a registered transcoder, the transcoder pool size will always at least be 1
+            // Thus, we can safely set the initial price floor to be the pendingPricePerSegment of the first
+            // transcoder in the pool
+            address currentTranscoder = transcoderPool.getFirst();
+            uint256 priceFloor = transcoders[currentTranscoder].pendingPricePerSegment;
+            for (uint256 i = 0; i < transcoderPool.getSize(); i++) {
+                if (transcoders[currentTranscoder].pendingPricePerSegment < priceFloor) {
+                    priceFloor = transcoders[currentTranscoder].pendingPricePerSegment;
+                }
 
-        // Check if transcoder is not already registered
-        if (transcoderStatus(msg.sender) == TranscoderStatus.NotRegistered) {
-            if (transcoderPool.isFull()) {
-                address lastTranscoder = transcoderPool.getLast();
-                // Must have more stake than the last transcoder in the pool
-                require(delegatedAmount > transcoderPool.getKey(lastTranscoder));
-
-                transcoderPool.remove(lastTranscoder);
-
-                TranscoderEvicted(lastTranscoder);
+                currentTranscoder = transcoderPool.getNext(currentTranscoder);
             }
 
-            transcoderPool.insert(msg.sender, delegatedAmount, address(0), address(0));
-        }
+            // Provided pricePerSegment must greater than or equal to the price floor and
+            // less than or equal to the previously set pricePerSegment
+            require(_pricePerSegment >= priceFloor && _pricePerSegment <= t.pendingPricePerSegment);
 
-        TranscoderUpdate(msg.sender, _blockRewardCut, _feeShare, _pricePerSegment);
+            t.pendingPricePerSegment = _pricePerSegment;
+
+            TranscoderUpdate(msg.sender, t.blockRewardCut, t.feeShare, _pricePerSegment);
+        } else {
+            // It is not the lock period of the current round
+            // Caller is free to change rewardCut, feeShare, pricePerSegment as it pleases
+            // If caller is not a registered transcoder, it can also register and join the transcoder pool
+            // if it has sufficient delegated stake
+
+            // Block reward cut must be a valid percentage
+            require(MathUtils.validPerc(_blockRewardCut));
+            // Fee share must be a valid percentage
+            require(MathUtils.validPerc(_feeShare));
+
+            // Must have a non-zero amount bonded to self
+            require(del.delegateAddress == msg.sender && del.bondedAmount > 0);
+
+            t.pendingBlockRewardCut = _blockRewardCut;
+            t.pendingFeeShare = _feeShare;
+            t.pendingPricePerSegment = _pricePerSegment;
+
+            uint256 delegatedAmount = del.delegatedAmount;
+
+            // Check if transcoder is not already registered
+            if (transcoderStatus(msg.sender) == TranscoderStatus.NotRegistered) {
+                if (transcoderPool.isFull()) {
+                    address lastTranscoder = transcoderPool.getLast();
+                    // Must have more stake than the last transcoder in the pool
+                    require(delegatedAmount > transcoderPool.getKey(lastTranscoder));
+
+                    transcoderPool.remove(lastTranscoder);
+
+                    TranscoderEvicted(lastTranscoder);
+                }
+
+                transcoderPool.insert(msg.sender, delegatedAmount, address(0), address(0));
+            }
+
+            TranscoderUpdate(msg.sender, _blockRewardCut, _feeShare, _pricePerSegment);
+        }
     }
 
     /**
