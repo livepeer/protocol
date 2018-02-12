@@ -14,7 +14,7 @@ contract Controller is Pausable, IController {
     }
 
     // Track contract ids and contract info
-    mapping (bytes32 => ContractInfo) registry;
+    mapping (bytes32 => ContractInfo) private registry;
 
     function Controller() public {
         // Start system as paused
