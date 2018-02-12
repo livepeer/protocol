@@ -101,7 +101,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     }
 
     /**
-     * @dev BondingManager constructor. Only invokes constructor of base Manater contract with provided Controller address
+     * @dev BondingManager constructor. Only invokes constructor of base Manager contract with provided Controller address
      * @param _controller Address of Controller that this contract will be registered with
      */
     function BondingManager(address _controller) public Manager(_controller) {}
