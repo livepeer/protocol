@@ -1,25 +1,38 @@
-import Fixture from "../helpers/fixture"
+import Fixture from "./helpers/Fixture"
 import expectThrow from "../helpers/expectThrow"
+import {functionEncodedABI} from "../../utils/helpers"
+import {constants} from "../../utils/constants"
 import ethUtil from "ethereumjs-util"
 import ethAbi from "ethereumjs-abi"
 
 const LivepeerVerifier = artifacts.require("LivepeerVerifier")
 
 contract("LivepeerVerifier", accounts => {
-    let fixture
-    let verifier
-
     // 2 solvers
     const solvers = accounts.slice(0, 2)
     // IPFS hash of Dockerfile archive
     const codeHash = "QmZmvi1BaYSdxM1Tgwhi2mURabh46xCkzuH9PWeAkAZZGc"
 
+    describe("constructor", () => {
+        it("should create contract", async () => {
+            const verifier = await LivepeerVerifier.new(accounts[0], solvers, codeHash)
+
+            assert.isOk(await verifier.isSolver(accounts[0]), "should set provided solver address 1 as a solver")
+            assert.isOk(await verifier.isSolver(accounts[1]), "should set provided solver address 2 as a solver")
+            assert.equal(await verifier.solvers.call(0), accounts[0], "should add provided solver address 1 to solver list")
+            assert.equal(await verifier.solvers.call(1), accounts[1], "should add provided solver address 2 to solver list")
+            assert.equal(await verifier.verificationCodeHash.call(), codeHash, "should set verificationCodeHash")
+        })
+    })
+
+    let fixture
+    let verifier
+
     before(async () => {
         fixture = new Fixture(web3)
-        await fixture.deployController()
-        await fixture.deployMocks()
-        verifier = await LivepeerVerifier.new(fixture.controller.address, solvers, codeHash)
-        await fixture.jobsManager.setVerifier(verifier.address)
+        await fixture.deploy()
+
+        verifier = await fixture.deployAndRegister(LivepeerVerifier, "Verifier", fixture.controller.address, solvers, codeHash)
     })
 
     beforeEach(async () => {
@@ -30,16 +43,25 @@ contract("LivepeerVerifier", accounts => {
         await fixture.tearDown()
     })
 
-    describe("verificationCodeHash", () => {
-        it("should return the verification code hash", async () => {
-            const hash = await verifier.verificationCodeHash.call()
-            assert.equal(hash, codeHash, "verification code hash incorrect")
+    describe("setVerificationCodeHash", () => {
+        it("should fail if caller is not Controller owner", async () => {
+            await expectThrow(verifier.setVerificationCodeHash("foo", {from: accounts[1]}))
+        })
+
+        it("should set verificationCodeHash", async () => {
+            await verifier.setVerificationCodeHash("foo")
+
+            assert.equal(await verifier.verificationCodeHash.call(), "foo", "should set verificationCodeHash")
         })
     })
 
     describe("addSolver", () => {
+        it("should fail if caller is not Controller owner", async () => {
+            await expectThrow(verifier.addSolver(accounts[4], {from: accounts[1]}))
+        })
+
         it("should fail for null address", async () => {
-            await expectThrow(verifier.addSolver("0x0"))
+            await expectThrow(verifier.addSolver(constants.NULL_ADDRESS))
         })
 
         it("should fail if solver is already whitelisted", async () => {
@@ -69,8 +91,14 @@ contract("LivepeerVerifier", accounts => {
         })
 
         it("should store a request", async () => {
-            await fixture.jobsManager.setVerifyParams(jobId, claimId, segmentNumber, transcodingOptions, dataStorageHash, dataHashes)
-            await fixture.jobsManager.callVerify()
+            await fixture.jobsManager.execute(
+                verifier.address,
+                functionEncodedABI(
+                    "verify(uint256,uint256,uint256,string,string,bytes32[2])",
+                    ["uint256", "uint256", "uint256", "string", "string", "bytes32[2]"],
+                    [jobId, claimId, segmentNumber, transcodingOptions, dataStorageHash, dataHashes]
+                )
+            )
 
             const commitHash = ethUtil.bufferToHex(ethAbi.soliditySHA3(["bytes", "bytes"], [ethUtil.toBuffer(dataHashes[0]), ethUtil.toBuffer(dataHashes[1])]))
 
@@ -79,6 +107,8 @@ contract("LivepeerVerifier", accounts => {
             assert.equal(request[1], claimId, "claim id incorrect")
             assert.equal(request[2], segmentNumber, "segment number incorrect")
             assert.equal(request[3], commitHash, "commit hash incorrect")
+
+            assert.equal(await verifier.requestCount.call(), 1, "should increment requestCount by 1")
         })
 
         it("should fire a VerifyRequest event", async () => {
@@ -97,8 +127,14 @@ contract("LivepeerVerifier", accounts => {
                 assert.equal(result.args.transcodedDataHash, dataHashes[1], "event transcodedDataHash incorrect")
             })
 
-            await fixture.jobsManager.setVerifyParams(jobId, claimId, segmentNumber, transcodingOptions, dataStorageHash, dataHashes)
-            await fixture.jobsManager.callVerify()
+            await fixture.jobsManager.execute(
+                verifier.address,
+                functionEncodedABI(
+                    "verify(uint256,uint256,uint256,string,string,bytes32[2])",
+                    ["uint256", "uint256", "uint256", "string", "string", "bytes32[2]"],
+                    [jobId, claimId, segmentNumber, transcodingOptions, dataStorageHash, dataHashes]
+                )
+            )
         })
     })
 
@@ -114,9 +150,35 @@ contract("LivepeerVerifier", accounts => {
             await expectThrow(verifier.__callback(0, "0x123", {from: accounts[3]}))
         })
 
+        it("should delete stored request", async () => {
+            await fixture.jobsManager.execute(
+                verifier.address,
+                functionEncodedABI(
+                    "verify(uint256,uint256,uint256,string,string,bytes32[2])",
+                    ["uint256", "uint256", "uint256", "string", "string", "bytes32[2]"],
+                    [jobId, claimId, segmentNumber, transcodingOptions, dataStorageHash, dataHashes]
+                )
+            )
+
+            const commitHash = ethUtil.bufferToHex(ethAbi.soliditySHA3(["bytes", "bytes"], [ethUtil.toBuffer(dataHashes[0]), ethUtil.toBuffer(dataHashes[1])]))
+            await verifier.__callback(0, commitHash, {from: accounts[0]})
+
+            const request = await verifier.requests.call(0)
+            assert.equal(request[0], 0, "should zero out jobId")
+            assert.equal(request[1], 0, "should zero out claimId")
+            assert.equal(request[2], 0, "should zero out segmentNumber")
+            assert.equal(request[3], constants.NULL_BYTES, "should zero out commitHash")
+        })
+
         it("should fire a callback event with result set to true if verification succeeded", async () => {
-            await fixture.jobsManager.setVerifyParams(jobId, claimId, segmentNumber, transcodingOptions, dataStorageHash, dataHashes)
-            await fixture.jobsManager.callVerify()
+            await fixture.jobsManager.execute(
+                verifier.address,
+                functionEncodedABI(
+                    "verify(uint256,uint256,uint256,string,string,bytes32[2])",
+                    ["uint256", "uint256", "uint256", "string", "string", "bytes32[2]"],
+                    [jobId, claimId, segmentNumber, transcodingOptions, dataStorageHash, dataHashes]
+                )
+            )
 
             let e = verifier.Callback({})
 
@@ -135,8 +197,14 @@ contract("LivepeerVerifier", accounts => {
         })
 
         it("should fire a callback event with result set to false if verification failed", async () => {
-            await fixture.jobsManager.setVerifyParams(jobId, claimId, segmentNumber, transcodingOptions, dataStorageHash, dataHashes)
-            await fixture.jobsManager.callVerify()
+            await fixture.jobsManager.execute(
+                verifier.address,
+                functionEncodedABI(
+                    "verify(uint256,uint256,uint256,string,string,bytes32[2])",
+                    ["uint256", "uint256", "uint256", "string", "string", "bytes32[2]"],
+                    [jobId, claimId, segmentNumber, transcodingOptions, dataStorageHash, dataHashes]
+                )
+            )
 
             let e = verifier.Callback({})
 
