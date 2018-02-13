@@ -432,21 +432,17 @@ contract("JobsManager", accounts => {
             await jobsManager.deposit({from: broadcaster, value: 1000})
             // Broadcaster creates job 0
             await jobsManager.job("foo", transcodingOptions, 1, currentBlock + 20, {from: broadcaster})
-            // Broadcaster creates job 1
-            await jobsManager.job("foo", transcodingOptions, 1, currentBlock + 50, {from: broadcaster})
 
             await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), currentBlock + 1)
             // Transcoder claims work for job 0
             await jobsManager.claimWork(0, segmentRange, merkleTree.getHexRoot(), {from: transcoder})
-            // Transcoder claims work for job 1
-            await jobsManager.claimWork(1, segmentRange, merkleTree.getHexRoot(), {from: transcoder})
             // Claim block + 1 is mined
             await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), currentBlock + 2)
         })
 
         it("should fail if insufficient payment is provided", async () => {
             await fixture.verifier.setMockUint256(functionSig("getPrice()"), 10)
-            await expectThrow(jobsManager.verify(1, 0, 0, dataStorageHash, correctDataHashes, correctSig, correctProof, {from: transcoder}))
+            await expectThrow(jobsManager.verify(0, 0, 0, dataStorageHash, correctDataHashes, correctSig, correctProof, {from: transcoder}))
         })
 
         it("should fail if job does not exist", async () => {
@@ -454,53 +450,48 @@ contract("JobsManager", accounts => {
             await expectThrow(jobsManager.verify(invalidJobId, 0, 0, dataStorageHash, correctDataHashes, correctSig, correctProof, {from: transcoder}))
         })
 
-        it("should fail if job is inactive", async () => {
-            await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), currentBlock + 30)
-            await expectThrow(jobsManager.verify(0, 0, 0, dataStorageHash, correctDataHashes, correctSig, correctProof, {from: transcoder}))
-        })
-
         it("should fail if transcoder address for claim does not match caller address", async () => {
-            await expectThrow(jobsManager.verify(1, 0, 0, dataStorageHash, correctDataHashes, correctSig, correctProof, {from: accounts[3]}))
+            await expectThrow(jobsManager.verify(0, 0, 0, dataStorageHash, correctDataHashes, correctSig, correctProof, {from: accounts[3]}))
         })
 
         it("should fail if segment should not be verified because it is not in the claim's segment range", async () => {
             const invalidSegmentNumber = 99
-            await expectThrow(jobsManager.verify(1, 0, invalidSegmentNumber, dataStorageHash, correctDataHashes, correctSig, correctProof, {from: transcoder}))
+            await expectThrow(jobsManager.verify(0, 0, invalidSegmentNumber, dataStorageHash, correctDataHashes, correctSig, correctProof, {from: transcoder}))
         })
 
         it("should fail if segment should not be verified because it was not challenged", async () => {
             // Only 1 out of 1000000000000 segments should be verified
             await jobsManager.setVerificationRate(1000000000000)
             // The probability of a challenged segment should be so low that this call will fail *most* of the time
-            await expectThrow(jobsManager.verify(1, 0, 0, dataStorageHash, correctDataHashes, correctSig, correctProof, {from: transcoder}))
+            await expectThrow(jobsManager.verify(0, 0, 0, dataStorageHash, correctDataHashes, correctSig, correctProof, {from: transcoder}))
         })
 
         it("should fail if broadcaster signature over segment data is invalid", async () => {
             const badSig = web3.eth.sign(accounts[3], ethUtil.bufferToHex(segments[0].hash()))
             // This should fail because badSig is not signed by the broadcaster
-            await expectThrow(jobsManager.verify(1, 0, 0, dataStorageHash, correctDataHashes, badSig, correctProof, {from: transcoder}))
+            await expectThrow(jobsManager.verify(0, 0, 0, dataStorageHash, correctDataHashes, badSig, correctProof, {from: transcoder}))
         })
 
         it("should fail if Merkle proof for transcode receipt is invalid", async () => {
             const badProof = merkleTree.getHexProof(tReceiptHashes[1])
             // This should fail becasue badProof is the Merkle proof for tReceiptHashes[1] instead of tReceiptHashes[0]
-            await expectThrow(jobsManager.verify(1, 0, 0, dataStorageHash, correctDataHashes, correctSig, badProof, {from: transcoder}))
+            await expectThrow(jobsManager.verify(0, 0, 0, dataStorageHash, correctDataHashes, correctSig, badProof, {from: transcoder}))
         })
 
         it("should fail if non-zero value is provided when the price of verification is 0", async () => {
             await fixture.verifier.setMockUint256(functionSig("getPrice()"), 0)
-            await expectThrow(jobsManager.verify(1, 0, 0, dataStorageHash, correctDataHashes, correctSig, correctProof, {from: transcoder, value: 100}))
+            await expectThrow(jobsManager.verify(0, 0, 0, dataStorageHash, correctDataHashes, correctSig, correctProof, {from: transcoder, value: 100}))
         })
 
         it("should mark segment as submitted for verification", async () => {
-            await jobsManager.verify(1, 0, 0, dataStorageHash, correctDataHashes, correctSig, correctProof, {from: transcoder})
+            await jobsManager.verify(0, 0, 0, dataStorageHash, correctDataHashes, correctSig, correctProof, {from: transcoder})
 
-            assert.isOk(await jobsManager.isClaimSegmentVerified(1, 0, 0), "claim segment not marked as submitted for verification")
+            assert.isOk(await jobsManager.isClaimSegmentVerified(0, 0, 0), "claim segment not marked as submitted for verification")
         })
 
         it("should forward ETH payment to verifier if price > 0", async () => {
             await fixture.verifier.setMockUint256(functionSig("getPrice()"), 100)
-            await jobsManager.verify(1, 0, 0, dataStorageHash, correctDataHashes, correctSig, correctProof, {from: transcoder, value: 100})
+            await jobsManager.verify(0, 0, 0, dataStorageHash, correctDataHashes, correctSig, correctProof, {from: transcoder, value: 100})
 
             assert.equal(web3.eth.getBalance(fixture.verifier.address), 100, "wrong verifier ETH balance")
         })
@@ -513,7 +504,38 @@ contract("JobsManager", accounts => {
         const currentRound = 2
         const transcodingOptions = createTranscodingOptions(["foo"])
         const segmentRange = [0, 3]
-        const claimRoot = web3.sha3("foo")
+
+        // Segment data hashes
+        const dataHashes = [
+            "0x80084bf2fba02475726feb2cab2d8215eab14bc6bdd8bfb2c8151257032ecd8b",
+            "0xb039179a8a4ce2c252aa6f2f25798251c19b75fc1508d9d511a191e0487d64a7",
+            "0x263ab762270d3b73d3e2cddf9acc893bb6bd41110347e5d5e4bd1d3c128ea90a",
+            "0x4ce8765e720c576f6f5a34ca380b3de5f0912e6e3cc5355542c363891e54594b"
+        ]
+
+        // Segments
+        const segments = dataHashes.map((dataHash, idx) => new Segment("foo", idx, dataHash, broadcaster))
+
+        // Transcoded data hashes
+        const tDataHashes = [
+            "0x42538602949f370aa331d2c07a1ee7ff26caac9cc676288f94b82eb2188b8465",
+            "0xa0b37b8bfae8e71330bd8e278e4a45ca916d00475dd8b85e9352533454c9fec8",
+            "0x9f2898da52dedaca29f05bcac0c8e43e4b9f7cb5707c14cc3f35a567232cec7c",
+            "0x5a082c81a7e4d5833ee20bd67d2f4d736f679da33e4bebd3838217cb27bec1d3"
+        ]
+
+        // Transcode receipts
+        const tReceiptHashes = batchTranscodeReceiptHashes(segments, tDataHashes)
+
+        // Build merkle tree
+        const merkleTree = new MerkleTree(tReceiptHashes)
+
+        const dataStorageHash = "0x123"
+        const correctDataHash = dataHashes[0]
+        const correctTDataHash = tDataHashes[0]
+        const correctDataHashes = [correctDataHash, correctTDataHash]
+        const correctSig = ethUtil.bufferToHex(segments[0].signedHash())
+        const correctProof = merkleTree.getHexProof(tReceiptHashes[0])
 
         beforeEach(async () => {
             await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), currentBlock)
@@ -527,49 +549,91 @@ contract("JobsManager", accounts => {
 
             await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), currentBlock + 1)
             // Transcoder claims work for job 0
-            await jobsManager.claimWork(0, segmentRange, claimRoot, {from: transcoder})
+            await jobsManager.claimWork(0, segmentRange, merkleTree.getHexRoot(), {from: transcoder})
             // Claim block + 1 is mined
             await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), currentBlock + 2)
+            // Submit segment 0 for verification
+            await jobsManager.verify(0, 0, 0, dataStorageHash, correctDataHashes, correctSig, correctProof, {from: transcoder})
         })
 
         it("should fail if caller is not the verifier", async () => {
             await expectThrow(jobsManager.receiveVerification(0, 0, 0, true, {from: transcoder}))
         })
 
-        it("should refund the broadcaster if the result is false", async () => {
-            // Call receiveVerification from the verifier
-            await fixture.verifier.execute(jobsManager.address, functionEncodedABI("receiveVerification(uint256,uint256,uint256,bool)", ["uint256", "uint256", "uint256", "bool"], [0, 0, 0, false]))
-
-            const bDeposit = (await jobsManager.broadcasters.call(broadcaster))[0]
-            assert.equal(bDeposit, 1000, "broadcaster deposit should be restored")
-            const jEscrow = (await jobsManager.getJob(0))[8]
-            assert.equal(jEscrow, 0, "job escrow should be zero")
+        it("should fail if job does not exist", async () => {
+            await expectThrow(
+                fixture.verifier.execute(
+                    jobsManager.address,
+                    functionEncodedABI("receiveVerification(uint256,uint256,uint256,bool)", ["uint256", "uint256", "uint256", "bool"], [1, 0, 0, false])
+                )
+            )
         })
 
-        it("should set job as inactive by setting its end block to the current block if the result is false", async () => {
-            // Call receiveVerification from the verifier
-            await fixture.verifier.execute(jobsManager.address, functionEncodedABI("receiveVerification(uint256,uint256,uint256,bool)", ["uint256", "uint256", "uint256", "bool"], [0, 0, 0, false]))
-
-            assert.equal(await jobsManager.jobStatus(0), JobStatus.Inactive, "wrong job status")
-
-            const endBlock = (await jobsManager.getJob(0))[7]
-            assert.equal(endBlock, currentBlock + 2, "wrong job end block")
+        it("should fail if claim does not exist", async () => {
+            await expectThrow(
+                fixture.verifier.execute(
+                    jobsManager.address,
+                    functionEncodedABI("receiveVerification(uint256,uint256,uint256,bool)", ["uint256", "uint256", "uint256", "bool"], [0, 1, 0, false])
+                )
+            )
         })
 
-        it("should create a PassedVerification event if the result is true", async () => {
-            const e = jobsManager.PassedVerification({})
+        it("should fail if segment was not submitted for verification", async () => {
+            await expectThrow(
+                fixture.verifier.execute(
+                    jobsManager.address,
+                    functionEncodedABI("receiveVerification(uint256,uint256,uint256,bool)", ["uint256", "uint256", "uint256", "bool"], [0, 0, 2, false])
+                )
+            )
+        })
 
-            e.watch(async (err, result) => {
-                e.stopWatching()
+        it("should fail if claim was slashed", async () => {
+            await fixture.verifier.execute(
+                jobsManager.address,
+                functionEncodedABI("receiveVerification(uint256,uint256,uint256,bool)", ["uint256", "uint256", "uint256", "bool"], [0, 0, 0, false])
+            )
 
-                assert.equal(result.args.transcoder, transcoder, "transcoder incorrect")
-                assert.equal(result.args.jobId, 0, "job id incorrect")
-                assert.equal(result.args.claimId, 0, "claim id incorrect")
-                assert.equal(result.args.segmentNumber, 0, "segment number incorrect")
+            // This should fail because claim 0 was already slashed
+            await expectThrow(
+                fixture.verifier.execute(
+                    jobsManager.address,
+                    functionEncodedABI("receiveVerification(uint256,uint256,uint256,bool)", ["uint256", "uint256", "uint256", "bool"], [0, 0, 0, false])
+                )
+            )
+        })
+
+        describe("result is false", () => {
+            it("should refund broadcaster and slash claim", async () => {
+                // Call receiveVerification from the verifier
+                await fixture.verifier.execute(jobsManager.address, functionEncodedABI("receiveVerification(uint256,uint256,uint256,bool)", ["uint256", "uint256", "uint256", "bool"], [0, 0, 0, false]))
+
+                assert.equal(await jobsManager.jobStatus(0), JobStatus.Inactive, "wrong job status")
+                assert.equal((await jobsManager.getClaim(0, 0))[5], ClaimStatus.Slashed, "wrong claim status")
+                const bDeposit = (await jobsManager.broadcasters.call(broadcaster))[0]
+                assert.equal(bDeposit, 1000, "broadcaster deposit should be restored")
+                const jEscrow = (await jobsManager.getJob(0))[8]
+                assert.equal(jEscrow, 0, "job escrow should be zero")
+                const endBlock = (await jobsManager.getJob(0))[7]
+                assert.equal(endBlock, currentBlock + 2, "wrong job end block")
             })
+        })
 
-            // Call receiveVerification from the verifier
-            await fixture.verifier.execute(jobsManager.address, functionEncodedABI("receiveVerification(uint256,uint256,uint256,bool)", ["uint256", "uint256", "uint256", "bool"], [0, 0, 0, true]))
+        describe("result is true", () => {
+            it("should create a PassedVerification event", async () => {
+                const e = jobsManager.PassedVerification({})
+
+                e.watch(async (err, result) => {
+                    e.stopWatching()
+
+                    assert.equal(result.args.transcoder, transcoder, "transcoder incorrect")
+                    assert.equal(result.args.jobId, 0, "job id incorrect")
+                    assert.equal(result.args.claimId, 0, "claim id incorrect")
+                    assert.equal(result.args.segmentNumber, 0, "segment number incorrect")
+                })
+
+                // Call receiveVerification from the verifier
+                await fixture.verifier.execute(jobsManager.address, functionEncodedABI("receiveVerification(uint256,uint256,uint256,bool)", ["uint256", "uint256", "uint256", "bool"], [0, 0, 0, true]))
+            })
         })
     })
 

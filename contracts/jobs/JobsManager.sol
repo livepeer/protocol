@@ -354,8 +354,6 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         Job storage job = jobs[_jobId];
         Claim storage claim = job.claims[_claimId];
 
-        // Job cannot be inactive
-        require(jobStatus(_jobId) != JobStatus.Inactive);
         // Sender must be elected transcoder
         require(job.transcoderAddress == msg.sender);
 
@@ -451,11 +449,22 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         external
         whenSystemNotPaused
         onlyVerifier
+        jobExists(_jobId)
     {
-        address transcoder = jobs[_jobId].transcoderAddress;
+        Job storage job = jobs[_jobId];
+        Claim storage claim = job.claims[_claimId];
+        // Claim must not be slashed
+        require(claim.status != ClaimStatus.Slashed);
+        // Segment must have been submitted for verification
+        require(claim.segmentVerifications[_segmentNumber]);
+
+        address transcoder = job.transcoderAddress;
 
         if (!_result) {
+            // Refund broadcaster
             refundBroadcaster(_jobId);
+            // Set claim as slashed
+            claim.status = ClaimStatus.Slashed;
             // Protocol slashes transcoder for failing verification (no finder)
             bondingManager().slashTranscoder(transcoder, address(0), failedVerificationSlashAmount, 0);
 
