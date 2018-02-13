@@ -191,8 +191,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
                 currentTranscoder = transcoderPool.getNext(currentTranscoder);
             }
 
-            // Provided pricePerSegment must greater than or equal to the price floor and
-            // less than or equal to the previously set pricePerSegment
+            // Provided pricePerSegment must be greater than or equal to the price floor and
+            // less than or equal to the previously set pricePerSegment by the caller
             require(_pricePerSegment >= priceFloor && _pricePerSegment <= t.pendingPricePerSegment);
 
             t.pendingPricePerSegment = _pricePerSegment;
