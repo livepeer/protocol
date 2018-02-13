@@ -176,6 +176,12 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
             // Caller must already be a registered transcoder
             require(transcoderStatus(msg.sender) == TranscoderStatus.Registered);
+            // Provided blockRewardCut value must equal the current pendingBlockRewardCut value
+            // This value cannot change during the lock period
+            require(_blockRewardCut == t.pendingBlockRewardCut);
+            // Provided feeShare value must equal the current pendingFeeShare value
+            // This value cannot change during the lock period
+            require(_feeShare == t.pendingFeeShare);
 
             // Iterate through the transcoder pool to find the price floor
             // Since the caller must be a registered transcoder, the transcoder pool size will always at least be 1
