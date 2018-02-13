@@ -11,9 +11,13 @@ The Livepeer Protocol consists of the on-chain smart contracts that govern the l
 * Bonding and delegating for transcoder election
 * Slashing (penalties) for faulty participation
 
-The protocol is defined in the [Livepeer Whitepaper](http://github.com/livepeer/wiki/blob/master/WHITEPAPER.md).
+The protocol is outlined in the
+[Livepeer Whitepaper](http://github.com/livepeer/wiki/blob/master/WHITEPAPER.md)
+and is more formally specified in the [Protocol Specification](http://github.com/livepeer/wiki/blob/master/SPEC.md).
 
-This is a work in progress LivepeerProtocol implementation. See the [Dev Roadmap](https://github.com/livepeer/protocol/blob/master/DEVROADMAP.md) for the plan to get from here to live protocol.
+The current status is that this is a near complete implementation of the
+initial pass at the Livepeer protocol which accounts for the alpha
+release milestone - Snowmelt - as defined in the [Livepeer Network Phases](https://medium.com/livepeer-blog/livepeer-network-phases-b196ab42264b).
 
 ## Development
 
@@ -25,22 +29,11 @@ cd protocol
 npm install
 ```
 
-To run the full test suite using docker-compose:
+You can build and test the Livepeer Protocol locally:
 
 ```
-bash run_tests.sh
-```
-
-To build and test the Livepeer Protocol locally:
-
-```
-# Start testrpc
-npm run testrpc
-
-# Run the tests in another console window
-npm run lint
-npm run unit-test
-npm run integration-test
+npm run test:unit
+npm run test:integration
 ```
 
 Tests involving verification via Oraclize require [ethereum-bridge](https://github.com/oraclize/ethereum-bridge)
