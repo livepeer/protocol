@@ -237,6 +237,8 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
 
         // End block must be in the future
         require(_endBlock > blockNum);
+        // Transcoding options must be valid
+        require(JobLib.validTranscodingOptions(_transcodingOptions));
 
         Job storage job = jobs[numJobs];
         job.jobId = numJobs;

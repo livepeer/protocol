@@ -1,4 +1,5 @@
 import {contractId} from "../../utils/helpers"
+import {createTranscodingOptions} from "../../utils/videoProfile"
 
 const Controller = artifacts.require("Controller")
 const BondingManager = artifacts.require("BondingManager")
@@ -80,7 +81,7 @@ contract("JobAssignment", accounts => {
         let nullAddressJobCount = 0
 
         const streamId = "foo"
-        const transcodingOptions = "0x123"
+        const transcodingOptions = createTranscodingOptions(["foo"])
         const maxPricePerSegment = 10
         const endBlock = (await roundsManager.blockNum()).add(1000)
 
@@ -157,7 +158,7 @@ contract("JobAssignment", accounts => {
         let nullAddressJobCount = 0
 
         const streamId = "foo"
-        const transcodingOptions = "0x123"
+        const transcodingOptions = createTranscodingOptions(["foo"])
         const maxPricePerSegment = 1
         const endBlock = (await roundsManager.blockNum()).add(1000)
 

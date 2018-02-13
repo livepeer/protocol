@@ -2,6 +2,7 @@ import Fixture from "./helpers/Fixture"
 import expectThrow from "../helpers/expectThrow"
 import {functionSig, functionEncodedABI} from "../../utils/helpers"
 import {constants} from "../../utils/constants"
+import {createTranscodingOptions} from "../../utils/videoProfile"
 import MerkleTree from "../../utils/merkleTree"
 import Segment from "../../utils/segment"
 import batchTranscodeReceiptHashes from "../../utils/batchTranscodeReceipts"
@@ -192,7 +193,7 @@ contract("JobsManager", accounts => {
             await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), currentBlock)
 
             await jobsManager.deposit({from: broadcaster, value: 1000})
-            const transcodingOptions = web3.sha3("foo").slice(0, 10) // 0x + first 4 bytes
+            const transcodingOptions = createTranscodingOptions(["foo"])
             await jobsManager.job("foo", transcodingOptions, 1, endBlock, {from: broadcaster})
         })
 
@@ -216,7 +217,7 @@ contract("JobsManager", accounts => {
         const broadcaster = accounts[0]
         const currentBlock = 100
         const currentRound = 2
-        const transcodingOptions = web3.sha3("foo").slice(0, 10) // 0x + first 4 bytes
+        const transcodingOptions = createTranscodingOptions(["foo"])
 
         beforeEach(async () => {
             await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), currentBlock)
@@ -225,6 +226,14 @@ contract("JobsManager", accounts => {
 
         it("should fail if end block is not in the future", async () => {
             await expectThrow(jobsManager.job("foo", transcodingOptions, 1, currentBlock, {from: broadcaster}))
+        })
+
+        it("should fail if transcodingOptions is invalid (not a multiple of video profile id size)", async () => {
+            await expectThrow(jobsManager.job("foo", "bar", 1, currentBlock + 50, {from: broadcaster}))
+        })
+
+        it("should fail if transcodingOptions is invalid (0 length)", async () => {
+            await expectThrow(jobsManager.job("foo", "", 1, currentBlock + 50, {from: broadcaster}))
         })
 
         it("should create a transcode job", async () => {
@@ -281,7 +290,7 @@ contract("JobsManager", accounts => {
         const transcoder = accounts[1]
         const currentBlock = 100
         const currentRound = 2
-        const transcodingOptions = web3.sha3("foo").slice(0, 10) // 0x + first 4 bytes
+        const transcodingOptions = createTranscodingOptions(["foo"])
         const segmentRange = [0, 3]
         const claimRoot = web3.sha3("foo")
 
@@ -334,7 +343,7 @@ contract("JobsManager", accounts => {
         it("should transfer fees to job escrow and decrease broadcaster deposit", async () => {
             await jobsManager.claimWork(1, segmentRange, claimRoot, {from: transcoder})
 
-            const fees = (transcodingOptions.slice(2).length / 8) * (segmentRange[1] - segmentRange[0] + 1)
+            const fees = (transcodingOptions.length / 8) * (segmentRange[1] - segmentRange[0] + 1)
 
             const jInfo = await jobsManager.getJob(1)
             assert.equal(jInfo[8].toNumber(), fees, "wrong job escrow")
@@ -379,7 +388,7 @@ contract("JobsManager", accounts => {
         const transcoder = accounts[1]
         const currentBlock = 100
         const currentRound = 2
-        const transcodingOptions = web3.sha3("foo").slice(0, 10) // 0x + first 4 bytes
+        const transcodingOptions = createTranscodingOptions(["foo"])
         const segmentRange = [0, 3]
 
         // Segment data hashes
@@ -502,7 +511,7 @@ contract("JobsManager", accounts => {
         const transcoder = accounts[1]
         const currentBlock = 100
         const currentRound = 2
-        const transcodingOptions = web3.sha3("foo").slice(0, 10)
+        const transcodingOptions = createTranscodingOptions(["foo"])
         const segmentRange = [0, 3]
         const claimRoot = web3.sha3("foo")
 
@@ -569,7 +578,7 @@ contract("JobsManager", accounts => {
         const transcoder = accounts[1]
         const currentBlock = 100
         const currentRound = 2
-        const transcodingOptions = web3.sha3("foo").slice(0, 10)
+        const transcodingOptions = createTranscodingOptions(["foo"])
         const segmentRange = [0, 3]
         const claimRoot = web3.sha3("foo")
 
@@ -666,7 +675,7 @@ contract("JobsManager", accounts => {
         const transcoder = accounts[1]
         const currentBlock = 100
         const currentRound = 2
-        const transcodingOptions = web3.sha3("foo").slice(0, 10)
+        const transcodingOptions = createTranscodingOptions(["foo"])
         const segmentRange = [0, 3]
         const claimRoot = web3.sha3("foo")
 
@@ -721,7 +730,7 @@ contract("JobsManager", accounts => {
         const watcher = accounts[2]
         const currentBlock = 100
         const currentRound = 2
-        const transcodingOptions = web3.sha3("foo").slice(0, 10)
+        const transcodingOptions = createTranscodingOptions(["foo"])
         const segmentRange = [0, 3]
 
         // Segment data hashes
@@ -869,7 +878,7 @@ contract("JobsManager", accounts => {
         const watcher = accounts[2]
         const currentBlock = 100
         const currentRound = 2
-        const transcodingOptions = web3.sha3("foo").slice(0, 10)
+        const transcodingOptions = createTranscodingOptions(["foo"])
         const claimRoot = web3.sha3("foo")
 
         beforeEach(async () => {
@@ -968,7 +977,7 @@ contract("JobsManager", accounts => {
         const broadcaster = accounts[0]
         const currentBlock = 100
         const currentRound = 2
-        const transcodingOptions = web3.sha3("foo").slice(0, 10) // 0x + first 4 bytes
+        const transcodingOptions = createTranscodingOptions(["foo"])
 
         beforeEach(async () => {
             await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), currentBlock)
@@ -994,7 +1003,7 @@ contract("JobsManager", accounts => {
         const transcoder = accounts[1]
         const currentBlock = 100
         const currentRound = 2
-        const transcodingOptions = web3.sha3("foo").slice(0, 10) // 0x + first 4 bytes
+        const transcodingOptions = createTranscodingOptions(["foo"])
         const segmentRange = [0, 3]
 
         // Segment data hashes
