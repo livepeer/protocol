@@ -2,6 +2,7 @@ import Fixture from "./helpers/Fixture"
 import expectThrow from "../helpers/expectThrow"
 import {functionSig, functionEncodedABI} from "../../utils/helpers"
 import {constants} from "../../utils/constants"
+import {createTranscodingOptions} from "../../utils/videoProfile"
 import MerkleTree from "../../utils/merkleTree"
 import Segment from "../../utils/segment"
 import batchTranscodeReceiptHashes from "../../utils/batchTranscodeReceipts"
@@ -18,7 +19,7 @@ contract("JobsManager", accounts => {
 
     const VERIFICATION_RATE = 1
     const VERIFICATION_PERIOD = 50
-    const SLASHING_PERIOD = 50
+    const VERIFICATION_SLASHING_PERIOD = 50
     const FAILED_VERIFICATION_SLASH_AMOUNT = 20 * PERC_MULTIPLIER
     const MISSED_VERIFICATION_SLASH_AMOUNT = 30 * PERC_MULTIPLIER
     const DOUBLE_CLAIM_SEGMENT_SLASH_AMOUNT = 40 * PERC_MULTIPLIER
@@ -43,7 +44,7 @@ contract("JobsManager", accounts => {
 
         await jobsManager.setVerificationRate(VERIFICATION_RATE)
         await jobsManager.setVerificationPeriod(VERIFICATION_PERIOD)
-        await jobsManager.setSlashingPeriod(SLASHING_PERIOD)
+        await jobsManager.setVerificationSlashingPeriod(VERIFICATION_SLASHING_PERIOD)
         await jobsManager.setFailedVerificationSlashAmount(FAILED_VERIFICATION_SLASH_AMOUNT)
         await jobsManager.setMissedVerificationSlashAmount(MISSED_VERIFICATION_SLASH_AMOUNT)
         await jobsManager.setDoubleClaimSegmentSlashAmount(DOUBLE_CLAIM_SEGMENT_SLASH_AMOUNT)
@@ -79,8 +80,8 @@ contract("JobsManager", accounts => {
             await expectThrow(jobsManager.setVerificationPeriod(60, {from: accounts[2]}))
         })
 
-        it("should fail if provided verificationPeriod + current slashingPeriod > 256", async () => {
-            const slashingPeriod = await jobsManager.slashingPeriod.call()
+        it("should fail if provided verificationPeriod + current verification slashingPeriod > 256", async () => {
+            const slashingPeriod = await jobsManager.verificationSlashingPeriod.call()
             await expectThrow(jobsManager.setVerificationPeriod((256 - slashingPeriod.toNumber()) + 1))
         })
 
@@ -91,20 +92,20 @@ contract("JobsManager", accounts => {
         })
     })
 
-    describe("setSlashingPeriod", () => {
+    describe("setVerificationSlashingPeriod", () => {
         it("should fail if caller is not Controller owner", async () => {
-            await expectThrow(jobsManager.setSlashingPeriod(60, {from: accounts[2]}))
+            await expectThrow(jobsManager.setVerificationSlashingPeriod(60, {from: accounts[2]}))
         })
 
-        it("should fail if provided slashingPeriod + current verificationPeriod > 256", async () => {
+        it("should fail if provided verificationSlashingPeriod + current verificationPeriod > 256", async () => {
             const verificationPeriod = await jobsManager.verificationPeriod.call()
             await expectThrow(jobsManager.setVerificationPeriod((256 - verificationPeriod.toNumber()) + 1))
         })
 
-        it("should set slashingPeriod", async () => {
-            await jobsManager.setSlashingPeriod(60)
+        it("should set verificationSlashingPeriod", async () => {
+            await jobsManager.setVerificationSlashingPeriod(60)
 
-            assert.equal(await jobsManager.slashingPeriod.call(), 60, "wrong slashingPeriod")
+            assert.equal(await jobsManager.verificationSlashingPeriod.call(), 60, "wrong verificationSlashingPeriod")
         })
     })
 
@@ -192,7 +193,7 @@ contract("JobsManager", accounts => {
             await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), currentBlock)
 
             await jobsManager.deposit({from: broadcaster, value: 1000})
-            const transcodingOptions = web3.sha3("foo").slice(0, 10) // 0x + first 4 bytes
+            const transcodingOptions = createTranscodingOptions(["foo"])
             await jobsManager.job("foo", transcodingOptions, 1, endBlock, {from: broadcaster})
         })
 
@@ -216,7 +217,7 @@ contract("JobsManager", accounts => {
         const broadcaster = accounts[0]
         const currentBlock = 100
         const currentRound = 2
-        const transcodingOptions = web3.sha3("foo").slice(0, 10) // 0x + first 4 bytes
+        const transcodingOptions = createTranscodingOptions(["foo"])
 
         beforeEach(async () => {
             await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), currentBlock)
@@ -225,6 +226,14 @@ contract("JobsManager", accounts => {
 
         it("should fail if end block is not in the future", async () => {
             await expectThrow(jobsManager.job("foo", transcodingOptions, 1, currentBlock, {from: broadcaster}))
+        })
+
+        it("should fail if transcodingOptions is invalid (not a multiple of video profile id size)", async () => {
+            await expectThrow(jobsManager.job("foo", "bar", 1, currentBlock + 50, {from: broadcaster}))
+        })
+
+        it("should fail if transcodingOptions is invalid (0 length)", async () => {
+            await expectThrow(jobsManager.job("foo", "", 1, currentBlock + 50, {from: broadcaster}))
         })
 
         it("should create a transcode job", async () => {
@@ -281,7 +290,7 @@ contract("JobsManager", accounts => {
         const transcoder = accounts[1]
         const currentBlock = 100
         const currentRound = 2
-        const transcodingOptions = web3.sha3("foo").slice(0, 10) // 0x + first 4 bytes
+        const transcodingOptions = createTranscodingOptions(["foo"])
         const segmentRange = [0, 3]
         const claimRoot = web3.sha3("foo")
 
@@ -334,7 +343,7 @@ contract("JobsManager", accounts => {
         it("should transfer fees to job escrow and decrease broadcaster deposit", async () => {
             await jobsManager.claimWork(1, segmentRange, claimRoot, {from: transcoder})
 
-            const fees = (transcodingOptions.slice(2).length / 8) * (segmentRange[1] - segmentRange[0] + 1)
+            const fees = (transcodingOptions.length / 8) * (segmentRange[1] - segmentRange[0] + 1)
 
             const jInfo = await jobsManager.getJob(1)
             assert.equal(jInfo[8].toNumber(), fees, "wrong job escrow")
@@ -359,7 +368,7 @@ contract("JobsManager", accounts => {
         it("should create a transcode claim", async () => {
             const claimBlock = currentBlock + 1
             const verificationPeriod = await jobsManager.verificationPeriod.call()
-            const slashingPeriod = await jobsManager.slashingPeriod.call()
+            const slashingPeriod = await jobsManager.verificationSlashingPeriod.call()
             await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), claimBlock)
             await jobsManager.claimWork(1, segmentRange, claimRoot, {from: transcoder})
 
@@ -379,7 +388,7 @@ contract("JobsManager", accounts => {
         const transcoder = accounts[1]
         const currentBlock = 100
         const currentRound = 2
-        const transcodingOptions = web3.sha3("foo").slice(0, 10) // 0x + first 4 bytes
+        const transcodingOptions = createTranscodingOptions(["foo"])
         const segmentRange = [0, 3]
 
         // Segment data hashes
@@ -478,6 +487,11 @@ contract("JobsManager", accounts => {
             await expectThrow(jobsManager.verify(1, 0, 0, dataStorageHash, correctDataHashes, correctSig, badProof, {from: transcoder}))
         })
 
+        it("should fail if non-zero value is provided when the price of verification is 0", async () => {
+            await fixture.verifier.setMockUint256(functionSig("getPrice()"), 0)
+            await expectThrow(jobsManager.verify(1, 0, 0, dataStorageHash, correctDataHashes, correctSig, correctProof, {from: transcoder, value: 100}))
+        })
+
         it("should mark segment as submitted for verification", async () => {
             await jobsManager.verify(1, 0, 0, dataStorageHash, correctDataHashes, correctSig, correctProof, {from: transcoder})
 
@@ -497,7 +511,7 @@ contract("JobsManager", accounts => {
         const transcoder = accounts[1]
         const currentBlock = 100
         const currentRound = 2
-        const transcodingOptions = web3.sha3("foo").slice(0, 10)
+        const transcodingOptions = createTranscodingOptions(["foo"])
         const segmentRange = [0, 3]
         const claimRoot = web3.sha3("foo")
 
@@ -564,7 +578,7 @@ contract("JobsManager", accounts => {
         const transcoder = accounts[1]
         const currentBlock = 100
         const currentRound = 2
-        const transcodingOptions = web3.sha3("foo").slice(0, 10)
+        const transcodingOptions = createTranscodingOptions(["foo"])
         const segmentRange = [0, 3]
         const claimRoot = web3.sha3("foo")
 
@@ -584,7 +598,7 @@ contract("JobsManager", accounts => {
         })
 
         it("should fail if job does not exist", async () => {
-            // Fast forward through verification period and slashing period
+            // Fast forward through verification period and verification slashing period
             const endSlashingBlock = (await jobsManager.getClaim(0, 0))[4]
             await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), endSlashingBlock)
 
@@ -597,7 +611,7 @@ contract("JobsManager", accounts => {
         })
 
         it("should fail if transcoder address does not match caller address", async () => {
-            // Fast forward through verification period and slashing period
+            // Fast forward through verification period and verification slashing period
             const endSlashingBlock = (await jobsManager.getClaim(0, 0))[4]
             await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), endSlashingBlock)
 
@@ -616,7 +630,7 @@ contract("JobsManager", accounts => {
         })
 
         it("should fail if the claim is complete and thus not pending", async () => {
-            // Fast forward through verification period and slashing period
+            // Fast forward through verification period and verification slashing period
             const endSlashingBlock = (await jobsManager.getClaim(0, 0))[4]
             await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), endSlashingBlock)
             await jobsManager.distributeFees(0, 0, {from: transcoder})
@@ -626,7 +640,7 @@ contract("JobsManager", accounts => {
         })
 
         it("should fail if the claim's slashing period is not over", async () => {
-            // Fast forward through verification period and slashing period
+            // Fast forward through verification period and verification slashing period
             const verificationPeriod = await jobsManager.verificationPeriod.call()
             await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), currentBlock + verificationPeriod.toNumber())
 
@@ -634,7 +648,7 @@ contract("JobsManager", accounts => {
         })
 
         it("should decrease the job's escrow", async () => {
-            // Fast forward through verification period and slashing period
+            // Fast forward through verification period and verification slashing period
             const endSlashingBlock = (await jobsManager.getClaim(0, 0))[4]
             await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), endSlashingBlock)
 
@@ -645,7 +659,7 @@ contract("JobsManager", accounts => {
         })
 
         it("should set the claim as complete", async () => {
-            // Fast forward through verification period and slashing period
+            // Fast forward through verification period and verification slashing period
             const endSlashingBlock = (await jobsManager.getClaim(0, 0))[4]
             await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), endSlashingBlock)
 
@@ -661,7 +675,7 @@ contract("JobsManager", accounts => {
         const transcoder = accounts[1]
         const currentBlock = 100
         const currentRound = 2
-        const transcodingOptions = web3.sha3("foo").slice(0, 10)
+        const transcodingOptions = createTranscodingOptions(["foo"])
         const segmentRange = [0, 3]
         const claimRoot = web3.sha3("foo")
 
@@ -685,7 +699,7 @@ contract("JobsManager", accounts => {
         })
 
         it("should fail if distributeFees fails for any of the claim ids", async () => {
-            // Fast forward through verification period and slashing period of claim 0
+            // Fast forward through verification period and verification slashing period of claim 0
             const endSlashingBlock0 = (await jobsManager.getClaim(0, 0))[4]
             await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), endSlashingBlock0)
 
@@ -694,7 +708,7 @@ contract("JobsManager", accounts => {
         })
 
         it("should call distributeFees for each claim id", async () => {
-            // Fast forward through verification period and slashing period of claim 0 and 1j
+            // Fast forward through verification period and verification slashing period of claim 0 and 1j
             const endSlashingBlock1 = (await jobsManager.getClaim(0, 1))[4]
             await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), endSlashingBlock1)
 
@@ -716,7 +730,7 @@ contract("JobsManager", accounts => {
         const watcher = accounts[2]
         const currentBlock = 100
         const currentRound = 2
-        const transcodingOptions = web3.sha3("foo").slice(0, 10)
+        const transcodingOptions = createTranscodingOptions(["foo"])
         const segmentRange = [0, 3]
 
         // Segment data hashes
@@ -781,8 +795,8 @@ contract("JobsManager", accounts => {
             await expectThrow(jobsManager.missedVerificationSlash(0, 0, 0, {from: transcoder}))
         })
 
-        it("should fail if slashing period is over", async () => {
-            // Fast forward through verification period and slashing period
+        it("should fail if verification slashing period is over", async () => {
+            // Fast forward through verification period and verification slashing period
             const endSlashingBlock = (await jobsManager.getClaim(0, 0))[4]
             await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), endSlashingBlock)
 
@@ -864,7 +878,7 @@ contract("JobsManager", accounts => {
         const watcher = accounts[2]
         const currentBlock = 100
         const currentRound = 2
-        const transcodingOptions = web3.sha3("foo").slice(0, 10)
+        const transcodingOptions = createTranscodingOptions(["foo"])
         const claimRoot = web3.sha3("foo")
 
         beforeEach(async () => {
@@ -963,7 +977,7 @@ contract("JobsManager", accounts => {
         const broadcaster = accounts[0]
         const currentBlock = 100
         const currentRound = 2
-        const transcodingOptions = web3.sha3("foo").slice(0, 10) // 0x + first 4 bytes
+        const transcodingOptions = createTranscodingOptions(["foo"])
 
         beforeEach(async () => {
             await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), currentBlock)
@@ -989,7 +1003,7 @@ contract("JobsManager", accounts => {
         const transcoder = accounts[1]
         const currentBlock = 100
         const currentRound = 2
-        const transcodingOptions = web3.sha3("foo").slice(0, 10) // 0x + first 4 bytes
+        const transcodingOptions = createTranscodingOptions(["foo"])
         const segmentRange = [0, 3]
 
         // Segment data hashes
