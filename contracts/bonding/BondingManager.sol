@@ -26,6 +26,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     uint64 public unbondingPeriod;
     // Number of active transcoders
     uint256 public numActiveTranscoders;
+    // Max number of rounds that a caller can claim earnings for at once
+    uint256 public maxEarningsClaimsRounds;
 
     // Represents a transcoder's current state
     struct Transcoder {
@@ -140,6 +142,16 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         numActiveTranscoders = _numActiveTranscoders;
 
         ParameterUpdate("numActiveTranscoders");
+    }
+
+    /**
+     * @dev Set max number of rounds a caller can claim earnings for at once. Only callable by Controller owner
+     * @param _maxEarningsClaimsRounds Max number of rounds a caller can claim earnings for at once
+     */
+    function setMaxEarningsClaimsRounds(uint256 _maxEarningsClaimsRounds) external onlyControllerOwner {
+        maxEarningsClaimsRounds = _maxEarningsClaimsRounds;
+
+        ParameterUpdate("maxEarningsClaimsRounds");
     }
 
     /**
@@ -844,12 +856,12 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // Only will have earnings to claim if you have a delegate
         // If not delegated, skip the earnings claim process
         if (del.delegateAddress != address(0)) {
-            // Cannot claim earnings for more than 20 rounds
-            // This is an arbitrary number to cause transactions to fail early if
+            // Cannot claim earnings for more than maxEarningsClaimsRounds
+            // This is a number to cause transactions to fail early if
             // we know they will require too much gas to loop through all the necessary rounds to claim earnings
             // The user should instead manually invoke `claimEarnings` to split up the claiming process
             // across multiple transactions
-            require(_endRound.sub(del.lastClaimRound) <= 20);
+            require(_endRound.sub(del.lastClaimRound) <= maxEarningsClaimsRounds);
 
             uint256 currentBondedAmount = del.bondedAmount;
             uint256 currentFees = del.fees;

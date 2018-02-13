@@ -12,6 +12,7 @@ contract("BondingManager", accounts => {
     const NUM_TRANSCODERS = 5
     const NUM_ACTIVE_TRANSCODERS = 2
     const UNBONDING_PERIOD = 2
+    const MAX_EARNINGS_CLAIMS_ROUNDS = 20
 
     const PERC_DIVISOR = 1000000
     const PERC_MULTIPLIER = PERC_DIVISOR / 100
@@ -37,6 +38,7 @@ contract("BondingManager", accounts => {
         await bondingManager.setUnbondingPeriod(UNBONDING_PERIOD)
         await bondingManager.setNumTranscoders(NUM_TRANSCODERS)
         await bondingManager.setNumActiveTranscoders(NUM_ACTIVE_TRANSCODERS)
+        await bondingManager.setMaxEarningsClaimsRounds(MAX_EARNINGS_CLAIMS_ROUNDS)
     })
 
     beforeEach(async () => {
@@ -94,6 +96,18 @@ contract("BondingManager", accounts => {
             await bondingManager.setNumActiveTranscoders(4)
 
             assert.equal(await bondingManager.numActiveTranscoders.call(), 4, "wrong numActiveTranscoders")
+        })
+    })
+
+    describe("setMaxEarningsClaimsRounds", () => {
+        it("should fail if caller is not Controller owner", async () => {
+            await expectThrow(bondingManager.setMaxEarningsClaimsRounds(2, {from: accounts[2]}))
+        })
+
+        it("should set maxEarningsClaimsRounds", async () => {
+            await bondingManager.setMaxEarningsClaimsRounds(2)
+
+            assert.equal(await bondingManager.maxEarningsClaimsRounds.call(), 2, "wrong maxEarningsClaimsRounds")
         })
     })
 
@@ -1088,8 +1102,9 @@ contract("BondingManager", accounts => {
         })
 
         describe("caller has a delegate", () => {
-            it("should fail if endRound - lastClaimRound > 20 (too many rounds to claim through)", async () => {
-                await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 21)
+            it("should fail if endRound - lastClaimRound > maxEarningsClaimsRounds (too many rounds to claim through)", async () => {
+                const maxEarningsClaimsRounds = await bondingManager.maxEarningsClaimsRounds.call()
+                await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + maxEarningsClaimsRounds.toNumber() + 1)
 
                 await expectThrow(bondingManager.claimEarnings(currentRound + 21, {from: delegator}))
             })
