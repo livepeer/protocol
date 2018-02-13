@@ -354,8 +354,6 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         Job storage job = jobs[_jobId];
         Claim storage claim = job.claims[_claimId];
 
-        // Job cannot be inactive
-        require(jobStatus(_jobId) != JobStatus.Inactive);
         // Sender must be elected transcoder
         require(job.transcoderAddress == msg.sender);
 

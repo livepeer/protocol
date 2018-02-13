@@ -432,21 +432,17 @@ contract("JobsManager", accounts => {
             await jobsManager.deposit({from: broadcaster, value: 1000})
             // Broadcaster creates job 0
             await jobsManager.job("foo", transcodingOptions, 1, currentBlock + 20, {from: broadcaster})
-            // Broadcaster creates job 1
-            await jobsManager.job("foo", transcodingOptions, 1, currentBlock + 50, {from: broadcaster})
 
             await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), currentBlock + 1)
             // Transcoder claims work for job 0
             await jobsManager.claimWork(0, segmentRange, merkleTree.getHexRoot(), {from: transcoder})
-            // Transcoder claims work for job 1
-            await jobsManager.claimWork(1, segmentRange, merkleTree.getHexRoot(), {from: transcoder})
             // Claim block + 1 is mined
             await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), currentBlock + 2)
         })
 
         it("should fail if insufficient payment is provided", async () => {
             await fixture.verifier.setMockUint256(functionSig("getPrice()"), 10)
-            await expectThrow(jobsManager.verify(1, 0, 0, dataStorageHash, correctDataHashes, correctSig, correctProof, {from: transcoder}))
+            await expectThrow(jobsManager.verify(0, 0, 0, dataStorageHash, correctDataHashes, correctSig, correctProof, {from: transcoder}))
         })
 
         it("should fail if job does not exist", async () => {
@@ -454,53 +450,48 @@ contract("JobsManager", accounts => {
             await expectThrow(jobsManager.verify(invalidJobId, 0, 0, dataStorageHash, correctDataHashes, correctSig, correctProof, {from: transcoder}))
         })
 
-        it("should fail if job is inactive", async () => {
-            await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), currentBlock + 30)
-            await expectThrow(jobsManager.verify(0, 0, 0, dataStorageHash, correctDataHashes, correctSig, correctProof, {from: transcoder}))
-        })
-
         it("should fail if transcoder address for claim does not match caller address", async () => {
-            await expectThrow(jobsManager.verify(1, 0, 0, dataStorageHash, correctDataHashes, correctSig, correctProof, {from: accounts[3]}))
+            await expectThrow(jobsManager.verify(0, 0, 0, dataStorageHash, correctDataHashes, correctSig, correctProof, {from: accounts[3]}))
         })
 
         it("should fail if segment should not be verified because it is not in the claim's segment range", async () => {
             const invalidSegmentNumber = 99
-            await expectThrow(jobsManager.verify(1, 0, invalidSegmentNumber, dataStorageHash, correctDataHashes, correctSig, correctProof, {from: transcoder}))
+            await expectThrow(jobsManager.verify(0, 0, invalidSegmentNumber, dataStorageHash, correctDataHashes, correctSig, correctProof, {from: transcoder}))
         })
 
         it("should fail if segment should not be verified because it was not challenged", async () => {
             // Only 1 out of 1000000000000 segments should be verified
             await jobsManager.setVerificationRate(1000000000000)
             // The probability of a challenged segment should be so low that this call will fail *most* of the time
-            await expectThrow(jobsManager.verify(1, 0, 0, dataStorageHash, correctDataHashes, correctSig, correctProof, {from: transcoder}))
+            await expectThrow(jobsManager.verify(0, 0, 0, dataStorageHash, correctDataHashes, correctSig, correctProof, {from: transcoder}))
         })
 
         it("should fail if broadcaster signature over segment data is invalid", async () => {
             const badSig = web3.eth.sign(accounts[3], ethUtil.bufferToHex(segments[0].hash()))
             // This should fail because badSig is not signed by the broadcaster
-            await expectThrow(jobsManager.verify(1, 0, 0, dataStorageHash, correctDataHashes, badSig, correctProof, {from: transcoder}))
+            await expectThrow(jobsManager.verify(0, 0, 0, dataStorageHash, correctDataHashes, badSig, correctProof, {from: transcoder}))
         })
 
         it("should fail if Merkle proof for transcode receipt is invalid", async () => {
             const badProof = merkleTree.getHexProof(tReceiptHashes[1])
             // This should fail becasue badProof is the Merkle proof for tReceiptHashes[1] instead of tReceiptHashes[0]
-            await expectThrow(jobsManager.verify(1, 0, 0, dataStorageHash, correctDataHashes, correctSig, badProof, {from: transcoder}))
+            await expectThrow(jobsManager.verify(0, 0, 0, dataStorageHash, correctDataHashes, correctSig, badProof, {from: transcoder}))
         })
 
         it("should fail if non-zero value is provided when the price of verification is 0", async () => {
             await fixture.verifier.setMockUint256(functionSig("getPrice()"), 0)
-            await expectThrow(jobsManager.verify(1, 0, 0, dataStorageHash, correctDataHashes, correctSig, correctProof, {from: transcoder, value: 100}))
+            await expectThrow(jobsManager.verify(0, 0, 0, dataStorageHash, correctDataHashes, correctSig, correctProof, {from: transcoder, value: 100}))
         })
 
         it("should mark segment as submitted for verification", async () => {
-            await jobsManager.verify(1, 0, 0, dataStorageHash, correctDataHashes, correctSig, correctProof, {from: transcoder})
+            await jobsManager.verify(0, 0, 0, dataStorageHash, correctDataHashes, correctSig, correctProof, {from: transcoder})
 
-            assert.isOk(await jobsManager.isClaimSegmentVerified(1, 0, 0), "claim segment not marked as submitted for verification")
+            assert.isOk(await jobsManager.isClaimSegmentVerified(0, 0, 0), "claim segment not marked as submitted for verification")
         })
 
         it("should forward ETH payment to verifier if price > 0", async () => {
             await fixture.verifier.setMockUint256(functionSig("getPrice()"), 100)
-            await jobsManager.verify(1, 0, 0, dataStorageHash, correctDataHashes, correctSig, correctProof, {from: transcoder, value: 100})
+            await jobsManager.verify(0, 0, 0, dataStorageHash, correctDataHashes, correctSig, correctProof, {from: transcoder, value: 100})
 
             assert.equal(web3.eth.getBalance(fixture.verifier.address), 100, "wrong verifier ETH balance")
         })
