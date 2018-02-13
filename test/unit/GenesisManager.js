@@ -1,4 +1,4 @@
-import Fixture from "../helpers/fixture"
+import Fixture from "./helpers/Fixture"
 import expectThrow from "../helpers/expectThrow"
 import {functionSig} from "../../utils/helpers"
 

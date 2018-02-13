@@ -1,4 +1,5 @@
-import Fixture from "../helpers/fixture"
+import Fixture from "./helpers/Fixture"
+import {contractId} from "../../utils/helpers"
 import ethUtil from "ethereumjs-util"
 import ethAbi from "ethereumjs-abi"
 
@@ -13,10 +14,10 @@ contract("ManagerProxy", accounts => {
 
     before(async () => {
         fixture = new Fixture(web3)
-        await fixture.deployController()
-        await fixture.deployAndRegister(ManagerProxyTargetMockV1, "ManagerProxyTarget", [fixture.controller.address])
+        await fixture.deploy()
+        await fixture.deployAndRegister(ManagerProxyTargetMockV1, "ManagerProxyTarget", fixture.controller.address)
 
-        const proxy = await ManagerProxy.new(fixture.controller.address, fixture.contractId("ManagerProxyTarget"))
+        const proxy = await ManagerProxy.new(fixture.controller.address, contractId("ManagerProxyTarget"))
         managerProxy = await ManagerProxyTargetMockV1.at(proxy.address)
     })
 
