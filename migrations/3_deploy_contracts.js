@@ -44,7 +44,7 @@ module.exports = function(deployer, network) {
         // Set JobsManager parameters
         await jobsManager.setVerificationRate(config.jobsManager.verificationRate)
         await jobsManager.setVerificationPeriod(config.jobsManager.verificationPeriod)
-        await jobsManager.setSlashingPeriod(config.jobsManager.slashingPeriod)
+        await jobsManager.setVerificationSlashingPeriod(config.jobsManager.verificationSlashingPeriod)
         await jobsManager.setFailedVerificationSlashAmount(config.jobsManager.failedVerificationSlashAmount)
         await jobsManager.setMissedVerificationSlashAmount(config.jobsManager.missedVerificationSlashAmount)
         await jobsManager.setDoubleClaimSegmentSlashAmount(config.jobsManager.doubleClaimSegmentSlashAmount)

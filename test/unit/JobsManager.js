@@ -19,7 +19,7 @@ contract("JobsManager", accounts => {
 
     const VERIFICATION_RATE = 1
     const VERIFICATION_PERIOD = 50
-    const SLASHING_PERIOD = 50
+    const VERIFICATION_SLASHING_PERIOD = 50
     const FAILED_VERIFICATION_SLASH_AMOUNT = 20 * PERC_MULTIPLIER
     const MISSED_VERIFICATION_SLASH_AMOUNT = 30 * PERC_MULTIPLIER
     const DOUBLE_CLAIM_SEGMENT_SLASH_AMOUNT = 40 * PERC_MULTIPLIER
@@ -44,7 +44,7 @@ contract("JobsManager", accounts => {
 
         await jobsManager.setVerificationRate(VERIFICATION_RATE)
         await jobsManager.setVerificationPeriod(VERIFICATION_PERIOD)
-        await jobsManager.setSlashingPeriod(SLASHING_PERIOD)
+        await jobsManager.setVerificationSlashingPeriod(VERIFICATION_SLASHING_PERIOD)
         await jobsManager.setFailedVerificationSlashAmount(FAILED_VERIFICATION_SLASH_AMOUNT)
         await jobsManager.setMissedVerificationSlashAmount(MISSED_VERIFICATION_SLASH_AMOUNT)
         await jobsManager.setDoubleClaimSegmentSlashAmount(DOUBLE_CLAIM_SEGMENT_SLASH_AMOUNT)
@@ -80,8 +80,8 @@ contract("JobsManager", accounts => {
             await expectThrow(jobsManager.setVerificationPeriod(60, {from: accounts[2]}))
         })
 
-        it("should fail if provided verificationPeriod + current slashingPeriod > 256", async () => {
-            const slashingPeriod = await jobsManager.slashingPeriod.call()
+        it("should fail if provided verificationPeriod + current verification slashingPeriod > 256", async () => {
+            const slashingPeriod = await jobsManager.verificationSlashingPeriod.call()
             await expectThrow(jobsManager.setVerificationPeriod((256 - slashingPeriod.toNumber()) + 1))
         })
 
@@ -92,20 +92,20 @@ contract("JobsManager", accounts => {
         })
     })
 
-    describe("setSlashingPeriod", () => {
+    describe("setVerificationSlashingPeriod", () => {
         it("should fail if caller is not Controller owner", async () => {
-            await expectThrow(jobsManager.setSlashingPeriod(60, {from: accounts[2]}))
+            await expectThrow(jobsManager.setVerificationSlashingPeriod(60, {from: accounts[2]}))
         })
 
-        it("should fail if provided slashingPeriod + current verificationPeriod > 256", async () => {
+        it("should fail if provided verificationSlashingPeriod + current verificationPeriod > 256", async () => {
             const verificationPeriod = await jobsManager.verificationPeriod.call()
             await expectThrow(jobsManager.setVerificationPeriod((256 - verificationPeriod.toNumber()) + 1))
         })
 
-        it("should set slashingPeriod", async () => {
-            await jobsManager.setSlashingPeriod(60)
+        it("should set verificationSlashingPeriod", async () => {
+            await jobsManager.setVerificationSlashingPeriod(60)
 
-            assert.equal(await jobsManager.slashingPeriod.call(), 60, "wrong slashingPeriod")
+            assert.equal(await jobsManager.verificationSlashingPeriod.call(), 60, "wrong verificationSlashingPeriod")
         })
     })
 
@@ -368,7 +368,7 @@ contract("JobsManager", accounts => {
         it("should create a transcode claim", async () => {
             const claimBlock = currentBlock + 1
             const verificationPeriod = await jobsManager.verificationPeriod.call()
-            const slashingPeriod = await jobsManager.slashingPeriod.call()
+            const slashingPeriod = await jobsManager.verificationSlashingPeriod.call()
             await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), claimBlock)
             await jobsManager.claimWork(1, segmentRange, claimRoot, {from: transcoder})
 
@@ -598,7 +598,7 @@ contract("JobsManager", accounts => {
         })
 
         it("should fail if job does not exist", async () => {
-            // Fast forward through verification period and slashing period
+            // Fast forward through verification period and verification slashing period
             const endSlashingBlock = (await jobsManager.getClaim(0, 0))[4]
             await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), endSlashingBlock)
 
@@ -611,7 +611,7 @@ contract("JobsManager", accounts => {
         })
 
         it("should fail if transcoder address does not match caller address", async () => {
-            // Fast forward through verification period and slashing period
+            // Fast forward through verification period and verification slashing period
             const endSlashingBlock = (await jobsManager.getClaim(0, 0))[4]
             await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), endSlashingBlock)
 
@@ -630,7 +630,7 @@ contract("JobsManager", accounts => {
         })
 
         it("should fail if the claim is complete and thus not pending", async () => {
-            // Fast forward through verification period and slashing period
+            // Fast forward through verification period and verification slashing period
             const endSlashingBlock = (await jobsManager.getClaim(0, 0))[4]
             await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), endSlashingBlock)
             await jobsManager.distributeFees(0, 0, {from: transcoder})
@@ -640,7 +640,7 @@ contract("JobsManager", accounts => {
         })
 
         it("should fail if the claim's slashing period is not over", async () => {
-            // Fast forward through verification period and slashing period
+            // Fast forward through verification period and verification slashing period
             const verificationPeriod = await jobsManager.verificationPeriod.call()
             await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), currentBlock + verificationPeriod.toNumber())
 
@@ -648,7 +648,7 @@ contract("JobsManager", accounts => {
         })
 
         it("should decrease the job's escrow", async () => {
-            // Fast forward through verification period and slashing period
+            // Fast forward through verification period and verification slashing period
             const endSlashingBlock = (await jobsManager.getClaim(0, 0))[4]
             await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), endSlashingBlock)
 
@@ -659,7 +659,7 @@ contract("JobsManager", accounts => {
         })
 
         it("should set the claim as complete", async () => {
-            // Fast forward through verification period and slashing period
+            // Fast forward through verification period and verification slashing period
             const endSlashingBlock = (await jobsManager.getClaim(0, 0))[4]
             await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), endSlashingBlock)
 
@@ -699,7 +699,7 @@ contract("JobsManager", accounts => {
         })
 
         it("should fail if distributeFees fails for any of the claim ids", async () => {
-            // Fast forward through verification period and slashing period of claim 0
+            // Fast forward through verification period and verification slashing period of claim 0
             const endSlashingBlock0 = (await jobsManager.getClaim(0, 0))[4]
             await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), endSlashingBlock0)
 
@@ -708,7 +708,7 @@ contract("JobsManager", accounts => {
         })
 
         it("should call distributeFees for each claim id", async () => {
-            // Fast forward through verification period and slashing period of claim 0 and 1j
+            // Fast forward through verification period and verification slashing period of claim 0 and 1j
             const endSlashingBlock1 = (await jobsManager.getClaim(0, 1))[4]
             await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), endSlashingBlock1)
 
@@ -795,8 +795,8 @@ contract("JobsManager", accounts => {
             await expectThrow(jobsManager.missedVerificationSlash(0, 0, 0, {from: transcoder}))
         })
 
-        it("should fail if slashing period is over", async () => {
-            // Fast forward through verification period and slashing period
+        it("should fail if verification slashing period is over", async () => {
+            // Fast forward through verification period and verification slashing period
             const endSlashingBlock = (await jobsManager.getClaim(0, 0))[4]
             await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), endSlashingBlock)
 

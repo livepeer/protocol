@@ -14,7 +14,7 @@ module.exports = {
     jobsManager: {
         verificationRate: 100,
         verificationPeriod: 50,
-        slashingPeriod: 50,
+        verificationSlashingPeriod: 50,
         failedVerificationSlashAmount: 1,
         missedVerificationSlashAmount: .1 * PERC_MULTIPLIER,
         doubleClaimSegmentSlashAmount: 3 * PERC_MULTIPLIER,

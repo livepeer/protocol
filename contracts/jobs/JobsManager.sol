@@ -24,7 +24,7 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
     uint256 public verificationPeriod;
 
     // Time after a claim's verification period during which anyone can slash the transcoder for missing a required verification
-    uint256 public slashingPeriod;
+    uint256 public verificationSlashingPeriod;
 
     // % of stake slashed for failed verification
     uint256 public failedVerificationSlashAmount;
@@ -71,7 +71,7 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         bytes32 claimRoot;                                 // Merkle root of segment transcode proof data
         uint256 claimBlock;                                // Block number that claim was submitted
         uint256 endVerificationBlock;                      // End of verification period for this claim
-        uint256 endSlashingBlock;                          // End of slashing period for this claim
+        uint256 endVerificationSlashingBlock;              // End of verification slashing period for this claim
         mapping (uint256 => bool) segmentVerifications;    // Mapping segment number => whether segment was submitted for verification
         ClaimStatus status;                                // Status of claim (pending, slashed, complete)
     }
@@ -122,10 +122,10 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
      * @param _verificationPeriod Number of blocks to complete verification of claimed work
      */
     function setVerificationPeriod(uint256 _verificationPeriod) external onlyControllerOwner {
-        // Verification period + slashing period currently cannot be longer than 256 blocks
+        // Verification period + verification slashing period currently cannot be longer than 256 blocks
         // because contracts can only access the last 256 blocks from
         // the current block
-        require(_verificationPeriod + slashingPeriod <= 256);
+        require(_verificationPeriod + verificationSlashingPeriod <= 256);
 
         verificationPeriod = _verificationPeriod;
 
@@ -133,18 +133,18 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
     }
 
     /*
-     * @dev Set slashing period. Only callable by the controller owner
-     * @param _slashingPeriod Number of blocks after the verification period to submit slashing proofs
+     * @dev Set verification slashing period. Only callable by the controller owner
+     * @param _verificationSlashingPeriod Number of blocks after the verification period to submit slashing proofs
      */
-    function setSlashingPeriod(uint256 _slashingPeriod) external onlyControllerOwner {
-        // Verification period + slashing period currently cannot be longer than 256 blocks
+    function setVerificationSlashingPeriod(uint256 _verificationSlashingPeriod) external onlyControllerOwner {
+        // Verification period + verification slashing period currently cannot be longer than 256 blocks
         // because contracts can only access the last 256 blocks from
         // the current block
-        require(verificationPeriod + _slashingPeriod <= 256);
+        require(verificationPeriod + _verificationSlashingPeriod <= 256);
 
-        slashingPeriod = _slashingPeriod;
+        verificationSlashingPeriod = _verificationSlashingPeriod;
 
-        ParameterUpdate("slashingPeriod");
+        ParameterUpdate("verificationSlashingPeriod");
     }
 
     /*
@@ -310,7 +310,7 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         job.escrow = job.escrow.add(fees);
 
         uint256 endVerificationBlock = blockNum.add(verificationPeriod);
-        uint256 endSlashingBlock = endVerificationBlock.add(slashingPeriod);
+        uint256 endVerificationSlashingBlock = endVerificationBlock.add(verificationSlashingPeriod);
 
         job.claims.push(
             Claim({
@@ -319,7 +319,7 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
                 claimRoot: _claimRoot,
                 claimBlock: blockNum,
                 endVerificationBlock: endVerificationBlock,
-                endSlashingBlock: endSlashingBlock,
+                endVerificationSlashingBlock: endVerificationSlashingBlock,
                 status: ClaimStatus.Pending
            })
         );
@@ -498,7 +498,7 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         // Must be after verification period
         require(blockNum >= claim.endVerificationBlock);
         // Must be before end of slashing period
-        require(blockNum < claim.endSlashingBlock);
+        require(blockNum < claim.endVerificationSlashingBlock);
         // Claim must be pending
         require(claim.status == ClaimStatus.Pending);
         // Segment must be eligible for verification
@@ -575,7 +575,7 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         // Claim must not be complete
         require(claim.status == ClaimStatus.Pending);
         // Slashing period must be over for claim
-        require(claim.endSlashingBlock <= roundsManager().blockNum());
+        require(claim.endVerificationSlashingBlock <= roundsManager().blockNum());
 
         uint256 fees = JobLib.calcFees(claim.segmentRange[1].sub(claim.segmentRange[0]).add(1), job.transcodingOptions, job.maxPricePerSegment);
         // Deduct fees from escrow
@@ -639,7 +639,7 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
     )
         public
         view
-        returns (uint256[2] segmentRange, bytes32 claimRoot, uint256 claimBlock, uint256 endVerificationBlock, uint256 endSlashingBlock, ClaimStatus status)
+        returns (uint256[2] segmentRange, bytes32 claimRoot, uint256 claimBlock, uint256 endVerificationBlock, uint256 endVerificationSlashingBlock, ClaimStatus status)
     {
         Claim storage claim = jobs[_jobId].claims[_claimId];
 
@@ -647,7 +647,7 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         claimRoot = claim.claimRoot;
         claimBlock = claim.claimBlock;
         endVerificationBlock = claim.endVerificationBlock;
-        endSlashingBlock = claim.endSlashingBlock;
+        endVerificationSlashingBlock = claim.endVerificationSlashingBlock;
         status = claim.status;
     }
 
