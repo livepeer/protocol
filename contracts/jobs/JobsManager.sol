@@ -425,6 +425,9 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
                 _dataHashes
             );
         } else {
+            // If price is 0, reject any value transfers
+            require(msg.value == 0);
+
             verifierContract.verify(
                 _jobId,
                 _claimId,

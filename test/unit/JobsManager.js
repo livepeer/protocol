@@ -478,6 +478,11 @@ contract("JobsManager", accounts => {
             await expectThrow(jobsManager.verify(1, 0, 0, dataStorageHash, correctDataHashes, correctSig, badProof, {from: transcoder}))
         })
 
+        it("should fail if non-zero value is provided when the price of verification is 0", async () => {
+            await fixture.verifier.setMockUint256(functionSig("getPrice()"), 0)
+            await expectThrow(jobsManager.verify(1, 0, 0, dataStorageHash, correctDataHashes, correctSig, correctProof, {from: transcoder, value: 100}))
+        })
+
         it("should mark segment as submitted for verification", async () => {
             await jobsManager.verify(1, 0, 0, dataStorageHash, correctDataHashes, correctSig, correctProof, {from: transcoder})
 
