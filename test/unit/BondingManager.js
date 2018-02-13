@@ -255,33 +255,55 @@ contract("BondingManager", accounts => {
             describe("current round is in lock period", () => {
                 beforeEach(async () => {
                     await bondingManager.bond(1000, accounts[0], {from: accounts[0]})
-                    await bondingManager.transcoder(5, 10, 2, {from: accounts[0]})
-                    await bondingManager.bond(1000, accounts[1], {from: accounts[1]})
-                    await bondingManager.transcoder(5, 10, 5, {from: accounts[1]})
-
-                    await fixture.roundsManager.setMockBool(functionSig("currentRoundLocked()"), true)
+                    await bondingManager.transcoder(5, 10, 5, {from: accounts[0]})
                 })
 
                 it("should fail if caller is not a registered transcoder", async () => {
                     await expectThrow(bondingManager.transcoder(5, 10, 6, {from: accounts[2]}))
                 })
 
-                it("should fail if provided pricePerSegment is > previously set pendingPricePerSegment", async () => {
-                    await expectThrow(bondingManager.transcoder(5, 10, 6, {from: accounts[1]}))
+                describe("1 transcoder in the pool", () => {
+                    beforeEach(async () => {
+                        await fixture.roundsManager.setMockBool(functionSig("currentRoundLocked()"), true)
+                    })
+
+                    it("should fail if provided pricePerSegment is > previously set pendingPricePerSegment", async () => {
+                        await expectThrow(bondingManager.transcoder(5, 10, 6, {from: accounts[0]}))
+                    })
+
+                    it("should fail if provided pricePerSegment is < current price floor (transcoder's own price)", async () => {
+                        await expectThrow(bondingManager.transcoder(5, 10, 4, {from: accounts[0]}))
+                    })
+
+                    it("should set new pricePerSegment that is >= current price floor and <= previously set pendingPricePerSegment", async () => {
+                        // The only thing the caller can do is to set the price to its previously set pendingPricePerSegment
+                        // Note that the provided rewardCut and feeShare values will have no effect
+                        await bondingManager.transcoder(3, 11, 5, {from: accounts[0]})
+
+                        const tInfo = await bondingManager.getTranscoder(accounts[0])
+                        assert.equal(tInfo[4], 5, "should not change pendingRewardCut")
+                        assert.equal(tInfo[5], 10, "should not change pendingFeeShare")
+                        assert.equal(tInfo[6], 5, "should not change pendingPricePerSegment")
+                    })
                 })
 
-                it("should fail if provided pricePerSegment is < current price floor", async () => {
-                    await expectThrow(bondingManager.transcoder(5, 10, 1, {from: accounts[1]}))
-                })
+                describe("2 transcoders in the pool", () => {
+                    beforeEach(async () => {
+                        await bondingManager.bond(1000, accounts[1], {from: accounts[1]})
+                        await bondingManager.transcoder(5, 10, 2, {from: accounts[1]})
 
-                it("should set new pricePerSegment that is >= current price floor and <= previously set pendingPricePerSegment", async () => {
-                    // Note that the provided rewardCut and feeShare values will have no effect
-                    await bondingManager.transcoder(3, 11, 2, {from: accounts[1]})
+                        await fixture.roundsManager.setMockBool(functionSig("currentRoundLocked()"), true)
+                    })
 
-                    const tInfo = await bondingManager.getTranscoder(accounts[1])
-                    assert.equal(tInfo[4], 5, "should not change pendingRewardCut")
-                    assert.equal(tInfo[5], 10, "should not change pendingFeeShare")
-                    assert.equal(tInfo[6], 2, "should change pendingPricePerSegment to provided value")
+                    it("should set new pricePerSegment that is >= current price floor and <= previously set pendingPricePerSegment", async () => {
+                        // Note that the provided rewardCut and feeShare values will have no effect
+                        await bondingManager.transcoder(3, 11, 2, {from: accounts[0]})
+
+                        const tInfo = await bondingManager.getTranscoder(accounts[1])
+                        assert.equal(tInfo[4], 5, "should not change pendingRewardCut")
+                        assert.equal(tInfo[5], 10, "should not change pendingFeeShare")
+                        assert.equal(tInfo[6], 2, "should change pendingPricePerSegment to provided value")
+                    })
                 })
             })
         })

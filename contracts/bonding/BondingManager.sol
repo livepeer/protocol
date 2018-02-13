@@ -197,7 +197,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
             t.pendingPricePerSegment = _pricePerSegment;
 
-            TranscoderUpdate(msg.sender, t.blockRewardCut, t.feeShare, _pricePerSegment);
+            TranscoderUpdate(msg.sender, t.pendingBlockRewardCut, t.pendingFeeShare, _pricePerSegment);
         } else {
             // It is not the lock period of the current round
             // Caller is free to change rewardCut, feeShare, pricePerSegment as it pleases
