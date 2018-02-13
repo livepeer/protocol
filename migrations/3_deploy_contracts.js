@@ -35,7 +35,11 @@ module.exports = function(deployer, network) {
 
         deployer.logger.log("Initializing contracts...")
 
-        await bondingManager.setParameters(config.bondingManager.unbondingPeriod, config.bondingManager.numTranscoders, config.bondingManager.numActiveTranscoders)
+        // Set BondingManager parameters
+        await bondingManager.setUnbondingPeriod(config.bondingManager.unbondingPeriod)
+        await bondingManager.setNumTranscoders(config.bondingManager.numTranscoders)
+        await bondingManager.setNumActiveTranscoders(config.bondingManager.numActiveTranscoders)
+        await bondingManager.setMaxEarningsClaimsRounds(config.bondingManager.maxEarningsClaimsRounds)
 
         // Set JobsManager parameters
         await jobsManager.setVerificationRate(config.jobsManager.verificationRate)

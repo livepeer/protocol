@@ -9,7 +9,7 @@ contract IBondingManager {
     event TranscoderUpdate(address indexed transcoder, uint256 pendingBlockRewardCut, uint256 pendingFeeShare, uint256 pendingPricePerSegment);
     event TranscoderEvicted(address indexed transcoder);
     event TranscoderResigned(address indexed transcoder);
-    event TranscoderSlashed(address indexed transcoder, uint256 penalty);
+    event TranscoderSlashed(address indexed transcoder, address finder, uint256 penalty, uint256 finderReward);
     event Reward(address indexed transcoder, uint256 amount);
     event Bond(address indexed delegate, address indexed delegator);
     event Unbond(address indexed delegate, address indexed delegator);

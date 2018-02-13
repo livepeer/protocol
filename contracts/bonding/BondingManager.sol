@@ -13,6 +13,10 @@ import "zeppelin-solidity/contracts/math/Math.sol";
 import "zeppelin-solidity/contracts/math/SafeMath.sol";
 
 
+/**
+ * @title BondingManager
+ * @dev Manages bonding, transcoder and rewards/fee accounting related operations of the Livepeer protocol
+ */
 contract BondingManager is ManagerProxyTarget, IBondingManager {
     using SafeMath for uint256;
     using SortedDoublyLL for SortedDoublyLL.Data;
@@ -22,6 +26,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     uint64 public unbondingPeriod;
     // Number of active transcoders
     uint256 public numActiveTranscoders;
+    // Max number of rounds that a caller can claim earnings for at once
+    uint256 public maxEarningsClaimsRounds;
 
     // Represents a transcoder's current state
     struct Transcoder {
@@ -46,21 +52,21 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         uint256 delegatedAmount;                 // The amount of tokens delegated to the delegator
         uint256 startRound;                      // The round the delegator transitions to bonded phase and is delegated to someone
         uint256 withdrawRound;                   // The round at which a delegator can withdraw
-        uint256 lastClaimTokenPoolsSharesRound;  // The last round during which the delegator claimed its share of a transcoder's reward and fee pools
+        uint256 lastClaimRound;                  // The last round during which the delegator claimed its earnings
     }
 
     // The various states a delegator can be in
     enum DelegatorStatus { Pending, Bonded, Unbonding, Unbonded }
 
     // Keep track of the known transcoders and delegators
-    mapping (address => Delegator) delegators;
-    mapping (address => Transcoder) transcoders;
+    mapping (address => Delegator) private delegators;
+    mapping (address => Transcoder) private transcoders;
 
     // Keep track of total bonded tokens
-    uint256 totalBonded;
+    uint256 private totalBonded;
 
     // Candidate and reserve transcoders
-    SortedDoublyLL.Data transcoderPool;
+    SortedDoublyLL.Data private transcoderPool;
 
     // Represents the active transcoder set
     struct ActiveTranscoderSet {
@@ -90,34 +96,20 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         _;
     }
 
-    // Automatically claim token pools shares from lastClaimTokenPoolsSharesRound through the current round
-    modifier autoClaimTokenPoolsShares() {
-        updateDelegatorWithTokenPoolsShares(msg.sender, roundsManager().currentRound());
+    // Automatically claim earnings from lastClaimRound through the current round
+    modifier autoClaimEarnings() {
+        updateDelegatorWithEarnings(msg.sender, roundsManager().currentRound());
         _;
     }
 
+    /**
+     * @dev BondingManager constructor. Only invokes constructor of base Manager contract with provided Controller address
+     * @param _controller Address of Controller that this contract will be registered with
+     */
     function BondingManager(address _controller) public Manager(_controller) {}
 
-    /*
-     * @dev Batch set protocol parameters. Only callable by the controller owner
-     * @param _unbondingPeriod Rounds between unbonding and possible withdrawl
-     * @param _numTranscoders Max number of registered transcoders
-     * @param _numActiveTranscoders Number of active transcoders
-     */
-    function setParameters(uint64 _unbondingPeriod, uint256 _numTranscoders, uint256 _numActiveTranscoders) external onlyControllerOwner {
-        unbondingPeriod = _unbondingPeriod;
-
-        // Max number of transcoders must be greater than or equal to number of active transcoders
-        require(_numTranscoders >= _numActiveTranscoders);
-
-        transcoderPool.setMaxSize(_numTranscoders);
-        numActiveTranscoders = _numActiveTranscoders;
-
-        ParameterUpdate("all");
-    }
-
-    /*
-     * @dev Set unbonding period. Only callable by the controller owner
+    /**
+     * @dev Set unbonding period. Only callable by Controller owner
      * @param _unbondingPeriod Rounds between unbonding and possible withdrawal
      */
     function setUnbondingPeriod(uint64 _unbondingPeriod) external onlyControllerOwner {
@@ -126,8 +118,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         ParameterUpdate("unbondingPeriod");
     }
 
-    /*
-     * @dev Set max number of registered transcoders. Only callable by the controller owner
+    /**
+     * @dev Set max number of registered transcoders. Only callable by Controller owner
      * @param _numTranscoders Max number of registered transcoders
      */
     function setNumTranscoders(uint256 _numTranscoders) external onlyControllerOwner {
@@ -139,8 +131,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         ParameterUpdate("numTranscoders");
     }
 
-    /*
-     * @dev Set number of active transcoders. Only callable by the controller owner
+    /**
+     * @dev Set number of active transcoders. Only callable by Controller owner
      * @param _numActiveTranscoders Number of active transcoders
      */
     function setNumActiveTranscoders(uint256 _numActiveTranscoders) external onlyControllerOwner {
@@ -152,11 +144,21 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         ParameterUpdate("numActiveTranscoders");
     }
 
-    /*
+    /**
+     * @dev Set max number of rounds a caller can claim earnings for at once. Only callable by Controller owner
+     * @param _maxEarningsClaimsRounds Max number of rounds a caller can claim earnings for at once
+     */
+    function setMaxEarningsClaimsRounds(uint256 _maxEarningsClaimsRounds) external onlyControllerOwner {
+        maxEarningsClaimsRounds = _maxEarningsClaimsRounds;
+
+        ParameterUpdate("maxEarningsClaimsRounds");
+    }
+
+    /**
      * @dev The sender is declaring themselves as a candidate for active transcoding.
      * @param _blockRewardCut % of block reward paid to transcoder by a delegator
      * @param _feeShare % of fees paid to delegators by a transcoder
-     * @param _pricePerSegment Price per segment (denominated in LPT units) for a stream
+     * @param _pricePerSegment Price per segment (denominated in Wei) for a stream
      */
     function transcoder(uint256 _blockRewardCut, uint256 _feeShare, uint256 _pricePerSegment)
         external
@@ -186,14 +188,12 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         if (transcoderStatus(msg.sender) == TranscoderStatus.NotRegistered) {
             if (transcoderPool.isFull()) {
                 address lastTranscoder = transcoderPool.getLast();
+                // Must have more stake than the last transcoder in the pool
+                require(delegatedAmount > transcoderPool.getKey(lastTranscoder));
 
-                if (delegatedAmount > transcoderPool.getKey(lastTranscoder)) {
-                    // More stake than the last transcoder in the pool
-                    // Kick out last transcoder pool
-                    transcoderPool.remove(lastTranscoder);
+                transcoderPool.remove(lastTranscoder);
 
-                    TranscoderEvicted(lastTranscoder);
-                }
+                TranscoderEvicted(lastTranscoder);
             }
 
             transcoderPool.insert(msg.sender, delegatedAmount, address(0), address(0));
@@ -214,11 +214,13 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         external
         whenSystemNotPaused
         currentRoundInitialized
-        autoClaimTokenPoolsShares
+        autoClaimEarnings
     {
         Delegator storage del = delegators[msg.sender];
 
         uint256 currentRound = roundsManager().currentRound();
+        // Amount to delegate
+        uint256 delegationAmount = _amount;
 
         if (delegatorStatus(msg.sender) == DelegatorStatus.Unbonded || delegatorStatus(msg.sender) == DelegatorStatus.Unbonding) {
             // New delegate
@@ -228,12 +230,11 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             // If transitioning from unbonding or unbonded state
             // make sure to zero out withdraw round
             del.withdrawRound = 0;
-        }
-
-        // Amount to delegate
-        uint256 delegationAmount = _amount;
-
-        if (del.delegateAddress != address(0) && _to != del.delegateAddress) {
+            // Unbonded or unbonding state = no existing delegate
+            // Thus, delegation amount = bonded stake + provided amount
+            // If caller is bonding for the first time or withdrew previously bonded stake, delegation amount = provided amount
+            delegationAmount = delegationAmount.add(del.bondedAmount);
+        } else if (del.delegateAddress != address(0) && _to != del.delegateAddress) {
             // Changing delegate
             // Set start round
             del.startRound = currentRound.add(1);
@@ -249,19 +250,12 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             }
         }
 
-        if (del.delegateAddress == address(0)) {
-            // If no existing delegate, delegation amount = bonded stake + amount included in this function call
-            delegationAmount = delegationAmount.add(del.bondedAmount);
-        }
-
+        // Delegation amount must be > 0 - cannot delegate to someone without having bonded stake
+        require(delegationAmount > 0);
+        // Update delegate
         del.delegateAddress = _to;
-        del.bondedAmount = del.bondedAmount.add(_amount);
-
         // Update current delegate's delegated amount with delegation amount
         delegators[_to].delegatedAmount = delegators[_to].delegatedAmount.add(delegationAmount);
-
-        // Update total bonded tokens
-        totalBonded = totalBonded.add(_amount);
 
         if (transcoderStatus(_to) == TranscoderStatus.Registered) {
             // Delegated to a transcoder
@@ -270,6 +264,10 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         }
 
         if (_amount > 0) {
+            // Update bonded amount
+            del.bondedAmount = del.bondedAmount.add(_amount);
+            // Update total bonded tokens
+            totalBonded = totalBonded.add(_amount);
             // Transfer the LPT to the Minter
             livepeerToken().transferFrom(msg.sender, minter(), _amount);
         }
@@ -277,15 +275,14 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         Bond(_to, msg.sender);
     }
 
-    /*
+    /**
      * @dev Unbond delegator's current stake. Delegator enters unbonding state
-     * @param _amount Amount of tokens to unbond
      */
     function unbond()
         external
         whenSystemNotPaused
         currentRoundInitialized
-        autoClaimTokenPoolsShares
+        autoClaimEarnings
     {
         // Sender must be in bonded state
         require(delegatorStatus(msg.sender) == DelegatorStatus.Bonded);
@@ -301,9 +298,12 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // Update total bonded tokens
         totalBonded = totalBonded.sub(del.bondedAmount);
 
-        if (transcoderStatus(del.delegateAddress) == TranscoderStatus.Registered) {
-            // Previously delegated to a transcoder
-            // Decrease old transcoder's total stake
+        if (transcoderStatus(msg.sender) == TranscoderStatus.Registered) {
+            // If caller is a registered transcoder, resign
+            // In the future, with partial unbonding there would be a check for 0 bonded stake as well
+            resignTranscoder(msg.sender);
+        } else if (transcoderStatus(del.delegateAddress) == TranscoderStatus.Registered) {
+            // If delegate is a registered transcoder, decrease its delegated stake
             transcoderPool.updateKey(del.delegateAddress, transcoderPool.getKey(del.delegateAddress).sub(del.bondedAmount), address(0), address(0));
         }
 
@@ -311,12 +311,6 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         del.delegateAddress = address(0);
         // Unbonding delegator does not have a start round
         del.startRound = 0;
-
-        // If caller is a registered transcoder, resign
-        // In the future, with partial unbonding there would be a check for 0 bonded stake as well
-        if (transcoderStatus(msg.sender) == TranscoderStatus.Registered) {
-            resignTranscoder(msg.sender);
-        }
 
         Unbond(del.delegateAddress, msg.sender);
     }
@@ -349,7 +343,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         external
         whenSystemNotPaused
         currentRoundInitialized
-        autoClaimTokenPoolsShares
+        autoClaimEarnings
     {
         // Delegator must have fees
         require(delegators[msg.sender].fees > 0);
@@ -363,7 +357,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         WithdrawFees(msg.sender);
     }
 
-    /*
+    /**
      * @dev Set active transcoder set for the current round
      */
     function setActiveTranscoders() external whenSystemNotPaused onlyRoundsManager {
@@ -400,7 +394,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         activeTranscoderSet[currentRound].totalStake = totalStake;
     }
 
-    /*
+    /**
      * @dev Distribute the token rewards to transcoder and delegates.
      * Active transcoders call this once per cycle when it is their turn.
      */
@@ -424,7 +418,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         Reward(msg.sender, rewardTokens);
     }
 
-    /*
+    /**
      * @dev Update transcoder's fee pool
      * @param _transcoder Transcoder address
      * @param _fees Fees from verified job claims
@@ -448,7 +442,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         tokenPools.feePool = tokenPools.feePool.add(_fees);
     }
 
-    /*
+    /**
      * @dev Slash a transcoder. Slashing can be invoked by the protocol or a finder.
      * @param _transcoder Transcoder address
      * @param _finder Finder that proved a transcoder violated a slashing condition. Null address if there is no finder
@@ -483,18 +477,9 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             totalBonded = totalBonded.sub(penalty);
         }
 
-        uint256 currentRound = roundsManager().currentRound();
-
-        if (activeTranscoderSet[currentRound].isActive[_transcoder]) {
-            // Decrease total active stake for the round
-            activeTranscoderSet[currentRound].totalStake = activeTranscoderSet[currentRound].totalStake.sub(activeTranscoderTotalStake(_transcoder, currentRound));
-            // Set transcoder as inactive
-            activeTranscoderSet[currentRound].isActive[_transcoder] = false;
-        }
-
-        // If registered transcoder, remove from pool
+        // If registered transcoder, resign it
         if (transcoderStatus(_transcoder) == TranscoderStatus.Registered) {
-            transcoderPool.remove(_transcoder);
+            resignTranscoder(_transcoder);
         }
 
         // Account for penalty
@@ -506,18 +491,20 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
                 uint256 finderAmount = MathUtils.percOf(penalty, _finderFee);
                 minter().trustedTransferTokens(_finder, finderAmount);
 
-                // Subtract finder fee from the amount to be burned
-                burnAmount = burnAmount.sub(finderAmount);
+                // Minter burns the slashed funds - finder reward
+                minter().trustedBurnTokens(burnAmount.sub(finderAmount));
+
+                TranscoderSlashed(_transcoder, _finder, penalty, finderAmount);
+            } else {
+                // Minter burns the slashed funds
+                minter().trustedBurnTokens(burnAmount);
+
+                TranscoderSlashed(_transcoder, address(0), penalty, 0);
             }
-
-            // Minter burns the remaining slashed funds
-            minter().trustedBurnTokens(burnAmount);
         }
-
-        TranscoderSlashed(_transcoder, penalty);
     }
 
-    /*
+    /**
      * @dev Pseudorandomly elect a currently active transcoder that charges a price per segment less than or equal to the max price per segment for a job
      * Returns address of elected active transcoder and its price per segment
      * @param _maxPricePerSegment Max price (in LPT base units) per segment of a stream
@@ -566,80 +553,76 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         }
     }
 
-    /*
-     * @dev Claim token pools shares for a delegator from its lastClaimTokenPoolsSharesRound through the end round
+    /**
+     * @dev Claim token pools shares for a delegator from its lastClaimRound through the end round
      * @param _endRound The last round for which to claim token pools shares for a delegator
      */
-    function claimTokenPoolsShares(uint256 _endRound) external {
+    function claimEarnings(uint256 _endRound) external whenSystemNotPaused currentRoundInitialized {
         // End round must be after the last claim round
-        require(delegators[msg.sender].lastClaimTokenPoolsSharesRound < _endRound);
+        require(delegators[msg.sender].lastClaimRound < _endRound);
         // End round must not be after the current round
         require(_endRound <= roundsManager().currentRound());
 
-        updateDelegatorWithTokenPoolsShares(msg.sender, _endRound);
+        updateDelegatorWithEarnings(msg.sender, _endRound);
     }
 
-    /*
-     * @dev Returns pending bonded stake for a delegator. Includes reward pool shares since lastClaimTokenPoolsSharesRound
+    /**
+     * @dev Returns pending bonded stake for a delegator from its lastClaimRound through an end round
      * @param _delegator Address of delegator
+     * @param _endRound The last round to compute pending stake from
      */
-    function pendingStake(address _delegator) public view returns (uint256) {
+    function pendingStake(address _delegator, uint256 _endRound) public view returns (uint256) {
+        uint256 currentRound = roundsManager().currentRound();
         Delegator storage del = delegators[_delegator];
+        // End round must be before or equal to current round and after lastClaimRound
+        require(_endRound <= currentRound && _endRound > del.lastClaimRound);
 
-        // Add rewards from the rounds during which the delegator was bonded to a transcoder
-        if (delegatorStatus(_delegator) == DelegatorStatus.Bonded && transcoderStatus(del.delegateAddress) == TranscoderStatus.Registered) {
-            uint256 currentRound = roundsManager().currentRound();
-            uint256 currentBondedAmount = del.bondedAmount;
+        uint256 currentBondedAmount = del.bondedAmount;
 
-            for (uint256 i = del.lastClaimTokenPoolsSharesRound + 1; i <= currentRound; i++) {
-                TokenPools.Data storage tokenPools = transcoders[del.delegateAddress].tokenPoolsPerRound[i];
+        for (uint256 i = del.lastClaimRound + 1; i <= _endRound; i++) {
+            TokenPools.Data storage tokenPools = transcoders[del.delegateAddress].tokenPoolsPerRound[i];
 
+            bool isTranscoder = _delegator == del.delegateAddress;
+            if (tokenPools.hasClaimableShares()) {
+                // Calculate and add reward pool share from this round
+                currentBondedAmount = currentBondedAmount.add(tokenPools.rewardPoolShare(currentBondedAmount, isTranscoder));
+            }
+        }
+
+        return currentBondedAmount;
+    }
+
+    /**
+     * @dev Returns pending fees for a delegator from its lastClaimRound through an end round
+     * @param _delegator Address of delegator
+     * @param _endRound The last round to compute pending fees from
+     */
+    function pendingFees(address _delegator, uint256 _endRound) public view returns (uint256) {
+        uint256 currentRound = roundsManager().currentRound();
+        Delegator storage del = delegators[_delegator];
+        // End round must be before or equal to current round and after lastClaimRound
+        require(_endRound <= currentRound && _endRound > del.lastClaimRound);
+
+        uint256 currentFees = del.fees;
+        uint256 currentBondedAmount = del.bondedAmount;
+
+        for (uint256 i = del.lastClaimRound + 1; i <= _endRound; i++) {
+            TokenPools.Data storage tokenPools = transcoders[del.delegateAddress].tokenPoolsPerRound[i];
+
+            if (tokenPools.hasClaimableShares()) {
                 bool isTranscoder = _delegator == del.delegateAddress;
-                if (tokenPools.hasClaimableShares()) {
-                    // Calculate and add reward pool share from this round
-                    currentBondedAmount = currentBondedAmount.add(tokenPools.rewardPoolShare(currentBondedAmount, isTranscoder));
-                }
+                // Calculate and add fee pool share from this round
+                currentFees = currentFees.add(tokenPools.feePoolShare(currentBondedAmount, isTranscoder));
+                // Calculate new bonded amount with rewards from this round. Updated bonded amount used
+                // to calculate fee pool share in next round
+                currentBondedAmount = currentBondedAmount.add(tokenPools.rewardPoolShare(currentBondedAmount, isTranscoder));
             }
-
-            return currentBondedAmount;
-        } else {
-            return del.bondedAmount;
         }
+
+        return currentFees;
     }
 
-    /*
-     * @dev Returns pending fees for a delegator. Includes fee pool shares since lastClaimTokenPoolsSharesRound
-     * @param _delegator Address of delegator
-     */
-    function pendingFees(address _delegator) public view returns (uint256) {
-        Delegator storage del = delegators[_delegator];
-
-        // Add fees from the rounds during which the delegator was bonded to a transcoder
-        if (delegatorStatus(_delegator) == DelegatorStatus.Bonded && transcoderStatus(del.delegateAddress) == TranscoderStatus.Registered) {
-            uint256 currentRound = roundsManager().currentRound();
-            uint256 currentFees = del.fees;
-            uint256 currentBondedAmount = del.bondedAmount;
-
-            for (uint256 i = del.lastClaimTokenPoolsSharesRound + 1; i <= currentRound; i++) {
-                TokenPools.Data storage tokenPools = transcoders[del.delegateAddress].tokenPoolsPerRound[i];
-
-                if (tokenPools.hasClaimableShares()) {
-                    bool isTranscoder = _delegator == del.delegateAddress;
-                    // Calculate and add fee pool share from this round
-                    currentFees = currentFees.add(tokenPools.feePoolShare(currentBondedAmount, isTranscoder));
-                    // Calculate new bonded amount with rewards from this round. Updated bonded amount used
-                    // to calculate fee pool share in next round
-                    currentBondedAmount = currentBondedAmount.add(tokenPools.rewardPoolShare(currentBondedAmount, isTranscoder));
-                }
-            }
-
-            return currentFees;
-        } else {
-            return del.fees;
-        }
-    }
-
-    /*
+    /**
      * @dev Returns total bonded stake for an active transcoder
      * @param _transcoder Address of a transcoder
      */
@@ -650,7 +633,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         return transcoders[_transcoder].tokenPoolsPerRound[_round].totalStake;
     }
 
-    /*
+    /**
      * @dev Returns total bonded stake for a transcoder
      * @param _transcoder Address of transcoder
      */
@@ -670,7 +653,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         }
     }
 
-    /*
+    /**
      * @dev Computes delegator status
      * @param _delegator Address of delegator
      */
@@ -696,7 +679,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         }
     }
 
-    /*
+    /**
      * @dev Return transcoder information
      * @param _transcoder Address of transcoder
      */
@@ -718,12 +701,12 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         pendingPricePerSegment = t.pendingPricePerSegment;
     }
 
-    /*
+    /**
      * @dev Return transcoder's token pools for a given round
      * @param _transcoder Address of transcoder
      * @param _round Round number
      */
-    function getTranscoderTokenPoolsForRound(
+    function getTranscoderEarningsPoolForRound(
         address _transcoder,
         uint256 _round
     )
@@ -739,7 +722,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         claimableStake = tokenPools.claimableStake;
     }
 
-    /*
+    /**
      * @dev Return delegator info
      * @param _delegator Address of delegator
      */
@@ -748,7 +731,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     )
         public
         view
-        returns (uint256 bondedAmount, uint256 fees, address delegateAddress, uint256 delegatedAmount, uint256 startRound, uint256 withdrawRound, uint256 lastClaimTokenPoolsSharesRound)
+        returns (uint256 bondedAmount, uint256 fees, address delegateAddress, uint256 delegatedAmount, uint256 startRound, uint256 withdrawRound, uint256 lastClaimRound)
     {
         Delegator storage del = delegators[_delegator];
 
@@ -758,31 +741,31 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         delegatedAmount = del.delegatedAmount;
         startRound = del.startRound;
         withdrawRound = del.withdrawRound;
-        lastClaimTokenPoolsSharesRound = del.lastClaimTokenPoolsSharesRound;
+        lastClaimRound = del.lastClaimRound;
     }
 
-    /*
+    /**
      * @dev Returns max size of transcoder pool
      */
     function getTranscoderPoolMaxSize() public view returns (uint256) {
         return transcoderPool.getMaxSize();
     }
 
-    /*
+    /**
      * @dev Returns size of transcoder pool
      */
     function getTranscoderPoolSize() public view returns (uint256) {
         return transcoderPool.getSize();
     }
 
-    /*
+    /**
      * @dev Returns transcoder with most stake in pool
      */
     function getFirstTranscoderInPool() public view returns (address) {
         return transcoderPool.getFirst();
     }
 
-    /*
+    /**
      * @dev Returns next transcoder in pool for a given transcoder
      * @param _transcoder Address of a transcoder in the pool
      */
@@ -790,14 +773,14 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         return transcoderPool.getNext(_transcoder);
     }
 
-    /*
+    /**
      * @dev Return total bonded tokens
      */
     function getTotalBonded() public view returns (uint256) {
         return totalBonded;
     }
 
-    /*
+    /**
      * @dev Return total active stake for a round
      * @param _round Round number
      */
@@ -805,7 +788,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         return activeTranscoderSet[_round].totalStake;
     }
 
-    /*
+    /**
      * @dev Return whether a transcoder was active during a round
      * @param _transcoder Transcoder address
      * @param _round Round number
@@ -814,7 +797,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         return activeTranscoderSet[_round].isActive[_transcoder];
     }
 
-    /*
+    /**
      * @dev Return whether a transcoder is registered
      * @param _transcoder Transcoder address
      */
@@ -822,13 +805,15 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         return transcoderStatus(_transcoder) == TranscoderStatus.Registered;
     }
 
-    /*
+    /**
      * @dev Remove transcoder
      */
     function resignTranscoder(address _transcoder) internal {
         uint256 currentRound = roundsManager().currentRound();
         if (activeTranscoderSet[currentRound].isActive[_transcoder]) {
-            // If transcoder is active for the round set it as inactive
+            // Decrease total active stake for the round
+            activeTranscoderSet[currentRound].totalStake = activeTranscoderSet[currentRound].totalStake.sub(activeTranscoderTotalStake(_transcoder, currentRound));
+            // Set transcoder as inactive
             activeTranscoderSet[currentRound].isActive[_transcoder] = false;
         }
 
@@ -838,7 +823,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         TranscoderResigned(_transcoder);
     }
 
-    /*
+    /**
      * @dev Update a transcoder with rewards
      * @param _transcoder Address of transcoder
      * @param _rewards Amount of rewards
@@ -860,21 +845,28 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         totalBonded = totalBonded.add(_rewards);
     }
 
-    /*
-     * @dev Update a delegator with token pools shares from its lastClaimTokenPoolsSharesRound through a given round
+    /**
+     * @dev Update a delegator with token pools shares from its lastClaimRound through a given round
      * @param _delegator Delegator address
      * @param _endRound The last round for which to update a delegator's stake with token pools shares
      */
-    function updateDelegatorWithTokenPoolsShares(address _delegator, uint256 _endRound) internal {
+    function updateDelegatorWithEarnings(address _delegator, uint256 _endRound) internal {
         Delegator storage del = delegators[_delegator];
 
         // Only will have earnings to claim if you have a delegate
         // If not delegated, skip the earnings claim process
         if (del.delegateAddress != address(0)) {
+            // Cannot claim earnings for more than maxEarningsClaimsRounds
+            // This is a number to cause transactions to fail early if
+            // we know they will require too much gas to loop through all the necessary rounds to claim earnings
+            // The user should instead manually invoke `claimEarnings` to split up the claiming process
+            // across multiple transactions
+            require(_endRound.sub(del.lastClaimRound) <= maxEarningsClaimsRounds);
+
             uint256 currentBondedAmount = del.bondedAmount;
             uint256 currentFees = del.fees;
 
-            for (uint256 i = del.lastClaimTokenPoolsSharesRound + 1; i <= _endRound; i++) {
+            for (uint256 i = del.lastClaimRound + 1; i <= _endRound; i++) {
                 TokenPools.Data storage tokenPools = transcoders[del.delegateAddress].tokenPoolsPerRound[i];
 
                 if (tokenPools.hasClaimableShares()) {
@@ -892,25 +884,25 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             del.fees = currentFees;
         }
 
-        del.lastClaimTokenPoolsSharesRound = _endRound;
+        del.lastClaimRound = _endRound;
     }
 
-    /*
-     * @dev Return LivepeerToken
+    /**
+     * @dev Return LivepeerToken interface
      */
     function livepeerToken() internal view returns (ILivepeerToken) {
         return ILivepeerToken(controller.getContract(keccak256("LivepeerToken")));
     }
 
-    /*
-     * @dev Return Minter
+    /**
+     * @dev Return Minter interface
      */
     function minter() internal view returns (IMinter) {
         return IMinter(controller.getContract(keccak256("Minter")));
     }
 
-    /*
-     * @dev Return RoundsManager
+    /**
+     * @dev Return RoundsManager interface
      */
     function roundsManager() internal view returns (IRoundsManager) {
         return IRoundsManager(controller.getContract(keccak256("RoundsManager")));

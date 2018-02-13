@@ -66,7 +66,9 @@ contract("SlashingEdgeCases", accounts => {
         await token.approve(bondingManager.address, 1000, {from: transcoder1})
         await bondingManager.bond(1000, transcoder1, {from: transcoder1})
         await bondingManager.transcoder(10, 5, 1, {from: transcoder1})
+    })
 
+    beforeEach(async () => {
         // Fast forward to new round with locked in active transcoder set
         await roundsManager.mineBlocks(roundLength.toNumber())
         await roundsManager.initializeRound()

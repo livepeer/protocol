@@ -8,7 +8,8 @@ module.exports = {
     bondingManager: {
         numTranscoders: 10,
         numActiveTranscoders: 5,
-        unbondingPeriod: 2
+        unbondingPeriod: 2,
+        maxEarningsClaimsRounds: 20
     },
     jobsManager: {
         verificationRate: 100,
