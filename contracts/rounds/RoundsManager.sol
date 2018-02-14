@@ -66,6 +66,9 @@ contract RoundsManager is ManagerProxyTarget, IRoundsManager {
      * @param _roundLockAmount Round lock amount as a % of the number of blocks in a round
      */
     function setRoundLockAmount(uint256 _roundLockAmount) external onlyControllerOwner {
+        // Must be a valid percentage
+        require(MathUtils.validPerc(_roundLockAmount));
+
         roundLockAmount = _roundLockAmount;
 
         ParameterUpdate("roundLockAmount");

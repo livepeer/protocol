@@ -3,12 +3,31 @@ pragma solidity ^0.4.17;
 import "./ManagerProxyTarget.sol";
 
 
+/**
+ * @title ManagerProxy
+ * @dev A proxy contract that uses delegatecall to execute function calls on a target contract using its own storage context.
+ * The target contract is a Manager contract that is registered with the Controller.
+ * Note: Both this proxy contract and its target contract MUST inherit from ManagerProxyTarget in order to guarantee
+ * that both contracts have the same storage layout. Differing storage layouts in a proxy contract and target contract can
+ * potentially break the delegate proxy upgradeability mechanism
+ */
 contract ManagerProxy is ManagerProxyTarget {
+    /**
+     * @dev ManagerProxy constructor. Invokes constructor of base Manager contract with provided Controller address.
+     * Also, sets the contract ID of the target contract that function calls will be executed on.
+     * @param _controller Address of Controller that this contract will be registered with
+     * @param _targetContractId contract ID of the target contract
+     */
     function ManagerProxy(address _controller, bytes32 _targetContractId) public Manager(_controller) {
         targetContractId = _targetContractId;
     }
 
-    // Based on https://github.com/AugurProject/augur-core/blob/develop/src/libraries/Delegator.sol
+    /**
+     * @dev Uses delegatecall to execute function calls on this proxy contract's target contract using its own storage context.
+     * This fallback function will look up the address of the target contract using the Controller and the target contract ID.
+     * It will then use the calldata for a function call as the data payload for a delegatecall on the target contract. The return value
+     * of the executed function call will also be returned
+     */
     function() public payable {
         address target = controller.getContract(targetContractId);
         // Target contract must be registered

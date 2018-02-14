@@ -138,6 +138,10 @@ contract("RoundsManager", accounts => {
             await expectThrow(roundsManager.setRoundLockAmount(50, {from: accounts[2]}))
         })
 
+        it("should fail if provided roundLockAmount is an invalid percentage (> 100%)", async () => {
+            await expectThrow(roundsManager.setRoundLockAmount(PERC_DIVISOR + 1))
+        })
+
         it("should set roundLockAmount", async () => {
             await roundsManager.setRoundLockAmount(50)
 

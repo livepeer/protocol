@@ -745,7 +745,7 @@ contract("BondingManager", accounts => {
             await fixture.roundsManager.execute(bondingManager.address, functionSig("setActiveTranscoders()"))
 
             const tInfo0 = await bondingManager.getTranscoder(transcoder0)
-            assert.equal(tInfo0[1], tInfo0[4].toNumber(), "should set blockRewardCut to pendingBlockRewardCut")
+            assert.equal(tInfo0[1], tInfo0[4].toNumber(), "should set rewardCut to pendingRewardCut")
             assert.equal(tInfo0[2], tInfo0[5].toNumber(), "should set feeShare to pendingFeeShare")
             assert.equal(tInfo0[3], tInfo0[6].toNumber(), "should set pricePerSegment to pendingPricePerSegment")
             const earningsPool0 = await bondingManager.getTranscoderEarningsPoolForRound(transcoder0, currentRound + 1)
@@ -756,7 +756,7 @@ contract("BondingManager", accounts => {
             assert.isOk(await bondingManager.isActiveTranscoder(transcoder0, currentRound + 1), "should set transcoder as active for current round")
 
             const tInfo1 = await bondingManager.getTranscoder(transcoder1)
-            assert.equal(tInfo1[1], tInfo1[4].toNumber(), "should set blockRewardCut to pendingBlockRewardCut")
+            assert.equal(tInfo1[1], tInfo1[4].toNumber(), "should set rewardCut to pendingRewardCut")
             assert.equal(tInfo1[2], tInfo1[5].toNumber(), "should set feeShare to pendingFeeShare")
             assert.equal(tInfo1[3], tInfo1[6].toNumber(), "should set pricePerSegment to pendingPricePerSegment")
             const earningsPool1 = await bondingManager.getTranscoderEarningsPoolForRound(transcoder1, currentRound + 1)
