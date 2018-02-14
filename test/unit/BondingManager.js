@@ -151,6 +151,17 @@ contract("BondingManager", accounts => {
 
             describe("transcoder pool is not full", () => {
                 it("should add new transcoder to the pool", async () => {
+                    let e = bondingManager.TranscoderUpdate({transcoder: accounts[0]})
+
+                    e.watch(async (err, res) => {
+                        e.stopWatching()
+
+                        assert.equal(res.args.pendingRewardCut, 5, "should fire TranscoderUpdate event with provided rewardCut")
+                        assert.equal(res.args.pendingFeeShare, 10, "should fire TranscoderUpdate event with provided feeShare")
+                        assert.equal(res.args.pendingPricePerSegment, 1, "should fire TranscoderUpdate event with provided pricePerSegment")
+                        assert.equal(res.args.registered, true, "should fire TranscoderUpdate event with registered set to true")
+                    })
+
                     await bondingManager.bond(1000, accounts[0])
                     await bondingManager.transcoder(5, 10, 1)
 
@@ -174,56 +185,95 @@ contract("BondingManager", accounts => {
             })
 
             describe("transcoder pool is full", () => {
-                it("should fail if caller has insufficient delegated stake (less than transcoder with least delegated stake)", async () => {
-                    const transcoders = accounts.slice(0, 5)
-                    const newTranscoder = accounts[5]
+                describe("caller has sufficient delegated stake to join pool", () => {
+                    it("should evict the transcoder with the least delegated stake and add new transcoder to the pool", async () => {
+                        const transcoders = accounts.slice(0, 5)
+                        const newTranscoder = accounts[5]
 
-                    await Promise.all(transcoders.map(account => {
-                        return bondingManager.bond(2000, account, {from: account}).then(() => {
-                            return bondingManager.transcoder(5, 10, 1, {from: account})
+                        await Promise.all(transcoders.map((account, idx) => {
+                            return bondingManager.bond(1000 * (idx + 1), account, {from: account}).then(() => {
+                                return bondingManager.transcoder(5, 10, 1, {from: account})
+                            })
+                        }))
+
+                        let e = bondingManager.TranscoderUpdate({transcoder: newTranscoder})
+
+                        e.watch(async (err, res) => {
+                            e.stopWatching()
+
+                            assert.equal(res.args.pendingRewardCut, 5, "should fire TranscoderUpdate event with provided rewardCut")
+                            assert.equal(res.args.pendingFeeShare, 10, "should fire TranscoderUpdate event with provided feeShare")
+                            assert.equal(res.args.pendingPricePerSegment, 1, "should fire TranscoderUpdate event with provided pricePerSegment")
+                            assert.equal(res.args.registered, true, "should fire TranscoderUpdate event with registered set to true")
                         })
-                    }))
 
-                    // Caller bonds 600 - less than transcoder with least delegated stake
-                    await bondingManager.bond(600, newTranscoder, {from: newTranscoder})
+                        // Caller bonds 3000 - more transcoder with least delegated stake
+                        await bondingManager.bond(6000, newTranscoder, {from: newTranscoder})
+                        await bondingManager.transcoder(5, 10, 1, {from: newTranscoder})
 
-                    await expectThrow(bondingManager.transcoder(5, 10, 1, {from: newTranscoder}))
+                        assert.equal(await bondingManager.transcoderStatus(newTranscoder), TranscoderStatus.Registered, "caller should be registered as transocder")
+                        assert.equal(await bondingManager.getTranscoderPoolSize(), 5, "wrong transcoder pool size")
+                        assert.equal(await bondingManager.transcoderTotalStake(newTranscoder), 6000, "wrong transcoder total stake")
+                        assert.equal(await bondingManager.transcoderStatus(accounts[0]), TranscoderStatus.NotRegistered, "transcoder with least delegated stake should be evicted")
+                    })
                 })
 
-                it("should fail if caller has insufficient delegated stake (same as transcoder with least delegated stake)", async () => {
-                    const transcoders = accounts.slice(0, 5)
-                    const newTranscoder = accounts[5]
+                describe("caller has insufficient delegated stake to join pool", () => {
+                    it("should not add caller with less delegated stake than transcoder with least delegated stake in pool", async () => {
+                        const transcoders = accounts.slice(0, 5)
+                        const newTranscoder = accounts[5]
 
-                    await Promise.all(transcoders.map(account => {
-                        return bondingManager.bond(2000, account, {from: account}).then(() => {
-                            return bondingManager.transcoder(5, 10, 1, {from: account})
+                        await Promise.all(transcoders.map(account => {
+                            return bondingManager.bond(2000, account, {from: account}).then(() => {
+                                return bondingManager.transcoder(5, 10, 1, {from: account})
+                            })
+                        }))
+
+                        let e = bondingManager.TranscoderUpdate({transcoder: newTranscoder})
+
+                        e.watch(async (err, res) => {
+                            e.stopWatching()
+
+                            assert.equal(res.args.pendingRewardCut, 5, "should fire TranscoderUpdate event with provided rewardCut")
+                            assert.equal(res.args.pendingFeeShare, 10, "should fire TranscoderUpdate event with provided feeShare")
+                            assert.equal(res.args.pendingPricePerSegment, 1, "should fire TranscoderUpdate event with provided pricePerSegment")
+                            assert.equal(res.args.registered, false, "should fire TranscoderUpdate event with registered set to true")
                         })
-                    }))
 
-                    // Caller bonds 2000 - same as transcoder with least delegated stake
-                    await bondingManager.bond(2000, newTranscoder, {from: newTranscoder})
+                        // Caller bonds 600 - less than transcoder with least delegated stake
+                        await bondingManager.bond(600, newTranscoder, {from: newTranscoder})
+                        await bondingManager.transcoder(5, 10, 1, {from: newTranscoder})
 
-                    await expectThrow(bondingManager.transcoder(5, 10, 1, {from: newTranscoder}))
-                })
+                        assert.equal(await bondingManager.transcoderStatus(newTranscoder), TranscoderStatus.NotRegistered, "should not register caller as a transcoder in the pool")
+                    })
 
-                it("should evict the transcoder with the least delegated stake and add new transcoder to the pool", async () => {
-                    const transcoders = accounts.slice(0, 5)
-                    const newTranscoder = accounts[5]
+                    it("should not add caller with equal delegated stake to transcoder with least delegated stake in pool", async () => {
+                        const transcoders = accounts.slice(0, 5)
+                        const newTranscoder = accounts[5]
 
-                    await Promise.all(transcoders.map((account, idx) => {
-                        return bondingManager.bond(1000 * (idx + 1), account, {from: account}).then(() => {
-                            return bondingManager.transcoder(5, 10, 1, {from: account})
+                        await Promise.all(transcoders.map(account => {
+                            return bondingManager.bond(2000, account, {from: account}).then(() => {
+                                return bondingManager.transcoder(5, 10, 1, {from: account})
+                            })
+                        }))
+
+                        let e = bondingManager.TranscoderUpdate({transcoder: newTranscoder})
+
+                        e.watch(async (err, res) => {
+                            e.stopWatching()
+
+                            assert.equal(res.args.pendingRewardCut, 5, "should fire TranscoderUpdate event with provided rewardCut")
+                            assert.equal(res.args.pendingFeeShare, 10, "should fire TranscoderUpdate event with provided feeShare")
+                            assert.equal(res.args.pendingPricePerSegment, 1, "should fire TranscoderUpdate event with provided pricePerSegment")
+                            assert.equal(res.args.registered, false, "should fire TranscoderUpdate event with registered set to true")
                         })
-                    }))
 
-                    // Caller bonds 3000 - more transcoder with least delegated stake
-                    await bondingManager.bond(6000, newTranscoder, {from: newTranscoder})
-                    await bondingManager.transcoder(5, 10, 1, {from: newTranscoder})
+                        // Caller bonds 2000 - same as transcoder with least delegated stake
+                        await bondingManager.bond(2000, newTranscoder, {from: newTranscoder})
+                        await bondingManager.transcoder(5, 10, 1, {from: newTranscoder})
 
-                    assert.equal(await bondingManager.transcoderStatus(newTranscoder), TranscoderStatus.Registered, "caller should be registered as transocder")
-                    assert.equal(await bondingManager.getTranscoderPoolSize(), 5, "wrong transcoder pool size")
-                    assert.equal(await bondingManager.transcoderTotalStake(newTranscoder), 6000, "wrong transcoder total stake")
-                    assert.equal(await bondingManager.transcoderStatus(accounts[0]), TranscoderStatus.NotRegistered, "transcoder with least delegated stake should be evicted")
+                        assert.equal(await bondingManager.transcoderStatus(newTranscoder), TranscoderStatus.NotRegistered, "should not register caller as a transcoder in the pool")
+                    })
                 })
             })
         })

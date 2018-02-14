@@ -203,12 +203,16 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
             t.pendingPricePerSegment = _pricePerSegment;
 
-            TranscoderUpdate(msg.sender, t.pendingRewardCut, t.pendingFeeShare, _pricePerSegment);
+            TranscoderUpdate(msg.sender, t.pendingRewardCut, t.pendingFeeShare, _pricePerSegment, true);
         } else {
             // It is not the lock period of the current round
             // Caller is free to change rewardCut, feeShare, pricePerSegment as it pleases
             // If caller is not a registered transcoder, it can also register and join the transcoder pool
             // if it has sufficient delegated stake
+            // If caller is not a registered transcoder and does not have sufficient delegated stake
+            // to join the transcoder pool, it can change rewardCut, feeShare, pricePerSegment
+            // as information signals to delegators in an effort to camapaign and accumulate
+            // more delegated stake
 
             // Reward cut must be a valid percentage
             require(MathUtils.validPerc(_rewardCut));
@@ -226,20 +230,25 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
             // Check if transcoder is not already registered
             if (transcoderStatus(msg.sender) == TranscoderStatus.NotRegistered) {
-                if (transcoderPool.isFull()) {
+                if (!transcoderPool.isFull()) {
+                    // If pool is not full add new transcoder
+                    transcoderPool.insert(msg.sender, delegatedAmount, address(0), address(0));
+                } else {
                     address lastTranscoder = transcoderPool.getLast();
-                    // Must have more stake than the last transcoder in the pool
-                    require(delegatedAmount > transcoderPool.getKey(lastTranscoder));
 
-                    transcoderPool.remove(lastTranscoder);
+                    if (delegatedAmount > transcoderPool.getKey(lastTranscoder)) {
+                        // If pool is full and caller has more delegated stake than the transcoder in the pool with the least delegated stake:
+                        // - Evict transcoder in pool with least delegated stake
+                        // - Add caller to pool
+                        transcoderPool.remove(lastTranscoder);
+                        transcoderPool.insert(msg.sender, delegatedAmount, address(0), address(0));
 
-                    TranscoderEvicted(lastTranscoder);
+                        TranscoderEvicted(lastTranscoder);
+                    }
                 }
-
-                transcoderPool.insert(msg.sender, delegatedAmount, address(0), address(0));
             }
 
-            TranscoderUpdate(msg.sender, _rewardCut, _feeShare, _pricePerSegment);
+            TranscoderUpdate(msg.sender, _rewardCut, _feeShare, _pricePerSegment, transcoderPool.contains(msg.sender));
         }
     }
 
