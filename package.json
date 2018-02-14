@@ -13,7 +13,7 @@
     "ganache": "./node_modules/.bin/ganache-cli -l 0x663BE0",
     "compile": "rm -rf build/contracts && truffle compile --all",
     "coveralls": "cat coverage/lcov.info | ./node_modules/.bin/coveralls",
-    "test:coverage": "SOLIDITY_COVERAGE=true bash scripts/run_ganache.sh && ./node_modules/.bin/solidity-coverage || true",
+    "test:coverage": "SOLIDITY_COVERAGE=true bash scripts/run_ganache.sh && ./node_modules/.bin/solidity-coverage && npm run coveralls || true",
     "test:unit": "bash scripts/run_ganache.sh && truffle test test/unit/*",
     "test:integration": "bash scripts/run_ganache.sh && truffle test test/integration/*",
     "docker:build": "docker build --cache-from livepeer/protocol:latest --tag livepeer/protocol:latest -f Dockerfile .",
