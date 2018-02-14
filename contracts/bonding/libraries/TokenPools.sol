@@ -14,14 +14,14 @@ library TokenPools {
         uint256 feePool;                   // Fees in the pool
         uint256 totalStake;                // Transcoder's total stake during the pool's round
         uint256 claimableStake;            // Stake that can be used to claim portions of the fee and reward pool
-        uint256 transcoderBlockRewardCut;  // Block reward cut for the reward pool
+        uint256 transcoderRewardCut;       // Reward cut for the reward pool
         uint256 transcoderFeeShare;        // Fee share for the fee pool
     }
 
-    function init(TokenPools.Data storage tokenPools, uint256 _stake, uint256 _blockRewardCut, uint256 _feeShare) internal {
+    function init(TokenPools.Data storage tokenPools, uint256 _stake, uint256 _rewardCut, uint256 _feeShare) internal {
         tokenPools.totalStake = _stake;
         tokenPools.claimableStake = _stake;
-        tokenPools.transcoderBlockRewardCut = _blockRewardCut;
+        tokenPools.transcoderRewardCut = _rewardCut;
         tokenPools.transcoderFeeShare = _feeShare;
     }
 
@@ -73,7 +73,7 @@ library TokenPools {
         uint256 delegatorRewards = 0;
 
         if (tokenPools.claimableStake > 0) {
-            transcoderRewards = MathUtils.percOf(tokenPools.rewardPool, tokenPools.transcoderBlockRewardCut);
+            transcoderRewards = MathUtils.percOf(tokenPools.rewardPool, tokenPools.transcoderRewardCut);
             delegatorRewards = MathUtils.percOf(tokenPools.rewardPool.sub(transcoderRewards), _stake, tokenPools.claimableStake);
         }
 

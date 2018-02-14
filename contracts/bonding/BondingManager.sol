@@ -32,10 +32,10 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     // Represents a transcoder's current state
     struct Transcoder {
         uint256 lastRewardRound;                             // Last round that the transcoder called reward
-        uint256 blockRewardCut;                              // % of block reward cut paid to transcoder by a delegator
+        uint256 rewardCut;                                   // % of reward paid to transcoder by a delegator
         uint256 feeShare;                                    // % of fees paid to delegators by transcoder
         uint256 pricePerSegment;                             // Price per segment (denominated in LPT units) for a stream
-        uint256 pendingBlockRewardCut;                       // Pending block reward cut for next round if the transcoder is active
+        uint256 pendingRewardCut;                            // Pending reward cut for next round if the transcoder is active
         uint256 pendingFeeShare;                             // Pending fee share for next round if the transcoder is active
         uint256 pendingPricePerSegment;                      // Pending price per segment for next round if the transcoder is active
         mapping (uint256 => TokenPools.Data) tokenPoolsPerRound;  // Mapping of round => token pools for the round
@@ -156,11 +156,11 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
     /**
      * @dev The sender is declaring themselves as a candidate for active transcoding.
-     * @param _blockRewardCut % of block reward paid to transcoder by a delegator
+     * @param _rewardCut % of reward paid to transcoder by a delegator
      * @param _feeShare % of fees paid to delegators by a transcoder
      * @param _pricePerSegment Price per segment (denominated in Wei) for a stream
      */
-    function transcoder(uint256 _blockRewardCut, uint256 _feeShare, uint256 _pricePerSegment)
+    function transcoder(uint256 _rewardCut, uint256 _feeShare, uint256 _pricePerSegment)
         external
         whenSystemNotPaused
         currentRoundInitialized
@@ -176,9 +176,9 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
             // Caller must already be a registered transcoder
             require(transcoderStatus(msg.sender) == TranscoderStatus.Registered);
-            // Provided blockRewardCut value must equal the current pendingBlockRewardCut value
+            // Provided rewardCut value must equal the current pendingRewardCut value
             // This value cannot change during the lock period
-            require(_blockRewardCut == t.pendingBlockRewardCut);
+            require(_rewardCut == t.pendingRewardCut);
             // Provided feeShare value must equal the current pendingFeeShare value
             // This value cannot change during the lock period
             require(_feeShare == t.pendingFeeShare);
@@ -203,22 +203,22 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
             t.pendingPricePerSegment = _pricePerSegment;
 
-            TranscoderUpdate(msg.sender, t.pendingBlockRewardCut, t.pendingFeeShare, _pricePerSegment);
+            TranscoderUpdate(msg.sender, t.pendingRewardCut, t.pendingFeeShare, _pricePerSegment);
         } else {
             // It is not the lock period of the current round
             // Caller is free to change rewardCut, feeShare, pricePerSegment as it pleases
             // If caller is not a registered transcoder, it can also register and join the transcoder pool
             // if it has sufficient delegated stake
 
-            // Block reward cut must be a valid percentage
-            require(MathUtils.validPerc(_blockRewardCut));
+            // Reward cut must be a valid percentage
+            require(MathUtils.validPerc(_rewardCut));
             // Fee share must be a valid percentage
             require(MathUtils.validPerc(_feeShare));
 
             // Must have a non-zero amount bonded to self
             require(del.delegateAddress == msg.sender && del.bondedAmount > 0);
 
-            t.pendingBlockRewardCut = _blockRewardCut;
+            t.pendingRewardCut = _rewardCut;
             t.pendingFeeShare = _feeShare;
             t.pendingPricePerSegment = _pricePerSegment;
 
@@ -239,7 +239,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
                 transcoderPool.insert(msg.sender, delegatedAmount, address(0), address(0));
             }
 
-            TranscoderUpdate(msg.sender, _blockRewardCut, _feeShare, _pricePerSegment);
+            TranscoderUpdate(msg.sender, _rewardCut, _feeShare, _pricePerSegment);
         }
     }
 
@@ -413,17 +413,17 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             activeTranscoderSet[currentRound].isActive[currentTranscoder] = true;
 
             uint256 stake = transcoderPool.getKey(currentTranscoder);
-            uint256 blockRewardCut = transcoders[currentTranscoder].pendingBlockRewardCut;
+            uint256 rewardCut = transcoders[currentTranscoder].pendingRewardCut;
             uint256 feeShare = transcoders[currentTranscoder].pendingFeeShare;
             uint256 pricePerSegment = transcoders[currentTranscoder].pendingPricePerSegment;
 
             Transcoder storage t = transcoders[currentTranscoder];
             // Set pending rates as current rates
-            t.blockRewardCut = blockRewardCut;
+            t.rewardCut = rewardCut;
             t.feeShare = feeShare;
             t.pricePerSegment = pricePerSegment;
             // Initialize token pool
-            t.tokenPoolsPerRound[currentRound].init(stake, blockRewardCut, feeShare);
+            t.tokenPoolsPerRound[currentRound].init(stake, rewardCut, feeShare);
 
             totalStake = totalStake.add(stake);
 
@@ -729,15 +729,15 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     )
         public
         view
-        returns (uint256 lastRewardRound, uint256 blockRewardCut, uint256 feeShare, uint256 pricePerSegment, uint256 pendingBlockRewardCut, uint256 pendingFeeShare, uint256 pendingPricePerSegment)
+        returns (uint256 lastRewardRound, uint256 rewardCut, uint256 feeShare, uint256 pricePerSegment, uint256 pendingRewardCut, uint256 pendingFeeShare, uint256 pendingPricePerSegment)
     {
         Transcoder storage t = transcoders[_transcoder];
 
         lastRewardRound = t.lastRewardRound;
-        blockRewardCut = t.blockRewardCut;
+        rewardCut = t.rewardCut;
         feeShare = t.feeShare;
         pricePerSegment = t.pricePerSegment;
-        pendingBlockRewardCut = t.pendingBlockRewardCut;
+        pendingRewardCut = t.pendingRewardCut;
         pendingFeeShare = t.pendingFeeShare;
         pendingPricePerSegment = t.pendingPricePerSegment;
     }
