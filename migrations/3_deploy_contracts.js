@@ -27,7 +27,7 @@ module.exports = function(deployer, network) {
 
         let roundsManager
 
-        if (network === "development" || network === "testrpc" || network === "parityDev" || network === "gethDev") {
+        if (network === "development" || network === "testrpc" || network === "parityDev" || network === "gethDev" || network === "coverage") {
             roundsManager = await lpDeployer.deployProxyAndRegister(AdjustableRoundsManager, "RoundsManager", controller.address)
         } else {
             roundsManager = await lpDeployer.deployProxyAndRegister(RoundsManager, "RoundsManager", controller.address)

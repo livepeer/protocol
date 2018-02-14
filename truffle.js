@@ -11,6 +11,13 @@ module.exports = {
             network_id: "*", // Match any network id
             gas: 6700000
         },
+        coverage: {
+            host: "localhost",
+            network_id: "*",
+            port: 8555,
+            gas: 0xffffffffff,
+            gasPrice: 0x01
+        },
         parityDev: {
             host: "parity-dev",
             port: 8545,
