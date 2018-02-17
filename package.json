@@ -19,7 +19,7 @@
     "docker:build": "docker build --cache-from livepeer/protocol:latest --tag livepeer/protocol:latest -f Dockerfile .",
     "docker:push": "docker push livepeer/protocol:latest",
     "docker:run:lint": "docker run --rm --entrypoint=npm livepeer/protocol:latest run lint",
-    "docker:run:test:coverage": "docker run --rm --entrypoint=npm livepeer/protocol:latest run test:coverage:coveralls",
+    "docker:run:test:coverage": "docker run -e COVERALLS_REPO_TOKEN=$COVERALLS_REPO_TOKEN --rm --entrypoint=npm livepeer/protocol:latest run test:coverage:coveralls",
     "docker:run:test:unit": "docker run --rm --entrypoint=npm livepeer/protocol:latest run test:unit",
     "docker:run:test:integration": "docker run --rm --entrypoint=npm livepeer/protocol:latest run test:integration"
   },
