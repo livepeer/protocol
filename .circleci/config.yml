@@ -27,7 +27,10 @@ jobs:
           name: Run linting
           command: npm run docker:run:lint
       - run:
-          name: Run unit tests
+          name: Run unit tests with coverage
+          command: npm run docker:run:test:coverage
+      - run:
+          name: Run unit tests without coverage
           command: npm run docker:run:test:unit
       - run:
           name: Run integration tests

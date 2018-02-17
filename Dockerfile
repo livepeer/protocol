@@ -5,6 +5,7 @@ WORKDIR /app/
 # Need .git so we can get the git head commit hash
 COPY .git /app/.git
 COPY .babelrc /app/.babelrc
+COPY .solcover.js /app/.solcover.js
 COPY .soliumrc.json /app/.soliumrc.json
 COPY .soliumignore /app/.soliumignore
 COPY .eslintrc.js /app/.eslintrc.js
