@@ -30,5 +30,8 @@ jobs:
           name: Run unit tests with coverage
           command: npm run docker:run:test:coverage
       - run:
+          name: Run unit tests without coverage
+          command: npm run docker:run:test:unit
+      - run:
           name: Run integration tests
           command: npm run docker:run:test:integration
