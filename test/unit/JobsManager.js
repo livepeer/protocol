@@ -99,7 +99,7 @@ contract("JobsManager", accounts => {
 
         it("should fail if provided verificationSlashingPeriod + current verificationPeriod > 256", async () => {
             const verificationPeriod = await jobsManager.verificationPeriod.call()
-            await expectThrow(jobsManager.setVerificationPeriod((256 - verificationPeriod.toNumber()) + 1))
+            await expectThrow(jobsManager.setVerificationSlashingPeriod((256 - verificationPeriod.toNumber()) + 1))
         })
 
         it("should set verificationSlashingPeriod", async () => {
@@ -320,6 +320,12 @@ contract("JobsManager", accounts => {
 
         it("should fail if segment range is invalid", async () => {
             await expectThrow(jobsManager.claimWork(1, [3, 0], claimRoot, {from: transcoder}))
+        })
+
+        it("should fail if caller is not a registered transcoder", async () => {
+            await fixture.bondingManager.setMockBool(functionSig("isRegisteredTranscoder(address)"), false)
+
+            await expectThrow(jobsManager.claimWork(1, segmentRange, claimRoot, {from: transcoder}))
         })
 
         it("should fail if the transcoder address is set and does not match caller address", async () => {
