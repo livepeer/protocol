@@ -18,6 +18,29 @@ contract("Minter", accounts => {
     const INFLATION_CHANGE = .02 * PERC_MULTIPLIER
     const TARGET_BONDING_RATE = 50 * PERC_MULTIPLIER
 
+    describe("constructor", () => {
+        it("should fail if provided inflation is invalid percentage > 100%", async () => {
+            await expectThrow(Minter.new(accounts[0], PERC_DIVISOR + 1, INFLATION_CHANGE, TARGET_BONDING_RATE))
+        })
+
+        it("should fail if provided inflationChange is invalid percentage > 100%", async () => {
+            await expectThrow(Minter.new(accounts[0], INFLATION, PERC_DIVISOR + 1, TARGET_BONDING_RATE))
+        })
+
+        it("should fail if provided targetBondingRate is invalid percentage > 100%", async () => {
+            await expectThrow(Minter.new(accounts[0], INFLATION, INFLATION_CHANGE, PERC_DIVISOR + 1))
+        })
+
+        it("should create contract", async () => {
+            const minter = await Minter.new(accounts[0], INFLATION, INFLATION_CHANGE, TARGET_BONDING_RATE)
+
+            assert.equal(await minter.controller.call(), accounts[0], "should set Controller address")
+            assert.equal(await minter.inflation.call(), INFLATION, "should set inflation")
+            assert.equal(await minter.inflationChange.call(), INFLATION_CHANGE, "should set inflationChange")
+            assert.equal(await minter.targetBondingRate.call(), TARGET_BONDING_RATE, "should set targetBondingRate")
+        })
+    })
+
     before(async () => {
         fixture = new Fixture(web3)
         await fixture.deploy()
@@ -67,6 +90,7 @@ contract("Minter", accounts => {
 
     describe("migrateToNewMinter", () => {
         it("should fail if caller is not Controller owner", async () => {
+            await fixture.controller.pause()
             await expectThrow(minter.migrateToNewMinter(accounts[1], {from: accounts[4]}))
         })
 
@@ -79,18 +103,22 @@ contract("Minter", accounts => {
         })
 
         it("should fail if provided new minter is the current minter", async () => {
+            await fixture.controller.pause()
             await expectThrow(minter.migrateToNewMinter(minter.address))
         })
 
         it("should fail if provided new minter is null address", async () => {
+            await fixture.controller.pause()
             await expectThrow(minter.migrateToNewMinter(constants.NULL_ADDRESS))
         })
 
         it("should fail if provided new minter does not have a getController() function", async () => {
+            await fixture.controller.pause()
             await expectThrow(minter.migrateToNewMinter(accounts[1]))
         })
 
         it("should fail if provided new minter has a different controller", async () => {
+            await fixture.controller.pause()
             const newMinter = await GenericMock.new()
             await newMinter.setMockAddress(functionSig("getController()"), accounts[1])
 
@@ -98,6 +126,7 @@ contract("Minter", accounts => {
         })
 
         it("should fail if provided new minter's controller does not have current minter registered", async () => {
+            await fixture.controller.pause()
             const newMinter = await GenericMock.new()
             const controllerAddr = await minter.controller.call()
             await newMinter.setMockAddress(functionSig("getController()"), controllerAddr)
@@ -365,6 +394,12 @@ contract("Minter", accounts => {
             await fixture.roundsManager.execute(minter.address, functionSig("setCurrentRewardTokens()"))
 
             assert.equal(await minter.currentMintedTokens.call(), 0, "wrong currentMintedTokens")
+        })
+    })
+
+    describe("getController()", () => {
+        it("should return Controller", async () => {
+            assert.equal(await minter.getController(), fixture.controller.address, "should return Controller address")
         })
     })
 })
