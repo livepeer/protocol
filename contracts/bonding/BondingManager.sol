@@ -509,28 +509,28 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         whenSystemNotPaused
         onlyJobsManager
     {
-        uint256 penalty = MathUtils.percOf(delegators[_transcoder].bondedAmount, _slashAmount);
-
         Delegator storage del = delegators[_transcoder];
 
-        // Decrease bonded stake
-        del.bondedAmount = del.bondedAmount.sub(penalty);
+        if (del.bondedAmount > 0) {
+            uint256 penalty = MathUtils.percOf(delegators[_transcoder].bondedAmount, _slashAmount);
 
-        // If still bonded
-        // - Decrease delegate's delegated amount
-        // - Decrease total bonded tokens
-        if (delegatorStatus(_transcoder) == DelegatorStatus.Bonded) {
-            delegators[del.delegateAddress].delegatedAmount = delegators[del.delegateAddress].delegatedAmount.sub(penalty);
-            totalBonded = totalBonded.sub(penalty);
-        }
+            // Decrease bonded stake
+            del.bondedAmount = del.bondedAmount.sub(penalty);
 
-        // If registered transcoder, resign it
-        if (transcoderStatus(_transcoder) == TranscoderStatus.Registered) {
-            resignTranscoder(_transcoder);
-        }
+            // If still bonded
+            // - Decrease delegate's delegated amount
+            // - Decrease total bonded tokens
+            if (delegatorStatus(_transcoder) == DelegatorStatus.Bonded) {
+                delegators[del.delegateAddress].delegatedAmount = delegators[del.delegateAddress].delegatedAmount.sub(penalty);
+                totalBonded = totalBonded.sub(penalty);
+            }
 
-        // Account for penalty
-        if (penalty > 0) {
+            // If registered transcoder, resign it
+            if (transcoderStatus(_transcoder) == TranscoderStatus.Registered) {
+                resignTranscoder(_transcoder);
+            }
+
+            // Account for penalty
             uint256 burnAmount = penalty;
 
             // Award finder fee if there is a finder address
@@ -548,6 +548,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
                 TranscoderSlashed(_transcoder, address(0), penalty, 0);
             }
+        } else {
+            TranscoderSlashed(_transcoder, _finder, 0, 0);
         }
     }
 

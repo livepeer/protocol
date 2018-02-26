@@ -380,18 +380,18 @@ contract("BondingManager", accounts => {
                             await fixture.roundsManager.setMockBool(functionSig("currentRoundLocked()"), false)
 
                             await bondingManager.bond(500, accounts[1], {from: accounts[1]})
-                            await bondingManager.transcoder(5, 10, 10, {from: accounts[1]})
+                            await bondingManager.transcoder(5, 10, 2, {from: accounts[1]})
 
                             await fixture.roundsManager.setMockBool(functionSig("currentRoundLocked()"), true)
                         })
 
                         it("should set new pricePerSegment that is >= current price floor and <= previously set pendingPricePerSegment", async () => {
-                            await bondingManager.transcoder(5, 10, 5, {from: accounts[1]})
+                            await bondingManager.transcoder(5, 10, 2, {from: accounts[0]})
 
-                            const tInfo = await bondingManager.getTranscoder(accounts[1])
+                            const tInfo = await bondingManager.getTranscoder(accounts[0])
                             assert.equal(tInfo[4], 5, "should not change pendingRewardCut")
                             assert.equal(tInfo[5], 10, "should not change pendingFeeShare")
-                            assert.equal(tInfo[6], 5, "should change pendingPricePerSegment to provided value")
+                            assert.equal(tInfo[6], 2, "should change pendingPricePerSegment to provided value")
                         })
                     })
                 })
@@ -1150,6 +1150,36 @@ contract("BondingManager", accounts => {
 
                     assert.equal(res.args.finder, constants.NULL_ADDRESS, "should fire TranscoderSlashed event with null finder")
                     assert.equal(res.args.penalty, 500, "should fire TranscoderSlashed event with slashed amount penalty")
+                    assert.equal(res.args.finderReward, 0, "should fire TranscoderSlashed event with finder reward of 0")
+                })
+
+                await fixture.jobsManager.execute(
+                    bondingManager.address,
+                    functionEncodedABI(
+                        "slashTranscoder(address,address,uint256,uint256)",
+                        ["address", "uint256", "uint256", "uint256"],
+                        [transcoder, constants.NULL_ADDRESS, PERC_DIVISOR / 2, 0]
+                    )
+                )
+            })
+        })
+
+        describe("transcoder no longer has a bonded amount", () => {
+            beforeEach(async () => {
+                await bondingManager.unbond({from: transcoder})
+                const unbondingPeriod = await bondingManager.unbondingPeriod.call()
+                await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 1 + unbondingPeriod.toNumber())
+                await bondingManager.withdrawStake({from: transcoder})
+            })
+
+            it("fires a TranscoderSlashed event, but transcoder is not penalized because it does not have a bonded amount", async () => {
+                let e = bondingManager.TranscoderSlashed({transcoder: transcoder})
+
+                e.watch(async (err, res) => {
+                    e.stopWatching()
+
+                    assert.equal(res.args.finder, constants.NULL_ADDRESS, "should fire TranscoderSlashed event with null finder")
+                    assert.equal(res.args.penalty, 0, "should fire TranscoderSlashed event with slashed amount penalty of 0")
                     assert.equal(res.args.finderReward, 0, "should fire TranscoderSlashed event with finder reward of 0")
                 })
 
