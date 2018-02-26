@@ -88,6 +88,7 @@ contract TestEarningsPool {
     }
 
     function test_feePoolShare_noClaimableStake() public {
+        fixture.init(0, 0, 0);
         Assert.equal(fixture.feePoolShare(500, false), 0, "should return 0 if no claimble stake");
     }
 
@@ -102,6 +103,7 @@ contract TestEarningsPool {
     }
 
     function test_rewardPoolShare_noClaimableStake() public {
+        fixture.init(0, 0, 0);
         Assert.equal(fixture.rewardPoolShare(500, false), 0, "should return 0 if no claimable stake");
     }
 
