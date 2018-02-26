@@ -1,5 +1,5 @@
 const SortedDoublyLL = artifacts.require("SortedDoublyLL")
-const TokenPools = artifacts.require("TokenPools")
+const EarningsPool = artifacts.require("EarningsPool")
 const MerkleProof = artifacts.require("MerkleProof")
 const ECRecovery = artifacts.require("ECRecovery")
 const JobLib = artifacts.require("JobLib")
@@ -27,14 +27,14 @@ module.exports = function(deployer) {
         JobsManager,
         RoundsManager,
         Minter,
-        TokenPools
+        EarningsPool
     ])
 
     deployer.deploy(SortedDoublyLL)
     deployer.link(SortedDoublyLL, BondingManager)
 
-    deployer.deploy(TokenPools)
-    deployer.link(TokenPools, BondingManager)
+    deployer.deploy(EarningsPool)
+    deployer.link(EarningsPool, BondingManager)
 
     deployer.deploy(MerkleProof)
     deployer.link(MerkleProof, JobLib)
