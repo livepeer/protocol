@@ -510,9 +510,6 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         onlyJobsManager
     {
         uint256 penalty = MathUtils.percOf(delegators[_transcoder].bondedAmount, _slashAmount);
-        if (penalty > del.bondedAmount) {
-            penalty = del.bondedAmount;
-        }
 
         Delegator storage del = delegators[_transcoder];
 
