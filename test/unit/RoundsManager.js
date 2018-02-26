@@ -1,5 +1,6 @@
 import Fixture from "./helpers/Fixture"
 import expectThrow from "../helpers/expectThrow"
+import {contractId} from "../../utils/helpers"
 
 const RoundsManager = artifacts.require("RoundsManager")
 
@@ -29,6 +30,18 @@ contract("RoundsManager", accounts => {
 
     afterEach(async () => {
         await fixture.tearDown()
+    })
+
+    describe("setController", () => {
+        it("should fail if caller is not Controller", async () => {
+            await expectThrow(roundsManager.setController(accounts[0]))
+        })
+
+        it("should set new Controller", async () => {
+            await fixture.controller.updateController(contractId("RoundsManager"), accounts[0])
+
+            assert.equal(await roundsManager.controller.call(), accounts[0], "should set new Controller")
+        })
     })
 
     describe("setRoundLength", () => {

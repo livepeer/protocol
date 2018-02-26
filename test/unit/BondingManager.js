@@ -1,6 +1,6 @@
 import Fixture from "./helpers/Fixture"
 import expectThrow from "../helpers/expectThrow"
-import {functionSig, functionEncodedABI} from "../../utils/helpers"
+import {contractId, functionSig, functionEncodedABI} from "../../utils/helpers"
 import {constants} from "../../utils/constants"
 
 const BondingManager = artifacts.require("BondingManager")
@@ -47,6 +47,18 @@ contract("BondingManager", accounts => {
 
     afterEach(async () => {
         await fixture.tearDown()
+    })
+
+    describe("setController", () => {
+        it("should fail if caller is not Controller", async () => {
+            await expectThrow(bondingManager.setController(accounts[0]))
+        })
+
+        it("should set new Controller", async () => {
+            await fixture.controller.updateController(contractId("BondingManager"), accounts[0])
+
+            assert.equal(await bondingManager.controller.call(), accounts[0], "should set new Controller")
+        })
     })
 
     describe("setUnbondingPeriod", () => {

@@ -1,6 +1,6 @@
 import Fixture from "./helpers/Fixture"
 import expectThrow from "../helpers/expectThrow"
-import {functionSig, functionEncodedABI} from "../../utils/helpers"
+import {contractId, functionSig, functionEncodedABI} from "../../utils/helpers"
 import {constants} from "../../utils/constants"
 import {createTranscodingOptions} from "../../utils/videoProfile"
 import MerkleTree from "../../utils/merkleTree"
@@ -57,6 +57,18 @@ contract("JobsManager", accounts => {
 
     afterEach(async () => {
         await fixture.tearDown()
+    })
+
+    describe("setController", () => {
+        it("should fail if caller is not Controller", async () => {
+            await expectThrow(jobsManager.setController(accounts[0]))
+        })
+
+        it("should set new Controller", async () => {
+            await fixture.controller.updateController(contractId("JobsManager"), accounts[0])
+
+            assert.equal(await jobsManager.controller.call(), accounts[0], "should set new Controller")
+        })
     })
 
     describe("setVerificationRate", () => {
