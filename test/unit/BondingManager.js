@@ -1222,7 +1222,7 @@ contract("BondingManager", accounts => {
             )
         })
 
-        it("should not exclude transcoders with a pirce = provided maxPricePerSegment", async () => {
+        it("should not exclude transcoders with a price = provided maxPricePerSegment", async () => {
             assert.equal(
                 await bondingManager.electActiveTranscoder(5, web3.sha3("foo"), currentRound + 1),
                 transcoder0,
@@ -1249,6 +1249,19 @@ contract("BondingManager", accounts => {
                 await bondingManager.electActiveTranscoder(6, web3.sha3("foo"), currentRound + 2),
                 constants.NULL_ADDRESS,
                 "should return null address if there are no active transcoders"
+            )
+        })
+
+        it("should return a transcoder if there is only one available active transcoder", async () => {
+            await bondingManager.unbond({from: transcoder0})
+
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 2)
+            await fixture.roundsManager.execute(bondingManager.address, functionSig("setActiveTranscoders()"))
+
+            assert.equal(
+                await bondingManager.electActiveTranscoder(10, web3.sha3("foo"), currentRound + 2),
+                transcoder1,
+                "should return a transcoder if there is only one available active transcoder"
             )
         })
 

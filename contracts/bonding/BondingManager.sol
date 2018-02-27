@@ -593,7 +593,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
                 j++;
             }
 
-            return availableTranscoders[j];
+            return availableTranscoders[j - 1];
         }
     }
 
