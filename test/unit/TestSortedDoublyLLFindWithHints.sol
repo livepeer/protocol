@@ -74,6 +74,21 @@ contract TestSortedDoublyLLFindWithHints {
         Assert.equal(fixture.getPrev(ids[0]), address(0), "wrong prev");
     }
 
+    function test_insert_findWithHintNextUpdateTail() public {
+        fixture.insert(ids[0], keys[0], address(0), address(0));
+        fixture.insert(ids[2], keys[2], ids[1], address(0));
+        fixture.insert(ids[3], keys[3], ids[2], address(0));
+        fixture.insert(ids[4], keys[4], ids[3], address(0));
+        fixture.insert(ids[5], keys[5], ids[4], address(0));
+
+        fixture.insert(ids[1], 3, address(0), ids[5]);
+        Assert.equal(fixture.getSize(), 6, "wrong size");
+        Assert.equal(fixture.getLast(), ids[1], "wrong tail");
+        Assert.equal(fixture.getKey(ids[1]), 3, "wrong key");
+        Assert.equal(fixture.getNext(ids[1]), address(0), "wrong next");
+        Assert.equal(fixture.getPrev(ids[1]), ids[5], "wrong prev");
+    }
+
     function test_insert_findWithHintNextAtPosition() public {
         fixture.insert(ids[0], keys[0], address(0), address(0));
         fixture.insert(ids[1], keys[1], ids[0], address(0));

@@ -1,6 +1,7 @@
 pragma solidity ^0.4.17;
 
 import "../../contracts/test/SortedDoublyLLFixture.sol";
+import "../../contracts/test/RevertProxy.sol";
 import "truffle/Assert.sol";
 
 
@@ -9,10 +10,21 @@ contract TestSortedDoublyLLUpdateKey {
     uint256[] keys = [uint256(13), uint256(11), uint256(9), uint256(7), uint256(5), uint256(3)];
 
     SortedDoublyLLFixture fixture;
+    RevertProxy proxy;
+
+    function beforeAll() public {
+        proxy = new RevertProxy();
+    }
 
     function beforeEach() public {
         fixture = new SortedDoublyLLFixture();
         fixture.setMaxSize(10);
+    }
+
+    function test_updateKey_missingId() public {
+        SortedDoublyLLFixture(address(proxy)).updateKey(ids[3], 5, address(0), address(0));
+        bool result = proxy.execute(address(fixture));
+        Assert.isFalse(result, "did not revert");
     }
 
     function test_updateKey_increaseNoHint() public {
@@ -47,5 +59,15 @@ contract TestSortedDoublyLLUpdateKey {
         Assert.equal(fixture.getPrev(ids[3]), ids[4], "wrong prev");
         Assert.equal(fixture.getNext(ids[4]), ids[3], "wrong next");
         Assert.equal(fixture.getPrev(ids[5]), ids[3], "wrong prev");
+    }
+
+    function test_updateKey_zeroNewKey() public {
+        fixture.insert(ids[0], keys[0], address(0), address(0));
+        fixture.insert(ids[1], keys[1], ids[0], address(0));
+        fixture.insert(ids[2], keys[2], ids[1], address(0));
+
+        uint256 newKey = 0;
+        fixture.updateKey(ids[2], newKey, address(0), address(0));
+        Assert.isFalse(fixture.contains(ids[2]), "list should not contain id after updating with newKey = 0");
     }
 }

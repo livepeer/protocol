@@ -311,14 +311,14 @@ library SortedDoublyLL {
         address nextId = _nextId;
 
         if (prevId != address(0)) {
-            if (!contains(self, prevId) || _key < self.nodes[prevId].key) {
+            if (!contains(self, prevId) || _key > self.nodes[prevId].key) {
                 // `prevId` does not exist anymore or now has a smaller key than the given key
                 prevId = address(0);
             }
         }
 
         if (nextId != address(0)) {
-            if (!contains(self, nextId) || _key > self.nodes[nextId].key) {
+            if (!contains(self, nextId) || _key < self.nodes[nextId].key) {
                 // `nextId` does not exist anymore or now has a larger key than the given key
                 nextId = address(0);
             }

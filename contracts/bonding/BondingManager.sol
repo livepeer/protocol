@@ -4,7 +4,7 @@ import "../ManagerProxyTarget.sol";
 import "./IBondingManager.sol";
 import "../libraries/SortedDoublyLL.sol";
 import "../libraries/MathUtils.sol";
-import "./libraries/TokenPools.sol";
+import "./libraries/EarningsPool.sol";
 import "../token/ILivepeerToken.sol";
 import "../token/IMinter.sol";
 import "../rounds/IRoundsManager.sol";
@@ -20,7 +20,7 @@ import "zeppelin-solidity/contracts/math/SafeMath.sol";
 contract BondingManager is ManagerProxyTarget, IBondingManager {
     using SafeMath for uint256;
     using SortedDoublyLL for SortedDoublyLL.Data;
-    using TokenPools for TokenPools.Data;
+    using EarningsPool for EarningsPool.Data;
 
     // Time between unbonding and possible withdrawl in rounds
     uint64 public unbondingPeriod;
@@ -38,7 +38,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         uint256 pendingRewardCut;                            // Pending reward cut for next round if the transcoder is active
         uint256 pendingFeeShare;                             // Pending fee share for next round if the transcoder is active
         uint256 pendingPricePerSegment;                      // Pending price per segment for next round if the transcoder is active
-        mapping (uint256 => TokenPools.Data) tokenPoolsPerRound;  // Mapping of round => token pools for the round
+        mapping (uint256 => EarningsPool.Data) earningsPoolPerRound;  // Mapping of round => earnings pool for the round
     }
 
     // The various states a transcoder can be in
@@ -432,7 +432,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             t.feeShare = feeShare;
             t.pricePerSegment = pricePerSegment;
             // Initialize token pool
-            t.tokenPoolsPerRound[currentRound].init(stake, rewardCut, feeShare);
+            t.earningsPoolPerRound[currentRound].init(stake, rewardCut, feeShare);
 
             totalStake = totalStake.add(stake);
 
@@ -487,9 +487,9 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
         Transcoder storage t = transcoders[_transcoder];
 
-        TokenPools.Data storage tokenPools = t.tokenPoolsPerRound[_round];
+        EarningsPool.Data storage earningsPool = t.earningsPoolPerRound[_round];
         // Add fees to fee pool
-        tokenPools.feePool = tokenPools.feePool.add(_fees);
+        earningsPool.feePool = earningsPool.feePool.add(_fees);
     }
 
     /**
@@ -509,31 +509,28 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         whenSystemNotPaused
         onlyJobsManager
     {
-        uint256 penalty = MathUtils.percOf(delegators[_transcoder].bondedAmount, _slashAmount);
-        if (penalty > del.bondedAmount) {
-            penalty = del.bondedAmount;
-        }
-
         Delegator storage del = delegators[_transcoder];
 
-        // Decrease bonded stake
-        del.bondedAmount = del.bondedAmount.sub(penalty);
+        if (del.bondedAmount > 0) {
+            uint256 penalty = MathUtils.percOf(delegators[_transcoder].bondedAmount, _slashAmount);
 
-        // If still bonded
-        // - Decrease delegate's delegated amount
-        // - Decrease total bonded tokens
-        if (delegatorStatus(_transcoder) == DelegatorStatus.Bonded) {
-            delegators[del.delegateAddress].delegatedAmount = delegators[del.delegateAddress].delegatedAmount.sub(penalty);
-            totalBonded = totalBonded.sub(penalty);
-        }
+            // Decrease bonded stake
+            del.bondedAmount = del.bondedAmount.sub(penalty);
 
-        // If registered transcoder, resign it
-        if (transcoderStatus(_transcoder) == TranscoderStatus.Registered) {
-            resignTranscoder(_transcoder);
-        }
+            // If still bonded
+            // - Decrease delegate's delegated amount
+            // - Decrease total bonded tokens
+            if (delegatorStatus(_transcoder) == DelegatorStatus.Bonded) {
+                delegators[del.delegateAddress].delegatedAmount = delegators[del.delegateAddress].delegatedAmount.sub(penalty);
+                totalBonded = totalBonded.sub(penalty);
+            }
 
-        // Account for penalty
-        if (penalty > 0) {
+            // If registered transcoder, resign it
+            if (transcoderStatus(_transcoder) == TranscoderStatus.Registered) {
+                resignTranscoder(_transcoder);
+            }
+
+            // Account for penalty
             uint256 burnAmount = penalty;
 
             // Award finder fee if there is a finder address
@@ -551,6 +548,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
                 TranscoderSlashed(_transcoder, address(0), penalty, 0);
             }
+        } else {
+            TranscoderSlashed(_transcoder, _finder, 0, 0);
         }
     }
 
@@ -584,22 +583,17 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             // There is no currently available transcoder that charges a price per segment less than or equal to the max price per segment for a job
             return address(0);
         } else {
-            address electedTranscoder = availableTranscoders[numAvailableTranscoders - 1];
-
             // Pseudorandomly pick an available transcoder weighted by its stake relative to the total stake of all available transcoders
             uint256 r = uint256(_blockHash) % totalAvailableTranscoderStake;
             uint256 s = 0;
+            uint256 j = 0;
 
-            for (uint256 j = 0; j < numAvailableTranscoders; j++) {
+            while (s <= r && j < numAvailableTranscoders) {
                 s = s.add(activeTranscoderTotalStake(availableTranscoders[j], _round));
-
-                if (s > r) {
-                    electedTranscoder = availableTranscoders[j];
-                    break;
-                }
+                j++;
             }
 
-            return electedTranscoder;
+            return availableTranscoders[j - 1];
         }
     }
 
@@ -630,12 +624,12 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         uint256 currentBondedAmount = del.bondedAmount;
 
         for (uint256 i = del.lastClaimRound + 1; i <= _endRound; i++) {
-            TokenPools.Data storage tokenPools = transcoders[del.delegateAddress].tokenPoolsPerRound[i];
+            EarningsPool.Data storage earningsPool = transcoders[del.delegateAddress].earningsPoolPerRound[i];
 
             bool isTranscoder = _delegator == del.delegateAddress;
-            if (tokenPools.hasClaimableShares()) {
+            if (earningsPool.hasClaimableShares()) {
                 // Calculate and add reward pool share from this round
-                currentBondedAmount = currentBondedAmount.add(tokenPools.rewardPoolShare(currentBondedAmount, isTranscoder));
+                currentBondedAmount = currentBondedAmount.add(earningsPool.rewardPoolShare(currentBondedAmount, isTranscoder));
             }
         }
 
@@ -657,15 +651,15 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         uint256 currentBondedAmount = del.bondedAmount;
 
         for (uint256 i = del.lastClaimRound + 1; i <= _endRound; i++) {
-            TokenPools.Data storage tokenPools = transcoders[del.delegateAddress].tokenPoolsPerRound[i];
+            EarningsPool.Data storage earningsPool = transcoders[del.delegateAddress].earningsPoolPerRound[i];
 
-            if (tokenPools.hasClaimableShares()) {
+            if (earningsPool.hasClaimableShares()) {
                 bool isTranscoder = _delegator == del.delegateAddress;
                 // Calculate and add fee pool share from this round
-                currentFees = currentFees.add(tokenPools.feePoolShare(currentBondedAmount, isTranscoder));
+                currentFees = currentFees.add(earningsPool.feePoolShare(currentBondedAmount, isTranscoder));
                 // Calculate new bonded amount with rewards from this round. Updated bonded amount used
                 // to calculate fee pool share in next round
-                currentBondedAmount = currentBondedAmount.add(tokenPools.rewardPoolShare(currentBondedAmount, isTranscoder));
+                currentBondedAmount = currentBondedAmount.add(earningsPool.rewardPoolShare(currentBondedAmount, isTranscoder));
             }
         }
 
@@ -680,7 +674,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // Must be active transcoder
         require(activeTranscoderSet[_round].isActive[_transcoder]);
 
-        return transcoders[_transcoder].tokenPoolsPerRound[_round].totalStake;
+        return transcoders[_transcoder].earningsPoolPerRound[_round].totalStake;
     }
 
     /**
@@ -764,12 +758,12 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         view
         returns (uint256 rewardPool, uint256 feePool, uint256 totalStake, uint256 claimableStake)
     {
-        TokenPools.Data storage tokenPools = transcoders[_transcoder].tokenPoolsPerRound[_round];
+        EarningsPool.Data storage earningsPool = transcoders[_transcoder].earningsPoolPerRound[_round];
 
-        rewardPool = tokenPools.rewardPool;
-        feePool = tokenPools.feePool;
-        totalStake = tokenPools.totalStake;
-        claimableStake = tokenPools.claimableStake;
+        rewardPool = earningsPool.rewardPool;
+        feePool = earningsPool.feePool;
+        totalStake = earningsPool.totalStake;
+        claimableStake = earningsPool.claimableStake;
     }
 
     /**
@@ -883,9 +877,9 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         Transcoder storage t = transcoders[_transcoder];
         Delegator storage del = delegators[_transcoder];
 
-        TokenPools.Data storage tokenPools = t.tokenPoolsPerRound[_round];
+        EarningsPool.Data storage earningsPool = t.earningsPoolPerRound[_round];
         // Add rewards to reward pool
-        tokenPools.rewardPool = tokenPools.rewardPool.add(_rewards);
+        earningsPool.rewardPool = earningsPool.rewardPool.add(_rewards);
         // Update transcoder's delegated amount with rewards
         del.delegatedAmount = del.delegatedAmount.add(_rewards);
         // Update transcoder's total stake with rewards
@@ -917,12 +911,12 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             uint256 currentFees = del.fees;
 
             for (uint256 i = del.lastClaimRound + 1; i <= _endRound; i++) {
-                TokenPools.Data storage tokenPools = transcoders[del.delegateAddress].tokenPoolsPerRound[i];
+                EarningsPool.Data storage earningsPool = transcoders[del.delegateAddress].earningsPoolPerRound[i];
 
-                if (tokenPools.hasClaimableShares()) {
+                if (earningsPool.hasClaimableShares()) {
                     bool isTranscoder = _delegator == del.delegateAddress;
 
-                    var (fees, rewards) = tokenPools.claimShare(currentBondedAmount, isTranscoder);
+                    var (fees, rewards) = earningsPool.claimShare(currentBondedAmount, isTranscoder);
 
                     currentFees = currentFees.add(fees);
                     currentBondedAmount = currentBondedAmount.add(rewards);

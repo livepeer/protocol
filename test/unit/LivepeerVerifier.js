@@ -14,6 +14,14 @@ contract("LivepeerVerifier", accounts => {
     const codeHash = "QmZmvi1BaYSdxM1Tgwhi2mURabh46xCkzuH9PWeAkAZZGc"
 
     describe("constructor", () => {
+        it("should fail if a provided solver address is the null address", async () => {
+            await expectThrow(LivepeerVerifier.new(accounts[0], [accounts[1], constants.NULL_ADDRESS], codeHash))
+        })
+
+        it("should fail if the same solver address is provided more than once", async () => {
+            await expectThrow(LivepeerVerifier.new(accounts[0], [accounts[1], accounts[2], accounts[2]], codeHash))
+        })
+
         it("should create contract", async () => {
             const verifier = await LivepeerVerifier.new(accounts[0], solvers, codeHash)
 
@@ -220,6 +228,12 @@ contract("LivepeerVerifier", accounts => {
 
             const wrongCommitHash = ethUtil.bufferToHex(ethAbi.soliditySHA3(["bytes", "bytes"], [ethUtil.toBuffer(dataHashes[0]), ethUtil.toBuffer(web3.sha3("not pear"))]))
             await verifier.__callback(0, wrongCommitHash, {from: accounts[0]})
+        })
+    })
+
+    describe("getPrice", () => {
+        it("should return 0", async () => {
+            assert.equal(await verifier.getPrice(), 0, "should return a price of 0")
         })
     })
 })

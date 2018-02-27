@@ -35,12 +35,6 @@ contract Minter is Manager, IMinter {
         _;
     }
 
-    // Checks if caller is JobsManager
-    modifier onlyJobsManager() {
-        require(msg.sender == controller.getContract(keccak256("JobsManager")));
-        _;
-    }
-
     // Checks if caller is RoundsManager
     modifier onlyRoundsManager() {
         require(msg.sender == controller.getContract(keccak256("RoundsManager")));
@@ -231,13 +225,6 @@ contract Minter is Manager, IMinter {
      */
     function livepeerToken() internal view returns (ILivepeerToken) {
         return ILivepeerToken(controller.getContract(keccak256("LivepeerToken")));
-    }
-
-    /**
-     * @dev Returns RoundsManager interface
-     */
-    function roundsManager() internal view returns (IRoundsManager) {
-        return IRoundsManager(controller.getContract(keccak256("RoundsManager")));
     }
 
     /**

@@ -1,6 +1,6 @@
 import Fixture from "./helpers/Fixture"
 import expectThrow from "../helpers/expectThrow"
-import {functionSig, functionEncodedABI} from "../../utils/helpers"
+import {contractId, functionSig, functionEncodedABI} from "../../utils/helpers"
 import {constants} from "../../utils/constants"
 import {createTranscodingOptions} from "../../utils/videoProfile"
 import MerkleTree from "../../utils/merkleTree"
@@ -59,6 +59,18 @@ contract("JobsManager", accounts => {
         await fixture.tearDown()
     })
 
+    describe("setController", () => {
+        it("should fail if caller is not Controller", async () => {
+            await expectThrow(jobsManager.setController(accounts[0]))
+        })
+
+        it("should set new Controller", async () => {
+            await fixture.controller.updateController(contractId("JobsManager"), accounts[0])
+
+            assert.equal(await jobsManager.controller.call(), accounts[0], "should set new Controller")
+        })
+    })
+
     describe("setVerificationRate", () => {
         it("should fail if caller is not Controller owner", async () => {
             await expectThrow(jobsManager.setVerificationRate(5, {from: accounts[2]}))
@@ -99,7 +111,7 @@ contract("JobsManager", accounts => {
 
         it("should fail if provided verificationSlashingPeriod + current verificationPeriod > 256", async () => {
             const verificationPeriod = await jobsManager.verificationPeriod.call()
-            await expectThrow(jobsManager.setVerificationPeriod((256 - verificationPeriod.toNumber()) + 1))
+            await expectThrow(jobsManager.setVerificationSlashingPeriod((256 - verificationPeriod.toNumber()) + 1))
         })
 
         it("should set verificationSlashingPeriod", async () => {
@@ -320,6 +332,12 @@ contract("JobsManager", accounts => {
 
         it("should fail if segment range is invalid", async () => {
             await expectThrow(jobsManager.claimWork(1, [3, 0], claimRoot, {from: transcoder}))
+        })
+
+        it("should fail if caller is not a registered transcoder", async () => {
+            await fixture.bondingManager.setMockBool(functionSig("isRegisteredTranscoder(address)"), false)
+
+            await expectThrow(jobsManager.claimWork(1, segmentRange, claimRoot, {from: transcoder}))
         })
 
         it("should fail if the transcoder address is set and does not match caller address", async () => {
