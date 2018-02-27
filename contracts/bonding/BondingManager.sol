@@ -583,22 +583,17 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             // There is no currently available transcoder that charges a price per segment less than or equal to the max price per segment for a job
             return address(0);
         } else {
-            address electedTranscoder = availableTranscoders[numAvailableTranscoders - 1];
-
             // Pseudorandomly pick an available transcoder weighted by its stake relative to the total stake of all available transcoders
             uint256 r = uint256(_blockHash) % totalAvailableTranscoderStake;
             uint256 s = 0;
+            uint256 j = 0;
 
-            for (uint256 j = 0; j < numAvailableTranscoders; j++) {
+            while (s <= r && j < numAvailableTranscoders) {
                 s = s.add(activeTranscoderTotalStake(availableTranscoders[j], _round));
-
-                if (s > r) {
-                    electedTranscoder = availableTranscoders[j];
-                    break;
-                }
+                j++;
             }
 
-            return electedTranscoder;
+            return availableTranscoders[j];
         }
     }
 
