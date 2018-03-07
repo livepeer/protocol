@@ -206,7 +206,7 @@ contract("JobsManager", accounts => {
 
             await jobsManager.deposit({from: broadcaster, value: 1000})
             const transcodingOptions = createTranscodingOptions(["foo"])
-            await jobsManager.job("foo", transcodingOptions, 1, endBlock, {from: broadcaster})
+            await jobsManager.job("foo", transcodingOptions, broadcaster, 1, endBlock, {from: broadcaster})
         })
 
         it("should fail if broadcaster's withdraw block is in the future", async () => {
@@ -236,20 +236,24 @@ contract("JobsManager", accounts => {
             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
         })
 
+        it("should fail if broadcaster address is invalid", async () => {
+            await expectThrow(jobsManager.job("foo", transcodingOptions, "", 1, currentBlock, {from: broadcaster}))
+        })
+
         it("should fail if end block is not in the future", async () => {
-            await expectThrow(jobsManager.job("foo", transcodingOptions, 1, currentBlock, {from: broadcaster}))
+            await expectThrow(jobsManager.job("foo", transcodingOptions, broadcaster, 1, currentBlock, {from: broadcaster}))
         })
 
         it("should fail if transcodingOptions is invalid (not a multiple of video profile id size)", async () => {
-            await expectThrow(jobsManager.job("foo", "bar", 1, currentBlock + 50, {from: broadcaster}))
+            await expectThrow(jobsManager.job("foo", "bar", broadcaster, 1, currentBlock + 50, {from: broadcaster}))
         })
 
         it("should fail if transcodingOptions is invalid (0 length)", async () => {
-            await expectThrow(jobsManager.job("foo", "", 1, currentBlock + 50, {from: broadcaster}))
+            await expectThrow(jobsManager.job("foo", "", broadcaster, 1, currentBlock + 50, {from: broadcaster}))
         })
 
         it("should create a transcode job", async () => {
-            await jobsManager.job("foo", transcodingOptions, 1, currentBlock + 50, {from: broadcaster})
+            await jobsManager.job("foo", transcodingOptions, broadcaster, 1, currentBlock + 50, {from: broadcaster})
 
             const jInfo = await jobsManager.getJob(0)
             assert.equal(jInfo[0], "foo", "wrong streamId")
@@ -276,12 +280,12 @@ contract("JobsManager", accounts => {
                 assert.equal(result.args.transcodingOptions, transcodingOptions, "wrong transcodingOptions")
             })
 
-            await jobsManager.job("foo", transcodingOptions, 1, currentBlock + 50, {from: broadcaster})
+            await jobsManager.job("foo", transcodingOptions, broadcaster, 1, currentBlock + 50, {from: broadcaster})
         })
 
         it("should set the broadcaster's withdraw block to the job's end block if the job's end block > broadcaster's withdraw block", async () => {
             await jobsManager.deposit({from: broadcaster, value: 1000})
-            await jobsManager.job("foo", transcodingOptions, 1, currentBlock + 50, {from: broadcaster})
+            await jobsManager.job("foo", transcodingOptions, broadcaster, 1, currentBlock + 50, {from: broadcaster})
 
             const bInfo = await jobsManager.broadcasters.call(broadcaster)
             assert.equal(bInfo[1], currentBlock + 50, "wrong broadcaster withdrawBlock")
@@ -289,8 +293,8 @@ contract("JobsManager", accounts => {
 
         it("should not change the broadcaster's withdraw block if the job's end block <= broadcaster's withdraw block", async () => {
             await jobsManager.deposit({from: broadcaster, value: 1000})
-            await jobsManager.job("foo", transcodingOptions, 1, currentBlock + 50, {from: broadcaster})
-            await jobsManager.job("foo", transcodingOptions, 1, currentBlock + 50, {from: broadcaster})
+            await jobsManager.job("foo", transcodingOptions, broadcaster, 1, currentBlock + 50, {from: broadcaster})
+            await jobsManager.job("foo", transcodingOptions, broadcaster, 1, currentBlock + 50, {from: broadcaster})
 
             const bInfo = await jobsManager.broadcasters.call(broadcaster)
             assert.equal(bInfo[1], currentBlock + 50, "wrong broadcaster withdrawBlock")
@@ -314,9 +318,9 @@ contract("JobsManager", accounts => {
 
             await jobsManager.deposit({from: broadcaster, value: 1000})
             // Broadcaster creates job 0
-            await jobsManager.job("foo", transcodingOptions, 1, currentBlock + 20, {from: broadcaster})
+            await jobsManager.job("foo", transcodingOptions, broadcaster, 1, currentBlock + 20, {from: broadcaster})
             // Broadcaster creates job 1
-            await jobsManager.job("foo", transcodingOptions, 1, currentBlock + 50, {from: broadcaster})
+            await jobsManager.job("foo", transcodingOptions, broadcaster, 1, currentBlock + 50, {from: broadcaster})
         })
 
         it("should fail if the job does not exist", async () => {
@@ -449,7 +453,7 @@ contract("JobsManager", accounts => {
 
             await jobsManager.deposit({from: broadcaster, value: 1000})
             // Broadcaster creates job 0
-            await jobsManager.job("foo", transcodingOptions, 1, currentBlock + 20, {from: broadcaster})
+            await jobsManager.job("foo", transcodingOptions, broadcaster, 1, currentBlock + 20, {from: broadcaster})
 
             await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), currentBlock + 1)
             // Transcoder claims work for job 0
@@ -563,7 +567,7 @@ contract("JobsManager", accounts => {
 
             await jobsManager.deposit({from: broadcaster, value: 1000})
             // Broadcaster creates job 0
-            await jobsManager.job("foo", transcodingOptions, 1, currentBlock + 20, {from: broadcaster})
+            await jobsManager.job("foo", transcodingOptions, broadcaster, 1, currentBlock + 20, {from: broadcaster})
 
             await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), currentBlock + 1)
             // Transcoder claims work for job 0
@@ -672,7 +676,7 @@ contract("JobsManager", accounts => {
 
             await jobsManager.deposit({from: broadcaster, value: 1000})
             // Broadcaster creates job 0
-            await jobsManager.job("foo", transcodingOptions, 1, currentBlock + 20, {from: broadcaster})
+            await jobsManager.job("foo", transcodingOptions, broadcaster, 1, currentBlock + 20, {from: broadcaster})
 
             await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), currentBlock + 1)
             // Transcoder claims work for job 0
@@ -769,7 +773,7 @@ contract("JobsManager", accounts => {
 
             await jobsManager.deposit({from: broadcaster, value: 1000})
             // Broadcaster creates job 0
-            await jobsManager.job("foo", transcodingOptions, 1, currentBlock + 20, {from: broadcaster})
+            await jobsManager.job("foo", transcodingOptions, broadcaster, 1, currentBlock + 20, {from: broadcaster})
 
             await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), currentBlock + 1)
             // Transcoder claims work for job 0 by submitting claim 0
@@ -855,7 +859,7 @@ contract("JobsManager", accounts => {
 
             await jobsManager.deposit({from: broadcaster, value: 1000})
             // Broadcaster creates job 0
-            await jobsManager.job("foo", transcodingOptions, 1, currentBlock + 20, {from: broadcaster})
+            await jobsManager.job("foo", transcodingOptions, broadcaster, 1, currentBlock + 20, {from: broadcaster})
 
             await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), currentBlock + 1)
             // Transcoder claims work for job 0 by submitting claim 0
@@ -971,7 +975,7 @@ contract("JobsManager", accounts => {
 
             await jobsManager.deposit({from: broadcaster, value: 1000})
             // Broadcaster creates job 0
-            await jobsManager.job("foo", transcodingOptions, 1, currentBlock + 20, {from: broadcaster})
+            await jobsManager.job("foo", transcodingOptions, broadcaster, 1, currentBlock + 20, {from: broadcaster})
 
             await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), currentBlock + 1)
             // Transcoder claims work for job 0 by submitting claim 0
@@ -1065,7 +1069,7 @@ contract("JobsManager", accounts => {
             await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), currentBlock)
             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
 
-            await jobsManager.job("foo", transcodingOptions, 1, currentBlock + 50, {from: broadcaster})
+            await jobsManager.job("foo", transcodingOptions, broadcaster, 1, currentBlock + 50, {from: broadcaster})
         })
 
         it("should return active if job's end block is in the future", async () => {
@@ -1128,7 +1132,7 @@ contract("JobsManager", accounts => {
 
             await jobsManager.deposit({from: broadcaster, value: 1000})
             // Broadcaster creates job 0
-            await jobsManager.job("foo", transcodingOptions, 1, currentBlock + 20, {from: broadcaster})
+            await jobsManager.job("foo", transcodingOptions, broadcaster, 1, currentBlock + 20, {from: broadcaster})
 
             await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), currentBlock + 1)
             // Transcoder claims work for job 0
