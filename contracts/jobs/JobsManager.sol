@@ -226,15 +226,18 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
      * @dev Submit a transcoding job
      * @param _streamId Unique stream identifier
      * @param _transcodingOptions Output bitrates, formats, encodings
+     * @param _broadcasterAddress Address of broadcaster that requests a transcoding job
      * @param _maxPricePerSegment Max price (in LPT base units) to pay for transcoding a segment of a stream
      * @param _endBlock Block at which this job becomes inactive
      */
-    function job(string _streamId, string _transcodingOptions, uint256 _maxPricePerSegment, uint256 _endBlock)
+    function job(string _streamId, string _transcodingOptions, address _broadcasterAddress, uint256 _maxPricePerSegment, uint256 _endBlock)
         external
         whenSystemNotPaused
     {
         uint256 blockNum = roundsManager().blockNum();
 
+        // Broadcaster address must not be a null address
+        require(_broadcasterAddress != address(0));
         // End block must be in the future
         require(_endBlock > blockNum);
         // Transcoding options must be valid
@@ -245,18 +248,19 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         job.streamId = _streamId;
         job.transcodingOptions = _transcodingOptions;
         job.maxPricePerSegment = _maxPricePerSegment;
-        job.broadcasterAddress = msg.sender;
+        job.broadcasterAddress = _broadcasterAddress;
         job.creationRound = roundsManager().currentRound();
         job.creationBlock = blockNum;
         job.endBlock = _endBlock;
 
         NewJob(
-            msg.sender,
+            _broadcasterAddress,
             numJobs,
             _streamId,
             _transcodingOptions,
             _maxPricePerSegment,
-            blockNum
+            blockNum,
+            msg.sender
         );
 
         // Increment number of created jobs
