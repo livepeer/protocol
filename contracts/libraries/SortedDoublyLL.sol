@@ -94,7 +94,7 @@ library SortedDoublyLL {
             self.nodes[nextId].prevId = _id;
         }
 
-        self.size++;
+        self.size = self.size.add(1);
     }
 
     /*
@@ -134,7 +134,7 @@ library SortedDoublyLL {
         }
 
         delete self.nodes[_id];
-        self.size--;
+        self.size = self.size.sub(1);
     }
 
     /*
