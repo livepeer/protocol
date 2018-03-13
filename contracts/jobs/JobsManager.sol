@@ -125,7 +125,7 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         // Verification period + verification slashing period currently cannot be longer than 256 blocks
         // because contracts can only access the last 256 blocks from
         // the current block
-        require(_verificationPeriod + verificationSlashingPeriod <= 256);
+        require(_verificationPeriod.add(verificationSlashingPeriod) <= 256);
 
         verificationPeriod = _verificationPeriod;
 
@@ -140,7 +140,7 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         // Verification period + verification slashing period currently cannot be longer than 256 blocks
         // because contracts can only access the last 256 blocks from
         // the current block
-        require(verificationPeriod + _verificationSlashingPeriod <= 256);
+        require(verificationPeriod.add(_verificationSlashingPeriod) <= 256);
 
         verificationSlashingPeriod = _verificationSlashingPeriod;
 

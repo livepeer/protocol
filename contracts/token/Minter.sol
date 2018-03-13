@@ -215,7 +215,7 @@ contract Minter is Manager, IMinter {
             if (inflationChange > inflation) {
                 inflation = 0;
             } else {
-                inflation -= inflationChange;
+                inflation = inflation.sub(inflationChange);
             }
         }
     }

@@ -110,7 +110,7 @@ contract GenesisManager is Ownable {
         onlyOwner
         atStage(Stages.GenesisAllocation)
     {
-        require(_crowdSupply + _companySupply + _teamSupply + _investorsSupply + _communitySupply == _initialSupply);
+        require(_crowdSupply.add(_companySupply).add(_teamSupply).add(_investorsSupply).add(_communitySupply) == _initialSupply);
 
         initialSupply = _initialSupply;
         crowdSupply = _crowdSupply;
