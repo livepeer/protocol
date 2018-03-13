@@ -9,8 +9,8 @@ contract TokenDistributionMock is ITokenDistribution {
     // Is the distribution over
     bool over;
 
-    function TokenDistributionMock(uint256 _endTime) public {
-        endTime = _endTime;
+    function TokenDistributionMock(uint256 _timeToEnd) public {
+        endTime = now + _timeToEnd;
         over = false;
     }
 

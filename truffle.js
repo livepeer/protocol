@@ -1,7 +1,28 @@
 require("babel-register")
 require("babel-polyfill")
 
-const HDWalletProvider = require("truffle-hdwallet-provider-privkey")
+const KeystoreProvider = require("truffle-keystore-provider")
+const Web3 = require("web3")
+
+const memoizeProviderCreator = () => {
+    let keystoreProviders = {}
+
+    return (account, dataDir, providerUrl, readOnly) => {
+        if (readOnly) {
+            return new Web3.providers.HttpProvider(providerUrl)
+        } else {
+            if (providerUrl in keystoreProviders) {
+                return keystoreProviders[providerUrl]
+            } else {
+                const provider = new KeystoreProvider(account, dataDir, providerUrl)
+                keystoreProviders[providerUrl] = provider
+                return provider
+            }
+        }
+    }
+}
+
+const createProvider = memoizeProviderCreator()
 
 module.exports = {
     networks: {
@@ -32,9 +53,16 @@ module.exports = {
         },
         lpTestNet: {
             provider: () => {
-                return new HDWalletProvider(process.env.LPTESTNET_PRIV_KEY, "http://ethrpc-testnet.livepeer.org:8545")
+                return createProvider(process.env.LPTESTNET_ACCOUNT, process.env.DATA_DIR, "http://ethrpc-testnet.livepeer.org:8545", process.env.READ_ONLY)
             },
             network_id: 858585,
+            gas: 6600000
+        },
+        rinkeby: {
+            provider: () => {
+                return createProvider(process.env.RINKEBY_ACCOUNT, process.env.DATA_DIR, "https://rinkeby.infura.io", process.env.READ_ONLY)
+            },
+            network_id: 4,
             gas: 6600000
         }
     },

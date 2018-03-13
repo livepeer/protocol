@@ -1,7 +1,6 @@
 const genesis = require("./genesis.config.js")
 const ContractDeployer = require("../utils/contractDeployer")
 const {contractId} = require("../utils/helpers")
-const BigNumber = require("bignumber.js")
 
 const Controller = artifacts.require("Controller")
 const ManagerProxy = artifacts.require("ManagerProxy")
@@ -20,10 +19,7 @@ module.exports = function(deployer, network) {
 
         const token = await LivepeerToken.at(tokenAddr)
 
-        const currentTime = new BigNumber(web3.eth.getBlock(web3.eth.blockNumber).timestamp) // Timestamp of current ETH block
-        const endTimeDelay = new BigNumber(60).times(60).times(24).times(7) // 1 week in seconds
-        const endTime = currentTime.plus(endTimeDelay)
-        const dummyTokenDistribution = await lpDeployer.deploy(TokenDistributionMock, endTime)
+        const dummyTokenDistribution = await lpDeployer.deploy(TokenDistributionMock, genesis.dummyTokenDistribution.timeToEnd)
         const genesisManager = await lpDeployer.deploy(GenesisManager, tokenAddr, dummyTokenDistribution.address, genesis.bankMultisig, minterAddr)
 
         deployer.logger.log("Transferring ownership of the LivepeerToken to the GenesisManager...")
