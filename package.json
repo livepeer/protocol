@@ -16,6 +16,8 @@
     "test:coverage:coveralls": "npm run test:coverage && cat coverage/lcov.info | ./node_modules/.bin/coveralls",
     "test:unit": "bash scripts/run_ganache.sh && truffle test test/unit/*",
     "test:integration": "bash scripts/run_ganache.sh && truffle test test/integration/*",
+    "test:verifyDeploymentAndGenesis": "truffle test test/VerifyDeploymentAndGenesis.js",
+    "migrate": "truffle migrate",
     "docker:build": "docker build --cache-from livepeer/protocol:latest --tag livepeer/protocol:latest -f Dockerfile .",
     "docker:push": "docker push livepeer/protocol:latest",
     "docker:run:lint": "docker run --rm --entrypoint=npm livepeer/protocol:latest run lint",
