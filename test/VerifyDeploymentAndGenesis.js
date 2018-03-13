@@ -54,6 +54,9 @@ contract("Verify deployment and genesis", accounts => {
     })
 
     it("checks contract system state post-deployment", async () => {
+        assert.equal(await controller.owner.call(), accounts[0], "Controller's owner should be the configured sender account used by Truffle")
+        assert.equal(await controller.paused.call(), true, "Controller should be paused")
+
         // Check BondingManager parameters
         assert.equal(await bondingManager.controller.call(), controller.address, "should be correct Controller for BondingManager")
         assert.equal(await bondingManager.unbondingPeriod.call(), config.bondingManager.unbondingPeriod, "should be correct unbondingPeriod")
