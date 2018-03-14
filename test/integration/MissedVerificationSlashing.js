@@ -3,15 +3,17 @@ import batchTranscodeReceiptHashes from "../../utils/batchTranscodeReceipts"
 import MerkleTree from "../../utils/merkleTree"
 import {createTranscodingOptions} from "../../utils/videoProfile"
 import Segment from "../../utils/segment"
+import BigNumber from "bignumber.js"
 
 const Controller = artifacts.require("Controller")
 const BondingManager = artifacts.require("BondingManager")
 const JobsManager = artifacts.require("JobsManager")
 const AdjustableRoundsManager = artifacts.require("AdjustableRoundsManager")
 const LivepeerToken = artifacts.require("LivepeerToken")
-const LivepeerTokenFaucet = artifacts.require("LivepeerTokenFaucet")
 
 contract("MissedVerificationSlashing", accounts => {
+    const TOKEN_UNIT = 10 ** 18
+
     let controller
     let bondingManager
     let roundsManager
@@ -34,6 +36,7 @@ contract("MissedVerificationSlashing", accounts => {
         broadcaster = accounts[3]
 
         controller = await Controller.deployed()
+        await controller.unpause()
 
         const bondingManagerAddr = await controller.getContract(contractId("BondingManager"))
         bondingManager = await BondingManager.at(bondingManagerAddr)
@@ -52,12 +55,10 @@ contract("MissedVerificationSlashing", accounts => {
         const tokenAddr = await controller.getContract(contractId("LivepeerToken"))
         token = await LivepeerToken.at(tokenAddr)
 
-        const faucetAddr = await controller.getContract(contractId("LivepeerTokenFaucet"))
-        const faucet = await LivepeerTokenFaucet.at(faucetAddr)
-
-        await faucet.request({from: transcoder})
-        await faucet.request({from: delegator1})
-        await faucet.request({from: delegator2})
+        const transferAmount = new BigNumber(10).times(TOKEN_UNIT)
+        await token.transfer(transcoder, transferAmount, {from: accounts[0]})
+        await token.transfer(delegator1, transferAmount, {from: accounts[0]})
+        await token.transfer(delegator2, transferAmount, {from: accounts[0]})
 
         roundLength = await roundsManager.roundLength.call()
         await roundsManager.mineBlocks(roundLength.toNumber() * 1000)

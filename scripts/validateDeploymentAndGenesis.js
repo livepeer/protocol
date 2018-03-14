@@ -55,6 +55,7 @@ module.exports = async () => {
     dummyTokenDistribution = await TokenDistributionMock.at(dummyTokenDistributionAddr)
 
     console.log("Retrieved contract addresses:")
+    console.log(`Controller Owner: ${await controller.owner.call()}`)
     console.log(`Controller: ${controller.address}`)
     console.log(`BondingManager: ${bondingManager.address}`)
     console.log(`JobsManager: ${jobsManager.address}`)
@@ -74,7 +75,6 @@ module.exports = async () => {
     assert.equal(await bondingManager.numActiveTranscoders.call(), config.bondingManager.numActiveTranscoders, "should be correct numActiveTranscoders")
     assert.equal(await bondingManager.maxEarningsClaimsRounds.call(), config.bondingManager.maxEarningsClaimsRounds, "should be correct maxEarningsClaimsRounds")
     // Check BondingManager balances
-    // assert.equal(web3.eth.getBalance(bondingManager.address), 0, "BondingManager should have 0 ETH")
     assert.equal(await token.balanceOf(bondingManager.address), 0, "BondingManager should have 0 LPT")
 
     console.log("BondingManager passed all checks!")
@@ -89,7 +89,6 @@ module.exports = async () => {
     assert.equal(await jobsManager.doubleClaimSegmentSlashAmount.call(), config.jobsManager.doubleClaimSegmentSlashAmount, "should be correct doubleClaimSegmentSlashAmount")
     assert.equal(await jobsManager.finderFee.call(), config.jobsManager.finderFee, "should be correct finderFee")
     // Check JobsManager balances
-    // assert.equal(web3.eth.getBalance(jobsManager.address), 0, "JobsManager should have 0 ETH")
     assert.equal(await token.balanceOf(jobsManager.address), 0, "JobsManager should have 0 LPT")
 
     console.log("JobsManager passed all checks!")
@@ -99,7 +98,6 @@ module.exports = async () => {
     assert.equal(await roundsManager.roundLength.call(), config.roundsManager.roundLength, "should be correct roundLength")
     assert.equal(await roundsManager.roundLockAmount.call(), config.roundsManager.roundLockAmount, "should be correct roundLockAmount")
     // Check RoundsManager balances
-    // assert.equal(web3.eth.getBalance(roundsManager.address), 0, "RoundsManager should have 0 ETH")
     assert.equal(await token.balanceOf(roundsManager.address), 0, "RoundManager should have 0 LPT")
 
     console.log("RoundsManager passed all checks!")
@@ -110,7 +108,6 @@ module.exports = async () => {
     assert.equal(await minter.inflationChange.call(), config.minter.inflationChange, "should be correct inflationChange")
     assert.equal(await minter.targetBondingRate.call(), config.minter.targetBondingRate, "should be correct targetBondingRate")
     // Check Minter balances
-    // assert.equal(web3.eth.getBalance(minter.address), 0, "Minter should have 0 ETH")
     assert.equal(await token.balanceOf(minter.address), 0, "Minter should have 0 LPT")
 
     console.log("Minter passed all checks!")
@@ -122,7 +119,6 @@ module.exports = async () => {
         assert.isOk(await verifier.isSolver(solver), "should have whitelisted solver")
     })
     // Check LivepeerVerifier balances
-    // assert.equal(web3.eth.getBalance(verifier.address), 0, "LivepeerVerifier should have 0 ETH")
     assert.equal(await token.balanceOf(verifier.address), 0, "LivepeerVerifier should have 0 LPT")
 
     console.log("LivepeerVerifier passed all checks!")

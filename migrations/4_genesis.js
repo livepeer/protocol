@@ -8,7 +8,7 @@ const LivepeerToken = artifacts.require("LivepeerToken")
 const GenesisManager = artifacts.require("GenesisManager")
 const TokenDistributionMock = artifacts.require("TokenDistributionMock")
 
-module.exports = function(deployer, network) {
+module.exports = function(deployer, network, accounts) {
     deployer.then(async () => {
         const lpDeployer = new ContractDeployer(deployer, Controller, ManagerProxy)
 
@@ -20,7 +20,14 @@ module.exports = function(deployer, network) {
         const token = await LivepeerToken.at(tokenAddr)
 
         const dummyTokenDistribution = await lpDeployer.deploy(TokenDistributionMock, genesis.dummyTokenDistribution.timeToEnd)
-        const genesisManager = await lpDeployer.deploy(GenesisManager, tokenAddr, dummyTokenDistribution.address, genesis.bankMultisig, minterAddr)
+
+        let genesisManager
+
+        if (!lpDeployer.isLiveNetwork(network)) {
+            genesisManager = await lpDeployer.deploy(GenesisManager, tokenAddr, dummyTokenDistribution.address, accounts[0], minterAddr)
+        } else {
+            genesisManager = await lpDeployer.deploy(GenesisManager, tokenAddr, dummyTokenDistribution.address, genesis.bankMultisig, minterAddr)
+        }
 
         deployer.logger.log("Transferring ownership of the LivepeerToken to the GenesisManager...")
 
