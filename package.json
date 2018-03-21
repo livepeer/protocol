@@ -11,11 +11,14 @@
     "eslint": "./node_modules/.bin/eslint util/** test/**",
     "solium": "./node_modules/.bin/solium --dir ./contracts",
     "ganache": "./node_modules/.bin/ganache-cli -l 0x663BE0",
-    "compile": "rm -rf build/contracts && truffle compile --all",
+    "clean": "rm -rf build/contracts",
+    "compile": "truffle compile --all",
     "test:coverage": "SOLIDITY_COVERAGE=true bash scripts/run_ganache.sh && ./node_modules/.bin/solidity-coverage || true",
     "test:coverage:coveralls": "npm run test:coverage && cat coverage/lcov.info | ./node_modules/.bin/coveralls",
     "test:unit": "bash scripts/run_ganache.sh && truffle test test/unit/*",
     "test:integration": "bash scripts/run_ganache.sh && truffle test test/integration/*",
+    "validateDeploymentAndGenesis": "READ_ONLY=true truffle exec scripts/validateDeploymentAndGenesis.js",
+    "migrate": "truffle migrate",
     "docker:build": "docker build --cache-from livepeer/protocol:latest --tag livepeer/protocol:latest -f Dockerfile .",
     "docker:push": "docker push livepeer/protocol:latest",
     "docker:run:lint": "docker run --rm --entrypoint=npm livepeer/protocol:latest run lint",
@@ -41,6 +44,7 @@
     "babel-preset-stage-3": "^6.24.1",
     "babel-register": "^6.24.1",
     "bignumber.js": "^4.0.1",
+    "chai": "^4.1.2",
     "coveralls": "^3.0.0",
     "eslint": "^4.3.0",
     "eslint-config-google": "^0.9.1",
@@ -52,7 +56,7 @@
     "solidity-coverage": "^0.4.9",
     "solium": "^1.1.2",
     "truffle": "^4.0.4",
-    "truffle-hdwallet-provider-privkey": "github:yondonfu/truffle-hdwallet-provider-privkey",
+    "truffle-keystore-provider": "^1.0.0",
     "zeppelin-solidity": "1.5.0"
   }
 }

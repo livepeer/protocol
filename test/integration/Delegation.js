@@ -1,13 +1,15 @@
 import {contractId} from "../../utils/helpers"
 import {constants} from "../../utils/constants"
+import BigNumber from "bignumber.js"
 
 const Controller = artifacts.require("Controller")
 const BondingManager = artifacts.require("BondingManager")
 const AdjustableRoundsManager = artifacts.require("AdjustableRoundsManager")
 const LivepeerToken = artifacts.require("LivepeerToken")
-const LivepeerTokenFaucet = artifacts.require("LivepeerTokenFaucet")
 
 contract("Delegation", accounts => {
+    const TOKEN_UNIT = 10 ** 18
+
     let controller
     let bondingManager
     let roundsManager
@@ -29,6 +31,7 @@ contract("Delegation", accounts => {
         delegator2 = accounts[3]
 
         controller = await Controller.deployed()
+        await controller.unpause()
 
         const bondingManagerAddr = await controller.getContract(contractId("BondingManager"))
         bondingManager = await BondingManager.at(bondingManagerAddr)
@@ -41,13 +44,11 @@ contract("Delegation", accounts => {
 
         minterAddr = await controller.getContract(contractId("Minter"))
 
-        const faucetAddr = await controller.getContract(contractId("LivepeerTokenFaucet"))
-        const faucet = await LivepeerTokenFaucet.at(faucetAddr)
-
-        await faucet.request({from: transcoder1})
-        await faucet.request({from: transcoder2})
-        await faucet.request({from: delegator1})
-        await faucet.request({from: delegator2})
+        const transferAmount = new BigNumber(10).times(TOKEN_UNIT)
+        await token.transfer(transcoder1, transferAmount, {from: accounts[0]})
+        await token.transfer(transcoder2, transferAmount, {from: accounts[0]})
+        await token.transfer(delegator1, transferAmount, {from: accounts[0]})
+        await token.transfer(delegator2, transferAmount, {from: accounts[0]})
 
         roundLength = await roundsManager.roundLength.call()
         await roundsManager.mineBlocks(roundLength.toNumber() * 1000)

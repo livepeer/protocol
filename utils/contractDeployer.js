@@ -57,6 +57,14 @@ class ContractDeployer {
         await this.truffleDeployer.deploy(artifact, ...args)
         return await artifact.deployed()
     }
+
+    isLiveNetwork(networkName) {
+        return networkName === "mainnet" || networkName === "rinkeby" || networkName == "lpTestNet"
+    }
+
+    isMainNet(networkName) {
+        return networkName === "mainnet"
+    }
 }
 
 module.exports = ContractDeployer

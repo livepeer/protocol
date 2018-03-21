@@ -8,20 +8,26 @@ const LivepeerToken = artifacts.require("LivepeerToken")
 const GenesisManager = artifacts.require("GenesisManager")
 const TokenDistributionMock = artifacts.require("TokenDistributionMock")
 
-module.exports = function(deployer, network) {
+module.exports = function(deployer, network, accounts) {
     deployer.then(async () => {
         const lpDeployer = new ContractDeployer(deployer, Controller, ManagerProxy)
 
         const controller = await Controller.deployed()
 
         const tokenAddr = await controller.getContract(contractId("LivepeerToken"))
-        const faucetAddr = await controller.getContract(contractId("LivepeerTokenFaucet"))
         const minterAddr = await controller.getContract(contractId("Minter"))
 
         const token = await LivepeerToken.at(tokenAddr)
 
-        const tokenDistribution = await lpDeployer.deploy(TokenDistributionMock, tokenAddr, faucetAddr, genesis.tokenDistribution.endTime)
-        const genesisManager = await lpDeployer.deploy(GenesisManager, tokenAddr, tokenDistribution.address, genesis.bankMultisig, minterAddr)
+        const dummyTokenDistribution = await lpDeployer.deploy(TokenDistributionMock, genesis.dummyTokenDistribution.timeToEnd)
+
+        let genesisManager
+
+        if (!lpDeployer.isLiveNetwork(network)) {
+            genesisManager = await lpDeployer.deploy(GenesisManager, tokenAddr, dummyTokenDistribution.address, accounts[0], minterAddr)
+        } else {
+            genesisManager = await lpDeployer.deploy(GenesisManager, tokenAddr, dummyTokenDistribution.address, genesis.bankMultisig, minterAddr)
+        }
 
         deployer.logger.log("Transferring ownership of the LivepeerToken to the GenesisManager...")
 
@@ -38,7 +44,7 @@ module.exports = function(deployer, network) {
             genesis.communitySupply
         )
 
-        deployer.logger.log("Starting genesis and allocating crowd supply for token distribution...")
+        deployer.logger.log("Starting genesis and allocating a 0 crowd supply to the dummy token distribution...")
 
         await genesisManager.start()
 
@@ -60,16 +66,12 @@ module.exports = function(deployer, network) {
             return genesisManager.addCommunityGrant(grant.receiver, grant.amount)
         }))
 
-        deployer.logger.log("Finalizing token distribution...")
+        deployer.logger.log("Finalizing dummy token distribution...")
 
-        await tokenDistribution.finalize()
+        await dummyTokenDistribution.finalize()
 
         deployer.logger.log("Ending genesis and transferring ownership of the LivepeerToken to the protocol Minter...")
 
         await genesisManager.end()
-
-        deployer.logger.log("Unpausing the Controller and starting the protocol...")
-
-        await controller.unpause()
     })
 }

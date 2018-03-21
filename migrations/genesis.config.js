@@ -4,14 +4,14 @@ const TOKEN_UNIT = 10 ** 18
 
 module.exports = {
     initialSupply: new BigNumber(10000000).mul(TOKEN_UNIT),
-    crowdSupply: new BigNumber(180000).mul(TOKEN_UNIT),
-    companySupply: new BigNumber(7320000).mul(TOKEN_UNIT),
+    crowdSupply: new BigNumber(0).mul(TOKEN_UNIT),
+    companySupply: new BigNumber(7500000).mul(TOKEN_UNIT),
     teamSupply: new BigNumber(1100000).mul(TOKEN_UNIT),
     investorsSupply: new BigNumber(900000).mul(TOKEN_UNIT),
     communitySupply: new BigNumber(500000).mul(TOKEN_UNIT),
     bankMultisig: "0x0161e041aad467a890839d5b08b138c1e6373072", // Should replace this placeholder address in a real deployment
-    tokenDistribution: {
-        endTime: Date.now() + (7 * 24 * 60 * 60)
+    dummyTokenDistribution: {
+        timeToEnd: new BigNumber(60).times(60).times(24).times(7) // 1 week in seconds
     },
     // Should replace these placeholder grants in a real deployment
     teamGrants: [
