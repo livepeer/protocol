@@ -10,6 +10,7 @@ module.exports = {
     investorsSupply: new BigNumber(900000).mul(TOKEN_UNIT),
     communitySupply: new BigNumber(500000).mul(TOKEN_UNIT),
     bankMultisig: "0x0161e041aad467a890839d5b08b138c1e6373072", // Should replace this placeholder address in a real deployment
+    governanceMultisig: "0x0161e041aad467a890839d5b08b138c1e6373072", // Should replace this placeholder address in a real deployment
     dummyTokenDistribution: {
         timeToEnd: new BigNumber(60).times(60).times(24).times(7) // 1 week in seconds
     },

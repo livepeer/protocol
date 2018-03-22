@@ -18,6 +18,7 @@
     "test:unit": "bash scripts/run_ganache.sh && truffle test test/unit/*",
     "test:integration": "bash scripts/run_ganache.sh && truffle test test/integration/*",
     "validateDeploymentAndGenesis": "READ_ONLY=true truffle exec scripts/validateDeploymentAndGenesis.js",
+    "transferControllerOwnership": "truffle exec scripts/transferControllerOwnership.js",
     "migrate": "truffle migrate",
     "docker:build": "docker build --cache-from livepeer/protocol:latest --tag livepeer/protocol:latest -f Dockerfile .",
     "docker:push": "docker push livepeer/protocol:latest",
