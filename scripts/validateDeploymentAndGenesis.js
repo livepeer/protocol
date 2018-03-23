@@ -137,7 +137,7 @@ module.exports = async () => {
     genesisConfig.teamGrants.forEach(async grant => {
         const vestingHolderAddr = await genesisManager.vestingHolders.call(grant.receiver)
         const vestingHolder = await TokenVesting.at(vestingHolderAddr)
-        assert.equal(await vestingHolder.beneficiary.call(), grant.receiver, "should be correct vesting grant receiver")
+        assert.equal((await vestingHolder.beneficiary.call()).toLowerCase(), grant.receiver.toLowerCase(), "should be correct vesting grant receiver")
         assert.equal(await vestingHolder.start.call(), dummyTokenDistributionEndTime.toNumber(), "should be correct vesting start time")
         assert.equal(await vestingHolder.cliff.call(), dummyTokenDistributionEndTime.plus(grant.timeToCliff).toNumber(), "should be correct vesting cliff time")
         assert.equal(await vestingHolder.duration.call(), grant.vestingDuration.toNumber(), "should be correct vesting duration")
@@ -150,7 +150,7 @@ module.exports = async () => {
     genesisConfig.investorGrants.forEach(async grant => {
         const vestingHolderAddr = await genesisManager.vestingHolders.call(grant.receiver)
         const vestingHolder = await TokenVesting.at(vestingHolderAddr)
-        assert.equal(await vestingHolder.beneficiary.call(), grant.receiver, "should be correct vesting grant receiver")
+        assert.equal((await vestingHolder.beneficiary.call()).toLowerCase(), grant.receiver.toLowerCase(), "should be correct vesting grant receiver")
         assert.equal(await vestingHolder.start.call(), dummyTokenDistributionEndTime.toNumber(), "should be correct vesting start time")
         assert.equal(await vestingHolder.cliff.call(), dummyTokenDistributionEndTime.plus(grant.timeToCliff).toNumber(), "should be correct vesting cliff time")
         assert.equal(await vestingHolder.duration.call(), grant.vestingDuration.toNumber(), "should be correct vesting duration")
@@ -163,7 +163,7 @@ module.exports = async () => {
     genesisConfig.communityGrants.forEach(async grant => {
         const timeLockedHolderAddr = await genesisManager.timeLockedHolders.call(grant.receiver)
         const timeLockedHolder = await TokenTimelock.at(timeLockedHolderAddr)
-        assert.equal(await timeLockedHolder.beneficiary.call(), grant.receiver, "should be correct timelocked grant receiver")
+        assert.equal((await timeLockedHolder.beneficiary.call()).toLowerCase(), grant.receiver.toLowerCase(), "should be correct timelocked grant receiver")
         assert.equal(await timeLockedHolder.releaseTime.call(), dummyTokenDistributionEndTime.toNumber(), "should be correct lock release time")
         assert.equal(await token.balanceOf(timeLockedHolderAddr), grant.amount.toNumber(), "should be correct timelocked grant amount")
     })
