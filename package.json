@@ -49,7 +49,7 @@
     "coveralls": "^3.0.0",
     "eslint": "^4.3.0",
     "eslint-config-google": "^0.9.1",
-    "ethereumjs-abi": "github:yondonfu/ethereumjs-abi#abi-offset-fixed-arrays",
+    "ethereumjs-abi": "github:ethereumjs/ethereumjs-abi#09c3c48fd3bed143df7fa8f36f6f164205e23796",
     "ethereumjs-util": "^5.1.2",
     "ganache-cli": "^6.1.0-beta.0",
     "mkdirp": "^0.5.1",
