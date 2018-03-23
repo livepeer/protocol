@@ -59,11 +59,12 @@ class ContractDeployer {
     }
 
     isLiveNetwork(networkName) {
-        return networkName === "mainnet" || networkName === "rinkeby" || networkName == "lpTestNet"
+        return networkName === "mainnet" || networkName === "rinkebyDryRun" || networkName === "rinkeby" || networkName == "lpTestNet"
     }
 
-    isMainNet(networkName) {
-        return networkName === "mainnet"
+    isProduction(networkName) {
+        // Production includes mainnet and also a test network that is being used as a dry run before mainnet
+        return networkName === "mainnet" || networkName === "rinkebyDryRun"
     }
 }
 
