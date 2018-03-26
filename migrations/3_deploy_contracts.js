@@ -21,7 +21,8 @@ module.exports = function(deployer, network) {
         await lpDeployer.deployAndRegister(Minter, "Minter", controller.address, config.minter.inflation, config.minter.inflationChange, config.minter.targetBondingRate)
         await lpDeployer.deployAndRegister(LivepeerVerifier, "Verifier", controller.address, config.verifier.solvers, config.verifier.verificationCodeHash)
 
-        if (!lpDeployer.isMainNet(network)) {
+        if (!lpDeployer.isProduction(network)) {
+            // Only deploy a faucet if not in production
             await lpDeployer.deployAndRegister(LivepeerTokenFaucet, "LivepeerTokenFaucet", token.address, config.faucet.requestAmount, config.faucet.requestWait)
         }
 
@@ -31,6 +32,7 @@ module.exports = function(deployer, network) {
         let roundsManager
 
         if (!lpDeployer.isLiveNetwork(network)) {
+            // Only deploy the adjustable rounds manager contract if we are in an isolated testing environment and not a live network
             roundsManager = await lpDeployer.deployProxyAndRegister(AdjustableRoundsManager, "RoundsManager", controller.address)
         } else {
             roundsManager = await lpDeployer.deployProxyAndRegister(RoundsManager, "RoundsManager", controller.address)

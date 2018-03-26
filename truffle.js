@@ -64,6 +64,20 @@ module.exports = {
             },
             network_id: 4,
             gas: 6600000
+        },
+        rinkebyDryRun: {
+            provider: () => {
+                return createProvider(process.env.RINKEBY_ACCOUNT, process.env.DATA_DIR, "https://rinkeby.infura.io", process.env.READ_ONLY)
+            },
+            network_id: 4,
+            gas: 6600000
+        },
+        mainnet: {
+            provider: () => {
+                return createProvider(process.env.MAINNET_ACCOUNT, process.env.DATA_DIR, "https://mainnet.infura.io", process.env.READ_ONLY)
+            },
+            network_id: 1,
+            gas: 6600000
         }
     },
     solc: {
