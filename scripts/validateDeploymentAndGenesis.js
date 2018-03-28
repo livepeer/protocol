@@ -65,6 +65,7 @@ module.exports = async () => {
     console.log(`LivepeerToken: ${token.address}`)
 
     assert.equal(await controller.paused.call(), true, "Controller should be paused")
+    assert.equal((await controller.owner.call()).toLowerCase(), genesisConfig.governanceMultisig.toLowerCase(), "Controller owner should be governance multisig")
 
     console.log("Controller passed all checks!")
 

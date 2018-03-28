@@ -82,6 +82,14 @@ module.exports = function(deployer, network, accounts) {
 
             const faucetAddr = await controller.getContract(contractId("LivepeerTokenFaucet"))
             await token.transfer(faucetAddr, genesis.faucetSupply)
+        } else {
+            // If in production, transfer ownership of the Controller to the governance multisig
+            deployer.logger.log(`In production - transferring ownership of the Controller at ${controller.address} to the governance multisig ${genesis.governanceMultisig}`)
+
+            await controller.transferOwnership(genesis.governanceMultisig)
+
+            const newOwner = await controller.owner()
+            deployer.logger.log(`Controller at ${controller.address} is now owned by ${newOwner}`)
         }
     })
 }

@@ -18,7 +18,6 @@
     "test:unit": "bash scripts/run_ganache.sh && truffle test test/unit/*",
     "test:integration": "bash scripts/run_ganache.sh && truffle test test/integration/*",
     "validateDeploymentAndGenesis": "READ_ONLY=true truffle exec scripts/validateDeploymentAndGenesis.js",
-    "transferControllerOwnership": "truffle exec scripts/transferControllerOwnership.js",
     "migrate": "truffle migrate",
     "docker:build": "docker build --cache-from livepeer/protocol:latest --tag livepeer/protocol:latest -f Dockerfile .",
     "docker:push": "docker push livepeer/protocol:latest",
@@ -57,7 +56,7 @@
     "solidity-coverage": "^0.4.9",
     "solium": "^1.1.2",
     "truffle": "^4.0.4",
-    "truffle-keystore-provider": "^1.0.0",
+    "truffle-keystore-provider": "^1.0.1",
     "zeppelin-solidity": "1.5.0"
   }
 }
