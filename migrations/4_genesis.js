@@ -23,7 +23,8 @@ module.exports = function(deployer, network, accounts) {
 
         let genesisManager
 
-        if (!lpDeployer.isLiveNetwork(network)) {
+        if (!lpDeployer.isProduction(network)) {
+            // If not in production, send the company supply to the deployment account instead of the bank multisig
             genesisManager = await lpDeployer.deploy(GenesisManager, tokenAddr, dummyTokenDistribution.address, accounts[0], minterAddr)
         } else {
             genesisManager = await lpDeployer.deploy(GenesisManager, tokenAddr, dummyTokenDistribution.address, genesis.bankMultisig, minterAddr)
@@ -73,5 +74,14 @@ module.exports = function(deployer, network, accounts) {
         deployer.logger.log("Ending genesis and transferring ownership of the LivepeerToken to the protocol Minter...")
 
         await genesisManager.end()
+
+        if (!lpDeployer.isProduction(network)) {
+            // If not in production, the deployment account holds the company supply
+            // and use some of those tokens to fund the faucet supply
+            deployer.logger.log("Not in production - deployment account will fund the deployed faucet")
+
+            const faucetAddr = await controller.getContract(contractId("LivepeerTokenFaucet"))
+            await token.transfer(faucetAddr, genesis.faucetSupply)
+        }
     })
 }

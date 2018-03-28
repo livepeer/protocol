@@ -2,9 +2,10 @@ pragma solidity ^0.4.17;
 
 import "../token/ITokenDistribution.sol";
 import "zeppelin-solidity/contracts/math/SafeMath.sol";
+import "zeppelin-solidity/contracts/ownership/Ownable.sol";
 
 
-contract TokenDistributionMock is ITokenDistribution {
+contract TokenDistributionMock is ITokenDistribution, Ownable {
     using SafeMath for uint256;
 
     // End time of the distribution
@@ -17,7 +18,7 @@ contract TokenDistributionMock is ITokenDistribution {
         over = false;
     }
 
-    function finalize() external {
+    function finalize() external onlyOwner {
         require(!isOver());
 
         over = true;
