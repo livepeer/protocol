@@ -11,7 +11,7 @@ const Minter = artifacts.require("Minter")
 const LivepeerVerifier = artifacts.require("LivepeerVerifier")
 const LivepeerToken = artifacts.require("LivepeerToken")
 const GenesisManager = artifacts.require("GenesisManager")
-const TokenDistributionMock = artifacts.require("TokenDistributionMock")
+const MerkleMine = artifacts.require("MerkleMine")
 const TokenVesting = artifacts.require("TokenVesting")
 const TokenTimelock = artifacts.require("TokenTimelock")
 
@@ -25,7 +25,7 @@ module.exports = async () => {
     let token
     let genesisManager
 
-    let dummyTokenDistribution
+    let merkleMine
 
     console.log("Beginning validation of system state after deployment and genesis...")
 
@@ -51,8 +51,8 @@ module.exports = async () => {
 
     genesisManager = await GenesisManager.deployed()
 
-    const dummyTokenDistributionAddr = await genesisManager.tokenDistribution.call()
-    dummyTokenDistribution = await TokenDistributionMock.at(dummyTokenDistributionAddr)
+    const merkleMineAddr = await genesisManager.tokenDistribution.call()
+    merkleMine = await MerkleMine.at(merkleMineAddr)
 
     console.log("Retrieved contract addresses:")
     console.log(`Controller Owner: ${await controller.owner.call()}`)
@@ -63,6 +63,8 @@ module.exports = async () => {
     console.log(`Minter: ${minter.address}`)
     console.log(`LivepeerVerifier: ${verifier.address}`)
     console.log(`LivepeerToken: ${token.address}`)
+    console.log(`GenesisManager: ${genesisManager.address}`)
+    console.log(`MerkleMine: ${merkleMine.address}`)
 
     assert.equal(await controller.paused.call(), true, "Controller should be paused")
     assert.equal((await controller.owner.call()).toLowerCase(), genesisConfig.governanceMultisig.toLowerCase(), "Controller owner should be governance multisig")
@@ -127,20 +129,19 @@ module.exports = async () => {
 
     assert.equal(await token.totalSupply(), genesisConfig.initialSupply.toNumber(), "should be correct initial total supply")
     assert.equal(await token.balanceOf(genesisConfig.bankMultisig), genesisConfig.companySupply.toNumber(), "bank multisig should have correct company supply")
-    assert.equal(genesisConfig.crowdSupply, 0, "genesis crowd supply should have been 0")
-    assert.equal(await token.balanceOf(dummyTokenDistribution.address), genesisConfig.crowdSupply.toNumber(), "dummy token distribution should have 0 crowd supply")
+    assert.equal(await token.balanceOf(merkleMine.address), genesisConfig.crowdSupply.toNumber(), "MerkleMine should have correct crowd supply")
 
     console.log("Genesis allocations passed all checks!")
 
-    const dummyTokenDistributionEndTime = await dummyTokenDistribution.getEndTime()
+    const grantsStartTimestamp = await genesisManager.grantsStartTimestamp()
 
     // Check vesting team grants
     genesisConfig.teamGrants.forEach(async grant => {
         const vestingHolderAddr = await genesisManager.vestingHolders.call(grant.receiver)
         const vestingHolder = await TokenVesting.at(vestingHolderAddr)
         assert.equal((await vestingHolder.beneficiary.call()).toLowerCase(), grant.receiver.toLowerCase(), "should be correct vesting grant receiver")
-        assert.equal(await vestingHolder.start.call(), dummyTokenDistributionEndTime.toNumber(), "should be correct vesting start time")
-        assert.equal(await vestingHolder.cliff.call(), dummyTokenDistributionEndTime.plus(grant.timeToCliff).toNumber(), "should be correct vesting cliff time")
+        assert.equal(await vestingHolder.start.call(), grantsStartTimestamp.toNumber(), "should be correct vesting start time")
+        assert.equal(await vestingHolder.cliff.call(), grantsStartTimestamp.plus(grant.timeToCliff).toNumber(), "should be correct vesting cliff time")
         assert.equal(await vestingHolder.duration.call(), grant.vestingDuration.toNumber(), "should be correct vesting duration")
         assert.equal(await token.balanceOf(vestingHolderAddr), grant.amount.toNumber(), "should be correct vesting grant amount")
     })
@@ -152,8 +153,8 @@ module.exports = async () => {
         const vestingHolderAddr = await genesisManager.vestingHolders.call(grant.receiver)
         const vestingHolder = await TokenVesting.at(vestingHolderAddr)
         assert.equal((await vestingHolder.beneficiary.call()).toLowerCase(), grant.receiver.toLowerCase(), "should be correct vesting grant receiver")
-        assert.equal(await vestingHolder.start.call(), dummyTokenDistributionEndTime.toNumber(), "should be correct vesting start time")
-        assert.equal(await vestingHolder.cliff.call(), dummyTokenDistributionEndTime.plus(grant.timeToCliff).toNumber(), "should be correct vesting cliff time")
+        assert.equal(await vestingHolder.start.call(), grantsStartTimestamp.toNumber(), "should be correct vesting start time")
+        assert.equal(await vestingHolder.cliff.call(), grantsStartTimestamp.plus(grant.timeToCliff).toNumber(), "should be correct vesting cliff time")
         assert.equal(await vestingHolder.duration.call(), grant.vestingDuration.toNumber(), "should be correct vesting duration")
         assert.equal(await token.balanceOf(vestingHolderAddr), grant.amount.toNumber(), "should be correct vesting grant amount")
     })
@@ -165,10 +166,34 @@ module.exports = async () => {
         const timeLockedHolderAddr = await genesisManager.timeLockedHolders.call(grant.receiver)
         const timeLockedHolder = await TokenTimelock.at(timeLockedHolderAddr)
         assert.equal((await timeLockedHolder.beneficiary.call()).toLowerCase(), grant.receiver.toLowerCase(), "should be correct timelocked grant receiver")
-        assert.equal(await timeLockedHolder.releaseTime.call(), dummyTokenDistributionEndTime.toNumber(), "should be correct lock release time")
+        assert.equal(await timeLockedHolder.releaseTime.call(), grantsStartTimestamp.toNumber(), "should be correct lock release time")
         assert.equal(await token.balanceOf(timeLockedHolderAddr), grant.amount.toNumber(), "should be correct timelocked grant amount")
     })
 
     console.log("Timelocked community grants passed all checks!")
+
+    // Check MerkleMine
+    assert.equal((await merkleMine.token.call()).toLowerCase(), genesisConfig.merkleMine.token.toLowerCase(), "should be correct token address")
+    assert.equal(await merkleMine.genesisRoot.call(), genesisConfig.merkleMine.genesisRoot, "should be correct genesis root")
+    assert.equal(await merkleMine.totalGenesisTokens.call(), genesisConfig.merkleMine.totalGenesisTokens, "should be correct genesis tokens")
+    assert.equal(await merkleMine.totalGenesisRecipients.call(), genesisConfig.merkleMine.totalGenesisRecipients, "should be correct genesis recipients")
+    assert.equal(
+        await merkleMine.tokensPerAllocation.call(),
+        Math.floor(genesisConfig.merkleMine.totalGenesisTokens / genesisConfig.merkleMine.totalGenesisRecipients),
+        "should be correct tokens per allocation"
+    )
+    assert.equal(await merkleMine.balanceThreshold.call(), genesisConfig.merkleMine.balanceThreshold, "should be correct balance threshold")
+    assert.equal(await merkleMine.genesisBlock.call(), genesisConfig.merkleMine.genesisBlock, "should be correct genesis block")
+    assert.equal(await merkleMine.callerAllocationStartBlock.call(), genesisConfig.merkleMine.callerAllocationStartBlock, "should be correct caller allocation start block")
+    assert.equal(await merkleMine.callerAllocationEndBlock.call(), genesisConfig.merkleMine.callerAllocationEndBlock, "should be correct caller allocation end block")
+    assert.equal(
+        await merkleMine.callerAllocationPeriod.call(),
+        genesisConfig.merkleMine.callerAllocationEndBlock - genesisConfig.merkleMine.callerAllocationStartBlock,
+        "should be correct caller allocation period"
+    )
+    assert.isOk(await merkleMine.started.call(), "generation period should be started")
+
+    console.log("MerkleMine passed all checks!")
+
     console.log("--- All validation checks passed! ---")
 }

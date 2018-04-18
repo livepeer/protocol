@@ -1,7 +1,6 @@
 pragma solidity ^0.4.17;
 
 import "./token/ILivepeerToken.sol";
-import "./token/ITokenDistribution.sol";
 
 import "zeppelin-solidity/contracts/math/SafeMath.sol";
 import "zeppelin-solidity/contracts/ownership/Ownable.sol";
@@ -14,9 +13,9 @@ contract GenesisManager is Ownable {
 
     // LivepeerToken contract
     ILivepeerToken public token;
-    // TokenDistribution contract
-    ITokenDistribution public tokenDistribution;
 
+    // Address of the token distribution contract
+    address public tokenDistribution;
     // Address of the Livepeer bank multisig
     address public bankMultisig;
     // Address of the Minter contract in the Livepeer protocol
@@ -41,6 +40,10 @@ contract GenesisManager is Ownable {
     uint256 public investorsGrantsAmount;
     // Token amount in grants for the community
     uint256 public communityGrantsAmount;
+
+    // Timestamp at which vesting grants begin their vesting period
+    // and timelock grants release locked tokens
+    uint256 public grantsStartTimestamp;
 
     // Map receiver addresses => contracts holding receivers' vesting tokens
     mapping (address => address) public vestingHolders;
@@ -77,14 +80,16 @@ contract GenesisManager is Ownable {
         address _token,
         address _tokenDistribution,
         address _bankMultisig,
-        address _minter
+        address _minter,
+        uint256 _grantsStartTimestamp
     )
         public
     {
         token = ILivepeerToken(_token);
-        tokenDistribution = ITokenDistribution(_tokenDistribution);
+        tokenDistribution = _tokenDistribution;
         bankMultisig = _bankMultisig;
         minter = _minter;
+        grantsStartTimestamp = _grantsStartTimestamp;
 
         stage = Stages.GenesisAllocation;
     }
@@ -124,14 +129,8 @@ contract GenesisManager is Ownable {
      * @dev Start genesis
      */
     function start() external onlyOwner atStage(Stages.GenesisAllocation) {
-        // Token distribution must not be over
-        require(!tokenDistribution.isOver());
-
         // Mint the initial supply
         token.mint(this, initialSupply);
-
-        // Transfer the crowd supply to the token distribution contract
-        token.transfer(tokenDistribution, crowdSupply);
 
         stage = Stages.GenesisStart;
     }
@@ -206,16 +205,14 @@ contract GenesisManager is Ownable {
         // Receiver must not have already received a grant with a vesting schedule
         require(vestingHolders[_receiver] == address(0));
 
-        // The grant's vesting schedule starts when the token distribution ends
-        uint256 startTime = tokenDistribution.getEndTime();
         // Create a vesting holder contract to act as the holder of the grant's tokens
         // Note: the vesting grant is revokable
-        TokenVesting holder = new TokenVesting(_receiver, startTime, _timeToCliff, _vestingDuration, true);
+        TokenVesting holder = new TokenVesting(_receiver, grantsStartTimestamp, _timeToCliff, _vestingDuration, true);
         vestingHolders[_receiver] = holder;
 
-        // Transfer ownership of the vesting holder to the owner of this contract
-        // giving the owner of this contract to revoke the grant
-        holder.transferOwnership(owner);
+        // Transfer ownership of the vesting holder to the bank multisig
+        // giving the bank multisig the ability to revoke the grant
+        holder.transferOwnership(bankMultisig);
 
         token.transfer(holder, _amount);
     }
@@ -242,10 +239,8 @@ contract GenesisManager is Ownable {
         // Receiver must not have already received a grant with timelocked tokens
         require(timeLockedHolders[_receiver] == address(0));
 
-        // The grant's tokens are timelocked until the token distribution ends
-        uint256 releaseTime = tokenDistribution.getEndTime();
         // Create a timelocked holder contract to act as the holder of the grant's tokens
-        TokenTimelock holder = new TokenTimelock(token, _receiver, releaseTime);
+        TokenTimelock holder = new TokenTimelock(token, _receiver, grantsStartTimestamp);
         timeLockedHolders[_receiver] = holder;
 
         token.transfer(holder, _amount);
@@ -255,9 +250,8 @@ contract GenesisManager is Ownable {
      * @dev End genesis
      */
     function end() external onlyOwner atStage(Stages.GenesisStart) {
-        // Token distribution must be over
-        require(tokenDistribution.isOver());
-
+        // Transfer the crowd supply to the token distribution contract
+        token.transfer(tokenDistribution, crowdSupply);
         // Transfer company supply to the bank multisig
         token.transfer(bankMultisig, companySupply);
         // Transfer ownership of the LivepeerToken contract to the protocol Minter
