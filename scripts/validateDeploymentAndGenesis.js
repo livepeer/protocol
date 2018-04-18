@@ -173,19 +173,19 @@ module.exports = async () => {
     console.log("Timelocked community grants passed all checks!")
 
     // Check MerkleMine
-    assert.equal((await merkleMine.token.call()).toLowerCase(), genesisConfig.merkleMine.token.toLowerCase(), "should be correct token address")
+    assert.equal(await merkleMine.token.call(), token.address, "should be correct token address")
     assert.equal(await merkleMine.genesisRoot.call(), genesisConfig.merkleMine.genesisRoot, "should be correct genesis root")
-    assert.equal(await merkleMine.totalGenesisTokens.call(), genesisConfig.merkleMine.totalGenesisTokens, "should be correct genesis tokens")
+    assert.equal(await merkleMine.totalGenesisTokens.call(), genesisConfig.crowdSupply.toNumber(), "should be correct genesis tokens")
     assert.equal(await merkleMine.totalGenesisRecipients.call(), genesisConfig.merkleMine.totalGenesisRecipients, "should be correct genesis recipients")
     assert.equal(
         await merkleMine.tokensPerAllocation.call(),
-        Math.floor(genesisConfig.merkleMine.totalGenesisTokens / genesisConfig.merkleMine.totalGenesisRecipients),
+        Math.floor(genesisConfig.crowdSupply.toNumber() / genesisConfig.merkleMine.totalGenesisRecipients),
         "should be correct tokens per allocation"
     )
     assert.equal(await merkleMine.balanceThreshold.call(), genesisConfig.merkleMine.balanceThreshold, "should be correct balance threshold")
     assert.equal(await merkleMine.genesisBlock.call(), genesisConfig.merkleMine.genesisBlock, "should be correct genesis block")
-    assert.equal(await merkleMine.callerAllocationStartBlock.call(), genesisConfig.merkleMine.callerAllocationStartBlock, "should be correct caller allocation start block")
-    assert.equal(await merkleMine.callerAllocationEndBlock.call(), genesisConfig.merkleMine.callerAllocationEndBlock, "should be correct caller allocation end block")
+    assert.equal((await merkleMine.callerAllocationStartBlock.call()).toNumber(), genesisConfig.merkleMine.callerAllocationStartBlock, "should be correct caller allocation start block")
+    assert.equal((await merkleMine.callerAllocationEndBlock.call()).toNumber(), genesisConfig.merkleMine.callerAllocationEndBlock, "should be correct caller allocation end block")
     assert.equal(
         await merkleMine.callerAllocationPeriod.call(),
         genesisConfig.merkleMine.callerAllocationEndBlock - genesisConfig.merkleMine.callerAllocationStartBlock,
