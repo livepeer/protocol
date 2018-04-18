@@ -139,6 +139,7 @@ module.exports = async () => {
     genesisConfig.teamGrants.forEach(async grant => {
         const vestingHolderAddr = await genesisManager.vestingHolders.call(grant.receiver)
         const vestingHolder = await TokenVesting.at(vestingHolderAddr)
+        assert.equal((await vestingHolder.owner.call()).toLowerCase(), genesisConfig.bankMultisig, "should be correct grant owner")
         assert.equal((await vestingHolder.beneficiary.call()).toLowerCase(), grant.receiver.toLowerCase(), "should be correct vesting grant receiver")
         assert.equal(await vestingHolder.start.call(), grantsStartTimestamp.toNumber(), "should be correct vesting start time")
         assert.equal(await vestingHolder.cliff.call(), grantsStartTimestamp.plus(grant.timeToCliff).toNumber(), "should be correct vesting cliff time")
@@ -152,6 +153,7 @@ module.exports = async () => {
     genesisConfig.investorGrants.forEach(async grant => {
         const vestingHolderAddr = await genesisManager.vestingHolders.call(grant.receiver)
         const vestingHolder = await TokenVesting.at(vestingHolderAddr)
+        assert.equal((await vestingHolder.owner.call()).toLowerCase(), genesisConfig.bankMultisig, "should be correct grant owner")
         assert.equal((await vestingHolder.beneficiary.call()).toLowerCase(), grant.receiver.toLowerCase(), "should be correct vesting grant receiver")
         assert.equal(await vestingHolder.start.call(), grantsStartTimestamp.toNumber(), "should be correct vesting start time")
         assert.equal(await vestingHolder.cliff.call(), grantsStartTimestamp.plus(grant.timeToCliff).toNumber(), "should be correct vesting cliff time")
