@@ -46,7 +46,7 @@ module.exports = function(deployer, network, accounts) {
             deployer.logger.log("In production - crowd supply will be sent to token distribution contract and company supply will be sent to bank multisig")
             const merkleMine = await lpDeployer.deploy(
                 MerkleMine,
-                token.address,
+                tokenAddr,
                 genesis.merkleMine.genesisRoot,
                 genesis.crowdSupply,
                 genesis.merkleMine.totalGenesisRecipients,
@@ -73,7 +73,7 @@ module.exports = function(deployer, network, accounts) {
             genesis.communitySupply
         )
 
-        deployer.logger.log("Starting genesis and allocating a 0 crowd supply to the dummy token distribution...")
+        deployer.logger.log("Starting genesis...")
 
         await genesisManager.start()
 

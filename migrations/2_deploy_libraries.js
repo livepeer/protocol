@@ -10,6 +10,7 @@ const Minter = artifacts.require("Minter")
 const JobsManager = artifacts.require("JobsManager")
 const BondingManager = artifacts.require("BondingManager")
 const RoundsManager = artifacts.require("RoundsManager")
+const MerkleMine = artifacts.require("MerkleMine")
 
 module.exports = function(deployer) {
     deployer.deploy(SafeMath)
@@ -38,6 +39,7 @@ module.exports = function(deployer) {
 
     deployer.deploy(MerkleProof)
     deployer.link(MerkleProof, JobLib)
+    deployer.link(MerkleProof, MerkleMine)
 
     deployer.deploy(ECRecovery)
     deployer.link(ECRecovery, JobLib)
