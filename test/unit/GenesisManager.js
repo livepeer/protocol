@@ -1,8 +1,8 @@
 import Fixture from "./helpers/Fixture"
 import expectThrow from "../helpers/expectThrow"
-import {functionSig} from "../../utils/helpers"
 
 const GenesisManager = artifacts.require("GenesisManager")
+const TokenVesting = artifacts.require("TokenVesting")
 const GenericMock = artifacts.require("GenericMock")
 
 const Stages = {
@@ -15,11 +15,14 @@ contract("GenesisManager", accounts => {
     describe("constructor", () => {
         it("should set parameters and stage to the allocation stage", async () => {
             const randomAddress = accounts[0]
+            const timeToGrantsStart = 60 * 60 * 24 * 7
+            const grantsStartTimestamp = web3.eth.getBlock("latest").timestamp + timeToGrantsStart
             const genesisManager = await GenesisManager.new(
                 randomAddress,
                 randomAddress,
                 randomAddress,
-                randomAddress
+                randomAddress,
+                grantsStartTimestamp
             )
 
             const token = await genesisManager.token.call()
@@ -30,6 +33,7 @@ contract("GenesisManager", accounts => {
             assert.equal(bankMultisig, randomAddress, "wrong bank multisig address")
             const minter = await genesisManager.minter.call()
             assert.equal(minter, randomAddress, "wrong minter address")
+            assert.equal(await genesisManager.grantsStartTimestamp.call(), grantsStartTimestamp, "wrong grants start timestamp")
             const stage = await genesisManager.stage.call()
             assert.equal(stage, Stages.GenesisAllocation, "wrong stage")
         })
@@ -37,21 +41,23 @@ contract("GenesisManager", accounts => {
 
     let fixture
     let genesisManager
-    let tokenDistribution
+    let tokenDistribution = accounts[0]
+    let bankMultisig = accounts[1]
 
     before(async () => {
         fixture = new Fixture(web3)
-        tokenDistribution = await GenericMock.new()
 
         const token = await GenericMock.new()
-        const bankMultisig = await GenericMock.new()
         const minter = await GenericMock.new()
+        const timeToGrantsStart = 60 * 60 * 24 * 7
+        const grantsStartTimestamp = web3.eth.getBlock("latest").timestamp + timeToGrantsStart
 
         genesisManager = await GenesisManager.new(
             token.address,
-            tokenDistribution.address,
-            bankMultisig.address,
-            minter.address
+            tokenDistribution,
+            bankMultisig,
+            minter.address,
+            grantsStartTimestamp
         )
     })
 
@@ -90,8 +96,6 @@ contract("GenesisManager", accounts => {
         })
 
         it("should fail if it is not the allocation stage", async () => {
-            // Set tokenDistribution to not be over
-            await tokenDistribution.setMockBool(functionSig("isOver()"), false)
             // Transition to start stage
             await genesisManager.start()
 
@@ -105,24 +109,13 @@ contract("GenesisManager", accounts => {
         })
 
         it("should fail if it is not the allocation stage", async () => {
-            // Set tokenDistribution to not be over
-            await tokenDistribution.setMockBool(functionSig("isOver()"), false)
             // Transition to start stage
             await genesisManager.start()
 
             await expectThrow(genesisManager.start())
         })
 
-        it("should fail if the token distribution is over", async () => {
-            // Set tokenDistribution to be over
-            await tokenDistribution.setMockBool(functionSig("isOver()"), true)
-
-            await expectThrow(genesisManager.start())
-        })
-
         it("should set the stage to the genesis start stage", async () => {
-            // Set tokenDistribution to not be over
-            await tokenDistribution.setMockBool(functionSig("isOver()"), false)
             await genesisManager.start()
 
             const stage = await genesisManager.stage.call()
@@ -135,8 +128,6 @@ contract("GenesisManager", accounts => {
         const vestingDuration = 2 * 60 * 60
 
         it("should fail if sender is not the owner", async () => {
-            // Set tokenDistribution to not be over
-            await tokenDistribution.setMockBool(functionSig("isOver()"), false)
             await genesisManager.start()
 
             await expectThrow(genesisManager.addTeamGrant(accounts[0], 100, timeToCliff, vestingDuration, {from: accounts[1]}))
@@ -148,24 +139,14 @@ contract("GenesisManager", accounts => {
 
         it("should fail if amount of grants created > team supply", async () => {
             await genesisManager.setAllocations(100, 10, 30, 40, 10, 10)
-            // Set tokenDistribution to not be over
-            await tokenDistribution.setMockBool(functionSig("isOver()"), false)
             await genesisManager.start()
-            // Set token distribution end time
-            const distributionEndTime = web3.eth.getBlock(web3.eth.blockNumber).timestamp + (1 * 60 * 60)
-            await tokenDistribution.setMockUint256(functionSig("getEndTime()"), distributionEndTime)
 
             await expectThrow(genesisManager.addTeamGrant(accounts[0], 100, timeToCliff, vestingDuration))
         })
 
         it("should fail if the receiver already has a grant", async () => {
             await genesisManager.setAllocations(100, 10, 30, 40, 10, 10)
-            // Set tokenDistribution to not be over
-            await tokenDistribution.setMockBool(functionSig("isOver()"), false)
             await genesisManager.start()
-            // Set token distribution end time
-            const distributionEndTime = web3.eth.getBlock(web3.eth.blockNumber).timestamp + (1 * 60 * 60)
-            await tokenDistribution.setMockUint256(functionSig("getEndTime()"), distributionEndTime)
             // Receiver gets grant
             await genesisManager.addTeamGrant(accounts[0], 5, timeToCliff, vestingDuration)
 
@@ -174,17 +155,23 @@ contract("GenesisManager", accounts => {
 
         it("should create a TokenVesting address mapped to the receiver", async () => {
             await genesisManager.setAllocations(100, 10, 30, 40, 10, 10)
-            // Set tokenDistribution to not be over
-            await tokenDistribution.setMockBool(functionSig("isOver()"), false)
             await genesisManager.start()
-            // Set token distribution end time
-            const distributionEndTime = web3.eth.getBlock(web3.eth.blockNumber).timestamp + (1 * 60 * 60)
-            await tokenDistribution.setMockUint256(functionSig("getEndTime()"), distributionEndTime)
 
             await genesisManager.addTeamGrant(accounts[0], 5, timeToCliff, vestingDuration)
 
             const holder = await genesisManager.vestingHolders.call(accounts[0])
             assert.notEqual(holder, "0x0000000000000000000000000000000000000000", "missing holder address")
+        })
+
+        it("should transfer ownership of TokenVesting contract to bank multisig", async () => {
+            await genesisManager.setAllocations(100, 10, 30, 40, 10, 10)
+            await genesisManager.start()
+
+            await genesisManager.addInvestorGrant(accounts[0], 5, timeToCliff, vestingDuration)
+
+            const holderAddr = await genesisManager.vestingHolders.call(accounts[0])
+            const holder = await TokenVesting.at(holderAddr)
+            assert.equal(await holder.owner.call(), bankMultisig, "wrong TokenVesting owner")
         })
     })
 
@@ -193,8 +180,6 @@ contract("GenesisManager", accounts => {
         const vestingDuration = 2 * 60 * 60
 
         it("should fail if sender is not the owner", async () => {
-            // Set tokenDistribution to not be over
-            await tokenDistribution.setMockBool(functionSig("isOver()"), false)
             await genesisManager.start()
 
             await expectThrow(genesisManager.addInvestorGrant(accounts[0], 100, timeToCliff, vestingDuration, {from: accounts[1]}))
@@ -206,22 +191,14 @@ contract("GenesisManager", accounts => {
 
         it("should fail if amount of grants created > team supply", async () => {
             await genesisManager.setAllocations(100, 10, 30, 40, 10, 10)
-            // Set tokenDistribution to not be over
-            await tokenDistribution.setMockBool(functionSig("isOver()"), false)
             await genesisManager.start()
-            // Set token distribution end time
-            await tokenDistribution.setMockUint256(functionSig("getEndTime()"), web3.eth.getBlock(web3.eth.blockNumber).timestamp + (1 * 60 * 60))
 
             await expectThrow(genesisManager.addInvestorGrant(accounts[0], 100, timeToCliff, vestingDuration))
         })
 
         it("should fail if the receiver already has a grant", async () => {
             await genesisManager.setAllocations(100, 10, 30, 40, 10, 10)
-            // Set tokenDistribution to not be over
-            await tokenDistribution.setMockBool(functionSig("isOver()"), false)
             await genesisManager.start()
-            // Set token distribution end time
-            await tokenDistribution.setMockUint256(functionSig("getEndTime()"), web3.eth.getBlock(web3.eth.blockNumber).timestamp + (1 * 60 * 60))
             // Receiver gets grant
             await genesisManager.addInvestorGrant(accounts[0], 5, timeToCliff, vestingDuration)
 
@@ -230,17 +207,23 @@ contract("GenesisManager", accounts => {
 
         it("should create a TokenVesting contract mapped to the receiver", async () => {
             await genesisManager.setAllocations(100, 10, 30, 40, 10, 10)
-            // Set tokenDistribution to not be over
-            await tokenDistribution.setMockBool(functionSig("isOver()"), false)
             await genesisManager.start()
-            const distributionEndTime = web3.eth.getBlock(web3.eth.blockNumber).timestamp + (1 * 60 * 60)
-            // Set token distribution end time
-            await tokenDistribution.setMockUint256(functionSig("getEndTime()"), distributionEndTime)
 
             await genesisManager.addInvestorGrant(accounts[0], 5, timeToCliff, vestingDuration)
 
             const holder = await genesisManager.vestingHolders.call(accounts[0])
             assert.notEqual(holder !== "0x0000000000000000000000000000000000000000", "missing holder address")
+        })
+
+        it("should transfer ownership of TokenVesting contract to bank multisig", async () => {
+            await genesisManager.setAllocations(100, 10, 30, 40, 10, 10)
+            await genesisManager.start()
+
+            await genesisManager.addInvestorGrant(accounts[0], 5, timeToCliff, vestingDuration)
+
+            const holderAddr = await genesisManager.vestingHolders.call(accounts[0])
+            const holder = await TokenVesting.at(holderAddr)
+            assert.equal(await holder.owner.call(), bankMultisig, "wrong TokenVesting owner")
         })
     })
 
@@ -255,8 +238,6 @@ contract("GenesisManager", accounts => {
 
         it("should fail if amount of grants created > community supply", async () => {
             await genesisManager.setAllocations(100, 10, 30, 40, 10, 10)
-            // Set tokenDistribution to not be over
-            await tokenDistribution.setMockBool(functionSig("isOver()"), false)
             await genesisManager.start()
 
             await expectThrow(genesisManager.addCommunityGrant(accounts[0], 100))
@@ -264,12 +245,7 @@ contract("GenesisManager", accounts => {
 
         it("should update the amount of grants created", async () => {
             await genesisManager.setAllocations(100, 10, 30, 40, 10, 10)
-            // Set tokenDistribution to not be over
-            await tokenDistribution.setMockBool(functionSig("isOver()"), false)
             await genesisManager.start()
-            // Set token distribution end time
-            const distributionEndTime = web3.eth.getBlock(web3.eth.blockNumber).timestamp + (1 * 60 * 60)
-            await tokenDistribution.setMockUint256(functionSig("getEndTime()"), distributionEndTime)
 
             await genesisManager.addCommunityGrant(accounts[0], 10)
 
@@ -279,12 +255,7 @@ contract("GenesisManager", accounts => {
 
         it("should fail if the receiver already has a grant", async () => {
             await genesisManager.setAllocations(100, 10, 30, 40, 10, 10)
-            // Set tokenDistribution to not be over
-            await tokenDistribution.setMockBool(functionSig("isOver()"), false)
             await genesisManager.start()
-            // Set token distribution end time
-            const distributionEndTime = web3.eth.getBlock(web3.eth.blockNumber).timestamp + (1 * 60 * 60)
-            await tokenDistribution.setMockUint256(functionSig("getEndTime()"), distributionEndTime)
             await genesisManager.addCommunityGrant(accounts[0], 5)
 
             await expectThrow(genesisManager.addCommunityGrant(accounts[0], 4))
@@ -292,12 +263,7 @@ contract("GenesisManager", accounts => {
 
         it("should create a TokenTimelock address mapped to the receiver", async () => {
             await genesisManager.setAllocations(100, 10, 30, 40, 10, 10)
-            // Set tokenDistribution to not be over
-            await tokenDistribution.setMockBool(functionSig("isOver()"), false)
             await genesisManager.start()
-            // Set token distribution end time
-            const distributionEndTime = web3.eth.getBlock(web3.eth.blockNumber).timestamp + (1 * 60 * 60)
-            await tokenDistribution.setMockUint256(functionSig("getEndTime()"), distributionEndTime)
 
             await genesisManager.addCommunityGrant(accounts[0], 5)
 
@@ -315,21 +281,8 @@ contract("GenesisManager", accounts => {
             await expectThrow(genesisManager.end())
         })
 
-        it("should fail if token distribution is not over", async () => {
-            // Set tokenDistribution to not be over
-            await tokenDistribution.setMockBool(functionSig("isOver()"), false)
-            await genesisManager.start()
-
-            await expectThrow(genesisManager.end())
-        })
-
         it("should set the stage to genesis end", async () => {
-            // Set tokenDistribution to not be over
-            await tokenDistribution.setMockBool(functionSig("isOver()"), false)
             await genesisManager.start()
-            // Set tokenDistribution to be over
-            await tokenDistribution.setMockBool(functionSig("isOver()"), true)
-
             await genesisManager.end()
 
             const stage = await genesisManager.stage.call()
