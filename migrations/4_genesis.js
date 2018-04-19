@@ -8,8 +8,8 @@ const LivepeerToken = artifacts.require("LivepeerToken")
 const GenesisManager = artifacts.require("GenesisManager")
 const MerkleMine = artifacts.require("MerkleMine")
 
-const getCurrentBlockTimestamp = async () => {
-    const block = await new Promise((resolve, reject) => {
+const getCurrentBlock = async () => {
+    return await new Promise((resolve, reject) => {
         return web3.eth.getBlock("latest", (err, blk) => {
             if (err) {
                 reject(err)
@@ -18,8 +18,6 @@ const getCurrentBlockTimestamp = async () => {
             }
         })
     })
-
-    return block.timestamp
 }
 
 module.exports = function(deployer, network, accounts) {
@@ -33,7 +31,7 @@ module.exports = function(deployer, network, accounts) {
 
         let genesisManager
 
-        const grantsStartTimestamp = (await getCurrentBlockTimestamp()) + genesis.timeToGrantsStart
+        const grantsStartTimestamp = (await getCurrentBlock()).timestamp + genesis.timeToGrantsStart
 
         if (!lpDeployer.isProduction(network)) {
             // If not in production, send the crowd supply to the faucet and the company supply to the deployment account
@@ -44,6 +42,11 @@ module.exports = function(deployer, network, accounts) {
         } else {
             // If in production, send the crowd supply to the token distribution contract and the company supply to the bank multisig
             deployer.logger.log("In production - crowd supply will be sent to token distribution contract and company supply will be sent to bank multisig")
+
+            const currentBlockNum = (await getCurrentBlock()).number
+            const callerAllocationStartBlock = currentBlockNum + genesis.merkleMine.blocksToCliff
+            const callerAllocationEndBlock = callerAllocationStartBlock + genesis.merkleMine.callerAllocationPeriod
+
             const merkleMine = await lpDeployer.deploy(
                 MerkleMine,
                 tokenAddr,
@@ -52,8 +55,8 @@ module.exports = function(deployer, network, accounts) {
                 genesis.merkleMine.totalGenesisRecipients,
                 genesis.merkleMine.balanceThreshold,
                 genesis.merkleMine.genesisBlock,
-                genesis.merkleMine.callerAllocationStartBlock,
-                genesis.merkleMine.callerAllocationEndBlock
+                callerAllocationStartBlock,
+                callerAllocationEndBlock
             )
             genesisManager = await lpDeployer.deploy(GenesisManager, tokenAddr, merkleMine.address, genesis.bankMultisig, minterAddr, grantsStartTimestamp)
         }

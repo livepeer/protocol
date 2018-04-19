@@ -17,8 +17,8 @@ module.exports = {
         totalGenesisRecipients: 95447,
         balanceThreshold: 100,
         genesisBlock: 2064302,
-        callerAllocationStartBlock: 2088350,
-        callerAllocationEndBlock: 2089150
+        blocksToCliff: 100,
+        callerAllocationPeriod: 200
     },
     // Should replace these placeholder grants in a real deployment
     teamGrants: [
