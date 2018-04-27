@@ -190,7 +190,7 @@ module.exports = {
             amount: new BigNumber(750).mul(TOKEN_UNIT)
         },
         {
-            receiver: "0x7b92b28417c6f01383a0de1d0532f707c82adc23",
+            receiver: "0xe507c8882dab3277577937f868dc14d5b1f16b1a",
             amount: new BigNumber(500).mul(TOKEN_UNIT)
         },
         {
