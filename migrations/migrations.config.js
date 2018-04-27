@@ -33,7 +33,7 @@ module.exports = {
         targetBondingRate: 500000
     },
     verifier: {
-        verificationCodeHash: "QmZmvi1BaYSdxM1Tgwhi2mURabh46xCkzuH9PWeAkAZZGc", // TODO
+        verificationCodeHash: "QmUMk1wF6YmFLFyydhSVgeNCSKk4J8G38DzTzcx6FdYSzV",
         solvers: [], // TODO
         gasPrice: 20000000000,
         gasLimit: 3000000

@@ -9,12 +9,12 @@ module.exports = {
     teamSupply: new BigNumber(1235000).mul(TOKEN_UNIT),
     investorsSupply: new BigNumber(1900000).mul(TOKEN_UNIT),
     communitySupply: new BigNumber(21300).mul(TOKEN_UNIT),
-    bankMultisig: "0x0161e041aad467a890839d5b08b138c1e6373072", // TODO
-    governanceMultisig: "0x0161e041aad467a890839d5b08b138c1e6373072", // TODO
+    bankMultisig: "0x6941627cba3518385e75de75d25a189185672bfe",
+    governanceMultisig: "0x04746b890d090ae3c4c5df0101cfd089a4faca6c",
     timeToGrantsStart: new BigNumber(60).times(60).times(6),
     merkleMine: {
-        genesisRoot: "0xcfc715d2f123d7d20bb9991b3810b80f7d796f53aa70bf5da6e1fa9b4d2d1695", // TODO
-        totalGenesisRecipients: 95447, // TODO
+        genesisRoot: "0x53f35a304a1e1e20d6648e09bb3073ccd44a5bf1638a01355897a71e801879f8",
+        totalGenesisRecipients: 2598071,
         balanceThreshold: 100000000000000000,
         genesisBlock: 5264265,
         blocksToCliff: 500000,
