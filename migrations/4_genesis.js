@@ -32,7 +32,8 @@ module.exports = function(deployer, network, accounts) {
 
         let genesisManager
 
-        const grantsStartTimestamp = new BigNumber((await getCurrentBlock()).timestamp).plus(genesis.timeToGrantsStart)
+        const currentTimestamp = new BigNumber((await getCurrentBlock()).timestamp)
+        const grantsStartTimestamp = currentTimestamp.plus(genesis.timeToGrantsStart)
 
         if (!lpDeployer.isProduction(network)) {
             // If not in production, send the crowd supply to the faucet and the company supply to the deployment account
