@@ -1,27 +1,25 @@
-import BigNumber from "bignumber.js"
+const BigNumber = require("bignumber.js")
 
 const TOKEN_UNIT = 10 ** 18
-const PERC_DIVISOR = 1000000
-const PERC_MULTIPLIER = PERC_DIVISOR / 100
 
 module.exports = {
     bondingManager: {
-        numTranscoders: 10,
-        numActiveTranscoders: 5,
-        unbondingPeriod: 2,
+        numTranscoders: 20,
+        numActiveTranscoders: 10,
+        unbondingPeriod: 7,
         maxEarningsClaimsRounds: 20
     },
     jobsManager: {
-        verificationRate: 100,
-        verificationPeriod: 50,
-        verificationSlashingPeriod: 50,
+        verificationRate: 1000,
+        verificationPeriod: 100,
+        verificationSlashingPeriod: 100,
         failedVerificationSlashAmount: 1,
-        missedVerificationSlashAmount: .1 * PERC_MULTIPLIER,
-        doubleClaimSegmentSlashAmount: 3 * PERC_MULTIPLIER,
-        finderFee: 5 * PERC_MULTIPLIER
+        missedVerificationSlashAmount: 5000,
+        doubleClaimSegmentSlashAmount: 30000,
+        finderFee: 50000
     },
     roundsManager: {
-        roundLength: 50,
+        roundLength: 5760,
         roundLockAmount: 100000
     },
     faucet: {
@@ -30,13 +28,15 @@ module.exports = {
         whitelist: []
     },
     minter: {
-        inflation: .0137 * PERC_MULTIPLIER,
-        inflationChange: .001 * PERC_MULTIPLIER,
-        targetBondingRate: 1.5 * PERC_MULTIPLIER
+        inflation: 137,
+        inflationChange: 3,
+        targetBondingRate: 500000
     },
     verifier: {
-        verificationCodeHash: "QmZmvi1BaYSdxM1Tgwhi2mURabh46xCkzuH9PWeAkAZZGc",
-        solvers: [],
+        verificationCodeHash: "QmUMk1wF6YmFLFyydhSVgeNCSKk4J8G38DzTzcx6FdYSzV",
+        solvers: [
+            "0xc613674f1876eeb89821bcaa9CfC5B9299BACBF2"
+        ],
         gasPrice: 20000000000,
         gasLimit: 3000000
     }

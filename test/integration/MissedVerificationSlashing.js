@@ -120,8 +120,6 @@ contract("MissedVerificationSlashing", accounts => {
         // Wait through the verification period
         const verificationPeriod = await jobsManager.verificationPeriod.call()
         await roundsManager.mineBlocks(verificationPeriod.toNumber() + 1)
-        // Make sure the round is initialized
-        await roundsManager.initializeRound()
 
         rand = web3.eth.getBlock(web3.eth.blockNumber).hash
         await roundsManager.setBlockHash(rand)

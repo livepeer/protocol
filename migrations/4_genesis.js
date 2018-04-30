@@ -83,13 +83,13 @@ module.exports = function(deployer, network, accounts) {
         deployer.logger.log("Adding team token grants...")
 
         await Promise.all(genesis.teamGrants.map(grant => {
-            return genesisManager.addTeamGrant(grant.receiver, grant.amount, grant.timeToCliff, grant.vestingDuration)
+            return genesisManager.addTeamGrant(grant.receiver, grant.amount, genesis.teamTimeToCliff, genesis.teamVestingDuration)
         }))
 
         deployer.logger.log("Adding investor token grants...")
 
         await Promise.all(genesis.investorGrants.map(grant => {
-            return genesisManager.addInvestorGrant(grant.receiver, grant.amount, grant.timeToCliff, grant.vestingDuration)
+            return genesisManager.addInvestorGrant(grant.receiver, grant.amount, genesis.investorsTimeToCliff, genesis.investorsVestingDuration)
         }))
 
         deployer.logger.log("Adding community token grants...")
