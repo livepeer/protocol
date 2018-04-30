@@ -11,7 +11,7 @@ module.exports = {
     communitySupply: new BigNumber(21300).mul(TOKEN_UNIT),
     bankMultisig: "0x6941627cba3518385e75de75d25a189185672bfe",
     governanceMultisig: "0x04746b890d090ae3c4c5df0101cfd089a4faca6c",
-    timeToGrantsStart: new BigNumber(60).times(60).times(6),
+    timeToGrantsStart: new BigNumber(60).times(60).times(4),
     merkleMine: {
         genesisRoot: "0x53f35a304a1e1e20d6648e09bb3073ccd44a5bf1638a01355897a71e801879f8",
         totalGenesisRecipients: 2598071,

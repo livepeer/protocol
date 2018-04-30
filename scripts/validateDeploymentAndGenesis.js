@@ -142,8 +142,8 @@ module.exports = async () => {
         assert.equal(await vestingHolder.owner.call(), genesisConfig.bankMultisig.toLowerCase(), "should be correct grant owner")
         assert.equal(await vestingHolder.beneficiary.call(), grant.receiver.toLowerCase(), "should be correct vesting grant receiver")
         assert.equal((await vestingHolder.start.call()).toString(), grantsStartTimestamp.toString(), "should be correct vesting start time")
-        assert.equal((await vestingHolder.cliff.call()).toString(), grantsStartTimestamp.plus(grant.timeToCliff).toString(), "should be correct vesting cliff time")
-        assert.equal((await vestingHolder.duration.call()).toString(), grant.vestingDuration.toString(), "should be correct vesting duration")
+        assert.equal((await vestingHolder.cliff.call()).toString(), grantsStartTimestamp.plus(genesisConfig.teamTimeToCliff).toString(), "should be correct vesting cliff time")
+        assert.equal((await vestingHolder.duration.call()).toString(), genesisConfig.teamVestingDuration.toString(), "should be correct vesting duration")
         assert.equal((await token.balanceOf(vestingHolderAddr)).toString(), grant.amount.toString(), "should be correct vesting grant amount")
     })
 
@@ -156,8 +156,8 @@ module.exports = async () => {
         assert.equal(await vestingHolder.owner.call(), genesisConfig.bankMultisig.toLowerCase(), "should be correct grant owner")
         assert.equal(await vestingHolder.beneficiary.call(), grant.receiver.toLowerCase(), "should be correct vesting grant receiver")
         assert.equal((await vestingHolder.start.call()).toString(), grantsStartTimestamp.toString(), "should be correct vesting start time")
-        assert.equal((await vestingHolder.cliff.call()).toString(), grantsStartTimestamp.plus(grant.timeToCliff).toString(), "should be correct vesting cliff time")
-        assert.equal((await vestingHolder.duration.call()).toString(), grant.vestingDuration.toString(), "should be correct vesting duration")
+        assert.equal((await vestingHolder.cliff.call()).toString(), grantsStartTimestamp.plus(genesisConfig.investorsTimeToCliff).toString(), "should be correct vesting cliff time")
+        assert.equal((await vestingHolder.duration.call()).toString(), genesisConfig.investorsVestingDuration.toString(), "should be correct vesting duration")
         assert.equal((await token.balanceOf(vestingHolderAddr)).toString(), grant.amount.toString(), "should be correct vesting grant amount")
     })
 
