@@ -1,7 +1,7 @@
 import {contractId} from "../../utils/helpers"
 import {constants} from "../../utils/constants"
 import BigNumber from "bignumber.js"
-import expectThrow from "../helpers/expectThrow";
+import expectThrow from "../helpers/expectThrow"
 
 const Controller = artifacts.require("Controller")
 const BondingManager = artifacts.require("BondingManager")
