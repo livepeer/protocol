@@ -512,6 +512,10 @@ contract("BondingManager", accounts => {
             })
 
             describe("caller is changing delegate", () => {
+                it("should fail if caller is a registered transcoder", async () => {
+                    await expectThrow(bondingManager.bond(0, transcoder1, {from: transcoder0}))
+                })
+
                 it("should set startRound to next round", async () => {
                     await bondingManager.bond(0, transcoder1, {from: delegator})
 
@@ -690,6 +694,17 @@ contract("BondingManager", accounts => {
                     assert.isNotOk(await bondingManager.isActiveTranscoder(transcoder, currentRound + 1), "should set active transcoder as inactive for the round")
                     assert.equal(startTotalActiveStake.sub(endTotalActiveStake).toNumber(), 2000, "should decrease total active stake by total stake of transcoder")
                 })
+            })
+        })
+
+        describe("delegate is not self and is a registered transcoder", () => {
+            it("should decrease transcoder's delegated stake", async () => {
+                const startTranscoderTotalStake = await bondingManager.transcoderTotalStake(transcoder)
+                await bondingManager.unbond({from: delegator})
+                const endTranscoderTotalStake = await bondingManager.transcoderTotalStake(transcoder)
+
+                const dInfo = await bondingManager.getDelegator(delegator)
+                assert.equal(startTranscoderTotalStake.sub(endTranscoderTotalStake), dInfo[0].toNumber(), "should decrease transcoder total stake")
             })
         })
     })

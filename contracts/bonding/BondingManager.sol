@@ -285,6 +285,12 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             // If caller is bonding for the first time or withdrew previously bonded stake, delegation amount = provided amount
             delegationAmount = delegationAmount.add(del.bondedAmount);
         } else if (del.delegateAddress != address(0) && _to != del.delegateAddress) {
+            // A registered transcoder cannot delegate its bonded stake toward another address
+            // because it can only be delegated toward itself
+            // In the future, if delegation towards another registered transcoder as an already
+            // registered transcoder becomes useful (i.e. for transitive delegation), this restriction
+            // could be removed
+            require(transcoderStatus(msg.sender) == TranscoderStatus.NotRegistered);
             // Changing delegate
             // Set start round
             del.startRound = currentRound.add(1);
@@ -352,8 +358,12 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             // If caller is a registered transcoder, resign
             // In the future, with partial unbonding there would be a check for 0 bonded stake as well
             resignTranscoder(msg.sender);
-        } else if (transcoderStatus(del.delegateAddress) == TranscoderStatus.Registered) {
-            // If delegate is a registered transcoder, decrease its delegated stake
+        }
+
+        if (del.delegateAddress != msg.sender && transcoderStatus(del.delegateAddress) == TranscoderStatus.Registered) {
+            // If delegate is not self and is a registered transcoder, decrease its delegated stake
+            // We do not need to decrease delegated stake if delegate is self because we would have already removed self
+            // from the transcoder pool
             transcoderPool.updateKey(del.delegateAddress, transcoderPool.getKey(del.delegateAddress).sub(del.bondedAmount), address(0), address(0));
         }
 
