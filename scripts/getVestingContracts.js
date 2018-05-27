@@ -4,18 +4,27 @@ const genesisConfig = require("../migrations/genesis.config.js")
 module.exports = async () => {
     const genesisManager = await GenesisManager.deployed()
 
-    genesisConfig.teamGrants.forEach(async grant => {
+    console.log("Team Grants")
+    console.log("-----------------")
+
+    for (let grant of genesisConfig.teamGrants) {
         const vestingHolderAddr = await genesisManager.vestingHolders.call(grant.receiver)
         console.log(`Recipient: ${grant.receiver} Vesting contract: ${vestingHolderAddr}`)
-    })
+    }
 
-    genesisConfig.investorGrants.forEach(async grant => {
+    console.log("Investors Grants")
+    console.log("-----------------")
+
+    for (let grant of genesisConfig.investorGrants) {
         const vestingHolderAddr = await genesisManager.vestingHolders.call(grant.receiver)
         console.log(`Recipient: ${grant.receiver} Vesting contract: ${vestingHolderAddr}`)
-    })
+    }
 
-    genesisConfig.communityGrants.forEach(async grant => {
+    console.log("Community Grants")
+    console.log("-----------------")
+
+    for (let grant of genesisConfig.communityGrants) {
         const timeLockedHolderAddr = await genesisManager.timeLockedHolders.call(grant.receiver)
         console.log(`Recipient: ${grant.receiver} Timelock contract: ${timeLockedHolderAddr}`)
-    })
+    }
 }

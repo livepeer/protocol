@@ -1,4 +1,5 @@
 const genesis = require("./genesis.config.js")
+const BigNumber = require("bignumber.js")
 const ContractDeployer = require("../utils/contractDeployer")
 const {contractId} = require("../utils/helpers")
 
@@ -31,7 +32,8 @@ module.exports = function(deployer, network, accounts) {
 
         let genesisManager
 
-        const grantsStartTimestamp = (await getCurrentBlock()).timestamp + genesis.timeToGrantsStart
+        const currentTimestamp = new BigNumber((await getCurrentBlock()).timestamp)
+        const grantsStartTimestamp = currentTimestamp.plus(genesis.timeToGrantsStart)
 
         if (!lpDeployer.isProduction(network)) {
             // If not in production, send the crowd supply to the faucet and the company supply to the deployment account
@@ -82,21 +84,21 @@ module.exports = function(deployer, network, accounts) {
 
         deployer.logger.log("Adding team token grants...")
 
-        await Promise.all(genesis.teamGrants.map(grant => {
-            return genesisManager.addTeamGrant(grant.receiver, grant.amount, genesis.teamTimeToCliff, genesis.teamVestingDuration)
-        }))
+        for (let grant of genesis.teamGrants) {
+            await genesisManager.addTeamGrant(grant.receiver, grant.amount, genesis.teamTimeToCliff, genesis.teamVestingDuration)
+        }
 
         deployer.logger.log("Adding investor token grants...")
 
-        await Promise.all(genesis.investorGrants.map(grant => {
-            return genesisManager.addInvestorGrant(grant.receiver, grant.amount, genesis.investorsTimeToCliff, genesis.investorsVestingDuration)
-        }))
+        for (let grant of genesis.investorGrants) {
+            await genesisManager.addInvestorGrant(grant.receiver, grant.amount, genesis.investorsTimeToCliff, genesis.investorsVestingDuration)
+        }
 
         deployer.logger.log("Adding community token grants...")
 
-        await Promise.all(genesis.communityGrants.map(grant => {
-            return genesisManager.addCommunityGrant(grant.receiver, grant.amount)
-        }))
+        for (let grant of genesis.communityGrants) {
+            await genesisManager.addCommunityGrant(grant.receiver, grant.amount)
+        }
 
         deployer.logger.log("Ending genesis and transferring ownership of the LivepeerToken to the protocol Minter...")
 
