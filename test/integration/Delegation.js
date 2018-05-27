@@ -1,6 +1,7 @@
 import {contractId} from "../../utils/helpers"
 import {constants} from "../../utils/constants"
 import BigNumber from "bignumber.js"
+import expectThrow from "../helpers/expectThrow"
 
 const Controller = artifacts.require("Controller")
 const BondingManager = artifacts.require("BondingManager")
@@ -115,6 +116,10 @@ contract("Delegation", accounts => {
         assert.equal(endBond.sub(startBond), 1000, "delegator 1 bonded amount did not increase correctly")
     })
 
+    it("transcoder 1 tries to bond to transcoder 2 and fails", async () => {
+        await expectThrow(bondingManager.bond(0, transcoder2, {from: transcoder1}))
+    })
+
     it("delegator 1 unbonds and withdraws its stake", async () => {
         const unbondingPeriod = await bondingManager.unbondingPeriod.call()
 
@@ -132,6 +137,7 @@ contract("Delegation", accounts => {
         assert.equal(dInfo[5], currentRound.add(unbondingPeriod).toNumber(), "wrong withdraw round")
         assert.equal(dInfo[6], currentRound.toNumber(), "wrong last claim round")
         assert.equal((await bondingManager.getDelegator(transcoder1))[3], 1000, "wrong transcoder delegated amount")
+        assert.equal(await bondingManager.transcoderTotalStake(transcoder1), 1000, "wrong transcoder total stake")
 
         // Fast forward through unbonding period
         await roundsManager.mineBlocks(unbondingPeriod.mul(roundLength).toNumber())
@@ -169,6 +175,7 @@ contract("Delegation", accounts => {
         assert.equal(dInfo[5], currentRound.add(unbondingPeriod).toNumber(), "wrong withdraw round")
         assert.equal(dInfo[6], currentRound.toNumber(), "wrong last claim round")
         assert.equal((await bondingManager.getDelegator(transcoder2))[3], 1000, "wrong transcoder delegated amount")
+        assert.equal(await bondingManager.transcoderTotalStake(transcoder2), 1000, "wrong transcoder total stake")
 
         // Delegator 2 bonds to transcoder 1 before unbonding period is over
         await bondingManager.bond(0, transcoder1, {from: delegator2})
@@ -200,6 +207,7 @@ contract("Delegation", accounts => {
         assert.equal(dInfo[5], currentRound.add(unbondingPeriod).toNumber(), "wrong withdraw round")
         assert.equal(dInfo[6], currentRound.toNumber(), "wrong last claim round")
         assert.equal((await bondingManager.getDelegator(transcoder2))[3], 1000, "wrong transcoder delegated amount")
+        assert.equal(await bondingManager.transcoderTotalStake(transcoder2), 1000, "wrong transcoder total stake")
 
         await roundsManager.mineBlocks(roundLength.toNumber() * 1000)
         await roundsManager.initializeRound()
@@ -215,5 +223,6 @@ contract("Delegation", accounts => {
         assert.equal(dInfo[5], 0, "wrong withdraw round")
         assert.equal(dInfo[6], currentRound.toNumber(), "wrong last claim round")
         assert.equal((await bondingManager.getDelegator(transcoder2))[3], 2000, "wrong transcoder delegated amount")
+        assert.equal(await bondingManager.transcoderTotalStake(transcoder2), 2000, "wrong transcoder total stake")
     })
 })
