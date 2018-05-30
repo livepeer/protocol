@@ -39,7 +39,7 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
     uint256 public finderFee;
 
     struct Broadcaster {
-        uint256 deposit;         // Deposited tokens for jobs
+        uint256 deposit;         // Deposited ETH for jobs
         uint256 withdrawBlock;   // Block at which a deposit can be withdrawn
     }
 
