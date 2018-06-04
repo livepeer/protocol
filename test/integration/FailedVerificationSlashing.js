@@ -59,7 +59,7 @@ contract("FailedVerificationSlashing", accounts => {
         verifier = await LivepeerVerifier.at(verifierAddr)
 
         // Whitelist a solver address
-        await verifier.addSolver(solver)
+        await verifier.setSolver(solver)
 
         const tokenAddr = await controller.getContract(contractId("LivepeerToken"))
         token = await LivepeerToken.at(tokenAddr)

@@ -5,13 +5,15 @@ import "./IVerifier.sol";
 import "./IVerifiable.sol";
 
 
+/**
+ * @title LivepeerVerifier
+ * @dev Manages transcoding verification requests that are processed by a trusted solver
+ */
 contract LivepeerVerifier is Manager, IVerifier {
     // IPFS hash of verification computation archive
     string public verificationCodeHash;
-    // Solvers that can submit results for requests
-    address[] public solvers;
-    // Track if an address is a solver
-    mapping (address => bool) public isSolver;
+    // Solver that can submit results for requests
+    address public solver;
 
     struct Request {
         uint256 jobId;
@@ -33,39 +35,47 @@ contract LivepeerVerifier is Manager, IVerifier {
     }
 
     // Check if sender is a solver
-    modifier onlySolvers() {
-        require(isSolver[msg.sender]);
+    modifier onlySolver() {
+        require(msg.sender == solver);
         _;
     }
 
-    function LivepeerVerifier(address _controller, address[] _solvers, string _verificationCodeHash) public Manager(_controller) {
-        // Set solvers
-        for (uint256 i = 0; i < _solvers.length; i++) {
-            // Address must not already be a solver and must not be a null address
-            require(!isSolver[_solvers[i]] && _solvers[i] != address(0));
-
-            isSolver[_solvers[i]] = true;
-        }
-        solvers = _solvers;
+    /**
+     * @dev LivepeerVerifier constructor
+     * @param _controller Controller address
+     * @param _solver Solver address to register
+     * @param _verificationCodeHash Content addressed hash specifying location of transcoding verification code
+     */
+    function LivepeerVerifier(address _controller, address _solver, string _verificationCodeHash) public Manager(_controller) {
+        // Solver must not be null address
+        require(_solver != address(0));
+        // Set solver
+        solver = _solver;
         // Set verification code hash
         verificationCodeHash = _verificationCodeHash;
     }
 
+    /**
+     * @dev Set content addressed hash specifying location of transcoding verification code. Only callable by Controller owner
+     * @param _verificationCodeHash Content addressed hash specifying location of transcoding verification code
+     */
     function setVerificationCodeHash(string _verificationCodeHash) external onlyControllerOwner {
         verificationCodeHash = _verificationCodeHash;
     }
 
-    function addSolver(address _solver) external onlyControllerOwner {
+    /**
+     * @dev Set registered solver address that is allowed to submit the result of transcoding verification computation
+     * via `__callback()`. Only callable by Controller owner
+     * @param _solver Solver address to register
+     */
+    function setSolver(address _solver) external onlyControllerOwner {
         // Must not be null address
         require(_solver != address(0));
-        // Must not already be a solver
-        require(!isSolver[_solver]);
 
-        solvers.push(_solver);
-        isSolver[_solver] = true;
+        solver = _solver;
     }
 
-    /*
+    /**
      * @dev Fire VerifyRequest event which solvers should listen for to retrieve verification parameters
      */
     function verify(
@@ -102,13 +112,13 @@ contract LivepeerVerifier is Manager, IVerifier {
         requestCount++;
     }
 
-    /*
+    /**
      * @dev Callback function invoked by a solver to submit the result of a verification computation
      * @param _requestId Request identifier
      * @param _result Result of verification computation - keccak256 hash of transcoded segment data
      */
     // solium-disable-next-line mixedcase
-    function __callback(uint256 _requestId, bytes32 _result) external onlySolvers whenSystemNotPaused {
+    function __callback(uint256 _requestId, bytes32 _result) external onlySolver whenSystemNotPaused {
         Request memory q = requests[_requestId];
 
         // Check if transcoded data hash returned by solver matches originally submitted transcoded data hash
@@ -124,7 +134,7 @@ contract LivepeerVerifier is Manager, IVerifier {
         delete requests[_requestId];
     }
 
-    /*
+    /**
      * @dev Return price of verification which is zero for this implementation
      */
     function getPrice() public view returns (uint256) {
