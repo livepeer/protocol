@@ -69,6 +69,18 @@ contract("LivepeerVerifier", accounts => {
 
             assert.equal(await verifier.solver.call(), accounts[3], "wrong solver address")
         })
+
+        it("should fire a SolverUpdate event", async () => {
+            let e = verifier.SolverUpdate({})
+
+            e.watch(async (err, result) => {
+                e.stopWatching()
+
+                assert.equal(result.args.solver, accounts[3], "wrong solver address in SolverUpdate event")
+            })
+
+            await verifier.setSolver(accounts[3])
+        })
     })
 
     describe("verify", () => {

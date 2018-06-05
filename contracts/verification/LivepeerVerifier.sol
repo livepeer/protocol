@@ -27,6 +27,7 @@ contract LivepeerVerifier is Manager, IVerifier {
 
     event VerifyRequest(uint256 indexed requestId, uint256 indexed jobId, uint256 indexed claimId, uint256 segmentNumber, string transcodingOptions, string dataStorageHash, bytes32 dataHash, bytes32 transcodedDataHash);
     event Callback(uint256 indexed requestId, uint256 indexed jobId, uint256 indexed claimId, uint256 segmentNumber, bool result);
+    event SolverUpdate(address solver);
 
     // Check if sender is JobsManager
     modifier onlyJobsManager() {
@@ -73,6 +74,8 @@ contract LivepeerVerifier is Manager, IVerifier {
         require(_solver != address(0));
 
         solver = _solver;
+
+        SolverUpdate(_solver);
     }
 
     /**
