@@ -8,27 +8,19 @@ import ethAbi from "ethereumjs-abi"
 const LivepeerVerifier = artifacts.require("LivepeerVerifier")
 
 contract("LivepeerVerifier", accounts => {
-    // 2 solvers
-    const solvers = accounts.slice(0, 2)
+    const solver = accounts[1]
     // IPFS hash of Dockerfile archive
     const codeHash = "QmZmvi1BaYSdxM1Tgwhi2mURabh46xCkzuH9PWeAkAZZGc"
 
     describe("constructor", () => {
         it("should fail if a provided solver address is the null address", async () => {
-            await expectThrow(LivepeerVerifier.new(accounts[0], [accounts[1], constants.NULL_ADDRESS], codeHash))
-        })
-
-        it("should fail if the same solver address is provided more than once", async () => {
-            await expectThrow(LivepeerVerifier.new(accounts[0], [accounts[1], accounts[2], accounts[2]], codeHash))
+            await expectThrow(LivepeerVerifier.new(accounts[0], constants.NULL_ADDRESS, codeHash))
         })
 
         it("should create contract", async () => {
-            const verifier = await LivepeerVerifier.new(accounts[0], solvers, codeHash)
+            const verifier = await LivepeerVerifier.new(accounts[0], solver, codeHash) 
 
-            assert.isOk(await verifier.isSolver(accounts[0]), "should set provided solver address 1 as a solver")
-            assert.isOk(await verifier.isSolver(accounts[1]), "should set provided solver address 2 as a solver")
-            assert.equal(await verifier.solvers.call(0), accounts[0], "should add provided solver address 1 to solver list")
-            assert.equal(await verifier.solvers.call(1), accounts[1], "should add provided solver address 2 to solver list")
+            assert.equal(await verifier.solver.call(), solver, "should set provided solver address as solver")
             assert.equal(await verifier.verificationCodeHash.call(), codeHash, "should set verificationCodeHash")
         })
     })
@@ -40,7 +32,7 @@ contract("LivepeerVerifier", accounts => {
         fixture = new Fixture(web3)
         await fixture.deploy()
 
-        verifier = await fixture.deployAndRegister(LivepeerVerifier, "Verifier", fixture.controller.address, solvers, codeHash)
+        verifier = await fixture.deployAndRegister(LivepeerVerifier, "Verifier", fixture.controller.address, solver, codeHash)
     })
 
     beforeEach(async () => {
@@ -63,26 +55,31 @@ contract("LivepeerVerifier", accounts => {
         })
     })
 
-    describe("addSolver", () => {
+    describe("setSolver", () => {
         it("should fail if caller is not Controller owner", async () => {
-            await expectThrow(verifier.addSolver(accounts[4], {from: accounts[1]}))
+            await expectThrow(verifier.setSolver(accounts[4], {from: accounts[1]}))
         })
 
         it("should fail for null address", async () => {
-            await expectThrow(verifier.addSolver(constants.NULL_ADDRESS))
+            await expectThrow(verifier.setSolver(constants.NULL_ADDRESS))
         })
 
-        it("should fail if solver is already whitelisted", async () => {
-            await expectThrow(verifier.addSolver(accounts[0]))
+        it("should register a new solver", async () => {
+            await verifier.setSolver(accounts[3])
+
+            assert.equal(await verifier.solver.call(), accounts[3], "wrong solver address")
         })
 
-        it("should whitelist a new solver", async () => {
-            await verifier.addSolver(accounts[3])
+        it("should fire a SolverUpdate event", async () => {
+            let e = verifier.SolverUpdate({})
 
-            const isSolver = await verifier.isSolver.call(accounts[3])
-            assert.isOk(isSolver, "did not whitelist new solver")
-            const solverAddress = await verifier.solvers.call(2)
-            assert.equal(solverAddress, accounts[3], "wrong solver address")
+            e.watch(async (err, result) => {
+                e.stopWatching()
+
+                assert.equal(result.args.solver, accounts[3], "wrong solver address in SolverUpdate event")
+            })
+
+            await verifier.setSolver(accounts[3])
         })
     })
 
@@ -169,7 +166,7 @@ contract("LivepeerVerifier", accounts => {
             )
 
             const commitHash = ethUtil.bufferToHex(ethAbi.soliditySHA3(["bytes", "bytes"], [ethUtil.toBuffer(dataHashes[0]), ethUtil.toBuffer(dataHashes[1])]))
-            await verifier.__callback(0, commitHash, {from: accounts[0]})
+            await verifier.__callback(0, commitHash, {from: solver})
 
             const request = await verifier.requests.call(0)
             assert.equal(request[0], 0, "should zero out jobId")
@@ -201,7 +198,7 @@ contract("LivepeerVerifier", accounts => {
             })
 
             const commitHash = ethUtil.bufferToHex(ethAbi.soliditySHA3(["bytes", "bytes"], [ethUtil.toBuffer(dataHashes[0]), ethUtil.toBuffer(dataHashes[1])]))
-            await verifier.__callback(0, commitHash, {from: accounts[0]})
+            await verifier.__callback(0, commitHash, {from: solver})
         })
 
         it("should fire a callback event with result set to false if verification failed", async () => {
@@ -227,7 +224,7 @@ contract("LivepeerVerifier", accounts => {
             })
 
             const wrongCommitHash = ethUtil.bufferToHex(ethAbi.soliditySHA3(["bytes", "bytes"], [ethUtil.toBuffer(dataHashes[0]), ethUtil.toBuffer(web3.sha3("not pear"))]))
-            await verifier.__callback(0, wrongCommitHash, {from: accounts[0]})
+            await verifier.__callback(0, wrongCommitHash, {from: solver})
         })
     })
 
