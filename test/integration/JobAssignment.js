@@ -3,6 +3,7 @@ import {createTranscodingOptions} from "../../utils/videoProfile"
 import BigNumber from "bignumber.js"
 
 const Controller = artifacts.require("Controller")
+const ServiceRegistry = artifacts.require("ServiceRegistry")
 const BondingManager = artifacts.require("BondingManager")
 const JobsManager = artifacts.require("JobsManager")
 const AdjustableRoundsManager = artifacts.require("AdjustableRoundsManager")
@@ -12,6 +13,7 @@ contract("JobAssignment", accounts => {
     const TOKEN_UNIT = 10 ** 18
 
     let controller
+    let registry
     let bondingManager
     let jobsManager
     let roundsManager
@@ -32,6 +34,9 @@ contract("JobAssignment", accounts => {
 
         controller = await Controller.deployed()
         await controller.unpause()
+
+        const registryAddr = await controller.getContract(contractId("ServiceRegistry"))
+        registry = await ServiceRegistry.at(registryAddr)
 
         const bondingManagerAddr = await controller.getContract(contractId("BondingManager"))
         bondingManager = await BondingManager.at(bondingManagerAddr)
@@ -59,16 +64,22 @@ contract("JobAssignment", accounts => {
         await token.approve(bondingManager.address, 50000, {from: transcoder1})
         await bondingManager.bond(50000, transcoder1, {from: transcoder1})
         await bondingManager.transcoder(10, 5, 5, {from: transcoder1})
+        // Set service URI for transcoder 1
+        await registry.setServiceURI("transcoder1URI", {from: transcoder1})
 
         // Register and bond transcoder 2 with 30% of the total active stake
         await token.approve(bondingManager.address, 30000, {from: transcoder2})
         await bondingManager.bond(30000, transcoder2, {from: transcoder2})
         await bondingManager.transcoder(10, 5, 1, {from: transcoder2})
+        // Set service URI for transcoder 2
+        await registry.setServiceURI("transcoder2URI", {from: transcoder2})
 
         // Register and bond transcoder 3 with 20% of the total active stake
         await token.approve(bondingManager.address, 20000, {from: transcoder3})
         await bondingManager.bond(20000, transcoder3, {from: transcoder3})
         await bondingManager.transcoder(10, 5, 1, {from: transcoder3})
+        // Set service URI for transcoder 3
+        await registry.setServiceURI("transcoder3URI", {from: transcoder3})
 
         // Initialize new round and initialize new active transcoder set
         await roundsManager.mineBlocks(roundLength.toNumber())
@@ -94,6 +105,7 @@ contract("JobAssignment", accounts => {
         let jobCreationRound
         let rand
         let electedTranscoder
+        let expServiceURI
 
         let jobsCreated = 0
 
@@ -111,18 +123,25 @@ contract("JobAssignment", accounts => {
 
             switch (electedTranscoder) {
               case transcoder1:
+                  expServiceURI = "transcoder1URI"
                   transcoder1JobCount++
                   break
               case transcoder2:
+                  expServiceURI = "transcoder2URI"
                   transcoder2JobCount++
                   break
               case transcoder3:
+                  expServiceURI = "transcoder3URI"
                   transcoder3JobCount++
                   break
               default:
+                  expServiceURI = ""
                   nullAddressJobCount++
                   break
             }
+
+            // Check for correct service URI
+            assert.equal(await registry.getServiceURI(electedTranscoder), expServiceURI, "wrong service URI")
 
             await roundsManager.mineBlocks(1)
 

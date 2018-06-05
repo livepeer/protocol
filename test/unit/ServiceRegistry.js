@@ -1,4 +1,4 @@
-import Fixture from "./helpers/fixture"
+import Fixture from "./helpers/Fixture"
 
 const ServiceRegistry = artifacts.require("ServiceRegistry")
 
