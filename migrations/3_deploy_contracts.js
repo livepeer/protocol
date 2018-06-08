@@ -3,6 +3,7 @@ const ContractDeployer = require("../utils/contractDeployer")
 
 const Controller = artifacts.require("Controller")
 const Minter = artifacts.require("Minter")
+const ServiceRegistry = artifacts.require("ServiceRegistry")
 const BondingManager = artifacts.require("BondingManager")
 const JobsManager = artifacts.require("JobsManager")
 const RoundsManager = artifacts.require("RoundsManager")
@@ -37,6 +38,8 @@ module.exports = function(deployer, network) {
         } else {
             roundsManager = await lpDeployer.deployProxyAndRegister(RoundsManager, "RoundsManager", controller.address)
         }
+
+        await lpDeployer.deployProxyAndRegister(ServiceRegistry, "ServiceRegistry", controller.address)
 
         deployer.logger.log("Initializing contracts...")
 
