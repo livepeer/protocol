@@ -20,8 +20,7 @@ contract("BondingManager", accounts => {
     const DelegatorStatus = {
         Pending: 0,
         Bonded: 1,
-        Unbonding: 2,
-        Unbonded: 3
+        Unbonded: 2
     }
 
     const TranscoderStatus = {
@@ -424,13 +423,16 @@ contract("BondingManager", accounts => {
             await expectThrow(bondingManager.bond(1000, transcoder0, {from: delegator}))
         })
 
-        describe("caller is unbonded or unbonding", () => {
-            it("should set startRound to the next round and set withdrawRound to 0", async () => {
+        describe("caller is unbonded", () => {
+            it("should fail if provided amount = 0", async () => {
+                await expectThrow(bondingManager.bond(0, transcoder0, {from: delegator}))
+            })
+
+            it("should set startRound to the next round", async () => {
                 await bondingManager.bond(1000, transcoder0, {from: delegator})
 
                 const dInfo = await bondingManager.getDelegator(delegator)
                 assert.equal(dInfo[4], currentRound + 1, "wrong startRound")
-                assert.equal(dInfo[5], 0, "wrong withdrawRound")
             })
 
             it("should set delegate", async () => {
@@ -439,68 +441,31 @@ contract("BondingManager", accounts => {
                 assert.equal((await bondingManager.getDelegator(delegator))[2], transcoder0, "wrong delegateAddress")
             })
 
-            it("should update delegate's position in transcoder pool if it is a transcoder", async () => {
-                await bondingManager.bond(3000, transcoder0, {from: delegator})
+            it("should update delegate, bonded amount and total bonded tokens", async () => {
+                const startDelegatedAmount = (await bondingManager.getDelegator(transcoder0))[3]
+                const startTotalBonded = await bondingManager.getTotalBonded()
+                await bondingManager.bond(1000, transcoder0, {from: delegator})
+                const endDelegatedAmount = (await bondingManager.getDelegator(transcoder0))[3]
+                const endTotalBonded = await bondingManager.getTotalBonded()
 
-                assert.equal((await bondingManager.getFirstTranscoderInPool()), transcoder0, "did not correctly update position in transcoder pool")
+                assert.equal(endDelegatedAmount.sub(startDelegatedAmount), 1000, "wrong change in delegatedAmount")
+                assert.equal((await bondingManager.getDelegator(delegator))[0], 1000, "wrong bondedAmount")
+                assert.equal(endTotalBonded.sub(startTotalBonded), 1000, "wrong change in totalBonded")
             })
 
-            describe("caller has a bonded amount", () => {
-                beforeEach(async () => {
+            describe("delegate is a registered transcoder", () => {
+                it("should increase transcoder's delegated stake in pool", async () => {
+                    const startTranscoderTotalStake = await bondingManager.transcoderTotalStake(transcoder0)
                     await bondingManager.bond(1000, transcoder0, {from: delegator})
+                    const endTranscoderTotalStake = await bondingManager.transcoderTotalStake(transcoder0)
 
-                    await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 1)
-                    await bondingManager.unbond({from: delegator})
+                    assert.equal(endTranscoderTotalStake.sub(startTranscoderTotalStake), 1000, "wrong change in transcoder total stake")
                 })
 
-                describe("caller is just moving bonded stake because provided amount = 0", () => {
-                    it("should update delegate and not update bonded amount or total bonded tokens", async () => {
-                        const startDelegatedAmount = (await bondingManager.getDelegator(transcoder0))[3]
-                        const startBondedAmount = (await bondingManager.getDelegator(delegator))[0]
-                        const startTotalBonded = await bondingManager.getTotalBonded()
-                        await bondingManager.bond(0, transcoder0, {from: delegator})
-                        const endDelegatedAmount = (await bondingManager.getDelegator(transcoder0))[3]
-                        const endBondedAmount = (await bondingManager.getDelegator(delegator))[0]
-                        const endTotalBonded = await bondingManager.getTotalBonded()
+                it("should update delegate's position in transcoder pool", async () => {
+                    await bondingManager.bond(3000, transcoder0, {from: delegator})
 
-                        assert.equal(endDelegatedAmount.sub(startDelegatedAmount), 1000, "wrong change in delegatedAmount")
-                        assert.equal(endBondedAmount.sub(startBondedAmount), 0, "bondedAmount change should be 0")
-                        assert.equal(endTotalBonded.sub(startTotalBonded), 0, "totalBonded change should be 0")
-                    })
-                })
-
-                describe("caller is increasing and moving bonded stake because provided amount > 0", () => {
-                    it("should update delegate, bonded amount and total bonded tokens", async () => {
-                        const startDelegatedAmount = (await bondingManager.getDelegator(transcoder0))[3]
-                        const startBondedAmount = (await bondingManager.getDelegator(delegator))[0]
-                        const startTotalBonded = await bondingManager.getTotalBonded()
-                        await bondingManager.bond(1000, transcoder0, {from: delegator})
-                        const endBondedAmount = (await bondingManager.getDelegator(delegator))[0]
-                        const endTotalBonded = await bondingManager.getTotalBonded()
-                        const endDelegatedAmount = (await bondingManager.getDelegator(transcoder0))[3]
-
-                        assert.equal(endDelegatedAmount.sub(startDelegatedAmount), 2000, "wrong change in delegatedAmount")
-                        assert.equal(endBondedAmount.sub(startBondedAmount), 1000, "bondedAmount change should be 0")
-                        assert.equal(endTotalBonded.sub(startTotalBonded), 1000, "totalBonded change should be 0")
-                    })
-                })
-            })
-
-            describe("caller does not have a bonded amount", () => {
-                it("should fail if provided amount = 0", async () => {
-                    await expectThrow(bondingManager.bond(0, transcoder0, {from: delegator}))
-                })
-
-                it("should update delegate, bonded amount and total bonded tokenst", async () => {
-                    const startDelegatedAmount = (await bondingManager.getDelegator(transcoder0))[3]
-                    const startTotalBonded = await bondingManager.getTotalBonded()
-                    await bondingManager.bond(1000, transcoder0, {from: delegator})
-                    const endDelegatedAmount = (await bondingManager.getDelegator(transcoder0))[3]
-                    const endTotalBonded = await bondingManager.getTotalBonded()
-
-                    assert.equal(endDelegatedAmount.sub(startDelegatedAmount), 1000, "wrong change in delegatedAmount")
-                    assert.equal((await bondingManager.getDelegator(delegator))[0], 1000, "wrong bondedAmount")
-                    assert.equal(endTotalBonded.sub(startTotalBonded), 1000, "wrong change in totalBonded")
+                    assert.equal((await bondingManager.getFirstTranscoderInPool()), transcoder0, "did not correctly update position in transcoder pool")
                 })
             })
         })
@@ -536,18 +501,22 @@ contract("BondingManager", accounts => {
                     assert.equal((await bondingManager.getDelegator(delegator))[2], transcoder1, "wrong delegateAddress")
                 })
 
-                it("should update old delegate's position in the transcoder pool if old delegate is a transcoder", async () => {
-                    await bondingManager.bond(0, transcoder1, {from: delegator})
+                describe("new delegate is registered transcoder", () => {
+                    it("should update new delegate's position in transcoder pool", async () => {
+                        await bondingManager.bond(0, transcoder1, {from: delegator})
 
-                    // Old delegate was previously first transcoder in pool and now no longer is
-                    assert.isOk(await bondingManager.getFirstTranscoderInPool() != transcoder0, "did not correctly update position in pool")
+                        // New delegate was not previously first transcoder in pool and now is
+                        assert.equal(await bondingManager.getFirstTranscoderInPool(), transcoder1, "did not correctly update position in pool")
+                    })
                 })
 
-                it("should update new delegate's position in transcoder pool if it is a transcoder", async () => {
-                    await bondingManager.bond(0, transcoder1, {from: delegator})
+                describe("old delegate is registered transcoder", () => {
+                    it("should update old delegate's position in the transcoder pool", async () => {
+                        await bondingManager.bond(0, transcoder1, {from: delegator})
 
-                    // New delegate was not previously first transcoder in pool and now is
-                    assert.equal(await bondingManager.getFirstTranscoderInPool(), transcoder1, "did not correctly update position in pool")
+                        // Old delegate was previously first transcoder in pool and now no longer is
+                        assert.isOk(await bondingManager.getFirstTranscoderInPool() != transcoder0, "did not correctly update position in pool")
+                    })
                 })
 
                 describe("caller is just moving bonded stake because provided amount = 0", () => {
@@ -574,6 +543,26 @@ contract("BondingManager", accounts => {
 
                         assert.equal(endTotalBonded.sub(startTotalBonded), 0, "totalBonded change should be 0")
                     })
+
+                    describe("new delegate is registered transcoder", () => {
+                        it("should increase transcoder's total stake in pool with current bonded stake", async () => {
+                            const startTranscoderTotalStake = await bondingManager.transcoderTotalStake(transcoder1)
+                            await bondingManager.bond(0, transcoder1, {from: delegator})
+                            const endTranscoderTotalStake = await bondingManager.transcoderTotalStake(transcoder1)
+
+                            assert.equal(endTranscoderTotalStake.sub(startTranscoderTotalStake), 2000, "wrong change in transcoder total stake")
+                        })
+                    })
+
+                    describe("old delegate is registered transcoder", () => {
+                        it("should decrease transcoder's total stake in pool by current bonded stake", async () => {
+                            const startTranscoderTotalStake = await bondingManager.transcoderTotalStake(transcoder0)
+                            await bondingManager.bond(0, transcoder1, {from: delegator})
+                            const endTranscoderTotalStake = await bondingManager.transcoderTotalStake(transcoder0)
+
+                            assert.equal(startTranscoderTotalStake.sub(endTranscoderTotalStake), 2000, "wrong change in transcoder total stake")
+                        })
+                    })
                 })
 
                 describe("caller is increasing and moving bonded stake because provided amount > 0", () => {
@@ -599,6 +588,26 @@ contract("BondingManager", accounts => {
                         const endTotalBonded = await bondingManager.getTotalBonded()
 
                         assert.equal(endTotalBonded.sub(startTotalBonded), 1000, "wrong change in totalBonded")
+                    })
+
+                    describe("new delegate is registered transcoder", () => {
+                        it("should increase transcoder's total stake in pool with current bonded stake + provided amount", async () => {
+                            const startTranscoderTotalStake = await bondingManager.transcoderTotalStake(transcoder1)
+                            await bondingManager.bond(1000, transcoder1, {from: delegator})
+                            const endTranscoderTotalStake = await bondingManager.transcoderTotalStake(transcoder1)
+
+                            assert.equal(endTranscoderTotalStake.sub(startTranscoderTotalStake), 3000, "wrong change in transcoder total stake")
+                        })
+                    })
+
+                    describe("old delegate is registered transcoder", () => {
+                        it("should decrease transcoder's total stake in pool by current bonded stake", async () => {
+                            const startTranscoderTotalStake = await bondingManager.transcoderTotalStake(transcoder0)
+                            await bondingManager.bond(1000, transcoder1, {from: delegator})
+                            const endTranscoderTotalStake = await bondingManager.transcoderTotalStake(transcoder0)
+
+                            assert.equal(startTranscoderTotalStake.sub(endTranscoderTotalStake), 2000, "wrong change in transcoder total stake")
+                        })
                     })
                 })
             })
@@ -648,71 +657,115 @@ contract("BondingManager", accounts => {
         it("should fail if current round is not initialized", async () => {
             await fixture.roundsManager.setMockBool(functionSig("currentRoundInitialized()"), false)
 
-            await expectThrow(bondingManager.unbond({from: delegator}))
+            await expectThrow(bondingManager.unbond(500, {from: delegator}))
         })
 
         it("should fail if the caller is not bonded", async () => {
-            await bondingManager.unbond({from: delegator})
+            await bondingManager.unbond(1000, {from: delegator})
 
             // This should fail because caller is already unbonded and not bonded
-            await expectThrow(bondingManager.unbond({from: delegator}))
+            await expectThrow(bondingManager.unbond(500, {from: delegator}))
         })
 
-        it("should unbond delegator", async () => {
-            const startDelegatedAmount = (await bondingManager.getDelegator(transcoder))[3]
-            await bondingManager.unbond({from: delegator})
-            const endDelegatedAmount = (await bondingManager.getDelegator(transcoder))[3]
-
-            assert.equal((await bondingManager.getDelegator(delegator))[6], currentRound + 1, "should set lastClaimRound to current round")
-
-            const unbondingPeriod = await bondingManager.unbondingPeriod.call()
-            const withdrawRound = currentRound + 1 + unbondingPeriod.toNumber()
-            assert.equal((await bondingManager.getDelegator(delegator))[5].toNumber(), withdrawRound, "should set withdrawRound to current round + unbondingPeriod")
-
-            assert.equal(startDelegatedAmount.sub(endDelegatedAmount), 1000, "should decrease delegate's delegatedAmount")
-
-            const dInfo = await bondingManager.getDelegator(delegator)
-            assert.equal(dInfo[2], constants.NULL_ADDRESS, "should set delegateAddress to null address")
-            assert.equal(dInfo[4], 0, "should set startRound to 0")
+        it("should fail if amount is 0", async () => {
+            await expectThrow(bondingManager.unbond(0, {from: delegator}))
         })
 
-        describe("caller is a registered transcoder", () => {
-            it("should resign a transcoder", async () => {
-                await bondingManager.unbond({from: transcoder})
+        it("should fail if amount is greater than bonded amount", async () => {
+            await expectThrow(bondingManager.unbond(1001, {from: delegator}))
+        })
 
-                assert.equal(await bondingManager.transcoderStatus(transcoder), TranscoderStatus.NotRegistered, "should remove transcoder from pool")
+        describe("partial unbonding", () => {
+            it("should create an unbonding lock for a partial unbond", async () => {
+                const unbondingLockID = (await bondingManager.getDelegator(delegator))[6]
+                const unbondingPeriod = (await bondingManager.unbondingPeriod.call()).toNumber()
+
+                await bondingManager.unbond(500, {from: delegator})
+
+                const lock = await bondingManager.getDelegatorUnbondingLock(delegator, unbondingLockID)
+                assert.equal(lock[0], 500, "wrong unbonding lock amount")
+                assert.equal(lock[1], currentRound + 1 + unbondingPeriod, "wrong unbonding lock withdraw round")
+
+                const dInfo = await bondingManager.getDelegator(delegator)
+                assert.equal(dInfo[0], 500, "wrong delegator bonded amount")
+                assert.equal(dInfo[6], unbondingLockID.toNumber() + 1, "wrong delegator next unbonding lock ID")
+
+                const tInfo = await bondingManager.getDelegator(transcoder)
+                assert.equal(tInfo[3], 1500, "wrong delegate delegated amount")
+
+                assert.equal(await bondingManager.getTotalBonded(), 1500, "wrong total bonded")
             })
 
-            describe("caller is an active transcoder for the current round", () => {
-                it("should set active transcoder as inactive for the round", async () => {
-                    assert.isOk(await bondingManager.isActiveTranscoder(transcoder, currentRound + 1), "transcoder should be active before unbonding")
+            describe("not delegated to self and delegate is registered transcoder", () => {
+                it("should decrease delegated transcoder's delegated stake in pool", async () => {
+                    // Caller is delegator delegated to registered transcoder (not self)
+                    await bondingManager.unbond(500, {from: delegator})
 
-                    const startTotalActiveStake = await bondingManager.getTotalActiveStake(currentRound + 1)
-                    await bondingManager.unbond({from: transcoder})
-                    const endTotalActiveStake = await bondingManager.getTotalActiveStake(currentRound + 1)
+                    assert.equal(await bondingManager.transcoderTotalStake(transcoder), 1500, "wrong transcoder total stake")
+                })
+            })
 
-                    assert.isNotOk(await bondingManager.isActiveTranscoder(transcoder, currentRound + 1), "should set active transcoder as inactive for the round")
-                    assert.equal(startTotalActiveStake.sub(endTotalActiveStake).toNumber(), 2000, "should decrease total active stake by total stake of transcoder")
+            describe("delegated to self with non-zero bonded amount and is registered transcoder", () => {
+                it("should decrease delegated transcoder's (self) delegated stake in pool", async () => {
+                    // Caller is transcoder delegated to self
+                    await bondingManager.unbond(500, {from: transcoder})
+
+                    assert.equal(await bondingManager.transcoderTotalStake(transcoder), 1500, "wrong transcoder total stake")
                 })
             })
         })
 
-        describe("delegate is not self and is a registered transcoder", () => {
-            it("should decrease transcoder's delegated stake", async () => {
-                const startTranscoderTotalStake = await bondingManager.transcoderTotalStake(transcoder)
-                await bondingManager.unbond({from: delegator})
-                const endTranscoderTotalStake = await bondingManager.transcoderTotalStake(transcoder)
+        describe("full unbonding", () => {
+            it("should create an unbonding lock for a full unbond", async () => {
+                const unbondingLockID = (await bondingManager.getDelegator(delegator))[6]
+                const unbondingPeriod = (await bondingManager.unbondingPeriod.call()).toNumber()
+
+                await bondingManager.unbond(1000, {from: delegator})
+
+                const lock = await bondingManager.getDelegatorUnbondingLock(delegator, unbondingLockID)
+                assert.equal(lock[0], 1000, "wrong unbonding lock amount")
+                assert.equal(lock[1], currentRound + 1 + unbondingPeriod, "wrong unbonding lock withdraw round")
 
                 const dInfo = await bondingManager.getDelegator(delegator)
-                assert.equal(startTranscoderTotalStake.sub(endTranscoderTotalStake), dInfo[0].toNumber(), "should decrease transcoder total stake")
+                assert.equal(dInfo[0], 0, "wrong delegator bonded amount")
+                assert.equal(dInfo[2], constants.NULL_ADDRESS, "wrong delegate address")
+                assert.equal(dInfo[4], 0, "wrong start round")
             })
+
+            describe("is a registered transcoder", () => {
+                it("should resign as a transcoder", async () => {
+                    // Caller is transcoder delegated to self
+                    await bondingManager.unbond(1000, {from: transcoder})
+
+                    assert.equal(await bondingManager.transcoderStatus(transcoder), TranscoderStatus.NotRegistered, "wrong transcoder status")
+                })
+            })
+        })
+
+        it("should fire an Unbond event", async () => {
+            const unbondingLockID = (await bondingManager.getDelegator(delegator))[6]
+            const unbondingPeriod = (await bondingManager.unbondingPeriod.call()).toNumber()
+            const e = bondingManager.Unbond({})
+
+            e.watch(async (err, result) => {
+                e.stopWatching()
+
+                assert.equal(result.args.delegate, transcoder, "wrong delegate in Unbond event")
+                assert.equal(result.args.delegator, delegator, "wrong delegator in Unbond event")
+                assert.equal(result.args.unbondingLockId, unbondingLockID.toNumber(), "wrong unbondingLockId in Unbond event")
+                assert.equal(result.args.amount, 500, "wrong amount in Unbond event")
+                assert.equal(result.args.withdrawRound, currentRound + 1 + unbondingPeriod, "wrong withdrawRound in Unbond event")
+            })
+
+            await bondingManager.unbond(500, {from: delegator})
         })
     })
 
-    describe("withdrawStake", () => {
+    describe("rebond", () => {
         const transcoder = accounts[0]
         const delegator = accounts[1]
         const currentRound = 100
+        const unbondingLockID = 0
 
         beforeEach(async () => {
             await fixture.roundsManager.setMockBool(functionSig("currentRoundInitialized()"), true)
@@ -724,36 +777,139 @@ contract("BondingManager", accounts => {
             await bondingManager.bond(1000, transcoder, {from: delegator})
 
             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 1)
-            await bondingManager.unbond({from: delegator})
+            await bondingManager.unbond(500, {from: delegator})
         })
 
         it("should fail if system is paused", async () => {
             await fixture.controller.pause()
 
-            await expectThrow(bondingManager.withdrawStake({from: delegator}))
+            await expectThrow(bondingManager.rebond(unbondingLockID, {from: delegator}))
         })
 
         it("should fail if current round is not initialized", async () => {
             await fixture.roundsManager.setMockBool(functionSig("currentRoundInitialized()"), false)
 
-            await expectThrow(bondingManager.withdrawStake({from: delegator}))
+            await expectThrow(bondingManager.rebond(unbondingLockID, {from: delegator}))
         })
 
-        it("should fail if caller is not unbonded", async () => {
-            await bondingManager.bond(100, transcoder, {from: delegator})
+        it("should fail if delegator is not bonded", async () => {
+            // Unbond the rest of the delegator's tokens so it is no longer has any bonded tokens
+            await bondingManager.unbond(500, {from: delegator})
 
-            // This should fail because caller is now in the pending state
-            await expectThrow(bondingManager.withdrawStake({from: delegator}))
+            await expectThrow(bondingManager.rebond(unbondingLockID), {from: delegator})
         })
 
-        it("should withdraw caller's bonded stake", async () => {
-            const unbondingPeriod = await bondingManager.unbondingPeriod.call()
-            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 1 + unbondingPeriod.toNumber())
-            await bondingManager.withdrawStake({from: delegator})
+        it("should fail for invalid unbonding lock ID", async () => {
+            // Unbonding lock for ID does not exist
+            await expectThrow(bondingManager.rebond(unbondingLockID + 5, {from: delegator}))
+        })
+
+        it("should rebond tokens for unbonding lock to delegator's current delegate", async () => {
+            await bondingManager.rebond(unbondingLockID, {from: delegator})
 
             const dInfo = await bondingManager.getDelegator(delegator)
-            assert.equal(dInfo[0], 0, "should set bondedAmount to 0")
-            assert.equal(dInfo[5], 0, "should set withdrawRound to 0")
+            assert.equal(dInfo[0], 1000, "wrong delegator bonded amount")
+
+            const tDInfo = await bondingManager.getDelegator(transcoder)
+            assert.equal(tDInfo[3], 2000, "wrong delegate delegated amount")
+
+            assert.equal(await bondingManager.getTotalBonded(), 2000, "wrong total bonded")
+
+            const lock = await bondingManager.getDelegatorUnbondingLock(delegator, unbondingLockID)
+            assert.equal(lock[0], 0, "wrong lock amount should be 0")
+            assert.equal(lock[1], 0, "wrong lock withdrawRound should be 0")
+        })
+
+        describe("current delegate is a registered transcoder", () => {
+            it("should decrease transcoder's delegated stake in pool", async () => {
+                await bondingManager.rebond(unbondingLockID, {from: delegator})
+
+                assert.equal(await bondingManager.transcoderTotalStake(transcoder), 2000, "wrong transcoder total stake")
+            })
+        })
+
+        it("should create an Rebond event", async () => {
+            const e = bondingManager.Rebond({})
+
+            e.watch(async (err, result) => {
+                e.stopWatching()
+
+                assert.equal(result.args.delegate, transcoder, "wrong delegate in Rebond event")
+                assert.equal(result.args.delegator, delegator, "wrong delegator in Rebond event")
+                assert.equal(result.args.unbondingLockId, unbondingLockID, "wrong unbondingLockId in Rebond event")
+                assert.equal(result.args.amount, 500, "wrong amount in Rebond event")
+            })
+
+            await bondingManager.rebond(unbondingLockID, {from: delegator})
+        })
+    })
+
+    describe("withdrawStake", () => {
+        const transcoder = accounts[0]
+        const delegator = accounts[1]
+        const currentRound = 100
+        const unbondingLockID = 0
+
+        beforeEach(async () => {
+            await fixture.roundsManager.setMockBool(functionSig("currentRoundInitialized()"), true)
+            await fixture.roundsManager.setMockBool(functionSig("currentRoundLocked()"), false)
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
+
+            await bondingManager.bond(1000, transcoder, {from: transcoder})
+            await bondingManager.transcoder(5, 10, 1, {from: transcoder})
+            await bondingManager.bond(1000, transcoder, {from: delegator})
+
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 1)
+            await bondingManager.unbond(500, {from: delegator})
+        })
+
+        it("should fail if system is paused", async () => {
+            await fixture.controller.pause()
+
+            await expectThrow(bondingManager.withdrawStake(unbondingLockID, {from: delegator}))
+        })
+
+        it("should fail if current round is not initialized", async () => {
+            await fixture.roundsManager.setMockBool(functionSig("currentRoundInitialized()"), false)
+
+            await expectThrow(bondingManager.withdrawStake(unbondingLockID, {from: delegator}))
+        })
+
+        it("should fail if unbonding lock is invalid", async () => {
+            // Unbonding lock for ID does not exist
+            await expectThrow(bondingManager.withdrawStake(unbondingLockID + 5, {from: delegator}))
+        })
+
+        it("should fail if unbonding lock withdraw round is in the future", async () => {
+            await expectThrow(bondingManager.withdrawStake(unbondingLockID, {From: delegator}))
+        })
+
+        it("should withdraw tokens for unbonding lock", async () => {
+            const unbondingPeriod = (await bondingManager.unbondingPeriod.call()).toNumber()
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 1 + unbondingPeriod)
+
+            await bondingManager.withdrawStake(unbondingLockID, {from: delegator})
+
+            const lock = await bondingManager.getDelegatorUnbondingLock(delegator, unbondingLockID)
+            assert.equal(lock[0], 0, "wrong lock amount should be 0")
+            assert.equal(lock[1], 0, "wrong lock withdrawRound should be 0")
+        })
+
+        it("should create an WithdrawStake event", async () => {
+            const unbondingPeriod = (await bondingManager.unbondingPeriod.call()).toNumber()
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 1 + unbondingPeriod)
+            const e = bondingManager.WithdrawStake({})
+
+            e.watch(async (err, result) => {
+                e.stopWatching()
+
+                assert.equal(result.args.delegator, delegator, "wrong delegator in WithdrawStake event")
+                assert.equal(result.args.unbondingLockId, unbondingLockID, "wrong unbondingLockId in WithdrawStake event")
+                assert.equal(result.args.amount, 500, "wrong amount in WithdrawStake event")
+                assert.equal(result.args.withdrawRound, currentRound + 1 + unbondingPeriod, "wrong withdrawRound in WithdrawStake event")
+            })
+
+            await bondingManager.withdrawStake(unbondingLockID, {from: delegator})
         })
     })
 
@@ -807,7 +963,7 @@ contract("BondingManager", accounts => {
             await bondingManager.withdrawFees({from: transcoder0})
 
             const dInfo = await bondingManager.getDelegator(transcoder0)
-            assert.equal(dInfo[6], currentRound + 1, "should set caller's lastClaimRound")
+            assert.equal(dInfo[5], currentRound + 1, "should set caller's lastClaimRound")
             assert.equal(dInfo[1], 0, "should set caller's fees to zero")
         })
     })
@@ -1060,9 +1216,9 @@ contract("BondingManager", accounts => {
             })
         })
 
-        describe("transcoder is not bonded", () => {
+        describe("transcoder has an unbonding lock", () => {
             beforeEach(async () => {
-                await bondingManager.unbond({from: transcoder})
+                await bondingManager.unbond(500, {from: transcoder})
             })
 
             it("still decreases transcoder's bondedAmount", async () => {
@@ -1181,10 +1337,10 @@ contract("BondingManager", accounts => {
 
         describe("transcoder no longer has a bonded amount", () => {
             beforeEach(async () => {
-                await bondingManager.unbond({from: transcoder})
+                await bondingManager.unbond(1000, {from: transcoder})
                 const unbondingPeriod = await bondingManager.unbondingPeriod.call()
                 await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 1 + unbondingPeriod.toNumber())
-                await bondingManager.withdrawStake({from: transcoder})
+                await bondingManager.withdrawStake(0, {from: transcoder})
             })
 
             it("fires a TranscoderSlashed event, but transcoder is not penalized because it does not have a bonded amount", async () => {
@@ -1254,8 +1410,8 @@ contract("BondingManager", accounts => {
         })
 
         it("should return null address if there are no active transcoders", async () => {
-            await bondingManager.unbond({from: transcoder0})
-            await bondingManager.unbond({from: transcoder1})
+            await bondingManager.unbond(2000, {from: transcoder0})
+            await bondingManager.unbond(1000, {from: transcoder1})
 
             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 2)
             await fixture.roundsManager.execute(bondingManager.address, functionSig("setActiveTranscoders()"))
@@ -1268,7 +1424,7 @@ contract("BondingManager", accounts => {
         })
 
         it("should return a transcoder if there is only one available active transcoder", async () => {
-            await bondingManager.unbond({from: transcoder0})
+            await bondingManager.unbond(2000, {from: transcoder0})
 
             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 2)
             await fixture.roundsManager.execute(bondingManager.address, functionSig("setActiveTranscoders()"))
@@ -1335,7 +1491,7 @@ contract("BondingManager", accounts => {
         it("updates caller's lastClaimRound", async () => {
             await bondingManager.claimEarnings(currentRound + 1, {from: delegator})
 
-            assert.equal((await bondingManager.getDelegator(delegator))[6], currentRound + 1, "should update caller's lastClaimRound to the current round")
+            assert.equal((await bondingManager.getDelegator(delegator))[5], currentRound + 1, "should update caller's lastClaimRound to the current round")
         })
 
         describe("caller has a delegate", () => {
@@ -1669,7 +1825,7 @@ contract("BondingManager", accounts => {
 
         describe("caller is not in transcoder pool", () => {
             it("returns NotRegistered", async () => {
-                await bondingManager.unbond({from: transcoder})
+                await bondingManager.unbond(1000, {from: transcoder})
 
                 assert.equal(await bondingManager.transcoderStatus(transcoder), TranscoderStatus.NotRegistered, "should return NotRegistered for caller not in transcoder pool")
             })
@@ -1698,33 +1854,13 @@ contract("BondingManager", accounts => {
             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 1)
         })
 
-        describe("caller has a withdrawRound", () => {
+        describe("caller has zero bonded amount", () => {
             beforeEach(async () => {
-                await bondingManager.unbond({from: delegator0})
+                await bondingManager.unbond(1000, {from: delegator0})
             })
 
-            describe("withdrawRound is now", () => {
-                it("returns Unbonded", async () => {
-                    const withdrawRound = (await bondingManager.getDelegator(delegator0))[5]
-                    await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), withdrawRound)
-
-                    assert.equal(await bondingManager.delegatorStatus(delegator0), DelegatorStatus.Unbonded, "should return Unbonded for delegator with withdrawRound now")
-                })
-            })
-
-            describe("withdrawRound is in the past", () => {
-                it("returns Unbonded", async () => {
-                    const withdrawRound = (await bondingManager.getDelegator(delegator0))[5]
-                    await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), withdrawRound + 1)
-
-                    assert.equal(await bondingManager.delegatorStatus(delegator0), DelegatorStatus.Unbonded, "should return Unbonded for delegator with withdrawRound in past")
-                })
-            })
-
-            describe("withdrawRound is in the future", () => {
-                it("returns Unbonding", async () => {
-                    assert.equal(await bondingManager.delegatorStatus(delegator0), DelegatorStatus.Unbonding, "should return Unbonded for delegator with withdrawRound in future")
-                })
+            it("returns Unbonded", async () => {
+                assert.equal(await bondingManager.delegatorStatus(delegator0), DelegatorStatus.Unbonded, "should return Unbonded for delegator with zero bonded amount")
             })
         })
 
@@ -1758,11 +1894,7 @@ contract("BondingManager", accounts => {
             })
         })
 
-        describe("caller does not have a startRound or a withdrawRound", () => {
-            it("returns Unbonded", async () => {
-                assert.equal(await bondingManager.delegatorStatus(delegator1), DelegatorStatus.Unbonded, "should return Unbonded for delegator that has not ever bonded")
-            })
-        })
+        // There should be no case where a delegator has a non-zero bonded amount, but does not have a start round
     })
 
     describe("isRegisteredTranscoder", () => {
