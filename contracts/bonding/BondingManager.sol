@@ -401,7 +401,14 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * @dev Rebond tokens for an unbonding lock to a delegator's current delegate
      * @param _unbondingLockId ID of unbonding lock to rebond with
      */
-    function rebond(uint256 _unbondingLockId) external whenSystemNotPaused currentRoundInitialized {
+    function rebond(
+        uint256 _unbondingLockId
+    ) 
+        external
+        whenSystemNotPaused
+        currentRoundInitialized 
+        autoClaimEarnings
+    {
         // Caller must not be an unbonded delegator
         require(delegatorStatus(msg.sender) != DelegatorStatus.Unbonded);
 
