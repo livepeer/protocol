@@ -5,6 +5,8 @@ import {constants} from "../../utils/constants"
 
 const BondingManager = artifacts.require("BondingManager")
 
+const { DelegatorStatus, TranscoderStatus } = constants
+
 contract("BondingManager", accounts => {
     let fixture
     let bondingManager
@@ -16,17 +18,6 @@ contract("BondingManager", accounts => {
 
     const PERC_DIVISOR = 1000000
     const PERC_MULTIPLIER = PERC_DIVISOR / 100
-
-    const DelegatorStatus = {
-        Pending: 0,
-        Bonded: 1,
-        Unbonded: 2
-    }
-
-    const TranscoderStatus = {
-        NotRegistered: 0,
-        Registered: 1
-    }
 
     before(async () => {
         fixture = new Fixture(web3)
@@ -792,7 +783,7 @@ contract("BondingManager", accounts => {
             await expectThrow(bondingManager.rebond(unbondingLockID, {from: delegator}))
         })
 
-        it("should fail if delegator is not bonded", async () => {
+        it("should fail if delegator is not in the Bonded or Pending state", async () => {
             // Unbond the rest of the delegator's tokens so it is no longer has any bonded tokens
             await bondingManager.unbond(500, {from: delegator})
 

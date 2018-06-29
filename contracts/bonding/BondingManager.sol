@@ -51,7 +51,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         address delegateAddress;                 // The address delegated to
         uint256 delegatedAmount;                 // The amount of tokens delegated to the delegator
         uint256 startRound;                      // The round the delegator transitions to bonded phase and is delegated to someone
-        uint256 withdrawRoundDEPRECATED;        // DEPRECATED - DO NOT USE
+        uint256 withdrawRoundDEPRECATED;         // DEPRECATED - DO NOT USE
         uint256 lastClaimRound;                  // The last round during which the delegator claimed its earnings
         uint256 nextUnbondingLockId;             // ID for the next unbonding lock created
         mapping (uint256 => UnbondingLock) unbondingLocks; // Mapping of unbonding lock ID => unbonding lock
@@ -335,7 +335,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     }
 
     /**
-     * @dev Unbond delegator's current stake. Delegator enters unbonding state
+     * @dev Unbond an amount of the delegator's bonded stake
      * @param _amount Amount of tokens to unbond
      */
     function unbond(uint256 _amount)
@@ -402,8 +402,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * @param _unbondingLockId ID of unbonding lock to rebond with
      */
     function rebond(uint256 _unbondingLockId) external whenSystemNotPaused currentRoundInitialized {
-        // Caller must be bonded delegator
-        require(delegatorStatus(msg.sender) == DelegatorStatus.Bonded);
+        // Caller must not be an unbonded delegator
+        require(delegatorStatus(msg.sender) != DelegatorStatus.Unbonded);
 
         Delegator storage del = delegators[msg.sender];
         UnbondingLock storage lock = del.unbondingLocks[_unbondingLockId];
