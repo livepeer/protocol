@@ -812,7 +812,7 @@ contract("BondingManager", accounts => {
         })
 
         describe("current delegate is a registered transcoder", () => {
-            it("should decrease transcoder's delegated stake in pool", async () => {
+            it("should increase transcoder's delegated stake in pool", async () => {
                 await bondingManager.rebond(unbondingLockID, {from: delegator})
 
                 assert.equal(await bondingManager.transcoderTotalStake(transcoder), 2000, "wrong transcoder total stake")
@@ -832,6 +832,113 @@ contract("BondingManager", accounts => {
             })
 
             await bondingManager.rebond(unbondingLockID, {from: delegator})
+        })
+    })
+
+    describe("rebondFromUnbonded", () => {
+        const transcoder = accounts[0]
+        const delegator = accounts[1]
+        const currentRound = 100
+        const unbondingLockID = 0
+
+        beforeEach(async () => {
+            await fixture.roundsManager.setMockBool(functionSig("currentRoundInitialized()"), true)
+            await fixture.roundsManager.setMockBool(functionSig("currentRoundLocked()"), false)
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
+
+            await bondingManager.bond(1000, transcoder, {from: transcoder})
+            await bondingManager.transcoder(5, 10, 1, {from: transcoder})
+            await bondingManager.bond(1000, transcoder, {from: delegator})
+
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 1)
+            await bondingManager.unbond(500, {from: delegator})
+        })
+
+        it("should fail if system is paused", async () => {
+            // Delegator unbonds rest of tokens transitioning to the Unbonded state
+            await bondingManager.unbond(500, {from: delegator})
+            await fixture.controller.pause()
+
+            await expectThrow(bondingManager.rebondFromUnbonded(transcoder, unbondingLockID, {from: delegator}))
+        })
+
+        it("should fail if current round is not initialized", async () => {
+            // Delegator unbonds rest of tokens transitioning to the Unbonded state
+            await bondingManager.unbond(500, {from: delegator})
+            await fixture.roundsManager.setMockBool(functionSig("currentRoundInitialized()"), false)
+
+            await expectThrow(bondingManager.rebondFromUnbonded(transcoder, unbondingLockID, {from: delegator}))
+        })
+
+        it("should fail if delegator is not in Unbonded state", async () => {
+            await expectThrow(bondingManager.rebondFromUnbonded(transcoder, unbondingLockID, {from: delegator}))
+        })
+
+        it("should fail for invalid unbonding lock ID", async () => {
+            // Delegator unbonds rest of tokens transitioning to the Unbonded state
+            await bondingManager.unbond(500, {from: delegator})
+
+            // Unbonding lock for ID does not exist
+            await expectThrow(bondingManager.rebond(unbondingLockID + 5, {from: delegator}))
+        })
+
+        it("should set delegator's start round and delegate address", async () => {
+            // Delegator unbonds rest of tokens transitioning to the Unbonded state
+            await bondingManager.unbond(500, {from: delegator})
+
+            await bondingManager.rebondFromUnbonded(transcoder, unbondingLockID, {from: delegator})
+
+            const dInfo = await bondingManager.getDelegator(delegator)
+            assert.equal(dInfo[2], transcoder, "wrong delegate address")
+            assert.equal(dInfo[4], currentRound + 2, "wrong start round")
+        })
+
+        it("should rebond tokens for unbonding lock to new delegate", async () => {
+            // Delegator unbonds rest of tokens transitioning to the Unbonded state
+            await bondingManager.unbond(500, {from: delegator})
+
+            await bondingManager.rebondFromUnbonded(transcoder, unbondingLockID, {from: delegator})
+
+            const dInfo = await bondingManager.getDelegator(delegator)
+            assert.equal(dInfo[0], 500, "wrong delegator bonded amount")
+
+            const tDInfo = await bondingManager.getDelegator(transcoder)
+            assert.equal(tDInfo[3], 1500, "wrong delegate delegated amount")
+
+            assert.equal(await bondingManager.getTotalBonded(), 1500, "wrong total bonded")
+
+            const lock = await bondingManager.getDelegatorUnbondingLock(delegator, unbondingLockID)
+            assert.equal(lock[0], 0, "wrong lock amount should be 0")
+            assert.equal(lock[1], 0, "wrong lock withdrawRound should be 0")
+        })
+
+        describe("new delegate is a registered transcoder", () => {
+            it("should increase transcoder's delegated stake in pool", async () => {
+                // Delegator unbonds rest of tokens transitioning to the Unbonded state
+                await bondingManager.unbond(500, {from: delegator})
+
+                await bondingManager.rebondFromUnbonded(transcoder, unbondingLockID, {from: delegator})
+
+                assert.equal(await bondingManager.transcoderTotalStake(transcoder), 1500, "wrong transcoder total stake")
+            })
+        })
+
+        it("should create a Rebond event", async () => {
+            // Delegator unbonds rest of tokens transitioning to the Unbonded state
+            await bondingManager.unbond(500, {from: delegator})
+
+            const e = bondingManager.Rebond({})
+
+            e.watch(async (err, result) => {
+                e.stopWatching()
+
+                assert.equal(result.args.delegate, transcoder, "wrong delegate in Rebond event")
+                assert.equal(result.args.delegator, delegator, "wrong delegator in Rebond event")
+                assert.equal(result.args.unbondingLockId, unbondingLockID, "wrong unbondingLockId in Rebond event")
+                assert.equal(result.args.amount, 500, "wrong amount in Rebond event")
+            })
+
+            await bondingManager.rebondFromUnbonded(transcoder, unbondingLockID, {from: delegator})
         })
     })
 
@@ -1831,8 +1938,7 @@ contract("BondingManager", accounts => {
 
     describe("delegatorStatus", () => {
         const delegator0 = accounts[0]
-        const delegator1 = accounts[1]
-        const transcoder = accounts[2]
+        const transcoder = accounts[1]
         const currentRound = 100
 
         beforeEach(async () => {
@@ -1910,6 +2016,36 @@ contract("BondingManager", accounts => {
         describe("address is not registered transcoder", () => {
             it("should return false", async () => {
                 assert.isNotOk(await bondingManager.isRegisteredTranscoder(accounts[2]), "should return false for address that is not registered transcoder")
+            })
+        })
+    })
+
+    describe("isValidUnbondingLock", () => {
+        const delegator = accounts[0]
+        const unbondingLockID = 0
+        const currentRound = 100
+
+        beforeEach(async () => {
+            await fixture.roundsManager.setMockBool(functionSig("currentRoundInitialized()"), true)
+            await fixture.roundsManager.setMockBool(functionSig("currentRoundLocked()"), false)
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
+
+            await bondingManager.bond(1000, delegator, {from: delegator})
+
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 1)
+        })
+
+        describe("unbonding lock's withdrawRound > 0", () => {
+            it("should return true", async () => {
+                await bondingManager.unbond(500, {from: delegator})
+
+                assert.isOk(await bondingManager.isValidUnbondingLock(delegator, unbondingLockID), "should return true for lock with withdrawRound > 0")
+            })
+        })
+
+        describe("unbonding lock's withdrawRound = 0", () => {
+            it("should return false", async () => {
+                assert.isNotOk(await bondingManager.isValidUnbondingLock(delegator, unbondingLockID), "should return false for lock with withdrawRound = 0")
             })
         })
     })

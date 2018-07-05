@@ -381,7 +381,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             transcoderPool.updateKey(del.delegateAddress, transcoderPool.getKey(del.delegateAddress).sub(_amount), address(0), address(0));
         }
 
-        // Check if delegator is still bonded
+        // Check if delegator has a zero bonded amount
+        // If so, update its delegation status
         if (del.bondedAmount == 0) {
             // Delegator no longer delegated to anyone if it does not have a bonded amount
             del.delegateAddress = address(0);
@@ -398,7 +399,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     }
 
     /**
-     * @dev Rebond tokens for an unbonding lock to a delegator's current delegate
+     * @dev Rebond tokens for an unbonding lock to a delegator's current delegate while a delegator
+     * is in the Bonded or Pending states
      * @param _unbondingLockId ID of unbonding lock to rebond with
      */
     function rebond(
@@ -412,30 +414,34 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // Caller must not be an unbonded delegator
         require(delegatorStatus(msg.sender) != DelegatorStatus.Unbonded);
 
-        Delegator storage del = delegators[msg.sender];
-        UnbondingLock storage lock = del.unbondingLocks[_unbondingLockId];
+        // Process rebond using unbonding lock
+        processRebond(msg.sender, _unbondingLockId);
+    }
 
-        uint256 amount = lock.amount;
+    /**
+     * @dev Rebond tokens for an unbonding lock to a delegate while a delegator
+     * is in the Unbonded state
+     * @param _to Address of delegate
+     * @param _unbondingLockId ID of unbonding lock to rebond with
+     */
+    function rebondFromUnbonded(
+        address _to,
+        uint256 _unbondingLockId
+    )
+        external
+        whenSystemNotPaused
+        currentRoundInitialized
+        autoClaimEarnings
+    {
+        // Caller must be an unbonded delegator
+        require(delegatorStatus(msg.sender) == DelegatorStatus.Unbonded);
 
-        // Unbonding lock must be valid
-        require(lock.withdrawRound > 0);
-
-        // Increase delegator's bonded amount
-        del.bondedAmount = del.bondedAmount.add(amount);
-        // Increase delegate's delegated amount
-        delegators[del.delegateAddress].delegatedAmount = delegators[del.delegateAddress].delegatedAmount.add(amount);
-        // Update total bonded tokens
-        totalBonded = totalBonded.add(amount);
-
-        if (transcoderStatus(del.delegateAddress) == TranscoderStatus.Registered) {
-            // If delegate is a registered transcoder increase its delegated stake in registered pool
-            transcoderPool.updateKey(del.delegateAddress, transcoderPool.getKey(del.delegateAddress).add(amount), address(0), address(0));
-        }
-
-        // Delete lock
-        delete del.unbondingLocks[_unbondingLockId];
-
-        Rebond(del.delegateAddress, msg.sender, _unbondingLockId, amount);
+        // Set delegator's start round and transition into Pending state
+        delegators[msg.sender].startRound = roundsManager().currentRound().add(1);
+        // Set delegator's delegate
+        delegators[msg.sender].delegateAddress = _to;
+        // Process rebond using unbonding lock
+        processRebond(msg.sender, _unbondingLockId);
     }
 
     /**
@@ -451,7 +457,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         UnbondingLock storage lock = del.unbondingLocks[_unbondingLockId];
 
         // Unbonding lock must be valid
-        require(lock.withdrawRound > 0);
+        require(isValidUnbondingLock(msg.sender, _unbondingLockId));
         // Withdrawal must be valid for the unbonding lock i.e. the withdraw round is now or in the past
         require(lock.withdrawRound <= roundsManager().currentRound());
 
@@ -944,6 +950,16 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     }
 
     /**
+     * @dev Return whether an unbonding lock for a delegator is valid
+     * @param _delegator Address of delegator
+     * @param _unbondingLockId ID of unbonding lock
+     */
+    function isValidUnbondingLock(address _delegator, uint256 _unbondingLockId) public view returns (bool) {
+        // A unbonding lock is only valid if it has a non-zero withdraw round (the default value is zero)
+        return delegators[_delegator].unbondingLocks[_unbondingLockId].withdrawRound > 0;
+    }
+
+    /**
      * @dev Remove transcoder
      */
     function resignTranscoder(address _transcoder) internal {
@@ -1023,6 +1039,37 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         }
 
         del.lastClaimRound = _endRound;
+    }
+
+    /**
+     * @dev Update the state of a delegator and its delegate by processing a rebond using an unbonding lock
+     * @param _delegator Address of delegator
+     * @param _unbondingLockId ID of unbonding lock to rebond with
+     */
+    function processRebond(address _delegator, uint256 _unbondingLockId) internal {
+        Delegator storage del = delegators[_delegator];
+        UnbondingLock storage lock = del.unbondingLocks[_unbondingLockId];
+
+        // Unbonding lock must be valid
+        require(isValidUnbondingLock(_delegator, _unbondingLockId));
+
+        uint256 amount = lock.amount;
+        // Increase delegator's bonded amount
+        del.bondedAmount = del.bondedAmount.add(amount);
+        // Increase delegate's delegated amount
+        delegators[del.delegateAddress].delegatedAmount = delegators[del.delegateAddress].delegatedAmount.add(amount);
+        // Update total bonded tokens
+        totalBonded = totalBonded.add(amount);
+
+        if (transcoderStatus(del.delegateAddress) == TranscoderStatus.Registered) {
+            // If delegate is a registered transcoder increase its delegated stake in registered pool
+            transcoderPool.updateKey(del.delegateAddress, transcoderPool.getKey(del.delegateAddress).add(amount), address(0), address(0));
+        }
+
+        // Delete lock
+        delete del.unbondingLocks[_unbondingLockId];
+
+        Rebond(del.delegateAddress, _delegator, _unbondingLockId, amount);
     }
 
     /**
