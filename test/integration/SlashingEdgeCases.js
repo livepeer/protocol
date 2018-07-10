@@ -75,7 +75,7 @@ contract("SlashingEdgeCases", accounts => {
         await roundsManager.initializeRound()
     })
 
-    it("transcoder that unbonds should still be slashable for a fault", async () => {
+    it("transcoder that partially unbonds should still be slashable for a fault", async () => {
         await jobsManager.deposit({from: broadcaster, value: 1000})
 
         const endBlock = (await roundsManager.blockNum()).add(100)
@@ -120,7 +120,7 @@ contract("SlashingEdgeCases", accounts => {
         await roundsManager.mineBlocks(2)
 
         // Transcoder unbonds and tries to avoid being slashed
-        await bondingManager.unbond({from: transcoder1})
+        await bondingManager.unbond(500, {from: transcoder1})
 
         // Watcher slashes transcoder for double claiming segments
         // Transcoder claimed segments 0 through 3 twice
@@ -129,10 +129,10 @@ contract("SlashingEdgeCases", accounts => {
         // Check that the transcoder is penalized
         const currentRound = await roundsManager.currentRound()
         const doubleClaimSegmentSlashAmount = await jobsManager.doubleClaimSegmentSlashAmount.call()
-        const penalty = Math.floor((1000 * doubleClaimSegmentSlashAmount.toNumber()) / 1000000)
-        const expTransStakeRemaining = 1000 - penalty
-        const expDelegatedStakeRemaining = 0
-        const expTotalBondedRemaining = 0
+        const penalty = Math.floor((500 * doubleClaimSegmentSlashAmount.toNumber()) / 1000000)
+        const expTransStakeRemaining = 500 - penalty
+        const expDelegatedStakeRemaining = expTransStakeRemaining
+        const expTotalBondedRemaining = expTransStakeRemaining 
         const tokenEndSupply = await token.totalSupply.call()
         const finderFeeAmount = await jobsManager.finderFee.call()
         const finderFee = Math.floor((penalty * finderFeeAmount) / 1000000)

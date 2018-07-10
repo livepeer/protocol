@@ -8,8 +8,11 @@ const BondingManager = artifacts.require("BondingManager")
 const AdjustableRoundsManager = artifacts.require("AdjustableRoundsManager")
 const LivepeerToken = artifacts.require("LivepeerToken")
 
+const { DelegatorStatus } = constants
+
 contract("Delegation", accounts => {
     const TOKEN_UNIT = 10 ** 18
+    const PERC_DIVISOR = 1000000
 
     let controller
     let bondingManager
@@ -59,7 +62,7 @@ contract("Delegation", accounts => {
     it("registers transcoder 1 that self bonds", async () => {
         await token.approve(bondingManager.address, 1000, {from: transcoder1})
         await bondingManager.bond(1000, transcoder1, {from: transcoder1})
-        await bondingManager.transcoder(10, 5, 100, {from: transcoder1})
+        await bondingManager.transcoder(0, 5, 100, {from: transcoder1})
 
         assert.equal(await bondingManager.transcoderStatus(transcoder1), 1, "wrong transcoder status")
     })
@@ -67,7 +70,7 @@ contract("Delegation", accounts => {
     it("registers transcoder 2 that self bonds", async () => {
         await token.approve(bondingManager.address, 1000, {from: transcoder2})
         await bondingManager.bond(1000, transcoder2, {from: transcoder2})
-        await bondingManager.transcoder(10, 5, 100, {from: transcoder2})
+        await bondingManager.transcoder(0, 5, 100, {from: transcoder2})
 
         assert.equal(await bondingManager.transcoderStatus(transcoder2), 1, "wrong transcoder status")
     })
@@ -120,109 +123,317 @@ contract("Delegation", accounts => {
         await expectThrow(bondingManager.bond(0, transcoder2, {from: transcoder1}))
     })
 
-    it("delegator 1 unbonds and withdraws its stake", async () => {
-        const unbondingPeriod = await bondingManager.unbondingPeriod.call()
-
+    it("delegator 1 partially unbonds twice (at different times), rebonds with one unbonding lock and withdraws with the other", async () => {
         await roundsManager.mineBlocks(roundLength)
         await roundsManager.initializeRound()
 
-        // Delegator 1 unbonds from transcoder 1
-        await bondingManager.unbond({from: delegator1})
-        await roundsManager.mineBlocks(1)
+        const unbondingPeriod = await bondingManager.unbondingPeriod.call()
+        const startDelegatorBondedAmount = (await bondingManager.getDelegator(delegator1))[0].toNumber()
+        const startDelegatorTokenBalance = await token.balanceOf(delegator1)
+        const startMinterTokenBalance = await token.balanceOf(minterAddr)
+        const startTranscoderDelegatedAmount = (await bondingManager.getDelegator(transcoder2))[3].toNumber()
+        const startTotalBonded = (await bondingManager.getTotalBonded()).toNumber()
+
+        const unbondingLockID0 = 0
+        const unbondingLockID1 = 1
+
+        // Delegator 1 partially unbonds from transcoder 2
+        // unbondingLockID = 0
+        await bondingManager.unbond(500, {from: delegator1})
+        
+        // Test state after unbond 0
+        let lock0 = await bondingManager.getDelegatorUnbondingLock(delegator1, unbondingLockID0)
+        assert.equal(lock0[0], 500, "wrong amount for unbonding lock 0")
+        assert.equal(lock0[1], (await roundsManager.currentRound()).plus(unbondingPeriod).toNumber(), "wrong withdrawRound for unbonding lock 0")
 
         let dInfo = await bondingManager.getDelegator(delegator1)
-        let currentRound = await roundsManager.currentRound()
-        assert.equal(dInfo[2], constants.NULL_ADDRESS, "wrong delegate")
-        assert.equal(dInfo[4], 0, "wrong start round")
-        assert.equal(dInfo[5], currentRound.add(unbondingPeriod).toNumber(), "wrong withdraw round")
-        assert.equal(dInfo[6], currentRound.toNumber(), "wrong last claim round")
-        assert.equal((await bondingManager.getDelegator(transcoder1))[3], 1000, "wrong transcoder delegated amount")
-        assert.equal(await bondingManager.transcoderTotalStake(transcoder1), 1000, "wrong transcoder total stake")
+        assert.equal(dInfo[0], startDelegatorBondedAmount - 500, "wrong delegator bonded amount after unbond 0")
+        assert.equal(dInfo[6], 1, "wrong delegator unbondingLockId after unbond 0")
 
-        // Fast forward through unbonding period
-        await roundsManager.mineBlocks(unbondingPeriod.mul(roundLength).toNumber())
-        await roundsManager.initializeRound()
+        let tDInfo = await bondingManager.getDelegator(transcoder2)
+        assert.equal(tDInfo[3], startTranscoderDelegatedAmount - 500, "wrong transcoder delegated amount after unbond 0")
 
-        // Delegator 1 withdraws its stake
-        const startDelegatorBalance = await token.balanceOf(delegator1)
-        const startMinterBalance = await token.balanceOf(minterAddr)
-        await bondingManager.withdrawStake({from: delegator1})
-        const endDelegatorBalance = await token.balanceOf(delegator1)
-        const endMinterBalance = await token.balanceOf(minterAddr)
-
-        dInfo = await bondingManager.getDelegator(delegator1)
-        currentRound = await roundsManager.currentRound()
-        assert.equal(dInfo[0], 0, "wrong bonded amount")
-        assert.equal(dInfo[5], 0, "wrong withdraw round")
-        assert.equal(endDelegatorBalance.sub(startDelegatorBalance).toNumber(), 2000, "wrong token balance increase")
-        assert.equal(startMinterBalance.sub(endMinterBalance), 2000, "wrong minter balance decrease")
-    })
-
-    it("delegator 2 unbonds from transcoder 2 and bonds to transcoder 1", async () => {
-        const unbondingPeriod = await bondingManager.unbondingPeriod.call()
+        assert.equal(await bondingManager.transcoderTotalStake(transcoder2), startTranscoderDelegatedAmount - 500, "wrong transcoder delegated stake after unbond 0")
+        assert.equal(await bondingManager.getTotalBonded(), startTotalBonded - 500, "wrong total bonded after unbond 0")
 
         await roundsManager.mineBlocks(roundLength)
         await roundsManager.initializeRound()
 
-        // Delegator 2 unbonds from transcoder 2
-        await bondingManager.unbond({from: delegator2})
-        await roundsManager.mineBlocks(1)
+        // Delegator 1 partially unbonds from transcoder 2
+        // unbondingLockID = 1
+        await bondingManager.unbond(700, {from: delegator1})
 
-        let dInfo = await bondingManager.getDelegator(delegator2)
-        let currentRound = await roundsManager.currentRound()
-        assert.equal(dInfo[2], constants.NULL_ADDRESS, "wrong delegate")
-        assert.equal(dInfo[4], 0, "wrong start round")
-        assert.equal(dInfo[5], currentRound.add(unbondingPeriod).toNumber(), "wrong withdraw round")
-        assert.equal(dInfo[6], currentRound.toNumber(), "wrong last claim round")
-        assert.equal((await bondingManager.getDelegator(transcoder2))[3], 1000, "wrong transcoder delegated amount")
-        assert.equal(await bondingManager.transcoderTotalStake(transcoder2), 1000, "wrong transcoder total stake")
+        // Test state after unbond 1
+        let lock1 = await bondingManager.getDelegatorUnbondingLock(delegator1, unbondingLockID1)
+        assert.equal(lock1[0], 700, "wrong amount for unbonding lock 1")
+        assert.equal(lock1[1], (await roundsManager.currentRound()).plus(unbondingPeriod).toNumber(), "wrong withdrawRound for unbonding lock 1")
 
-        // Delegator 2 bonds to transcoder 1 before unbonding period is over
-        await bondingManager.bond(0, transcoder1, {from: delegator2})
-        await roundsManager.mineBlocks(1)
+        dInfo = await bondingManager.getDelegator(delegator1)
+        assert.equal(dInfo[0], startDelegatorBondedAmount - 1200, "wrong delegator bonded amount after unbond 1")
+        assert.equal(dInfo[6], 2, "wrong delegator unbondingLockId after unbond 1")
 
-        dInfo = await bondingManager.getDelegator(delegator2)
-        currentRound = await roundsManager.currentRound()
-        assert.equal(await bondingManager.delegatorStatus(delegator2), 0, "delegator 2 should be in pending state")
-        assert.equal(dInfo[2], transcoder1, "wrong delegate")
-        assert.equal(dInfo[4], currentRound.add(1).toNumber(), "wrong start round")
-        assert.equal(dInfo[5], 0, "wrong withdraw round")
-        assert.equal(dInfo[6], currentRound.toNumber(), "wrong last claim round")
-        assert.equal((await bondingManager.getDelegator(transcoder1))[3], 2000, "wrong transcoder delegated amount")
+        tDInfo = await bondingManager.getDelegator(transcoder2)
+        assert.equal(tDInfo[3], startTranscoderDelegatedAmount - 1200, "wrong transcoder delegated amount after unbond 1")
+
+        assert.equal(await bondingManager.transcoderTotalStake(transcoder2), startTranscoderDelegatedAmount - 1200, "wrong transcoder delegated stake after unbond 1")
+        assert.equal(await bondingManager.getTotalBonded(), startTotalBonded - 1200, "wrong total bonded after unbond 1")
+
+        await roundsManager.mineBlocks(roundLength)
+        await roundsManager.initializeRound()
+
+        // Delegator 1 rebonds with unbonding lock 0 to transcoder 2
+        await bondingManager.rebond(unbondingLockID0, {from: delegator1})
+
+        // Test state after rebond
+        dInfo = await bondingManager.getDelegator(delegator1)
+        assert.equal(dInfo[0], startDelegatorBondedAmount - 700, "wrong delegator bonded amount after rebond")
+
+        tDInfo = await bondingManager.getDelegator(transcoder2)
+        assert.equal(tDInfo[3], startTranscoderDelegatedAmount - 700, "wrong transcoder delegated amount after rebond")
+
+        assert.equal(await bondingManager.getTotalBonded(), startTotalBonded - 700, "wrong total bonded after rebond")
+        assert.equal(await bondingManager.transcoderTotalStake(transcoder2), startTranscoderDelegatedAmount - 700, "wrong transcoder delegated stake after rebond")
+
+        lock0 = await bondingManager.getDelegatorUnbondingLock(delegator1, unbondingLockID0)
+        assert.equal(lock0[0], 0, "wrong amount for unbonding lock 0 - should be 0")
+        assert.equal(lock0[1], 0, "wrong withdrawRound for unbonding lock 0 - should be 0")
+
+        await roundsManager.mineBlocks(unbondingPeriod.toNumber() * roundLength)
+        await roundsManager.initializeRound()
+
+        // Delegator 1 withdraws with unbonding lock 1
+        await bondingManager.withdrawStake(unbondingLockID1, {from: delegator1})
+
+        // Test state after withdrawStake
+        lock1 = await bondingManager.getDelegatorUnbondingLock(delegator1, unbondingLockID1)
+        assert.equal(lock1[0], 0, "wrong amount for unbonding lock 1 - shoud be 0")
+        assert.equal(lock1[1], 0, "wrong withdrawRound for unbonding lock 1 - should be 0")
+
+        assert.deepEqual(await token.balanceOf(delegator1), startDelegatorTokenBalance.plus(700), "wrong delegator token balance after withdrawStake")
+        assert.deepEqual(await token.balanceOf(minterAddr), startMinterTokenBalance.minus(700), "wrong minter token balance after withdrawStake")
     })
 
-    it("delegator 2 unbonds, does not withdraw its stake and bonds again far in the future", async () => {
-        const unbondingPeriod = await bondingManager.unbondingPeriod.call()
-
-        await roundsManager.mineBlocks(roundLength.toNumber())
+    it("delegator 2 fully unbonds, bonds to transcoder 1 and also rebonds with existing unbonding lock", async () => {
+        await roundsManager.mineBlocks(roundLength)
         await roundsManager.initializeRound()
 
-        // Delegator 2 unbonds from transcoder 1
-        await bondingManager.unbond({from: delegator2})
+        const unbondingPeriod = await bondingManager.unbondingPeriod.call()
+        const startDelegatorBondedAmount = (await bondingManager.getDelegator(delegator2))[0].toNumber()
+        const startDelegatorTokenBalance = await token.balanceOf(delegator2)
+        const startTranscoder1DelegatedAmount = (await bondingManager.getDelegator(transcoder1))[3].toNumber()
+        const startTranscoder2DelegatedAmount = (await bondingManager.getDelegator(transcoder2))[3].toNumber()
+        const startTotalBonded = (await bondingManager.getTotalBonded()).toNumber()
+
+        const unbondingLockID = 0
+
+        // Delegator 2 fully unbonds from transcoder 2
+        // unbondingLockID = 0
+        await bondingManager.unbond(startDelegatorBondedAmount, {from: delegator2})
+
+        // Test state after unbond 
+        let lock = await bondingManager.getDelegatorUnbondingLock(delegator2, unbondingLockID)
+        assert.equal(lock[0], startDelegatorBondedAmount, "wrong amount for unbonding lock")
+        assert.equal(lock[1], (await roundsManager.currentRound()).plus(unbondingPeriod).toNumber(), "wrong withdrawRound for unbonding lock")
 
         let dInfo = await bondingManager.getDelegator(delegator2)
-        let currentRound = await roundsManager.currentRound()
-        assert.equal(dInfo[2], constants.NULL_ADDRESS, "wrong delegate")
-        assert.equal(dInfo[4], 0, "wrong start round")
-        assert.equal(dInfo[5], currentRound.add(unbondingPeriod).toNumber(), "wrong withdraw round")
-        assert.equal(dInfo[6], currentRound.toNumber(), "wrong last claim round")
-        assert.equal((await bondingManager.getDelegator(transcoder2))[3], 1000, "wrong transcoder delegated amount")
-        assert.equal(await bondingManager.transcoderTotalStake(transcoder2), 1000, "wrong transcoder total stake")
+        assert.equal(dInfo[0], 0, "wrong delegator bonded amount after unbond")
+        assert.equal(dInfo[2], constants.NULL_ADDRESS, "wrong delegator delegate after unbond")
+        assert.equal(dInfo[4], 0, "wrong delegator start round after unbond")
+        assert.equal(dInfo[6], 1, "wrong delegator unbondingLockId after unbond")
+        assert.equal(await bondingManager.delegatorStatus(delegator2), DelegatorStatus.Unbonded, "wrong delegator status after unbond")
 
-        await roundsManager.mineBlocks(roundLength.toNumber() * 1000)
-        await roundsManager.initializeRound()
+        let tDInfo = await bondingManager.getDelegator(transcoder2)
+        assert.equal(tDInfo[3], startTranscoder2DelegatedAmount - startDelegatorBondedAmount, "wrong transcoder delegated amount after unbond")
 
-        // Delegator 2 delegates its bonded stake which has yet to be withdrawn to transcoder 2
-        // Should not have to claim rewards and fees for any rounds and should instead just skip to the current round
-        await bondingManager.bond(0, transcoder2, {from: delegator2})
+        assert.equal(await bondingManager.transcoderTotalStake(transcoder2), startTranscoder2DelegatedAmount - startDelegatorBondedAmount, "wrong transcoder delegated stake after unbond")
+        assert.equal(await bondingManager.getTotalBonded(), startTotalBonded - startDelegatorBondedAmount, "wrong total bonded after unbond")
+
+        // Delegator 2 tries to rebond and fails because it is no longer bonded
+        await expectThrow(bondingManager.rebond(unbondingLockID, {from: delegator2}))
+
+        // Delegator 2 bonds to transcoder 1
+        await token.approve(bondingManager.address, 500, {from: delegator2})
+        await bondingManager.bond(500, transcoder1, {from: delegator2})
+
+        // Test state after bond
+        const currentRound = (await roundsManager.currentRound()).toNumber()
+
+        assert.deepEqual(await token.balanceOf(delegator2), startDelegatorTokenBalance.minus(500), "wrong delegator token balance after bond")
 
         dInfo = await bondingManager.getDelegator(delegator2)
-        currentRound = await roundsManager.currentRound()
-        assert.equal(dInfo[2], transcoder2, "wrong delegate")
-        assert.equal(dInfo[4], currentRound.add(1).toNumber(), "wrong start round")
-        assert.equal(dInfo[5], 0, "wrong withdraw round")
-        assert.equal(dInfo[6], currentRound.toNumber(), "wrong last claim round")
-        assert.equal((await bondingManager.getDelegator(transcoder2))[3], 2000, "wrong transcoder delegated amount")
-        assert.equal(await bondingManager.transcoderTotalStake(transcoder2), 2000, "wrong transcoder total stake")
+        assert.equal(dInfo[0], 500, "wrong delegator bonded amount after bond")
+        assert.equal(dInfo[2], transcoder1, "wrong delegator delegate after bond")
+        assert.equal(dInfo[4], currentRound + 1, "wrong delegator start round after bond")
+        assert.equal(dInfo[5], currentRound, "wrong delegator last claim round after bond")
+
+        tDInfo = await bondingManager.getDelegator(transcoder1)
+        assert.equal(tDInfo[3], startTranscoder1DelegatedAmount + 500, "wrong transcoder delegated amount after bond")
+
+        assert.equal(await bondingManager.transcoderTotalStake(transcoder1), startTranscoder1DelegatedAmount + 500, "wrong transcoder delegated stake after bond")
+        assert.equal(await bondingManager.getTotalBonded(), startTotalBonded - startDelegatorBondedAmount + 500, "wrong total bonded after bond")
+
+        // Delegator 2 rebonds with unbonding lock to transcoder 1
+        await bondingManager.rebond(unbondingLockID, {from: delegator2})
+
+        // Test state after rebond
+        dInfo = await bondingManager.getDelegator(delegator2)
+        assert.equal(dInfo[0], startDelegatorBondedAmount + 500, "wrong delegator bonded amount after rebond")
+
+        tDInfo = await bondingManager.getDelegator(transcoder1)
+        assert.equal(tDInfo[3], startTranscoder1DelegatedAmount + startDelegatorBondedAmount + 500, "wrong transcoder delegated amount after rebond")
+
+        assert.equal(await bondingManager.transcoderTotalStake(transcoder1), startTranscoder1DelegatedAmount + startDelegatorBondedAmount + 500, "wrong transcoder delegated stake after rebond")
+        assert.equal(await bondingManager.getTotalBonded(), startTotalBonded + 500, "wrong total bonded after rebond")
+
+        lock = await bondingManager.getDelegatorUnbondingLock(delegator2, unbondingLockID)
+        assert.equal(lock[0], 0, "wrong amount for unbonding lock - should be 0")
+        assert.equal(lock[1], 0, "wrong withdrawRound for unbonding lock - should be 0")
+    })
+
+    it("delegator 2 fully unbonds, rebonds from unbonded to transcoder 2 and then rebonds (while not unbonded) with existing unbonding locks", async () => {
+        await roundsManager.mineBlocks(roundLength)
+        await roundsManager.initializeRound()
+
+        const unbondingPeriod = await bondingManager.unbondingPeriod.call()
+        const startDelegatorBondedAmount = (await bondingManager.getDelegator(delegator2))[0].toNumber()
+        const startTranscoder1DelegatedAmount = (await bondingManager.getDelegator(transcoder1))[3].toNumber()
+        const startTranscoder2DelegatedAmount = (await bondingManager.getDelegator(transcoder2))[3].toNumber()
+        const startTotalBonded = (await bondingManager.getTotalBonded()).toNumber()
+
+        const unbondingLockID0 = 1
+        const lockAmount0 = Math.floor(startDelegatorBondedAmount / 2)
+        const unbondingLockID1 = 2
+        const lockAmount1 = startDelegatorBondedAmount - lockAmount0
+
+        // Delegator 2 partially unbonds from transcoder 1
+        // unbondingLockID = 1
+        await bondingManager.unbond(lockAmount0, {from: delegator2})
+
+        // Test state after unbond 
+        let lock = await bondingManager.getDelegatorUnbondingLock(delegator2, unbondingLockID0)
+        assert.equal(lock[0], lockAmount0, "wrong amount for unbonding lock")
+        assert.equal(lock[1], (await roundsManager.currentRound()).plus(unbondingPeriod).toNumber(), "wrong withdrawRound for unbonding lock")
+
+        let dInfo = await bondingManager.getDelegator(delegator2)
+        assert.equal(dInfo[0], startDelegatorBondedAmount - lockAmount0, "wrong delegator bonded amount after unbond")
+        assert.equal(dInfo[6], 2, "wrong delegator unbondingLockId after unbond")
+
+        let tDInfo = await bondingManager.getDelegator(transcoder1)
+        assert.equal(tDInfo[3], startTranscoder1DelegatedAmount - lockAmount0, "wrong transcoder delegated amount after unbond")
+
+        assert.equal(await bondingManager.transcoderTotalStake(transcoder1), startTranscoder1DelegatedAmount - lockAmount0, "wrong transcoder delegated stake after unbond")
+        assert.equal(await bondingManager.getTotalBonded(), startTotalBonded - lockAmount0, "wrong total bonded after unbond")
+
+        // Delegator 2 fully unbonds from transcoder 2
+        // unbondingLockID = 2
+        await bondingManager.unbond(lockAmount1, {from: delegator2})
+
+        // Test state after unbond 
+        lock = await bondingManager.getDelegatorUnbondingLock(delegator2, unbondingLockID1)
+        assert.equal(lock[0], lockAmount1, "wrong amount for unbonding lock")
+        assert.equal(lock[1], (await roundsManager.currentRound()).plus(unbondingPeriod).toNumber(), "wrong withdrawRound for unbonding lock")
+
+        dInfo = await bondingManager.getDelegator(delegator2)
+        assert.equal(dInfo[0], 0, "wrong delegator bonded amount after unbond")
+        assert.equal(dInfo[2], constants.NULL_ADDRESS, "wrong delegator delegate after unbond")
+        assert.equal(dInfo[4], 0, "wrong delegator start round after unbond")
+        assert.equal(dInfo[6], 3, "wrong delegator unbondingLockId after unbond")
+        assert.equal(await bondingManager.delegatorStatus(delegator2), DelegatorStatus.Unbonded, "wrong delegator status after unbond")
+
+        tDInfo = await bondingManager.getDelegator(transcoder1)
+        assert.equal(tDInfo[3], startTranscoder1DelegatedAmount - startDelegatorBondedAmount, "wrong transcoder delegated amount after unbond")
+
+        assert.equal(await bondingManager.transcoderTotalStake(transcoder1), startTranscoder1DelegatedAmount - startDelegatorBondedAmount, "wrong transcoder delegated stake after unbond")
+        assert.equal(await bondingManager.getTotalBonded(), startTotalBonded - startDelegatorBondedAmount, "wrong total bonded after unbond")
+
+        // Delegator 2 tries to call rebond() and fails because it is no longer bonded
+        await expectThrow(bondingManager.rebond(unbondingLockID0, {from: delegator2}))
+
+        // Delegator 2 rebonds from unbonded to transcoder 2
+        await bondingManager.rebondFromUnbonded(transcoder2, unbondingLockID0, {from: delegator2})
+
+        // Test state after rebond from unbonded
+        const currentRound = (await roundsManager.currentRound()).toNumber()
+
+        dInfo = await bondingManager.getDelegator(delegator2)
+        assert.equal(dInfo[0], lockAmount0, "wrong delegator bonded amount after rebond from unbonded")
+        assert.equal(dInfo[2], transcoder2, "wrong delegator delegate after rebond from unbonded")
+        assert.equal(dInfo[4], currentRound + 1, "wrong delegator start round after rebond from unbonded")
+
+        tDInfo = await bondingManager.getDelegator(transcoder2)
+        assert.equal(tDInfo[3], startTranscoder2DelegatedAmount + lockAmount0, "wrong transcoder delegated amount after rebond from unbonded")
+
+        assert.equal(await bondingManager.transcoderTotalStake(transcoder2), startTranscoder2DelegatedAmount + lockAmount0, "wrong transcoder delegated stake after rebond from unbonded")
+        assert.equal(await bondingManager.getTotalBonded(), startTotalBonded - startDelegatorBondedAmount + lockAmount0, "wrong total bonded after rebond from unbonded")
+
+        lock = await bondingManager.getDelegatorUnbondingLock(delegator2, unbondingLockID0)
+        assert.equal(lock[0], 0, "wrong amount for unbonding lock - should be 0")
+        assert.equal(lock[1], 0, "wrong withdrawRound for unbonding lock - should be 0")
+
+        // Delegator 2 rebonds (while not unbonded) with unbonding lock to transcoder 2
+        await bondingManager.rebond(unbondingLockID1, {from: delegator2})
+
+        // Test state after rebond
+        dInfo = await bondingManager.getDelegator(delegator2)
+        assert.equal(dInfo[0], startDelegatorBondedAmount, "wrong delegator bonded amount after rebond")
+
+        tDInfo = await bondingManager.getDelegator(transcoder2)
+        assert.equal(tDInfo[3], startTranscoder2DelegatedAmount + startDelegatorBondedAmount, "wrong transcoder delegated amount after rebond")
+
+        assert.equal(await bondingManager.transcoderTotalStake(transcoder2), startTranscoder2DelegatedAmount + startDelegatorBondedAmount, "wrong transcoder delegated stake after rebond")
+        assert.equal(await bondingManager.getTotalBonded(), startTotalBonded, "wrong total bonded after rebond")
+
+        lock = await bondingManager.getDelegatorUnbondingLock(delegator2, unbondingLockID1)
+        assert.equal(lock[0], 0, "wrong amount for unbonding lock - should be 0")
+        assert.equal(lock[1], 0, "wrong withdrawRound for unbonding lock - should be 0")
+    })
+
+    it("delegator 1 partially unbonds, earns rewards for 1 round, and rebonds using an unbonding lock", async () => {
+        await roundsManager.mineBlocks(roundLength)
+        await roundsManager.initializeRound()
+
+        const unbondingLockID = 2
+
+        // Delegator 1 partially unbonds from transcoder 2
+        await bondingManager.unbond(500, {from: delegator1})
+        
+        // Finish current round
+        await roundsManager.mineBlocks(roundLength)
+        await roundsManager.initializeRound()
+
+        // Transcoder 2 calls reward
+        await bondingManager.reward({from: transcoder2})
+
+        const rewardRound = await roundsManager.currentRound()
+        const rewardAmount = (await bondingManager.getTranscoderEarningsPoolForRound(transcoder2, rewardRound))[0]
+
+        // Finish current round - delegator 1 has reward shares for this round
+        await roundsManager.mineBlocks(roundLength)
+        await roundsManager.initializeRound()
+
+        const startDelegator1BondedAmount = (await bondingManager.getDelegator(delegator1))[0]
+        const startTranscoder2DelegatedAmount = (await bondingManager.getDelegator(transcoder2))[3]
+        const startTotalBonded = await bondingManager.getTotalBonded()
+
+        // Delegator 1 rebonds with an unbonding lock to transcoder 2
+        await bondingManager.rebond(unbondingLockID, {from: delegator1})
+
+        // Test state after rebond
+        // Verify reward claiming logic
+        const transcoder2ActiveStake = await bondingManager.activeTranscoderTotalStake(transcoder2, rewardRound)
+        const rewardShare = rewardAmount.times(startDelegator1BondedAmount.times(PERC_DIVISOR).dividedBy(transcoder2ActiveStake).floor()).dividedBy(PERC_DIVISOR).floor()
+        const dInfo = await bondingManager.getDelegator(delegator1)
+        assert.equal(dInfo[0], startDelegator1BondedAmount.plus(rewardShare).plus(500).toNumber(), "wrong delegator bonded amount with claimed rewards and rebond amount")
+        assert.equal(dInfo[5], (await roundsManager.currentRound()).toNumber(), "wrong delegator last claim round after rebond")
+
+        const tDInfo = await bondingManager.getDelegator(transcoder2)
+        assert.equal(tDInfo[3], startTranscoder2DelegatedAmount.plus(500).toNumber(), "wrong transcoder delegated amount after rebond")
+
+        assert.equal(await bondingManager.transcoderTotalStake(transcoder2), startTranscoder2DelegatedAmount.plus(500).toNumber(), "wrong transcoder delegated stake after rebond")
+        assert.equal(await bondingManager.getTotalBonded(), startTotalBonded.plus(500).toNumber(), "wrong total bonded after rebond")
+
+        const lock = await bondingManager.getDelegatorUnbondingLock(delegator1, unbondingLockID)
+        assert.equal(lock[0], 0, "wrong amount for unbonding lock - should be 0")
+        assert.equal(lock[1], 0, "wrong withdrawRound for unbonding lock - should be 0")
     })
 })

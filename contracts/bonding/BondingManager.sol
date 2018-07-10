@@ -51,12 +51,20 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         address delegateAddress;                 // The address delegated to
         uint256 delegatedAmount;                 // The amount of tokens delegated to the delegator
         uint256 startRound;                      // The round the delegator transitions to bonded phase and is delegated to someone
-        uint256 withdrawRound;                   // The round at which a delegator can withdraw
+        uint256 withdrawRoundDEPRECATED;         // DEPRECATED - DO NOT USE
         uint256 lastClaimRound;                  // The last round during which the delegator claimed its earnings
+        uint256 nextUnbondingLockId;             // ID for the next unbonding lock created
+        mapping (uint256 => UnbondingLock) unbondingLocks; // Mapping of unbonding lock ID => unbonding lock
     }
 
     // The various states a delegator can be in
-    enum DelegatorStatus { Pending, Bonded, Unbonding, Unbonded }
+    enum DelegatorStatus { Pending, Bonded, Unbonded }
+
+    // Represents an amount of tokens that are being unbonded
+    struct UnbondingLock {
+        uint256 amount;              // Amount of tokens being unbonded
+        uint256 withdrawRound;       // Round at which unbonding period is over and tokens can be withdrawn
+    }
 
     // Keep track of the known transcoders and delegators
     mapping (address => Delegator) private delegators;
@@ -272,18 +280,13 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // Amount to delegate
         uint256 delegationAmount = _amount;
 
-        if (delegatorStatus(msg.sender) == DelegatorStatus.Unbonded || delegatorStatus(msg.sender) == DelegatorStatus.Unbonding) {
+        if (delegatorStatus(msg.sender) == DelegatorStatus.Unbonded) {
             // New delegate
             // Set start round
             // Don't set start round if delegator is in pending state because the start round would not change
             del.startRound = currentRound.add(1);
-            // If transitioning from unbonding or unbonded state
-            // make sure to zero out withdraw round
-            del.withdrawRound = 0;
-            // Unbonded or unbonding state = no existing delegate
-            // Thus, delegation amount = bonded stake + provided amount
-            // If caller is bonding for the first time or withdrew previously bonded stake, delegation amount = provided amount
-            delegationAmount = delegationAmount.add(del.bondedAmount);
+            // Unbonded state = no existing delegate and no bonded stake
+            // Thus, delegation amount = provided amount
         } else if (del.delegateAddress != address(0) && _to != del.delegateAddress) {
             // A registered transcoder cannot delegate its bonded stake toward another address
             // because it can only be delegated toward itself
@@ -332,68 +335,141 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     }
 
     /**
-     * @dev Unbond delegator's current stake. Delegator enters unbonding state
+     * @dev Unbond an amount of the delegator's bonded stake
+     * @param _amount Amount of tokens to unbond
      */
-    function unbond()
+    function unbond(uint256 _amount)
         external
         whenSystemNotPaused
         currentRoundInitialized
         autoClaimEarnings
     {
-        // Sender must be in bonded state
+        // Caller must be in bonded state
         require(delegatorStatus(msg.sender) == DelegatorStatus.Bonded);
 
         Delegator storage del = delegators[msg.sender];
 
+        // Amount must be greater than 0
+        require(_amount > 0);
+        // Amount to unbond must be less than or equal to current bonded amount 
+        require(_amount <= del.bondedAmount);
+
         uint256 currentRound = roundsManager().currentRound();
+        uint256 withdrawRound = currentRound.add(unbondingPeriod);
+        uint256 unbondingLockId = del.nextUnbondingLockId;
 
-        // Transition to unbonding phase
-        del.withdrawRound = currentRound.add(unbondingPeriod);
+        // Create new unbonding lock
+        del.unbondingLocks[unbondingLockId] = UnbondingLock({
+            amount: _amount,
+            withdrawRound: withdrawRound
+        });
+        // Increment ID for next unbonding lock
+        del.nextUnbondingLockId = unbondingLockId.add(1);
+        // Decrease delegator's bonded amount
+        del.bondedAmount = del.bondedAmount.sub(_amount);
         // Decrease delegate's delegated amount
-        delegators[del.delegateAddress].delegatedAmount = delegators[del.delegateAddress].delegatedAmount.sub(del.bondedAmount);
+        delegators[del.delegateAddress].delegatedAmount = delegators[del.delegateAddress].delegatedAmount.sub(_amount);
         // Update total bonded tokens
-        totalBonded = totalBonded.sub(del.bondedAmount);
+        totalBonded = totalBonded.sub(_amount);
 
-        if (transcoderStatus(msg.sender) == TranscoderStatus.Registered) {
-            // If caller is a registered transcoder, resign
-            // In the future, with partial unbonding there would be a check for 0 bonded stake as well
-            resignTranscoder(msg.sender);
+        if (transcoderStatus(del.delegateAddress) == TranscoderStatus.Registered && (del.delegateAddress != msg.sender || del.bondedAmount > 0)) {
+            // A transcoder's delegated stake within the registered pool needs to be decreased if:
+            // - The caller's delegate is a registered transcoder
+            // - Caller is not delegated to self OR caller is delegated to self and has a non-zero bonded amount
+            // If the caller is delegated to self and has a zero bonded amount, it will be removed from the 
+            // transcoder pool so its delegated stake within the pool does not need to be decreased
+            transcoderPool.updateKey(del.delegateAddress, transcoderPool.getKey(del.delegateAddress).sub(_amount), address(0), address(0));
         }
 
-        if (del.delegateAddress != msg.sender && transcoderStatus(del.delegateAddress) == TranscoderStatus.Registered) {
-            // If delegate is not self and is a registered transcoder, decrease its delegated stake
-            // We do not need to decrease delegated stake if delegate is self because we would have already removed self
-            // from the transcoder pool
-            transcoderPool.updateKey(del.delegateAddress, transcoderPool.getKey(del.delegateAddress).sub(del.bondedAmount), address(0), address(0));
-        }
+        // Check if delegator has a zero bonded amount
+        // If so, update its delegation status
+        if (del.bondedAmount == 0) {
+            // Delegator no longer delegated to anyone if it does not have a bonded amount
+            del.delegateAddress = address(0);
+            // Delegator does not have a start round if it is no longer delegated to anyone
+            del.startRound = 0;
 
-        // Delegator no longer bonded to anyone
-        del.delegateAddress = address(0);
-        // Unbonding delegator does not have a start round
-        del.startRound = 0;
+            if (transcoderStatus(msg.sender) == TranscoderStatus.Registered) {
+                // If caller is a registered transcoder and is no longer bonded, resign
+                resignTranscoder(msg.sender);
+            }
+        } 
 
-        Unbond(del.delegateAddress, msg.sender);
+        Unbond(del.delegateAddress, msg.sender, unbondingLockId, _amount, withdrawRound);
     }
 
     /**
-     * @dev Withdraws bonded stake to the caller after unbonding period.
+     * @dev Rebond tokens for an unbonding lock to a delegator's current delegate while a delegator
+     * is in the Bonded or Pending states
+     * @param _unbondingLockId ID of unbonding lock to rebond with
      */
-    function withdrawStake()
+    function rebond(
+        uint256 _unbondingLockId
+    ) 
+        external
+        whenSystemNotPaused
+        currentRoundInitialized 
+        autoClaimEarnings
+    {
+        // Caller must not be an unbonded delegator
+        require(delegatorStatus(msg.sender) != DelegatorStatus.Unbonded);
+
+        // Process rebond using unbonding lock
+        processRebond(msg.sender, _unbondingLockId);
+    }
+
+    /**
+     * @dev Rebond tokens for an unbonding lock to a delegate while a delegator
+     * is in the Unbonded state
+     * @param _to Address of delegate
+     * @param _unbondingLockId ID of unbonding lock to rebond with
+     */
+    function rebondFromUnbonded(
+        address _to,
+        uint256 _unbondingLockId
+    )
+        external
+        whenSystemNotPaused
+        currentRoundInitialized
+        autoClaimEarnings
+    {
+        // Caller must be an unbonded delegator
+        require(delegatorStatus(msg.sender) == DelegatorStatus.Unbonded);
+
+        // Set delegator's start round and transition into Pending state
+        delegators[msg.sender].startRound = roundsManager().currentRound().add(1);
+        // Set delegator's delegate
+        delegators[msg.sender].delegateAddress = _to;
+        // Process rebond using unbonding lock
+        processRebond(msg.sender, _unbondingLockId);
+    }
+
+    /**
+     * @dev Withdraws tokens for an unbonding lock that has existed through an unbonding period
+     * @param _unbondingLockId ID of unbonding lock to withdraw with
+     */
+    function withdrawStake(uint256 _unbondingLockId)
         external
         whenSystemNotPaused
         currentRoundInitialized
     {
-        // Delegator must be in the unbonded state
-        require(delegatorStatus(msg.sender) == DelegatorStatus.Unbonded);
+        Delegator storage del = delegators[msg.sender];
+        UnbondingLock storage lock = del.unbondingLocks[_unbondingLockId];
 
-        uint256 amount = delegators[msg.sender].bondedAmount;
-        delegators[msg.sender].bondedAmount = 0;
-        delegators[msg.sender].withdrawRound = 0;
+        // Unbonding lock must be valid
+        require(isValidUnbondingLock(msg.sender, _unbondingLockId));
+        // Withdrawal must be valid for the unbonding lock i.e. the withdraw round is now or in the past
+        require(lock.withdrawRound <= roundsManager().currentRound());
+
+        uint256 amount = lock.amount;
+        uint256 withdrawRound = lock.withdrawRound;
+        // Delete unbonding lock
+        delete del.unbondingLocks[_unbondingLockId];
 
         // Tell Minter to transfer stake (LPT) to the delegator
         minter().trustedTransferTokens(msg.sender, amount);
 
-        WithdrawStake(msg.sender);
+        WithdrawStake(msg.sender, _unbondingLockId, amount, withdrawRound);
     }
 
     /**
@@ -714,13 +790,9 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     function delegatorStatus(address _delegator) public view returns (DelegatorStatus) {
         Delegator storage del = delegators[_delegator];
 
-        if (del.withdrawRound > 0) {
-            // Delegator called unbond
-            if (roundsManager().currentRound() >= del.withdrawRound) {
-                return DelegatorStatus.Unbonded;
-            } else {
-                return DelegatorStatus.Unbonding;
-            }
+        if (del.bondedAmount == 0) {
+            // Delegator unbonded all its tokens
+            return DelegatorStatus.Unbonded;
         } else if (del.startRound > roundsManager().currentRound()) {
             // Delegator round start is in the future
             return DelegatorStatus.Pending;
@@ -785,7 +857,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     )
         public
         view
-        returns (uint256 bondedAmount, uint256 fees, address delegateAddress, uint256 delegatedAmount, uint256 startRound, uint256 withdrawRound, uint256 lastClaimRound)
+        returns (uint256 bondedAmount, uint256 fees, address delegateAddress, uint256 delegatedAmount, uint256 startRound, uint256 lastClaimRound, uint256 nextUnbondingLockId)
     {
         Delegator storage del = delegators[_delegator];
 
@@ -794,8 +866,26 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         delegateAddress = del.delegateAddress;
         delegatedAmount = del.delegatedAmount;
         startRound = del.startRound;
-        withdrawRound = del.withdrawRound;
         lastClaimRound = del.lastClaimRound;
+        nextUnbondingLockId = del.nextUnbondingLockId;
+    }
+
+    /**
+     * @dev Return delegator's unbonding lock info
+     * @param _delegator Address of delegator
+     * @param _unbondingLockId ID of unbonding lock
+     */
+    function getDelegatorUnbondingLock(
+        address _delegator,
+        uint256 _unbondingLockId
+    ) 
+        public
+        view
+        returns (uint256 amount, uint256 withdrawRound) 
+    {
+        UnbondingLock storage lock = delegators[_delegator].unbondingLocks[_unbondingLockId];
+
+        return (lock.amount, lock.withdrawRound);
     }
 
     /**
@@ -857,6 +947,16 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      */
     function isRegisteredTranscoder(address _transcoder) public view returns (bool) {
         return transcoderStatus(_transcoder) == TranscoderStatus.Registered;
+    }
+
+    /**
+     * @dev Return whether an unbonding lock for a delegator is valid
+     * @param _delegator Address of delegator
+     * @param _unbondingLockId ID of unbonding lock
+     */
+    function isValidUnbondingLock(address _delegator, uint256 _unbondingLockId) public view returns (bool) {
+        // A unbonding lock is only valid if it has a non-zero withdraw round (the default value is zero)
+        return delegators[_delegator].unbondingLocks[_unbondingLockId].withdrawRound > 0;
     }
 
     /**
@@ -939,6 +1039,37 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         }
 
         del.lastClaimRound = _endRound;
+    }
+
+    /**
+     * @dev Update the state of a delegator and its delegate by processing a rebond using an unbonding lock
+     * @param _delegator Address of delegator
+     * @param _unbondingLockId ID of unbonding lock to rebond with
+     */
+    function processRebond(address _delegator, uint256 _unbondingLockId) internal {
+        Delegator storage del = delegators[_delegator];
+        UnbondingLock storage lock = del.unbondingLocks[_unbondingLockId];
+
+        // Unbonding lock must be valid
+        require(isValidUnbondingLock(_delegator, _unbondingLockId));
+
+        uint256 amount = lock.amount;
+        // Increase delegator's bonded amount
+        del.bondedAmount = del.bondedAmount.add(amount);
+        // Increase delegate's delegated amount
+        delegators[del.delegateAddress].delegatedAmount = delegators[del.delegateAddress].delegatedAmount.add(amount);
+        // Update total bonded tokens
+        totalBonded = totalBonded.add(amount);
+
+        if (transcoderStatus(del.delegateAddress) == TranscoderStatus.Registered) {
+            // If delegate is a registered transcoder increase its delegated stake in registered pool
+            transcoderPool.updateKey(del.delegateAddress, transcoderPool.getKey(del.delegateAddress).add(amount), address(0), address(0));
+        }
+
+        // Delete lock
+        delete del.unbondingLocks[_unbondingLockId];
+
+        Rebond(del.delegateAddress, _delegator, _unbondingLockId, amount);
     }
 
     /**
