@@ -444,6 +444,22 @@ contract("BondingManager", accounts => {
                 assert.equal(endTotalBonded.sub(startTotalBonded), 1000, "wrong change in totalBonded")
             })
 
+            it("should fire a Bond event when bonding from unbonded", async () => {
+                const e = bondingManager.Bond({})
+
+                e.watch(async (err, result) => {
+                    e.stopWatching()
+
+                    assert.equal(result.args.newDelegate, transcoder0, "wrong newDelegate in Bond event")
+                    assert.equal(result.args.oldDelegate, constants.NULL_ADDRESS, "wrong oldDelegate in Bond event")
+                    assert.equal(result.args.delegator, delegator, "wrong delegator in Bond event")
+                    assert.equal(result.args.additionalAmount, 1000, "wrong additionalAmount in Bond event")
+                    assert.equal(result.args.bondedAmount, 1000, "wrong bondedAmount in Bond event")
+                })
+
+                await bondingManager.bond(1000, transcoder0, {from: delegator})
+            })
+
             describe("delegate is a registered transcoder", () => {
                 it("should increase transcoder's delegated stake in pool", async () => {
                     const startTranscoderTotalStake = await bondingManager.transcoderTotalStake(transcoder0)
@@ -535,6 +551,22 @@ contract("BondingManager", accounts => {
                         assert.equal(endTotalBonded.sub(startTotalBonded), 0, "totalBonded change should be 0")
                     })
 
+                    it("should fire a Bond event when changing delegates", async () => {
+                        const e = bondingManager.Bond({})
+
+                        e.watch(async (err, result) => {
+                            e.stopWatching()
+
+                            assert.equal(result.args.newDelegate, transcoder1, "wrong newDelegate in Bond event")
+                            assert.equal(result.args.oldDelegate, transcoder0, "wrong oldDelegate in Bond event")
+                            assert.equal(result.args.delegator, delegator, "wrong delegator in Bond event")
+                            assert.equal(result.args.additionalAmount, 0, "wrong additionalAmount in Bond event")
+                            assert.equal(result.args.bondedAmount, 2000, "wrong bondedAmount in Bond event")
+                        })
+
+                        await bondingManager.bond(0, transcoder1, {from: delegator})
+                    })
+
                     describe("new delegate is registered transcoder", () => {
                         it("should increase transcoder's total stake in pool with current bonded stake", async () => {
                             const startTranscoderTotalStake = await bondingManager.transcoderTotalStake(transcoder1)
@@ -581,6 +613,22 @@ contract("BondingManager", accounts => {
                         assert.equal(endTotalBonded.sub(startTotalBonded), 1000, "wrong change in totalBonded")
                     })
 
+                    it("should fire a Bond event when increasing bonded stake and changing delegates", async () => {
+                        const e = bondingManager.Bond({})
+
+                        e.watch(async (err, result) => {
+                            e.stopWatching()
+
+                            assert.equal(result.args.newDelegate, transcoder1, "wrong newDelegate in Bond event")
+                            assert.equal(result.args.oldDelegate, transcoder0, "wrong oldDelegate in Bond event")
+                            assert.equal(result.args.delegator, delegator, "wrong delegator in Bond event")
+                            assert.equal(result.args.additionalAmount, 1000, "wrong additionalAmount in Bond event")
+                            assert.equal(result.args.bondedAmount, 3000, "wrong bondedAmount in Bond event")
+                        })
+
+                        await bondingManager.bond(1000, transcoder1, {from: delegator})
+                    })
+
                     describe("new delegate is registered transcoder", () => {
                         it("should increase transcoder's total stake in pool with current bonded stake + provided amount", async () => {
                             const startTranscoderTotalStake = await bondingManager.transcoderTotalStake(transcoder1)
@@ -622,6 +670,22 @@ contract("BondingManager", accounts => {
                     const endTotalBonded = await bondingManager.getTotalBonded()
 
                     assert.equal(endTotalBonded.sub(startTotalBonded), 1000, "wrong change in totalBonded")
+                })
+
+                it("should fire a Bond event when increasing bonded amount", async () => {
+                    const e = bondingManager.Bond({})
+
+                    e.watch(async (err, result) => {
+                        e.stopWatching()
+
+                        assert.equal(result.args.newDelegate, transcoder0, "wrong newDelegate in Bond event")
+                        assert.equal(result.args.oldDelegate, transcoder0, "wrong oldDelegate in Bond event")
+                        assert.equal(result.args.delegator, delegator, "wrong delegator in Bond event")
+                        assert.equal(result.args.additionalAmount, 1000, "wrong additionalAmount in Bond event")
+                        assert.equal(result.args.bondedAmount, 3000, "wrong bondedAmount in Bond event")
+                    })
+
+                    await bondingManager.bond(1000, transcoder0, {from: delegator})
                 })
             })
         })

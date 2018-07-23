@@ -279,6 +279,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         uint256 currentRound = roundsManager().currentRound();
         // Amount to delegate
         uint256 delegationAmount = _amount;
+        // Current delegate
+        address currentDelegate = del.delegateAddress;
 
         if (delegatorStatus(msg.sender) == DelegatorStatus.Unbonded) {
             // New delegate
@@ -300,12 +302,12 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             // Update amount to delegate with previous delegation amount
             delegationAmount = delegationAmount.add(del.bondedAmount);
             // Decrease old delegate's delegated amount
-            delegators[del.delegateAddress].delegatedAmount = delegators[del.delegateAddress].delegatedAmount.sub(del.bondedAmount);
+            delegators[currentDelegate].delegatedAmount = delegators[currentDelegate].delegatedAmount.sub(del.bondedAmount);
 
-            if (transcoderStatus(del.delegateAddress) == TranscoderStatus.Registered) {
+            if (transcoderStatus(currentDelegate) == TranscoderStatus.Registered) {
                 // Previously delegated to a transcoder
                 // Decrease old transcoder's total stake
-                transcoderPool.updateKey(del.delegateAddress, transcoderPool.getKey(del.delegateAddress).sub(del.bondedAmount), address(0), address(0));
+                transcoderPool.updateKey(currentDelegate, transcoderPool.getKey(currentDelegate).sub(del.bondedAmount), address(0), address(0));
             }
         }
 
@@ -331,7 +333,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             livepeerToken().transferFrom(msg.sender, minter(), _amount);
         }
 
-        Bond(_to, msg.sender);
+        Bond(_to, currentDelegate, msg.sender, _amount, del.bondedAmount);
     }
 
     /**
