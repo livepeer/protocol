@@ -10,7 +10,7 @@
     "lint": "npm run eslint; npm run solium",
     "eslint": "./node_modules/.bin/eslint util/** test/**",
     "solium": "./node_modules/.bin/solium --dir ./contracts",
-    "ganache": "./node_modules/.bin/ganache-cli -l 0x663BE0",
+    "ganache": "./node_modules/.bin/ganache-cli -l 0x663BE0 -a 100",
     "clean": "rm -rf build/contracts",
     "compile": "truffle compile --all",
     "test:coverage": "SOLIDITY_COVERAGE=true bash scripts/run_ganache.sh && ./node_modules/.bin/solidity-coverage || true",
