@@ -17,6 +17,13 @@ contract IBondingManager {
     event WithdrawStake(address indexed delegator, uint256 unbondingLockId, uint256 amount, uint256 withdrawRound);
     event WithdrawFees(address indexed delegator);
 
+    // Deprecated events
+    // These event signatures can be used to construct the appropriate topic hashes to filter for past logs corresponding
+    // to these deprecated events.
+    // event Bond(address indexed delegate, address indexed delegator);
+    // event Unbond(address indexed delegate, address indexed delegator);
+    // event WithdrawStake(address indexed delegator);
+
     // External functions
     function setActiveTranscoders() external;
     function updateTranscoderWithFees(address _transcoder, uint256 _fees, uint256 _round) external;

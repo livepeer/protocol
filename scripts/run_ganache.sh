@@ -10,9 +10,9 @@ ganache_running() {
 
 start_ganache() {
     if [ "$SOLIDITY_COVERAGE" = true ]; then
-        node_modules/.bin/testrpc-sc -l 0xfffffffffff -p "$ganache_port" > /dev/null &
+        node_modules/.bin/testrpc-sc -l 0xfffffffffff -p "$ganache_port" -a 100 > /dev/null &
     else
-        node_modules/.bin/ganache-cli -l 0x663BE0 > /dev/null &
+        node_modules/.bin/ganache-cli -l 0x663BE0 -a 100 > /dev/null &
     fi
 
     ganache_pid=$!
