@@ -1166,10 +1166,13 @@ contract("BondingManager", accounts => {
             assert.equal(tInfo0[2], tInfo0[5].toNumber(), "should set feeShare to pendingFeeShare")
             assert.equal(tInfo0[3], tInfo0[6].toNumber(), "should set pricePerSegment to pendingPricePerSegment")
             const earningsPool0 = await bondingManager.getTranscoderEarningsPoolForRound(transcoder0, currentRound + 1)
-            assert.equal(earningsPool0[0], 0, "should set rewards in earnings pool to 0")
-            assert.equal(earningsPool0[1], 0, "should set fees in earnings pool to 0")
-            assert.equal(earningsPool0[2], 1000, "should set total stake for earnings pool to transcoder's total stake for the round")
-            assert.equal(earningsPool0[3], 1000, "should set claimable stake for earnings pool to current total stake")
+            assert.equal(earningsPool0[0], 0, "should set delegator reward pool to 0")
+            assert.equal(earningsPool0[1], 0, "should set delegator fee pool to 0")
+            assert.equal(earningsPool0[2], 0, "should set transcoder reward pool to 0")
+            assert.equal(earningsPool0[3], 0, "should set transcoder fee pool to 0")
+            assert.equal(earningsPool0[4], true, "should set hasTranscoderRewardFeePool flag to true")
+            assert.equal(earningsPool0[5], 1000, "should set total stake for earnings pool to transcoder's total stake for the round")
+            assert.equal(earningsPool0[6], 1000, "should set claimable stake for earnings pool to current total stake")
             assert.isOk(await bondingManager.isActiveTranscoder(transcoder0, currentRound + 1), "should set transcoder as active for current round")
 
             const tInfo1 = await bondingManager.getTranscoder(transcoder1)
@@ -1177,10 +1180,13 @@ contract("BondingManager", accounts => {
             assert.equal(tInfo1[2], tInfo1[5].toNumber(), "should set feeShare to pendingFeeShare")
             assert.equal(tInfo1[3], tInfo1[6].toNumber(), "should set pricePerSegment to pendingPricePerSegment")
             const earningsPool1 = await bondingManager.getTranscoderEarningsPoolForRound(transcoder1, currentRound + 1)
-            assert.equal(earningsPool1[0], 0, "should set rewards in earnings pool to 0")
-            assert.equal(earningsPool1[1], 0, "should set fees in earnings pool to 0")
-            assert.equal(earningsPool1[2], 1000, "should set total stake for earnings pool to transcoder's total stake for the round")
-            assert.equal(earningsPool1[3], 1000, "should set claimable stake for earnings pool to current total stake")
+            assert.equal(earningsPool1[0], 0, "should set delegator reward pool to 0")
+            assert.equal(earningsPool1[1], 0, "should set delegator fee pool to 0")
+            assert.equal(earningsPool1[2], 0, "should set transcoder reward pool to 0")
+            assert.equal(earningsPool1[3], 0, "should set transcoder fee pool to 0")
+            assert.equal(earningsPool1[4], true, "should set hasTranscoderRewardFeePool flag to true")
+            assert.equal(earningsPool1[5], 1000, "should set total stake for earnings pool to transcoder's total stake for the round")
+            assert.equal(earningsPool1[6], 1000, "should set claimable stake for earnings pool to current total stake")
             assert.isOk(await bondingManager.isActiveTranscoder(transcoder1, currentRound + 1), "should set transcoder as active for current round")
 
             assert.equal(await bondingManager.getTotalActiveStake(currentRound + 1), 2000, "should set total active stake to sum of total stake of all active transcoders")
@@ -1604,8 +1610,15 @@ contract("BondingManager", accounts => {
 
     describe("claimEarnings", () => {
         const transcoder = accounts[0]
-        const delegator = accounts[1]
+        const delegator1 = accounts[1]
+        const delegator2 = accounts[2]
+        const delegator3 = accounts[3]
         const currentRound = 100
+
+        let transcoderRewards
+        let transcoderFees
+        let delegatorRewards
+        let delegatorFees
 
         beforeEach(async () => {
             await fixture.roundsManager.setMockBool(functionSig("currentRoundInitialized()"), true)
@@ -1614,7 +1627,14 @@ contract("BondingManager", accounts => {
 
             await bondingManager.bond(1000, transcoder, {from: transcoder})
             await bondingManager.transcoder(50 * PERC_MULTIPLIER, 25 * PERC_MULTIPLIER, 1, {from: transcoder})
-            await bondingManager.bond(1000, transcoder, {from: delegator})
+            await bondingManager.bond(3000, transcoder, {from: delegator1})
+            await bondingManager.bond(3000, transcoder, {from: delegator2})
+            await bondingManager.bond(3000, transcoder, {from: delegator3})
+
+            transcoderRewards = Math.floor(1000 * .5)
+            transcoderFees = Math.floor(1000 * .75)
+            delegatorRewards = 1000 - transcoderRewards
+            delegatorFees = 1000 - transcoderFees
 
             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 1)
             await fixture.roundsManager.execute(bondingManager.address, functionSig("setActiveTranscoders()"))
@@ -1633,27 +1653,27 @@ contract("BondingManager", accounts => {
         it("should fail if system is paused", async () => {
             await fixture.controller.pause()
 
-            await expectThrow(bondingManager.claimEarnings(currentRound + 1, {from: delegator}))
+            await expectThrow(bondingManager.claimEarnings(currentRound + 1, {from: delegator1}))
         })
 
         it("should fail if current round is not initialized", async () => {
             await fixture.roundsManager.setMockBool(functionSig("currentRoundInitialized()"), false)
 
-            await expectThrow(bondingManager.claimEarnings(currentRound + 1, {from: delegator}))
+            await expectThrow(bondingManager.claimEarnings(currentRound + 1, {from: delegator1}))
         })
 
         it("should fail if provided endRound is before caller's lastClaimRound", async () => {
-            await expectThrow(bondingManager.claimEarnings(currentRound - 1, {from: delegator}))
+            await expectThrow(bondingManager.claimEarnings(currentRound - 1, {from: delegator1}))
         })
 
         it("should fail if provided endRound is in the future", async () => {
-            await expectThrow(bondingManager.claimEarnings(currentRound + 2, {from: delegator}))
+            await expectThrow(bondingManager.claimEarnings(currentRound + 2, {from: delegator1}))
         })
 
         it("updates caller's lastClaimRound", async () => {
-            await bondingManager.claimEarnings(currentRound + 1, {from: delegator})
+            await bondingManager.claimEarnings(currentRound + 1, {from: delegator1})
 
-            assert.equal((await bondingManager.getDelegator(delegator))[5], currentRound + 1, "should update caller's lastClaimRound to the current round")
+            assert.equal((await bondingManager.getDelegator(delegator1))[5], currentRound + 1, "should update caller's lastClaimRound to the current round")
         })
 
         describe("caller has a delegate", () => {
@@ -1661,27 +1681,71 @@ contract("BondingManager", accounts => {
                 const maxEarningsClaimsRounds = await bondingManager.maxEarningsClaimsRounds.call()
                 await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + maxEarningsClaimsRounds.toNumber() + 1)
 
-                await expectThrow(bondingManager.claimEarnings(currentRound + 21, {from: delegator}))
+                await expectThrow(bondingManager.claimEarnings(currentRound + 21, {from: delegator1}))
             })
 
             it("should claim earnings for 1 round", async () => {
-                const startDInfo = await bondingManager.getDelegator(delegator)
-                await bondingManager.claimEarnings(currentRound + 1, {from: delegator})
-                const endDInfo = await bondingManager.getDelegator(delegator)
+                const expRewards = delegatorRewards * .3 // 30%
+                const expFees = delegatorFees * .3 // 30%
+                const acceptableDelta = 2 
 
-                // Claimed rewards
-                const claimedRewards = 250
-                assert.equal(endDInfo[0].sub(startDInfo[0]), claimedRewards, "should increase bondedAmount by claimed rewards for round")
-                // Claimed fees
-                const claimedFees = 125
-                assert.equal(endDInfo[1].sub(startDInfo[1]), claimedFees, "should increase fees by claimed fees for round")
+                const startDInfo1 = await bondingManager.getDelegator(delegator1)
+                await bondingManager.claimEarnings(currentRound + 1, {from: delegator1})
+                const endDInfo1 = await bondingManager.getDelegator(delegator1)
+                const d1Rewards = endDInfo1[0].sub(startDInfo1[0])
+                const d1Fees = endDInfo1[1].sub(startDInfo1[1])
+
+                const startDInfo2 = await bondingManager.getDelegator(delegator2)
+                await bondingManager.claimEarnings(currentRound + 1, {from: delegator2})
+                const endDInfo2 = await bondingManager.getDelegator(delegator2)
+                const d2Rewards = endDInfo2[0].sub(startDInfo2[0])
+                const d2Fees = endDInfo2[1].sub(startDInfo2[1])
+
+                const startDInfo3 = await bondingManager.getDelegator(delegator3)
+                await bondingManager.claimEarnings(currentRound + 1, {from: delegator3})
+                const endDInfo3 = await bondingManager.getDelegator(delegator3)
+                const d3Rewards = endDInfo3[0].sub(startDInfo3[0])
+                const d3Fees = endDInfo3[1].sub(startDInfo3[1])
+
+                assert.isAtMost(d1Rewards.sub(d2Rewards).abs().toNumber(), acceptableDelta)
+                assert.isAtMost(d1Rewards.sub(d3Rewards).abs().toNumber(), acceptableDelta)
+                assert.isAtMost(d2Rewards.sub(d3Rewards).abs().toNumber(), acceptableDelta)
+                assert.isAtMost(d1Fees.sub(d2Fees).abs().toNumber(), acceptableDelta)
+                assert.isAtMost(d1Fees.sub(d3Fees).abs().toNumber(), acceptableDelta)
+                assert.isAtMost(d2Fees.sub(d3Fees).abs().toNumber(), acceptableDelta)
+                assert.isAtMost(d1Rewards.sub(expRewards).abs().toNumber(), acceptableDelta)
+                assert.isAtMost(d2Rewards.sub(expRewards).abs().toNumber(), acceptableDelta)
+                assert.isAtMost(d3Rewards.sub(expRewards).abs().toNumber(), acceptableDelta)
+                assert.isAtMost(d1Fees.sub(expFees).abs().toNumber(), acceptableDelta)
+                assert.isAtMost(d2Fees.sub(expFees).abs().toNumber(), acceptableDelta)
+                assert.isAtMost(d3Fees.sub(expFees).abs().toNumber(), acceptableDelta)
+
+                const claimedRewards = d1Rewards.add(d2Rewards).add(d3Rewards)
+                const claimedFees = d1Fees.add(d2Fees).add(d3Fees)
+
                 const earningsPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder, currentRound + 1)
-                assert.equal(earningsPool[0], 1000 - claimedRewards, "should decrease rewards in earningsPool by delegator's claimed rewards for round")
-                assert.equal(earningsPool[1], 1000 - claimedFees, "should decrease fees in earningsPool by delegator's claimed fees for round")
-                assert.equal(earningsPool[3], 1000, "should decrease claimableStake for earningsPool by delegator's stake for round")
+                assert.equal(earningsPool[0], delegatorRewards - claimedRewards.toNumber())
+                assert.equal(earningsPool[1], delegatorFees - claimedFees.toNumber())
+                assert.equal(earningsPool[2], transcoderRewards)
+                assert.equal(earningsPool[3], transcoderFees)
+                assert.equal(earningsPool[6], 1000)
             })
 
             it("should claim earnings for > 1 round", async () => {
+                const expRewardsFirstRound = delegatorRewards * .3 // 30%
+                const expFeesFirstRound = delegatorFees * .3 // 30%
+                // After first round, the expected distribution is:
+                // T1 = 1000 + 500 + 50 = 1550 (~14.1%)
+                // D1 = 3000 + 150 = 3150 (~28.6%)
+                // D2 = 3000 + 150 = 3150 (~28.6%)
+                // D2 = 3000 + 150 = 3150 (~28.6%)
+                // Total = 11000
+                const expRewardsSecondRound = Math.floor(delegatorRewards * .286) // 28.6%
+                const expFeesSecondRound = Math.floor(delegatorFees * .286) // 28.6%
+                const expRewards = expRewardsFirstRound + expRewardsSecondRound
+                const expFees = expFeesFirstRound + expFeesSecondRound
+                const acceptableDelta = 2 
+
                 await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 2)
                 await fixture.roundsManager.execute(bondingManager.address, functionSig("setActiveTranscoders()"))
                 await fixture.jobsManager.execute(
@@ -1695,54 +1759,113 @@ contract("BondingManager", accounts => {
                 await fixture.minter.setMockUint256(functionSig("createReward(uint256,uint256)"), 1000)
                 await bondingManager.reward({from: transcoder})
 
-                const startDInfo = await bondingManager.getDelegator(delegator)
-                await bondingManager.claimEarnings(currentRound + 2, {from: delegator})
-                const endDInfo = await bondingManager.getDelegator(delegator)
+                const startDInfo1 = await bondingManager.getDelegator(delegator1)
+                await bondingManager.claimEarnings(currentRound + 2, {from: delegator1})
+                const endDInfo1 = await bondingManager.getDelegator(delegator1)
+                const d1Rewards = endDInfo1[0].sub(startDInfo1[0])
+                const d1Fees = endDInfo1[1].sub(startDInfo1[1])
 
-                // Claimed rewards
-                const claimedRewards0 = 250
-                const claimedRewards1 = Math.floor((500 * (1250 * PERC_DIVISOR / 3000)) / PERC_DIVISOR)
-                assert.equal(endDInfo[0].sub(startDInfo[0]), claimedRewards0 + claimedRewards1, "should increase bondedAmount by claimed rewards for 2 rounds")
-                // Claimed fees
-                const claimedFees0 = 125
-                const claimedFees1 = Math.floor((250 * (1250 * PERC_DIVISOR / 3000)) / PERC_DIVISOR)
-                assert.equal(endDInfo[1].sub(startDInfo[1]), claimedFees0 + claimedFees1, "should increase fees by claimed fees for 2 rounds")
-                const earningsPool0 = await bondingManager.getTranscoderEarningsPoolForRound(transcoder, currentRound + 1)
-                assert.equal(earningsPool0[0], 1000 - claimedRewards0, "should decrease rewards in earningsPool by delegator's claimed rewards for first round")
-                assert.equal(earningsPool0[1], 1000 - claimedFees0, "should decrease fees in earningsPool by delegator's claimed fees for first round")
-                assert.equal(earningsPool0[3], 1000, "should decrease claimableStake for earningsPool by delegator's stake for first round")
-                const earningsPool1 = await bondingManager.getTranscoderEarningsPoolForRound(transcoder, currentRound + 2)
-                assert.equal(earningsPool1[0], 1000 - claimedRewards1, "should decrease rewards in earningsPool by delegator's claimed rewards for second round")
-                assert.equal(earningsPool1[1], 1000 - claimedFees1, "should decrease fees in earningsPool by delegator's claimed fees for second round")
-                assert.equal(earningsPool1[3], 3000 - 1250, "should decrease claimableStake for earningsPool by delegator's stake for second round")
+                const startDInfo2 = await bondingManager.getDelegator(delegator2)
+                await bondingManager.claimEarnings(currentRound + 2, {from: delegator2})
+                const endDInfo2 = await bondingManager.getDelegator(delegator2)
+                const d2Rewards = endDInfo2[0].sub(startDInfo2[0])
+                const d2Fees = endDInfo2[1].sub(startDInfo2[1])
+
+                const startDInfo3 = await bondingManager.getDelegator(delegator3)
+                await bondingManager.claimEarnings(currentRound + 2, {from: delegator3})
+                const endDInfo3 = await bondingManager.getDelegator(delegator3)
+                const d3Rewards = endDInfo3[0].sub(startDInfo3[0])
+                const d3Fees = endDInfo3[1].sub(startDInfo3[1])
+
+                assert.isAtMost(d1Rewards.sub(d2Rewards).abs().toNumber(), acceptableDelta)
+                assert.isAtMost(d1Rewards.sub(d3Rewards).abs().toNumber(), acceptableDelta)
+                assert.isAtMost(d2Rewards.sub(d3Rewards).abs().toNumber(), acceptableDelta)
+                assert.isAtMost(d1Fees.sub(d2Fees).abs().toNumber(), acceptableDelta)
+                assert.isAtMost(d1Fees.sub(d3Fees).abs().toNumber(), acceptableDelta)
+                assert.isAtMost(d2Fees.sub(d3Fees).abs().toNumber(), acceptableDelta)
+                assert.isAtMost(d1Rewards.sub(expRewards).abs().toNumber(), acceptableDelta)
+                assert.isAtMost(d2Rewards.sub(expRewards).abs().toNumber(), acceptableDelta)
+                assert.isAtMost(d3Rewards.sub(expRewards).abs().toNumber(), acceptableDelta)
+                assert.isAtMost(d1Fees.sub(expFees).abs().toNumber(), acceptableDelta)
+                assert.isAtMost(d2Fees.sub(expFees).abs().toNumber(), acceptableDelta)
+                assert.isAtMost(d3Fees.sub(expFees).abs().toNumber(), acceptableDelta)
+
+                const earningsPoolFirstRound = await bondingManager.getTranscoderEarningsPoolForRound(transcoder, currentRound + 1)
+                const earningsPoolSecondRound = await bondingManager.getTranscoderEarningsPoolForRound(transcoder, currentRound + 2)
+                const expRemainingRewardsFirstRound = delegatorRewards - (3 * expRewardsFirstRound)
+                const expRemainingFeesFirstRound = delegatorFees - (3 * expFeesFirstRound) 
+                const expRemainingRewardsSecondRound = delegatorRewards - (3 * expRewardsSecondRound)
+                const expRemainingFeesSecondRound = delegatorFees - (3 * expFeesSecondRound)
+
+                assert.isAtMost(earningsPoolFirstRound[0].sub(expRemainingRewardsFirstRound).abs().toNumber(), acceptableDelta, "should decrease delegator reward pool by delegator's claimed rewards for round")
+                assert.isAtMost(earningsPoolFirstRound[1].sub(expRemainingFeesFirstRound).abs().toNumber(), acceptableDelta, "should decrease delegator fee pool by delegator's claimed fees for round")
+                assert.equal(earningsPoolFirstRound[2], transcoderRewards, "should not affect transcoder reward pool")
+                assert.equal(earningsPoolFirstRound[3], transcoderFees, "should not affect transcoder fee pool")
+                assert.equal(earningsPoolFirstRound[6], 1000, "should decrease claimableStake for earningsPool by delegator's stake for round")
+                assert.isAtMost(earningsPoolSecondRound[0].sub(expRemainingRewardsSecondRound).abs().toNumber(), acceptableDelta, "should decrease delegator reward pool by delegator's claimed rewards for round")
+                assert.isAtMost(earningsPoolSecondRound[1].sub(expRemainingFeesSecondRound).abs().toNumber(), acceptableDelta, "should decrease delegator fee pool by delegator's claimed fees for round")
+                assert.equal(earningsPoolSecondRound[2], transcoderRewards, "should not affect transcoder reward pool")
+                assert.equal(earningsPoolSecondRound[3], transcoderFees, "should not affect transcoder fee pool")
+                assert.isAtMost(earningsPoolSecondRound[6].sub(1550).toNumber(), acceptableDelta, "should decrease claimableStake for earningsPool by delegator's stake for round")
             })
 
             describe("caller is a transcoder", () => {
                 it("should claim earnings as both a delegator and a transcoder", async () => {
+                    const expDelegatorRewards = delegatorRewards * .1 // 10%
+                    const expRewards = expDelegatorRewards + transcoderRewards
+                    const expDelegatorFees = delegatorFees * .1
+                    const expFees = expDelegatorFees + transcoderFees
+                    const acceptableDelta = 2
+
                     const startDInfo = await bondingManager.getDelegator(transcoder)
                     await bondingManager.claimEarnings(currentRound + 1, {from: transcoder})
                     const endDInfo = await bondingManager.getDelegator(transcoder)
+                    const tRewards = endDInfo[0].sub(startDInfo[0])
+                    const tFees = endDInfo[1].sub(startDInfo[1])
 
-                    // Claimed rewards
-                    const claimedRewards = 500 + 250
-                    assert.equal(endDInfo[0].sub(startDInfo[0]), claimedRewards, "should increase bondedAmount by claimed rewards for round")
-                    // Claimed fees
-                    const claimedFees = 750 + 125
-                    assert.equal(endDInfo[1].sub(startDInfo[1]), claimedFees, "should increase fees by claimed fees for round")
+                    assert.isAtMost(tRewards.sub(expRewards).abs().toNumber(), acceptableDelta)
+                    assert.isAtMost(tFees.sub(expFees).abs().toNumber(), acceptableDelta)
+
                     const earningsPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder, currentRound + 1)
-                    assert.equal(earningsPool[0], 1000 - claimedRewards, "should decrease rewards in earningsPool by transcoder's claimed rewards for round")
-                    assert.equal(earningsPool[1], 1000 - claimedFees, "should decrease fees in earningsPool by transcoder's claimed fees for round")
-                    assert.equal(earningsPool[3], 1000, "should decrease claimableStake for earningsPool by transcoder's stake for round")
+                    assert.equal(earningsPool[0], delegatorRewards - tRewards.sub(transcoderRewards).toNumber(), "should decrease delegator reward pool by transcoder's claimed rewards for round")
+                    assert.equal(earningsPool[1], delegatorFees - tFees.sub(transcoderFees).toNumber(), "should decrease delegator fee pool by transcoder's claimed fees for round")
+                    assert.equal(earningsPool[2], 0, "should set transcoder reward pool to 0")
+                    assert.equal(earningsPool[3], 0, "should set transcoder fee pool to 0")
+                    assert.equal(earningsPool[6], 9000, "should decrease claimableStake for earningsPool by transcoder's stake for round")
+                })
+
+                it("should claim earnings as both a delegator and a transcoder regardless of when other delegators claim", async () => {
+                    const expDelegatorRewards = delegatorRewards * .1 // 10%
+                    const expRewards = expDelegatorRewards + transcoderRewards
+                    const expDelegatorFees = delegatorFees * .1
+                    const expFees = expDelegatorFees + transcoderFees
+                    const acceptableDelta = 2
+
+                    await bondingManager.claimEarnings(currentRound + 1, {from: delegator1})
+                    await bondingManager.claimEarnings(currentRound + 1, {from: delegator2})
+
+                    const startDInfo = await bondingManager.getDelegator(transcoder)
+                    await bondingManager.claimEarnings(currentRound + 1, {from: transcoder})
+                    const endDInfo = await bondingManager.getDelegator(transcoder)
+                    const tRewards = endDInfo[0].sub(startDInfo[0])
+                    const tFees = endDInfo[1].sub(startDInfo[1])
+
+                    assert.isAtMost(tRewards.sub(expRewards).abs().toNumber(), acceptableDelta)
+                    assert.isAtMost(tFees.sub(expFees).abs().toNumber(), acceptableDelta)
                 })
 
                 it("should claim earnings and empty remaining earnings in pool as both a delegator and a transcoder", async () => {
-                    await bondingManager.claimEarnings(currentRound + 1, {from: delegator})
+                    await bondingManager.claimEarnings(currentRound + 1, {from: delegator1})
+                    await bondingManager.claimEarnings(currentRound + 1, {from: delegator2})
+                    await bondingManager.claimEarnings(currentRound + 1, {from: delegator3})
                     await bondingManager.claimEarnings(currentRound + 1, {from: transcoder})
 
                     const earningsPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder, currentRound + 1)
-                    assert.equal(earningsPool[0], 0, "should set rewards to 0 in earningsPool for round after all delegators have claimed earnings")
-                    assert.equal(earningsPool[1], 0, "should set fees to 0 in earningsPool for round after all delegators have claimed earnings")
-                    assert.equal(earningsPool[3], 0, "should set claimableStake to 0 in earningsPool for round after all delegators have claimed earnings")
+                    assert.equal(earningsPool[0], 0, "should set delegator reward pool for round to 0 after all delegators have claimed earnings")
+                    assert.equal(earningsPool[1], 0, "should set delegator fee pool for round to 0 after all delegators have claimed earnings")
+                    assert.equal(earningsPool[2], 0, "should set transcoder reward pool for round to 0")
+                    assert.equal(earningsPool[3], 0, "should set transcoder fee pool for round to 0")
+                    assert.equal(earningsPool[6], 0, "should set claimableStake to 0 in earningsPool for round after all delegators have claimed earnings")
                 })
             })
         })

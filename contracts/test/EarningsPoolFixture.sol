@@ -12,16 +12,20 @@ contract EarningsPoolFixture {
         pool.init(_stake, _rewardCut, _feeShare);
     }
 
+    function setHasTranscoderRewardFeePool(bool _hasTranscoderRewardFeePool) public {
+        pool.hasTranscoderRewardFeePool = _hasTranscoderRewardFeePool;
+    }
+
     function claimShare(uint256 _stake, bool _isTranscoder) public returns (uint256, uint256) {
         return pool.claimShare(_stake, _isTranscoder);
     }
 
-    function setFeePool(uint256 _fees) public {
-        pool.feePool = _fees;
+    function addToFeePool(uint256 _fees) public {
+        pool.addToFeePool(_fees);
     }
 
-    function setRewardPool(uint256 _rewards) public {
-        pool.rewardPool = _rewards;
+    function addToRewardPool(uint256 _rewards) public {
+        pool.addToRewardPool(_rewards);
     }
 
     function hasClaimableShares() public view returns (bool) {
@@ -36,8 +40,18 @@ contract EarningsPoolFixture {
         return pool.rewardPoolShare(_stake, _isTranscoder);
     }
 
-    function getEarningsPool() public view returns (uint256, uint256, uint256, uint256, uint256, uint256) {
-        return (pool.rewardPool, pool.feePool, pool.totalStake, pool.claimableStake, pool.transcoderRewardCut, pool.transcoderFeeShare);
+    function getEarningsPool() public view returns (uint256, uint256, uint256, uint256, bool, uint256, uint256, uint256, uint256) {
+        return (
+            pool.rewardPool,
+            pool.feePool,
+            pool.transcoderRewardPool,
+            pool.transcoderFeePool,
+            pool.hasTranscoderRewardFeePool,
+            pool.totalStake,
+            pool.claimableStake,
+            pool.transcoderRewardCut,
+            pool.transcoderFeeShare
+        );
     }
 
     function getRewardPool() public view returns (uint256) {
@@ -46,6 +60,18 @@ contract EarningsPoolFixture {
 
     function getFeePool() public view returns (uint256) {
         return pool.feePool;
+    }
+
+    function getTranscoderRewardPool() public view returns (uint256) {
+        return pool.transcoderRewardPool;
+    }
+
+    function getTranscoderFeePool() public view returns (uint256) {
+        return pool.transcoderFeePool;
+    }
+
+    function getHasTranscoderRewardFeePool() public view returns (bool) {
+        return pool.hasTranscoderRewardFeePool;
     }
 
     function getClaimableStake() public view returns (uint256) {

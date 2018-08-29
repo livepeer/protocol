@@ -4,6 +4,23 @@ require("babel-polyfill")
 const KeystoreProvider = require("truffle-keystore-provider")
 const Web3 = require("web3")
 
+let mochaConfig = {}
+
+// Enable Mocha's --grep feature
+for (let i = 0; i < process.argv.length; i++) {
+    const arg = process.argv[i]
+    if (arg !== "-g" &&  arg !== "--grep") continue
+    if (++i >= process.argv.length) {
+        console.error(arg + " option requires argument")
+        process.exit(1)
+    }
+
+    const re = new RegExp(process.argv[i])
+    mochaConfig.grep = new RegExp(process.argv[i])
+    console.log("RegExp: " + i + ": " + re)
+    break
+}
+
 const memoizeProviderCreator = () => {
     let keystoreProviders = {}
 
@@ -85,5 +102,6 @@ module.exports = {
             enabled: true,
             runs: 200
         }
-    }
+    },
+    mocha: mochaConfig
 }
