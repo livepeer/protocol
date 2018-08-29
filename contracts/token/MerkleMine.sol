@@ -4,6 +4,7 @@ import "zeppelin-solidity/contracts/MerkleProof.sol";
 import "zeppelin-solidity/contracts/token/ERC20.sol";
 import "zeppelin-solidity/contracts/math/SafeMath.sol";
 
+
 /**
  * @title MerkleMine
  * @dev Token distribution based on providing Merkle proofs of inclusion in genesis state to generate allocation

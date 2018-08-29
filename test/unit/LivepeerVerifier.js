@@ -18,7 +18,7 @@ contract("LivepeerVerifier", accounts => {
         })
 
         it("should create contract", async () => {
-            const verifier = await LivepeerVerifier.new(accounts[0], solver, codeHash) 
+            const verifier = await LivepeerVerifier.new(accounts[0], solver, codeHash)
 
             assert.equal(await verifier.solver.call(), solver, "should set provided solver address as solver")
             assert.equal(await verifier.verificationCodeHash.call(), codeHash, "should set verificationCodeHash")

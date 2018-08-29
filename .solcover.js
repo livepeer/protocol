@@ -1,5 +1,6 @@
 const glob = require("glob")
 
+const previousFiles = glob.sync("contracts/previous/**/*.sol")
 const testFiles = glob.sync("contracts/test/*.sol").map(file => file.replace("contracts/", ""))
 const mockFiles = ["verification/IdentityVerifier.sol", "rounds/AdjustableRoundsManager.sol"]
 const interfaces = [
@@ -21,5 +22,5 @@ module.exports = {
     testCommand: "node --max-old-space-size=4096 ../node_modules/.bin/truffle test test/unit/* --network coverage",
     compileCommand: "node --max-old-space-size=4096 ../node_modules/.bin/truffle compile --network coverage",
     copyPackages: ["zeppelin-solidity"],
-    skipFiles: testFiles.concat(mockFiles).concat(interfaces).concat(miscFiles)
+    skipFiles: previousFiles.concat(testFiles).concat(mockFiles).concat(interfaces).concat(miscFiles)
 }

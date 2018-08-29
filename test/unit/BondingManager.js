@@ -5,7 +5,7 @@ import {constants} from "../../utils/constants"
 
 const BondingManager = artifacts.require("BondingManager")
 
-const { DelegatorStatus, TranscoderStatus } = constants
+const {DelegatorStatus, TranscoderStatus} = constants
 
 contract("BondingManager", accounts => {
     let fixture
@@ -1687,7 +1687,7 @@ contract("BondingManager", accounts => {
             it("should claim earnings for 1 round", async () => {
                 const expRewards = delegatorRewards * .3 // 30%
                 const expFees = delegatorFees * .3 // 30%
-                const acceptableDelta = 2 
+                const acceptableDelta = 2
 
                 const startDInfo1 = await bondingManager.getDelegator(delegator1)
                 await bondingManager.claimEarnings(currentRound + 1, {from: delegator1})
@@ -1744,7 +1744,7 @@ contract("BondingManager", accounts => {
                 const expFeesSecondRound = Math.floor(delegatorFees * .286) // 28.6%
                 const expRewards = expRewardsFirstRound + expRewardsSecondRound
                 const expFees = expFeesFirstRound + expFeesSecondRound
-                const acceptableDelta = 2 
+                const acceptableDelta = 2
 
                 await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 2)
                 await fixture.roundsManager.execute(bondingManager.address, functionSig("setActiveTranscoders()"))
@@ -1793,7 +1793,7 @@ contract("BondingManager", accounts => {
                 const earningsPoolFirstRound = await bondingManager.getTranscoderEarningsPoolForRound(transcoder, currentRound + 1)
                 const earningsPoolSecondRound = await bondingManager.getTranscoderEarningsPoolForRound(transcoder, currentRound + 2)
                 const expRemainingRewardsFirstRound = delegatorRewards - (3 * expRewardsFirstRound)
-                const expRemainingFeesFirstRound = delegatorFees - (3 * expFeesFirstRound) 
+                const expRemainingFeesFirstRound = delegatorFees - (3 * expFeesFirstRound)
                 const expRemainingRewardsSecondRound = delegatorRewards - (3 * expRewardsSecondRound)
                 const expRemainingFeesSecondRound = delegatorFees - (3 * expFeesSecondRound)
 

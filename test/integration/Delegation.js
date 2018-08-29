@@ -8,7 +8,7 @@ const BondingManager = artifacts.require("BondingManager")
 const AdjustableRoundsManager = artifacts.require("AdjustableRoundsManager")
 const LivepeerToken = artifacts.require("LivepeerToken")
 
-const { DelegatorStatus } = constants
+const {DelegatorStatus} = constants
 
 contract("Delegation", accounts => {
     const TOKEN_UNIT = 10 ** 18
@@ -140,7 +140,7 @@ contract("Delegation", accounts => {
         // Delegator 1 partially unbonds from transcoder 2
         // unbondingLockID = 0
         await bondingManager.unbond(500, {from: delegator1})
-        
+
         // Test state after unbond 0
         let lock0 = await bondingManager.getDelegatorUnbondingLock(delegator1, unbondingLockID0)
         assert.equal(lock0[0], 500, "wrong amount for unbonding lock 0")
@@ -230,7 +230,7 @@ contract("Delegation", accounts => {
         // unbondingLockID = 0
         await bondingManager.unbond(startDelegatorBondedAmount, {from: delegator2})
 
-        // Test state after unbond 
+        // Test state after unbond
         let lock = await bondingManager.getDelegatorUnbondingLock(delegator2, unbondingLockID)
         assert.equal(lock[0], startDelegatorBondedAmount, "wrong amount for unbonding lock")
         assert.equal(lock[1], (await roundsManager.currentRound()).plus(unbondingPeriod).toNumber(), "wrong withdrawRound for unbonding lock")
@@ -309,7 +309,7 @@ contract("Delegation", accounts => {
         // unbondingLockID = 1
         await bondingManager.unbond(lockAmount0, {from: delegator2})
 
-        // Test state after unbond 
+        // Test state after unbond
         let lock = await bondingManager.getDelegatorUnbondingLock(delegator2, unbondingLockID0)
         assert.equal(lock[0], lockAmount0, "wrong amount for unbonding lock")
         assert.equal(lock[1], (await roundsManager.currentRound()).plus(unbondingPeriod).toNumber(), "wrong withdrawRound for unbonding lock")
@@ -328,7 +328,7 @@ contract("Delegation", accounts => {
         // unbondingLockID = 2
         await bondingManager.unbond(lockAmount1, {from: delegator2})
 
-        // Test state after unbond 
+        // Test state after unbond
         lock = await bondingManager.getDelegatorUnbondingLock(delegator2, unbondingLockID1)
         assert.equal(lock[0], lockAmount1, "wrong amount for unbonding lock")
         assert.equal(lock[1], (await roundsManager.currentRound()).plus(unbondingPeriod).toNumber(), "wrong withdrawRound for unbonding lock")
@@ -396,7 +396,7 @@ contract("Delegation", accounts => {
 
         // Delegator 1 partially unbonds from transcoder 2
         await bondingManager.unbond(500, {from: delegator1})
-        
+
         // Finish current round
         await roundsManager.mineBlocks(roundLength)
         await roundsManager.initializeRound()
