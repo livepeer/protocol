@@ -122,14 +122,14 @@ contract("UpgradeToBondingManagerV4", accounts => {
 
         for (let round of preUpgradeRounds) {
             const earningsPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder1, round)
-            assert.equal(earningsPool[2], 0, "transcoder reward pool should be zero")
-            assert.isNotOk(earningsPool[4], "hasTranscoderRewardFeePool should be false for pre-upgrade earnings pools")
+            assert.equal(earningsPool[6], 0, "transcoder reward pool should be zero")
+            assert.isNotOk(earningsPool[8], "hasTranscoderRewardFeePool should be false for pre-upgrade earnings pools")
         }
 
         for (let round of postUpgradeRounds) {
             const earningsPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder1, round)
-            assert.isAbove(earningsPool[2].toNumber(), 0, "transcoder reward pool should be non-zero")
-            assert.isOk(earningsPool[4], "hasTranscoderRewardFeePool should be true for post-upgrade earnings pools")
+            assert.isAbove(earningsPool[6].toNumber(), 0, "transcoder reward pool should be non-zero")
+            assert.isOk(earningsPool[8], "hasTranscoderRewardFeePool should be true for post-upgrade earnings pools")
         }
 
         const currentRound = await roundsManager.currentRound()

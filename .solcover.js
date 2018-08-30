@@ -1,6 +1,6 @@
 const glob = require("glob")
 
-const previousFiles = glob.sync("contracts/previous/**/*.sol")
+const previousFiles = glob.sync("contracts/previous/**/*.sol").map(file => file.replace("contracts/", ""))
 const testFiles = glob.sync("contracts/test/*.sol").map(file => file.replace("contracts/", ""))
 const mockFiles = ["verification/IdentityVerifier.sol", "rounds/AdjustableRoundsManager.sol"]
 const interfaces = [

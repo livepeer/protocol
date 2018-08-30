@@ -840,17 +840,19 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     )
         public
         view
-        returns (uint256 rewardPool, uint256 feePool, uint256 transcoderRewardPool, uint256 transcoderFeePool, bool hasTranscoderRewardFeePool, uint256 totalStake, uint256 claimableStake)
+        returns (uint256 rewardPool, uint256 feePool, uint256 totalStake, uint256 claimableStake, uint256 transcoderRewardCut, uint256 transcoderFeeShare, uint256 transcoderRewardPool, uint256 transcoderFeePool, bool hasTranscoderRewardFeePool)
     {
         EarningsPool.Data storage earningsPool = transcoders[_transcoder].earningsPoolPerRound[_round];
 
         rewardPool = earningsPool.rewardPool;
         feePool = earningsPool.feePool;
+        totalStake = earningsPool.totalStake;
+        claimableStake = earningsPool.claimableStake;
+        transcoderRewardCut = earningsPool.transcoderRewardCut;
+        transcoderFeeShare = earningsPool.transcoderFeeShare;
         transcoderRewardPool = earningsPool.transcoderRewardPool;
         transcoderFeePool = earningsPool.transcoderFeePool;
         hasTranscoderRewardFeePool = earningsPool.hasTranscoderRewardFeePool;
-        totalStake = earningsPool.totalStake;
-        claimableStake = earningsPool.claimableStake;
     }
 
     /**

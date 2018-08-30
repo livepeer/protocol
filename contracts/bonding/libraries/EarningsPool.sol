@@ -13,6 +13,10 @@ library EarningsPool {
     using SafeMath for uint256;
 
     // Represents rewards and fees to be distributed to delegators
+    // The `hasTranscoderRewardFeePool` flag was introduced so that EarningsPool.Data structs used by the BondingManager
+    // created with older versions of this library can be differentiated from EarningsPool.Data structs used by the BondingManager
+    // created with a newer version of this library. If the flag is true, then the struct was initialized using the `init` function
+    // using a newer version of this library meaning that it is using separate transcoder reward and fee pools
     struct Data {
         uint256 rewardPool;                // Delegator rewards. If `hasTranscoderRewardFeePool` is false, this will contain transcoder rewards as well
         uint256 feePool;                   // Delegator fees. If `hasTranscoderRewardFeePool` is false, this will contain transcoder fees as well

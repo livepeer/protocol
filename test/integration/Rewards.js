@@ -114,7 +114,7 @@ contract("Rewards", accounts => {
             const currentRound = await roundsManager.currentRound()
             const earningsPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder1, currentRound)
             const delegatorRewards = earningsPool[0]
-            const transcoderRewards = earningsPool[2]
+            const transcoderRewards = earningsPool[6]
 
             const expT1RewardShare = delegatorRewards.mul(expT1RewardPerc).floor().add(transcoderRewards)
             const expD1RewardShare = delegatorRewards.mul(expD1RewardPerc).floor()
