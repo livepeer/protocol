@@ -748,7 +748,26 @@ contract("BondingManager", accounts => {
                 const tInfo = await bondingManager.getDelegator(transcoder)
                 assert.equal(tInfo[3], 1500, "wrong delegate delegated amount")
 
+                assert.equal(await bondingManager.delegatorStatus(delegator), constants.DelegatorStatus.Bonded, "wrong delegator status")
                 assert.equal(await bondingManager.getTotalBonded(), 1500, "wrong total bonded")
+            })
+
+            it("should fire an Unbond event with an unbonding lock representing a partial unbond", async () => {
+                const unbondingLockID = (await bondingManager.getDelegator(delegator))[6]
+                const unbondingPeriod = (await bondingManager.unbondingPeriod.call()).toNumber()
+                const e = bondingManager.Unbond({})
+
+                e.watch(async (err, result) => {
+                    e.stopWatching()
+
+                    assert.equal(result.args.delegate, transcoder, "wrong delegate in Unbond event")
+                    assert.equal(result.args.delegator, delegator, "wrong delegator in Unbond event")
+                    assert.equal(result.args.unbondingLockId, unbondingLockID.toNumber(), "wrong unbondingLockId in Unbond event")
+                    assert.equal(result.args.amount, 500, "wrong amount in Unbond event")
+                    assert.equal(result.args.withdrawRound, currentRound + 1 + unbondingPeriod, "wrong withdrawRound in Unbond event")
+                })
+
+                await bondingManager.unbond(500, {from: delegator})
             })
 
             describe("not delegated to self and delegate is registered transcoder", () => {
@@ -785,6 +804,27 @@ contract("BondingManager", accounts => {
                 assert.equal(dInfo[0], 0, "wrong delegator bonded amount")
                 assert.equal(dInfo[2], constants.NULL_ADDRESS, "wrong delegate address")
                 assert.equal(dInfo[4], 0, "wrong start round")
+
+                assert.equal(await bondingManager.delegatorStatus(delegator), constants.DelegatorStatus.Unbonded, "wrong delegator status")
+                assert.equal(await bondingManager.getTotalBonded(), 1000, "wrong total bonded")
+            })
+
+            it("should fire an Unbond event with an unbonding lock representing a full unbond", async () => {
+                const unbondingLockID = (await bondingManager.getDelegator(delegator))[6]
+                const unbondingPeriod = (await bondingManager.unbondingPeriod.call()).toNumber()
+                const e = bondingManager.Unbond({})
+
+                e.watch(async (err, result) => {
+                    e.stopWatching()
+
+                    assert.equal(result.args.delegate, transcoder, "wrong delegate in Unbond event")
+                    assert.equal(result.args.delegator, delegator, "wrong delegator in Unbond event")
+                    assert.equal(result.args.unbondingLockId, unbondingLockID.toNumber(), "wrong unbondingLockId in Unbond event")
+                    assert.equal(result.args.amount, 1000, "wrong amount in Unbond event")
+                    assert.equal(result.args.withdrawRound, currentRound + 1 + unbondingPeriod, "wrong withdrawRound in Unbond event")
+                })
+
+                await bondingManager.unbond(1000, {from: delegator})
             })
 
             describe("is a registered transcoder", () => {
@@ -795,24 +835,6 @@ contract("BondingManager", accounts => {
                     assert.equal(await bondingManager.transcoderStatus(transcoder), TranscoderStatus.NotRegistered, "wrong transcoder status")
                 })
             })
-        })
-
-        it("should fire an Unbond event", async () => {
-            const unbondingLockID = (await bondingManager.getDelegator(delegator))[6]
-            const unbondingPeriod = (await bondingManager.unbondingPeriod.call()).toNumber()
-            const e = bondingManager.Unbond({})
-
-            e.watch(async (err, result) => {
-                e.stopWatching()
-
-                assert.equal(result.args.delegate, transcoder, "wrong delegate in Unbond event")
-                assert.equal(result.args.delegator, delegator, "wrong delegator in Unbond event")
-                assert.equal(result.args.unbondingLockId, unbondingLockID.toNumber(), "wrong unbondingLockId in Unbond event")
-                assert.equal(result.args.amount, 500, "wrong amount in Unbond event")
-                assert.equal(result.args.withdrawRound, currentRound + 1 + unbondingPeriod, "wrong withdrawRound in Unbond event")
-            })
-
-            await bondingManager.unbond(500, {from: delegator})
         })
     })
 

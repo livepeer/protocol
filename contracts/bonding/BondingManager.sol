@@ -356,6 +356,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // Amount to unbond must be less than or equal to current bonded amount 
         require(_amount <= del.bondedAmount);
 
+        address currentDelegate = del.delegateAddress;
         uint256 currentRound = roundsManager().currentRound();
         uint256 withdrawRound = currentRound.add(unbondingPeriod);
         uint256 unbondingLockId = del.nextUnbondingLockId;
@@ -397,7 +398,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             }
         } 
 
-        Unbond(del.delegateAddress, msg.sender, unbondingLockId, _amount, withdrawRound);
+        Unbond(currentDelegate, msg.sender, unbondingLockId, _amount, withdrawRound);
     }
 
     /**
