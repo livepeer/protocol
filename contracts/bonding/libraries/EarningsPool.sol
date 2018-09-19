@@ -191,7 +191,15 @@ library EarningsPool {
      * @param _stake Stake of claimant
      * @param _isTranscoder Flag indicating whether the claimant is a transcoder
      */
-    function feePoolShareWithTranscoderRewardFeePool(EarningsPool.Data storage earningsPool, uint256 _stake, bool _isTranscoder) internal view returns (uint256, uint256) {
+    function feePoolShareWithTranscoderRewardFeePool(
+        EarningsPool.Data storage earningsPool,
+        uint256 _stake,
+        bool _isTranscoder
+    ) 
+        internal
+        view
+        returns (uint256, uint256)
+    {
         // If there is no claimable stake, the fee pool share is 0
         // If there is claimable stake, calculate fee pool share based on remaining amount in fee pool, remaining claimable stake and claimant's stake
         uint256 delegatorFees = earningsPool.claimableStake > 0 ? MathUtils.percOf(earningsPool.feePool, _stake, earningsPool.claimableStake) : 0;
@@ -206,7 +214,15 @@ library EarningsPool {
      * @param _stake Stake of claimant
      * @param _isTranscoder Flag indicating whether the claimant is a transcoder
      */
-    function rewardPoolShareWithTranscoderRewardFeePool(EarningsPool.Data storage earningsPool, uint256 _stake, bool _isTranscoder) internal view returns (uint256, uint256) {
+    function rewardPoolShareWithTranscoderRewardFeePool(
+        EarningsPool.Data storage earningsPool,
+        uint256 _stake,
+        bool _isTranscoder
+    )
+        internal
+        view
+        returns (uint256, uint256)
+    {
         // If there is no claimable stake, the reward pool share is 0
         // If there is claimable stake, calculate reward pool share based on remaining amount in reward pool, remaining claimable stake and claimant's stake
         uint256 delegatorRewards = earningsPool.claimableStake > 0 ? MathUtils.percOf(earningsPool.rewardPool, _stake, earningsPool.claimableStake) : 0;
@@ -222,7 +238,15 @@ library EarningsPool {
      * @param _stake Stake of claimant
      * @param _isTranscoder Flag indicating whether the claimant is a transcoder
      */
-    function feePoolShareNoTranscoderRewardFeePool(EarningsPool.Data storage earningsPool, uint256 _stake, bool _isTranscoder) internal view returns (uint256, uint256) {
+    function feePoolShareNoTranscoderRewardFeePool(
+        EarningsPool.Data storage earningsPool,
+        uint256 _stake,
+        bool _isTranscoder
+    ) 
+        internal
+        view
+        returns (uint256, uint256)
+    {
         uint256 transcoderFees = 0;
         uint256 delegatorFees = 0;
 
@@ -246,7 +270,15 @@ library EarningsPool {
      * @param _stake Stake of claimant
      * @param _isTranscoder Flag indicating whether the claimant is a transcoder
      */
-    function rewardPoolShareNoTranscoderRewardFeePool(EarningsPool.Data storage earningsPool, uint256 _stake, bool _isTranscoder) internal view returns (uint256, uint256) {
+    function rewardPoolShareNoTranscoderRewardFeePool(
+        EarningsPool.Data storage earningsPool,
+        uint256 _stake,
+        bool _isTranscoder
+    )
+        internal
+        view
+        returns (uint256, uint256)
+    {
         uint256 transcoderRewards = 0;
         uint256 delegatorRewards = 0;
 

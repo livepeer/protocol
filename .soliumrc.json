@@ -4,7 +4,11 @@
   "rules": {
     "indentation": ["error", 4],
     "arg-overflow": ["error", 5],
-    "function-order": "off",
+    "function-order": "error",
+    "error-reason": "off",
+    "emit": "off",
+    "max-len": ["warning", 160],
+    "security/enforce-loop-bounds": "warning",
     "security/no-block-members": "off",
     "security/no-inline-assembly": "off"
   }
