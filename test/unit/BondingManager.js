@@ -1407,7 +1407,7 @@ contract("BondingManager", accounts => {
                 const endTotalBonded = await bondingManager.getTotalBonded()
 
                 assert.equal((await bondingManager.getDelegator(transcoder))[3], 500, "should decrease delegatedAmount for transcoder by slash amount")
-                assert.equal(startTotalBonded.sub(endTotalBonded), 500, "should decrease total bonded tokens by slash amount")
+                assert.equal(startTotalBonded.sub(endTotalBonded), 1000, "should decrease total bonded tokens by slash amount")
             })
         })
 
