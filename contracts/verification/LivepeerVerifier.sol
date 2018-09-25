@@ -25,7 +25,16 @@ contract LivepeerVerifier is Manager, IVerifier {
     mapping (uint256 => Request) public requests;
     uint256 public requestCount;
 
-    event VerifyRequest(uint256 indexed requestId, uint256 indexed jobId, uint256 indexed claimId, uint256 segmentNumber, string transcodingOptions, string dataStorageHash, bytes32 dataHash, bytes32 transcodedDataHash);
+    event VerifyRequest(
+        uint256 indexed requestId,
+        uint256 indexed jobId,
+        uint256 indexed claimId,
+        uint256 segmentNumber,
+        string transcodingOptions,
+        string dataStorageHash,
+        bytes32 dataHash,
+        bytes32 transcodedDataHash
+    );
     event Callback(uint256 indexed requestId, uint256 indexed jobId, uint256 indexed claimId, uint256 segmentNumber, bool result);
     event SolverUpdate(address solver);
 

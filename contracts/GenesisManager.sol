@@ -188,36 +188,6 @@ contract GenesisManager is Ownable {
     }
 
     /**
-     * @dev Add a grant for tokens with a vesting schedule. An internal helper function used by addTeamGrant and addInvestorGrant
-     * @param _receiver Grant receiver
-     * @param _amount Amount of tokens included in the grant
-     * @param _timeToCliff Seconds until the vesting cliff
-     * @param _vestingDuration Seconds starting from the vesting cliff until the end of the vesting schedule
-     */
-    function addVestingGrant(
-        address _receiver,
-        uint256 _amount,
-        uint256 _timeToCliff,
-        uint256 _vestingDuration
-    )
-        internal
-    {
-        // Receiver must not have already received a grant with a vesting schedule
-        require(vestingHolders[_receiver] == address(0));
-
-        // Create a vesting holder contract to act as the holder of the grant's tokens
-        // Note: the vesting grant is revokable
-        TokenVesting holder = new TokenVesting(_receiver, grantsStartTimestamp, _timeToCliff, _vestingDuration, true);
-        vestingHolders[_receiver] = holder;
-
-        // Transfer ownership of the vesting holder to the bank multisig
-        // giving the bank multisig the ability to revoke the grant
-        holder.transferOwnership(bankMultisig);
-
-        token.transfer(holder, _amount);
-    }
-
-    /**
      * @dev Add a community grant for tokens that are locked until a predetermined time in the future
      * @param _receiver Grant receiver address
      * @param _amount Amount of tokens included in the grant
@@ -258,5 +228,35 @@ contract GenesisManager is Ownable {
         token.transferOwnership(minter);
 
         stage = Stages.GenesisEnd;
+    }
+
+    /**
+     * @dev Add a grant for tokens with a vesting schedule. An internal helper function used by addTeamGrant and addInvestorGrant
+     * @param _receiver Grant receiver
+     * @param _amount Amount of tokens included in the grant
+     * @param _timeToCliff Seconds until the vesting cliff
+     * @param _vestingDuration Seconds starting from the vesting cliff until the end of the vesting schedule
+     */
+    function addVestingGrant(
+        address _receiver,
+        uint256 _amount,
+        uint256 _timeToCliff,
+        uint256 _vestingDuration
+    )
+        internal
+    {
+        // Receiver must not have already received a grant with a vesting schedule
+        require(vestingHolders[_receiver] == address(0));
+
+        // Create a vesting holder contract to act as the holder of the grant's tokens
+        // Note: the vesting grant is revokable
+        TokenVesting holder = new TokenVesting(_receiver, grantsStartTimestamp, _timeToCliff, _vestingDuration, true);
+        vestingHolders[_receiver] = holder;
+
+        // Transfer ownership of the vesting holder to the bank multisig
+        // giving the bank multisig the ability to revoke the grant
+        holder.transferOwnership(bankMultisig);
+
+        token.transfer(holder, _amount);
     }
 }

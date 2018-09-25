@@ -45,7 +45,7 @@
     "babel-register": "^6.24.1",
     "bignumber.js": "^4.0.1",
     "chai": "^4.1.2",
-    "coveralls": "^3.0.0",
+    "coveralls": "^3.0.2",
     "eslint": "^4.3.0",
     "eslint-config-google": "^0.9.1",
     "ethereumjs-abi": "github:ethereumjs/ethereumjs-abi#09c3c48fd3bed143df7fa8f36f6f164205e23796",
@@ -54,7 +54,7 @@
     "mkdirp": "^0.5.1",
     "mocha-lcov-reporter": "^1.3.0",
     "solidity-coverage": "^0.4.9",
-    "solium": "^1.1.2",
+    "solium": "^1.1.8",
     "truffle": "^4.0.4",
     "truffle-keystore-provider": "^1.0.2",
     "zeppelin-solidity": "1.5.0"
