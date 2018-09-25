@@ -21,6 +21,29 @@ contract GenericMock {
     mapping (bytes4 => MockValue) mockValues;
 
     /*
+     * @dev Return mock value for a functione
+     */
+    function() public payable {
+        bytes4 func;
+        assembly { func := calldataload(0) }
+
+        if (!mockValues[func].set) {
+            // If mock value not set, default to return a bool with value false
+            mLoadAndReturn(false);
+        } else {
+            if (mockValues[func].valueType == MockValueType.Uint256) {
+                mLoadAndReturn(mockValues[func].uint256Value);
+            } else if (mockValues[func].valueType == MockValueType.Bytes32) {
+                mLoadAndReturn(mockValues[func].bytes32Value);
+            } else if (mockValues[func].valueType == MockValueType.Bool) {
+                mLoadAndReturn(mockValues[func].boolValue);
+            } else if (mockValues[func].valueType == MockValueType.Address) {
+                mLoadAndReturn(mockValues[func].addressValue);
+            }
+        }
+    }
+
+    /*
      * @dev Call a function on a target address using provided calldata for a function
      * @param _target Target contract to call with data
      * @param _data Transaction data to be used to call the target contract
@@ -72,29 +95,6 @@ contract GenericMock {
         mockValues[_func].valueType = MockValueType.Address;
         mockValues[_func].addressValue = _value;
         mockValues[_func].set = true;
-    }
-
-    /*
-     * @dev Return mock value for a functione
-     */
-    function() public payable {
-        bytes4 func;
-        assembly { func := calldataload(0) }
-
-        if (!mockValues[func].set) {
-            // If mock value not set, default to return a bool with value false
-            mLoadAndReturn(false);
-        } else {
-            if (mockValues[func].valueType == MockValueType.Uint256) {
-                mLoadAndReturn(mockValues[func].uint256Value);
-            } else if (mockValues[func].valueType == MockValueType.Bytes32) {
-                mLoadAndReturn(mockValues[func].bytes32Value);
-            } else if (mockValues[func].valueType == MockValueType.Bool) {
-                mLoadAndReturn(mockValues[func].boolValue);
-            } else if (mockValues[func].valueType == MockValueType.Address) {
-                mLoadAndReturn(mockValues[func].addressValue);
-            }
-        }
     }
 
     /*

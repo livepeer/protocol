@@ -394,52 +394,6 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
     }
 
     /*
-     * @dev Invoke transcoding verification by calling the Verifier contract
-     * @param _jobId Job identifier
-     * @param _claimId Claim identifier
-     * @param _segmentNumber Segment sequence number in stream
-     * @param _dataStorageHash Content addressable storage hash of segment data
-     * @param _dataHashes Hash of segment data and hash of transcoded segment data
-     */
-    function invokeVerification(
-        uint256 _jobId,
-        uint256 _claimId,
-        uint256 _segmentNumber,
-        string _dataStorageHash,
-        bytes32[2] _dataHashes
-    )
-        internal
-    {
-        IVerifier verifierContract = verifier();
-
-        uint256 price = verifierContract.getPrice();
-
-        // Send payment to verifier if price is greater than zero
-        if (price > 0) {
-            verifierContract.verify.value(price)(
-                _jobId,
-                _claimId,
-                _segmentNumber,
-                jobs[_jobId].transcodingOptions,
-                _dataStorageHash,
-                _dataHashes
-            );
-        } else {
-            // If price is 0, reject any value transfers
-            require(msg.value == 0);
-
-            verifierContract.verify(
-                _jobId,
-                _claimId,
-                _segmentNumber,
-                jobs[_jobId].transcodingOptions,
-                _dataStorageHash,
-                _dataHashes
-            );
-        }
-    }
-
-    /*
      * @dev Callback function that receives the results of transcoding verification
      * @param _jobId Job identifier
      * @param _segmentNumber Segment being verified for job
@@ -676,6 +630,52 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         returns (bool)
     {
         return jobs[_jobId].claims[_claimId].segmentVerifications[_segmentNumber];
+    }
+
+    /*
+     * @dev Invoke transcoding verification by calling the Verifier contract
+     * @param _jobId Job identifier
+     * @param _claimId Claim identifier
+     * @param _segmentNumber Segment sequence number in stream
+     * @param _dataStorageHash Content addressable storage hash of segment data
+     * @param _dataHashes Hash of segment data and hash of transcoded segment data
+     */
+    function invokeVerification(
+        uint256 _jobId,
+        uint256 _claimId,
+        uint256 _segmentNumber,
+        string _dataStorageHash,
+        bytes32[2] _dataHashes
+    )
+        internal
+    {
+        IVerifier verifierContract = verifier();
+
+        uint256 price = verifierContract.getPrice();
+
+        // Send payment to verifier if price is greater than zero
+        if (price > 0) {
+            verifierContract.verify.value(price)(
+                _jobId,
+                _claimId,
+                _segmentNumber,
+                jobs[_jobId].transcodingOptions,
+                _dataStorageHash,
+                _dataHashes
+            );
+        } else {
+            // If price is 0, reject any value transfers
+            require(msg.value == 0);
+
+            verifierContract.verify(
+                _jobId,
+                _claimId,
+                _segmentNumber,
+                jobs[_jobId].transcodingOptions,
+                _dataStorageHash,
+                _dataHashes
+            );
+        }
     }
 
     /*
