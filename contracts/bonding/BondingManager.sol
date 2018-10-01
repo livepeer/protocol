@@ -70,7 +70,9 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     mapping (address => Delegator) private delegators;
     mapping (address => Transcoder) private transcoders;
 
-    // Keep track of total bonded tokens
+    // DEPRECATED - DO NOT USE
+    // The function getTotalBonded() no longer uses this variable
+    // and instead calculates the total bonded value separately
     uint256 private totalBondedDEPRECATED;
 
     // Candidate and reserve transcoders
@@ -244,7 +246,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
                 } else {
                     address lastTranscoder = transcoderPool.getLast();
 
-                    if (delegatedAmount > transcoderPool.getKey(lastTranscoder)) {
+                    if (delegatedAmount > transcoderTotalStake(lastTranscoder)) {
                         // If pool is full and caller has more delegated stake than the transcoder in the pool with the least delegated stake:
                         // - Evict transcoder in pool with least delegated stake
                         // - Add caller to pool
@@ -307,7 +309,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             if (transcoderStatus(currentDelegate) == TranscoderStatus.Registered) {
                 // Previously delegated to a transcoder
                 // Decrease old transcoder's total stake
-                transcoderPool.updateKey(currentDelegate, transcoderPool.getKey(currentDelegate).sub(del.bondedAmount), address(0), address(0));
+                transcoderPool.updateKey(currentDelegate, transcoderTotalStake(currentDelegate).sub(del.bondedAmount), address(0), address(0));
             }
         }
 
@@ -321,7 +323,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         if (transcoderStatus(_to) == TranscoderStatus.Registered) {
             // Delegated to a transcoder
             // Increase transcoder's total stake
-            transcoderPool.updateKey(_to, transcoderPool.getKey(del.delegateAddress).add(delegationAmount), address(0), address(0));
+            transcoderPool.updateKey(_to, transcoderTotalStake(del.delegateAddress).add(delegationAmount), address(0), address(0));
         }
 
         if (_amount > 0) {
@@ -377,7 +379,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             // - Caller is not delegated to self OR caller is delegated to self and has a non-zero bonded amount
             // If the caller is delegated to self and has a zero bonded amount, it will be removed from the 
             // transcoder pool so its delegated stake within the pool does not need to be decreased
-            transcoderPool.updateKey(del.delegateAddress, transcoderPool.getKey(del.delegateAddress).sub(_amount), address(0), address(0));
+            transcoderPool.updateKey(del.delegateAddress, transcoderTotalStake(del.delegateAddress).sub(_amount), address(0), address(0));
         }
 
         // Check if delegator has a zero bonded amount
@@ -506,7 +508,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             activeTranscoderSet[currentRound].transcoders.push(currentTranscoder);
             activeTranscoderSet[currentRound].isActive[currentTranscoder] = true;
 
-            uint256 stake = transcoderPool.getKey(currentTranscoder);
+            uint256 stake = transcoderTotalStake(currentTranscoder);
             uint256 rewardCut = transcoders[currentTranscoder].pendingRewardCut;
             uint256 feeShare = transcoders[currentTranscoder].pendingFeeShare;
             uint256 pricePerSegment = transcoders[currentTranscoder].pendingPricePerSegment;
@@ -930,7 +932,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
         for (uint256 i = 0; i < totalTranscoders; i++) {
             // Add current transcoder's total delegated stake to total bonded counter
-            totalBonded = totalBonded.add(transcoderPool.getKey(currentTranscoder));
+            totalBonded = totalBonded.add(transcoderTotalStake(currentTranscoder));
             // Get next transcoder in the pool
             currentTranscoder = transcoderPool.getNext(currentTranscoder);
         }
@@ -1007,7 +1009,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // Update transcoder's delegated amount with rewards
         del.delegatedAmount = del.delegatedAmount.add(_rewards);
         // Update transcoder's total stake with rewards
-        uint256 newStake = transcoderPool.getKey(_transcoder).add(_rewards);
+        uint256 newStake = transcoderTotalStake(_transcoder).add(_rewards);
         transcoderPool.updateKey(_transcoder, newStake, address(0), address(0));
     }
 
@@ -1073,7 +1075,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
         if (transcoderStatus(del.delegateAddress) == TranscoderStatus.Registered) {
             // If delegate is a registered transcoder increase its delegated stake in registered pool
-            transcoderPool.updateKey(del.delegateAddress, transcoderPool.getKey(del.delegateAddress).add(amount), address(0), address(0));
+            transcoderPool.updateKey(del.delegateAddress, transcoderTotalStake(del.delegateAddress).add(amount), address(0), address(0));
         }
 
         // Delete lock
