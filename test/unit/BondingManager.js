@@ -167,6 +167,7 @@ contract("BondingManager", accounts => {
                     await bondingManager.bond(1000, accounts[0])
                     await bondingManager.transcoder(5, 10, 1)
 
+                    assert.equal(await bondingManager.getTotalBonded(), 1000, "wrong total bonded")
                     assert.equal(await bondingManager.getTranscoderPoolSize(), 1, "wrong transcoder pool size")
                     assert.equal(await bondingManager.getFirstTranscoderInPool(), accounts[0], "wrong first transcoder in pool")
                     assert.equal(await bondingManager.transcoderTotalStake(accounts[0]), 1000, "wrong transcoder total stake")
@@ -178,6 +179,7 @@ contract("BondingManager", accounts => {
                     await bondingManager.bond(1000, accounts[1], {from: accounts[1]})
                     await bondingManager.transcoder(5, 10, 1, {from: accounts[1]})
 
+                    assert.equal(await bondingManager.getTotalBonded(), 3000, "wrong total bonded")
                     assert.equal(await bondingManager.getTranscoderPoolSize(), 2, "wrong transcoder pool size")
                     assert.equal(await bondingManager.getFirstTranscoderInPool(), accounts[0], "wrong first transcoder in pool")
                     assert.equal(await bondingManager.getNextTranscoderInPool(accounts[0]), accounts[1], "wrong second transcoder in pool")
@@ -209,9 +211,15 @@ contract("BondingManager", accounts => {
                             assert.equal(res.args.registered, true, "should fire TranscoderUpdate event with registered set to true")
                         })
 
-                        // Caller bonds 3000 - more transcoder with least delegated stake
+                        const totalBonded = (await bondingManager.getTotalBonded()).toNumber()
+
+                        // Caller bonds 6000 which is more than transcoder with least delegated stake
                         await bondingManager.bond(6000, newTranscoder, {from: newTranscoder})
                         await bondingManager.transcoder(5, 10, 1, {from: newTranscoder})
+
+                        // Subtract evicted transcoder's delegated stake and add new transcoder's delegated stake
+                        const expTotalBonded = totalBonded - 1000 + 6000
+                        assert.equal(await bondingManager.getTotalBonded(), expTotalBonded, "wrong total bonded")
 
                         assert.equal(await bondingManager.transcoderStatus(newTranscoder), TranscoderStatus.Registered, "caller should be registered as transocder")
                         assert.equal(await bondingManager.getTranscoderPoolSize(), 5, "wrong transcoder pool size")
@@ -394,6 +402,7 @@ contract("BondingManager", accounts => {
         const transcoder1 = accounts[1]
         const nonTranscoder = accounts[2]
         const delegator = accounts[3]
+        const delegator2 = accounts[4]
         const currentRound = 100
 
         beforeEach(async () => {
@@ -432,16 +441,13 @@ contract("BondingManager", accounts => {
                 assert.equal((await bondingManager.getDelegator(delegator))[2], transcoder0, "wrong delegateAddress")
             })
 
-            it("should update delegate, bonded amount and total bonded tokens", async () => {
+            it("should update delegate and bonded amount", async () => {
                 const startDelegatedAmount = (await bondingManager.getDelegator(transcoder0))[3]
-                const startTotalBonded = await bondingManager.getTotalBonded()
                 await bondingManager.bond(1000, transcoder0, {from: delegator})
                 const endDelegatedAmount = (await bondingManager.getDelegator(transcoder0))[3]
-                const endTotalBonded = await bondingManager.getTotalBonded()
 
                 assert.equal(endDelegatedAmount.sub(startDelegatedAmount), 1000, "wrong change in delegatedAmount")
                 assert.equal((await bondingManager.getDelegator(delegator))[0], 1000, "wrong bondedAmount")
-                assert.equal(endTotalBonded.sub(startTotalBonded), 1000, "wrong change in totalBonded")
             })
 
             it("should fire a Bond event when bonding from unbonded", async () => {
@@ -462,10 +468,13 @@ contract("BondingManager", accounts => {
 
             describe("delegate is a registered transcoder", () => {
                 it("should increase transcoder's delegated stake in pool", async () => {
+                    const startTotalBonded = await bondingManager.getTotalBonded()
                     const startTranscoderTotalStake = await bondingManager.transcoderTotalStake(transcoder0)
                     await bondingManager.bond(1000, transcoder0, {from: delegator})
+                    const endTotalBonded = await bondingManager.getTotalBonded()
                     const endTranscoderTotalStake = await bondingManager.transcoderTotalStake(transcoder0)
 
+                    assert.equal(endTotalBonded.sub(startTotalBonded), 1000, "wrong change in total bonded")
                     assert.equal(endTranscoderTotalStake.sub(startTranscoderTotalStake), 1000, "wrong change in transcoder total stake")
                 })
 
@@ -473,6 +482,16 @@ contract("BondingManager", accounts => {
                     await bondingManager.bond(3000, transcoder0, {from: delegator})
 
                     assert.equal((await bondingManager.getFirstTranscoderInPool()), transcoder0, "did not correctly update position in transcoder pool")
+                })
+            })
+
+            describe("delegate is not a registered transcoder", () => {
+                it("should not update total bonded", async () => {
+                    const startTotalBonded = await bondingManager.getTotalBonded()
+                    await bondingManager.bond(1000, delegator, {from: delegator})
+                    const endTotalBonded = await bondingManager.getTotalBonded()
+
+                    assert.equal(endTotalBonded.sub(startTotalBonded), 0, "wrong change in total bonded")
                 })
             })
         })
@@ -543,14 +562,6 @@ contract("BondingManager", accounts => {
                         assert.equal(endBondedAmount.sub(startBondedAmount), 0, "bondedAmount change should be 0")
                     })
 
-                    it("should not update total bonded tokens", async () => {
-                        const startTotalBonded = await bondingManager.getTotalBonded()
-                        await bondingManager.bond(0, transcoder1, {from: delegator})
-                        const endTotalBonded = await bondingManager.getTotalBonded()
-
-                        assert.equal(endTotalBonded.sub(startTotalBonded), 0, "totalBonded change should be 0")
-                    })
-
                     it("should fire a Bond event when changing delegates", async () => {
                         const e = bondingManager.Bond({})
 
@@ -574,6 +585,54 @@ contract("BondingManager", accounts => {
                             const endTranscoderTotalStake = await bondingManager.transcoderTotalStake(transcoder1)
 
                             assert.equal(endTranscoderTotalStake.sub(startTranscoderTotalStake), 2000, "wrong change in transcoder total stake")
+                        })
+
+                        describe("old delegate is registered transcoder", () => {
+                            it("should not change total bonded", async () => {
+                                const startTotalBonded = await bondingManager.getTotalBonded()
+                                await bondingManager.bond(0, transcoder1, {from: delegator})
+                                const endTotalBonded = await bondingManager.getTotalBonded()
+
+                                assert.equal(endTotalBonded.sub(startTotalBonded), 0, "wrong change in total bonded")
+                            })
+                        })
+
+                        describe("old delegate is not registered transcoder", () => {
+                            it("should increase total bonded", async () => {
+                                // Delegate to non-transcoder i.e. self
+                                await bondingManager.bond(0, delegator, {from: delegator})
+
+                                const startTotalBonded = await bondingManager.getTotalBonded()
+                                await bondingManager.bond(0, transcoder1, {from: delegator})
+                                const endTotalBonded = await bondingManager.getTotalBonded()
+
+                                assert.equal(endTotalBonded.sub(startTotalBonded), 2000, "wrong change in total bonded")
+                            })
+                        })
+                    })
+
+                    describe("new delegate is not registered transcoder", () => {
+                        describe("old delegate is registered transcoder", () => {
+                            it("should decrease total bonded", async () => {
+                                const startTotalBonded = await bondingManager.getTotalBonded()
+                                await bondingManager.bond(0, delegator, {from: delegator})
+                                const endTotalBonded = await bondingManager.getTotalBonded()
+
+                                assert.equal(startTotalBonded.sub(endTotalBonded), 2000, "wrong change in total bonded")
+                            })
+                        })
+
+                        describe("old delegate is not registered transcoder", () => {
+                            it("should not change total bonded", async () => {
+                                // Delegate to non-transcoder i.e. self
+                                await bondingManager.bond(0, delegator, {from: delegator})
+
+                                const startTotalBonded = await bondingManager.getTotalBonded()
+                                await bondingManager.bond(0, delegator2, {from: delegator})
+                                const endTotalBonded = await bondingManager.getTotalBonded()
+
+                                assert.equal(endTotalBonded.sub(startTotalBonded), 0, "wrong change in total bonded")
+                            })
                         })
                     })
 
@@ -637,6 +696,56 @@ contract("BondingManager", accounts => {
 
                             assert.equal(endTranscoderTotalStake.sub(startTranscoderTotalStake), 3000, "wrong change in transcoder total stake")
                         })
+
+                        describe("old delegate is registered transcoder", () => {
+                            it("should only increase total bonded by additional bonded stake", async () => {
+                                const startTotalBonded = await bondingManager.getTotalBonded()
+                                await bondingManager.bond(1000, transcoder1, {from: delegator})
+                                const endTotalBonded = await bondingManager.getTotalBonded()
+
+                                assert.equal(endTotalBonded.sub(startTotalBonded), 1000, "wrong change in totalBonded")
+                            })
+                        })
+
+                        describe("old delegate is not registered transcoder", () => {
+                            it("should increase total bonded by current bonded stake + additional bonded stake", async () => {
+                                // Delegate to non-transcoder i.e. self
+                                await bondingManager.bond(0, delegator, {from: delegator})
+
+                                const bondedAmount = (await bondingManager.getDelegator(delegator))[0].toNumber()
+                                const startTotalBonded = await bondingManager.getTotalBonded()
+                                await bondingManager.bond(1000, transcoder1, {from: delegator})
+                                const endTotalBonded = await bondingManager.getTotalBonded()
+
+                                assert.equal(endTotalBonded.sub(startTotalBonded), bondedAmount + 1000, "wrong change in totalBonded")
+                            })
+                        })
+                    })
+
+                    describe("new delegate is not registered transcoder", () => {
+                        describe("old delegate is registered transcoder", () => {
+                            it("should decrease total bonded by current bonded stake (no additional bonded stake counted)", async () => {
+                                const bondedAmount = (await bondingManager.getDelegator(delegator))[0].toNumber()
+                                const startTotalBonded = await bondingManager.getTotalBonded()
+                                await bondingManager.bond(1000, delegator, {from: delegator})
+                                const endTotalBonded = await bondingManager.getTotalBonded()
+
+                                assert.equal(startTotalBonded.sub(endTotalBonded), bondedAmount, "wrong change in totalBonded")
+                            })
+                        })
+
+                        describe("old delegate is not registered transcoder", () => {
+                            it("should not change total bonded", async () => {
+                                // Delegate to non-transcoder i.e. self
+                                await bondingManager.bond(0, delegator, {from: delegator})
+
+                                const startTotalBonded = await bondingManager.getTotalBonded()
+                                await bondingManager.bond(1000, delegator2, {from: delegator})
+                                const endTotalBonded = await bondingManager.getTotalBonded()
+
+                                assert.equal(endTotalBonded.sub(startTotalBonded), 0, "wrong change in totalBonded")
+                            })
+                        })
                     })
 
                     describe("old delegate is registered transcoder", () => {
@@ -664,12 +773,27 @@ contract("BondingManager", accounts => {
                     assert.equal(endBondedAmount.sub(startBondedAmount), 1000, "wrong change in bondedAmount")
                 })
 
-                it("should update total bonded tokens", async () => {
-                    const startTotalBonded = await bondingManager.getTotalBonded()
-                    await bondingManager.bond(1000, transcoder0, {from: delegator})
-                    const endTotalBonded = await bondingManager.getTotalBonded()
+                describe("delegate is registered transcoder", () => {
+                    it("should increase total bonded", async () => {
+                        const startTotalBonded = await bondingManager.getTotalBonded()
+                        await bondingManager.bond(1000, transcoder0, {from: delegator})
+                        const endTotalBonded = await bondingManager.getTotalBonded()
 
-                    assert.equal(endTotalBonded.sub(startTotalBonded), 1000, "wrong change in totalBonded")
+                        assert.equal(endTotalBonded.sub(startTotalBonded), 1000, "wrong change in totalBonded")
+                    })
+                })
+
+                describe("delegate is not registered transcoder", () => {
+                    it("should not change total bonded", async () => {
+                        // Delegate to a non-transcoder i.e. self
+                        await bondingManager.bond(0, delegator, {from: delegator})
+
+                        const startTotalBonded = await bondingManager.getTotalBonded()
+                        await bondingManager.bond(1000, delegator2, {from: delegator})
+                        const endTotalBonded = await bondingManager.getTotalBonded()
+
+                        assert.equal(endTotalBonded.sub(startTotalBonded), 0, "wrong change in totalBonded")
+                    })
                 })
 
                 it("should fire a Bond event when increasing bonded amount", async () => {
@@ -694,6 +818,7 @@ contract("BondingManager", accounts => {
     describe("unbond", () => {
         const transcoder = accounts[0]
         const delegator = accounts[1]
+        const delegator2 = accounts[2]
         const currentRound = 100
 
         beforeEach(async () => {
@@ -704,6 +829,7 @@ contract("BondingManager", accounts => {
             await bondingManager.bond(1000, transcoder, {from: transcoder})
             await bondingManager.transcoder(5, 10, 1, {from: transcoder})
             await bondingManager.bond(1000, transcoder, {from: delegator})
+            await bondingManager.bond(1000, delegator, {from: delegator2})
 
             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 1)
             await fixture.roundsManager.execute(bondingManager.address, functionSig("setActiveTranscoders()"))
@@ -749,7 +875,6 @@ contract("BondingManager", accounts => {
                 assert.equal(tInfo[3], 1500, "wrong delegate delegated amount")
 
                 assert.equal(await bondingManager.delegatorStatus(delegator), constants.DelegatorStatus.Bonded, "wrong delegator status")
-                assert.equal(await bondingManager.getTotalBonded(), 1500, "wrong total bonded")
             })
 
             it("should fire an Unbond event with an unbonding lock representing a partial unbond", async () => {
@@ -770,12 +895,31 @@ contract("BondingManager", accounts => {
                 await bondingManager.unbond(500, {from: delegator})
             })
 
+            describe("delegated to non-transcoder", () => {
+                it("should not change total bonded", async () => {
+                    const startTotalBonded = await bondingManager.getTotalBonded()
+                    // Caller is delegator delegated to non-transcoder
+                    await bondingManager.unbond(500, {from: delegator2})
+                    const endTotalBonded = await bondingManager.getTotalBonded()
+
+                    assert.equal(endTotalBonded.sub(startTotalBonded), 0, "wrong change in total bonded")
+                })
+            })
+
             describe("not delegated to self and delegate is registered transcoder", () => {
                 it("should decrease delegated transcoder's delegated stake in pool", async () => {
                     // Caller is delegator delegated to registered transcoder (not self)
                     await bondingManager.unbond(500, {from: delegator})
 
                     assert.equal(await bondingManager.transcoderTotalStake(transcoder), 1500, "wrong transcoder total stake")
+                })
+
+                it("should decrease total bonded", async () => {
+                    const startTotalBonded = await bondingManager.getTotalBonded()
+                    await bondingManager.unbond(500, {from: delegator})
+                    const endTotalBonded = await bondingManager.getTotalBonded()
+
+                    assert.equal(startTotalBonded.sub(endTotalBonded), 500, "wrong change in total bonded")
                 })
             })
 
@@ -785,6 +929,14 @@ contract("BondingManager", accounts => {
                     await bondingManager.unbond(500, {from: transcoder})
 
                     assert.equal(await bondingManager.transcoderTotalStake(transcoder), 1500, "wrong transcoder total stake")
+                })
+
+                it("should decrease total bonded", async () => {
+                    const startTotalBonded = await bondingManager.getTotalBonded()
+                    await bondingManager.unbond(500, {from: delegator})
+                    const endTotalBonded = await bondingManager.getTotalBonded()
+
+                    assert.equal(startTotalBonded.sub(endTotalBonded), 500, "wrong change in total bonded")
                 })
             })
         })
@@ -806,7 +958,6 @@ contract("BondingManager", accounts => {
                 assert.equal(dInfo[4], 0, "wrong start round")
 
                 assert.equal(await bondingManager.delegatorStatus(delegator), constants.DelegatorStatus.Unbonded, "wrong delegator status")
-                assert.equal(await bondingManager.getTotalBonded(), 1000, "wrong total bonded")
             })
 
             it("should fire an Unbond event with an unbonding lock representing a full unbond", async () => {
@@ -833,6 +984,15 @@ contract("BondingManager", accounts => {
                     await bondingManager.unbond(1000, {from: transcoder})
 
                     assert.equal(await bondingManager.transcoderStatus(transcoder), TranscoderStatus.NotRegistered, "wrong transcoder status")
+                })
+
+                it("should decrease total bonded by entire delegated stake (not just own bonded stake)", async () => {
+                    const startTotalBonded = await bondingManager.getTotalBonded()
+                    await bondingManager.unbond(1000, {from: transcoder})
+                    const endTotalBonded = await bondingManager.getTotalBonded()
+
+                    // Decrease by 2000 (delegated stake) instead of just 1000 (own bonded stake)
+                    assert.equal(startTotalBonded.sub(endTotalBonded), 2000, "wrong change in total bonded")
                 })
             })
         })
@@ -890,8 +1050,6 @@ contract("BondingManager", accounts => {
             const tDInfo = await bondingManager.getDelegator(transcoder)
             assert.equal(tDInfo[3], 2000, "wrong delegate delegated amount")
 
-            assert.equal(await bondingManager.getTotalBonded(), 2000, "wrong total bonded")
-
             const lock = await bondingManager.getDelegatorUnbondingLock(delegator, unbondingLockID)
             assert.equal(lock[0], 0, "wrong lock amount should be 0")
             assert.equal(lock[1], 0, "wrong lock withdrawRound should be 0")
@@ -902,6 +1060,27 @@ contract("BondingManager", accounts => {
                 await bondingManager.rebond(unbondingLockID, {from: delegator})
 
                 assert.equal(await bondingManager.transcoderTotalStake(transcoder), 2000, "wrong transcoder total stake")
+            })
+
+            it("should increase total bonded", async () => {
+                const startTotalBonded = await bondingManager.getTotalBonded()
+                await bondingManager.rebond(unbondingLockID, {from: delegator})
+                const endTotalBonded = await bondingManager.getTotalBonded()
+
+                assert.equal(endTotalBonded.sub(startTotalBonded), 500, {from: delegator})
+            })
+        })
+
+        describe("current delegate is not a registered transcoder", () => {
+            it("should not change total bonded", async () => {
+                // Delegate to a non-transcoder i.e. self
+                await bondingManager.bond(0, delegator, {from: delegator})
+
+                const startTotalBonded = await bondingManager.getTotalBonded()
+                await bondingManager.rebond(unbondingLockID, {from: delegator})
+                const endTotalBonded = await bondingManager.getTotalBonded()
+
+                assert.equal(endTotalBonded.sub(startTotalBonded), 0, {from: delegator})
             })
         })
 
@@ -991,8 +1170,6 @@ contract("BondingManager", accounts => {
             const tDInfo = await bondingManager.getDelegator(transcoder)
             assert.equal(tDInfo[3], 1500, "wrong delegate delegated amount")
 
-            assert.equal(await bondingManager.getTotalBonded(), 1500, "wrong total bonded")
-
             const lock = await bondingManager.getDelegatorUnbondingLock(delegator, unbondingLockID)
             assert.equal(lock[0], 0, "wrong lock amount should be 0")
             assert.equal(lock[1], 0, "wrong lock withdrawRound should be 0")
@@ -1006,6 +1183,30 @@ contract("BondingManager", accounts => {
                 await bondingManager.rebondFromUnbonded(transcoder, unbondingLockID, {from: delegator})
 
                 assert.equal(await bondingManager.transcoderTotalStake(transcoder), 1500, "wrong transcoder total stake")
+            })
+
+            it("should increase total bonded", async () => {
+                // Delegator unbonds rest of tokens transitioning to the Unbonded state
+                await bondingManager.unbond(500, {from: delegator})
+
+                const startTotalBonded = await bondingManager.getTotalBonded()
+                await bondingManager.rebondFromUnbonded(transcoder, unbondingLockID, {from: delegator})
+                const endTotalBonded = await bondingManager.getTotalBonded()
+
+                assert.equal(endTotalBonded.sub(startTotalBonded), 500, "wrong total bonded")
+            })
+        })
+
+        describe("new delegate is not a registered transcoder", () => {
+            it("should not change total bonded", async () => {
+                // Delegator unbonds rest of tokens transitioning to the Unbonded state
+                await bondingManager.unbond(500, {from: delegator})
+
+                const startTotalBonded = await bondingManager.getTotalBonded()
+                await bondingManager.rebondFromUnbonded(delegator, unbondingLockID, {from: delegator})
+                const endTotalBonded = await bondingManager.getTotalBonded()
+
+                assert.equal(endTotalBonded.sub(startTotalBonded), 0, "wrong total bonded")
             })
         })
 
@@ -1407,7 +1608,7 @@ contract("BondingManager", accounts => {
                 const endTotalBonded = await bondingManager.getTotalBonded()
 
                 assert.equal((await bondingManager.getDelegator(transcoder))[3], 500, "should decrease delegatedAmount for transcoder by slash amount")
-                assert.equal(startTotalBonded.sub(endTotalBonded), 500, "should decrease total bonded tokens by slash amount")
+                assert.equal(startTotalBonded.sub(endTotalBonded), 1000, "should decrease total bonded tokens by transcoder's delegated stake")
             })
         })
 

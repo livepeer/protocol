@@ -133,7 +133,7 @@ contract("MissedVerificationSlashing", accounts => {
         const penalty = Math.floor((1000 * missedVerificationSlashAmount.toNumber()) / 1000000)
         const expTransStakeRemaining = 1000 - penalty
         const expDelegatedStakeRemaining = (1000 + 1000 + 1000) - penalty
-        const expTotalBondedRemaining = expDelegatedStakeRemaining
+        const expTotalBondedRemaining = 0
         const tokenEndSupply = await token.totalSupply.call()
         const finderFeeAmount = await jobsManager.finderFee.call()
         const finderFee = Math.floor((penalty * finderFeeAmount) / 1000000)
@@ -143,6 +143,7 @@ contract("MissedVerificationSlashing", accounts => {
         assert.isNotOk(await bondingManager.isActiveTranscoder(transcoder, currentRound), "transcoder should be inactive")
         assert.equal(await bondingManager.transcoderStatus(transcoder), 0, "transcoder should not be registered")
         assert.equal(trans[0], expTransStakeRemaining, "wrong transcoder stake remaining")
+        assert.equal(trans[3], expDelegatedStakeRemaining, "wrong delegated stake remaining")
         assert.equal(burned, penalty - finderFee, "wrong amount burned")
 
         // Check that the finder was rewarded
