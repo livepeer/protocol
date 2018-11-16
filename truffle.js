@@ -97,10 +97,16 @@ module.exports = {
             gas: 6600000
         }
     },
-    solc: {
-        optimizer: {
-            enabled: true,
-            runs: 200
+    compilers: {
+        solc: {
+            version: "0.4.25",
+            docker: true,
+            settings: {
+                optimizer: {
+                    enabled: true,
+                    runs: 200
+                }
+            }
         }
     },
     mocha: mochaConfig

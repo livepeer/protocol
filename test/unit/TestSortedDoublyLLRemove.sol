@@ -1,4 +1,4 @@
-pragma solidity ^0.4.17;
+pragma solidity ^0.4.25;
 
 import "../../contracts/test/SortedDoublyLLFixture.sol";
 import "../../contracts/test/RevertProxy.sol";

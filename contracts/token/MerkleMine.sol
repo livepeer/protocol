@@ -1,4 +1,4 @@
-pragma solidity ^0.4.17;
+pragma solidity ^0.4.25;
 
 import "zeppelin-solidity/contracts/MerkleProof.sol";
 import "zeppelin-solidity/contracts/token/ERC20.sol";

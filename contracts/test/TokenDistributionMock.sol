@@ -1,4 +1,4 @@
-pragma solidity ^0.4.17;
+pragma solidity ^0.4.25;
 
 import "../token/ITokenDistribution.sol";
 import "zeppelin-solidity/contracts/math/SafeMath.sol";
