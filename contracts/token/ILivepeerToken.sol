@@ -1,7 +1,7 @@
 pragma solidity ^0.4.25;
 
-import "zeppelin-solidity/contracts/token/ERC20.sol";
-import "zeppelin-solidity/contracts/ownership/Ownable.sol";
+import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
+import "../zeppelin/Ownable.sol";
 
 
 contract ILivepeerToken is ERC20, Ownable {

@@ -1,6 +1,6 @@
 pragma solidity ^0.4.25;
 
-import "zeppelin-solidity/contracts/lifecycle/Pausable.sol";
+import "./zeppelin/Pausable.sol";
 
 
 contract IController is Pausable {

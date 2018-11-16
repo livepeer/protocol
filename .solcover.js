@@ -7,7 +7,6 @@ const interfaces = [
     "IController.sol",
     "IManager.sol",
     "bonding/IBondingManager.sol",
-    "jobs/IJobsManager.sol",
     "rounds/IRoundsManager.sol",
     "token/ILivepeerToken.sol",
     "token/IMinter.sol",

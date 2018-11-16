@@ -5,7 +5,6 @@ const Controller = artifacts.require("Controller")
 const Minter = artifacts.require("Minter")
 const ServiceRegistry = artifacts.require("ServiceRegistry")
 const BondingManager = artifacts.require("BondingManager")
-const JobsManager = artifacts.require("JobsManager")
 const RoundsManager = artifacts.require("RoundsManager")
 const AdjustableRoundsManager = artifacts.require("AdjustableRoundsManager")
 const LivepeerVerifier = artifacts.require("LivepeerVerifier")
@@ -28,7 +27,6 @@ module.exports = function(deployer, network) {
         }
 
         const bondingManager = await lpDeployer.deployProxyAndRegister(BondingManager, "BondingManager", controller.address)
-        const jobsManager = await lpDeployer.deployProxyAndRegister(JobsManager, "JobsManager", controller.address)
 
         let roundsManager
 
@@ -48,15 +46,6 @@ module.exports = function(deployer, network) {
         await bondingManager.setNumTranscoders(config.bondingManager.numTranscoders)
         await bondingManager.setNumActiveTranscoders(config.bondingManager.numActiveTranscoders)
         await bondingManager.setMaxEarningsClaimsRounds(config.bondingManager.maxEarningsClaimsRounds)
-
-        // Set JobsManager parameters
-        await jobsManager.setVerificationRate(config.jobsManager.verificationRate)
-        await jobsManager.setVerificationPeriod(config.jobsManager.verificationPeriod)
-        await jobsManager.setVerificationSlashingPeriod(config.jobsManager.verificationSlashingPeriod)
-        await jobsManager.setFailedVerificationSlashAmount(config.jobsManager.failedVerificationSlashAmount)
-        await jobsManager.setMissedVerificationSlashAmount(config.jobsManager.missedVerificationSlashAmount)
-        await jobsManager.setDoubleClaimSegmentSlashAmount(config.jobsManager.doubleClaimSegmentSlashAmount)
-        await jobsManager.setFinderFee(config.jobsManager.finderFee)
 
         // Set RoundsManager parameters
         await roundsManager.setRoundLength(config.roundsManager.roundLength)

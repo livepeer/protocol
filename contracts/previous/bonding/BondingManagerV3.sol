@@ -9,8 +9,8 @@ import "../../token/ILivepeerToken.sol";
 import "../../token/IMinter.sol";
 import "../../rounds/IRoundsManager.sol";
 
-import "zeppelin-solidity/contracts/math/Math.sol";
-import "zeppelin-solidity/contracts/math/SafeMath.sol";
+import "openzeppelin-solidity/contracts/math/Math.sol";
+import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
 
 /**
@@ -500,7 +500,7 @@ contract BondingManagerV3 is ManagerProxyTarget, IBondingManager {
      */
     function setActiveTranscoders() external whenSystemNotPaused onlyRoundsManager {
         uint256 currentRound = roundsManager().currentRound();
-        uint256 activeSetSize = Math.min256(numActiveTranscoders, transcoderPool.getSize());
+        uint256 activeSetSize = Math.min(numActiveTranscoders, transcoderPool.getSize());
 
         uint256 totalStake = 0;
         address currentTranscoder = transcoderPool.getFirst();

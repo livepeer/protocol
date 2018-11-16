@@ -6,7 +6,7 @@ import "../bonding/IBondingManager.sol";
 import "../token/IMinter.sol";
 import "../libraries/MathUtils.sol";
 
-import "zeppelin-solidity/contracts/math/SafeMath.sol";
+import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
 
 /**

@@ -4,7 +4,7 @@ import "../Manager.sol";
 import "./IVerifier.sol";
 import "./IVerifiable.sol";
 
-import "zeppelin-solidity/contracts/math/SafeMath.sol";
+import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "../../installed_contracts/oraclize/contracts/usingOraclize.sol";
 
 

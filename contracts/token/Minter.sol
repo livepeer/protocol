@@ -7,7 +7,7 @@ import "../rounds/IRoundsManager.sol";
 import "../bonding/IBondingManager.sol";
 import "../libraries/MathUtils.sol";
 
-import "zeppelin-solidity/contracts/math/SafeMath.sol";
+import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
 
 /**

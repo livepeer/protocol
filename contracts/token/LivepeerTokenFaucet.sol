@@ -2,7 +2,7 @@ pragma solidity ^0.4.25;
 
 import "./ILivepeerToken.sol";
 
-import "zeppelin-solidity/contracts/ownership/Ownable.sol";
+import "../zeppelin/Ownable.sol";
 
 
 /*

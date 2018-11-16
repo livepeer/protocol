@@ -2,7 +2,7 @@ pragma solidity ^0.4.25;
 
 import "../../../libraries/MathUtils.sol";
 
-import "zeppelin-solidity/contracts/math/SafeMath.sol";
+import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
 
 library EarningsPoolV1 {
