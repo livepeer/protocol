@@ -16,7 +16,7 @@ contract("GenesisManager", accounts => {
         it("should set parameters and stage to the allocation stage", async () => {
             const randomAddress = accounts[0]
             const timeToGrantsStart = 60 * 60 * 24 * 7
-            const grantsStartTimestamp = web3.eth.getBlock("latest").timestamp + timeToGrantsStart
+            const grantsStartTimestamp = (await web3.eth.getBlock("latest")).timestamp + timeToGrantsStart
             const genesisManager = await GenesisManager.new(
                 randomAddress,
                 randomAddress,
@@ -50,7 +50,7 @@ contract("GenesisManager", accounts => {
         const token = await GenericMock.new()
         const minter = await GenericMock.new()
         const timeToGrantsStart = 60 * 60 * 24 * 7
-        const grantsStartTimestamp = web3.eth.getBlock("latest").timestamp + timeToGrantsStart
+        const grantsStartTimestamp = (await web3.eth.getBlock("latest")).timestamp + timeToGrantsStart
 
         genesisManager = await GenesisManager.new(
             token.address,

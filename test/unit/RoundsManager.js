@@ -55,7 +55,7 @@ contract("RoundsManager", accounts => {
 
         it("should set roundLength before lastRoundLengthUpdateRound and lastRoundLengthUpdateStartBlock when roundLength = 0", async () => {
             const newRoundsManager = await RoundsManager.new(fixture.controller.address)
-            const blockNum = web3.eth.blockNumber
+            const blockNum = await web3.eth.getBlockNumber()
             const expLastUpdateRound = Math.floor(blockNum / 50)
             const expLastUpdateStartBlock = expLastUpdateRound * 50
 
@@ -70,7 +70,7 @@ contract("RoundsManager", accounts => {
             const lastUpdateRound = (await roundsManager.lastRoundLengthUpdateRound.call()).toNumber()
             const lastUpdateStartBlock = (await roundsManager.lastRoundLengthUpdateStartBlock.call()).toNumber()
 
-            const blockNum = web3.eth.blockNumber
+            const blockNum = await web3.eth.getBlockNumber()
             const roundLength = await roundsManager.roundLength.call()
             const expLastUpdateRound = lastUpdateRound + Math.floor((blockNum - lastUpdateStartBlock) / roundLength.toNumber())
             const expLastUpdateStartBlock = lastUpdateStartBlock + Math.floor((blockNum - lastUpdateStartBlock) / roundLength.toNumber())
@@ -86,7 +86,7 @@ contract("RoundsManager", accounts => {
             const lastUpdateRound = (await roundsManager.lastRoundLengthUpdateRound.call()).toNumber()
             const lastUpdateStartBlock = (await roundsManager.lastRoundLengthUpdateStartBlock.call()).toNumber()
 
-            const blockNum = web3.eth.blockNumber
+            const blockNum = await web3.eth.getBlockNumber()
             const roundLength = await roundsManager.roundLength.call()
             const expLastUpdateRound = lastUpdateRound + Math.floor((blockNum - lastUpdateStartBlock) / roundLength.toNumber())
             const expLastUpdateStartBlock = lastUpdateStartBlock + Math.floor((blockNum - lastUpdateStartBlock) / roundLength.toNumber())
@@ -105,14 +105,14 @@ contract("RoundsManager", accounts => {
             await fixture.rpc.waitUntilNextBlockMultiple(50)
             await roundsManager.setRoundLength(100)
 
-            const lastUpdateRound1 = lastUpdateRound0 + Math.floor((web3.eth.blockNumber - lastUpdateStartBlock0) / 50)
-            const lastUpdateStartBlock1 = lastUpdateStartBlock0 + Math.floor((web3.eth.blockNumber - lastUpdateStartBlock0) / 50) * 50
+            const lastUpdateRound1 = lastUpdateRound0 + Math.floor((await web3.eth.getBlockNumber() - lastUpdateStartBlock0) / 50)
+            const lastUpdateStartBlock1 = lastUpdateStartBlock0 + Math.floor((await web3.eth.getBlockNumber() - lastUpdateStartBlock0) / 50) * 50
 
             await fixture.rpc.wait(50)
             await roundsManager.setRoundLength(50)
 
-            const lastUpdateRound2 = lastUpdateRound1 + Math.floor((web3.eth.blockNumber - lastUpdateStartBlock1) / 100)
-            const lastUpdateStartBlock2 = lastUpdateStartBlock1 + Math.floor((web3.eth.blockNumber - lastUpdateStartBlock1) / 100) * 100
+            const lastUpdateRound2 = lastUpdateRound1 + Math.floor((await web3.eth.getBlockNumber() - lastUpdateStartBlock1) / 100)
+            const lastUpdateStartBlock2 = lastUpdateStartBlock1 + Math.floor((await web3.eth.getBlockNumber() - lastUpdateStartBlock1) / 100) * 100
 
             assert.isAtLeast(lastUpdateRound2, lastUpdateRound1, "lastRoundLengthUpdateRound cannot decrease")
             assert.isAtLeast(lastUpdateStartBlock2, lastUpdateStartBlock1, "lastRoundLengthUpdateStartBlock cannot decrease")
@@ -123,8 +123,8 @@ contract("RoundsManager", accounts => {
             await fixture.rpc.wait(20)
             await roundsManager.setRoundLength(20)
 
-            const lastUpdateRound3 = lastUpdateRound2 + Math.floor((web3.eth.blockNumber - lastUpdateStartBlock2) / 50)
-            const lastUpdateStartBlock3 = lastUpdateStartBlock2 + Math.floor((web3.eth.blockNumber - lastUpdateStartBlock2) / 50) * 50
+            const lastUpdateRound3 = lastUpdateRound2 + Math.floor((await web3.eth.getBlockNumber() - lastUpdateStartBlock2) / 50)
+            const lastUpdateStartBlock3 = lastUpdateStartBlock2 + Math.floor((await web3.eth.getBlockNumber() - lastUpdateStartBlock2) / 50) * 50
 
             assert.isAtLeast(lastUpdateRound3, lastUpdateRound2, "lastRoundLengthUpdateRound cannot decrease")
             assert.isAtLeast(lastUpdateStartBlock3, lastUpdateStartBlock2, "lastRoundLengthUpdateStartBlock cannot decrease")
@@ -135,8 +135,8 @@ contract("RoundsManager", accounts => {
             await fixture.rpc.wait(30)
             await roundsManager.setRoundLength(100)
 
-            const lastUpdateRound4 = lastUpdateRound3 + Math.floor((web3.eth.blockNumber - lastUpdateStartBlock3) / 20)
-            const lastUpdateStartBlock4 = lastUpdateStartBlock3 + Math.floor((web3.eth.blockNumber - lastUpdateStartBlock3) / 20) * 20
+            const lastUpdateRound4 = lastUpdateRound3 + Math.floor((await web3.eth.getBlockNumber() - lastUpdateStartBlock3) / 20)
+            const lastUpdateStartBlock4 = lastUpdateStartBlock3 + Math.floor((await web3.eth.getBlockNumber() - lastUpdateStartBlock3) / 20) * 20
 
             assert.isAtLeast(lastUpdateRound4, lastUpdateRound3, "lastRoundLengthUpdateRound cannot decrease")
             assert.isAtLeast(lastUpdateStartBlock4, lastUpdateStartBlock3, "lastRoundLengthUpdateStartBlock cannot decrease")
@@ -192,7 +192,7 @@ contract("RoundsManager", accounts => {
 
     describe("blockNum", () => {
         it("should return the current block number", async () => {
-            const latestBlock = web3.eth.blockNumber
+            const latestBlock = await web3.eth.getBlockNumber()
             // Note that the current block from the context of the contract is the block to be mined
             assert.equal(await roundsManager.blockNum(), latestBlock + 1, "wrong block number")
         })
@@ -200,7 +200,7 @@ contract("RoundsManager", accounts => {
 
     describe("blockHash", () => {
         it("should fail if block is in the future", async () => {
-            const latestBlock = web3.eth.blockNumber
+            const latestBlock = await web3.eth.getBlockNumber()
             // Note that current block = latestBlock + 1, so latestBlock + 2 is in the future
             await expectThrow(roundsManager.blockHash(latestBlock + 2))
         })
@@ -208,13 +208,13 @@ contract("RoundsManager", accounts => {
         it("should fail if the current block >= 256 and the block is more than 256 blocks in the past", async () => {
             await fixture.rpc.wait(256)
 
-            const latestBlock = web3.eth.blockNumber
+            const latestBlock = await web3.eth.getBlockNumber()
             // Note that current block = latestBlock + 1, so latestBlock - 256 = current block - 257
             await expectThrow(roundsManager.blockHash(latestBlock - 256))
         })
 
         it("should fail if block is the current block", async () => {
-            const latestBlock = web3.eth.blockNumber
+            const latestBlock = await web3.eth.getBlockNumber()
             // Note that current block = latestBlock + 1
             await expectThrow(roundsManager.blockHash(latestBlock + 1))
         })
@@ -222,8 +222,8 @@ contract("RoundsManager", accounts => {
         it("should return the block hash if the current block is >= 256 and the block is not more than 256 blocks in the past", async () => {
             await fixture.rpc.wait(256)
 
-            const pastBlock = web3.eth.blockNumber - 1
-            const pastBlockHash = web3.eth.getBlock(pastBlock).hash
+            const pastBlock = await web3.eth.getBlockNumber() - 1
+            const pastBlockHash = (await web3.eth.getBlock(pastBlock)).hash
 
             const blockHash = await roundsManager.blockHash(pastBlock)
             assert.equal(blockHash, pastBlockHash, "wrong block hash")
@@ -237,7 +237,7 @@ contract("RoundsManager", accounts => {
         })
 
         it("should return the current round", async () => {
-            const blockNum = web3.eth.blockNumber
+            const blockNum = await web3.eth.getBlockNumber()
             const roundLength = await roundsManager.roundLength.call()
             const expCurrentRound = Math.floor(blockNum / roundLength.toNumber())
 
@@ -286,7 +286,7 @@ contract("RoundsManager", accounts => {
         })
 
         it("should return the start block of the current round", async () => {
-            const blockNum = web3.eth.blockNumber
+            const blockNum = await web3.eth.getBlockNumber()
             const roundLength = await roundsManager.roundLength.call()
             const expStartBlock = Math.floor(blockNum / roundLength.toNumber()) * roundLength.toNumber()
 
@@ -349,14 +349,14 @@ contract("RoundsManager", accounts => {
         let roundLength
 
         beforeEach(async () => {
-            roundLength = await roundsManager.roundLength.call()
-            await fixture.rpc.waitUntilNextBlockMultiple(roundLength.toNumber())
+            roundLength = (await roundsManager.roundLength.call()).toNumber()
+            await fixture.rpc.waitUntilNextBlockMultiple(roundLength)
         })
 
         it("should return true if the current round is locked", async () => {
-            const roundLockAmount = await roundsManager.roundLockAmount.call()
-            const roundLockBlocks = roundLength.mul(roundLockAmount).div(PERC_DIVISOR).floor()
-            await fixture.rpc.wait(roundLength.sub(roundLockBlocks).toNumber())
+            const roundLockAmount = (await roundsManager.roundLockAmount.call()).toNumber()
+            const roundLockBlocks = Math.floor((roundLength * roundLockAmount) / PERC_DIVISOR)
+            await fixture.rpc.wait(roundLength - roundLockBlocks)
 
             assert.isOk(await roundsManager.currentRoundLocked(), "not true when in lock period")
         })

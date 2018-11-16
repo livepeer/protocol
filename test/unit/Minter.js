@@ -1,5 +1,5 @@
 import Fixture from "./helpers/Fixture"
-import BigNumber from "bignumber.js"
+import BN from "bn.js"
 import expectThrow from "../helpers/expectThrow"
 import {constants} from "../../utils/constants"
 import {contractId, functionSig, functionEncodedABI} from "../../utils/helpers"
@@ -130,7 +130,7 @@ contract("Minter", accounts => {
             const newMinter = await GenericMock.new()
             const controllerAddr = await minter.controller.call()
             await newMinter.setMockAddress(functionSig("getController()"), controllerAddr)
-            await fixture.controller.setContractInfo(contractId("Minter"), accounts[1], "0x123")
+            await fixture.controller.setContractInfo(contractId("Minter"), accounts[1], web3.utils.asciiToHex("0x123"))
 
             await expectThrow(minter.migrateToNewMinter(newMinter.address))
         })
@@ -146,8 +146,8 @@ contract("Minter", accounts => {
             // Just make sure token ownership and token balance transfer do not fail
             await minter.migrateToNewMinter(newMinter.address)
 
-            assert.equal(web3.eth.getBalance(newMinter.address), 100, "wrong new minter balance")
-            assert.equal(web3.eth.getBalance(minter.address), 0, "wrong old minter balance")
+            assert.equal(await web3.eth.getBalance(newMinter.address), 100, "wrong new minter balance")
+            assert.equal(await web3.eth.getBalance(minter.address), 0, "wrong old minter balance")
         })
     })
 
@@ -189,11 +189,11 @@ contract("Minter", accounts => {
             // Instead we compute the output of createReward as: (mintedTokens * ((fracNum * PERC_DIVISOR) / fracDenom)) / PERC_DIVISOR
             // fracNum * PERC_DIVISOR has less of a chance of overflowing since PERC_DIVISOR is bounded in magnitude
 
-            const bigAmount = new BigNumber("10000000000000000000000000000000000000000000000")
+            const bigAmount = new BN("10000000000000000000000000000000000000000000000")
             // Set up reward call via BondingManager
             await fixture.bondingManager.execute(minter.address, functionEncodedABI("createReward(uint256,uint256)", ["uint256", "uint256"], [bigAmount.toString(), bigAmount.toString()]))
             const currentMintableTokens = await minter.currentMintableTokens.call()
-            const expCurrentMintedTokens = currentMintableTokens.mul(bigAmount.mul(PERC_DIVISOR).div(bigAmount).floor()).div(PERC_DIVISOR).floor().toNumber()
+            const expCurrentMintedTokens = currentMintableTokens.mul(bigAmount.mul(new BN(PERC_DIVISOR)).div(bigAmount)).div(new BN(PERC_DIVISOR)).toNumber()
 
             const currentMintedTokens = await minter.currentMintedTokens.call()
             assert.equal(currentMintedTokens, expCurrentMintedTokens, "wrong currentMintedTokens")
@@ -258,11 +258,11 @@ contract("Minter", accounts => {
 
         it("should transfer ETH to receiving address when caller is BondingManager", async () => {
             await fixture.jobsManager.execute(minter.address, functionSig("depositETH()"), {from: accounts[1], value: 100})
-            const startBalance = web3.eth.getBalance(accounts[1])
+            const startBalance = new BN(await web3.eth.getBalance(accounts[1]))
             await fixture.bondingManager.execute(minter.address, functionEncodedABI("trustedWithdrawETH(address,uint256)", ["address", "uint256"], [accounts[1], 100]))
-            const endBalance = web3.eth.getBalance(accounts[1])
+            const endBalance = new BN(await web3.eth.getBalance(accounts[1]))
 
-            assert.equal(web3.eth.getBalance(minter.address), 0, "wrong minter balance")
+            assert.equal(await web3.eth.getBalance(minter.address), 0, "wrong minter balance")
             // In practice, this check would not work because it does not factor in the transaction cost that would be incurred by the withdrawing caller
             // but for the purposes of testing that the value is withdrawn correctly we ignore the transaction cost that would be incurred
             assert.equal(endBalance.sub(startBalance), 100, "wrong change in withdrawing caller")
@@ -270,11 +270,11 @@ contract("Minter", accounts => {
 
         it("should transfer ETH to receiving address when caller is JobsManager", async () => {
             await fixture.jobsManager.execute(minter.address, functionSig("depositETH()"), {from: accounts[1], value: 100})
-            const startBalance = web3.eth.getBalance(accounts[1])
+            const startBalance = new BN(await web3.eth.getBalance(accounts[1]))
             await fixture.jobsManager.execute(minter.address, functionEncodedABI("trustedWithdrawETH(address,uint256)", ["address", "uint256"], [accounts[1], 100]))
-            const endBalance = web3.eth.getBalance(accounts[1])
+            const endBalance = new BN(await web3.eth.getBalance(accounts[1]))
 
-            assert.equal(web3.eth.getBalance(minter.address), 0, "wrong minter balance")
+            assert.equal(await web3.eth.getBalance(minter.address), 0, "wrong minter balance")
             // In practice, this check would not work because it does not factor in the transaction cost that would be incurred by the withdrawing caller
             // but for the purposes of testing that the value is withdrawn correctly we ignore the transaction cost that would be incurred
             assert.equal(endBalance.sub(startBalance), 100, "wrong change in withdrawing caller")
@@ -292,13 +292,13 @@ contract("Minter", accounts => {
             // Call depositETH on this Minter from currently registered Minter
             await mockMinter.execute(minter.address, functionSig("depositETH()"), {from: accounts[1], value: 100})
 
-            assert.equal(web3.eth.getBalance(minter.address), 100, "wrong minter balance")
+            assert.equal(await web3.eth.getBalance(minter.address), 100, "wrong minter balance")
         })
 
         it("should receive ETH from JobsManager", async () => {
             await fixture.jobsManager.execute(minter.address, functionSig("depositETH()"), {from: accounts[1], value: 100})
 
-            assert.equal(web3.eth.getBalance(minter.address), 100, "wrong minter balance")
+            assert.equal(await web3.eth.getBalance(minter.address), 100, "wrong minter balance")
         })
     })
 

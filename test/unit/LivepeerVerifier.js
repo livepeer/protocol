@@ -71,12 +71,8 @@ contract("LivepeerVerifier", accounts => {
         })
 
         it("should fire a SolverUpdate event", async () => {
-            let e = verifier.SolverUpdate({})
-
-            e.watch(async (err, result) => {
-                e.stopWatching()
-
-                assert.equal(result.args.solver, accounts[3], "wrong solver address in SolverUpdate event")
+            verifier.SolverUpdate({}).on("data", e => {
+                assert.equal(e.returnValues.solver, accounts[3], "wrong solver address in SolverUpdate event")
             })
 
             await verifier.setSolver(accounts[3])
@@ -89,7 +85,7 @@ contract("LivepeerVerifier", accounts => {
         const segmentNumber = 0
         const transcodingOptions = "0x123"
         const dataStorageHash = "0x123"
-        const dataHashes = [web3.sha3("apple"), web3.sha3("pear")]
+        const dataHashes = [web3.utils.sha3("apple"), web3.utils.sha3("pear")]
 
         it("should fail if sender is not the JobsManager", async () => {
             await expectThrow(verifier.verify(jobId, claimId, segmentNumber, transcodingOptions, dataStorageHash, dataHashes))
@@ -117,19 +113,15 @@ contract("LivepeerVerifier", accounts => {
         })
 
         it("should fire a VerifyRequest event", async () => {
-            let e = verifier.VerifyRequest({})
-
-            e.watch(async (err, result) => {
-                e.stopWatching()
-
-                assert.equal(result.args.requestId, 0, "event requestId incorrect")
-                assert.equal(result.args.jobId, jobId, "event jobId incorrect")
-                assert.equal(result.args.claimId, claimId, "event claimId incorrect")
-                assert.equal(result.args.segmentNumber, segmentNumber, "event segmentNumber incorrect")
-                assert.equal(result.args.transcodingOptions, transcodingOptions, "event transcodingOptions incorrect")
-                assert.equal(result.args.dataStorageHash, dataStorageHash, "event dataStorageHash incorrect")
-                assert.equal(result.args.dataHash, dataHashes[0], "event dataHash incorrect")
-                assert.equal(result.args.transcodedDataHash, dataHashes[1], "event transcodedDataHash incorrect")
+            verifier.VerifyRequest({}).on("data", e => {
+                assert.equal(e.returnValues.requestId, 0, "event requestId incorrect")
+                assert.equal(e.returnValues.jobId, jobId, "event jobId incorrect")
+                assert.equal(e.returnValues.claimId, claimId, "event claimId incorrect")
+                assert.equal(e.returnValues.segmentNumber, segmentNumber, "event segmentNumber incorrect")
+                assert.equal(e.returnValues.transcodingOptions, transcodingOptions, "event transcodingOptions incorrect")
+                assert.equal(e.returnValues.dataStorageHash, dataStorageHash, "event dataStorageHash incorrect")
+                assert.equal(e.returnValues.dataHash, dataHashes[0], "event dataHash incorrect")
+                assert.equal(e.returnValues.transcodedDataHash, dataHashes[1], "event transcodedDataHash incorrect")
             })
 
             await fixture.jobsManager.execute(
@@ -149,10 +141,10 @@ contract("LivepeerVerifier", accounts => {
         const segmentNumber = 0
         const transcodingOptions = "0x123"
         const dataStorageHash = "0x123"
-        const dataHashes = [web3.sha3("apple"), web3.sha3("pear")]
+        const dataHashes = [web3.utils.sha3("apple"), web3.utils.sha3("pear")]
 
         it("should fail if sender is not a solver", async () => {
-            await expectThrow(verifier.__callback(0, "0x123", {from: accounts[3]}))
+            await expectThrow(verifier.__callback(0, web3.utils.asciiToHex("0x123"), {from: accounts[3]}))
         })
 
         it("should delete stored request", async () => {
@@ -185,16 +177,12 @@ contract("LivepeerVerifier", accounts => {
                 )
             )
 
-            let e = verifier.Callback({})
-
-            e.watch(async (err, result) => {
-                e.stopWatching()
-
-                assert.equal(result.args.requestId, 0, "callback requestId incorrect")
-                assert.equal(result.args.jobId, jobId, "callback jobId incorrect")
-                assert.equal(result.args.claimId, claimId, "callback claimId incorrect")
-                assert.equal(result.args.segmentNumber, segmentNumber, "callback segmentNumber incorrect")
-                assert.equal(result.args.result, true, "callback result incorrect")
+            verifier.Callback({}).on("data", e => {
+                assert.equal(e.returnValues.requestId, 0, "callback requestId incorrect")
+                assert.equal(e.returnValues.jobId, jobId, "callback jobId incorrect")
+                assert.equal(e.returnValues.claimId, claimId, "callback claimId incorrect")
+                assert.equal(e.returnValues.segmentNumber, segmentNumber, "callback segmentNumber incorrect")
+                assert.equal(e.returnValues.result, true, "callback result incorrect")
             })
 
             const commitHash = ethUtil.bufferToHex(ethAbi.soliditySHA3(["bytes", "bytes"], [ethUtil.toBuffer(dataHashes[0]), ethUtil.toBuffer(dataHashes[1])]))
@@ -211,19 +199,15 @@ contract("LivepeerVerifier", accounts => {
                 )
             )
 
-            let e = verifier.Callback({})
-
-            e.watch(async (err, result) => {
-                e.stopWatching()
-
-                assert.equal(result.args.requestId, 0, "callback requestId incorrect")
-                assert.equal(result.args.jobId, jobId, "callback jobId incorrect")
-                assert.equal(result.args.claimId, claimId, "callback claimId incorrect")
-                assert.equal(result.args.segmentNumber, segmentNumber, "callback segmentNumber incorrect")
-                assert.equal(result.args.result, false, "callback result incorrect")
+            verifier.Callback({}).on("data", e => {
+                assert.equal(e.returnValues.requestId, 0, "callback requestId incorrect")
+                assert.equal(e.returnValues.jobId, jobId, "callback jobId incorrect")
+                assert.equal(e.returnValues.claimId, claimId, "callback claimId incorrect")
+                assert.equal(e.returnValues.segmentNumber, segmentNumber, "callback segmentNumber incorrect")
+                assert.equal(e.returnValues.result, false, "callback result incorrect")
             })
 
-            const wrongCommitHash = ethUtil.bufferToHex(ethAbi.soliditySHA3(["bytes", "bytes"], [ethUtil.toBuffer(dataHashes[0]), ethUtil.toBuffer(web3.sha3("not pear"))]))
+            const wrongCommitHash = ethUtil.bufferToHex(ethAbi.soliditySHA3(["bytes", "bytes"], [ethUtil.toBuffer(dataHashes[0]), ethUtil.toBuffer(web3.utils.sha3("not pear"))]))
             await verifier.__callback(0, wrongCommitHash, {from: solver})
         })
     })

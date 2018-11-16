@@ -28,7 +28,7 @@ export default class Fixture {
     async deployAndRegister(artifact, name, ...args) {
         const contract = await artifact.new(...args)
         // Use dummy Git commit hash
-        const commitHash = "0x123"
+        const commitHash = web3.utils.asciiToHex("0x123")
         await this.controller.setContractInfo(contractId(name), contract.address, commitHash)
         return contract
     }

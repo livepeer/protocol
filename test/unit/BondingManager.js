@@ -2,6 +2,7 @@ import Fixture from "./helpers/Fixture"
 import expectThrow from "../helpers/expectThrow"
 import {contractId, functionSig, functionEncodedABI} from "../../utils/helpers"
 import {constants} from "../../utils/constants"
+import BN from "bn.js"
 
 const BondingManager = artifacts.require("BondingManager")
 
@@ -153,15 +154,11 @@ contract("BondingManager", accounts => {
 
             describe("transcoder pool is not full", () => {
                 it("should add new transcoder to the pool", async () => {
-                    let e = bondingManager.TranscoderUpdate({transcoder: accounts[0]})
-
-                    e.watch(async (err, res) => {
-                        e.stopWatching()
-
-                        assert.equal(res.args.pendingRewardCut, 5, "should fire TranscoderUpdate event with provided rewardCut")
-                        assert.equal(res.args.pendingFeeShare, 10, "should fire TranscoderUpdate event with provided feeShare")
-                        assert.equal(res.args.pendingPricePerSegment, 1, "should fire TranscoderUpdate event with provided pricePerSegment")
-                        assert.equal(res.args.registered, true, "should fire TranscoderUpdate event with registered set to true")
+                    bondingManager.TranscoderUpdate({transcoder: accounts[0]}).on("data", e => {
+                        assert.equal(e.returnValues.pendingRewardCut, 5, "should fire TranscoderUpdate event with provided rewardCut")
+                        assert.equal(e.returnValues.pendingFeeShare, 10, "should fire TranscoderUpdate event with provided feeShare")
+                        assert.equal(e.returnValues.pendingPricePerSegment, 1, "should fire TranscoderUpdate event with provided pricePerSegment")
+                        assert.equal(e.returnValues.args.registered, true, "should fire TranscoderUpdate event with registered set to true")
                     })
 
                     await bondingManager.bond(1000, accounts[0])
@@ -200,15 +197,11 @@ contract("BondingManager", accounts => {
                             })
                         }))
 
-                        let e = bondingManager.TranscoderUpdate({transcoder: newTranscoder})
-
-                        e.watch(async (err, res) => {
-                            e.stopWatching()
-
-                            assert.equal(res.args.pendingRewardCut, 5, "should fire TranscoderUpdate event with provided rewardCut")
-                            assert.equal(res.args.pendingFeeShare, 10, "should fire TranscoderUpdate event with provided feeShare")
-                            assert.equal(res.args.pendingPricePerSegment, 1, "should fire TranscoderUpdate event with provided pricePerSegment")
-                            assert.equal(res.args.registered, true, "should fire TranscoderUpdate event with registered set to true")
+                        bondingManager.TranscoderUpdate({transcoder: newTranscoder}).on("data", e => {
+                            assert.equal(e.returnValues.pendingRewardCut, 5, "should fire TranscoderUpdate event with provided rewardCut")
+                            assert.equal(e.returnValues.pendingFeeShare, 10, "should fire TranscoderUpdate event with provided feeShare")
+                            assert.equal(e.returnValues.pendingPricePerSegment, 1, "should fire TranscoderUpdate event with provided pricePerSegment")
+                            assert.equal(e.returnValues.registered, true, "should fire TranscoderUpdate event with registered set to true")
                         })
 
                         const totalBonded = (await bondingManager.getTotalBonded()).toNumber()
@@ -239,15 +232,11 @@ contract("BondingManager", accounts => {
                             })
                         }))
 
-                        let e = bondingManager.TranscoderUpdate({transcoder: newTranscoder})
-
-                        e.watch(async (err, res) => {
-                            e.stopWatching()
-
-                            assert.equal(res.args.pendingRewardCut, 5, "should fire TranscoderUpdate event with provided rewardCut")
-                            assert.equal(res.args.pendingFeeShare, 10, "should fire TranscoderUpdate event with provided feeShare")
-                            assert.equal(res.args.pendingPricePerSegment, 1, "should fire TranscoderUpdate event with provided pricePerSegment")
-                            assert.equal(res.args.registered, false, "should fire TranscoderUpdate event with registered set to true")
+                        bondingManager.TranscoderUpdate({transcoder: newTranscoder}).on("data", e => {
+                            assert.equal(e.returnValues.pendingRewardCut, 5, "should fire TranscoderUpdate event with provided rewardCut")
+                            assert.equal(e.returnValues.pendingFeeShare, 10, "should fire TranscoderUpdate event with provided feeShare")
+                            assert.equal(e.returnValues.pendingPricePerSegment, 1, "should fire TranscoderUpdate event with provided pricePerSegment")
+                            assert.equal(e.returnValues.registered, false, "should fire TranscoderUpdate event with registered set to true")
                         })
 
                         // Caller bonds 600 - less than transcoder with least delegated stake
@@ -267,15 +256,11 @@ contract("BondingManager", accounts => {
                             })
                         }))
 
-                        let e = bondingManager.TranscoderUpdate({transcoder: newTranscoder})
-
-                        e.watch(async (err, res) => {
-                            e.stopWatching()
-
-                            assert.equal(res.args.pendingRewardCut, 5, "should fire TranscoderUpdate event with provided rewardCut")
-                            assert.equal(res.args.pendingFeeShare, 10, "should fire TranscoderUpdate event with provided feeShare")
-                            assert.equal(res.args.pendingPricePerSegment, 1, "should fire TranscoderUpdate event with provided pricePerSegment")
-                            assert.equal(res.args.registered, false, "should fire TranscoderUpdate event with registered set to true")
+                        bondingManager.TranscoderUpdate({transcoder: newTranscoder}).on("data", e => {
+                            assert.equal(e.returnValues.pendingRewardCut, 5, "should fire TranscoderUpdate event with provided rewardCut")
+                            assert.equal(e.returnValues.pendingFeeShare, 10, "should fire TranscoderUpdate event with provided feeShare")
+                            assert.equal(e.returnValues.pendingPricePerSegment, 1, "should fire TranscoderUpdate event with provided pricePerSegment")
+                            assert.equal(e.returnValues.registered, false, "should fire TranscoderUpdate event with registered set to true")
                         })
 
                         // Caller bonds 2000 - same as transcoder with least delegated stake
@@ -451,16 +436,12 @@ contract("BondingManager", accounts => {
             })
 
             it("should fire a Bond event when bonding from unbonded", async () => {
-                const e = bondingManager.Bond({})
-
-                e.watch(async (err, result) => {
-                    e.stopWatching()
-
-                    assert.equal(result.args.newDelegate, transcoder0, "wrong newDelegate in Bond event")
-                    assert.equal(result.args.oldDelegate, constants.NULL_ADDRESS, "wrong oldDelegate in Bond event")
-                    assert.equal(result.args.delegator, delegator, "wrong delegator in Bond event")
-                    assert.equal(result.args.additionalAmount, 1000, "wrong additionalAmount in Bond event")
-                    assert.equal(result.args.bondedAmount, 1000, "wrong bondedAmount in Bond event")
+                bondingManager.Bond({}).on("data", e => {
+                    assert.equal(e.returnValues.newDelegate, transcoder0, "wrong newDelegate in Bond event")
+                    assert.equal(e.returnValues.oldDelegate, constants.NULL_ADDRESS, "wrong oldDelegate in Bond event")
+                    assert.equal(e.returnValues.delegator, delegator, "wrong delegator in Bond event")
+                    assert.equal(e.returnValues.additionalAmount, 1000, "wrong additionalAmount in Bond event")
+                    assert.equal(e.returnValues.bondedAmount, 1000, "wrong bondedAmount in Bond event")
                 })
 
                 await bondingManager.bond(1000, transcoder0, {from: delegator})
@@ -563,16 +544,12 @@ contract("BondingManager", accounts => {
                     })
 
                     it("should fire a Bond event when changing delegates", async () => {
-                        const e = bondingManager.Bond({})
-
-                        e.watch(async (err, result) => {
-                            e.stopWatching()
-
-                            assert.equal(result.args.newDelegate, transcoder1, "wrong newDelegate in Bond event")
-                            assert.equal(result.args.oldDelegate, transcoder0, "wrong oldDelegate in Bond event")
-                            assert.equal(result.args.delegator, delegator, "wrong delegator in Bond event")
-                            assert.equal(result.args.additionalAmount, 0, "wrong additionalAmount in Bond event")
-                            assert.equal(result.args.bondedAmount, 2000, "wrong bondedAmount in Bond event")
+                        bondingManager.Bond({}).on("data", e => {
+                            assert.equal(e.returnValues.newDelegate, transcoder1, "wrong newDelegate in Bond event")
+                            assert.equal(e.returnValues.oldDelegate, transcoder0, "wrong oldDelegate in Bond event")
+                            assert.equal(e.returnValues.delegator, delegator, "wrong delegator in Bond event")
+                            assert.equal(e.returnValues.additionalAmount, 0, "wrong additionalAmount in Bond event")
+                            assert.equal(e.returnValues.bondedAmount, 2000, "wrong bondedAmount in Bond event")
                         })
 
                         await bondingManager.bond(0, transcoder1, {from: delegator})
@@ -673,16 +650,12 @@ contract("BondingManager", accounts => {
                     })
 
                     it("should fire a Bond event when increasing bonded stake and changing delegates", async () => {
-                        const e = bondingManager.Bond({})
-
-                        e.watch(async (err, result) => {
-                            e.stopWatching()
-
-                            assert.equal(result.args.newDelegate, transcoder1, "wrong newDelegate in Bond event")
-                            assert.equal(result.args.oldDelegate, transcoder0, "wrong oldDelegate in Bond event")
-                            assert.equal(result.args.delegator, delegator, "wrong delegator in Bond event")
-                            assert.equal(result.args.additionalAmount, 1000, "wrong additionalAmount in Bond event")
-                            assert.equal(result.args.bondedAmount, 3000, "wrong bondedAmount in Bond event")
+                        bondingManager.Bond({}).on("data", e => {
+                            assert.equal(e.returnValues.newDelegate, transcoder1, "wrong newDelegate in Bond event")
+                            assert.equal(e.returnValues.oldDelegate, transcoder0, "wrong oldDelegate in Bond event")
+                            assert.equal(e.returnValues.delegator, delegator, "wrong delegator in Bond event")
+                            assert.equal(e.returnValues.additionalAmount, 1000, "wrong additionalAmount in Bond event")
+                            assert.equal(e.returnValues.bondedAmount, 3000, "wrong bondedAmount in Bond event")
                         })
 
                         await bondingManager.bond(1000, transcoder1, {from: delegator})
@@ -797,16 +770,12 @@ contract("BondingManager", accounts => {
                 })
 
                 it("should fire a Bond event when increasing bonded amount", async () => {
-                    const e = bondingManager.Bond({})
-
-                    e.watch(async (err, result) => {
-                        e.stopWatching()
-
-                        assert.equal(result.args.newDelegate, transcoder0, "wrong newDelegate in Bond event")
-                        assert.equal(result.args.oldDelegate, transcoder0, "wrong oldDelegate in Bond event")
-                        assert.equal(result.args.delegator, delegator, "wrong delegator in Bond event")
-                        assert.equal(result.args.additionalAmount, 1000, "wrong additionalAmount in Bond event")
-                        assert.equal(result.args.bondedAmount, 3000, "wrong bondedAmount in Bond event")
+                    bondingManager.Bond({}).on("data", e => {
+                        assert.equal(e.returnValues.newDelegate, transcoder0, "wrong newDelegate in Bond event")
+                        assert.equal(e.returnValues.oldDelegate, transcoder0, "wrong oldDelegate in Bond event")
+                        assert.equal(e.returnValues.delegator, delegator, "wrong delegator in Bond event")
+                        assert.equal(e.returnValues.additionalAmount, 1000, "wrong additionalAmount in Bond event")
+                        assert.equal(e.returnValues.bondedAmount, 3000, "wrong bondedAmount in Bond event")
                     })
 
                     await bondingManager.bond(1000, transcoder0, {from: delegator})
@@ -880,16 +849,12 @@ contract("BondingManager", accounts => {
             it("should fire an Unbond event with an unbonding lock representing a partial unbond", async () => {
                 const unbondingLockID = (await bondingManager.getDelegator(delegator))[6]
                 const unbondingPeriod = (await bondingManager.unbondingPeriod.call()).toNumber()
-                const e = bondingManager.Unbond({})
-
-                e.watch(async (err, result) => {
-                    e.stopWatching()
-
-                    assert.equal(result.args.delegate, transcoder, "wrong delegate in Unbond event")
-                    assert.equal(result.args.delegator, delegator, "wrong delegator in Unbond event")
-                    assert.equal(result.args.unbondingLockId, unbondingLockID.toNumber(), "wrong unbondingLockId in Unbond event")
-                    assert.equal(result.args.amount, 500, "wrong amount in Unbond event")
-                    assert.equal(result.args.withdrawRound, currentRound + 1 + unbondingPeriod, "wrong withdrawRound in Unbond event")
+                bondingManager.Unbond({}).on("data", e => {
+                    assert.equal(e.returnValues.delegate, transcoder, "wrong delegate in Unbond event")
+                    assert.equal(e.returnValues.delegator, delegator, "wrong delegator in Unbond event")
+                    assert.equal(e.returnValues.unbondingLockId, unbondingLockID.toNumber(), "wrong unbondingLockId in Unbond event")
+                    assert.equal(e.returnValues.amount, 500, "wrong amount in Unbond event")
+                    assert.equal(e.returnValues.withdrawRound, currentRound + 1 + unbondingPeriod, "wrong withdrawRound in Unbond event")
                 })
 
                 await bondingManager.unbond(500, {from: delegator})
@@ -963,16 +928,12 @@ contract("BondingManager", accounts => {
             it("should fire an Unbond event with an unbonding lock representing a full unbond", async () => {
                 const unbondingLockID = (await bondingManager.getDelegator(delegator))[6]
                 const unbondingPeriod = (await bondingManager.unbondingPeriod.call()).toNumber()
-                const e = bondingManager.Unbond({})
-
-                e.watch(async (err, result) => {
-                    e.stopWatching()
-
-                    assert.equal(result.args.delegate, transcoder, "wrong delegate in Unbond event")
-                    assert.equal(result.args.delegator, delegator, "wrong delegator in Unbond event")
-                    assert.equal(result.args.unbondingLockId, unbondingLockID.toNumber(), "wrong unbondingLockId in Unbond event")
-                    assert.equal(result.args.amount, 1000, "wrong amount in Unbond event")
-                    assert.equal(result.args.withdrawRound, currentRound + 1 + unbondingPeriod, "wrong withdrawRound in Unbond event")
+                bondingManager.Unbond({}).on("data", e => {
+                    assert.equal(e.returnValues.delegate, transcoder, "wrong delegate in Unbond event")
+                    assert.equal(e.returnValues.delegator, delegator, "wrong delegator in Unbond event")
+                    assert.equal(e.returnValues.unbondingLockId, unbondingLockID.toNumber(), "wrong unbondingLockId in Unbond event")
+                    assert.equal(e.returnValues.amount, 1000, "wrong amount in Unbond event")
+                    assert.equal(e.returnValues.withdrawRound, currentRound + 1 + unbondingPeriod, "wrong withdrawRound in Unbond event")
                 })
 
                 await bondingManager.unbond(1000, {from: delegator})
@@ -1085,15 +1046,11 @@ contract("BondingManager", accounts => {
         })
 
         it("should create an Rebond event", async () => {
-            const e = bondingManager.Rebond({})
-
-            e.watch(async (err, result) => {
-                e.stopWatching()
-
-                assert.equal(result.args.delegate, transcoder, "wrong delegate in Rebond event")
-                assert.equal(result.args.delegator, delegator, "wrong delegator in Rebond event")
-                assert.equal(result.args.unbondingLockId, unbondingLockID, "wrong unbondingLockId in Rebond event")
-                assert.equal(result.args.amount, 500, "wrong amount in Rebond event")
+            bondingManager.Rebond({}).on("data", e => {
+                assert.equal(e.returnValues.delegate, transcoder, "wrong delegate in Rebond event")
+                assert.equal(e.returnValues.delegator, delegator, "wrong delegator in Rebond event")
+                assert.equal(e.returnValues.unbondingLockId, unbondingLockID, "wrong unbondingLockId in Rebond event")
+                assert.equal(e.returnValues.amount, 500, "wrong amount in Rebond event")
             })
 
             await bondingManager.rebond(unbondingLockID, {from: delegator})
@@ -1214,15 +1171,11 @@ contract("BondingManager", accounts => {
             // Delegator unbonds rest of tokens transitioning to the Unbonded state
             await bondingManager.unbond(500, {from: delegator})
 
-            const e = bondingManager.Rebond({})
-
-            e.watch(async (err, result) => {
-                e.stopWatching()
-
-                assert.equal(result.args.delegate, transcoder, "wrong delegate in Rebond event")
-                assert.equal(result.args.delegator, delegator, "wrong delegator in Rebond event")
-                assert.equal(result.args.unbondingLockId, unbondingLockID, "wrong unbondingLockId in Rebond event")
-                assert.equal(result.args.amount, 500, "wrong amount in Rebond event")
+            bondingManager.Rebond({}).on("data", e => {
+                assert.equal(e.returnValues.delegate, transcoder, "wrong delegate in Rebond event")
+                assert.equal(e.returnValues.delegator, delegator, "wrong delegator in Rebond event")
+                assert.equal(e.returnValues.unbondingLockId, unbondingLockID, "wrong unbondingLockId in Rebond event")
+                assert.equal(e.returnValues.amount, 500, "wrong amount in Rebond event")
             })
 
             await bondingManager.rebondFromUnbonded(transcoder, unbondingLockID, {from: delegator})
@@ -1283,15 +1236,11 @@ contract("BondingManager", accounts => {
         it("should create an WithdrawStake event", async () => {
             const unbondingPeriod = (await bondingManager.unbondingPeriod.call()).toNumber()
             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 1 + unbondingPeriod)
-            const e = bondingManager.WithdrawStake({})
-
-            e.watch(async (err, result) => {
-                e.stopWatching()
-
-                assert.equal(result.args.delegator, delegator, "wrong delegator in WithdrawStake event")
-                assert.equal(result.args.unbondingLockId, unbondingLockID, "wrong unbondingLockId in WithdrawStake event")
-                assert.equal(result.args.amount, 500, "wrong amount in WithdrawStake event")
-                assert.equal(result.args.withdrawRound, currentRound + 1 + unbondingPeriod, "wrong withdrawRound in WithdrawStake event")
+            bondingManager.WithdrawStake({}).on("data", e => {
+                assert.equal(e.returnValues.delegator, delegator, "wrong delegator in WithdrawStake event")
+                assert.equal(e.returnValues.unbondingLockId, unbondingLockID, "wrong unbondingLockId in WithdrawStake event")
+                assert.equal(e.returnValues.amount, 500, "wrong amount in WithdrawStake event")
+                assert.equal(e.returnValues.withdrawRound, currentRound + 1 + unbondingPeriod, "wrong withdrawRound in WithdrawStake event")
             })
 
             await bondingManager.withdrawStake(unbondingLockID, {from: delegator})
@@ -1332,7 +1281,7 @@ contract("BondingManager", accounts => {
         })
 
         it("should fail if current round is not initialized", async () => {
-            await fixture.roundsManager.setMockUint256(functionSig("currentRoundInitialized()"), false)
+            await fixture.roundsManager.setMockBool(functionSig("currentRoundInitialized()"), false)
 
             await expectThrow(bondingManager.withdrawFees({from: transcoder0}))
         })
@@ -1343,7 +1292,7 @@ contract("BondingManager", accounts => {
 
         it("should withdraw caller's fees", async () => {
             await bondingManager.claimEarnings(currentRound + 1, {from: transcoder0})
-            assert.isAbove((await bondingManager.getDelegator(transcoder0))[1], 0, "caller should have non-zero fees")
+            assert.isAbove((await bondingManager.getDelegator(transcoder0))[1].toNumber(), 0, "caller should have non-zero fees")
 
             await bondingManager.withdrawFees({from: transcoder0})
 
@@ -1580,7 +1529,7 @@ contract("BondingManager", accounts => {
         })
 
         it("decreases transcoder's bondedAmount", async () => {
-            const startBondedAmount = (await bondingManager.getDelegator(transcoder))[0]
+            const startBondedAmount = (await bondingManager.getDelegator(transcoder))[0].toNumber()
             await fixture.jobsManager.execute(
                 bondingManager.address,
                 functionEncodedABI(
@@ -1591,7 +1540,7 @@ contract("BondingManager", accounts => {
             )
             const endBondedAmount = (await bondingManager.getDelegator(transcoder))[0]
 
-            assert.equal(endBondedAmount, startBondedAmount.div(2).toNumber(), "should decrease transcoder's bondedAmount by slashAmount")
+            assert.equal(endBondedAmount, startBondedAmount / 2, "should decrease transcoder's bondedAmount by slashAmount")
         })
 
         describe("transcoder is bonded", () => {
@@ -1618,7 +1567,7 @@ contract("BondingManager", accounts => {
             })
 
             it("still decreases transcoder's bondedAmount", async () => {
-                const startBondedAmount = (await bondingManager.getDelegator(transcoder))[0]
+                const startBondedAmount = (await bondingManager.getDelegator(transcoder))[0].toNumber()
                 await fixture.jobsManager.execute(
                     bondingManager.address,
                     functionEncodedABI(
@@ -1629,7 +1578,7 @@ contract("BondingManager", accounts => {
                 )
                 const endBondedAmount = (await bondingManager.getDelegator(transcoder))[0]
 
-                assert.equal(endBondedAmount, startBondedAmount.div(2).toNumber(), "should decrease transcoder's bondedAmount by slashAmount")
+                assert.equal(endBondedAmount, startBondedAmount / 2, "should decrease transcoder's bondedAmount by slashAmount")
             })
         })
 
@@ -1687,14 +1636,10 @@ contract("BondingManager", accounts => {
 
         describe("invoked with a finder", () => {
             it("slashes transcoder and rewards finder", async () => {
-                let e = bondingManager.TranscoderSlashed({transcoder: transcoder})
-
-                e.watch(async (err, res) => {
-                    e.stopWatching()
-
-                    assert.equal(res.args.finder, finder, "should fire TranscoderSlashed event with finder")
-                    assert.equal(res.args.penalty, 500, "should fire TranscoderSlashed event with slashed amount penalty")
-                    assert.equal(res.args.finderReward, 250, "should fire TranscoderSlashed event with finder reward computed with finderFee")
+                bondingManager.TranscoderSlashed({transcoder: transcoder}).on("data", e => {
+                    assert.equal(e.returnValues.finder, finder, "should fire TranscoderSlashed event with finder")
+                    assert.equal(e.returnValues.penalty, 500, "should fire TranscoderSlashed event with slashed amount penalty")
+                    assert.equal(e.returnValues.finderReward, 250, "should fire TranscoderSlashed event with finder reward computed with finderFee")
                 })
 
                 await fixture.jobsManager.execute(
@@ -1710,14 +1655,10 @@ contract("BondingManager", accounts => {
 
         describe("invoked without a finder", () => {
             it("slashes transcoder", async () => {
-                let e = bondingManager.TranscoderSlashed({transcoder: transcoder})
-
-                e.watch(async (err, res) => {
-                    e.stopWatching()
-
-                    assert.equal(res.args.finder, constants.NULL_ADDRESS, "should fire TranscoderSlashed event with null finder")
-                    assert.equal(res.args.penalty, 500, "should fire TranscoderSlashed event with slashed amount penalty")
-                    assert.equal(res.args.finderReward, 0, "should fire TranscoderSlashed event with finder reward of 0")
+                bondingManager.TranscoderSlashed({transcoder: transcoder}).on("data", e => {
+                    assert.equal(e.returnValues.finder, constants.NULL_ADDRESS, "should fire TranscoderSlashed event with null finder")
+                    assert.equal(e.returnValues.penalty, 500, "should fire TranscoderSlashed event with slashed amount penalty")
+                    assert.equal(e.returnValues.finderReward, 0, "should fire TranscoderSlashed event with finder reward of 0")
                 })
 
                 await fixture.jobsManager.execute(
@@ -1740,14 +1681,10 @@ contract("BondingManager", accounts => {
             })
 
             it("fires a TranscoderSlashed event, but transcoder is not penalized because it does not have a bonded amount", async () => {
-                let e = bondingManager.TranscoderSlashed({transcoder: transcoder})
-
-                e.watch(async (err, res) => {
-                    e.stopWatching()
-
-                    assert.equal(res.args.finder, constants.NULL_ADDRESS, "should fire TranscoderSlashed event with null finder")
-                    assert.equal(res.args.penalty, 0, "should fire TranscoderSlashed event with slashed amount penalty of 0")
-                    assert.equal(res.args.finderReward, 0, "should fire TranscoderSlashed event with finder reward of 0")
+                bondingManager.TranscoderSlashed({transcoder: transcoder}).on("data", e => {
+                    assert.equal(e.returnValues.finder, constants.NULL_ADDRESS, "should fire TranscoderSlashed event with null finder")
+                    assert.equal(e.returnValues.penalty, 0, "should fire TranscoderSlashed event with slashed amount penalty of 0")
+                    assert.equal(e.returnValues.finderReward, 0, "should fire TranscoderSlashed event with finder reward of 0")
                 })
 
                 await fixture.jobsManager.execute(
@@ -1783,7 +1720,7 @@ contract("BondingManager", accounts => {
 
         it("should exclude transcoders with a price > provided maxPricePerSegment", async () => {
             assert.equal(
-                await bondingManager.electActiveTranscoder(6, web3.sha3("foo"), currentRound + 1),
+                await bondingManager.electActiveTranscoder(6, web3.utils.sha3("foo"), currentRound + 1),
                 transcoder0,
                 "should exclude transcoder with price > provided maxPricePerSegment"
             )
@@ -1791,7 +1728,7 @@ contract("BondingManager", accounts => {
 
         it("should not exclude transcoders with a price = provided maxPricePerSegment", async () => {
             assert.equal(
-                await bondingManager.electActiveTranscoder(5, web3.sha3("foo"), currentRound + 1),
+                await bondingManager.electActiveTranscoder(5, web3.utils.sha3("foo"), currentRound + 1),
                 transcoder0,
                 "should not exclude transcoder with price = provided maxPricePerSegment"
             )
@@ -1799,7 +1736,7 @@ contract("BondingManager", accounts => {
 
         it("should return null address if there are no transcoders with a price <= provided maxPricePerSegment", async () => {
             assert.equal(
-                await bondingManager.electActiveTranscoder(2, web3.sha3("foo"), currentRound + 1),
+                await bondingManager.electActiveTranscoder(2, web3.utils.sha3("foo"), currentRound + 1),
                 constants.NULL_ADDRESS,
                 "should return null address if there are no transcoders with a price <= provided maxPricePerSegment"
             )
@@ -1813,7 +1750,7 @@ contract("BondingManager", accounts => {
             await fixture.roundsManager.execute(bondingManager.address, functionSig("setActiveTranscoders()"))
 
             assert.equal(
-                await bondingManager.electActiveTranscoder(6, web3.sha3("foo"), currentRound + 2),
+                await bondingManager.electActiveTranscoder(6, web3.utils.sha3("foo"), currentRound + 2),
                 constants.NULL_ADDRESS,
                 "should return null address if there are no active transcoders"
             )
@@ -1826,7 +1763,7 @@ contract("BondingManager", accounts => {
             await fixture.roundsManager.execute(bondingManager.address, functionSig("setActiveTranscoders()"))
 
             assert.equal(
-                await bondingManager.electActiveTranscoder(10, web3.sha3("foo"), currentRound + 2),
+                await bondingManager.electActiveTranscoder(10, web3.utils.sha3("foo"), currentRound + 2),
                 transcoder1,
                 "should return a transcoder if there is only one available active transcoder"
             )
@@ -1913,8 +1850,8 @@ contract("BondingManager", accounts => {
             })
 
             it("should claim earnings for 1 round", async () => {
-                const expRewards = delegatorRewards * .3 // 30%
-                const expFees = delegatorFees * .3 // 30%
+                const expRewards = new BN(delegatorRewards * .3) // 30%
+                const expFees = new BN(delegatorFees * .3) // 30%
                 const acceptableDelta = 2
 
                 const startDInfo1 = await bondingManager.getDelegator(delegator1)
@@ -1970,8 +1907,8 @@ contract("BondingManager", accounts => {
                 // Total = 11000
                 const expRewardsSecondRound = Math.floor(delegatorRewards * .286) // 28.6%
                 const expFeesSecondRound = Math.floor(delegatorFees * .286) // 28.6%
-                const expRewards = expRewardsFirstRound + expRewardsSecondRound
-                const expFees = expFeesFirstRound + expFeesSecondRound
+                const expRewards = new BN(expRewardsFirstRound + expRewardsSecondRound)
+                const expFees = new BN(expFeesFirstRound + expFeesSecondRound)
                 const acceptableDelta = 2
 
                 await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 2)
@@ -2025,24 +1962,24 @@ contract("BondingManager", accounts => {
                 const expRemainingRewardsSecondRound = delegatorRewards - (3 * expRewardsSecondRound)
                 const expRemainingFeesSecondRound = delegatorFees - (3 * expFeesSecondRound)
 
-                assert.isAtMost(earningsPoolFirstRound[0].sub(expRemainingRewardsFirstRound).abs().toNumber(), acceptableDelta, "should decrease delegator reward pool by delegator's claimed rewards for round")
-                assert.isAtMost(earningsPoolFirstRound[1].sub(expRemainingFeesFirstRound).abs().toNumber(), acceptableDelta, "should decrease delegator fee pool by delegator's claimed fees for round")
+                assert.isAtMost(earningsPoolFirstRound[0].sub(new BN(expRemainingRewardsFirstRound)).abs().toNumber(), acceptableDelta, "should decrease delegator reward pool by delegator's claimed rewards for round")
+                assert.isAtMost(earningsPoolFirstRound[1].sub(new BN(expRemainingFeesFirstRound)).abs().toNumber(), acceptableDelta, "should decrease delegator fee pool by delegator's claimed fees for round")
                 assert.equal(earningsPoolFirstRound[6], transcoderRewards, "should not affect transcoder reward pool")
                 assert.equal(earningsPoolFirstRound[7], transcoderFees, "should not affect transcoder fee pool")
                 assert.equal(earningsPoolFirstRound[3], 1000, "should decrease claimableStake for earningsPool by delegator's stake for round")
-                assert.isAtMost(earningsPoolSecondRound[0].sub(expRemainingRewardsSecondRound).abs().toNumber(), acceptableDelta, "should decrease delegator reward pool by delegator's claimed rewards for round")
-                assert.isAtMost(earningsPoolSecondRound[1].sub(expRemainingFeesSecondRound).abs().toNumber(), acceptableDelta, "should decrease delegator fee pool by delegator's claimed fees for round")
+                assert.isAtMost(earningsPoolSecondRound[0].sub(new BN(expRemainingRewardsSecondRound)).abs().toNumber(), acceptableDelta, "should decrease delegator reward pool by delegator's claimed rewards for round")
+                assert.isAtMost(earningsPoolSecondRound[1].sub(new BN(expRemainingFeesSecondRound)).abs().toNumber(), acceptableDelta, "should decrease delegator fee pool by delegator's claimed fees for round")
                 assert.equal(earningsPoolSecondRound[6], transcoderRewards, "should not affect transcoder reward pool")
                 assert.equal(earningsPoolSecondRound[7], transcoderFees, "should not affect transcoder fee pool")
-                assert.isAtMost(earningsPoolSecondRound[3].sub(1550).toNumber(), acceptableDelta, "should decrease claimableStake for earningsPool by delegator's stake for round")
+                assert.isAtMost(earningsPoolSecondRound[3].sub(new BN(1550)).toNumber(), acceptableDelta, "should decrease claimableStake for earningsPool by delegator's stake for round")
             })
 
             describe("caller is a transcoder", () => {
                 it("should claim earnings as both a delegator and a transcoder", async () => {
                     const expDelegatorRewards = delegatorRewards * .1 // 10%
-                    const expRewards = expDelegatorRewards + transcoderRewards
+                    const expRewards = new BN(expDelegatorRewards + transcoderRewards)
                     const expDelegatorFees = delegatorFees * .1
-                    const expFees = expDelegatorFees + transcoderFees
+                    const expFees = new BN(expDelegatorFees + transcoderFees)
                     const acceptableDelta = 2
 
                     const startDInfo = await bondingManager.getDelegator(transcoder)
@@ -2055,8 +1992,8 @@ contract("BondingManager", accounts => {
                     assert.isAtMost(tFees.sub(expFees).abs().toNumber(), acceptableDelta)
 
                     const earningsPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder, currentRound + 1)
-                    assert.equal(earningsPool[0], delegatorRewards - tRewards.sub(transcoderRewards).toNumber(), "should decrease delegator reward pool by transcoder's claimed rewards for round")
-                    assert.equal(earningsPool[1], delegatorFees - tFees.sub(transcoderFees).toNumber(), "should decrease delegator fee pool by transcoder's claimed fees for round")
+                    assert.equal(earningsPool[0], delegatorRewards - tRewards.sub(new BN(transcoderRewards)).toNumber(), "should decrease delegator reward pool by transcoder's claimed rewards for round")
+                    assert.equal(earningsPool[1], delegatorFees - tFees.sub(new BN(transcoderFees)).toNumber(), "should decrease delegator fee pool by transcoder's claimed fees for round")
                     assert.equal(earningsPool[6], 0, "should set transcoder reward pool to 0")
                     assert.equal(earningsPool[7], 0, "should set transcoder fee pool to 0")
                     assert.equal(earningsPool[3], 9000, "should decrease claimableStake for earningsPool by transcoder's stake for round")
@@ -2064,9 +2001,9 @@ contract("BondingManager", accounts => {
 
                 it("should claim earnings as both a delegator and a transcoder regardless of when other delegators claim", async () => {
                     const expDelegatorRewards = delegatorRewards * .1 // 10%
-                    const expRewards = expDelegatorRewards + transcoderRewards
+                    const expRewards = new BN(expDelegatorRewards + transcoderRewards)
                     const expDelegatorFees = delegatorFees * .1
-                    const expFees = expDelegatorFees + transcoderFees
+                    const expFees = new BN(expDelegatorFees + transcoderFees)
                     const acceptableDelta = 2
 
                     await bondingManager.claimEarnings(currentRound + 1, {from: delegator1})

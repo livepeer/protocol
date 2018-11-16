@@ -1,5 +1,6 @@
 import {contractId} from "../../utils/helpers"
-import BigNumber from "bignumber.js"
+import BN from "bn.js"
+import {constants} from "../../utils/constants"
 
 const Controller = artifacts.require("Controller")
 const BondingManager = artifacts.require("BondingManager")
@@ -7,8 +8,6 @@ const AdjustableRoundsManager = artifacts.require("AdjustableRoundsManager")
 const LivepeerToken = artifacts.require("LivepeerToken")
 
 contract("System Pause", accounts => {
-    const TOKEN_UNIT = 10 ** 18
-
     let controller
     let bondingManager
     let roundsManager
@@ -37,7 +36,7 @@ contract("System Pause", accounts => {
         const tokenAddr = await controller.getContract(contractId("LivepeerToken"))
         token = await LivepeerToken.at(tokenAddr)
 
-        const transferAmount = new BigNumber(10).times(TOKEN_UNIT)
+        const transferAmount = (new BN(10)).mul(constants.TOKEN_UNIT)
         await token.transfer(transcoder1, transferAmount, {from: accounts[0]})
         await token.transfer(delegator1, transferAmount, {from: accounts[0]})
         await token.transfer(delegator2, transferAmount, {from: accounts[0]})
@@ -85,23 +84,23 @@ contract("System Pause", accounts => {
         await roundsManager.initializeRound()
 
         const currentRound = await roundsManager.currentRound()
-        const t1RewardShare = pauseRoundReward.div(2).floor()
-        const d1RewardShare = pauseRoundReward.div(4).floor()
-        const d2RewardShare = pauseRoundReward.div(4).floor()
+        const t1RewardShare = pauseRoundReward.div(new BN(2))
+        const d1RewardShare = pauseRoundReward.div(new BN(4))
+        const d2RewardShare = pauseRoundReward.div(new BN(4))
 
         const startT1Info = await bondingManager.getDelegator(transcoder1)
         await bondingManager.claimEarnings(currentRound, {from: transcoder1})
         const endT1Info = await bondingManager.getDelegator(transcoder1)
-        assert.equal(endT1Info[0].sub(startT1Info[0]), t1RewardShare.toNumber(), "wrong bonded amount for transcoder 1")
+        assert.equal(endT1Info[0].sub(startT1Info[0]).toString(), t1RewardShare.toString(), "wrong bonded amount for transcoder 1")
 
         const startD1Info = await bondingManager.getDelegator(delegator1)
         await bondingManager.claimEarnings(currentRound, {from: delegator1})
         const endD1Info = await bondingManager.getDelegator(delegator1)
-        assert.equal(endD1Info[0].sub(startD1Info[0]), d1RewardShare.toNumber(), "wrong bonded amount for delegator 1")
+        assert.equal(endD1Info[0].sub(startD1Info[0]).toString(), d1RewardShare.toString(), "wrong bonded amount for delegator 1")
 
         const startD2Info = await bondingManager.getDelegator(delegator2)
         await bondingManager.claimEarnings(currentRound, {from: delegator2})
         const endD2Info = await bondingManager.getDelegator(delegator2)
-        assert.equal(endD2Info[0].sub(startD2Info[0]), d2RewardShare.toNumber(), "wrong bonded amount for delegator 2")
+        assert.equal(endD2Info[0].sub(startD2Info[0]).toString(), d2RewardShare.toString(), "wrong bonded amount for delegator 2")
     })
 })

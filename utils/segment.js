@@ -13,7 +13,7 @@ export default class Segment {
         return ethAbi.soliditySHA3(["string", "uint256", "bytes"], [this.streamId, this.sequenceNumber, this.dataHash])
     }
 
-    signedHash() {
-        return ethUtil.toBuffer(web3.eth.sign(this.broadcaster, ethUtil.bufferToHex(this.hash())))
+    async signedHash() {
+        return ethUtil.toBuffer(await web3.eth.sign(ethUtil.bufferToHex(this.hash()), this.broadcaster))
     }
 }

@@ -4,7 +4,8 @@ import MerkleTree from "../../utils/merkleTree"
 import {createTranscodingOptions} from "../../utils/videoProfile"
 import Segment from "../../utils/segment"
 import expectThrow from "../helpers/expectThrow"
-import BigNumber from "bignumber.js"
+import BN from "bn.js"
+import {constants} from "../../utils/constants"
 
 const Controller = artifacts.require("Controller")
 const BondingManager = artifacts.require("BondingManager")
@@ -13,8 +14,6 @@ const AdjustableRoundsManager = artifacts.require("AdjustableRoundsManager")
 const LivepeerToken = artifacts.require("LivepeerToken")
 
 contract("SlashingEdgeCases", accounts => {
-    const TOKEN_UNIT = 10 ** 18
-
     let controller
     let bondingManager
     let roundsManager
@@ -56,7 +55,7 @@ contract("SlashingEdgeCases", accounts => {
         const tokenAddr = await controller.getContract(contractId("LivepeerToken"))
         token = await LivepeerToken.at(tokenAddr)
 
-        const transferAmount = new BigNumber(10).times(TOKEN_UNIT)
+        const transferAmount = (new BN(10)).mul(constants.TOKEN_UNIT)
         await token.transfer(transcoder1, transferAmount, {from: accounts[0]})
         await token.transfer(transcoder2, transferAmount, {from: accounts[0]})
 
@@ -78,10 +77,10 @@ contract("SlashingEdgeCases", accounts => {
     it("transcoder that partially unbonds should still be slashable for a fault", async () => {
         await jobsManager.deposit({from: broadcaster, value: 1000})
 
-        const endBlock = (await roundsManager.blockNum()).add(100)
+        const endBlock = (await roundsManager.blockNum()).add(new BN(100))
         await jobsManager.job("foo", createTranscodingOptions(["foo", "bar"]), 1, endBlock, {from: broadcaster})
 
-        const rand = web3.eth.getBlock(web3.eth.blockNumber).hash
+        const rand = (await web3.eth.getBlock("latest")).hash
         await roundsManager.mineBlocks(1)
         await roundsManager.setBlockHash(rand)
 
@@ -105,7 +104,7 @@ contract("SlashingEdgeCases", accounts => {
         ]
 
         // Transcode receipts
-        const tReceiptHashes = batchTranscodeReceiptHashes(segments, tDataHashes)
+        const tReceiptHashes = await batchTranscodeReceiptHashes(segments, tDataHashes)
 
         // Build merkle tree
         const merkleTree = new MerkleTree(tReceiptHashes)
@@ -170,10 +169,10 @@ contract("SlashingEdgeCases", accounts => {
         await roundsManager.mineBlocks(roundLength.toNumber())
         await roundsManager.initializeRound()
 
-        const endBlock = (await roundsManager.blockNum()).add(100)
+        const endBlock = (await roundsManager.blockNum()).add(new BN(100))
         await jobsManager.job("foo", createTranscodingOptions(["foo", "bar"]), 1, endBlock, {from: broadcaster})
 
-        let rand = web3.eth.getBlock(web3.eth.blockNumber).hash
+        let rand = (await web3.eth.getBlock("latest")).hash
         await roundsManager.mineBlocks(1)
         await roundsManager.setBlockHash(rand)
 
@@ -197,7 +196,7 @@ contract("SlashingEdgeCases", accounts => {
         ]
 
         // Transcode receipts
-        const tReceiptHashes = batchTranscodeReceiptHashes(segments, tDataHashes)
+        const tReceiptHashes = await batchTranscodeReceiptHashes(segments, tDataHashes)
 
         // Build merkle tree
         const merkleTree = new MerkleTree(tReceiptHashes)

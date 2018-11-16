@@ -7,7 +7,7 @@ export default class TranscodeReceipt {
         this.transcodedDataHash = ethUtil.toBuffer(transcodedDataHash)
     }
 
-    hash() {
+    async hash() {
         return ethAbi.soliditySHA3(
             ["string", "uint256", "bytes", "bytes", "bytes"],
             [
@@ -15,7 +15,7 @@ export default class TranscodeReceipt {
                 this.segment.sequenceNumber,
                 this.segment.dataHash,
                 this.transcodedDataHash,
-                this.segment.signedHash()
+                await this.segment.signedHash()
             ]
         )
     }

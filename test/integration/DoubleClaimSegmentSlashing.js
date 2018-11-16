@@ -3,7 +3,7 @@ import batchTranscodeReceiptHashes from "../../utils/batchTranscodeReceipts"
 import MerkleTree from "../../utils/merkleTree"
 import {createTranscodingOptions} from "../../utils/videoProfile"
 import Segment from "../../utils/segment"
-import BigNumber from "bignumber.js"
+import BN from "bn.js"
 
 const Controller = artifacts.require("Controller")
 const BondingManager = artifacts.require("BondingManager")
@@ -12,7 +12,7 @@ const AdjustableRoundsManager = artifacts.require("AdjustableRoundsManager")
 const LivepeerToken = artifacts.require("LivepeerToken")
 
 contract("DoubleClaimSegmentSlashing", accounts => {
-    const TOKEN_UNIT = 10 ** 18
+    const TOKEN_UNIT = (new BN(10)).pow(new BN(18))
 
     let controller
     let bondingManager
@@ -55,7 +55,7 @@ contract("DoubleClaimSegmentSlashing", accounts => {
         const tokenAddr = await controller.getContract(contractId("LivepeerToken"))
         token = await LivepeerToken.at(tokenAddr)
 
-        const transferAmount = new BigNumber(10).times(TOKEN_UNIT)
+        const transferAmount = new BN(10).mul(TOKEN_UNIT)
         await token.transfer(transcoder, transferAmount, {from: accounts[0]})
         await token.transfer(delegator1, transferAmount, {from: accounts[0]})
         await token.transfer(delegator2, transferAmount, {from: accounts[0]})
@@ -82,10 +82,10 @@ contract("DoubleClaimSegmentSlashing", accounts => {
     it("watcher should slash a transcoder for double claiming segments", async () => {
         await jobsManager.deposit({from: broadcaster, value: 1000})
 
-        const endBlock = (await roundsManager.blockNum()).add(100)
+        const endBlock = (await roundsManager.blockNum()).add(new BN(100))
         await jobsManager.job("foo", createTranscodingOptions(["foo", "bar"]), 1, endBlock, {from: broadcaster})
 
-        let rand = web3.eth.getBlock(web3.eth.blockNumber).hash
+        let rand = (await web3.eth.getBlock("latest")).hash
         await roundsManager.mineBlocks(1)
         await roundsManager.setBlockHash(rand)
 
@@ -109,7 +109,7 @@ contract("DoubleClaimSegmentSlashing", accounts => {
         ]
 
         // Transcode receipts
-        const tReceiptHashes = batchTranscodeReceiptHashes(segments, tDataHashes)
+        const tReceiptHashes = await batchTranscodeReceiptHashes(segments, tDataHashes)
 
         // Build merkle tree
         const merkleTree = new MerkleTree(tReceiptHashes)

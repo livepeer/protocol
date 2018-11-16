@@ -67,7 +67,7 @@ contract("Controller", accounts => {
 
         it("should throw for invalid key", async () => {
             const randomAddress = "0x0000000000000000000000000000000000001234"
-            const invalidId = "0x123"
+            const invalidId = "0x1230000000000000000000000000000000000000"
             await expectThrow(controller.updateController(invalidId, randomAddress))
         })
 

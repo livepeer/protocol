@@ -49,10 +49,10 @@ contract("OraclizeVerifier", accounts => {
             e.watch(async (err, result) => {
                 e.stopWatching()
 
-                assert.equal(result.args.jobId, jobId, "callback job id incorrect")
-                assert.equal(result.args.claimId, claimId, "callback claim id incorrect")
-                assert.equal(result.args.segmentNumber, segmentNumber, "callback segment sequence number incorrect")
-                assert.equal(result.args.result, true, "callback result incorrect")
+                assert.equal(e.returnValues.jobId, jobId, "callback job id incorrect")
+                assert.equal(e.returnValues.claimId, claimId, "callback claim id incorrect")
+                assert.equal(e.returnValues.segmentNumber, segmentNumber, "callback segment sequence number incorrect")
+                assert.equal(e.returnValues.result, true, "callback result incorrect")
             })
 
             await fixture.jobsManager.setVerifyParams(jobId, claimId, segmentNumber, transcodingOptions, dataStorageHash, dataHashes)

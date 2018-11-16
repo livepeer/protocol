@@ -1,6 +1,6 @@
 import {contractId} from "../../utils/helpers"
 import {constants} from "../../utils/constants"
-import BigNumber from "bignumber.js"
+import BN from "bn.js"
 
 const Controller = artifacts.require("Controller")
 const BondingManager = artifacts.require("BondingManager")
@@ -43,7 +43,7 @@ contract("UpgradeToBondingManagerV4", accounts => {
         // Switch to BondingManagerV3
         BondingManagerV3.link(SortedDoublyLL)
         const bondingManagerTarget = await BondingManagerV3.new(controller.address)
-        await controller.setContractInfo(contractId("BondingManagerTarget"), bondingManagerTarget.address, "0x0")
+        await controller.setContractInfo(contractId("BondingManagerTarget"), bondingManagerTarget.address, web3.utils.asciiToHex("0x0"))
 
         await controller.unpause()
 
@@ -56,7 +56,7 @@ contract("UpgradeToBondingManagerV4", accounts => {
         const tokenAddr = await controller.getContract(contractId("LivepeerToken"))
         token = await LivepeerToken.at(tokenAddr)
 
-        const transferAmount = new BigNumber(10).times(constants.TOKEN_UNIT)
+        const transferAmount = (new BN(10)).mul(constants.TOKEN_UNIT)
         await token.transfer(transcoder1, transferAmount, {from: accounts[0]})
         await token.transfer(delegator1, transferAmount, {from: accounts[0]})
         await token.transfer(delegator2, transferAmount, {from: accounts[0]})
@@ -106,7 +106,7 @@ contract("UpgradeToBondingManagerV4", accounts => {
 
         // Switch to new BondingManager
         const bondingManagerTarget = await BondingManager.new(controller.address)
-        await controller.setContractInfo(contractId("BondingManagerTarget"), bondingManagerTarget.address, "0x0")
+        await controller.setContractInfo(contractId("BondingManagerTarget"), bondingManagerTarget.address, web3.utils.asciiToHex("0x0"))
 
         await roundsManager.mineBlocks(roundLength)
         await roundsManager.initializeRound()
@@ -128,7 +128,7 @@ contract("UpgradeToBondingManagerV4", accounts => {
 
         for (let round of postUpgradeRounds) {
             const earningsPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder1, round)
-            assert.isAbove(earningsPool[6].toNumber(), 0, "transcoder reward pool should be non-zero")
+            assert.isOk(earningsPool[6].gt(new BN(0)), "transcoder reward pool should be non-zero")
             assert.isOk(earningsPool[8], "hasTranscoderRewardFeePool should be true for post-upgrade earnings pools")
         }
 

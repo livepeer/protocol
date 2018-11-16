@@ -4,7 +4,7 @@ import MerkleTree from "../../utils/merkleTree"
 import {createTranscodingOptions} from "../../utils/videoProfile"
 import Segment from "../../utils/segment"
 import ethUtil from "ethereumjs-util"
-import BigNumber from "bignumber.js"
+import BN from "bn.js"
 
 const Controller = artifacts.require("Controller")
 const BondingManager = artifacts.require("BondingManager")
@@ -14,7 +14,7 @@ const LivepeerVerifier = artifacts.require("LivepeerVerifier")
 const LivepeerToken = artifacts.require("LivepeerToken")
 
 contract("FailedVerificationSlashing", accounts => {
-    const TOKEN_UNIT = 10 ** 18
+    const TOKEN_UNIT = (new BN(10)).pow(new BN(18))
 
     let controller
     let bondingManager
@@ -64,7 +64,7 @@ contract("FailedVerificationSlashing", accounts => {
         const tokenAddr = await controller.getContract(contractId("LivepeerToken"))
         token = await LivepeerToken.at(tokenAddr)
 
-        const transferAmount = new BigNumber(10).times(TOKEN_UNIT)
+        const transferAmount = (new BN(10)).mul(TOKEN_UNIT)
         await token.transfer(transcoder, transferAmount, {from: accounts[0]})
         await token.transfer(delegator1, transferAmount, {from: accounts[0]})
         await token.transfer(delegator2, transferAmount, {from: accounts[0]})
@@ -91,10 +91,10 @@ contract("FailedVerificationSlashing", accounts => {
     it("solver should slash a transcoder for failing verification", async () => {
         await jobsManager.deposit({from: broadcaster, value: 1000})
 
-        const endBlock = (await roundsManager.blockNum()).add(100)
+        const endBlock = (await roundsManager.blockNum()).add(new BN(100))
         await jobsManager.job("foo", createTranscodingOptions(["foo", "bar"]), 1, endBlock, {from: broadcaster})
 
-        const rand = web3.eth.getBlock(web3.eth.blockNumber).hash
+        const rand = (await web3.eth.getBlock("latest")).hash
         await roundsManager.mineBlocks(1)
         await roundsManager.setBlockHash(rand)
 
@@ -118,7 +118,7 @@ contract("FailedVerificationSlashing", accounts => {
         ]
 
         // Transcode receipts
-        const tReceiptHashes = batchTranscodeReceiptHashes(segments, tDataHashes)
+        const tReceiptHashes = await batchTranscodeReceiptHashes(segments, tDataHashes)
 
         // Build merkle tree
         const merkleTree = new MerkleTree(tReceiptHashes)
@@ -128,8 +128,9 @@ contract("FailedVerificationSlashing", accounts => {
         await jobsManager.claimWork(0, [0, 3], merkleTree.getHexRoot(), {from: transcoder})
         // Mine the claim block and the claim block + 1
         await roundsManager.mineBlocks(2)
-        await jobsManager.verify(0, 0, 0, "bar", [dataHashes[0], tDataHashes[0]], ethUtil.bufferToHex(segments[0].signedHash()), merkleTree.getHexProof(tReceiptHashes[0]), {from: transcoder})
-        await verifier.__callback(0, web3.sha3("wrong hash"), {from: solver})
+        const signedHash = ethUtil.bufferToHex(await segments[0].signedHash()) 
+        await jobsManager.verify(0, 0, 0, "bar", [dataHashes[0], tDataHashes[0]], signedHash, merkleTree.getHexProof(tReceiptHashes[0]), {from: transcoder})
+        await verifier.__callback(0, web3.utils.sha3("wrong hash"), {from: solver})
 
         // Check that the transcoder is penalized
         const currentRound = await roundsManager.currentRound()

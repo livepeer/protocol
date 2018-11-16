@@ -1,6 +1,6 @@
 import {contractId} from "../../utils/helpers"
 import {constants} from "../../utils/constants"
-import BigNumber from "bignumber.js"
+import BN from "bn.js"
 
 const Controller = artifacts.require("Controller")
 const BondingManager = artifacts.require("BondingManager")
@@ -45,7 +45,7 @@ contract("Rewards", accounts => {
         const tokenAddr = await controller.getContract(contractId("LivepeerToken"))
         token = await LivepeerToken.at(tokenAddr)
 
-        const transferAmount = new BigNumber(10).times(constants.TOKEN_UNIT)
+        const transferAmount = (new BN(10)).mul(constants.TOKEN_UNIT)
         await token.transfer(transcoder1, transferAmount, {from: accounts[0]})
         await token.transfer(delegator1, transferAmount, {from: accounts[0]})
         await token.transfer(delegator2, transferAmount, {from: accounts[0]})
@@ -96,18 +96,13 @@ contract("Rewards", accounts => {
         }
 
         const callRewardAndCheckStakes = async () => {
-            const acceptableDelta = constants.TOKEN_UNIT / 1000 // .001
+            const acceptableDelta = constants.TOKEN_UNIT.div(new BN(1000)) // .001
 
             const t1StartStake = await getStake(transcoder1)
             const d1StartStake = await getStake(delegator1)
             const d2StartStake = await getStake(delegator2)
             const d3StartStake = await getStake(delegator3)
             const totalStartStake = t1StartStake.add(d1StartStake).add(d2StartStake).add(d3StartStake)
-
-            const expT1RewardPerc = t1StartStake.div(totalStartStake)
-            const expD1RewardPerc = d1StartStake.div(totalStartStake)
-            const expD2RewardPerc = d2StartStake.div(totalStartStake)
-            const expD3RewardPerc = d3StartStake.div(totalStartStake)
 
             await bondingManager.reward({from: transcoder1})
 
@@ -116,10 +111,10 @@ contract("Rewards", accounts => {
             const delegatorRewards = earningsPool[0]
             const transcoderRewards = earningsPool[6]
 
-            const expT1RewardShare = delegatorRewards.mul(expT1RewardPerc).floor().add(transcoderRewards)
-            const expD1RewardShare = delegatorRewards.mul(expD1RewardPerc).floor()
-            const expD2RewardShare = delegatorRewards.mul(expD2RewardPerc).floor()
-            const expD3RewardShare = delegatorRewards.mul(expD3RewardPerc).floor()
+            const expT1RewardShare = delegatorRewards.mul(t1StartStake).div(totalStartStake).add(transcoderRewards)
+            const expD1RewardShare = delegatorRewards.mul(d1StartStake).div(totalStartStake)
+            const expD2RewardShare = delegatorRewards.mul(d2StartStake).div(totalStartStake)
+            const expD3RewardShare = delegatorRewards.mul(d3StartStake).div(totalStartStake)
 
             const t1Stake = await getStake(transcoder1)
             const d1Stake = await getStake(delegator1)
@@ -131,14 +126,14 @@ contract("Rewards", accounts => {
             const d2RewardShare = d2Stake.sub(d2StartStake)
             const d3RewardShare = d3Stake.sub(d3StartStake)
 
-            assert.isAtMost(t1RewardShare.sub(expT1RewardShare).abs().toNumber(), acceptableDelta)
-            assert.isAtMost(d1RewardShare.sub(expD1RewardShare).abs().toNumber(), acceptableDelta)
-            assert.isAtMost(d2RewardShare.sub(expD2RewardShare).abs().toNumber(), acceptableDelta)
-            assert.isAtMost(d3RewardShare.sub(expD3RewardShare).abs().toNumber(), acceptableDelta)
+            assert.isOk(t1RewardShare.sub(expT1RewardShare).abs().lte(acceptableDelta))
+            assert.isOk(d1RewardShare.sub(expD1RewardShare).abs().lte(acceptableDelta))
+            assert.isOk(d2RewardShare.sub(expD2RewardShare).abs().lte(acceptableDelta))
+            assert.isOk(d3RewardShare.sub(expD3RewardShare).abs().lte(acceptableDelta))
         }
 
         const claimEarningsAndCheckStakes = async addr => {
-            const acceptableDelta = constants.TOKEN_UNIT / 1000 // .001
+            const acceptableDelta = constants.TOKEN_UNIT.div(new BN(1000)) // .001
 
             const t1StartStake = await getStake(transcoder1)
             const d1StartStake = await getStake(delegator1)
@@ -153,10 +148,10 @@ contract("Rewards", accounts => {
             const d2Stake = await getStake(delegator2)
             const d3Stake = await getStake(delegator3)
 
-            assert.isAtMost(t1Stake.sub(t1StartStake).abs().toNumber(), acceptableDelta)
-            assert.isAtMost(d1Stake.sub(d1StartStake).abs().toNumber(), acceptableDelta)
-            assert.isAtMost(d2Stake.sub(d2StartStake).abs().toNumber(), acceptableDelta)
-            assert.isAtMost(d3Stake.sub(d3StartStake).abs().toNumber(), acceptableDelta)
+            assert.isOk(t1Stake.sub(t1StartStake).abs().lte(acceptableDelta))
+            assert.isOk(d1Stake.sub(d1StartStake).abs().lte(acceptableDelta))
+            assert.isOk(d2Stake.sub(d2StartStake).abs().lte(acceptableDelta))
+            assert.isOk(d3Stake.sub(d3StartStake).abs().lte(acceptableDelta))
         }
 
         await callRewardAndCheckStakes()

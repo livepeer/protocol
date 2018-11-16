@@ -265,15 +265,11 @@ contract("JobsManager", accounts => {
         })
 
         it("should create a new NewJob event", async () => {
-            const e = jobsManager.NewJob({})
-
-            e.watch(async (err, result) => {
-                e.stopWatching()
-
-                assert.equal(result.args.broadcaster, broadcaster, "wrong broadcaster")
-                assert.equal(result.args.jobId, 0, "wrong jobId")
-                assert.equal(result.args.streamId, "foo", "wrong streamId")
-                assert.equal(result.args.transcodingOptions, transcodingOptions, "wrong transcodingOptions")
+            jobsManager.NewJob({}).on("data", e => {
+                assert.equal(e.returnValues.broadcaster, broadcaster, "wrong broadcaster")
+                assert.equal(e.returnValues.jobId, 0, "wrong jobId")
+                assert.equal(e.returnValues.streamId, "foo", "wrong streamId")
+                assert.equal(e.returnValues.transcodingOptions, transcodingOptions, "wrong transcodingOptions")
             })
 
             await jobsManager.job("foo", transcodingOptions, 1, currentBlock + 50, {from: broadcaster})
@@ -304,7 +300,7 @@ contract("JobsManager", accounts => {
         const currentRound = 2
         const transcodingOptions = createTranscodingOptions(["foo"])
         const segmentRange = [0, 3]
-        const claimRoot = web3.sha3("foo")
+        const claimRoot = web3.utils.sha3("foo")
 
         beforeEach(async () => {
             await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), currentBlock)
@@ -370,14 +366,10 @@ contract("JobsManager", accounts => {
         })
 
         it("should create a NewClaim event", async () => {
-            const e = jobsManager.NewClaim({})
-
-            e.watch(async (err, result) => {
-                e.stopWatching()
-
-                assert.equal(result.args.transcoder, transcoder, "transcoder incorrect")
-                assert.equal(result.args.jobId, 1, "job id incorrect")
-                assert.equal(result.args.claimId, 0, "claim id incorrect")
+            jobsManager.NewClaim({}).on("data", e => {
+                assert.equal(e.returnValues.transcoder, transcoder, "transcoder incorrect")
+                assert.equal(e.returnValues.jobId, 1, "job id incorrect")
+                assert.equal(e.returnValues.claimId, 0, "claim id incorrect")
             })
 
             await jobsManager.claimWork(1, segmentRange, claimRoot, {from: transcoder})
@@ -428,18 +420,28 @@ contract("JobsManager", accounts => {
             "0x5a082c81a7e4d5833ee20bd67d2f4d736f679da33e4bebd3838217cb27bec1d3"
         ]
 
-        // Transcode receipts
-        const tReceiptHashes = batchTranscodeReceiptHashes(segments, tDataHashes)
+        let tReceiptHashes
+        let merkleTree
+        let dataStorageHash
+        let correctDataHash
+        let correctTDataHash
+        let correctDataHashes
+        let correctSig
+        let correctProof
 
-        // Build merkle tree
-        const merkleTree = new MerkleTree(tReceiptHashes)
+        before(async () => {
+            tReceiptHashes = await batchTranscodeReceiptHashes(segments, tDataHashes)
 
-        const dataStorageHash = "0x123"
-        const correctDataHash = dataHashes[0]
-        const correctTDataHash = tDataHashes[0]
-        const correctDataHashes = [correctDataHash, correctTDataHash]
-        const correctSig = ethUtil.bufferToHex(segments[0].signedHash())
-        const correctProof = merkleTree.getHexProof(tReceiptHashes[0])
+            // Build merkle tree
+            merkleTree = new MerkleTree(tReceiptHashes)
+
+            dataStorageHash = "0x123"
+            correctDataHash = dataHashes[0]
+            correctTDataHash = tDataHashes[0]
+            correctDataHashes = [correctDataHash, correctTDataHash]
+            correctSig = ethUtil.bufferToHex(await segments[0].signedHash())
+            correctProof = merkleTree.getHexProof(tReceiptHashes[0])
+        })
 
         beforeEach(async () => {
             await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), currentBlock)
@@ -485,7 +487,7 @@ contract("JobsManager", accounts => {
         })
 
         it("should fail if broadcaster signature over segment data is invalid", async () => {
-            const badSig = web3.eth.sign(accounts[3], ethUtil.bufferToHex(segments[0].hash()))
+            const badSig = await web3.eth.sign(ethUtil.bufferToHex(segments[0].hash()), accounts[3])
             // This should fail because badSig is not signed by the broadcaster
             await expectThrow(jobsManager.verify(0, 0, 0, dataStorageHash, correctDataHashes, badSig, correctProof, {from: transcoder}))
         })
@@ -511,7 +513,7 @@ contract("JobsManager", accounts => {
             await fixture.verifier.setMockUint256(functionSig("getPrice()"), 100)
             await jobsManager.verify(0, 0, 0, dataStorageHash, correctDataHashes, correctSig, correctProof, {from: transcoder, value: 100})
 
-            assert.equal(web3.eth.getBalance(fixture.verifier.address), 100, "wrong verifier ETH balance")
+            assert.equal(await web3.eth.getBalance(fixture.verifier.address), 100, "wrong verifier ETH balance")
         })
     })
 
@@ -542,18 +544,28 @@ contract("JobsManager", accounts => {
             "0x5a082c81a7e4d5833ee20bd67d2f4d736f679da33e4bebd3838217cb27bec1d3"
         ]
 
-        // Transcode receipts
-        const tReceiptHashes = batchTranscodeReceiptHashes(segments, tDataHashes)
+        let tReceiptHashes
+        let merkleTree
+        let dataStorageHash
+        let correctDataHash
+        let correctTDataHash
+        let correctDataHashes
+        let correctSig
+        let correctProof
 
-        // Build merkle tree
-        const merkleTree = new MerkleTree(tReceiptHashes)
+        before(async () => {
+            tReceiptHashes = await batchTranscodeReceiptHashes(segments, tDataHashes)
 
-        const dataStorageHash = "0x123"
-        const correctDataHash = dataHashes[0]
-        const correctTDataHash = tDataHashes[0]
-        const correctDataHashes = [correctDataHash, correctTDataHash]
-        const correctSig = ethUtil.bufferToHex(segments[0].signedHash())
-        const correctProof = merkleTree.getHexProof(tReceiptHashes[0])
+            // Build merkle tree
+            merkleTree = new MerkleTree(tReceiptHashes)
+
+            dataStorageHash = "0x123"
+            correctDataHash = dataHashes[0]
+            correctTDataHash = tDataHashes[0]
+            correctDataHashes = [correctDataHash, correctTDataHash]
+            correctSig = ethUtil.bufferToHex(await segments[0].signedHash())
+            correctProof = merkleTree.getHexProof(tReceiptHashes[0])
+        })
 
         beforeEach(async () => {
             await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), currentBlock)
@@ -638,15 +650,11 @@ contract("JobsManager", accounts => {
 
         describe("result is true", () => {
             it("should create a PassedVerification event", async () => {
-                const e = jobsManager.PassedVerification({})
-
-                e.watch(async (err, result) => {
-                    e.stopWatching()
-
-                    assert.equal(result.args.transcoder, transcoder, "transcoder incorrect")
-                    assert.equal(result.args.jobId, 0, "job id incorrect")
-                    assert.equal(result.args.claimId, 0, "claim id incorrect")
-                    assert.equal(result.args.segmentNumber, 0, "segment number incorrect")
+                jobsManager.PassedVerification({}).once("data", e => {
+                    assert.equal(e.returnValues.transcoder, transcoder, "transcoder incorrect")
+                    assert.equal(e.returnValues.jobId, 0, "job id incorrect")
+                    assert.equal(e.returnValues.claimId, 0, "claim id incorrect")
+                    assert.equal(e.returnValues.segmentNumber, 0, "segment number incorrect")
                 })
 
                 // Call receiveVerification from the verifier
@@ -662,7 +670,7 @@ contract("JobsManager", accounts => {
         const currentRound = 2
         const transcodingOptions = createTranscodingOptions(["foo"])
         const segmentRange = [0, 3]
-        const claimRoot = web3.sha3("foo")
+        const claimRoot = web3.utils.sha3("foo")
 
         beforeEach(async () => {
             await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), currentBlock)
@@ -702,8 +710,8 @@ contract("JobsManager", accounts => {
 
         it("should fail if the claim is slashed and thus not pending", async () => {
             // Fast forward through verification period
-            const endVerificationBlock = (await jobsManager.getClaim(0, 0))[3]
-            await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), endVerificationBlock.add(1))
+            const endVerificationBlock = (await jobsManager.getClaim(0, 0))[3].toNumber()
+            await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), endVerificationBlock + 1)
 
             await jobsManager.missedVerificationSlash(0, 0, 0, {from: accounts[3]})
 
@@ -759,7 +767,7 @@ contract("JobsManager", accounts => {
         const currentRound = 2
         const transcodingOptions = createTranscodingOptions(["foo"])
         const segmentRange = [0, 3]
-        const claimRoot = web3.sha3("foo")
+        const claimRoot = web3.utils.sha3("foo")
 
         beforeEach(async () => {
             await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), currentBlock)
@@ -834,18 +842,28 @@ contract("JobsManager", accounts => {
             "0x5a082c81a7e4d5833ee20bd67d2f4d736f679da33e4bebd3838217cb27bec1d3"
         ]
 
-        // Transcode receipts
-        const tReceiptHashes = batchTranscodeReceiptHashes(segments, tDataHashes)
+        let tReceiptHashes
+        let merkleTree
+        let dataStorageHash
+        let correctDataHash
+        let correctTDataHash
+        let correctDataHashes
+        let correctSig
+        let correctProof
 
-        // Build merkle tree
-        const merkleTree = new MerkleTree(tReceiptHashes)
+        before(async () => {
+            tReceiptHashes = await batchTranscodeReceiptHashes(segments, tDataHashes)
 
-        const dataStorageHash = "0x123"
-        const correctDataHash = dataHashes[0]
-        const correctTDataHash = tDataHashes[0]
-        const correctDataHashes = [correctDataHash, correctTDataHash]
-        const correctSig = ethUtil.bufferToHex(segments[0].signedHash())
-        const correctProof = merkleTree.getHexProof(tReceiptHashes[0])
+            // Build merkle tree
+            merkleTree = new MerkleTree(tReceiptHashes)
+
+            dataStorageHash = "0x123"
+            correctDataHash = dataHashes[0]
+            correctTDataHash = tDataHashes[0]
+            correctDataHashes = [correctDataHash, correctTDataHash]
+            correctSig = ethUtil.bufferToHex(await segments[0].signedHash())
+            correctProof = merkleTree.getHexProof(tReceiptHashes[0])
+        })
 
         beforeEach(async () => {
             await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), currentBlock)
@@ -866,8 +884,8 @@ contract("JobsManager", accounts => {
 
         it("should fail if job does not exist", async () => {
             // Fast forward through verification period
-            const endVerificationBlock = (await jobsManager.getClaim(0, 0))[3]
-            await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), endVerificationBlock.add(1))
+            const endVerificationBlock = (await jobsManager.getClaim(0, 0))[3].toNumber()
+            await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), endVerificationBlock + 1)
 
             const invalidJobId = 1
             await expectThrow(jobsManager.missedVerificationSlash(invalidJobId, 0, 0, {from: watcher}))
@@ -887,8 +905,8 @@ contract("JobsManager", accounts => {
 
         it("should fail if claim is not pending", async () => {
             // Fast forward through verification period
-            const endVerificationBlock = (await jobsManager.getClaim(0, 0))[3]
-            await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), endVerificationBlock.add(1))
+            const endVerificationBlock = (await jobsManager.getClaim(0, 0))[3].toNumber()
+            await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), endVerificationBlock + 1)
 
             await jobsManager.missedVerificationSlash(0, 0, 0, {from: watcher})
 
@@ -899,7 +917,7 @@ contract("JobsManager", accounts => {
         it("should fail if segment was not challenged for verification", async () => {
             // Fast forward through verification period
             const endVerificationBlock = (await jobsManager.getClaim(0, 0))[3]
-            await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), endVerificationBlock.add(1))
+            await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), endVerificationBlock + 1)
             // Only 1 out of 1000000000000 segments should be verified
             await jobsManager.setVerificationRate(1000000000000)
 
@@ -910,16 +928,16 @@ contract("JobsManager", accounts => {
         it("should fail if segment was submitted for verification", async () => {
             await jobsManager.verify(0, 0, 0, dataStorageHash, correctDataHashes, correctSig, correctProof, {from: transcoder})
             // Fast forward through verification period
-            const endVerificationBlock = (await jobsManager.getClaim(0, 0))[3]
-            await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), endVerificationBlock.add(1))
+            const endVerificationBlock = (await jobsManager.getClaim(0, 0))[3].toNumber()
+            await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), endVerificationBlock + 1)
 
             await expectThrow(jobsManager.missedVerificationSlash(0, 0, 0, {from: watcher}))
         })
 
         it("should refund the broadcaster", async () => {
             // Fast forward through verification period
-            const endVerificationBlock = (await jobsManager.getClaim(0, 0))[3]
-            await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), endVerificationBlock.add(1))
+            const endVerificationBlock = (await jobsManager.getClaim(0, 0))[3].toNumber()
+            await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), endVerificationBlock + 1)
 
             await jobsManager.missedVerificationSlash(0, 0, 0, {from: watcher})
 
@@ -931,21 +949,21 @@ contract("JobsManager", accounts => {
 
         it("should set job as inactive by setting its end block to the current block", async () => {
             // Fast forward through verification period
-            const endVerificationBlock = (await jobsManager.getClaim(0, 0))[3]
-            await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), endVerificationBlock.add(1))
+            const endVerificationBlock = (await jobsManager.getClaim(0, 0))[3].toNumber()
+            await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), endVerificationBlock + 1)
 
             await jobsManager.missedVerificationSlash(0, 0, 0, {from: watcher})
 
             assert.equal(await jobsManager.jobStatus(0), JobStatus.Inactive, "wrong job status")
 
             const endBlock = (await jobsManager.getJob(0))[7]
-            assert.equal(endBlock, endVerificationBlock.add(1).toNumber(), "wrong job end block")
+            assert.equal(endBlock, endVerificationBlock + 1, "wrong job end block")
         })
 
         it("should set the claim as slashed", async () => {
             // Fast forward through verification period
-            const endVerificationBlock = (await jobsManager.getClaim(0, 0))[3]
-            await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), endVerificationBlock.add(1))
+            const endVerificationBlock = (await jobsManager.getClaim(0, 0))[3].toNumber()
+            await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), endVerificationBlock + 1)
 
             await jobsManager.missedVerificationSlash(0, 0, 0, {from: watcher})
 
@@ -961,7 +979,7 @@ contract("JobsManager", accounts => {
         const currentBlock = 100
         const currentRound = 2
         const transcodingOptions = createTranscodingOptions(["foo"])
-        const claimRoot = web3.sha3("foo")
+        const claimRoot = web3.utils.sha3("foo")
 
         beforeEach(async () => {
             await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), currentBlock)
@@ -999,8 +1017,8 @@ contract("JobsManager", accounts => {
 
         it("should fail if claim 0 is slashed", async () => {
             // Fast forward through verification period
-            const endVerificationBlock = (await jobsManager.getClaim(0, 0))[3]
-            await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), endVerificationBlock.add(1))
+            const endVerificationBlock = (await jobsManager.getClaim(0, 0))[3].toNumber()
+            await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), endVerificationBlock + 1)
             // Slash transcoder for missed verification with claim 0
             await jobsManager.missedVerificationSlash(0, 0, 0, {from: watcher})
 
@@ -1010,8 +1028,8 @@ contract("JobsManager", accounts => {
 
         it("should fail if claim 1 is slashed", async () => {
             // Fast forward through verification period
-            const endVerificationBlock = (await jobsManager.getClaim(0, 1))[3]
-            await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), endVerificationBlock.add(1))
+            const endVerificationBlock = (await jobsManager.getClaim(0, 1))[3].toNumber()
+            await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), endVerificationBlock + 1)
             // Slash transcoder for missed verification with claim 1
             await jobsManager.missedVerificationSlash(0, 1, 0, {from: watcher})
 
@@ -1107,19 +1125,29 @@ contract("JobsManager", accounts => {
             "0x5a082c81a7e4d5833ee20bd67d2f4d736f679da33e4bebd3838217cb27bec1d3"
         ]
 
-        // Transcode receipts
-        const tReceiptHashes = batchTranscodeReceiptHashes(segments, tDataHashes)
+        let tReceiptHashes
+        let merkleTree
+        let dataStorageHash
+        let correctDataHash
+        let correctTDataHash
+        let correctDataHashes
+        let correctSig
+        let correctProof
 
-        // Build merkle tree
-        const merkleTree = new MerkleTree(tReceiptHashes)
+        before(async () => {
+            tReceiptHashes = await batchTranscodeReceiptHashes(segments, tDataHashes)
 
-        const dataStorageHash = "0x123"
-        const correctDataHash = dataHashes[0]
-        const correctTDataHash = tDataHashes[0]
-        const correctDataHashes = [correctDataHash, correctTDataHash]
-        const correctSig = ethUtil.bufferToHex(segments[0].signedHash())
-        const correctProof = merkleTree.getHexProof(tReceiptHashes[0])
+            // Build merkle tree
+            merkleTree = new MerkleTree(tReceiptHashes)
 
+            dataStorageHash = "0x123"
+            correctDataHash = dataHashes[0]
+            correctTDataHash = tDataHashes[0]
+            correctDataHashes = [correctDataHash, correctTDataHash]
+            correctSig = ethUtil.bufferToHex(await segments[0].signedHash())
+            correctProof = merkleTree.getHexProof(tReceiptHashes[0])
+        })
+ 
         beforeEach(async () => {
             await fixture.roundsManager.setMockUint256(functionSig("blockNum()"), currentBlock)
             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)

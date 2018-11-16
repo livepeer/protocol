@@ -1,6 +1,6 @@
 import {contractId} from "../../utils/helpers"
 import {createTranscodingOptions} from "../../utils/videoProfile"
-import BigNumber from "bignumber.js"
+import BN from "bn.js"
 
 const Controller = artifacts.require("Controller")
 const ServiceRegistry = artifacts.require("ServiceRegistry")
@@ -10,7 +10,7 @@ const AdjustableRoundsManager = artifacts.require("AdjustableRoundsManager")
 const LivepeerToken = artifacts.require("LivepeerToken")
 
 contract("JobAssignment", accounts => {
-    const TOKEN_UNIT = 10 ** 18
+    const TOKEN_UNIT = (new BN(10)).pow(new BN(18))
 
     let controller
     let registry
@@ -50,7 +50,7 @@ contract("JobAssignment", accounts => {
         const tokenAddr = await controller.getContract(contractId("LivepeerToken"))
         token = await LivepeerToken.at(tokenAddr)
 
-        const transferAmount = new BigNumber(10).times(TOKEN_UNIT)
+        const transferAmount = (new BN(10)).mul(TOKEN_UNIT)
         await token.transfer(transcoder1, transferAmount, {from: accounts[0]})
         await token.transfer(transcoder2, transferAmount, {from: accounts[0]})
         await token.transfer(transcoder3, transferAmount, {from: accounts[0]})
@@ -95,7 +95,7 @@ contract("JobAssignment", accounts => {
         const streamId = "foo"
         const transcodingOptions = createTranscodingOptions(["foo"])
         const maxPricePerSegment = 10
-        const endBlock = (await roundsManager.blockNum()).add(1000)
+        const endBlock = (await roundsManager.blockNum()).add(new BN(1000))
 
         // Broadcaster makes a deposit for jobs
         await jobsManager.deposit({from: broadcaster, value: 100000})
@@ -111,11 +111,11 @@ contract("JobAssignment", accounts => {
 
         while (jobsCreated < 100) {
             // Set rand hash
-            rand = web3.eth.getBlock(web3.eth.blockNumber).hash
+            rand = (await web3.eth.getBlock("latest")).hash
             await roundsManager.setBlockHash(rand)
 
             await jobsManager.job(streamId, transcodingOptions, maxPricePerSegment, endBlock)
-            jobID = (await jobsManager.numJobs.call()).sub(1)
+            jobID = (await jobsManager.numJobs.call()).sub(new BN(1))
             job = await jobsManager.getJob(jobID)
             jobCreationRound = job[5]
 
@@ -180,7 +180,7 @@ contract("JobAssignment", accounts => {
         const streamId = "foo"
         const transcodingOptions = createTranscodingOptions(["foo"])
         const maxPricePerSegment = 1
-        const endBlock = (await roundsManager.blockNum()).add(1000)
+        const endBlock = (await roundsManager.blockNum()).add(new BN(1000))
 
         let jobID
         let job
@@ -192,11 +192,11 @@ contract("JobAssignment", accounts => {
 
         while (jobsCreated < 5) {
             // Set rand hash
-            rand = web3.eth.getBlock(web3.eth.blockNumber).hash
+            rand = (await web3.eth.getBlock("latest")).hash
             await roundsManager.setBlockHash(rand)
 
             await jobsManager.job(streamId, transcodingOptions, maxPricePerSegment, endBlock)
-            jobID = (await jobsManager.numJobs.call()).sub(1)
+            jobID = (await jobsManager.numJobs.call()).sub(new BN(1))
             job = await jobsManager.getJob(jobID)
             jobCreationRound = job[5]
 
