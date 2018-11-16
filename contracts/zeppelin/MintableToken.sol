@@ -1,8 +1,8 @@
 pragma solidity ^0.4.18;
 
 
-import 'openzeppelin-solidity/contracts/token/ERC20/ERC20.sol';
-import './Ownable.sol';
+import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
+import "./Ownable.sol";
 
 
 
@@ -31,7 +31,7 @@ contract MintableToken is ERC20, Ownable {
     * @param _amount The amount of tokens to mint.
     * @return A boolean that indicates if the operation was successful.
     */
-    function mint(address _to, uint256 _amount) onlyOwner canMint public returns (bool) {
+    function mint(address _to, uint256 _amount) public onlyOwner canMint returns (bool) {
         _mint(_to, _amount);
         emit Mint(_to, _amount);
         return true;
@@ -41,7 +41,7 @@ contract MintableToken is ERC20, Ownable {
     * @dev Function to stop minting new tokens.
     * @return True if the operation was successful.
     */
-    function finishMinting() onlyOwner canMint public returns (bool) {
+    function finishMinting() public onlyOwner canMint returns (bool) {
         mintingFinished = true;
         emit MintFinished();
         return true;
