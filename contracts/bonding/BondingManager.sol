@@ -116,7 +116,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * @dev BondingManager constructor. Only invokes constructor of base Manager contract with provided Controller address
      * @param _controller Address of Controller that this contract will be registered with
      */
-    function BondingManager(address _controller) public Manager(_controller) {}
+    constructor(address _controller) public Manager(_controller) {}
 
     /**
      * @dev Set unbonding period. Only callable by Controller owner
@@ -125,7 +125,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     function setUnbondingPeriod(uint64 _unbondingPeriod) external onlyControllerOwner {
         unbondingPeriod = _unbondingPeriod;
 
-        ParameterUpdate("unbondingPeriod");
+        emit ParameterUpdate("unbondingPeriod");
     }
 
     /**
@@ -138,7 +138,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
         transcoderPool.setMaxSize(_numTranscoders);
 
-        ParameterUpdate("numTranscoders");
+        emit ParameterUpdate("numTranscoders");
     }
 
     /**
@@ -151,7 +151,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
         numActiveTranscoders = _numActiveTranscoders;
 
-        ParameterUpdate("numActiveTranscoders");
+        emit ParameterUpdate("numActiveTranscoders");
     }
 
     /**
@@ -161,7 +161,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     function setMaxEarningsClaimsRounds(uint256 _maxEarningsClaimsRounds) external onlyControllerOwner {
         maxEarningsClaimsRounds = _maxEarningsClaimsRounds;
 
-        ParameterUpdate("maxEarningsClaimsRounds");
+        emit ParameterUpdate("maxEarningsClaimsRounds");
     }
 
     /**
@@ -213,7 +213,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
             t.pendingPricePerSegment = _pricePerSegment;
 
-            TranscoderUpdate(msg.sender, t.pendingRewardCut, t.pendingFeeShare, _pricePerSegment, true);
+            emit TranscoderUpdate(msg.sender, t.pendingRewardCut, t.pendingFeeShare, _pricePerSegment, true);
         } else {
             // It is not the lock period of the current round
             // Caller is free to change rewardCut, feeShare, pricePerSegment as it pleases
@@ -253,12 +253,12 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
                         transcoderPool.remove(lastTranscoder);
                         transcoderPool.insert(msg.sender, delegatedAmount, address(0), address(0));
 
-                        TranscoderEvicted(lastTranscoder);
+                        emit TranscoderEvicted(lastTranscoder);
                     }
                 }
             }
 
-            TranscoderUpdate(msg.sender, _rewardCut, _feeShare, _pricePerSegment, transcoderPool.contains(msg.sender));
+            emit TranscoderUpdate(msg.sender, _rewardCut, _feeShare, _pricePerSegment, transcoderPool.contains(msg.sender));
         }
     }
 
@@ -333,7 +333,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             livepeerToken().transferFrom(msg.sender, minter(), _amount);
         }
 
-        Bond(_to, currentDelegate, msg.sender, _amount, del.bondedAmount);
+        emit Bond(_to, currentDelegate, msg.sender, _amount, del.bondedAmount);
     }
 
     /**
@@ -396,7 +396,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             }
         } 
 
-        Unbond(currentDelegate, msg.sender, unbondingLockId, _amount, withdrawRound);
+        emit Unbond(currentDelegate, msg.sender, unbondingLockId, _amount, withdrawRound);
     }
 
     /**
@@ -470,7 +470,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // Tell Minter to transfer stake (LPT) to the delegator
         minter().trustedTransferTokens(msg.sender, amount);
 
-        WithdrawStake(msg.sender, _unbondingLockId, amount, withdrawRound);
+        emit WithdrawStake(msg.sender, _unbondingLockId, amount, withdrawRound);
     }
 
     /**
@@ -491,7 +491,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // Tell Minter to transfer fees (ETH) to the delegator
         minter().trustedWithdrawETH(msg.sender, amount);
 
-        WithdrawFees(msg.sender);
+        emit WithdrawFees(msg.sender);
     }
 
     /**
@@ -552,7 +552,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
         updateTranscoderWithRewards(msg.sender, rewardTokens, currentRound);
 
-        Reward(msg.sender, rewardTokens);
+        emit Reward(msg.sender, rewardTokens);
     }
 
     /**
@@ -627,15 +627,15 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
                 // Minter burns the slashed funds - finder reward
                 minter().trustedBurnTokens(burnAmount.sub(finderAmount));
 
-                TranscoderSlashed(_transcoder, _finder, penalty, finderAmount);
+                emit TranscoderSlashed(_transcoder, _finder, penalty, finderAmount);
             } else {
                 // Minter burns the slashed funds
                 minter().trustedBurnTokens(burnAmount);
 
-                TranscoderSlashed(_transcoder, address(0), penalty, 0);
+                emit TranscoderSlashed(_transcoder, address(0), penalty, 0);
             }
         } else {
-            TranscoderSlashed(_transcoder, _finder, 0, 0);
+            emit TranscoderSlashed(_transcoder, _finder, 0, 0);
         }
     }
 
@@ -990,7 +990,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // Remove transcoder from pools
         transcoderPool.remove(_transcoder);
 
-        TranscoderResigned(_transcoder);
+        emit TranscoderResigned(_transcoder);
     }
 
     /**
@@ -1040,7 +1040,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
                 if (earningsPool.hasClaimableShares()) {
                     bool isTranscoder = _delegator == del.delegateAddress;
 
-                    var (fees, rewards) = earningsPool.claimShare(currentBondedAmount, isTranscoder);
+                    (uint256 fees, uint256 rewards) = earningsPool.claimShare(currentBondedAmount, isTranscoder);
 
                     currentFees = currentFees.add(fees);
                     currentBondedAmount = currentBondedAmount.add(rewards);
@@ -1081,7 +1081,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // Delete lock
         delete del.unbondingLocks[_unbondingLockId];
 
-        Rebond(del.delegateAddress, _delegator, _unbondingLockId, amount);
+        emit Rebond(del.delegateAddress, _delegator, _unbondingLockId, amount);
     }
 
     /**

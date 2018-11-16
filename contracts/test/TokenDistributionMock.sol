@@ -13,7 +13,7 @@ contract TokenDistributionMock is ITokenDistribution, Ownable {
     // Is the distribution over
     bool over;
 
-    function TokenDistributionMock(uint256 _timeToEnd) public {
+    constructor(uint256 _timeToEnd) public {
         endTime = now.add(_timeToEnd);
         over = false;
     }

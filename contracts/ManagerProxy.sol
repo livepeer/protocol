@@ -18,7 +18,7 @@ contract ManagerProxy is ManagerProxyTarget {
      * @param _controller Address of Controller that this contract will be registered with
      * @param _targetContractId contract ID of the target contract
      */
-    function ManagerProxy(address _controller, bytes32 _targetContractId) public Manager(_controller) {
+    constructor(address _controller, bytes32 _targetContractId) public Manager(_controller) {
         targetContractId = _targetContractId;
     }
 

@@ -7,7 +7,7 @@ contract AdjustableRoundsManager is RoundsManager {
     uint256 num;
     bytes32 hash;
 
-    function AdjustableRoundsManager(address _controller) public RoundsManager(_controller) {}
+    constructor(address _controller) public RoundsManager(_controller) {}
 
     function setBlockNum(uint256 _num) external {
         num = _num;

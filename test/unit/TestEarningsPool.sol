@@ -13,7 +13,17 @@ contract TestEarningsPool {
     }
 
     function test_init() public {
-        var (rewardPool, feePool, transcoderRewardPool, transcoderFeePool, hasTranscoderRewardFeePool, totalStake, claimableStake, rewardCut, feeShare) = fixture.getEarningsPool();
+        (
+            uint256 rewardPool, 
+            uint256 feePool, 
+            uint256 transcoderRewardPool, 
+            uint256 transcoderFeePool, 
+            bool hasTranscoderRewardFeePool, 
+            uint256 totalStake, 
+            uint256 claimableStake, 
+            uint256 rewardCut, 
+            uint256 feeShare
+        ) = fixture.getEarningsPool();
         Assert.equal(rewardPool, 0, "wrong rewardPool");
         Assert.equal(feePool, 0, "wrong feePool");
         Assert.equal(transcoderRewardPool, 0, "wrong transcoderRewardPool");

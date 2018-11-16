@@ -23,7 +23,7 @@ contract ServiceRegistry is ManagerProxyTarget {
      * @dev ServiceRegistry constructor. Only invokes constructor of base Manager contract with provided Controller address
      * @param _controller Address of a Controller that this contract will be registered with
      */
-    function ServiceRegistry(address _controller) public Manager(_controller) {}
+    constructor(address _controller) public Manager(_controller) {}
 
     /**
      * @dev Stores service URI endpoint for the caller that can be used to send requests to the caller off-chain 
@@ -32,7 +32,7 @@ contract ServiceRegistry is ManagerProxyTarget {
     function setServiceURI(string _serviceURI) external {
         records[msg.sender].serviceURI = _serviceURI;
 
-        ServiceURIUpdate(msg.sender, _serviceURI);
+        emit ServiceURIUpdate(msg.sender, _serviceURI);
     }
 
     /**

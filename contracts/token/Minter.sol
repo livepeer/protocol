@@ -59,7 +59,7 @@ contract Minter is Manager, IMinter {
      * @param _inflationChange Change in inflation rate each round (increase or decrease) if target bonding rate is not achieved
      * @param _targetBondingRate Target bonding rate as a percentage of total bonded tokens / total token supply
      */
-    function Minter(address _controller, uint256 _inflation, uint256 _inflationChange, uint256 _targetBondingRate) public Manager(_controller) {
+    constructor(address _controller, uint256 _inflation, uint256 _inflationChange, uint256 _targetBondingRate) public Manager(_controller) {
         // Inflation must be valid percentage
         require(MathUtils.validPerc(_inflation));
         // Inflation change must be valid percentage
@@ -82,7 +82,7 @@ contract Minter is Manager, IMinter {
 
         targetBondingRate = _targetBondingRate;
 
-        ParameterUpdate("targetBondingRate");
+        emit ParameterUpdate("targetBondingRate");
     }
 
     /**
@@ -95,7 +95,7 @@ contract Minter is Manager, IMinter {
 
         inflationChange = _inflationChange;
 
-        ParameterUpdate("inflationChange");
+        emit ParameterUpdate("inflationChange");
     }
 
     /**
@@ -120,7 +120,7 @@ contract Minter is Manager, IMinter {
         // Transfer current Minter's token balance to new Minter
         livepeerToken().transfer(_newMinter, livepeerToken().balanceOf(this));
         // Transfer current Minter's ETH balance to new Minter
-        _newMinter.depositETH.value(this.balance)();
+        _newMinter.depositETH.value(address(this).balance)();
     }
 
     /**
@@ -185,7 +185,7 @@ contract Minter is Manager, IMinter {
         currentMintableTokens = MathUtils.percOf(livepeerToken().totalSupply(), inflation);
         currentMintedTokens = 0;
 
-        SetCurrentRewardTokens(currentMintableTokens, inflation);
+        emit SetCurrentRewardTokens(currentMintableTokens, inflation);
     }
 
     /**

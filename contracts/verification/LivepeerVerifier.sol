@@ -56,7 +56,7 @@ contract LivepeerVerifier is Manager, IVerifier {
      * @param _solver Solver address to register
      * @param _verificationCodeHash Content addressed hash specifying location of transcoding verification code
      */
-    function LivepeerVerifier(address _controller, address _solver, string _verificationCodeHash) public Manager(_controller) {
+    constructor(address _controller, address _solver, string _verificationCodeHash) public Manager(_controller) {
         // Solver must not be null address
         require(_solver != address(0));
         // Set solver
@@ -84,7 +84,7 @@ contract LivepeerVerifier is Manager, IVerifier {
 
         solver = _solver;
 
-        SolverUpdate(_solver);
+        emit SolverUpdate(_solver);
     }
 
     /**
@@ -107,9 +107,9 @@ contract LivepeerVerifier is Manager, IVerifier {
         requests[requestCount].jobId = _jobId;
         requests[requestCount].claimId = _claimId;
         requests[requestCount].segmentNumber = _segmentNumber;
-        requests[requestCount].commitHash = keccak256(_dataHashes[0], _dataHashes[1]);
+        requests[requestCount].commitHash = keccak256(abi.encodePacked(_dataHashes[0], _dataHashes[1]));
 
-        VerifyRequest(
+        emit VerifyRequest(
             requestCount,
             _jobId,
             _claimId,
@@ -136,10 +136,10 @@ contract LivepeerVerifier is Manager, IVerifier {
         // Check if transcoded data hash returned by solver matches originally submitted transcoded data hash
         if (q.commitHash == _result) {
             IVerifiable(controller.getContract(keccak256("JobsManager"))).receiveVerification(q.jobId, q.claimId, q.segmentNumber, true);
-            Callback(_requestId, q.jobId, q.claimId, q.segmentNumber, true);
+            emit Callback(_requestId, q.jobId, q.claimId, q.segmentNumber, true);
         } else {
             IVerifiable(controller.getContract(keccak256("JobsManager"))).receiveVerification(q.jobId, q.claimId, q.segmentNumber, false);
-            Callback(_requestId, q.jobId, q.claimId, q.segmentNumber, false);
+            emit Callback(_requestId, q.jobId, q.claimId, q.segmentNumber, false);
         }
 
         // Remove request

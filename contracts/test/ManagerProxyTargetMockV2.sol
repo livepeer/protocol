@@ -11,7 +11,7 @@ contract ManagerProxyTargetMockV2 is ManagerProxyTarget {
     bytes32 public bytes32Value;
     address public addressValue;
 
-    function ManagerProxyTargetMockV2(address _controller) public Manager(_controller) {}
+    constructor(address _controller) public Manager(_controller) {}
 
     function setUint8(uint8 _value) external {
         uint8Value = _value + 5;
@@ -26,10 +26,11 @@ contract ManagerProxyTargetMockV2 is ManagerProxyTarget {
     }
 
     function setBytes32(bytes32 _value) external {
-        bytes32Value = keccak256(_value);
+        bytes32Value = keccak256(abi.encodePacked(_value));
     }
 
     function setAddress(address _value) external {
+        addressValue = _value; // to supress compilation warnings
         addressValue = address(0);
     }
 }

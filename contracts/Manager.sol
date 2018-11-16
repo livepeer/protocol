@@ -32,7 +32,7 @@ contract Manager is IManager {
         _;
     }
 
-    function Manager(address _controller) public {
+    constructor(address _controller) public {
         controller = IController(_controller);
     }
 
@@ -43,6 +43,6 @@ contract Manager is IManager {
     function setController(address _controller) external onlyController {
         controller = IController(_controller);
 
-        SetController(_controller);
+        emit SetController(_controller);
     }
 }

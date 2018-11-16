@@ -38,7 +38,7 @@ contract LivepeerTokenFaucet is Ownable {
      * @param _requestAmount Amount of token sent to sender for a request
      * @param _requestWait Amount of time a sender must wait between request (denominated in hours)
      */
-    function LivepeerTokenFaucet(address _token, uint256 _requestAmount, uint256 _requestWait) public {
+    constructor(address _token, uint256 _requestAmount, uint256 _requestWait) public {
         token = ILivepeerToken(_token);
         requestAmount = _requestAmount;
         requestWait = _requestWait;
@@ -70,6 +70,6 @@ contract LivepeerTokenFaucet is Ownable {
 
         token.transfer(msg.sender, requestAmount);
 
-        Request(msg.sender, requestAmount);
+        emit Request(msg.sender, requestAmount);
     }
 }

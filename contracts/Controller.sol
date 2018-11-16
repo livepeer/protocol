@@ -16,7 +16,7 @@ contract Controller is Pausable, IController {
     // Track contract ids and contract info
     mapping (bytes32 => ContractInfo) private registry;
 
-    function Controller() public {
+    constructor() public {
         // Start system as paused
         paused = true;
     }
@@ -30,7 +30,7 @@ contract Controller is Pausable, IController {
         registry[_id].contractAddress = _contractAddress;
         registry[_id].gitCommitHash = _gitCommitHash;
 
-        SetContractInfo(_id, _contractAddress, _gitCommitHash);
+        emit SetContractInfo(_id, _contractAddress, _gitCommitHash);
     }
 
     /*

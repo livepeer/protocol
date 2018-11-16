@@ -44,7 +44,7 @@ contract TestEarningsPoolNoTranscoderRewardFeePool {
     function test_claimShare_notTranscoder() public {
         fixture.addToFeePool(1000);
         fixture.addToRewardPool(1000);
-        var (fees, rewards) = fixture.claimShare(500, false);
+        (uint256 fees, uint256 rewards) = fixture.claimShare(500, false);
         Assert.equal(fees, 250, "should claim delegator's share of fee pool");
         Assert.equal(rewards, 250, "should claim delegator's share of reward pool");
         Assert.equal(fixture.getFeePool(), 750, "should decrease fee pool by claimant's share of fees");
@@ -57,7 +57,7 @@ contract TestEarningsPoolNoTranscoderRewardFeePool {
     function test_claimShare_isTranscoder() public {
         fixture.addToFeePool(1000);
         fixture.addToRewardPool(1000);
-        var (fees, rewards) = fixture.claimShare(500, true);
+        (uint256 fees, uint256 rewards) = fixture.claimShare(500, true);
         Assert.equal(fees, 750, "should claim transcoder's share of fee pool which includes its share as a delegator");
         Assert.equal(rewards, 750, "should claim transcoder's share of reward pool which includes its share as a delegator");
         Assert.equal(fixture.getFeePool(), 250, "should decrease fee pool by claimant's share of fees");
@@ -69,7 +69,7 @@ contract TestEarningsPoolNoTranscoderRewardFeePool {
 
     function test_claimShares_emptyFeePool_notTranscoder() public {
         fixture.addToRewardPool(1000);
-        var (fees, rewards) = fixture.claimShare(500, false);
+        (uint256 fees, uint256 rewards) = fixture.claimShare(500, false);
         Assert.equal(fees, 0, "should claim 0 fees when fee pool is empty");
         Assert.equal(rewards, 250, "should claim delegator's share of reward pool");
         Assert.equal(fixture.getRewardPool(), 750, "should decrease reward pool by claimant's share of rewards");
@@ -79,7 +79,7 @@ contract TestEarningsPoolNoTranscoderRewardFeePool {
 
     function test_claimShares_emptyFeePool_isTranscoder() public {
         fixture.addToRewardPool(1000);
-        var (fees, rewards) = fixture.claimShare(500, true);
+        (uint256 fees, uint256 rewards) = fixture.claimShare(500, true);
         Assert.equal(fees, 0, "should claim 0 fees when fee pool is empty");
         Assert.equal(rewards, 750, "should claim transcoder's share of reward pool which includes its share as a delegator");
         Assert.equal(fixture.getRewardPool(), 250, "should decrease reward pool by claimant's share of rewards");
@@ -89,7 +89,7 @@ contract TestEarningsPoolNoTranscoderRewardFeePool {
 
     function test_claimShares_emptyRewardPool_notTranscoder() public {
         fixture.addToFeePool(1000);
-        var (fees, rewards) = fixture.claimShare(500, false);
+        (uint256 fees, uint256 rewards) = fixture.claimShare(500, false);
         Assert.equal(fees, 250, "should claim delegator's share of fee pool");
         Assert.equal(rewards, 0, "should claim 0 rewards when reward pool is empty");
         Assert.equal(fixture.getFeePool(), 750, "should decrease fee pool by claimant's share of fees");
@@ -99,7 +99,7 @@ contract TestEarningsPoolNoTranscoderRewardFeePool {
 
     function test_claimShares_emptyRewardPool_isTranscoder() public {
         fixture.addToFeePool(1000);
-        var (fees, rewards) = fixture.claimShare(500, true);
+        (uint256 fees, uint256 rewards) = fixture.claimShare(500, true);
         Assert.equal(fees, 750, "should claim transcoder's share of fee pool which includes its share as a delegator");
         Assert.equal(rewards, 0, "should claim 0 rewards when reward pool is empty");
         Assert.equal(fixture.getFeePool(), 250, "should decrease fee pool by claimant's share of fees");
@@ -108,7 +108,7 @@ contract TestEarningsPoolNoTranscoderRewardFeePool {
     }
 
     function test_claimShare_emptyFeeAndRewardPools() public {
-        var (fees, rewards) = fixture.claimShare(500, false);
+        (uint256 fees, uint256 rewards) = fixture.claimShare(500, false);
         Assert.equal(fees, 0, "should claim 0 fees when fee pool is empty");
         Assert.equal(rewards, 0, "should claim 0 rewards when reward pool is empty");
         Assert.equal(fixture.getFeePool(), 0, "feePool should remain 0");

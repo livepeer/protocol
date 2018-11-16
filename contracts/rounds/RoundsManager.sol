@@ -34,7 +34,7 @@ contract RoundsManager is ManagerProxyTarget, IRoundsManager {
      * @dev RoundsManager constructor. Only invokes constructor of base Manager contract with provided Controller address
      * @param _controller Address of Controller that this contract will be registered with
      */
-    function RoundsManager(address _controller) public Manager(_controller) {}
+    constructor(address _controller) public Manager(_controller) {}
 
     /**
      * @dev Set round length. Only callable by the controller owner
@@ -58,7 +58,7 @@ contract RoundsManager is ManagerProxyTarget, IRoundsManager {
             roundLength = _roundLength;
         }
 
-        ParameterUpdate("roundLength");
+        emit ParameterUpdate("roundLength");
     }
 
     /**
@@ -71,7 +71,7 @@ contract RoundsManager is ManagerProxyTarget, IRoundsManager {
 
         roundLockAmount = _roundLockAmount;
 
-        ParameterUpdate("roundLockAmount");
+        emit ParameterUpdate("roundLockAmount");
     }
 
     /**
@@ -90,7 +90,7 @@ contract RoundsManager is ManagerProxyTarget, IRoundsManager {
         // Set mintable rewards for the round
         minter().setCurrentRewardTokens();
 
-        NewRound(currRound);
+        emit NewRound(currRound);
     }
 
     /**
@@ -110,7 +110,7 @@ contract RoundsManager is ManagerProxyTarget, IRoundsManager {
         // Can only retrieve hashes for last 256 blocks
         require(currentBlock < 256 || _block >= currentBlock - 256);
 
-        return block.blockhash(_block);
+        return blockhash(_block);
     }
 
     /**
