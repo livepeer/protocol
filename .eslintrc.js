@@ -11,6 +11,7 @@ module.exports = {
 		"require-jsdoc": "off",
 		"semi": ["error", "never"],
 		"quotes": ["error", "double"],
-        "comma-dangle": ["error", "never"]
+		"comma-dangle": ["error", "never"],
+		"indent": ["error", 4]
 	}
 };

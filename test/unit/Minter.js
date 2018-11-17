@@ -218,7 +218,7 @@ contract("Minter", accounts => {
             await fixture.bondingManager.execute(minter.address, functionEncodedABI("createReward(uint256,uint256)", ["uint256", "uint256"], [100, 100]))
 
             await expectThrow(fixture.bondingManager.execute(minter.address, functionEncodedABI("createReward(uint256,uint256)", ["uint256", "uint256"], [10, 100])))
-       })
+        })
     })
 
     describe("trustedTransferTokens", () => {
