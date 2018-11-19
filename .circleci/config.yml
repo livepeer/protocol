@@ -1,34 +1,59 @@
 version: 2
+
 jobs:
-  build:
-    docker:
-      - image: circleci/node:6.10
-    environment:
-      - IMAGE_LATEST: "livepeer/protocol:latest"
-    steps:
-      - checkout
-      - run:
-          name: Install docker-compose
-          command: |
-            set -x
-            curl -L https://github.com/docker/compose/releases/download/1.16.1/docker-compose-`uname -s`-`uname -m` > ~/docker-compose
-            chmod +x ~/docker-compose
-            sudo mv ~/docker-compose /usr/local/bin/docker-compose
-      - setup_remote_docker:
-          version: 17.09.0-ce
-      - run:
-          name: Build docker image
-          command: |
-            docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
-            docker pull $IMAGE_LATEST
-            npm run docker:build
-            npm run docker:push
-      - run:
-          name: Run linting
-          command: npm run docker:run:lint
-      - run:
-          name: Run unit tests
-          command: npm run docker:run:test:coverage
-      - run:
-          name: Run integration tests
-          command: npm run docker:run:test:integration
+    build:
+        docker:
+            - image: circleci/node:8
+        working_directory: ~/protocol
+        steps:
+            - checkout
+            - run:
+                name: npm install
+                command: npm install
+            - save_cache:
+                key: protocol-{{ .Environment.CIRCLE_SHA1 }}
+                paths:
+                    - ~/protocol
+    lint:
+        docker:
+            - image: circleci/node:8
+        working_directory: ~/protocol
+        steps:
+            - restore_cache:
+                keys:
+                    - protocol-{{ .Environment.CIRCLE_SHA1 }}
+            - run: 
+                name: Run linting
+                command: npm run lint
+    test-contracts:
+        docker: 
+            - image: circleci/node:8
+        environment:
+            SOLC_VERSION: '0.4.25'
+        working_directory: ~/protocol
+        steps:
+            - restore_cache:
+                keys:
+                    - protocol-{{ .Environment.CIRCLE_SHA1 }}
+            - setup_remote_docker:
+                version: 17.09.0-ce
+            - run:
+                name: Install Dockerized solc
+                command: docker pull ethereum/solc:$SOLC_VERSION
+            - run: 
+                name: Run tests with coverage reporting
+                command: npm run test:coverage:coveralls
+                no_output_timeout: 20m
+
+workflows:
+    version: 2
+    main:
+        jobs:
+            - build
+            - lint:
+                requires:
+                    - build
+            - test-contracts:
+                requires:
+                    - build
+            

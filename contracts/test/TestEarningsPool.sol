@@ -1,7 +1,7 @@
 pragma solidity ^0.4.25;
 
-import "../../contracts/test/EarningsPoolFixture.sol";
-import "truffle/Assert.sol";
+import "./mocks/EarningsPoolFixture.sol";
+import "./helpers/Assert.sol";
 
 
 contract TestEarningsPool {

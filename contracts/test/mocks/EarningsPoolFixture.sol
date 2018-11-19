@@ -1,6 +1,6 @@
 pragma solidity ^0.4.25;
 
-import "../bonding/libraries/EarningsPool.sol";
+import "../../bonding/libraries/EarningsPool.sol";
 
 
 contract EarningsPoolFixture {
