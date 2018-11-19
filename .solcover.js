@@ -1,23 +1,7 @@
-const glob = require("glob")
-
-const testFiles = glob.sync("contracts/test/*.sol").map(file => file.replace("contracts/", ""))
-const mockFiles = ["rounds/AdjustableRoundsManager.sol"]
-const interfaces = [
-    "IController.sol",
-    "IManager.sol",
-    "bonding/IBondingManager.sol",
-    "rounds/IRoundsManager.sol",
-    "token/ILivepeerToken.sol",
-    "token/IMinter.sol",
-    "token/ITokenDistribution.sol",
-    "verification/IVerifiable.sol",
-    "verification/IVerifier.sol"
-]
-
 module.exports = {
     norpc: true,
-    testCommand: "node --max-old-space-size=4096 ../node_modules/.bin/truffle test test/unit/* --network coverage",
+    testCommand: "node --max-old-space-size=4096 ../node_modules/.bin/truffle test --network coverage",
     compileCommand: "node --max-old-space-size=4096 ../node_modules/.bin/truffle compile --network coverage",
     copyPackages: ["openzeppelin-solidity"],
-    skipFiles: testFiles.concat(mockFiles).concat(interfaces)
+    skipFiles: ["test", "zeppelin", "rounds/AdjustableRoundsManager.sol"]
 }

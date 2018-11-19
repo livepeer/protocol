@@ -1,6 +1,6 @@
 pragma solidity ^0.4.25;
 
-import "../ManagerProxyTarget.sol";
+import "../../ManagerProxyTarget.sol";
 
 
 contract ManagerProxyTargetMockV1 is ManagerProxyTarget {

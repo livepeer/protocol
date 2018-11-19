@@ -1,7 +1,7 @@
 pragma solidity ^0.4.25;
 
-import "../../contracts/test/SortedDoublyLLFixture.sol";
-import "truffle/Assert.sol";
+import "./mocks/SortedDoublyLLFixture.sol";
+import "./helpers/Assert.sol";
 
 
 contract TestSortedDoublyLLFindWithHints {

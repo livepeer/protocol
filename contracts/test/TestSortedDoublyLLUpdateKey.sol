@@ -1,8 +1,8 @@
 pragma solidity ^0.4.25;
 
-import "../../contracts/test/SortedDoublyLLFixture.sol";
-import "../../contracts/test/RevertProxy.sol";
-import "truffle/Assert.sol";
+import "./mocks/SortedDoublyLLFixture.sol";
+import "./helpers/RevertProxy.sol";
+import "./helpers/Assert.sol";
 
 
 contract TestSortedDoublyLLUpdateKey {

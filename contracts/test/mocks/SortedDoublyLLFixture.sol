@@ -1,6 +1,6 @@
 pragma solidity ^0.4.25;
 
-import "../libraries/SortedDoublyLL.sol";
+import "../../libraries/SortedDoublyLL.sol";
 
 
 contract SortedDoublyLLFixture {

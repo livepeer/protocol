@@ -1,7 +1,7 @@
 pragma solidity ^0.4.25;
 
-import "../../contracts/libraries/MathUtils.sol";
-import "truffle/Assert.sol";
+import "../libraries/MathUtils.sol";
+import "./helpers/Assert.sol";
 
 
 contract TestMathUtils {
