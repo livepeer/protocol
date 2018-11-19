@@ -63,7 +63,7 @@ contract("TicketBroker", accounts => {
         it("emits a DepositFunded event", async () => {
             const txResult = await broker.fundDeposit({from: accounts[0], value: 1000})
 
-            truffleAssert.eventEmitted(txResult, 'DepositFunded', (ev) => {
+            truffleAssert.eventEmitted(txResult, "DepositFunded", ev => {
                 return ev.sender === accounts[0] && ev.amount.toString() === "1000"
             })
         })
@@ -143,7 +143,7 @@ contract("TicketBroker", accounts => {
         it("emits a PenaltyEscrowFunded event", async () => {
             const txResult = await broker.fundPenaltyEscrow({from: accounts[0], value: 1000})
 
-            truffleAssert.eventEmitted(txResult, 'PenaltyEscrowFunded', (ev) => {
+            truffleAssert.eventEmitted(txResult, "PenaltyEscrowFunded", ev => {
                 return ev.sender === accounts[0] && ev.amount.toString() === "1000"
             })
         })
