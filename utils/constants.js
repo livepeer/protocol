@@ -6,6 +6,7 @@ export const constants = {
     TOKEN_UNIT: (new BN(10)).pow(new BN(18)),
     PERC_DIVISOR: 1000000,
     PERC_MULTIPLIER: 10000,
+    MAX_UINT256: (new BN(2)).pow(new BN(256)).sub(new BN(1)),
     DelegatorStatus: {
         Pending: 0,
         Bonded: 1,
