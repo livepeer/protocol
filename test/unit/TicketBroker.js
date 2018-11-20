@@ -2,6 +2,7 @@ import BN from "bn.js"
 import truffleAssert from "truffle-assertions"
 import calcTxCost from "../helpers/calcTxCost"
 import expectThrow from "../helpers/expectThrow"
+import {expectRevertWithReason} from "../helpers/expectFail"
 
 const TicketBroker = artifacts.require("TicketBroker")
 
@@ -164,5 +165,94 @@ contract("TicketBroker", accounts => {
             assert.equal(events[0].returnValues.sender, accounts[0])
             assert.equal(events[0].returnValues.amount.toString(), "1000")
         })
+    })
+
+    describe("redeemWinningTicket", () => {
+        it("reverts if ticket's recipient is null address", async () => {
+            await expectRevertWithReason(
+                broker.redeemWinningTicket(
+                    {
+                        recipient: web3.utils.padRight("0x0", 40),
+                        faceValue: 0,
+                        winProb: 0,
+                        senderNonce: 0,
+                        recipientRandHash: web3.utils.sha3("foo"),
+                        creationTimestamp: 0
+                    },
+                    web3.utils.asciiToHex("sig"),
+                    5
+                ),
+                "ticket recipient is null address"
+            )
+        })
+
+        it("reverts if recipientRand is not the preimage for the ticket's recipientRandHash", async () => {
+            await expectRevertWithReason(
+                broker.redeemWinningTicket(
+                    {
+                        recipient: accounts[0],
+                        faceValue: 0,
+                        winProb: 0,
+                        senderNonce: 0,
+                        recipientRandHash: web3.utils.sha3("foo"),
+                        creationTimestamp: 0
+                    },
+                    web3.utils.asciiToHex("sig"),
+                    5
+                ),
+                "recipientRand does not match recipientRandHash"
+            )
+        })
+
+        it("reverts if sender signature over ticket hash is invalid", async () => {
+            const recipientRand = 5
+            const recipientRandHash = web3.utils.soliditySha3(recipientRand)
+
+            await expectRevertWithReason(
+                broker.redeemWinningTicket(
+                    {
+                        recipient: accounts[0],
+                        faceValue: 0,
+                        winProb: 0,
+                        senderNonce: 0,
+                        recipientRandHash,
+                        creationTimestamp: 0
+                    },
+                    web3.utils.asciiToHex("sig"),
+                    recipientRand
+                ),
+                "invalid sender signature over ticket hash"
+            )
+        })
+
+        // it("reverts if the ticket did not win", async () => {
+        //     const recipientRand = 5
+        //     const recipientRandHash = web3.utils.soliditySha3(recipientRand)
+        //     const ticket = {
+        //         recipient: accounts[1],
+        //         faceValue: 0,
+        //         winProb: 0,
+        //         senderNonce: 0,
+        //         recipientRandHash,
+        //         creationTimestamp: 0
+        //     }
+        //     const ticketHash = web3.utils.soliditySha3(
+        //         ticket.recipient,
+        //         ticket.faceValue,
+        //         ticket.senderNonce,
+        //         ticket.recipientRandHash,
+        //         ticket.creationTimestamp
+        //     )
+        //     const senderSig = await web3.eth.sign(ticketHash, accounts[0]) 
+
+        //     await expectRevertWithReason(
+        //         broker.redeemWinningTicket(
+        //             ticket,
+        //             senderSig,
+        //             recipientRand
+        //         ),
+        //         "ticket did not win"
+        //     )
+        // })
     })
 })
