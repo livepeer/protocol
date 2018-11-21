@@ -3,7 +3,7 @@ import truffleAssert from "truffle-assertions"
 import calcTxCost from "../helpers/calcTxCost"
 import expectThrow from "../helpers/expectThrow"
 import {expectRevertWithReason} from "../helpers/expectFail"
-import {createTicket, createWinningTicket, ticketHash} from "../helpers/ticket"
+import {createTicket, createWinningTicket, getTicketHash} from "../helpers/ticket"
 import {constants} from "../../utils/constants"
 
 const TicketBroker = artifacts.require("TicketBroker")
@@ -235,10 +235,12 @@ contract("TicketBroker", accounts => {
 
             const recipientRand = 5
             const ticket = createWinningTicket(recipient, sender, recipientRand)
-            const senderSig = await web3.eth.sign(ticketHash(ticket), sender)
+            const ticketHash = getTicketHash(ticket)
+            const senderSig = await web3.eth.sign(ticketHash, sender)
 
             await broker.redeemWinningTicket(ticket, senderSig, recipientRand)
 
+            assert.isOk(await broker.usedTickets.call(ticketHash))
             await expectRevertWithReason(
                 broker.redeemWinningTicket(
                     ticket,
@@ -275,7 +277,7 @@ contract("TicketBroker", accounts => {
                 sender,
                 recipientRandHash
             })
-            const senderSig = await web3.eth.sign(ticketHash(ticket), sender)
+            const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
 
             await expectRevertWithReason(
                 broker.redeemWinningTicket(
@@ -290,7 +292,7 @@ contract("TicketBroker", accounts => {
         it("reverts if sender's deposit and penalty escrow are zero", async () => {
             const recipientRand = 5
             const ticket = createWinningTicket(recipient, sender, recipientRand)
-            const senderSig = await web3.eth.sign(ticketHash(ticket), sender)
+            const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
 
             await expectRevertWithReason(
                 broker.redeemWinningTicket(
@@ -311,7 +313,7 @@ contract("TicketBroker", accounts => {
                     const recipientRand = 5
                     const faceValue = 1000
                     const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
-                    const senderSig = await web3.eth.sign(ticketHash(ticket), sender)
+                    const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
                     const startRecipientBalance = new BN(await web3.eth.getBalance(recipient))
 
                     const txResult = await broker.redeemWinningTicket(ticket, senderSig, recipientRand, {from: recipient})
@@ -323,7 +325,31 @@ contract("TicketBroker", accounts => {
                     truffleAssert.eventNotEmitted(txResult, "WinningTicketTransfer")
                 })
 
-                // TODO: add test for slashing
+                it("burns sender.penaltyEscrow", async () => {
+                    const penaltyEscrow = 2000
+                    await broker.fundPenaltyEscrow({from: sender, value: penaltyEscrow})
+
+                    const recipientRand = 5
+                    const faceValue = 1000
+                    const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
+                    const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
+                    const startBrokerBalance = new BN(await web3.eth.getBalance(broker.address))
+                    const startBurnedBalance = new BN(await web3.eth.getBalance(constants.NULL_ADDRESS))
+
+                    const txRes = await broker.redeemWinningTicket(ticket, senderSig, recipientRand, {from: recipient})
+
+                    const txCost = await calcTxCost(txRes)
+                    const blockReward = new BN(web3.utils.toWei("3", "ether"))
+                    const burnAddressGanacheUpdates = txCost.add(blockReward)
+
+                    const endBrokerBalance = new BN(await web3.eth.getBalance(broker.address))
+                    const endBurnedBalance = new BN(await web3.eth.getBalance(constants.NULL_ADDRESS))
+                    const endPenaltyEscrow = (await broker.senders.call(sender)).penaltyEscrow.toString()
+
+                    assert.equal(startBrokerBalance.sub(endBrokerBalance).toString(), penaltyEscrow.toString())
+                    assert.equal(endBurnedBalance.sub(startBurnedBalance).sub(burnAddressGanacheUpdates).toString(), penaltyEscrow.toString())
+                    assert.equal(endPenaltyEscrow, "0")
+                })
             })
 
             describe("sender.deposit is not zero", () => {
@@ -334,7 +360,7 @@ contract("TicketBroker", accounts => {
                     const recipientRand = 5
                     const faceValue = 1000
                     const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
-                    const senderSig = await web3.eth.sign(ticketHash(ticket), sender)
+                    const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
                     const startBrokerBalance = new BN(await web3.eth.getBalance(broker.address))
                     const startRecipientBalance = new BN(await web3.eth.getBalance(recipient))
 
@@ -357,7 +383,7 @@ contract("TicketBroker", accounts => {
                     const recipientRand = 5
                     const faceValue = 1000
                     const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
-                    const senderSig = await web3.eth.sign(ticketHash(ticket), sender)
+                    const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
 
                     const txResult = await broker.redeemWinningTicket(ticket, senderSig, recipientRand, {from: recipient})
 
@@ -376,7 +402,7 @@ contract("TicketBroker", accounts => {
                         const recipientRand = 5
                         const faceValue = 1000
                         const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
-                        const senderSig = await web3.eth.sign(ticketHash(ticket), sender)
+                        const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
                         const startBrokerBalance = new BN(await web3.eth.getBalance(broker.address))
                         const startBurnedBalance = new BN(await web3.eth.getBalance(constants.NULL_ADDRESS))
 
@@ -404,7 +430,7 @@ contract("TicketBroker", accounts => {
                         const recipientRand = 5
                         const faceValue = 1000
                         const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
-                        const senderSig = await web3.eth.sign(ticketHash(ticket), sender)
+                        const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
                         const startBrokerBalance = new BN(await web3.eth.getBalance(broker.address))
                         const startBurnedBalance = new BN(await web3.eth.getBalance(constants.NULL_ADDRESS))
 
@@ -432,7 +458,7 @@ contract("TicketBroker", accounts => {
                         const recipientRand = 5
                         const faceValue = 1000
                         const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
-                        const senderSig = await web3.eth.sign(ticketHash(ticket), sender)
+                        const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
 
                         const txRes = await broker.redeemWinningTicket(ticket, senderSig, recipientRand, {from: recipient})
 
@@ -452,7 +478,7 @@ contract("TicketBroker", accounts => {
 
             const recipientRand = 5
             const ticket = createWinningTicket(recipient, sender, recipientRand)
-            const senderSig = await web3.eth.sign(ticketHash(ticket), sender)
+            const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
             const startBrokerBalance = new BN(await web3.eth.getBalance(broker.address))
             const startRecipientBalance = new BN(await web3.eth.getBalance(recipient))
 
@@ -476,7 +502,7 @@ contract("TicketBroker", accounts => {
             const recipientRand = 5
             const faceValue = 1000
             const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
-            const senderSig = await web3.eth.sign(ticketHash(ticket), sender)
+            const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
             const startBrokerBalance = new BN(await web3.eth.getBalance(broker.address))
             const startRecipientBalance = new BN(await web3.eth.getBalance(recipient))
 
@@ -499,7 +525,7 @@ contract("TicketBroker", accounts => {
             const recipientRand = 5
             const faceValue = 1500
             const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
-            const senderSig = await web3.eth.sign(ticketHash(ticket), sender)
+            const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
             const startBrokerBalance = new BN(await web3.eth.getBalance(broker.address))
             const startRecipientBalance = new BN(await web3.eth.getBalance(recipient))
 
@@ -522,7 +548,7 @@ contract("TicketBroker", accounts => {
             const recipientRand = 5
             const faceValue = 1500
             const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
-            const senderSig = await web3.eth.sign(ticketHash(ticket), sender)
+            const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
 
             const txResult = await broker.redeemWinningTicket(ticket, senderSig, recipientRand, {from: recipient})
 
@@ -547,8 +573,8 @@ contract("TicketBroker", accounts => {
             const faceValue = 1500
             const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
             const ticket2 = createWinningTicket(recipient, sender2, recipientRand, faceValue)
-            const senderSig = await web3.eth.sign(ticketHash(ticket), sender)
-            const senderSig2 = await web3.eth.sign(ticketHash(ticket2), sender2)
+            const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
+            const senderSig2 = await web3.eth.sign(getTicketHash(ticket2), sender2)
             const fromBlock = (await web3.eth.getBlock("latest")).number
 
             await broker.redeemWinningTicket(ticket, senderSig, recipientRand, {from: recipient})
@@ -575,8 +601,8 @@ contract("TicketBroker", accounts => {
             const faceValue = 200
             const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
             const ticket2 = createWinningTicket(recipient2, sender, recipientRand, faceValue)
-            const senderSig = await web3.eth.sign(ticketHash(ticket), sender)
-            const senderSig2 = await web3.eth.sign(ticketHash(ticket2), sender)
+            const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
+            const senderSig2 = await web3.eth.sign(getTicketHash(ticket2), sender)
             const fromBlock = (await web3.eth.getBlock("latest")).number
 
             await broker.redeemWinningTicket(ticket, senderSig, recipientRand, {from: recipient})

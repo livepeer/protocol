@@ -27,7 +27,7 @@ const createWinningTicket = (recipient, sender, recipientRand, faceValue = 0) =>
     return createTicket(ticketObj)
 }
 
-const ticketHash = ticketObj => {
+const getTicketHash = ticketObj => {
     return web3.utils.soliditySha3(
         ticketObj.recipient,
         ticketObj.sender,
@@ -52,5 +52,5 @@ const isSet = v => {
 module.exports = {
     createTicket,
     createWinningTicket,
-    ticketHash
+    getTicketHash
 }

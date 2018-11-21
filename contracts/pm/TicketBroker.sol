@@ -59,38 +59,17 @@ contract TicketBroker {
         emit PenaltyEscrowFunded(msg.sender, msg.value);
     }
 
-    function redeemWinningTicket(Ticket _ticket, bytes _senderSig, uint256 _recipientRand) public {
-        require(_ticket.recipient != address(0), "ticket recipient is null address");
-        require(_ticket.sender != address(0), "ticket sender is null address");
-        // TODO: Parameterize the ticket validity period instead of using hardcoded 3 days
-        require(_ticket.creationTimestamp + 3 days > block.timestamp, "ticket is expired");
-        require(
-            keccak256(abi.encodePacked(_recipientRand)) == _ticket.recipientRandHash,
-            "recipientRand does not match recipientRandHash"
-        );
+    function redeemWinningTicket(Ticket memory _ticket, bytes _sig, uint256 _recipientRand) public {
+        bytes32 ticketHash = getTicketHash(_ticket);
 
-        bytes32 ticketHash = keccak256(
-            abi.encodePacked(
-                _ticket.recipient,
-                _ticket.sender,
-                _ticket.faceValue,
-                _ticket.winProb,
-                _ticket.senderNonce,
-                _ticket.recipientRandHash,
-                _ticket.creationTimestamp
-            )
-        );
-
-        require(!usedTickets[ticketHash], "ticket is used");
-        require(isValidSenderSig(_ticket.sender, _senderSig, ticketHash), "invalid signature over ticket hash");
-        require(
-            uint256(keccak256(abi.encodePacked(ticketHash, _recipientRand))) < _ticket.winProb,
-            "ticket did not win"
-        );
+        requireValidWinningTicket(_ticket, ticketHash, _sig, _recipientRand);
 
         Sender storage sender = senders[_ticket.sender];
 
-        require(sender.deposit > 0 || sender.penaltyEscrow > 0, "sender deposit and penalty escrow are zero");
+        require(
+            sender.deposit > 0 || sender.penaltyEscrow > 0,
+            "sender deposit and penalty escrow are zero"
+        );
 
         usedTickets[ticketHash] = true;
 
@@ -131,8 +110,58 @@ contract TicketBroker {
         );
     }
 
-    function isValidSenderSig(address _sender, bytes _senderSig, bytes32 _ticketHash) internal pure returns (bool) {
-        address signer = ECDSA.recover(ECDSA.toEthSignedMessageHash(_ticketHash), _senderSig);
+    function requireValidWinningTicket(
+        Ticket memory _ticket,
+        bytes32 _ticketHash,
+        bytes _sig,
+        uint256 _recipientRand
+    ) 
+        internal
+        view
+    {
+        require(_ticket.recipient != address(0), "ticket recipient is null address");
+        require(_ticket.sender != address(0), "ticket sender is null address");
+        // TODO: Parameterize the ticket validity period instead of using hardcoded 3 days
+        require(_ticket.creationTimestamp + 3 days > block.timestamp, "ticket is expired");
+
+        require(
+            keccak256(abi.encodePacked(_recipientRand)) == _ticket.recipientRandHash,
+            "recipientRand does not match recipientRandHash"
+        );
+
+        require(!usedTickets[_ticketHash], "ticket is used");
+
+        require(
+            isValidTicketSig(_ticket.sender, _sig, _ticketHash), 
+            "invalid signature over ticket hash"
+        );
+
+        require(
+            isWinningTicket(_ticketHash, _recipientRand, _ticket.winProb),
+            "ticket did not win"
+        );
+    }
+
+    function getTicketHash(Ticket memory _ticket) internal pure returns (bytes32) {
+        return keccak256(
+            abi.encodePacked(
+                _ticket.recipient,
+                _ticket.sender,
+                _ticket.faceValue,
+                _ticket.winProb,
+                _ticket.senderNonce,
+                _ticket.recipientRandHash,
+                _ticket.creationTimestamp
+            )
+        );
+    }
+
+    function isWinningTicket(bytes32 _ticketHash, uint256 _recipientRand, uint256 _winProb) internal pure returns (bool) {
+        return uint256(keccak256(abi.encodePacked(_ticketHash, _recipientRand))) < _winProb;
+    }
+
+    function isValidTicketSig(address _sender, bytes _sig, bytes32 _ticketHash) internal pure returns (bool) {
+        address signer = ECDSA.recover(ECDSA.toEthSignedMessageHash(_ticketHash), _sig);
         return signer != address(0) && _sender == signer;
     }
 }
