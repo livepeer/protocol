@@ -295,10 +295,35 @@ contract("Minter", accounts => {
             assert.equal(await web3.eth.getBalance(minter.address), 100, "wrong minter balance")
         })
 
-        it("should receive ETH from ticketBroker", async () => {
+        it("should receive ETH from TicketBroker", async () => {
             await fixture.ticketBroker.execute(minter.address, functionSig("trustedDepositETH()"), {from: accounts[1], value: 100})
 
             assert.equal(await web3.eth.getBalance(minter.address), 100, "wrong minter balance")
+        })
+    })
+
+    describe("trustedBurnETH", () => {
+        it("should fail if caller is not currently registered TicketBroker", async () => {
+            await expectThrow(minter.trustedBurnETH(100, {from: accounts[1]}))
+        })
+
+        it("should burn ETH if caller is TicketBroker", async () => {
+            await fixture.ticketBroker.execute(minter.address, functionSig("trustedDepositETH()"), {from: accounts[1], value: 1000})
+            const startBalance = new BN(await web3.eth.getBalance(minter.address))
+
+            await fixture.ticketBroker.execute(
+                minter.address,
+                functionEncodedABI(
+                    "trustedBurnETH(uint256)",
+                    ["uint256"],
+                    [100]
+                ),
+                {from: accounts[1]}
+            )
+
+            const endBalance = new BN(await web3.eth.getBalance(minter.address))
+
+            assert.equal(startBalance.sub(endBalance).toString(), "100")
         })
     })
 

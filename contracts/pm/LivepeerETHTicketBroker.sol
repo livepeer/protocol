@@ -15,9 +15,16 @@ contract LivepeerETHTicketBroker is ManagerProxyTarget, TicketBroker {
         uint256 _minPenaltyEscrow
     ) 
         Manager(_controller)
+        // TODO: Consider using a initializer instead of an
+        // explicit constructor in base TicketBroker since
+        // upgradeable proxies do not use explicit constructors
         TicketBroker(_minPenaltyEscrow)
         public
     {}
+
+    function setMinPenaltyEscrow(uint256 _minPenaltyEscrow) external onlyControllerOwner {
+        minPenaltyEscrow = _minPenaltyEscrow;
+    }
 
     function fundDeposit()
         external
@@ -46,7 +53,6 @@ contract LivepeerETHTicketBroker is ManagerProxyTarget, TicketBroker {
         );
     }
 
-    // TODO: Stub for tests. Change to Livepeer specific logic
     function penaltyEscrowSlash(uint256 _amount) internal {
         minter().trustedBurnETH(_amount);
     }
