@@ -21,7 +21,7 @@ export default class Fixture {
         this.minter = await this.deployAndRegister(GenericMock, "Minter")
         this.bondingManager = await this.deployAndRegister(GenericMock, "BondingManager")
         this.roundsManager = await this.deployAndRegister(GenericMock, "RoundsManager")
-        this.jobsManager = await this.deployAndRegister(GenericMock, "JobsManager")
+        this.ticketBroker = await this.deployAndRegister(GenericMock, "TicketBroker")
         this.verifier = await this.deployAndRegister(GenericMock, "Verifier")
     }
 
