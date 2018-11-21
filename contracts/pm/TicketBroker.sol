@@ -19,7 +19,7 @@ contract TicketBroker {
         uint256 winProb;
         uint256 senderNonce;
         bytes32 recipientRandHash;
-        uint256 creationTimestamp;
+        bytes auxData;
     }
 
     uint256 public minPenaltyEscrow;
@@ -36,27 +36,31 @@ contract TicketBroker {
         uint256 winProb,
         uint256 senderNonce,
         uint256 recipientRand,
-        uint256 creationTimestamp
+        bytes auxData
     );
     event WinningTicketTransfer(address indexed sender, address indexed recipient, uint256 amount);
     event PenaltyEscrowSlashed(address indexed sender, address indexed recipient, uint256 amount);
 
-    constructor(uint256 _minPenaltyEscrow) public {
+    modifier processDeposit(address _sender, uint256 _amount) {
+        senders[_sender].deposit += _amount;
+
+        _;
+
+        emit DepositFunded(_sender, _amount);
+    }
+
+    modifier processPenaltyEscrow(address _sender, uint256 _amount) {
+        require(_amount >= minPenaltyEscrow, "penalty escrow amount must be >= minPenaltyEscrow");
+
+        senders[_sender].penaltyEscrow += _amount;
+
+        _;
+
+        emit PenaltyEscrowFunded(_sender, _amount);
+    }
+
+    constructor(uint256 _minPenaltyEscrow) internal {
         minPenaltyEscrow = _minPenaltyEscrow;
-    }
-
-    function fundDeposit() external payable {
-        senders[msg.sender].deposit += msg.value;
-
-        emit DepositFunded(msg.sender, msg.value);
-    }
-
-    function fundPenaltyEscrow() external payable {
-        require(msg.value >= minPenaltyEscrow, "tx value must be >= minPenaltyEscrow");
-
-        senders[msg.sender].penaltyEscrow += msg.value;
-
-        emit PenaltyEscrowFunded(msg.sender, msg.value);
     }
 
     function redeemWinningTicket(Ticket memory _ticket, bytes _sig, uint256 _recipientRand) public {
@@ -88,13 +92,13 @@ contract TicketBroker {
         }
 
         if (amountToSlash > 0) {
-            address(0).transfer(amountToSlash);
+            penaltyEscrowSlash(amountToSlash);
 
             emit PenaltyEscrowSlashed(_ticket.sender, _ticket.recipient, amountToSlash);
         }
 
         if (amountToTransfer > 0) {
-            _ticket.recipient.transfer(amountToTransfer);
+            winningTicketTransfer(_ticket.recipient, amountToTransfer);
 
             emit WinningTicketTransfer(_ticket.sender, _ticket.recipient, amountToTransfer);
         }
@@ -106,9 +110,18 @@ contract TicketBroker {
             _ticket.winProb,
             _ticket.senderNonce,
             _recipientRand,
-            _ticket.creationTimestamp
+            _ticket.auxData
         );
     }
+
+    // Override
+    function winningTicketTransfer(address _recipient, uint256 _amount) internal;
+
+    // Override
+    function penaltyEscrowSlash(uint256 _amount) internal;
+
+    // Override
+    function requireValidTicketAuxData(bytes _auxData) internal view;
 
     function requireValidWinningTicket(
         Ticket memory _ticket,
@@ -121,8 +134,8 @@ contract TicketBroker {
     {
         require(_ticket.recipient != address(0), "ticket recipient is null address");
         require(_ticket.sender != address(0), "ticket sender is null address");
-        // TODO: Parameterize the ticket validity period instead of using hardcoded 3 days
-        require(_ticket.creationTimestamp + 3 days > block.timestamp, "ticket is expired");
+
+        requireValidTicketAuxData(_ticket.auxData);
 
         require(
             keccak256(abi.encodePacked(_recipientRand)) == _ticket.recipientRandHash,
@@ -151,7 +164,7 @@ contract TicketBroker {
                 _ticket.winProb,
                 _ticket.senderNonce,
                 _ticket.recipientRandHash,
-                _ticket.creationTimestamp
+                _ticket.auxData
             )
         );
     }

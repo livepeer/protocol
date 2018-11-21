@@ -6,7 +6,7 @@ import {expectRevertWithReason} from "../helpers/expectFail"
 import {createTicket, createWinningTicket, getTicketHash} from "../helpers/ticket"
 import {constants} from "../../utils/constants"
 
-const TicketBroker = artifacts.require("TicketBroker")
+const TicketBroker = artifacts.require("ETHTicketBroker")
 
 contract("TicketBroker", accounts => {
     let broker
@@ -207,7 +207,7 @@ contract("TicketBroker", accounts => {
                     createTicket({
                         recipient,
                         sender,
-                        creationTimestamp: 0
+                        auxData: web3.utils.numberToHex(0)
                     }),
                     web3.utils.asciiToHex("sig"),
                     5
@@ -559,7 +559,7 @@ contract("TicketBroker", accounts => {
                     && ev.winProb.toString() === ticket.winProb.toString()
                     && ev.senderNonce.toString() === ticket.senderNonce.toString()
                     && ev.recipientRand.toString() === recipientRand.toString()
-                    && ev.creationTimestamp.toString() === ticket.creationTimestamp.toString()
+                    && ev.auxData === ticket.auxData
             })
         })
 

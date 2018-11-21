@@ -10,7 +10,7 @@ const createTicket = ticketObj => {
         winProb: isSet(ticketObj.winProb) ? ticketObj.winProb : 0,
         senderNonce: isSet(ticketObj.senderNonce) ? ticketObj.senderNonce : 0,
         recipientRandHash: isSet(ticketObj.recipientRandHash) ? ticketObj.recipientRandHash : constants.NULL_BYTES,
-        creationTimestamp: isSet(ticketObj.creationTimestamp) ? ticketObj.creationTimestamp : getValidTimestamp()
+        auxData: isSet(ticketObj.auxData) ? ticketObj.auxData : web3.utils.numberToHex(getValidTimestamp())
     }
 }
 
@@ -35,7 +35,7 @@ const getTicketHash = ticketObj => {
         ticketObj.winProb,
         ticketObj.senderNonce,
         ticketObj.recipientRandHash,
-        ticketObj.creationTimestamp
+        ticketObj.auxData
     )
 }
 
