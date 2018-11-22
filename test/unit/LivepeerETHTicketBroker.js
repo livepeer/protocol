@@ -1,10 +1,9 @@
 import BN from "bn.js"
 import Fixture from "./helpers/Fixture"
 import expectThrow from "../helpers/expectThrow"
-import {expectRevertWithReason} from "../helpers/expectFail"
 import truffleAssert from "truffle-assertions"
 import calcTxCost from "../helpers/calcTxCost"
-import {createTicket, createWinningTicket, getTicketHash} from "../helpers/ticket"
+import {createWinningTicket, getTicketHash} from "../helpers/ticket"
 import {functionSig} from "../../utils/helpers"
 
 const TicketBroker = artifacts.require("LivepeerETHTicketBroker")
@@ -199,8 +198,8 @@ contract("LivepeerETHTicketBroker", accounts => {
                     toBlock: "latest"
                 })
 
-                assert.equal(events.length, 1);
-                const event = events[0];
+                assert.equal(events.length, 1)
+                const event = events[0]
                 assert.equal(event.returnValues.transcoder, recipient)
                 assert.equal(event.returnValues.fees, deposit.toString())
                 assert.equal(event.returnValues.round, currentRound)
@@ -225,8 +224,8 @@ contract("LivepeerETHTicketBroker", accounts => {
                     toBlock: "latest"
                 })
 
-                assert.equal(events.length, 1);
-                const event = events[0];
+                assert.equal(events.length, 1)
+                const event = events[0]
                 assert.equal(event.returnValues.transcoder, recipient)
                 assert.equal(event.returnValues.fees, faceValue.toString())
                 assert.equal(event.returnValues.round, currentRound)
@@ -251,8 +250,8 @@ contract("LivepeerETHTicketBroker", accounts => {
                     toBlock: "latest"
                 })
 
-                assert.equal(events.length, 1);
-                const event = events[0];
+                assert.equal(events.length, 1)
+                const event = events[0]
                 assert.equal(event.returnValues.transcoder, recipient)
                 assert.equal(event.returnValues.fees, faceValue.toString())
                 assert.equal(event.returnValues.round, currentRound)
