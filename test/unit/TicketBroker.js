@@ -5,17 +5,25 @@ import expectThrow from "../helpers/expectThrow"
 import {expectRevertWithReason} from "../helpers/expectFail"
 import {createTicket, createWinningTicket, getTicketHash} from "../helpers/ticket"
 import {constants} from "../../utils/constants"
+import Fixture from "./helpers/Fixture";
 
 const TicketBroker = artifacts.require("ETHTicketBroker")
 
 contract("TicketBroker", accounts => {
     let broker
+    let fixture
 
     const sender = accounts[0]
     const recipient = accounts[1]
 
+    const unlockPeriod = 150;
+
+    before(async () => {
+        fixture = new Fixture(web3)
+    })
+
     beforeEach(async () => {
-        broker = await TicketBroker.new(0)
+        broker = await TicketBroker.new(0, unlockPeriod)
     })
 
     describe("fundDeposit", () => {
@@ -97,7 +105,7 @@ contract("TicketBroker", accounts => {
 
     describe("fundPenaltyEscrow", () => {
         it("reverts if ETH sent < required penalty escrow", async () => {
-            broker = await TicketBroker.new(web3.utils.toWei(".5", "ether"))
+            broker = await TicketBroker.new(web3.utils.toWei(".5", "ether"), 0)
 
             await expectThrow(broker.fundPenaltyEscrow({from: sender, value: web3.utils.toWei(".49", "ether")}))
         })
@@ -618,6 +626,128 @@ contract("TicketBroker", accounts => {
 
             assert.equal(events.length, 1)
             assert.equal(events[0].returnValues.recipient, recipient)
+        })
+    })
+
+    describe("unlock", () => {
+        it("reverts when both deposit and penaltyEscrow are zero", async () => {
+            await expectRevertWithReason(broker.unlock(), "sender deposit and penalty escrow are zero")
+        })
+
+        it("reverts when called twice", async () => {
+            await broker.fundDeposit({from: sender, value: 1000})
+            await broker.unlock()
+
+            await expectRevertWithReason(broker.unlock(), "unlock already initiated")
+        })
+
+        it("reverts when called twice by multiple senders", async () => {
+            const sender2 = accounts[2];
+            await broker.fundDeposit({from: sender, value: 1000})
+            await broker.fundDeposit({from: sender2, value: 2000})
+            await broker.unlock({from: sender})
+            await broker.unlock({from: sender2})
+
+            await expectRevertWithReason(broker.unlock({from: sender}), "unlock already initiated")
+            await expectRevertWithReason(broker.unlock({from: sender2}), "unlock already initiated")
+        })
+
+        it("sets withdrawBlock according to constructor config", async () => {
+            await broker.fundDeposit({from: sender, value: 1000})
+            const fromBlock = (await web3.eth.getBlock("latest")).number
+
+            await broker.unlock({from: sender})
+
+            const withdrawBlock = (await broker.senders.call(sender)).withdrawBlock.toString()
+            const expectedWithdrawBlock = fromBlock + unlockPeriod + 1 // +1 to account for the block created executing unlock
+            assert.equal(withdrawBlock, expectedWithdrawBlock.toString())
+        })
+    })
+
+    describe("withdraw", () => {
+        it("reverts when both deposit and penaltyEscrow are zero", async () => {
+            await expectRevertWithReason(broker.withdraw(), "sender deposit and penalty escrow are zero")
+        })
+
+        // TODO some test to make sure it proceeds in all combos of deposit and penaltyEscrow not zero
+
+        it("reverts when account is locked", async () => {
+            await broker.fundDeposit({from: sender, value: 1000})
+
+            await expectRevertWithReason(broker.withdraw(), "account is locked")
+        })
+
+        it("sets deposit and penaltyEscrow to zero", async () => {
+            await broker.fundDeposit({from: sender, value: 1000})
+            await broker.fundPenaltyEscrow({from: sender, value: 2000})
+            await broker.unlock({from: sender})
+            await fixture.rpc.wait(unlockPeriod)
+
+            await broker.withdraw({from: sender})
+
+            const deposit = (await broker.senders.call(sender)).deposit.toString()
+            const penaltyEscrow = (await broker.senders.call(sender)).penaltyEscrow.toString()
+            assert.equal(deposit, "0")
+            assert.equal(penaltyEscrow, "0")
+        })
+
+        it("transfers the sum of deposit and penaltyEscrow to sender", async () => {
+            const deposit = 1000
+            const penaltyEscrow = 2000
+            await broker.fundDeposit({from: sender, value: deposit})
+            await broker.fundPenaltyEscrow({from: sender, value: penaltyEscrow})
+            await broker.unlock({from: sender})
+            await fixture.rpc.wait(unlockPeriod)
+            const startBalance = new BN(await web3.eth.getBalance(sender))
+
+            const txResult = await broker.withdraw({from: sender})
+
+            const txCost = await calcTxCost(txResult)
+            const endBalance = new BN(await web3.eth.getBalance(sender))
+            assert.equal(endBalance.sub(startBalance).add(txCost).toString(), (deposit + penaltyEscrow).toString())
+        })
+
+        it("emits a Withdrawal event", async () => {
+            const deposit = 1000
+            const penaltyEscrow = 2000
+            await broker.fundDeposit({from: sender, value: deposit})
+            await broker.fundPenaltyEscrow({from: sender, value: penaltyEscrow})
+            await broker.unlock({from: sender})
+            await fixture.rpc.wait(unlockPeriod)
+
+            const txResult = await broker.withdraw({from: sender})
+
+            const expectedAmount = deposit + penaltyEscrow
+            truffleAssert.eventEmitted(txResult, "Withdrawal", ev => {
+                return ev.sender === sender &&
+                    ev.amount.toString() === expectedAmount.toString()
+            })
+        })
+
+        it("emits a Withdrawal event with indexed sender", async () => {
+            const fromBlock = (await web3.eth.getBlock("latest")).number
+            const deposit = 1000
+            const penaltyEscrow = 2000
+            await broker.fundDeposit({from: sender, value: deposit})
+            await broker.fundPenaltyEscrow({from: sender, value: penaltyEscrow})
+            await broker.unlock({from: sender})
+            await fixture.rpc.wait(unlockPeriod)
+
+            await broker.withdraw({from: sender})
+
+            const expectedAmount = deposit + penaltyEscrow
+            const events = await broker.getPastEvents("Withdrawal", {
+                filter: {
+                    sender
+                },
+                fromBlock,
+                toBlock: "latest"
+            })
+
+            assert.equal(events.length, 1)
+            const event = events[0]
+            assert.equal(event.returnValues.sender, sender)
+            assert.equal(event.returnValues.amount.toString(), expectedAmount.toString())
         })
     })
 })

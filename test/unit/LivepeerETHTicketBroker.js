@@ -23,7 +23,7 @@ contract("LivepeerETHTicketBroker", accounts => {
 
     beforeEach(async () => {
         await fixture.setUp()
-        broker = await TicketBroker.new(fixture.controller.address, 0)
+        broker = await TicketBroker.new(fixture.controller.address, 0, 0)
     })
 
     afterEach(async () => {

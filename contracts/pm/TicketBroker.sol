@@ -10,6 +10,7 @@ contract TicketBroker {
     struct Sender {
         uint256 deposit;
         uint256 penaltyEscrow;
+        uint256 withdrawBlock;
     }
 
     struct Ticket {
@@ -23,6 +24,7 @@ contract TicketBroker {
     }
 
     uint256 public minPenaltyEscrow;
+    uint256 public unlockPeriod;
 
     mapping (address => Sender) public senders;
     mapping (bytes32 => bool) public usedTickets;
@@ -40,6 +42,7 @@ contract TicketBroker {
     );
     event WinningTicketTransfer(address indexed sender, address indexed recipient, uint256 amount);
     event PenaltyEscrowSlashed(address indexed sender, address indexed recipient, uint256 amount);
+    event Withdrawal(address indexed sender, uint256 amount);
 
     modifier processDeposit(address _sender, uint256 _amount) {
         senders[_sender].deposit += _amount;
@@ -59,8 +62,32 @@ contract TicketBroker {
         emit PenaltyEscrowFunded(_sender, _amount);
     }
 
-    constructor(uint256 _minPenaltyEscrow) internal {
+    modifier processWithdraw(address _sender) {
+        Sender storage sender = senders[_sender];
+
+        require(
+            sender.deposit > 0 || sender.penaltyEscrow > 0,
+            "sender deposit and penalty escrow are zero"
+        );
+        require(
+            sender.withdrawBlock > 0 && block.number >= sender.withdrawBlock, 
+            "account is locked"
+        );
+
+        uint256 withdrawalAmount = sender.deposit + sender.penaltyEscrow;
+
+        // TODO discuss potential re-entry attack here
+        _;
+
+        sender.deposit = 0;
+        sender.penaltyEscrow = 0;
+
+        emit Withdrawal(_sender, withdrawalAmount);
+    }
+
+    constructor(uint256 _minPenaltyEscrow, uint256 _unlockPeriod) internal {
         minPenaltyEscrow = _minPenaltyEscrow;
+        unlockPeriod = _unlockPeriod;
     }
 
     function redeemWinningTicket(Ticket memory _ticket, bytes _sig, uint256 _recipientRand) public {
@@ -112,6 +139,18 @@ contract TicketBroker {
             _recipientRand,
             _ticket.auxData
         );
+    }
+
+    function unlock() external {
+        Sender storage sender = senders[msg.sender];
+
+        require(
+            sender.deposit > 0 || sender.penaltyEscrow > 0,
+            "sender deposit and penalty escrow are zero"
+        );
+        require(sender.withdrawBlock <= 0, "unlock already initiated");
+
+        sender.withdrawBlock = block.number + unlockPeriod;
     }
 
     // Override

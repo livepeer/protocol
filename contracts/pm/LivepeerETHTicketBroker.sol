@@ -12,13 +12,14 @@ import "./TicketBroker.sol";
 contract LivepeerETHTicketBroker is ManagerProxyTarget, TicketBroker {
     constructor(
         address _controller,
-        uint256 _minPenaltyEscrow
+        uint256 _minPenaltyEscrow,
+        uint256 _unlockPeriod
     ) 
         Manager(_controller)
         // TODO: Consider using a initializer instead of an
         // explicit constructor in base TicketBroker since
         // upgradeable proxies do not use explicit constructors
-        TicketBroker(_minPenaltyEscrow)
+        TicketBroker(_minPenaltyEscrow, _unlockPeriod)
         public
     {}
 

@@ -30,7 +30,7 @@ module.exports = function(deployer, network) {
         // TODO: Consider using a initializer instead of an
         // explicit constructor in base TicketBroker since
         // upgradeable proxies do not use explicit constructors
-        const broker = await lpDeployer.deployProxyAndRegister(TicketBroker, "TicketBroker", controller.address, config.broker.minPenaltyEscrow)
+        const broker = await lpDeployer.deployProxyAndRegister(TicketBroker, "TicketBroker", controller.address, config.broker.minPenaltyEscrow, config.broker.unlockPeriod)
         const bondingManager = await lpDeployer.deployProxyAndRegister(BondingManager, "BondingManager", controller.address)
 
         let roundsManager

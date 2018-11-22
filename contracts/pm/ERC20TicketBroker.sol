@@ -10,7 +10,14 @@ import "./TicketBroker.sol";
 contract ERC20TicketBroker is TicketBroker {
     ERC20 public token;
 
-    constructor(address _token, uint256 _minPenaltyEscrow) TicketBroker(_minPenaltyEscrow) public {
+    constructor(
+        address _token, 
+        uint256 _minPenaltyEscrow,
+        uint256 _unlockPeriod
+    )
+        TicketBroker(_minPenaltyEscrow, _unlockPeriod)
+        public
+    {
         token = ERC20(_token);
     }
 
