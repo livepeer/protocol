@@ -1219,7 +1219,7 @@ contract("BondingManager", accounts => {
         })
 
         it("should fail if unbonding lock withdraw round is in the future", async () => {
-            await expectThrow(bondingManager.withdrawStake(unbondingLockID, {From: delegator}))
+            await expectThrow(bondingManager.withdrawStake(unbondingLockID, {from: delegator}))
         })
 
         it("should withdraw tokens for unbonding lock", async () => {

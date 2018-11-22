@@ -50,13 +50,13 @@
     "eslint-config-google": "^0.9.1",
     "ethereumjs-abi": "github:ethereumjs/ethereumjs-abi#09c3c48fd3bed143df7fa8f36f6f164205e23796",
     "ethereumjs-util": "^5.1.2",
-    "ganache-cli": "^6.1.0-beta.0",
+    "ganache-cli": "6.1.8",
     "mkdirp": "^0.5.1",
     "mocha-lcov-reporter": "^1.3.0",
     "openzeppelin-solidity": "2.0.0",
     "solidity-coverage": "^0.5.11",
     "solium": "^1.1.8",
-    "truffle": "^5.0.0-beta.1",
+    "truffle": "5.0.0-next.17",
     "truffle-keystore-provider": "^1.0.2",
     "truffle-assertions": "0.6.3"
   }
