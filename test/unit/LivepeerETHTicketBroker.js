@@ -34,6 +34,73 @@ contract("LivepeerETHTicketBroker", accounts => {
 
             assert.equal(balance, "1000")
         })
+
+        it("reduces the sender's ETH balance", async () => {
+            const startBalance = new BN(await web3.eth.getBalance(sender))
+
+            const txResult = await broker.fundDeposit({from: sender, value: 1000})
+
+            const endBalance = new BN(await web3.eth.getBalance(sender))
+            const txCost = await calcTxCost(txResult)
+
+            assert.equal(startBalance.sub(endBalance).sub(txCost).toString(), "1000")
+        })
+
+        it("tracks the sender's ETH deposit amount", async () => {
+            await broker.fundDeposit({from: sender, value: 1000})
+
+            const deposit = (await broker.senders.call(sender)).deposit.toString()
+
+            assert.equal(deposit, "1000")
+        })
+
+        it("tracks sender's multiple deposits", async () => {
+            await broker.fundDeposit({from: sender, value: 1000})
+            await broker.fundDeposit({from: sender, value: 500})
+
+            const deposit = (await broker.senders.call(sender)).deposit.toString()
+
+            assert.equal(deposit, "1500")
+        })
+
+        it("track multiple sender's deposits", async () => {
+            const sender2 = accounts[2]
+            await broker.fundDeposit({from: sender, value: 1000})
+            await broker.fundDeposit({from: sender2, value: 500})
+
+            const deposit = (await broker.senders.call(sender)).deposit.toString()
+            const deposit2 = (await broker.senders.call(sender2)).deposit.toString()
+
+            assert.equal(deposit, "1000")
+            assert.equal(deposit2, "500")
+        })
+
+        it("emits a DepositFunded event", async () => {
+            const txResult = await broker.fundDeposit({from: sender, value: 1000})
+
+            truffleAssert.eventEmitted(txResult, "DepositFunded", ev => {
+                return ev.sender === sender && ev.amount.toString() === "1000"
+            })
+        })
+
+        it("emits a DepositFunded event with indexed sender", async () => {
+            const sender2 = accounts[2]
+            const fromBlock = (await web3.eth.getBlock("latest")).number
+            await broker.fundDeposit({from: sender, value: 1000})
+            await broker.fundDeposit({from: sender2, value: 1000})
+
+            const events = await broker.getPastEvents("DepositFunded", {
+                filter: {
+                    sender
+                },
+                fromBlock,
+                toBlock: "latest"
+            })
+
+            assert.equal(events.length, 1)
+            assert.equal(events[0].returnValues.sender, sender)
+            assert.equal(events[0].returnValues.amount.toString(), "1000")
+        })
     })
 
     describe("fundPenaltyEscrow", () => {
