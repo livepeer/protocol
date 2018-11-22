@@ -3,6 +3,8 @@ import {contractId} from "../../../utils/helpers"
 
 const Controller = artifacts.require("Controller")
 const GenericMock = artifacts.require("GenericMock")
+const BondingManagerMock = artifacts.require("BondingManagerMock")
+const MinterMock = artifacts.require("MinterMock")
 
 export default class Fixture {
     constructor(web3) {
@@ -18,8 +20,8 @@ export default class Fixture {
 
     async deployMocks() {
         this.token = await this.deployAndRegister(GenericMock, "LivepeerToken")
-        this.minter = await this.deployAndRegister(GenericMock, "Minter")
-        this.bondingManager = await this.deployAndRegister(GenericMock, "BondingManager")
+        this.minter = await this.deployAndRegister(MinterMock, "Minter")
+        this.bondingManager = await this.deployAndRegister(BondingManagerMock, "BondingManager")
         this.roundsManager = await this.deployAndRegister(GenericMock, "RoundsManager")
         this.ticketBroker = await this.deployAndRegister(GenericMock, "TicketBroker")
         this.verifier = await this.deployAndRegister(GenericMock, "Verifier")
