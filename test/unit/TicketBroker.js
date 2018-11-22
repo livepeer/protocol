@@ -5,7 +5,7 @@ import expectThrow from "../helpers/expectThrow"
 import {expectRevertWithReason} from "../helpers/expectFail"
 import {createTicket, createWinningTicket, getTicketHash} from "../helpers/ticket"
 import {constants} from "../../utils/constants"
-import Fixture from "./helpers/Fixture";
+import Fixture from "./helpers/Fixture"
 
 const TicketBroker = artifacts.require("ETHTicketBroker")
 
@@ -16,7 +16,7 @@ contract("TicketBroker", accounts => {
     const sender = accounts[0]
     const recipient = accounts[1]
 
-    const unlockPeriod = 150;
+    const unlockPeriod = 150
 
     before(async () => {
         fixture = new Fixture(web3)
@@ -642,7 +642,7 @@ contract("TicketBroker", accounts => {
         })
 
         it("reverts when called twice by multiple senders", async () => {
-            const sender2 = accounts[2];
+            const sender2 = accounts[2]
             await broker.fundDeposit({from: sender, value: 1000})
             await broker.fundDeposit({from: sender2, value: 2000})
             await broker.unlock({from: sender})

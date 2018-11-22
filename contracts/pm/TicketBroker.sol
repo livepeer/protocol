@@ -141,7 +141,7 @@ contract TicketBroker {
         );
     }
 
-    function unlock() external {
+    function unlock() public {
         Sender storage sender = senders[msg.sender];
 
         require(
