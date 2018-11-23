@@ -10,7 +10,14 @@ import "./TicketBroker.sol";
 contract ERC20TicketBroker is TicketBroker {
     ERC20 public token;
 
-    constructor(address _token, uint256 _minPenaltyEscrow) TicketBroker(_minPenaltyEscrow) public {
+    constructor(
+        address _token, 
+        uint256 _minPenaltyEscrow,
+        uint256 _unlockPeriod
+    )
+        TicketBroker(_minPenaltyEscrow, _unlockPeriod)
+        public
+    {
         token = ERC20(_token);
     }
 
@@ -34,6 +41,10 @@ contract ERC20TicketBroker is TicketBroker {
         );
     }
 
+    function withdrawTransfer(address _sender, uint256 _amount) internal {
+        token.transfer(_sender, _amount);
+    }
+    
     function winningTicketTransfer(address _recipient, uint256 _amount) internal {
         token.transfer(_recipient, _amount);
     }

@@ -10,6 +10,7 @@ contract TicketBroker {
     struct Sender {
         uint256 deposit;
         uint256 penaltyEscrow;
+        uint256 withdrawBlock;
     }
 
     struct Ticket {
@@ -23,6 +24,7 @@ contract TicketBroker {
     }
 
     uint256 public minPenaltyEscrow;
+    uint256 public unlockPeriod;
 
     mapping (address => Sender) public senders;
     mapping (bytes32 => bool) public usedTickets;
@@ -40,9 +42,16 @@ contract TicketBroker {
     );
     event WinningTicketTransfer(address indexed sender, address indexed recipient, uint256 amount);
     event PenaltyEscrowSlashed(address indexed sender, address indexed recipient, uint256 amount);
+    event Unlock(address indexed sender, uint256 startBlock, uint256 endBlock);
+    event UnlockCancelled(address indexed sender);
+    event Withdrawal(address indexed sender, uint256 deposit, uint256 penaltyEscrow);
 
     modifier processDeposit(address _sender, uint256 _amount) {
-        senders[_sender].deposit += _amount;
+        Sender storage sender = senders[_sender];
+        sender.deposit += _amount;
+        if (_isUnlockInProgress(sender)) {
+            _cancelUnlock(sender, _sender);
+        }
 
         _;
 
@@ -52,15 +61,20 @@ contract TicketBroker {
     modifier processPenaltyEscrow(address _sender, uint256 _amount) {
         require(_amount >= minPenaltyEscrow, "penalty escrow amount must be >= minPenaltyEscrow");
 
-        senders[_sender].penaltyEscrow += _amount;
+        Sender storage sender = senders[_sender];
+        sender.penaltyEscrow += _amount;
+        if (_isUnlockInProgress(sender)) {
+            _cancelUnlock(sender, _sender);
+        }
 
         _;
 
         emit PenaltyEscrowFunded(_sender, _amount);
     }
 
-    constructor(uint256 _minPenaltyEscrow) internal {
+    constructor(uint256 _minPenaltyEscrow, uint256 _unlockPeriod) internal {
         minPenaltyEscrow = _minPenaltyEscrow;
+        unlockPeriod = _unlockPeriod;
     }
 
     function redeemWinningTicket(Ticket memory _ticket, bytes _sig, uint256 _recipientRand) public {
@@ -113,6 +127,72 @@ contract TicketBroker {
             _ticket.auxData
         );
     }
+
+    function unlock() public {
+        Sender storage sender = senders[msg.sender];
+
+        require(
+            sender.deposit > 0 || sender.penaltyEscrow > 0,
+            "sender deposit and penalty escrow are zero"
+        );
+        require(!_isUnlockInProgress(sender), "unlock already initiated");
+
+        sender.withdrawBlock = block.number + unlockPeriod;
+
+        emit Unlock(msg.sender, block.number, sender.withdrawBlock);
+    }
+
+    function cancelUnlock() public {
+        Sender storage sender = senders[msg.sender];
+
+        _cancelUnlock(sender, msg.sender);
+    }
+
+    function withdraw() public {
+        Sender storage sender = senders[msg.sender];
+
+        require(
+            sender.deposit > 0 || sender.penaltyEscrow > 0,
+            "sender deposit and penalty escrow are zero"
+        );
+        require(
+            _isUnlockInProgress(sender), 
+            "no unlock request in progress"
+        );
+        require(
+            block.number >= sender.withdrawBlock, 
+            "account is locked"
+        );
+
+        uint256 deposit = sender.deposit;
+        uint256 penaltyEscrow = sender.penaltyEscrow;
+        sender.deposit = 0;
+        sender.penaltyEscrow = 0;
+
+        withdrawTransfer(msg.sender, deposit + penaltyEscrow);
+
+        emit Withdrawal(msg.sender, deposit, penaltyEscrow);
+    }
+
+    function isUnlockInProgress(address _sender) public view returns (bool) {
+        Sender memory sender = senders[_sender];
+        return _isUnlockInProgress(sender);
+    }
+
+    function _cancelUnlock(Sender storage _sender, address _senderAddress) internal {
+        require(_isUnlockInProgress(_sender), "no unlock request in progress");
+
+        _sender.withdrawBlock = 0;
+
+        emit UnlockCancelled(_senderAddress);
+    }
+
+    function _isUnlockInProgress(Sender memory sender) internal pure returns (bool) {
+        return sender.withdrawBlock > 0;
+    }
+
+    // Override
+    function withdrawTransfer(address _sender, uint256 _amount) internal;
 
     // Override
     function winningTicketTransfer(address _recipient, uint256 _amount) internal;

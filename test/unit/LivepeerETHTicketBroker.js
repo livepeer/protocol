@@ -15,14 +15,17 @@ contract("LivepeerETHTicketBroker", accounts => {
     const sender = accounts[0]
     const recipient = accounts[1]
 
+    const unlockPeriod = 20
+
     before(async () => {
         fixture = new Fixture(web3)
         await fixture.deploy()
+
+        broker = await TicketBroker.new(fixture.controller.address, 0, unlockPeriod)
     })
 
     beforeEach(async () => {
         await fixture.setUp()
-        broker = await TicketBroker.new(fixture.controller.address, 0)
     })
 
     afterEach(async () => {
@@ -108,9 +111,9 @@ contract("LivepeerETHTicketBroker", accounts => {
 
     describe("fundPenaltyEscrow", () => {
         it("reverts when penalty escrow < minPenaltyEscrow", async () => {
-            broker = await TicketBroker.new(fixture.controller.address, 1000)
+            const brokerWithMinEscrow = await TicketBroker.new(fixture.controller.address, 1000, 0)
 
-            await expectThrow(broker.fundPenaltyEscrow({from: sender, value: 500}))
+            await expectThrow(brokerWithMinEscrow.fundPenaltyEscrow({from: sender, value: 500}))
         })
 
         it("tracks sender's ETH penalty escrow", async () => {
@@ -302,6 +305,32 @@ contract("LivepeerETHTicketBroker", accounts => {
                 })
 
                 assert.equal(events.length, 0)
+            })
+        })
+    })
+
+    describe("withdraw", () => {
+        describe("withdrawTransfer", () => {
+            it("transfers the sum of deposit and penaltyEscrow to sender", async () => {
+                const fromBlock = (await web3.eth.getBlock("latest")).number
+                const deposit = 1000
+                const penaltyEscrow = 2000
+                await broker.fundDeposit({from: sender, value: deposit})
+                await broker.fundPenaltyEscrow({from: sender, value: penaltyEscrow})
+                await broker.unlock({from: sender})
+                await fixture.rpc.wait(unlockPeriod)
+
+                await broker.withdraw({from: sender})
+
+                const events = await fixture.minter.getPastEvents("TrustedWithdrawETH", {
+                    fromBlock,
+                    toBlock: "latest"
+                })
+
+                assert.equal(events.length, 1)
+                const event = events[0]
+                assert.equal(event.returnValues.to, sender)
+                assert.equal(event.returnValues.amount.toString(), (deposit + penaltyEscrow).toString())
             })
         })
     })

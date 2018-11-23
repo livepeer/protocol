@@ -12,13 +12,14 @@ import "./TicketBroker.sol";
 contract LivepeerETHTicketBroker is ManagerProxyTarget, TicketBroker {
     constructor(
         address _controller,
-        uint256 _minPenaltyEscrow
+        uint256 _minPenaltyEscrow,
+        uint256 _unlockPeriod
     ) 
         Manager(_controller)
         // TODO: Consider using a initializer instead of an
         // explicit constructor in base TicketBroker since
         // upgradeable proxies do not use explicit constructors
-        TicketBroker(_minPenaltyEscrow)
+        TicketBroker(_minPenaltyEscrow, _unlockPeriod)
         public
     {}
 
@@ -40,6 +41,10 @@ contract LivepeerETHTicketBroker is ManagerProxyTarget, TicketBroker {
         processPenaltyEscrow(msg.sender, msg.value)
     {
         minter().trustedDepositETH.value(msg.value)();
+    }
+
+    function withdrawTransfer(address _sender, uint256 _amount) internal {
+        minter().trustedWithdrawETH(_sender, _amount);
     }
 
     function winningTicketTransfer(address _recipient, uint256 _amount) internal {

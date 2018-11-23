@@ -6,7 +6,13 @@ import "./TicketBroker.sol";
 
 
 contract ETHTicketBroker is TicketBroker {
-    constructor(uint256 _minPenaltyEscrow) TicketBroker(_minPenaltyEscrow) public {}
+    constructor(
+        uint256 _minPenaltyEscrow, 
+        uint256 _unlockPeriod
+    ) 
+        TicketBroker(_minPenaltyEscrow, _unlockPeriod) 
+        public 
+    {}
 
     function fundDeposit() 
         external
@@ -19,6 +25,10 @@ contract ETHTicketBroker is TicketBroker {
         payable
         processPenaltyEscrow(msg.sender, msg.value)
     {}
+
+    function withdrawTransfer(address _sender, uint256 _amount) internal {
+        _sender.transfer(_amount);
+    }
 
     function winningTicketTransfer(address _recipient, uint256 _amount) internal {
         _recipient.transfer(_amount);
