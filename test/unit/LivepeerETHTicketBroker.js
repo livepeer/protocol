@@ -15,6 +15,8 @@ contract("LivepeerETHTicketBroker", accounts => {
     const sender = accounts[0]
     const recipient = accounts[1]
 
+    const unlockPeriod = 20
+
     before(async () => {
         fixture = new Fixture(web3)
         await fixture.deploy()
@@ -22,7 +24,7 @@ contract("LivepeerETHTicketBroker", accounts => {
 
     beforeEach(async () => {
         await fixture.setUp()
-        broker = await TicketBroker.new(fixture.controller.address, 0, 0)
+        broker = await TicketBroker.new(fixture.controller.address, 0, unlockPeriod)
     })
 
     afterEach(async () => {
@@ -302,6 +304,30 @@ contract("LivepeerETHTicketBroker", accounts => {
                 })
 
                 assert.equal(events.length, 0)
+            })
+        })
+
+        describe("withdrawTransfer", () => {
+            it("transfers the sum of deposit and penaltyEscrow to sender", async () => {
+                const fromBlock = (await web3.eth.getBlock("latest")).number
+                const deposit = 1000
+                const penaltyEscrow = 2000
+                await broker.fundDeposit({from: sender, value: deposit})
+                await broker.fundPenaltyEscrow({from: sender, value: penaltyEscrow})
+                await broker.unlock({from: sender})
+                await fixture.rpc.wait(unlockPeriod)
+
+                await broker.withdraw({from: sender})
+
+                const events = await fixture.minter.getPastEvents("TrustedWithdrawETH", {
+                    fromBlock,
+                    toBlock: "latest"
+                })
+
+                assert.equal(events.length, 1)
+                const event = events[0]
+                assert.equal(event.returnValues.to, sender)
+                assert.equal(event.returnValues.amount.toString(), (deposit + penaltyEscrow).toString())
             })
         })
     })

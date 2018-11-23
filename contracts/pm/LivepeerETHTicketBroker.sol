@@ -44,7 +44,7 @@ contract LivepeerETHTicketBroker is ManagerProxyTarget, TicketBroker {
     }
 
     function withdrawTransfer(address _sender, uint256 _amount) internal {
-        // TODO implement and test
+        minter().trustedWithdrawETH(_sender, _amount);
     }
 
     function winningTicketTransfer(address _recipient, uint256 _amount) internal {
