@@ -20,10 +20,17 @@ contract("TicketBroker", accounts => {
 
     before(async () => {
         fixture = new Fixture(web3)
+        await fixture.deploy()
+
+        broker = await TicketBroker.new(0, unlockPeriod)
     })
 
     beforeEach(async () => {
-        broker = await TicketBroker.new(0, unlockPeriod)
+        await fixture.setUp()
+    })
+
+    afterEach(async () => {
+        await fixture.tearDown()
     })
 
     describe("fundDeposit", () => {
@@ -115,9 +122,12 @@ contract("TicketBroker", accounts => {
 
     describe("fundPenaltyEscrow", () => {
         it("reverts if ETH sent < required penalty escrow", async () => {
-            broker = await TicketBroker.new(web3.utils.toWei(".5", "ether"), 0)
+            const brokerWithMinPenaltyEscrow = await TicketBroker.new(web3.utils.toWei(".5", "ether"), 0)
 
-            await expectThrow(broker.fundPenaltyEscrow({from: sender, value: web3.utils.toWei(".49", "ether")}))
+            await expectThrow(brokerWithMinPenaltyEscrow.fundPenaltyEscrow({
+                from: sender, 
+                value: web3.utils.toWei(".49", "ether")
+            }))
         })
 
         it("grows the broker's ETH balance", async () => {
