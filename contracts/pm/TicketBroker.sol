@@ -44,7 +44,7 @@ contract TicketBroker {
     event PenaltyEscrowSlashed(address indexed sender, address indexed recipient, uint256 amount);
     event Unlock(address indexed sender, uint256 startBlock, uint256 endBlock);
     event UnlockCancelled(address indexed sender);
-    event Withdrawal(address indexed sender, uint256 amount);
+    event Withdrawal(address indexed sender, uint256 deposit, uint256 penaltyEscrow);
 
     modifier processDeposit(address _sender, uint256 _amount) {
         Sender storage sender = senders[_sender];
@@ -159,13 +159,14 @@ contract TicketBroker {
             "account is locked"
         );
 
-        uint256 withdrawalAmount = sender.deposit + sender.penaltyEscrow;
+        uint256 deposit = sender.deposit;
+        uint256 penaltyEscrow = sender.penaltyEscrow;
         sender.deposit = 0;
         sender.penaltyEscrow = 0;
 
-        withdrawTransfer(msg.sender, withdrawalAmount);
+        withdrawTransfer(msg.sender, deposit + penaltyEscrow);
 
-        emit Withdrawal(msg.sender, withdrawalAmount);
+        emit Withdrawal(msg.sender, deposit, penaltyEscrow);
     }
 
     function isUnlockInProgress(address _sender) public view returns (bool) {

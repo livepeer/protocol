@@ -859,11 +859,11 @@ contract("TicketBroker", accounts => {
             await fixture.rpc.wait(unlockPeriod)
 
             const txResult = await broker.withdraw({from: sender})
-
-            const expectedAmount = deposit + penaltyEscrow
+       
             truffleAssert.eventEmitted(txResult, "Withdrawal", ev => {
                 return ev.sender === sender &&
-                    ev.amount.toString() === expectedAmount.toString()
+                    ev.deposit.toString() === deposit.toString() &&
+                    ev.penaltyEscrow.toString() === penaltyEscrow.toString()
             })
         })
 
@@ -878,7 +878,6 @@ contract("TicketBroker", accounts => {
 
             await broker.withdraw({from: sender})
 
-            const expectedAmount = deposit + penaltyEscrow
             const events = await broker.getPastEvents("Withdrawal", {
                 filter: {
                     sender
@@ -890,7 +889,8 @@ contract("TicketBroker", accounts => {
             assert.equal(events.length, 1)
             const event = events[0]
             assert.equal(event.returnValues.sender, sender)
-            assert.equal(event.returnValues.amount.toString(), expectedAmount.toString())
+            assert.equal(event.returnValues.deposit.toString(), deposit.toString())
+            assert.equal(event.returnValues.penaltyEscrow.toString(), penaltyEscrow.toString())
         })
     })
 })
