@@ -108,7 +108,7 @@ contract("LivepeerETHTicketBroker", accounts => {
 
     describe("fundPenaltyEscrow", () => {
         it("reverts when penalty escrow < minPenaltyEscrow", async () => {
-            broker = await TicketBroker.new(fixture.controller.address, 1000)
+            broker = await TicketBroker.new(fixture.controller.address, 1000, 0)
 
             await expectThrow(broker.fundPenaltyEscrow({from: sender, value: 500}))
         })
