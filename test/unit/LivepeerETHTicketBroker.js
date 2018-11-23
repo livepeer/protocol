@@ -307,9 +307,8 @@ contract("LivepeerETHTicketBroker", accounts => {
                 assert.equal(events.length, 0)
             })
         })
-
     })
-    
+
     describe("withdraw", () => {
         describe("withdrawTransfer", () => {
             it("transfers the sum of deposit and penaltyEscrow to sender", async () => {
