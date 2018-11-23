@@ -692,6 +692,62 @@ contract("TicketBroker", accounts => {
         })
     })
 
+    describe("cancelUnlock", () => {
+        it("reverts if sender is not in an unlocking state", async () => {
+            await expectRevertWithReason(broker.cancelUnlock(), "no unlock request in progress")
+        })
+
+        it("sets sender's withdrawBlock to zero", async () => {
+            await broker.fundDeposit({from: sender, value: 1000})
+            await broker.unlock()
+
+            await broker.cancelUnlock()
+
+            const withdrawBlock = (await broker.senders.call(sender)).withdrawBlock.toString()
+            assert.equal(withdrawBlock, "0")
+        })
+
+        it("prevents withdrawal", async () => {
+            await broker.fundDeposit({from: sender, value: 1000})
+            await broker.unlock()
+            await fixture.rpc.wait(unlockPeriod)
+        
+            await broker.cancelUnlock()
+
+            await expectRevertWithReason(broker.withdraw(), "account is locked")
+        })
+
+        it("emits an UnlockCancelled event", async () => {
+            await broker.fundDeposit({from: sender, value: 1000})
+            await broker.unlock()
+
+            const txResult = await broker.cancelUnlock()
+
+            truffleAssert.eventEmitted(txResult, "UnlockCancelled", ev => {
+                return ev.sender === sender
+            })
+        })
+
+        it("emits an UnlockCancelled event with an indexed sender", async () => {
+            const fromBlock = (await web3.eth.getBlock("latest")).number
+            await broker.fundDeposit({from: sender, value: 1000})
+            await broker.unlock()
+
+            await broker.cancelUnlock()
+
+            const events = await broker.getPastEvents("UnlockCancelled", {
+                filter: {
+                    sender
+                },
+                fromBlock,
+                toBlock: "latest"
+            })
+            assert.equal(events.length, 1)
+            const event = events[0]
+            assert.equal(event.returnValues.sender, sender)
+        })
+    })
+
     describe("withdraw", () => {
         it("reverts when both deposit and penaltyEscrow are zero", async () => {
             await expectRevertWithReason(broker.withdraw(), "sender deposit and penalty escrow are zero")
