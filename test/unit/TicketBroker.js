@@ -669,8 +669,6 @@ contract("TicketBroker", accounts => {
             await expectRevertWithReason(broker.withdraw(), "sender deposit and penalty escrow are zero")
         })
 
-        // TODO some test to make sure it proceeds in all combos of deposit and penaltyEscrow not zero
-
         it("reverts when account is locked", async () => {
             await broker.fundDeposit({from: sender, value: 1000})
 
@@ -705,6 +703,34 @@ contract("TicketBroker", accounts => {
             const txCost = await calcTxCost(txResult)
             const endBalance = new BN(await web3.eth.getBalance(sender))
             assert.equal(endBalance.sub(startBalance).add(txCost).toString(), (deposit + penaltyEscrow).toString())
+        })
+
+        it("completes withdrawal when deposit == 0", async () => {
+            const penaltyEscrow = 2000
+            await broker.fundPenaltyEscrow({from: sender, value: penaltyEscrow})
+            await broker.unlock({from: sender})
+            await fixture.rpc.wait(unlockPeriod)
+            const startBalance = new BN(await web3.eth.getBalance(sender))
+
+            const txResult = await broker.withdraw({from: sender})
+
+            const txCost = await calcTxCost(txResult)
+            const endBalance = new BN(await web3.eth.getBalance(sender))
+            assert.equal(endBalance.sub(startBalance).add(txCost).toString(), penaltyEscrow.toString())
+        })
+
+        it("completes withdrawal when penaltyEscrow == 0", async () => {
+            const deposit = 1000
+            await broker.fundDeposit({from: sender, value: deposit})
+            await broker.unlock({from: sender})
+            await fixture.rpc.wait(unlockPeriod)
+            const startBalance = new BN(await web3.eth.getBalance(sender))
+
+            const txResult = await broker.withdraw({from: sender})
+
+            const txCost = await calcTxCost(txResult)
+            const endBalance = new BN(await web3.eth.getBalance(sender))
+            assert.equal(endBalance.sub(startBalance).add(txCost).toString(), deposit.toString())
         })
 
         it("emits a Withdrawal event", async () => {
