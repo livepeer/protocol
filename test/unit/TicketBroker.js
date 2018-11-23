@@ -694,11 +694,15 @@ contract("TicketBroker", accounts => {
 
         it("emits an Unlock event", async () => {
             await broker.fundDeposit({from: sender, value: 1000})
+            const expectedStartBlock = (await web3.eth.getBlock("latest")).number + 1
+            const expectedEndBlock = expectedStartBlock + unlockPeriod
 
             const txResult = await broker.unlock({from: sender})
 
             truffleAssert.eventEmitted(txResult, "Unlock", ev => {
-                return ev.sender === sender
+                return ev.sender === sender &&
+                    ev.startBlock.toString() === expectedStartBlock.toString() &&
+                    ev.endBlock.toString() === expectedEndBlock.toString()
             })
         })
 

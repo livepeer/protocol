@@ -42,7 +42,7 @@ contract TicketBroker {
     );
     event WinningTicketTransfer(address indexed sender, address indexed recipient, uint256 amount);
     event PenaltyEscrowSlashed(address indexed sender, address indexed recipient, uint256 amount);
-    event Unlock(address indexed sender);
+    event Unlock(address indexed sender, uint256 startBlock, uint256 endBlock);
     event UnlockCancelled(address indexed sender);
     event Withdrawal(address indexed sender, uint256 amount);
 
@@ -138,7 +138,7 @@ contract TicketBroker {
 
         sender.withdrawBlock = block.number + unlockPeriod;
 
-        emit Unlock(msg.sender);
+        emit Unlock(msg.sender, block.number, sender.withdrawBlock);
     }
 
     function cancelUnlock() public {
