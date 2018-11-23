@@ -42,6 +42,7 @@ contract TicketBroker {
     );
     event WinningTicketTransfer(address indexed sender, address indexed recipient, uint256 amount);
     event PenaltyEscrowSlashed(address indexed sender, address indexed recipient, uint256 amount);
+    event Unlock(address indexed sender);
     event Withdrawal(address indexed sender, uint256 amount);
 
     modifier processDeposit(address _sender, uint256 _amount) {
@@ -128,6 +129,8 @@ contract TicketBroker {
         require(sender.withdrawBlock <= 0, "unlock already initiated");
 
         sender.withdrawBlock = block.number + unlockPeriod;
+
+        emit Unlock(msg.sender);
     }
 
     function withdraw() public {

@@ -662,6 +662,34 @@ contract("TicketBroker", accounts => {
             const expectedWithdrawBlock = fromBlock + unlockPeriod + 1 // +1 to account for the block created executing unlock
             assert.equal(withdrawBlock, expectedWithdrawBlock.toString())
         })
+
+        it("emits an Unlock event", async () => {
+            await broker.fundDeposit({from: sender, value: 1000})
+
+            const txResult = await broker.unlock({from: sender})
+
+            truffleAssert.eventEmitted(txResult, "Unlock", ev => {
+                return ev.sender === sender
+            })
+        })
+
+        it("emits an Unlock event indexed by sender", async () => {
+            const fromBlock = (await web3.eth.getBlock("latest")).number
+            await broker.fundDeposit({from: sender, value: 1000})
+
+            await broker.unlock({from: sender})
+
+            const events = await broker.getPastEvents("Unlock", {
+                filter: {
+                    sender
+                },
+                fromBlock,
+                toBlock: "latest"
+            })
+            assert.equal(events.length, 1)
+            const event = events[0]
+            assert.equal(event.returnValues.sender, sender)
+        })
     })
 
     describe("withdraw", () => {
