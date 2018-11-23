@@ -41,6 +41,10 @@ contract ERC20TicketBroker is TicketBroker {
         );
     }
 
+    function withdrawTransfer(address _sender, uint256 _amount) internal {
+        token.transfer(_sender, _amount);
+    }
+    
     function winningTicketTransfer(address _recipient, uint256 _amount) internal {
         token.transfer(_recipient, _amount);
     }

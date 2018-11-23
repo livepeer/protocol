@@ -62,29 +62,6 @@ contract TicketBroker {
         emit PenaltyEscrowFunded(_sender, _amount);
     }
 
-    modifier processWithdraw(address _sender) {
-        Sender storage sender = senders[_sender];
-
-        require(
-            sender.deposit > 0 || sender.penaltyEscrow > 0,
-            "sender deposit and penalty escrow are zero"
-        );
-        require(
-            sender.withdrawBlock > 0 && block.number >= sender.withdrawBlock, 
-            "account is locked"
-        );
-
-        uint256 withdrawalAmount = sender.deposit + sender.penaltyEscrow;
-
-        // TODO discuss potential re-entry attack here
-        _;
-
-        sender.deposit = 0;
-        sender.penaltyEscrow = 0;
-
-        emit Withdrawal(_sender, withdrawalAmount);
-    }
-
     constructor(uint256 _minPenaltyEscrow, uint256 _unlockPeriod) internal {
         minPenaltyEscrow = _minPenaltyEscrow;
         unlockPeriod = _unlockPeriod;
@@ -152,6 +129,30 @@ contract TicketBroker {
 
         sender.withdrawBlock = block.number + unlockPeriod;
     }
+
+    function withdraw() public {
+        Sender storage sender = senders[msg.sender];
+
+        require(
+            sender.deposit > 0 || sender.penaltyEscrow > 0,
+            "sender deposit and penalty escrow are zero"
+        );
+        require(
+            sender.withdrawBlock > 0 && block.number >= sender.withdrawBlock, 
+            "account is locked"
+        );
+
+        uint256 withdrawalAmount = sender.deposit + sender.penaltyEscrow;
+        sender.deposit = 0;
+        sender.penaltyEscrow = 0;
+
+        withdrawTransfer(msg.sender, withdrawalAmount);
+
+        emit Withdrawal(msg.sender, withdrawalAmount);
+    }
+
+    // Override
+    function withdrawTransfer(address _sender, uint256 _amount) internal;
 
     // Override
     function winningTicketTransfer(address _recipient, uint256 _amount) internal;

@@ -43,6 +43,10 @@ contract LivepeerETHTicketBroker is ManagerProxyTarget, TicketBroker {
         minter().trustedDepositETH.value(msg.value)();
     }
 
+    function withdrawTransfer(address _sender, uint256 _amount) internal {
+        // TODO implement and test
+    }
+
     function winningTicketTransfer(address _recipient, uint256 _amount) internal {
         // TODO: Consider changing this to the ticket creation round
         uint256 currentRound = roundsManager().currentRound();

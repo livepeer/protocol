@@ -26,13 +26,8 @@ contract ETHTicketBroker is TicketBroker {
         processPenaltyEscrow(msg.sender, msg.value)
     {}
 
-    function withdraw() 
-        external
-        processWithdraw(msg.sender) 
-    {
-        Sender storage sender = senders[msg.sender];
-
-        msg.sender.transfer(sender.deposit + sender.penaltyEscrow);
+    function withdrawTransfer(address _sender, uint256 _amount) internal {
+        _sender.transfer(_amount);
     }
 
     function winningTicketTransfer(address _recipient, uint256 _amount) internal {
