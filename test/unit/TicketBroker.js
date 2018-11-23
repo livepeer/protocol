@@ -697,14 +697,14 @@ contract("TicketBroker", accounts => {
             await expectRevertWithReason(broker.cancelUnlock(), "no unlock request in progress")
         })
 
-        it("sets sender's withdrawBlock to zero", async () => {
+        it("sets isUnlockInProgress to false", async () => {
             await broker.fundDeposit({from: sender, value: 1000})
             await broker.unlock()
 
             await broker.cancelUnlock()
-
-            const withdrawBlock = (await broker.senders.call(sender)).withdrawBlock.toString()
-            assert.equal(withdrawBlock, "0")
+            
+            const isUnlockInProgress = await broker.isUnlockInProgress.call(sender)
+            assert.equal(isUnlockInProgress, false)
         })
 
         it("prevents withdrawal", async () => {

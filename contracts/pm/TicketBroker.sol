@@ -127,7 +127,7 @@ contract TicketBroker {
             sender.deposit > 0 || sender.penaltyEscrow > 0,
             "sender deposit and penalty escrow are zero"
         );
-        require(sender.withdrawBlock <= 0, "unlock already initiated");
+        require(!_isUnlockInProgress(sender), "unlock already initiated");
 
         sender.withdrawBlock = block.number + unlockPeriod;
 
@@ -137,7 +137,7 @@ contract TicketBroker {
     function cancelUnlock() public {
         Sender storage sender = senders[msg.sender];
 
-        require(sender.withdrawBlock > 0, "no unlock request in progress");
+        require(_isUnlockInProgress(sender), "no unlock request in progress");
 
         sender.withdrawBlock = 0;
 
@@ -152,7 +152,7 @@ contract TicketBroker {
             "sender deposit and penalty escrow are zero"
         );
         require(
-            sender.withdrawBlock > 0 && block.number >= sender.withdrawBlock, 
+            _isUnlockInProgress(sender) && block.number >= sender.withdrawBlock, 
             "account is locked"
         );
 
@@ -163,6 +163,15 @@ contract TicketBroker {
         withdrawTransfer(msg.sender, withdrawalAmount);
 
         emit Withdrawal(msg.sender, withdrawalAmount);
+    }
+
+    function isUnlockInProgress(address _sender) public view returns (bool) {
+        Sender memory sender = senders[_sender];
+        return _isUnlockInProgress(sender);
+    }
+
+    function _isUnlockInProgress(Sender sender) internal pure returns (bool) {
+        return sender.withdrawBlock > 0;
     }
 
     // Override
