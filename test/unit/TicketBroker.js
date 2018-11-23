@@ -747,7 +747,7 @@ contract("TicketBroker", accounts => {
 
             await broker.cancelUnlock()
 
-            await expectRevertWithReason(broker.withdraw(), "account is locked")
+            await expectRevertWithReason(broker.withdraw(), "no unlock request in progress")
         })
 
         it("emits an UnlockCancelled event", async () => {
@@ -786,8 +786,15 @@ contract("TicketBroker", accounts => {
             await expectRevertWithReason(broker.withdraw(), "sender deposit and penalty escrow are zero")
         })
 
+        it("reverts when no unlock request has been started", async () => {
+            await broker.fundDeposit({from: sender, value: 1000})
+
+            await expectRevertWithReason(broker.withdraw(), "no unlock request in progress")
+        })
+
         it("reverts when account is locked", async () => {
             await broker.fundDeposit({from: sender, value: 1000})
+            await broker.unlock({from: sender})
 
             await expectRevertWithReason(broker.withdraw(), "account is locked")
         })

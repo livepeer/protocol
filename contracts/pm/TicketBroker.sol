@@ -156,7 +156,11 @@ contract TicketBroker {
             "sender deposit and penalty escrow are zero"
         );
         require(
-            _isUnlockInProgress(sender) && block.number >= sender.withdrawBlock, 
+            _isUnlockInProgress(sender), 
+            "no unlock request in progress"
+        );
+        require(
+            block.number >= sender.withdrawBlock, 
             "account is locked"
         );
 
