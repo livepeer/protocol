@@ -16,7 +16,7 @@ contract("TicketBroker", accounts => {
     const sender = accounts[0]
     const recipient = accounts[1]
 
-    const unlockPeriod = 150
+    const unlockPeriod = 20
 
     before(async () => {
         fixture = new Fixture(web3)
