@@ -75,6 +75,16 @@ contract("TicketBroker", accounts => {
             assert.equal(deposit2, "500")
         })
 
+        it("resets an unlock request in progress", async () => {
+            await broker.fundDeposit({from: sender, value: 1000})
+            await broker.unlock()
+
+            await broker.fundDeposit({from: sender, value: 500})
+
+            const isUnlockInProgress = await broker.isUnlockInProgress.call(sender)
+            assert(!isUnlockInProgress)
+        })
+
         it("emits a DepositFunded event", async () => {
             const txResult = await broker.fundDeposit({from: sender, value: 1000})
 
@@ -156,6 +166,16 @@ contract("TicketBroker", accounts => {
 
             assert.equal(penaltyEscrow, "1000")
             assert.equal(penaltyEscrow2, "500")
+        })
+
+        it("resets an unlock request in progress", async () => {
+            await broker.fundPenaltyEscrow({from: sender, value: 1000})
+            await broker.unlock()
+
+            await broker.fundPenaltyEscrow({from: sender, value: 500})
+
+            const isUnlockInProgress = await broker.isUnlockInProgress.call(sender)
+            assert(!isUnlockInProgress)
         })
 
         it("emits a PenaltyEscrowFunded event", async () => {
@@ -663,6 +683,15 @@ contract("TicketBroker", accounts => {
             assert.equal(withdrawBlock, expectedWithdrawBlock.toString())
         })
 
+        it("sets isUnlockInProgress to true", async () => {
+            await broker.fundDeposit({from: sender, value: 1000})
+
+            await broker.unlock({from: sender})
+
+            const isUnlockInProgress = await broker.isUnlockInProgress.call(sender)
+            assert(isUnlockInProgress)
+        })
+
         it("emits an Unlock event", async () => {
             await broker.fundDeposit({from: sender, value: 1000})
 
@@ -702,7 +731,7 @@ contract("TicketBroker", accounts => {
             await broker.unlock()
 
             await broker.cancelUnlock()
-            
+
             const isUnlockInProgress = await broker.isUnlockInProgress.call(sender)
             assert.equal(isUnlockInProgress, false)
         })
@@ -711,7 +740,7 @@ contract("TicketBroker", accounts => {
             await broker.fundDeposit({from: sender, value: 1000})
             await broker.unlock()
             await fixture.rpc.wait(unlockPeriod)
-        
+
             await broker.cancelUnlock()
 
             await expectRevertWithReason(broker.withdraw(), "account is locked")
@@ -729,8 +758,8 @@ contract("TicketBroker", accounts => {
         })
 
         it("emits an UnlockCancelled event with an indexed sender", async () => {
-            const fromBlock = (await web3.eth.getBlock("latest")).number
             await broker.fundDeposit({from: sender, value: 1000})
+            const fromBlock = (await web3.eth.getBlock("latest")).number
             await broker.unlock()
 
             await broker.cancelUnlock()

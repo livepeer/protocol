@@ -47,7 +47,11 @@ contract TicketBroker {
     event Withdrawal(address indexed sender, uint256 amount);
 
     modifier processDeposit(address _sender, uint256 _amount) {
-        senders[_sender].deposit += _amount;
+        Sender storage sender = senders[_sender];
+        sender.deposit += _amount;
+        if (_isUnlockInProgress(sender)) {
+            _cancelUnlock(sender, _sender);
+        }
 
         _;
 
@@ -57,8 +61,11 @@ contract TicketBroker {
     modifier processPenaltyEscrow(address _sender, uint256 _amount) {
         require(_amount >= minPenaltyEscrow, "penalty escrow amount must be >= minPenaltyEscrow");
 
-        senders[_sender].penaltyEscrow += _amount;
-
+        Sender storage sender = senders[_sender];
+        sender.penaltyEscrow += _amount;
+        if (_isUnlockInProgress(sender)) {
+            _cancelUnlock(sender, _sender);
+        }
         _;
 
         emit PenaltyEscrowFunded(_sender, _amount);
@@ -137,11 +144,7 @@ contract TicketBroker {
     function cancelUnlock() public {
         Sender storage sender = senders[msg.sender];
 
-        require(_isUnlockInProgress(sender), "no unlock request in progress");
-
-        sender.withdrawBlock = 0;
-
-        emit UnlockCancelled(msg.sender);
+        _cancelUnlock(sender, msg.sender);
     }
 
     function withdraw() public {
@@ -168,6 +171,14 @@ contract TicketBroker {
     function isUnlockInProgress(address _sender) public view returns (bool) {
         Sender memory sender = senders[_sender];
         return _isUnlockInProgress(sender);
+    }
+
+    function _cancelUnlock(Sender storage _sender, address _senderAddress) internal {
+        require(_isUnlockInProgress(_sender), "no unlock request in progress");
+
+        _sender.withdrawBlock = 0;
+
+        emit UnlockCancelled(_senderAddress);
     }
 
     function _isUnlockInProgress(Sender sender) internal pure returns (bool) {
