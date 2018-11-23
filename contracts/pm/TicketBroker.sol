@@ -66,6 +66,7 @@ contract TicketBroker {
         if (_isUnlockInProgress(sender)) {
             _cancelUnlock(sender, _sender);
         }
+
         _;
 
         emit PenaltyEscrowFunded(_sender, _amount);
