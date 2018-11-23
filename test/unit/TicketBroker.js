@@ -684,12 +684,12 @@ contract("TicketBroker", accounts => {
 
         it("sets withdrawBlock according to constructor config", async () => {
             await broker.fundDeposit({from: sender, value: 1000})
-            const fromBlock = (await web3.eth.getBlock("latest")).number
-
+            
             await broker.unlock({from: sender})
-
+            
+            const fromBlock = (await web3.eth.getBlock("latest")).number
+            const expectedWithdrawBlock = fromBlock + unlockPeriod
             const withdrawBlock = (await broker.senders.call(sender)).withdrawBlock.toString()
-            const expectedWithdrawBlock = fromBlock + unlockPeriod + 1 // +1 to account for the block created executing unlock
             assert.equal(withdrawBlock, expectedWithdrawBlock.toString())
         })
 
