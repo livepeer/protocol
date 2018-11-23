@@ -125,7 +125,7 @@ contract("TicketBroker", accounts => {
             const brokerWithMinPenaltyEscrow = await TicketBroker.new(web3.utils.toWei(".5", "ether"), 0)
 
             await expectThrow(brokerWithMinPenaltyEscrow.fundPenaltyEscrow({
-                from: sender, 
+                from: sender,
                 value: web3.utils.toWei(".49", "ether")
             }))
         })
@@ -684,9 +684,9 @@ contract("TicketBroker", accounts => {
 
         it("sets withdrawBlock according to constructor config", async () => {
             await broker.fundDeposit({from: sender, value: 1000})
-            
+
             await broker.unlock({from: sender})
-            
+
             const fromBlock = (await web3.eth.getBlock("latest")).number
             const expectedWithdrawBlock = fromBlock + unlockPeriod
             const withdrawBlock = (await broker.senders.call(sender)).withdrawBlock.toString()
@@ -876,7 +876,7 @@ contract("TicketBroker", accounts => {
             await fixture.rpc.wait(unlockPeriod)
 
             const txResult = await broker.withdraw({from: sender})
-       
+
             truffleAssert.eventEmitted(txResult, "Withdrawal", ev => {
                 return ev.sender === sender &&
                     ev.deposit.toString() === deposit.toString() &&
