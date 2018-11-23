@@ -20,11 +20,12 @@ contract("LivepeerETHTicketBroker", accounts => {
     before(async () => {
         fixture = new Fixture(web3)
         await fixture.deploy()
+
+        broker = await TicketBroker.new(fixture.controller.address, 0, unlockPeriod)
     })
 
     beforeEach(async () => {
         await fixture.setUp()
-        broker = await TicketBroker.new(fixture.controller.address, 0, unlockPeriod)
     })
 
     afterEach(async () => {
@@ -110,9 +111,9 @@ contract("LivepeerETHTicketBroker", accounts => {
 
     describe("fundPenaltyEscrow", () => {
         it("reverts when penalty escrow < minPenaltyEscrow", async () => {
-            broker = await TicketBroker.new(fixture.controller.address, 1000, 0)
+            const brokerWithMinEscrow = await TicketBroker.new(fixture.controller.address, 1000, 0)
 
-            await expectThrow(broker.fundPenaltyEscrow({from: sender, value: 500}))
+            await expectThrow(brokerWithMinEscrow.fundPenaltyEscrow({from: sender, value: 500}))
         })
 
         it("tracks sender's ETH penalty escrow", async () => {
