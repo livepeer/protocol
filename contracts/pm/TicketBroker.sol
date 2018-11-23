@@ -187,7 +187,7 @@ contract TicketBroker {
         emit UnlockCancelled(_senderAddress);
     }
 
-    function _isUnlockInProgress(Sender sender) internal pure returns (bool) {
+    function _isUnlockInProgress(Sender memory sender) internal pure returns (bool) {
         return sender.withdrawBlock > 0;
     }
 
