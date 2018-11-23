@@ -747,7 +747,7 @@ contract("TicketBroker", accounts => {
             await broker.cancelUnlock()
 
             const isUnlockInProgress = await broker.isUnlockInProgress.call(sender)
-            assert.equal(isUnlockInProgress, false)
+            assert(!isUnlockInProgress)
         })
 
         it("prevents withdrawal", async () => {
