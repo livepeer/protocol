@@ -163,6 +163,21 @@ contract("Minter", accounts => {
             await expectThrow(minter.createReward(10, 100))
         })
 
+        it("should fail if Controller is paused", async () => {
+            await fixture.controller.pause()
+
+            await expectThrow(
+                fixture.bondingManager.execute(
+                    minter.address,
+                    functionEncodedABI(
+                        "createReward(uint256,uint256)",
+                        ["uint256", "uint256"],
+                        [10, 100]
+                    )
+                )
+            )
+        })
+
         it("should update currentMintedTokens with computed reward", async () => {
             // Set up reward call via BondingManager
             await fixture.bondingManager.execute(minter.address, functionEncodedABI("createReward(uint256,uint256)", ["uint256", "uint256"], [10, 100]))
@@ -226,6 +241,21 @@ contract("Minter", accounts => {
             await expectThrow(minter.trustedTransferTokens(accounts[1], 100))
         })
 
+        it("should fail if Controller is paused", async () => {
+            await fixture.controller.pause()
+
+            await expectThrow(
+                fixture.bondingManager.execute(
+                    minter.address,
+                    functionEncodedABI(
+                        "trustedTransferTokens(address,uint256)",
+                        ["address", "uint256"],
+                        [accounts[1], 100]
+                    )
+                )
+            )
+        })
+
         it("should transfer tokens to receiving address", async () => {
             // Just make sure that this does not fail
             await fixture.bondingManager.execute(minter.address, functionEncodedABI("trustedTransferTokens(address,uint256)", ["address", "uint256"], [accounts[1], 100]))
@@ -237,6 +267,21 @@ contract("Minter", accounts => {
             await expectThrow(minter.trustedBurnTokens(100))
         })
 
+        it("should fail if Controller is paused", async () => {
+            await fixture.controller.pause()
+
+            await expectThrow(
+                fixture.bondingManager.execute(
+                    minter.address,
+                    functionEncodedABI(
+                        "trustedBurnTokens(uint256)",
+                        ["uint256"],
+                        [100]
+                    )
+                )
+            )
+        })
+
         it("should burn tokens", async () => {
             // Just make sure that this does not fail
             await fixture.bondingManager.execute(minter.address, functionEncodedABI("trustedBurnTokens(uint256)", ["uint256"], [100]))
@@ -246,6 +291,21 @@ contract("Minter", accounts => {
     describe("trustedWithdrawETH", () => {
         it("should fail if caller is not BondingManager or TicketBroker", async () => {
             await expectThrow(minter.trustedWithdrawETH(accounts[1], 100))
+        })
+
+        it("should fail if Controller is paused", async () => {
+            await fixture.controller.pause()
+
+            await expectThrow(
+                fixture.bondingManager.execute(
+                    minter.address,
+                    functionEncodedABI(
+                        "trustedWithdrawETH(address,uint256)",
+                        ["address", "uint256"],
+                        [accounts[1], 100]
+                    )
+                )
+            )
         })
 
         it("should fail if insufficient balance when caller is BondingManager", async () => {
@@ -286,6 +346,18 @@ contract("Minter", accounts => {
             await expectThrow(minter.trustedDepositETH({from: accounts[1], value: 100}))
         })
 
+        it("should fail if Controller is paused", async () => {
+            await fixture.controller.pause()
+
+            await expectThrow(
+                fixture.ticketBroker.execute(
+                    minter.address,
+                    functionSig("trustedDepositETH()"),
+                    {from: accounts[1], value: 100}
+                )
+            )
+        })
+
         it("should receive ETH from currently registered Minter", async () => {
             // Register mock Minter
             const mockMinter = await fixture.deployAndRegister(GenericMock, "Minter")
@@ -305,6 +377,23 @@ contract("Minter", accounts => {
     describe("trustedBurnETH", () => {
         it("should fail if caller is not currently registered TicketBroker", async () => {
             await expectThrow(minter.trustedBurnETH(100, {from: accounts[1]}))
+        })
+
+        it("should fail if Controller is paused", async () => {
+            await fixture.ticketBroker.execute(minter.address, functionSig("trustedDepositETH()"), {from: accounts[1], value: 1000})
+            await fixture.controller.pause()
+
+            await expectThrow(
+                fixture.ticketBroker.execute(
+                    minter.address,
+                    functionEncodedABI(
+                        "trustedBurnETH(uint256)",
+                        ["uint256"],
+                        [100]
+                    ),
+                    {from: accounts[1]}
+                )
+            )
         })
 
         it("should burn ETH if caller is TicketBroker", async () => {
@@ -335,6 +424,17 @@ contract("Minter", accounts => {
 
         it("should fail if caller is not RoundsManager", async () => {
             await expectThrow(minter.setCurrentRewardTokens())
+        })
+
+        it("should fail if Controller is paused", async () => {
+            await fixture.controller.pause()
+
+            await expectThrow(
+                fixture.roundsManager.execute(
+                    minter.address,
+                    functionSig("setCurrentRewardTokens()")
+                )
+            )
         })
 
         it("should increase the inflation rate if the current bonding rate is 0 (total supply = 0) and below the target bonding rate", async () => {
