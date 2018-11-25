@@ -27,6 +27,10 @@ contract LivepeerETHTicketBroker is ManagerProxyTarget, TicketBroker {
         minPenaltyEscrow = _minPenaltyEscrow;
     }
 
+    function setUnlockPeriod(uint256 _unlockPeriod) external onlyControllerOwner {
+        unlockPeriod = _unlockPeriod;
+    }
+
     function fundDeposit()
         external
         payable

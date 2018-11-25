@@ -58,5 +58,6 @@ module.exports = function(deployer, network) {
 
         // Set TicketBroker parameters
         await broker.setMinPenaltyEscrow(config.broker.minPenaltyEscrow)
+        await broker.setUnlockPeriod(config.broker.unlockPeriod)
     })
 }

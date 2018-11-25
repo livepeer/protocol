@@ -72,7 +72,7 @@ contract("TicketFlow", accounts => {
         assert.equal(await web3.eth.getBalance(minter.address), deposit.add(penaltyEscrow).toString())
     })
 
-    it("broadcaster sends a winning ticket", async () => {
+    it("broadcaster sends a winning ticket and transcoder redeems it", async () => {
         const deposit = (await broker.senders.call(broadcaster)).deposit
         const recipientRand = 5
         const faceValue = 1000
@@ -91,7 +91,7 @@ contract("TicketFlow", accounts => {
         assert.equal(earningsPool.transcoderFeePool.toString(), faceValue.toString())
     })
 
-    it("broadcaster double spends", async () => {
+    it("broadcaster double spends by over spending with its deposit", async () => {
         await roundsManager.mineBlocks(roundLength)
         await roundsManager.initializeRound()
 

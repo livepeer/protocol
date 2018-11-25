@@ -9,6 +9,7 @@ module.exports = {
         maxEarningsClaimsRounds: 20
     },
     broker: {
+        // TODO: Consider updating these values prior to deploying to testnet
         minPenaltyEscrow: (new BN(1)).mul(constants.TOKEN_UNIT).div(new BN(2)),
         unlockPeriod: new BN(40320) // approximately 7 days worth of blocks
     },
