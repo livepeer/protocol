@@ -746,6 +746,29 @@ contract("TicketBroker", accounts => {
             assert.equal(endDeposit, (deposit - faceValue).toString())
         })
 
+        it("can be called by an account that is not the recipient", async () => {
+            const thirdParty = accounts[2]
+            const deposit = 1500
+            await broker.fundDeposit({from: sender, value: deposit})
+
+            const recipientRand = 5
+            const faceValue = 1000
+            const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
+            const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
+            const startBrokerBalance = new BN(await web3.eth.getBalance(broker.address))
+            const startRecipientBalance = new BN(await web3.eth.getBalance(recipient))
+
+            await broker.redeemWinningTicket(ticket, senderSig, recipientRand, {from: thirdParty})
+
+            const endBrokerBalance = new BN(await web3.eth.getBalance(broker.address))
+            const endRecipientBalance = new BN(await web3.eth.getBalance(recipient))
+            const endDeposit = (await broker.senders.call(sender)).deposit.toString()
+
+            assert.equal(startBrokerBalance.sub(endBrokerBalance).toString(), faceValue.toString())
+            assert.equal(endRecipientBalance.sub(startRecipientBalance).toString(), faceValue.toString())
+            assert.equal(endDeposit, (deposit - faceValue).toString())
+        })
+
         it("emits a WinningTicketRedeemed event", async () => {
             const deposit = 1500
             await broker.fundDeposit({from: sender, value: deposit})
