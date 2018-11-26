@@ -14,6 +14,20 @@ contract ETHTicketBroker is TicketBroker {
         public 
     {}
 
+    function fundAndApproveSigners(
+        uint256 _depositAmount,
+        uint256 _penaltyEscrowAmount,
+        address[] _signers
+    )
+        external
+        payable
+        checkDepositPenaltyEscrowSplit(_depositAmount, _penaltyEscrowAmount)
+        processDeposit(msg.sender, _depositAmount)
+        processPenaltyEscrow(msg.sender, _penaltyEscrowAmount)
+    {
+        approveSigners(_signers);
+    }
+
     function fundDeposit() 
         external
         payable

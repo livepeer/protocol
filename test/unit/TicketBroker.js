@@ -257,6 +257,107 @@ contract("TicketBroker", accounts => {
         })
     })
 
+    describe("fundAndApproveSigners", () => {
+        const signers = accounts.slice(2, 4)
+
+        it("reverts if msg.value < sum of deposit amount and penalty escrow amount", async () => {
+            const deposit = 500
+            const penaltyEscrow = 1000
+
+            await expectRevertWithReason(
+                broker.fundAndApproveSigners(
+                    deposit,
+                    penaltyEscrow,
+                    signers,
+                    {from: sender, value: deposit + penaltyEscrow - 1}
+                ),
+                "msg.value does not equal sum of deposit amount and penalty escrow amount"
+            )
+        })
+
+        it("reverts if msg.value > sum of deposit amount and penalty escrow amount", async () => {
+            const deposit = 500
+            const penaltyEscrow = 1000
+
+            await expectRevertWithReason(
+                broker.fundAndApproveSigners(
+                    deposit,
+                    penaltyEscrow,
+                    signers,
+                    {from: sender, value: deposit + penaltyEscrow + 1}
+                ),
+                "msg.value does not equal sum of deposit amount and penalty escrow amount"
+            )
+        })
+
+        it("approves addresses as signers for sender", async () => {
+            const deposit = 500
+            const penaltyEscrow = 1000
+
+            await broker.fundAndApproveSigners(
+                deposit,
+                penaltyEscrow,
+                signers,
+                {from: sender, value: deposit + penaltyEscrow}
+            )
+
+            assert(await broker.isApprovedSigner(sender, signers[0]))
+            assert(await broker.isApprovedSigner(sender, signers[1]))
+        })
+
+        it("grows the broker's ETH balance by sum of deposit and penalty escrow amounts", async () => {
+            const deposit = 500
+            const penaltyEscrow = 1000
+            const startBrokerBalance = new BN(await web3.eth.getBalance(broker.address))
+
+            await broker.fundAndApproveSigners(
+                deposit,
+                penaltyEscrow,
+                signers,
+                {from: sender, value: deposit + penaltyEscrow}
+            )
+
+            const endBrokerBalance = new BN(await web3.eth.getBalance(broker.address))
+
+            assert.equal(endBrokerBalance.sub(startBrokerBalance).toString(), (deposit + penaltyEscrow).toString())
+        })
+
+        it("reduces the sender's ETH balance by sum of deposit and penalty escrow amounts", async () => {
+            const deposit = 500
+            const penaltyEscrow = 1000
+            const startSenderBalance = new BN(await web3.eth.getBalance(sender))
+
+            const txResult = await broker.fundAndApproveSigners(
+                deposit,
+                penaltyEscrow,
+                signers,
+                {from: sender, value: deposit + penaltyEscrow}
+            )
+
+            const endSenderBalance = new BN(await web3.eth.getBalance(sender))
+            const txCost = await calcTxCost(txResult)
+
+            assert.equal(startSenderBalance.sub(endSenderBalance).sub(txCost).toString(), (deposit + penaltyEscrow).toString())
+        })
+
+        it("tracks sender's ETH deposit and penalty escrow", async () => {
+            const deposit = 500
+            const penaltyEscrow = 1000
+
+            await broker.fundAndApproveSigners(
+                deposit,
+                penaltyEscrow,
+                signers,
+                {from: sender, value: deposit + penaltyEscrow}
+            )
+
+            const endSender = await broker.senders.call(sender)
+
+            assert.equal(endSender.deposit.toString(), deposit.toString())
+            assert.equal(endSender.penaltyEscrow.toString(), penaltyEscrow.toString())
+        })
+    })
+
     describe("redeemWinningTicket", () => {
         it("reverts if ticket's recipient is null address", async () => {
             await expectRevertWithReason(
