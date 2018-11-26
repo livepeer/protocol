@@ -216,6 +216,47 @@ contract("TicketBroker", accounts => {
         })
     })
 
+    describe("approveSigners", () => {
+        const signers = accounts.slice(2, 4)
+
+        it("approves addresses as signers for sender", async () => {
+            await broker.approveSigners(signers, {from: sender})
+
+            assert(await broker.isApprovedSigner(sender, signers[0]))
+            assert(await broker.isApprovedSigner(sender, signers[1]))
+        })
+
+        it("emits a SignersApproved event", async () => {
+            const txResult = await broker.approveSigners(signers, {from: sender})
+
+            truffleAssert.eventEmitted(txResult, "SignersApproved", ev => {
+                return ev.sender === sender
+                    && ev.approvedSigners[0] === signers[0]
+                    && ev.approvedSigners[1] === signers[1]
+            })
+        })
+
+        it("emits a SignersApproved event with indexed sender", async () => {
+            const sender2 = accounts[4]
+            const fromBlock = (await web3.eth.getBlock("latest")).number
+            await broker.approveSigners(signers, {from: sender})
+            await broker.approveSigners(signers, {from: sender2})
+
+            const events = await broker.getPastEvents("SignersApproved", {
+                filter: {
+                    sender
+                },
+                fromBlock,
+                toBlock: "latest"
+            })
+
+            assert.equal(events.length, 1)
+            assert.equal(events[0].returnValues.sender, sender)
+            assert.equal(events[0].returnValues.approvedSigners[0], signers[0])
+            assert.equal(events[0].returnValues.approvedSigners[1], signers[1])
+        })
+    })
+
     describe("redeemWinningTicket", () => {
         it("reverts if ticket's recipient is null address", async () => {
             await expectRevertWithReason(
@@ -564,6 +605,31 @@ contract("TicketBroker", accounts => {
             const faceValue = 1500
             const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
             const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
+            const startBrokerBalance = new BN(await web3.eth.getBalance(broker.address))
+            const startRecipientBalance = new BN(await web3.eth.getBalance(recipient))
+
+            const txResult = await broker.redeemWinningTicket(ticket, senderSig, recipientRand, {from: recipient})
+
+            const txCost = await calcTxCost(txResult)
+            const endBrokerBalance = new BN(await web3.eth.getBalance(broker.address))
+            const endRecipientBalance = new BN(await web3.eth.getBalance(recipient))
+            const endDeposit = (await broker.senders.call(sender)).deposit.toString()
+
+            assert.equal(startBrokerBalance.sub(endBrokerBalance).toString(), faceValue.toString())
+            assert.equal(endRecipientBalance.sub(startRecipientBalance).add(txCost).toString(), faceValue.toString())
+            assert.equal(endDeposit, (deposit - faceValue).toString())
+        })
+
+        it("accepts signature from a sender's approved signer", async () => {
+            const signer = accounts[2]
+            const deposit = 1500
+            await broker.fundDeposit({from: sender, value: deposit})
+            await broker.approveSigners([signer], {from: sender})
+
+            const recipientRand = 5
+            const faceValue = 1000
+            const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
+            const senderSig = await web3.eth.sign(getTicketHash(ticket), signer)
             const startBrokerBalance = new BN(await web3.eth.getBalance(broker.address))
             const startRecipientBalance = new BN(await web3.eth.getBalance(recipient))
 
