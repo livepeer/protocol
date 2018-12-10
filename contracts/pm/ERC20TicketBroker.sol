@@ -27,7 +27,6 @@ contract ERC20TicketBroker is TicketBroker {
         address[] _signers
     )
         external
-        checkDepositPenaltyEscrowSplit(_depositAmount, _penaltyEscrowAmount)
         processDeposit(msg.sender, _depositAmount)
         processPenaltyEscrow(msg.sender, _penaltyEscrowAmount)
     {
