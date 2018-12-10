@@ -38,7 +38,7 @@ contract LivepeerETHTicketBroker is ManagerProxyTarget, TicketBroker {
     )
         external
         payable
-        checkDepositPenaltyEscrowSplit(_depositAmount, _penaltyEscrowAmount)
+        checkDepositPenaltyEscrowETHValueSplit(_depositAmount, _penaltyEscrowAmount)
         processDeposit(msg.sender, _depositAmount)
         processPenaltyEscrow(msg.sender, _penaltyEscrowAmount)
     {

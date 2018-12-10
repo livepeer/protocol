@@ -48,7 +48,7 @@ contract TicketBroker {
     event UnlockCancelled(address indexed sender);
     event Withdrawal(address indexed sender, uint256 deposit, uint256 penaltyEscrow);
 
-    modifier checkDepositPenaltyEscrowSplit(uint256 _depositAmount, uint256 _penaltyEscrowAmount) {
+    modifier checkDepositPenaltyEscrowETHValueSplit(uint256 _depositAmount, uint256 _penaltyEscrowAmount) {
         require(
             msg.value == _depositAmount + _penaltyEscrowAmount,
             "msg.value does not equal sum of deposit amount and penalty escrow amount"
