@@ -11,6 +11,7 @@ contract TicketBroker {
         uint256 deposit;
         uint256 penaltyEscrow;
         uint256 withdrawBlock;
+        mapping (address => bool) signers;
     }
 
     struct Ticket {
@@ -31,6 +32,7 @@ contract TicketBroker {
 
     event DepositFunded(address indexed sender, uint256 amount);
     event PenaltyEscrowFunded(address indexed sender, uint256 amount);
+    event SignersApproved(address indexed sender, address[] approvedSigners);
     event WinningTicketRedeemed(
         address indexed sender,
         address indexed recipient,
@@ -45,6 +47,15 @@ contract TicketBroker {
     event Unlock(address indexed sender, uint256 startBlock, uint256 endBlock);
     event UnlockCancelled(address indexed sender);
     event Withdrawal(address indexed sender, uint256 deposit, uint256 penaltyEscrow);
+
+    modifier checkDepositPenaltyEscrowETHValueSplit(uint256 _depositAmount, uint256 _penaltyEscrowAmount) {
+        require(
+            msg.value == _depositAmount + _penaltyEscrowAmount,
+            "msg.value does not equal sum of deposit amount and penalty escrow amount"
+        );
+
+        _;
+    }
 
     modifier processDeposit(address _sender, uint256 _amount) {
         Sender storage sender = senders[_sender];
@@ -75,6 +86,16 @@ contract TicketBroker {
     constructor(uint256 _minPenaltyEscrow, uint256 _unlockPeriod) internal {
         minPenaltyEscrow = _minPenaltyEscrow;
         unlockPeriod = _unlockPeriod;
+    }
+
+    function approveSigners(address[] _signers) public {
+        Sender storage sender = senders[msg.sender];
+
+        for (uint256 i = 0; i < _signers.length; i++) {
+            sender.signers[_signers[i]] = true;
+        }
+
+        emit SignersApproved(msg.sender, _signers);
     }
 
     function redeemWinningTicket(Ticket memory _ticket, bytes _sig, uint256 _recipientRand) public {
@@ -179,16 +200,16 @@ contract TicketBroker {
         return _isUnlockInProgress(sender);
     }
 
+    function isApprovedSigner(address _sender, address _signer) public view returns (bool) {
+        return senders[_sender].signers[_signer];
+    }
+
     function _cancelUnlock(Sender storage _sender, address _senderAddress) internal {
         require(_isUnlockInProgress(_sender), "no unlock request in progress");
 
         _sender.withdrawBlock = 0;
 
         emit UnlockCancelled(_senderAddress);
-    }
-
-    function _isUnlockInProgress(Sender memory sender) internal pure returns (bool) {
-        return sender.withdrawBlock > 0;
     }
 
     // Override
@@ -235,6 +256,19 @@ contract TicketBroker {
         );
     }
 
+    function isValidTicketSig(
+        address _sender,
+        bytes _sig,
+        bytes32 _ticketHash
+    )
+        internal
+        view
+        returns (bool)
+    {
+        address signer = ECDSA.recover(ECDSA.toEthSignedMessageHash(_ticketHash), _sig);
+        return signer != address(0) && (_sender == signer || isApprovedSigner(_sender, signer));
+    }
+
     function getTicketHash(Ticket memory _ticket) internal pure returns (bytes32) {
         return keccak256(
             abi.encodePacked(
@@ -253,8 +287,7 @@ contract TicketBroker {
         return uint256(keccak256(abi.encodePacked(_ticketHash, _recipientRand))) < _winProb;
     }
 
-    function isValidTicketSig(address _sender, bytes _sig, bytes32 _ticketHash) internal pure returns (bool) {
-        address signer = ECDSA.recover(ECDSA.toEthSignedMessageHash(_ticketHash), _sig);
-        return signer != address(0) && _sender == signer;
+    function _isUnlockInProgress(Sender memory sender) internal pure returns (bool) {
+        return sender.withdrawBlock > 0;
     }
 }

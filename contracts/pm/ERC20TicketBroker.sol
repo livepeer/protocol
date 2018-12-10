@@ -21,6 +21,23 @@ contract ERC20TicketBroker is TicketBroker {
         token = ERC20(_token);
     }
 
+    function fundAndApproveSigners(
+        uint256 _depositAmount,
+        uint256 _penaltyEscrowAmount,
+        address[] _signers
+    )
+        external
+        processDeposit(msg.sender, _depositAmount)
+        processPenaltyEscrow(msg.sender, _penaltyEscrowAmount)
+    {
+        approveSigners(_signers);
+
+        require(
+            token.transferFrom(msg.sender, address(this), _depositAmount + _penaltyEscrowAmount),
+            "token transfer for deposit and penalty escrow failed"
+        );
+    }
+
     function fundDeposit(uint256 _amount) 
         external
         processDeposit(msg.sender, _amount)
