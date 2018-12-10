@@ -88,9 +88,9 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     // Keep track of active transcoder set for each round
     mapping (uint256 => ActiveTranscoderSet) public activeTranscoderSet;
 
-    // Check if sender is JobsManager
-    modifier onlyJobsManager() {
-        require(msg.sender == controller.getContract(keccak256("JobsManager")));
+    // Check if sender is TicketBroker
+    modifier onlyTicketBroker() {
+        require(msg.sender == controller.getContract(keccak256("TicketBroker")));
         _;
     }
 
@@ -567,7 +567,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     )
         external
         whenSystemNotPaused
-        onlyJobsManager
+        onlyTicketBroker
     {
         // Transcoder must be registered
         require(transcoderStatus(_transcoder) == TranscoderStatus.Registered);
@@ -594,7 +594,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     )
         external
         whenSystemNotPaused
-        onlyJobsManager
+        onlyTicketBroker
     {
         Delegator storage del = delegators[_transcoder];
 

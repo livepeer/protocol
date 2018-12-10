@@ -5,17 +5,32 @@ import expectThrow from "../helpers/expectThrow"
 import {expectRevertWithReason} from "../helpers/expectFail"
 import {createTicket, createWinningTicket, getTicketHash} from "../helpers/ticket"
 import {constants} from "../../utils/constants"
+import Fixture from "./helpers/Fixture"
 
-const TicketBroker = artifacts.require("TicketBroker")
+const TicketBroker = artifacts.require("ETHTicketBroker")
 
 contract("TicketBroker", accounts => {
     let broker
+    let fixture
 
     const sender = accounts[0]
     const recipient = accounts[1]
 
+    const unlockPeriod = 20
+
+    before(async () => {
+        fixture = new Fixture(web3)
+        await fixture.deploy()
+
+        broker = await TicketBroker.new(0, unlockPeriod)
+    })
+
     beforeEach(async () => {
-        broker = await TicketBroker.new(0)
+        await fixture.setUp()
+    })
+
+    afterEach(async () => {
+        await fixture.tearDown()
     })
 
     describe("fundDeposit", () => {
@@ -67,6 +82,16 @@ contract("TicketBroker", accounts => {
             assert.equal(deposit2, "500")
         })
 
+        it("resets an unlock request in progress", async () => {
+            await broker.fundDeposit({from: sender, value: 1000})
+            await broker.unlock()
+
+            await broker.fundDeposit({from: sender, value: 500})
+
+            const isUnlockInProgress = await broker.isUnlockInProgress.call(sender)
+            assert(!isUnlockInProgress)
+        })
+
         it("emits a DepositFunded event", async () => {
             const txResult = await broker.fundDeposit({from: sender, value: 1000})
 
@@ -97,9 +122,12 @@ contract("TicketBroker", accounts => {
 
     describe("fundPenaltyEscrow", () => {
         it("reverts if ETH sent < required penalty escrow", async () => {
-            broker = await TicketBroker.new(web3.utils.toWei(".5", "ether"))
+            const brokerWithMinPenaltyEscrow = await TicketBroker.new(web3.utils.toWei(".5", "ether"), 0)
 
-            await expectThrow(broker.fundPenaltyEscrow({from: sender, value: web3.utils.toWei(".49", "ether")}))
+            await expectThrow(brokerWithMinPenaltyEscrow.fundPenaltyEscrow({
+                from: sender,
+                value: web3.utils.toWei(".49", "ether")
+            }))
         })
 
         it("grows the broker's ETH balance", async () => {
@@ -150,6 +178,16 @@ contract("TicketBroker", accounts => {
             assert.equal(penaltyEscrow2, "500")
         })
 
+        it("resets an unlock request in progress", async () => {
+            await broker.fundPenaltyEscrow({from: sender, value: 1000})
+            await broker.unlock()
+
+            await broker.fundPenaltyEscrow({from: sender, value: 500})
+
+            const isUnlockInProgress = await broker.isUnlockInProgress.call(sender)
+            assert(!isUnlockInProgress)
+        })
+
         it("emits a PenaltyEscrowFunded event", async () => {
             const txResult = await broker.fundPenaltyEscrow({from: sender, value: 1000})
 
@@ -175,6 +213,148 @@ contract("TicketBroker", accounts => {
             assert.equal(events.length, 1)
             assert.equal(events[0].returnValues.sender, sender)
             assert.equal(events[0].returnValues.amount.toString(), "1000")
+        })
+    })
+
+    describe("approveSigners", () => {
+        const signers = accounts.slice(2, 4)
+
+        it("approves addresses as signers for sender", async () => {
+            await broker.approveSigners(signers, {from: sender})
+
+            assert(await broker.isApprovedSigner(sender, signers[0]))
+            assert(await broker.isApprovedSigner(sender, signers[1]))
+        })
+
+        it("emits a SignersApproved event", async () => {
+            const txResult = await broker.approveSigners(signers, {from: sender})
+
+            truffleAssert.eventEmitted(txResult, "SignersApproved", ev => {
+                return ev.sender === sender
+                    && ev.approvedSigners[0] === signers[0]
+                    && ev.approvedSigners[1] === signers[1]
+            })
+        })
+
+        it("emits a SignersApproved event with indexed sender", async () => {
+            const sender2 = accounts[4]
+            const fromBlock = (await web3.eth.getBlock("latest")).number
+            await broker.approveSigners(signers, {from: sender})
+            await broker.approveSigners(signers, {from: sender2})
+
+            const events = await broker.getPastEvents("SignersApproved", {
+                filter: {
+                    sender
+                },
+                fromBlock,
+                toBlock: "latest"
+            })
+
+            assert.equal(events.length, 1)
+            assert.equal(events[0].returnValues.sender, sender)
+            assert.equal(events[0].returnValues.approvedSigners[0], signers[0])
+            assert.equal(events[0].returnValues.approvedSigners[1], signers[1])
+        })
+    })
+
+    describe("fundAndApproveSigners", () => {
+        const signers = accounts.slice(2, 4)
+
+        it("reverts if msg.value < sum of deposit amount and penalty escrow amount", async () => {
+            const deposit = 500
+            const penaltyEscrow = 1000
+
+            await expectRevertWithReason(
+                broker.fundAndApproveSigners(
+                    deposit,
+                    penaltyEscrow,
+                    signers,
+                    {from: sender, value: deposit + penaltyEscrow - 1}
+                ),
+                "msg.value does not equal sum of deposit amount and penalty escrow amount"
+            )
+        })
+
+        it("reverts if msg.value > sum of deposit amount and penalty escrow amount", async () => {
+            const deposit = 500
+            const penaltyEscrow = 1000
+
+            await expectRevertWithReason(
+                broker.fundAndApproveSigners(
+                    deposit,
+                    penaltyEscrow,
+                    signers,
+                    {from: sender, value: deposit + penaltyEscrow + 1}
+                ),
+                "msg.value does not equal sum of deposit amount and penalty escrow amount"
+            )
+        })
+
+        it("approves addresses as signers for sender", async () => {
+            const deposit = 500
+            const penaltyEscrow = 1000
+
+            await broker.fundAndApproveSigners(
+                deposit,
+                penaltyEscrow,
+                signers,
+                {from: sender, value: deposit + penaltyEscrow}
+            )
+
+            assert(await broker.isApprovedSigner(sender, signers[0]))
+            assert(await broker.isApprovedSigner(sender, signers[1]))
+        })
+
+        it("grows the broker's ETH balance by sum of deposit and penalty escrow amounts", async () => {
+            const deposit = 500
+            const penaltyEscrow = 1000
+            const startBrokerBalance = new BN(await web3.eth.getBalance(broker.address))
+
+            await broker.fundAndApproveSigners(
+                deposit,
+                penaltyEscrow,
+                signers,
+                {from: sender, value: deposit + penaltyEscrow}
+            )
+
+            const endBrokerBalance = new BN(await web3.eth.getBalance(broker.address))
+
+            assert.equal(endBrokerBalance.sub(startBrokerBalance).toString(), (deposit + penaltyEscrow).toString())
+        })
+
+        it("reduces the sender's ETH balance by sum of deposit and penalty escrow amounts", async () => {
+            const deposit = 500
+            const penaltyEscrow = 1000
+            const startSenderBalance = new BN(await web3.eth.getBalance(sender))
+
+            const txResult = await broker.fundAndApproveSigners(
+                deposit,
+                penaltyEscrow,
+                signers,
+                {from: sender, value: deposit + penaltyEscrow}
+            )
+
+            const endSenderBalance = new BN(await web3.eth.getBalance(sender))
+            const txCost = await calcTxCost(txResult)
+
+            assert.equal(startSenderBalance.sub(endSenderBalance).sub(txCost).toString(), (deposit + penaltyEscrow).toString())
+        })
+
+        it("tracks sender's ETH deposit and penalty escrow", async () => {
+            const deposit = 500
+            const penaltyEscrow = 1000
+
+            await broker.fundAndApproveSigners(
+                deposit,
+                penaltyEscrow,
+                signers,
+                {from: sender, value: deposit + penaltyEscrow}
+            )
+
+            const endSender = await broker.senders.call(sender)
+
+            assert.equal(endSender.deposit.toString(), deposit.toString())
+            assert.equal(endSender.penaltyEscrow.toString(), penaltyEscrow.toString())
         })
     })
 
@@ -207,7 +387,7 @@ contract("TicketBroker", accounts => {
                     createTicket({
                         recipient,
                         sender,
-                        creationTimestamp: 0
+                        auxData: web3.utils.numberToHex(0)
                     }),
                     web3.utils.asciiToHex("sig"),
                     5
@@ -541,6 +721,54 @@ contract("TicketBroker", accounts => {
             assert.equal(endDeposit, (deposit - faceValue).toString())
         })
 
+        it("accepts signature from a sender's approved signer", async () => {
+            const signer = accounts[2]
+            const deposit = 1500
+            await broker.fundDeposit({from: sender, value: deposit})
+            await broker.approveSigners([signer], {from: sender})
+
+            const recipientRand = 5
+            const faceValue = 1000
+            const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
+            const senderSig = await web3.eth.sign(getTicketHash(ticket), signer)
+            const startBrokerBalance = new BN(await web3.eth.getBalance(broker.address))
+            const startRecipientBalance = new BN(await web3.eth.getBalance(recipient))
+
+            const txResult = await broker.redeemWinningTicket(ticket, senderSig, recipientRand, {from: recipient})
+
+            const txCost = await calcTxCost(txResult)
+            const endBrokerBalance = new BN(await web3.eth.getBalance(broker.address))
+            const endRecipientBalance = new BN(await web3.eth.getBalance(recipient))
+            const endDeposit = (await broker.senders.call(sender)).deposit.toString()
+
+            assert.equal(startBrokerBalance.sub(endBrokerBalance).toString(), faceValue.toString())
+            assert.equal(endRecipientBalance.sub(startRecipientBalance).add(txCost).toString(), faceValue.toString())
+            assert.equal(endDeposit, (deposit - faceValue).toString())
+        })
+
+        it("can be called by an account that is not the recipient", async () => {
+            const thirdParty = accounts[2]
+            const deposit = 1500
+            await broker.fundDeposit({from: sender, value: deposit})
+
+            const recipientRand = 5
+            const faceValue = 1000
+            const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
+            const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
+            const startBrokerBalance = new BN(await web3.eth.getBalance(broker.address))
+            const startRecipientBalance = new BN(await web3.eth.getBalance(recipient))
+
+            await broker.redeemWinningTicket(ticket, senderSig, recipientRand, {from: thirdParty})
+
+            const endBrokerBalance = new BN(await web3.eth.getBalance(broker.address))
+            const endRecipientBalance = new BN(await web3.eth.getBalance(recipient))
+            const endDeposit = (await broker.senders.call(sender)).deposit.toString()
+
+            assert.equal(startBrokerBalance.sub(endBrokerBalance).toString(), faceValue.toString())
+            assert.equal(endRecipientBalance.sub(startRecipientBalance).toString(), faceValue.toString())
+            assert.equal(endDeposit, (deposit - faceValue).toString())
+        })
+
         it("emits a WinningTicketRedeemed event", async () => {
             const deposit = 1500
             await broker.fundDeposit({from: sender, value: deposit})
@@ -559,7 +787,7 @@ contract("TicketBroker", accounts => {
                     && ev.winProb.toString() === ticket.winProb.toString()
                     && ev.senderNonce.toString() === ticket.senderNonce.toString()
                     && ev.recipientRand.toString() === recipientRand.toString()
-                    && ev.creationTimestamp.toString() === ticket.creationTimestamp.toString()
+                    && ev.auxData === ticket.auxData
             })
         })
 
@@ -618,6 +846,258 @@ contract("TicketBroker", accounts => {
 
             assert.equal(events.length, 1)
             assert.equal(events[0].returnValues.recipient, recipient)
+        })
+    })
+
+    describe("unlock", () => {
+        it("reverts when both deposit and penaltyEscrow are zero", async () => {
+            await expectRevertWithReason(broker.unlock(), "sender deposit and penalty escrow are zero")
+        })
+
+        it("reverts when called twice", async () => {
+            await broker.fundDeposit({from: sender, value: 1000})
+            await broker.unlock()
+
+            await expectRevertWithReason(broker.unlock(), "unlock already initiated")
+        })
+
+        it("reverts when called twice by multiple senders", async () => {
+            const sender2 = accounts[2]
+            await broker.fundDeposit({from: sender, value: 1000})
+            await broker.fundDeposit({from: sender2, value: 2000})
+            await broker.unlock({from: sender})
+            await broker.unlock({from: sender2})
+
+            await expectRevertWithReason(broker.unlock({from: sender}), "unlock already initiated")
+            await expectRevertWithReason(broker.unlock({from: sender2}), "unlock already initiated")
+        })
+
+        it("sets withdrawBlock according to constructor config", async () => {
+            await broker.fundDeposit({from: sender, value: 1000})
+
+            await broker.unlock({from: sender})
+
+            const fromBlock = (await web3.eth.getBlock("latest")).number
+            const expectedWithdrawBlock = fromBlock + unlockPeriod
+            const withdrawBlock = (await broker.senders.call(sender)).withdrawBlock.toString()
+            assert.equal(withdrawBlock, expectedWithdrawBlock.toString())
+        })
+
+        it("sets isUnlockInProgress to true", async () => {
+            await broker.fundDeposit({from: sender, value: 1000})
+
+            await broker.unlock({from: sender})
+
+            const isUnlockInProgress = await broker.isUnlockInProgress.call(sender)
+            assert(isUnlockInProgress)
+        })
+
+        it("emits an Unlock event", async () => {
+            await broker.fundDeposit({from: sender, value: 1000})
+            const expectedStartBlock = (await web3.eth.getBlock("latest")).number + 1
+            const expectedEndBlock = expectedStartBlock + unlockPeriod
+
+            const txResult = await broker.unlock({from: sender})
+
+            truffleAssert.eventEmitted(txResult, "Unlock", ev => {
+                return ev.sender === sender &&
+                    ev.startBlock.toString() === expectedStartBlock.toString() &&
+                    ev.endBlock.toString() === expectedEndBlock.toString()
+            })
+        })
+
+        it("emits an Unlock event indexed by sender", async () => {
+            const fromBlock = (await web3.eth.getBlock("latest")).number
+            await broker.fundDeposit({from: sender, value: 1000})
+
+            await broker.unlock({from: sender})
+
+            const events = await broker.getPastEvents("Unlock", {
+                filter: {
+                    sender
+                },
+                fromBlock,
+                toBlock: "latest"
+            })
+            assert.equal(events.length, 1)
+            const event = events[0]
+            assert.equal(event.returnValues.sender, sender)
+        })
+    })
+
+    describe("cancelUnlock", () => {
+        it("reverts if sender is not in an unlocking state", async () => {
+            await expectRevertWithReason(broker.cancelUnlock(), "no unlock request in progress")
+        })
+
+        it("sets isUnlockInProgress to false", async () => {
+            await broker.fundDeposit({from: sender, value: 1000})
+            await broker.unlock()
+
+            await broker.cancelUnlock()
+
+            const isUnlockInProgress = await broker.isUnlockInProgress.call(sender)
+            assert(!isUnlockInProgress)
+        })
+
+        it("prevents withdrawal", async () => {
+            await broker.fundDeposit({from: sender, value: 1000})
+            await broker.unlock()
+            await fixture.rpc.wait(unlockPeriod)
+
+            await broker.cancelUnlock()
+
+            await expectRevertWithReason(broker.withdraw(), "no unlock request in progress")
+        })
+
+        it("emits an UnlockCancelled event", async () => {
+            await broker.fundDeposit({from: sender, value: 1000})
+            await broker.unlock()
+
+            const txResult = await broker.cancelUnlock()
+
+            truffleAssert.eventEmitted(txResult, "UnlockCancelled", ev => {
+                return ev.sender === sender
+            })
+        })
+
+        it("emits an UnlockCancelled event with an indexed sender", async () => {
+            await broker.fundDeposit({from: sender, value: 1000})
+            const fromBlock = (await web3.eth.getBlock("latest")).number
+            await broker.unlock()
+
+            await broker.cancelUnlock()
+
+            const events = await broker.getPastEvents("UnlockCancelled", {
+                filter: {
+                    sender
+                },
+                fromBlock,
+                toBlock: "latest"
+            })
+            assert.equal(events.length, 1)
+            const event = events[0]
+            assert.equal(event.returnValues.sender, sender)
+        })
+    })
+
+    describe("withdraw", () => {
+        it("reverts when both deposit and penaltyEscrow are zero", async () => {
+            await expectRevertWithReason(broker.withdraw(), "sender deposit and penalty escrow are zero")
+        })
+
+        it("reverts when no unlock request has been started", async () => {
+            await broker.fundDeposit({from: sender, value: 1000})
+
+            await expectRevertWithReason(broker.withdraw(), "no unlock request in progress")
+        })
+
+        it("reverts when account is locked", async () => {
+            await broker.fundDeposit({from: sender, value: 1000})
+            await broker.unlock({from: sender})
+
+            await expectRevertWithReason(broker.withdraw(), "account is locked")
+        })
+
+        it("sets deposit and penaltyEscrow to zero", async () => {
+            await broker.fundDeposit({from: sender, value: 1000})
+            await broker.fundPenaltyEscrow({from: sender, value: 2000})
+            await broker.unlock({from: sender})
+            await fixture.rpc.wait(unlockPeriod)
+
+            await broker.withdraw({from: sender})
+
+            const deposit = (await broker.senders.call(sender)).deposit.toString()
+            const penaltyEscrow = (await broker.senders.call(sender)).penaltyEscrow.toString()
+            assert.equal(deposit, "0")
+            assert.equal(penaltyEscrow, "0")
+        })
+
+        it("transfers the sum of deposit and penaltyEscrow to sender", async () => {
+            const deposit = 1000
+            const penaltyEscrow = 2000
+            await broker.fundDeposit({from: sender, value: deposit})
+            await broker.fundPenaltyEscrow({from: sender, value: penaltyEscrow})
+            await broker.unlock({from: sender})
+            await fixture.rpc.wait(unlockPeriod)
+            const startBalance = new BN(await web3.eth.getBalance(sender))
+
+            const txResult = await broker.withdraw({from: sender})
+
+            const txCost = await calcTxCost(txResult)
+            const endBalance = new BN(await web3.eth.getBalance(sender))
+            assert.equal(endBalance.sub(startBalance).add(txCost).toString(), (deposit + penaltyEscrow).toString())
+        })
+
+        it("completes withdrawal when deposit == 0", async () => {
+            const penaltyEscrow = 2000
+            await broker.fundPenaltyEscrow({from: sender, value: penaltyEscrow})
+            await broker.unlock({from: sender})
+            await fixture.rpc.wait(unlockPeriod)
+            const startBalance = new BN(await web3.eth.getBalance(sender))
+
+            const txResult = await broker.withdraw({from: sender})
+
+            const txCost = await calcTxCost(txResult)
+            const endBalance = new BN(await web3.eth.getBalance(sender))
+            assert.equal(endBalance.sub(startBalance).add(txCost).toString(), penaltyEscrow.toString())
+        })
+
+        it("completes withdrawal when penaltyEscrow == 0", async () => {
+            const deposit = 1000
+            await broker.fundDeposit({from: sender, value: deposit})
+            await broker.unlock({from: sender})
+            await fixture.rpc.wait(unlockPeriod)
+            const startBalance = new BN(await web3.eth.getBalance(sender))
+
+            const txResult = await broker.withdraw({from: sender})
+
+            const txCost = await calcTxCost(txResult)
+            const endBalance = new BN(await web3.eth.getBalance(sender))
+            assert.equal(endBalance.sub(startBalance).add(txCost).toString(), deposit.toString())
+        })
+
+        it("emits a Withdrawal event", async () => {
+            const deposit = 1000
+            const penaltyEscrow = 2000
+            await broker.fundDeposit({from: sender, value: deposit})
+            await broker.fundPenaltyEscrow({from: sender, value: penaltyEscrow})
+            await broker.unlock({from: sender})
+            await fixture.rpc.wait(unlockPeriod)
+
+            const txResult = await broker.withdraw({from: sender})
+
+            truffleAssert.eventEmitted(txResult, "Withdrawal", ev => {
+                return ev.sender === sender &&
+                    ev.deposit.toString() === deposit.toString() &&
+                    ev.penaltyEscrow.toString() === penaltyEscrow.toString()
+            })
+        })
+
+        it("emits a Withdrawal event with indexed sender", async () => {
+            const fromBlock = (await web3.eth.getBlock("latest")).number
+            const deposit = 1000
+            const penaltyEscrow = 2000
+            await broker.fundDeposit({from: sender, value: deposit})
+            await broker.fundPenaltyEscrow({from: sender, value: penaltyEscrow})
+            await broker.unlock({from: sender})
+            await fixture.rpc.wait(unlockPeriod)
+
+            await broker.withdraw({from: sender})
+
+            const events = await broker.getPastEvents("Withdrawal", {
+                filter: {
+                    sender
+                },
+                fromBlock,
+                toBlock: "latest"
+            })
+
+            assert.equal(events.length, 1)
+            const event = events[0]
+            assert.equal(event.returnValues.sender, sender)
+            assert.equal(event.returnValues.deposit.toString(), deposit.toString())
+            assert.equal(event.returnValues.penaltyEscrow.toString(), penaltyEscrow.toString())
         })
     })
 })

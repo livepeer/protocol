@@ -19,7 +19,7 @@ contract("OraclizeVerifier", accounts => {
         await fixture.deployController()
         await fixture.deployMocks()
         verifier = await OraclizeVerifier.new(fixture.controller.address, codeHash, GAS_PRICE, GAS_LIMIT)
-        await fixture.jobsManager.setVerifier(verifier.address)
+        await fixture.ticketBroker.setVerifier(verifier.address)
     })
 
     describe("verificationCodeHash", () => {
@@ -55,10 +55,10 @@ contract("OraclizeVerifier", accounts => {
                 assert.equal(e.returnValues.result, true, "callback result incorrect")
             })
 
-            await fixture.jobsManager.setVerifyParams(jobId, claimId, segmentNumber, transcodingOptions, dataStorageHash, dataHashes)
+            await fixture.ticketBroker.setVerifyParams(jobId, claimId, segmentNumber, transcodingOptions, dataStorageHash, dataHashes)
 
             const price = await verifier.getPrice()
-            await fixture.jobsManager.callVerify({from: accounts[0], value: price})
+            await fixture.ticketBroker.callVerify({from: accounts[0], value: price})
         })
     })
 

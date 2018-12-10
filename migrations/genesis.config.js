@@ -1,5 +1,5 @@
-const BN = require("bn.js")
-const {constants} = require("../utils/constants")
+import BN from "bn.js"
+import {constants} from "../utils/constants"
 
 module.exports = {
     initialSupply: (new BN(10000000)).mul(constants.TOKEN_UNIT),

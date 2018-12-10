@@ -136,7 +136,7 @@ contract("Minter", accounts => {
         })
 
         it("should transfer ownership of the token, current token balance and current ETH balance to new minter", async () => {
-            await fixture.jobsManager.execute(minter.address, functionSig("depositETH()"), {from: accounts[1], value: 100})
+            await fixture.ticketBroker.execute(minter.address, functionSig("trustedDepositETH()"), {from: accounts[1], value: 100})
 
             const newMinter = await GenericMock.new()
             const controllerAddr = await minter.controller.call()
@@ -161,6 +161,21 @@ contract("Minter", accounts => {
 
         it("should fail if caller is not BondingManager", async () => {
             await expectThrow(minter.createReward(10, 100))
+        })
+
+        it("should fail if Controller is paused", async () => {
+            await fixture.controller.pause()
+
+            await expectThrow(
+                fixture.bondingManager.execute(
+                    minter.address,
+                    functionEncodedABI(
+                        "createReward(uint256,uint256)",
+                        ["uint256", "uint256"],
+                        [10, 100]
+                    )
+                )
+            )
         })
 
         it("should update currentMintedTokens with computed reward", async () => {
@@ -226,6 +241,21 @@ contract("Minter", accounts => {
             await expectThrow(minter.trustedTransferTokens(accounts[1], 100))
         })
 
+        it("should fail if Controller is paused", async () => {
+            await fixture.controller.pause()
+
+            await expectThrow(
+                fixture.bondingManager.execute(
+                    minter.address,
+                    functionEncodedABI(
+                        "trustedTransferTokens(address,uint256)",
+                        ["address", "uint256"],
+                        [accounts[1], 100]
+                    )
+                )
+            )
+        })
+
         it("should transfer tokens to receiving address", async () => {
             // Just make sure that this does not fail
             await fixture.bondingManager.execute(minter.address, functionEncodedABI("trustedTransferTokens(address,uint256)", ["address", "uint256"], [accounts[1], 100]))
@@ -237,6 +267,21 @@ contract("Minter", accounts => {
             await expectThrow(minter.trustedBurnTokens(100))
         })
 
+        it("should fail if Controller is paused", async () => {
+            await fixture.controller.pause()
+
+            await expectThrow(
+                fixture.bondingManager.execute(
+                    minter.address,
+                    functionEncodedABI(
+                        "trustedBurnTokens(uint256)",
+                        ["uint256"],
+                        [100]
+                    )
+                )
+            )
+        })
+
         it("should burn tokens", async () => {
             // Just make sure that this does not fail
             await fixture.bondingManager.execute(minter.address, functionEncodedABI("trustedBurnTokens(uint256)", ["uint256"], [100]))
@@ -244,20 +289,35 @@ contract("Minter", accounts => {
     })
 
     describe("trustedWithdrawETH", () => {
-        it("should fail if caller is not BondingManager or JobsManager", async () => {
+        it("should fail if caller is not BondingManager or TicketBroker", async () => {
             await expectThrow(minter.trustedWithdrawETH(accounts[1], 100))
+        })
+
+        it("should fail if Controller is paused", async () => {
+            await fixture.controller.pause()
+
+            await expectThrow(
+                fixture.bondingManager.execute(
+                    minter.address,
+                    functionEncodedABI(
+                        "trustedWithdrawETH(address,uint256)",
+                        ["address", "uint256"],
+                        [accounts[1], 100]
+                    )
+                )
+            )
         })
 
         it("should fail if insufficient balance when caller is BondingManager", async () => {
             await expectThrow(fixture.bondingManager.execute(minter.address, functionEncodedABI("trustedWithdrawETH(address,uint256)", ["address", "uint256"], [accounts[1], 100])))
         })
 
-        it("should fail if insufficient balance when caller is JobsManager", async () => {
-            await expectThrow(fixture.jobsManager.execute(minter.address, functionEncodedABI("trustedWithdrawETH(address,uint256)", ["address", "uint256"], [accounts[1], 100])))
+        it("should fail if insufficient balance when caller is ticketBroker", async () => {
+            await expectThrow(fixture.ticketBroker.execute(minter.address, functionEncodedABI("trustedWithdrawETH(address,uint256)", ["address", "uint256"], [accounts[1], 100])))
         })
 
         it("should transfer ETH to receiving address when caller is BondingManager", async () => {
-            await fixture.jobsManager.execute(minter.address, functionSig("depositETH()"), {from: accounts[1], value: 100})
+            await fixture.ticketBroker.execute(minter.address, functionSig("trustedDepositETH()"), {from: accounts[1], value: 100})
             const startBalance = new BN(await web3.eth.getBalance(accounts[1]))
             await fixture.bondingManager.execute(minter.address, functionEncodedABI("trustedWithdrawETH(address,uint256)", ["address", "uint256"], [accounts[1], 100]))
             const endBalance = new BN(await web3.eth.getBalance(accounts[1]))
@@ -268,10 +328,10 @@ contract("Minter", accounts => {
             assert.equal(endBalance.sub(startBalance), 100, "wrong change in withdrawing caller")
         })
 
-        it("should transfer ETH to receiving address when caller is JobsManager", async () => {
-            await fixture.jobsManager.execute(minter.address, functionSig("depositETH()"), {from: accounts[1], value: 100})
+        it("should transfer ETH to receiving address when caller is ticketBroker", async () => {
+            await fixture.ticketBroker.execute(minter.address, functionSig("trustedDepositETH()"), {from: accounts[1], value: 100})
             const startBalance = new BN(await web3.eth.getBalance(accounts[1]))
-            await fixture.jobsManager.execute(minter.address, functionEncodedABI("trustedWithdrawETH(address,uint256)", ["address", "uint256"], [accounts[1], 100]))
+            await fixture.ticketBroker.execute(minter.address, functionEncodedABI("trustedWithdrawETH(address,uint256)", ["address", "uint256"], [accounts[1], 100]))
             const endBalance = new BN(await web3.eth.getBalance(accounts[1]))
 
             assert.equal(await web3.eth.getBalance(minter.address), 0, "wrong minter balance")
@@ -281,24 +341,78 @@ contract("Minter", accounts => {
         })
     })
 
-    describe("depositETH", () => {
-        it("should fail if caller is not currently registered Minter or JobsManager", async () => {
-            await expectThrow(minter.depositETH({from: accounts[1], value: 100}))
+    describe("trustedDepositETH", () => {
+        it("should fail if caller is not currently registered Minter or TicketBroker", async () => {
+            await expectThrow(minter.trustedDepositETH({from: accounts[1], value: 100}))
+        })
+
+        it("should fail if Controller is paused", async () => {
+            await fixture.controller.pause()
+
+            await expectThrow(
+                fixture.ticketBroker.execute(
+                    minter.address,
+                    functionSig("trustedDepositETH()"),
+                    {from: accounts[1], value: 100}
+                )
+            )
         })
 
         it("should receive ETH from currently registered Minter", async () => {
             // Register mock Minter
             const mockMinter = await fixture.deployAndRegister(GenericMock, "Minter")
-            // Call depositETH on this Minter from currently registered Minter
-            await mockMinter.execute(minter.address, functionSig("depositETH()"), {from: accounts[1], value: 100})
+            // Call trustedDepositETH on this Minter from currently registered Minter
+            await mockMinter.execute(minter.address, functionSig("trustedDepositETH()"), {from: accounts[1], value: 100})
 
             assert.equal(await web3.eth.getBalance(minter.address), 100, "wrong minter balance")
         })
 
-        it("should receive ETH from JobsManager", async () => {
-            await fixture.jobsManager.execute(minter.address, functionSig("depositETH()"), {from: accounts[1], value: 100})
+        it("should receive ETH from TicketBroker", async () => {
+            await fixture.ticketBroker.execute(minter.address, functionSig("trustedDepositETH()"), {from: accounts[1], value: 100})
 
             assert.equal(await web3.eth.getBalance(minter.address), 100, "wrong minter balance")
+        })
+    })
+
+    describe("trustedBurnETH", () => {
+        it("should fail if caller is not currently registered TicketBroker", async () => {
+            await expectThrow(minter.trustedBurnETH(100, {from: accounts[1]}))
+        })
+
+        it("should fail if Controller is paused", async () => {
+            await fixture.ticketBroker.execute(minter.address, functionSig("trustedDepositETH()"), {from: accounts[1], value: 1000})
+            await fixture.controller.pause()
+
+            await expectThrow(
+                fixture.ticketBroker.execute(
+                    minter.address,
+                    functionEncodedABI(
+                        "trustedBurnETH(uint256)",
+                        ["uint256"],
+                        [100]
+                    ),
+                    {from: accounts[1]}
+                )
+            )
+        })
+
+        it("should burn ETH if caller is TicketBroker", async () => {
+            await fixture.ticketBroker.execute(minter.address, functionSig("trustedDepositETH()"), {from: accounts[1], value: 1000})
+            const startBalance = new BN(await web3.eth.getBalance(minter.address))
+
+            await fixture.ticketBroker.execute(
+                minter.address,
+                functionEncodedABI(
+                    "trustedBurnETH(uint256)",
+                    ["uint256"],
+                    [100]
+                ),
+                {from: accounts[1]}
+            )
+
+            const endBalance = new BN(await web3.eth.getBalance(minter.address))
+
+            assert.equal(startBalance.sub(endBalance).toString(), "100")
         })
     })
 
@@ -310,6 +424,17 @@ contract("Minter", accounts => {
 
         it("should fail if caller is not RoundsManager", async () => {
             await expectThrow(minter.setCurrentRewardTokens())
+        })
+
+        it("should fail if Controller is paused", async () => {
+            await fixture.controller.pause()
+
+            await expectThrow(
+                fixture.roundsManager.execute(
+                    minter.address,
+                    functionSig("setCurrentRewardTokens()")
+                )
+            )
         })
 
         it("should increase the inflation rate if the current bonding rate is 0 (total supply = 0) and below the target bonding rate", async () => {

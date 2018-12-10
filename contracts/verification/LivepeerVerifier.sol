@@ -38,9 +38,9 @@ contract LivepeerVerifier is Manager, IVerifier {
     event Callback(uint256 indexed requestId, uint256 indexed jobId, uint256 indexed claimId, uint256 segmentNumber, bool result);
     event SolverUpdate(address solver);
 
-    // Check if sender is JobsManager
-    modifier onlyJobsManager() {
-        require(msg.sender == controller.getContract(keccak256("JobsManager")));
+    // Check if sender is TicketBroker
+    modifier onlyTicketBroker() {
+        require(msg.sender == controller.getContract(keccak256("TicketBroker")));
         _;
     }
 
@@ -100,7 +100,7 @@ contract LivepeerVerifier is Manager, IVerifier {
     )
         external
         payable
-        onlyJobsManager
+        onlyTicketBroker
         whenSystemNotPaused
     {
         // Store request parameters
@@ -135,10 +135,10 @@ contract LivepeerVerifier is Manager, IVerifier {
 
         // Check if transcoded data hash returned by solver matches originally submitted transcoded data hash
         if (q.commitHash == _result) {
-            IVerifiable(controller.getContract(keccak256("JobsManager"))).receiveVerification(q.jobId, q.claimId, q.segmentNumber, true);
+            IVerifiable(controller.getContract(keccak256("TicketBroker"))).receiveVerification(q.jobId, q.claimId, q.segmentNumber, true);
             emit Callback(_requestId, q.jobId, q.claimId, q.segmentNumber, true);
         } else {
-            IVerifiable(controller.getContract(keccak256("JobsManager"))).receiveVerification(q.jobId, q.claimId, q.segmentNumber, false);
+            IVerifiable(controller.getContract(keccak256("TicketBroker"))).receiveVerification(q.jobId, q.claimId, q.segmentNumber, false);
             emit Callback(_requestId, q.jobId, q.claimId, q.segmentNumber, false);
         }
 

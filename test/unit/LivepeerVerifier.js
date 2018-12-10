@@ -87,12 +87,12 @@ contract("LivepeerVerifier", accounts => {
         const dataStorageHash = "0x123"
         const dataHashes = [web3.utils.sha3("apple"), web3.utils.sha3("pear")]
 
-        it("should fail if sender is not the JobsManager", async () => {
+        it("should fail if sender is not the TicketBroker", async () => {
             await expectThrow(verifier.verify(jobId, claimId, segmentNumber, transcodingOptions, dataStorageHash, dataHashes))
         })
 
         it("should store a request", async () => {
-            await fixture.jobsManager.execute(
+            await fixture.ticketBroker.execute(
                 verifier.address,
                 functionEncodedABI(
                     "verify(uint256,uint256,uint256,string,string,bytes32[2])",
@@ -124,7 +124,7 @@ contract("LivepeerVerifier", accounts => {
                 assert.equal(e.returnValues.transcodedDataHash, dataHashes[1], "event transcodedDataHash incorrect")
             })
 
-            await fixture.jobsManager.execute(
+            await fixture.ticketBroker.execute(
                 verifier.address,
                 functionEncodedABI(
                     "verify(uint256,uint256,uint256,string,string,bytes32[2])",
@@ -148,7 +148,7 @@ contract("LivepeerVerifier", accounts => {
         })
 
         it("should delete stored request", async () => {
-            await fixture.jobsManager.execute(
+            await fixture.ticketBroker.execute(
                 verifier.address,
                 functionEncodedABI(
                     "verify(uint256,uint256,uint256,string,string,bytes32[2])",
@@ -168,7 +168,7 @@ contract("LivepeerVerifier", accounts => {
         })
 
         it("should fire a callback event with result set to true if verification succeeded", async () => {
-            await fixture.jobsManager.execute(
+            await fixture.ticketBroker.execute(
                 verifier.address,
                 functionEncodedABI(
                     "verify(uint256,uint256,uint256,string,string,bytes32[2])",
@@ -190,7 +190,7 @@ contract("LivepeerVerifier", accounts => {
         })
 
         it("should fire a callback event with result set to false if verification failed", async () => {
-            await fixture.jobsManager.execute(
+            await fixture.ticketBroker.execute(
                 verifier.address,
                 functionEncodedABI(
                     "verify(uint256,uint256,uint256,string,string,bytes32[2])",

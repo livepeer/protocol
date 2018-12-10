@@ -15,7 +15,8 @@ contract IMinter {
     function trustedTransferTokens(address _to, uint256 _amount) external;
     function trustedBurnTokens(uint256 _amount) external;
     function trustedWithdrawETH(address _to, uint256 _amount) external;
-    function depositETH() external payable returns (bool);
+    function trustedBurnETH(uint256 _amount) external;
+    function trustedDepositETH() external payable;
     function setCurrentRewardTokens() external;
 
     // Public functions

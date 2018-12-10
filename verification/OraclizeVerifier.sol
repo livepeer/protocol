@@ -29,9 +29,9 @@ contract OraclizeVerifier is Manager, usingOraclize, IVerifier {
     // Stores active Oraclize queries
     mapping (bytes32 => OraclizeQuery) oraclizeQueries;
 
-    // Check if sender is JobsManager
-    modifier onlyJobsManager() {
-        require(msg.sender == controller.getContract(keccak256("JobsManager")));
+    // Check if sender is TicketBroker
+    modifier onlyTicketBroker() {
+        require(msg.sender == controller.getContract(keccak256("TicketBroker")));
         _;
     }
 
@@ -83,7 +83,7 @@ contract OraclizeVerifier is Manager, usingOraclize, IVerifier {
     )
         external
         payable
-        onlyJobsManager
+        onlyTicketBroker
         whenSystemNotPaused
         sufficientPayment
     {
@@ -110,11 +110,11 @@ contract OraclizeVerifier is Manager, usingOraclize, IVerifier {
         // Check if hash returned by Oraclize matches originally submitted commit hash = h(dataHash, transcodedDataHash)
         if (oc.commitHash == strToBytes32(_result)) {
             // Notify callback contract of successful verification
-            IVerifiable(controller.getContract(keccak256("JobsManager"))).receiveVerification(oc.jobId, oc.claimId, oc.segmentNumber, true);
+            IVerifiable(controller.getContract(keccak256("TicketBroker"))).receiveVerification(oc.jobId, oc.claimId, oc.segmentNumber, true);
             OraclizeCallback(oc.jobId, oc.claimId, oc.segmentNumber, _proof, true);
         } else {
             // Notify callback contract of failed verification
-            IVerifiable(controller.getContract(keccak256("JobsManager"))).receiveVerification(oc.jobId, oc.claimId, oc.segmentNumber, false);
+            IVerifiable(controller.getContract(keccak256("TicketBroker"))).receiveVerification(oc.jobId, oc.claimId, oc.segmentNumber, false);
             OraclizeCallback(oc.jobId, oc.claimId, oc.segmentNumber, _proof, false);
         }
 
