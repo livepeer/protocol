@@ -1,9 +1,6 @@
 import BN from "bn.js"
 import Fixture from "./helpers/Fixture"
-import expectThrow from "../helpers/expectThrow"
 import {expectRevertWithReason} from "../helpers/expectFail"
-import truffleAssert from "truffle-assertions"
-import calcTxCost from "../helpers/calcTxCost"
 import {createTicket, createWinningTicket, getTicketHash} from "../helpers/ticket"
 import {functionSig} from "../../utils/helpers"
 
@@ -41,99 +38,9 @@ contract("LivepeerETHTicketBroker", accounts => {
 
             assert.equal(balance, "1000")
         })
-
-        it("reduces the sender's ETH balance", async () => {
-            const startBalance = new BN(await web3.eth.getBalance(sender))
-
-            const txResult = await broker.fundDeposit({from: sender, value: 1000})
-
-            const endBalance = new BN(await web3.eth.getBalance(sender))
-            const txCost = await calcTxCost(txResult)
-
-            assert.equal(startBalance.sub(endBalance).sub(txCost).toString(), "1000")
-        })
-
-        it("tracks the sender's ETH deposit amount", async () => {
-            await broker.fundDeposit({from: sender, value: 1000})
-
-            const deposit = (await broker.senders.call(sender)).deposit.toString()
-
-            assert.equal(deposit, "1000")
-        })
-
-        it("tracks sender's multiple deposits", async () => {
-            await broker.fundDeposit({from: sender, value: 1000})
-            await broker.fundDeposit({from: sender, value: 500})
-
-            const deposit = (await broker.senders.call(sender)).deposit.toString()
-
-            assert.equal(deposit, "1500")
-        })
-
-        it("track multiple sender's deposits", async () => {
-            const sender2 = accounts[2]
-            await broker.fundDeposit({from: sender, value: 1000})
-            await broker.fundDeposit({from: sender2, value: 500})
-
-            const deposit = (await broker.senders.call(sender)).deposit.toString()
-            const deposit2 = (await broker.senders.call(sender2)).deposit.toString()
-
-            assert.equal(deposit, "1000")
-            assert.equal(deposit2, "500")
-        })
-
-        it("emits a DepositFunded event", async () => {
-            const txResult = await broker.fundDeposit({from: sender, value: 1000})
-
-            truffleAssert.eventEmitted(txResult, "DepositFunded", ev => {
-                return ev.sender === sender && ev.amount.toString() === "1000"
-            })
-        })
-
-        it("emits a DepositFunded event with indexed sender", async () => {
-            const sender2 = accounts[2]
-            const fromBlock = (await web3.eth.getBlock("latest")).number
-            await broker.fundDeposit({from: sender, value: 1000})
-            await broker.fundDeposit({from: sender2, value: 1000})
-
-            const events = await broker.getPastEvents("DepositFunded", {
-                filter: {
-                    sender
-                },
-                fromBlock,
-                toBlock: "latest"
-            })
-
-            assert.equal(events.length, 1)
-            assert.equal(events[0].returnValues.sender, sender)
-            assert.equal(events[0].returnValues.amount.toString(), "1000")
-        })
     })
 
     describe("fundPenaltyEscrow", () => {
-        it("reverts when penalty escrow < minPenaltyEscrow", async () => {
-            const brokerWithMinEscrow = await TicketBroker.new(fixture.controller.address, 1000, 0)
-
-            await expectThrow(brokerWithMinEscrow.fundPenaltyEscrow({from: sender, value: 500}))
-        })
-
-        it("tracks sender's ETH penalty escrow", async () => {
-            await broker.fundPenaltyEscrow({from: sender, value: 1000})
-
-            const penaltyEscrow = (await broker.senders.call(sender)).penaltyEscrow.toString()
-
-            assert.equal(penaltyEscrow, "1000")
-        })
-
-        it("tracks sender's multiple ETH penalty escrow fundings", async () => {
-            await broker.fundPenaltyEscrow({from: sender, value: 1000})
-            await broker.fundPenaltyEscrow({from: sender, value: 500})
-
-            const penaltyEscrow = (await broker.senders.call(sender)).penaltyEscrow.toString()
-
-            assert.equal(penaltyEscrow, "1500")
-        })
-
         it("grows the Minter ETH balance", async () => {
             await broker.fundPenaltyEscrow({from: sender, value: 1000})
 
@@ -141,93 +48,10 @@ contract("LivepeerETHTicketBroker", accounts => {
 
             assert.equal(balance, "1000")
         })
-
-        it("reduces the sender's ETH balance", async () => {
-            const startBalance = new BN(await web3.eth.getBalance(sender))
-
-            const txRes = await broker.fundPenaltyEscrow({from: sender, value: 1000})
-
-            const endBalance = new BN(await web3.eth.getBalance(sender))
-            const txCost = await calcTxCost(txRes)
-
-            assert.equal(startBalance.sub(endBalance).sub(txCost).toString(), "1000")
-        })
-
-        it("emits a PenaltyEscrowFunded event", async () => {
-            const txResult = await broker.fundPenaltyEscrow({from: sender, value: 1000})
-
-            truffleAssert.eventEmitted(txResult, "PenaltyEscrowFunded", ev => {
-                return ev.sender === sender && ev.amount.toString() === "1000"
-            })
-        })
-
-        it("emits a PenaltyEscrowFunded event with indexed sender", async () => {
-            const sender2 = accounts[2]
-            const fromBlock = (await web3.eth.getBlock("latest")).number
-            await broker.fundPenaltyEscrow({from: sender, value: 1000})
-            await broker.fundPenaltyEscrow({from: sender2, value: 1000})
-
-            const events = await broker.getPastEvents("PenaltyEscrowFunded", {
-                filter: {
-                    sender
-                },
-                fromBlock,
-                toBlock: "latest"
-            })
-
-            assert.equal(events.length, 1)
-            assert.equal(events[0].returnValues.sender, sender)
-            assert.equal(events[0].returnValues.amount.toString(), "1000")
-        })
     })
 
     describe("fundAndApproveSigners", () => {
         const signers = accounts.slice(2, 4)
-
-        it("reverts if msg.value < sum of deposit amount and penalty escrow amount", async () => {
-            const deposit = 500
-            const penaltyEscrow = 1000
-
-            await expectRevertWithReason(
-                broker.fundAndApproveSigners(
-                    deposit,
-                    penaltyEscrow,
-                    signers,
-                    {from: sender, value: deposit + penaltyEscrow - 1}
-                ),
-                "msg.value does not equal sum of deposit amount and penalty escrow amount"
-            )
-        })
-
-        it("reverts if msg.value > sum of deposit amount and penalty escrow amount", async () => {
-            const deposit = 500
-            const penaltyEscrow = 1000
-
-            await expectRevertWithReason(
-                broker.fundAndApproveSigners(
-                    deposit,
-                    penaltyEscrow,
-                    signers,
-                    {from: sender, value: deposit + penaltyEscrow + 1}
-                ),
-                "msg.value does not equal sum of deposit amount and penalty escrow amount"
-            )
-        })
-
-        it("approves addresses as signers for sender", async () => {
-            const deposit = 500
-            const penaltyEscrow = 1000
-
-            await broker.fundAndApproveSigners(
-                deposit,
-                penaltyEscrow,
-                signers,
-                {from: sender, value: deposit + penaltyEscrow}
-            )
-
-            assert(await broker.isApprovedSigner(sender, signers[0]))
-            assert(await broker.isApprovedSigner(sender, signers[1]))
-        })
 
         it("grows the Minter's ETH balance by sum of deposit and penalty escrow amounts", async () => {
             const deposit = 500
@@ -244,41 +68,6 @@ contract("LivepeerETHTicketBroker", accounts => {
             const endMinterBalance = new BN(await web3.eth.getBalance(fixture.minter.address))
 
             assert.equal(endMinterBalance.sub(startMinterBalance).toString(), (deposit + penaltyEscrow).toString())
-        })
-
-        it("reduces the sender's ETH balance by sum of deposit and penalty escrow amounts", async () => {
-            const deposit = 500
-            const penaltyEscrow = 1000
-            const startSenderBalance = new BN(await web3.eth.getBalance(sender))
-
-            const txResult = await broker.fundAndApproveSigners(
-                deposit,
-                penaltyEscrow,
-                signers,
-                {from: sender, value: deposit + penaltyEscrow}
-            )
-
-            const endSenderBalance = new BN(await web3.eth.getBalance(sender))
-            const txCost = await calcTxCost(txResult)
-
-            assert.equal(startSenderBalance.sub(endSenderBalance).sub(txCost).toString(), (deposit + penaltyEscrow).toString())
-        })
-
-        it("tracks sender's ETH deposit and penalty escrow", async () => {
-            const deposit = 500
-            const penaltyEscrow = 1000
-
-            await broker.fundAndApproveSigners(
-                deposit,
-                penaltyEscrow,
-                signers,
-                {from: sender, value: deposit + penaltyEscrow}
-            )
-
-            const endSender = await broker.senders.call(sender)
-
-            assert.equal(endSender.deposit.toString(), deposit.toString())
-            assert.equal(endSender.penaltyEscrow.toString(), penaltyEscrow.toString())
         })
     })
 

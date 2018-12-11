@@ -21,37 +21,45 @@ contract ERC20TicketBroker is TicketBroker {
         token = ERC20(_token);
     }
 
+    // For ETH
+    function fundDeposit() external payable {
+        require(false, "ETH funding not supported. Please use an ERC20 token instead.");
+    }
+
+    function fundPenaltyEscrow() external payable {
+        require(false, "ETH funding not supported. Please use an ERC20 token instead.");
+    }
+
+    // For ERC20
+    function fundDeposit(uint256 _amount) external {
+        _fundDeposit(_amount);
+    }
+
+    function fundPenaltyEscrow(uint256 _amount) external {
+        _fundPenaltyEscrow(_amount);
+    }
+
     function fundAndApproveSigners(
         uint256 _depositAmount,
         uint256 _penaltyEscrowAmount,
         address[] _signers
     )
         external
-        processDeposit(msg.sender, _depositAmount)
-        processPenaltyEscrow(msg.sender, _penaltyEscrowAmount)
+        payable
     {
+        _fundDeposit(_depositAmount);
+        _fundPenaltyEscrow(_penaltyEscrowAmount);
         approveSigners(_signers);
-
-        require(
-            token.transferFrom(msg.sender, address(this), _depositAmount + _penaltyEscrowAmount),
-            "token transfer for deposit and penalty escrow failed"
-        );
     }
 
-    function fundDeposit(uint256 _amount) 
-        external
-        processDeposit(msg.sender, _amount)
-    {
+    function processDeposit(uint256 _amount) internal {
         require(
             token.transferFrom(msg.sender, address(this), _amount),
             "token transfer for deposit failed"
         );
     }
 
-    function fundPenaltyEscrow(uint256 _amount)
-        external
-        processPenaltyEscrow(msg.sender, _amount)
-    {
+    function processPenaltyEscrow(uint256 _amount) internal {
         require(
             token.transferFrom(msg.sender, address(this), _amount),
             "token transfer for penalty escrow failed"
