@@ -14,9 +14,7 @@ contract ETHTicketBroker is TicketBroker {
         public 
     {}
 
-    function processDeposit(uint256 _amount) internal {}
-
-    function processPenaltyEscrow(uint256 _amount) internal {}
+    function processFunding(uint256 _amount) internal {}
 
     function withdrawTransfer(address _sender, uint256 _amount) internal {
         _sender.transfer(_amount);
