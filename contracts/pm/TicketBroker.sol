@@ -65,19 +65,19 @@ contract TicketBroker {
         }
 
         _;
-
+        
         emit DepositFunded(_sender, _amount);
     }
 
     modifier processPenaltyEscrow(address _sender, uint256 _amount) {
         require(_amount >= minPenaltyEscrow, "penalty escrow amount must be >= minPenaltyEscrow");
-
+        
         Sender storage sender = senders[_sender];
         sender.penaltyEscrow += _amount;
         if (_isUnlockInProgress(sender)) {
             _cancelUnlock(sender, _sender);
         }
-
+        
         _;
 
         emit PenaltyEscrowFunded(_sender, _amount);
@@ -86,6 +86,37 @@ contract TicketBroker {
     constructor(uint256 _minPenaltyEscrow, uint256 _unlockPeriod) internal {
         minPenaltyEscrow = _minPenaltyEscrow;
         unlockPeriod = _unlockPeriod;
+    }
+
+    function fundDeposit() 
+        external 
+        payable 
+        processDeposit(msg.sender, msg.value)
+    {
+        processFunding(msg.value);
+    }
+
+    function fundPenaltyEscrow() 
+        external
+        payable
+        processPenaltyEscrow(msg.sender, msg.value)
+    {
+        processFunding(msg.value);
+    }
+
+    function fundAndApproveSigners(
+        uint256 _depositAmount,
+        uint256 _penaltyEscrowAmount,
+        address[] _signers
+    )
+        external
+        payable
+        checkDepositPenaltyEscrowETHValueSplit(_depositAmount, _penaltyEscrowAmount)
+        processDeposit(msg.sender, _depositAmount)
+        processPenaltyEscrow(msg.sender, _penaltyEscrowAmount)
+    {
+        approveSigners(_signers);
+        processFunding(msg.value);
     }
 
     function approveSigners(address[] _signers) public {
@@ -211,6 +242,9 @@ contract TicketBroker {
 
         emit UnlockCancelled(_senderAddress);
     }
+
+    // Override
+    function processFunding(uint256 _amount) internal;
 
     // Override
     function withdrawTransfer(address _sender, uint256 _amount) internal;

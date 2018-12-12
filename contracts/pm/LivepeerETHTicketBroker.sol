@@ -31,35 +31,8 @@ contract LivepeerETHTicketBroker is ManagerProxyTarget, TicketBroker {
         unlockPeriod = _unlockPeriod;
     }
 
-    function fundAndApproveSigners(
-        uint256 _depositAmount,
-        uint256 _penaltyEscrowAmount,
-        address[] _signers
-    )
-        external
-        payable
-        checkDepositPenaltyEscrowETHValueSplit(_depositAmount, _penaltyEscrowAmount)
-        processDeposit(msg.sender, _depositAmount)
-        processPenaltyEscrow(msg.sender, _penaltyEscrowAmount)
-    {
-        approveSigners(_signers);
-        minter().trustedDepositETH.value(msg.value)();
-    }
-
-    function fundDeposit()
-        external
-        payable
-        processDeposit(msg.sender, msg.value)
-    {
-        minter().trustedDepositETH.value(msg.value)();
-    }
-
-    function fundPenaltyEscrow()
-        external
-        payable
-        processPenaltyEscrow(msg.sender, msg.value)
-    {
-        minter().trustedDepositETH.value(msg.value)();
+    function processFunding(uint256 _amount) internal {
+        minter().trustedDepositETH.value(_amount)();
     }
 
     function withdrawTransfer(address _sender, uint256 _amount) internal {
