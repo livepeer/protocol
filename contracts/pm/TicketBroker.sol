@@ -12,6 +12,7 @@ contract TicketBroker {
         uint256 penaltyEscrow;
         uint256 withdrawBlock;
         mapping (address => bool) signers;
+        mapping (address => uint256) signersRevocationBlock;
     }
 
     struct Ticket {
@@ -26,6 +27,7 @@ contract TicketBroker {
 
     uint256 public minPenaltyEscrow;
     uint256 public unlockPeriod;
+    uint256 public signerRevocationPeriod;
 
     mapping (address => Sender) public senders;
     mapping (bytes32 => bool) public usedTickets;
@@ -33,6 +35,7 @@ contract TicketBroker {
     event DepositFunded(address indexed sender, uint256 amount);
     event PenaltyEscrowFunded(address indexed sender, uint256 amount);
     event SignersApproved(address indexed sender, address[] approvedSigners);
+    event SignersRevocationRequested(address indexed sender, address[] signers, uint256 revocationBlock);
     event WinningTicketRedeemed(
         address indexed sender,
         address indexed recipient,
@@ -83,9 +86,10 @@ contract TicketBroker {
         emit PenaltyEscrowFunded(_sender, _amount);
     }
 
-    constructor(uint256 _minPenaltyEscrow, uint256 _unlockPeriod) internal {
+    constructor(uint256 _minPenaltyEscrow, uint256 _unlockPeriod, uint256 _signerRevocationPeriod) internal {
         minPenaltyEscrow = _minPenaltyEscrow;
         unlockPeriod = _unlockPeriod;
+        signerRevocationPeriod = _signerRevocationPeriod;
     }
 
     function fundDeposit() 
@@ -127,6 +131,17 @@ contract TicketBroker {
         }
 
         emit SignersApproved(msg.sender, _signers);
+    }
+
+    function requestSignersRevocation(address[] _signers) public {
+        Sender storage sender = senders[msg.sender];
+        uint256 revocationBlock = block.number + signerRevocationPeriod;
+
+        for (uint256 i = 0; i < _signers.length; i++) {
+            sender.signersRevocationBlock[_signers[i]] = revocationBlock;
+        }
+
+        emit SignersRevocationRequested(msg.sender, _signers, revocationBlock);
     }
 
     function redeemWinningTicket(Ticket memory _ticket, bytes _sig, uint256 _recipientRand) public {
@@ -232,7 +247,8 @@ contract TicketBroker {
     }
 
     function isApprovedSigner(address _sender, address _signer) public view returns (bool) {
-        return senders[_sender].signers[_signer];
+        uint256 revocationBlock = senders[_sender].signersRevocationBlock[_signer];
+        return senders[_sender].signers[_signer] && (revocationBlock == 0 || block.number < revocationBlock);
     }
 
     function _cancelUnlock(Sender storage _sender, address _senderAddress) internal {
