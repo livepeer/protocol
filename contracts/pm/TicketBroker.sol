@@ -3,9 +3,10 @@ pragma solidity ^0.4.25;
 pragma experimental ABIEncoderV2;
 
 import "openzeppelin-solidity/contracts/cryptography/ECDSA.sol";
-
+import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
 contract TicketBroker {
+    using SafeMath for uint256;
 
     struct Signer {
         bool approved;
@@ -57,7 +58,7 @@ contract TicketBroker {
 
     modifier checkDepositPenaltyEscrowETHValueSplit(uint256 _depositAmount, uint256 _penaltyEscrowAmount) {
         require(
-            msg.value == _depositAmount + _penaltyEscrowAmount,
+            msg.value == _depositAmount.add(_penaltyEscrowAmount),
             "msg.value does not equal sum of deposit amount and penalty escrow amount"
         );
 
@@ -66,7 +67,7 @@ contract TicketBroker {
 
     modifier processDeposit(address _sender, uint256 _amount) {
         Sender storage sender = senders[_sender];
-        sender.deposit += _amount;
+        sender.deposit = sender.deposit.add(_amount);
         if (_isUnlockInProgress(sender)) {
             _cancelUnlock(sender, _sender);
         }
@@ -80,7 +81,7 @@ contract TicketBroker {
         require(_amount >= minPenaltyEscrow, "penalty escrow amount must be >= minPenaltyEscrow");
         
         Sender storage sender = senders[_sender];
-        sender.penaltyEscrow += _amount;
+        sender.penaltyEscrow = sender.penaltyEscrow.add(_amount);
         if (_isUnlockInProgress(sender)) {
             _cancelUnlock(sender, _sender);
         }
@@ -175,7 +176,7 @@ contract TicketBroker {
             sender.penaltyEscrow = 0;
         } else {
             amountToTransfer = _ticket.faceValue;
-            sender.deposit -= _ticket.faceValue;
+            sender.deposit = sender.deposit.sub(_ticket.faceValue);
         }
 
         if (amountToSlash > 0) {
@@ -210,7 +211,7 @@ contract TicketBroker {
         );
         require(!_isUnlockInProgress(sender), "unlock already initiated");
 
-        sender.withdrawBlock = block.number + unlockPeriod;
+        sender.withdrawBlock = block.number.add(unlockPeriod);
 
         emit Unlock(msg.sender, block.number, sender.withdrawBlock);
     }
@@ -242,7 +243,7 @@ contract TicketBroker {
         sender.deposit = 0;
         sender.penaltyEscrow = 0;
 
-        withdrawTransfer(msg.sender, deposit + penaltyEscrow);
+        withdrawTransfer(msg.sender, deposit.add(penaltyEscrow));
 
         emit Withdrawal(msg.sender, deposit, penaltyEscrow);
     }

@@ -4,7 +4,6 @@ pragma experimental ABIEncoderV2;
 
 import "./TicketBroker.sol";
 
-
 contract ETHTicketBroker is TicketBroker {
     constructor(
         uint256 _minPenaltyEscrow, 
@@ -31,7 +30,7 @@ contract ETHTicketBroker is TicketBroker {
 
     function requireValidTicketAuxData(bytes _auxData) internal view {
         require(
-            getCreationTimestamp(_auxData) + 3 days > block.timestamp,
+            getCreationTimestamp(_auxData).add(3 days) > block.timestamp,
             "ticket is expired"
         );
     }

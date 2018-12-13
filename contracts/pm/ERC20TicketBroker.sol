@@ -2,9 +2,8 @@ pragma solidity ^0.4.25;
 // solium-disable-next-line
 pragma experimental ABIEncoderV2;
 
-import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "./TicketBroker.sol";
-
+import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 
 // JUST AN EXAMPLE
 contract ERC20TicketBroker is TicketBroker {
@@ -48,7 +47,7 @@ contract ERC20TicketBroker is TicketBroker {
         processPenaltyEscrow(msg.sender, _penaltyEscrowAmount)
     {
         approveSigners(_signers);
-        processFunding(_depositAmount + _penaltyEscrowAmount);
+        processFunding(_depositAmount.add(_penaltyEscrowAmount));
     }
 
     function processFunding(uint256 _amount) internal {

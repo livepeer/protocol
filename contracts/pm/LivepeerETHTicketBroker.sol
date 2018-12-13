@@ -62,7 +62,7 @@ contract LivepeerETHTicketBroker is ManagerProxyTarget, TicketBroker {
     // TODO: Stub for tests. Change to Livepeer specific logic
     function requireValidTicketAuxData(bytes _auxData) internal view {
         require(
-            getCreationTimestamp(_auxData) + 3 days > block.timestamp,
+            getCreationTimestamp(_auxData).add(3 days) > block.timestamp,
             "ticket is expired"
         );
     }
