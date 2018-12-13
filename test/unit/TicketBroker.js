@@ -217,6 +217,12 @@ contract("TicketBroker", accounts => {
         })
     })
 
+    describe("isApprovedSigner", () => {
+        it("returns false for a signer that was never approved", async () => {
+            assert(!await broker.isApprovedSigner(sender, accounts[2]))
+        })
+    })
+
     describe("approveSigners", () => {
         const signers = accounts.slice(2, 4)
 
