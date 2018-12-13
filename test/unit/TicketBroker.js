@@ -272,11 +272,24 @@ contract("TicketBroker", accounts => {
     describe("requestSignersRevocation", () => {
         const signers = accounts.slice(2, 4)
 
-        it("revokes signers after signerRevocationPeriod elapses", async () => {
+        it("revokes signers when block.number == revocationBlock", async () => {
             await broker.approveSigners(signers, {from: sender})
 
             await broker.requestSignersRevocation(signers, {from: sender})
-            await fixture.rpc.wait(signerRevocationPeriod)
+            // We have to wait one block less because when calling isApprovedSigner later
+            // the ETH client sets block.number to a the *next unmined* block number
+            // rather than the current/already-mined block number.
+            await fixture.rpc.wait(signerRevocationPeriod - 1)
+
+            assert(!await broker.isApprovedSigner(sender, signers[0]))
+            assert(!await broker.isApprovedSigner(sender, signers[1]))
+        })
+
+        it("revokes signers when block.number > revocationBlock", async () => {
+            await broker.approveSigners(signers, {from: sender})
+
+            await broker.requestSignersRevocation(signers, {from: sender})
+            await fixture.rpc.wait(signerRevocationPeriod + 10)
 
             assert(!await broker.isApprovedSigner(sender, signers[0]))
             assert(!await broker.isApprovedSigner(sender, signers[1]))
