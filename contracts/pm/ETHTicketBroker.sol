@@ -3,9 +3,11 @@ pragma solidity ^0.4.25;
 pragma experimental ABIEncoderV2;
 
 import "./TicketBroker.sol";
-
+import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
 contract ETHTicketBroker is TicketBroker {
+    using SafeMath for uint256;
+
     constructor(
         uint256 _minPenaltyEscrow, 
         uint256 _unlockPeriod,
@@ -31,7 +33,7 @@ contract ETHTicketBroker is TicketBroker {
 
     function requireValidTicketAuxData(bytes _auxData) internal view {
         require(
-            getCreationTimestamp(_auxData) + 3 days > block.timestamp,
+            getCreationTimestamp(_auxData).add(3 days) > block.timestamp,
             "ticket is expired"
         );
     }

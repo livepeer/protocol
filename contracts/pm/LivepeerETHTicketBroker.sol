@@ -7,9 +7,12 @@ import "../token/IMinter.sol";
 import "../bonding/IBondingManager.sol";
 import "../rounds/IRoundsManager.sol";
 import "./TicketBroker.sol";
+import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
 
 contract LivepeerETHTicketBroker is ManagerProxyTarget, TicketBroker {
+    using SafeMath for uint256;
+
     constructor(
         address _controller,
         uint256 _minPenaltyEscrow,
@@ -62,7 +65,7 @@ contract LivepeerETHTicketBroker is ManagerProxyTarget, TicketBroker {
     // TODO: Stub for tests. Change to Livepeer specific logic
     function requireValidTicketAuxData(bytes _auxData) internal view {
         require(
-            getCreationTimestamp(_auxData) + 3 days > block.timestamp,
+            getCreationTimestamp(_auxData).add(3 days) > block.timestamp,
             "ticket is expired"
         );
     }
