@@ -7,12 +7,16 @@ import "openzeppelin-solidity/contracts/cryptography/ECDSA.sol";
 
 contract TicketBroker {
 
+    struct Signer {
+        bool approved;
+        uint256 revocationBlock;
+    }
+
     struct Sender {
         uint256 deposit;
         uint256 penaltyEscrow;
         uint256 withdrawBlock;
-        mapping (address => bool) signers;
-        mapping (address => uint256) signersRevocationBlock;
+        mapping (address => Signer) signers;
     }
 
     struct Ticket {
@@ -127,7 +131,9 @@ contract TicketBroker {
         Sender storage sender = senders[msg.sender];
 
         for (uint256 i = 0; i < _signers.length; i++) {
-            sender.signers[_signers[i]] = true;
+            Signer storage signer = sender.signers[_signers[i]];
+            signer.approved = true;
+            signer.revocationBlock = 0;
         }
 
         emit SignersApproved(msg.sender, _signers);
@@ -138,7 +144,7 @@ contract TicketBroker {
         uint256 revocationBlock = block.number + signerRevocationPeriod;
 
         for (uint256 i = 0; i < _signers.length; i++) {
-            sender.signersRevocationBlock[_signers[i]] = revocationBlock;
+            sender.signers[_signers[i]].revocationBlock = revocationBlock;
         }
 
         emit SignersRevocationRequested(msg.sender, _signers, revocationBlock);
@@ -247,8 +253,8 @@ contract TicketBroker {
     }
 
     function isApprovedSigner(address _sender, address _signer) public view returns (bool) {
-        uint256 revocationBlock = senders[_sender].signersRevocationBlock[_signer];
-        return senders[_sender].signers[_signer] && (revocationBlock == 0 || block.number < revocationBlock);
+        Signer memory signer = senders[_sender].signers[_signer];
+        return signer.approved && (signer.revocationBlock == 0 || block.number < signer.revocationBlock);
     }
 
     function _cancelUnlock(Sender storage _sender, address _senderAddress) internal {

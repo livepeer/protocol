@@ -227,6 +227,17 @@ contract("TicketBroker", accounts => {
             assert(await broker.isApprovedSigner(sender, signers[1]))
         })
 
+        it("re-approves signers that were revoked", async () => {
+            await broker.approveSigners(signers, {from: sender})
+            await broker.requestSignersRevocation(signers, {from: sender})
+            await fixture.rpc.wait(signerRevocationPeriod)
+
+            await broker.approveSigners(signers, {from: sender})
+
+            assert(await broker.isApprovedSigner(sender, signers[0]))
+            assert(await broker.isApprovedSigner(sender, signers[1]))
+        })
+
         it("emits a SignersApproved event", async () => {
             const txResult = await broker.approveSigners(signers, {from: sender})
 
