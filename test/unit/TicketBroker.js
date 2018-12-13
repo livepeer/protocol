@@ -17,12 +17,13 @@ contract("TicketBroker", accounts => {
     const recipient = accounts[1]
 
     const unlockPeriod = 20
+    const signerRevocationPeriod = 20
 
     before(async () => {
         fixture = new Fixture(web3)
         await fixture.deploy()
 
-        broker = await TicketBroker.new(0, unlockPeriod)
+        broker = await TicketBroker.new(0, unlockPeriod, signerRevocationPeriod)
     })
 
     beforeEach(async () => {
@@ -122,7 +123,7 @@ contract("TicketBroker", accounts => {
 
     describe("fundPenaltyEscrow", () => {
         it("reverts if ETH sent < required penalty escrow", async () => {
-            const brokerWithMinPenaltyEscrow = await TicketBroker.new(web3.utils.toWei(".5", "ether"), 0)
+            const brokerWithMinPenaltyEscrow = await TicketBroker.new(web3.utils.toWei(".5", "ether"), 0, 0)
 
             await expectThrow(brokerWithMinPenaltyEscrow.fundPenaltyEscrow({
                 from: sender,
@@ -216,10 +217,27 @@ contract("TicketBroker", accounts => {
         })
     })
 
+    describe("isApprovedSigner", () => {
+        it("returns false for a signer that was never approved", async () => {
+            assert(!await broker.isApprovedSigner(sender, accounts[2]))
+        })
+    })
+
     describe("approveSigners", () => {
         const signers = accounts.slice(2, 4)
 
         it("approves addresses as signers for sender", async () => {
+            await broker.approveSigners(signers, {from: sender})
+
+            assert(await broker.isApprovedSigner(sender, signers[0]))
+            assert(await broker.isApprovedSigner(sender, signers[1]))
+        })
+
+        it("re-approves signers that were revoked", async () => {
+            await broker.approveSigners(signers, {from: sender})
+            await broker.requestSignersRevocation(signers, {from: sender})
+            await fixture.rpc.wait(signerRevocationPeriod)
+
             await broker.approveSigners(signers, {from: sender})
 
             assert(await broker.isApprovedSigner(sender, signers[0]))
@@ -254,6 +272,93 @@ contract("TicketBroker", accounts => {
             assert.equal(events[0].returnValues.sender, sender)
             assert.equal(events[0].returnValues.approvedSigners[0], signers[0])
             assert.equal(events[0].returnValues.approvedSigners[1], signers[1])
+        })
+    })
+
+    describe("requestSignersRevocation", () => {
+        const signers = accounts.slice(2, 4)
+
+        it("revokes signers when block.number == revocationBlock", async () => {
+            await broker.approveSigners(signers, {from: sender})
+
+            await broker.requestSignersRevocation(signers, {from: sender})
+            // We have to wait one block less because when calling isApprovedSigner later
+            // the ETH client sets block.number to a the *next unmined* block number
+            // rather than the current/already-mined block number.
+            await fixture.rpc.wait(signerRevocationPeriod - 1)
+
+            assert(!await broker.isApprovedSigner(sender, signers[0]))
+            assert(!await broker.isApprovedSigner(sender, signers[1]))
+        })
+
+        it("revokes signers when block.number > revocationBlock", async () => {
+            await broker.approveSigners(signers, {from: sender})
+
+            await broker.requestSignersRevocation(signers, {from: sender})
+            await fixture.rpc.wait(signerRevocationPeriod + 10)
+
+            assert(!await broker.isApprovedSigner(sender, signers[0]))
+            assert(!await broker.isApprovedSigner(sender, signers[1]))
+        })
+
+        it("does not revokes signers before signerRevocationPeriod elapses", async () => {
+            await broker.approveSigners(signers, {from: sender})
+
+            await broker.requestSignersRevocation(signers, {from: sender})
+
+            assert(await broker.isApprovedSigner(sender, signers[0]))
+            assert(await broker.isApprovedSigner(sender, signers[1]))
+        })
+
+        it("supports revoking only one signer", async () => {
+            await broker.approveSigners(signers, {from: sender})
+
+            await broker.requestSignersRevocation([signers[1]], {from: sender})
+            await fixture.rpc.wait(signerRevocationPeriod)
+
+            assert(!await broker.isApprovedSigner(sender, signers[1]))
+            assert(await broker.isApprovedSigner(sender, signers[0]))
+        })
+
+        it("revokes signers even if they were never approved", async () => {
+            await broker.requestSignersRevocation(signers, {from: sender})
+            await fixture.rpc.wait(signerRevocationPeriod)
+
+            assert(!await broker.isApprovedSigner(sender, signers[0]))
+            assert(!await broker.isApprovedSigner(sender, signers[1]))
+        })
+
+        it("emits a SignersRevocationRequested event", async () => {
+            const startBlock = (await web3.eth.getBlock("latest")).number + 1
+            const expectedRevocationBlock = startBlock + signerRevocationPeriod
+            const txResult = await broker.requestSignersRevocation(signers, {from: sender})
+
+            truffleAssert.eventEmitted(txResult, "SignersRevocationRequested", ev => {
+                return ev.sender === sender
+                    && ev.signers[0] === signers[0]
+                    && ev.signers[1] === signers[1]
+                    && ev.revocationBlock.toString() === expectedRevocationBlock.toString()
+            })
+        })
+
+        it("emits a SignersRevocationRequested event with indexed sender", async () => {
+            const startBlock = (await web3.eth.getBlock("latest")).number + 1
+            const expectedRevocationBlock = startBlock + signerRevocationPeriod
+            await broker.requestSignersRevocation(signers, {from: sender})
+
+            const events = await broker.getPastEvents("SignersRevocationRequested", {
+                filter: {
+                    sender
+                },
+                fromBlock: startBlock,
+                toBlock: "latest"
+            })
+
+            assert.equal(events.length, 1)
+            assert.equal(events[0].returnValues.sender, sender)
+            assert.equal(events[0].returnValues.signers[0], signers[0])
+            assert.equal(events[0].returnValues.signers[1], signers[1])
+            assert.equal(events[0].returnValues.revocationBlock.toString(), expectedRevocationBlock.toString())
         })
     })
 

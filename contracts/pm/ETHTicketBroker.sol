@@ -8,9 +8,10 @@ import "./TicketBroker.sol";
 contract ETHTicketBroker is TicketBroker {
     constructor(
         uint256 _minPenaltyEscrow, 
-        uint256 _unlockPeriod
+        uint256 _unlockPeriod,
+        uint256 _signerRevocationPeriod
     ) 
-        TicketBroker(_minPenaltyEscrow, _unlockPeriod) 
+        TicketBroker(_minPenaltyEscrow, _unlockPeriod, _signerRevocationPeriod) 
         public 
     {}
 

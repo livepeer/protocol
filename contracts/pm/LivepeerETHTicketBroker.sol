@@ -13,13 +13,14 @@ contract LivepeerETHTicketBroker is ManagerProxyTarget, TicketBroker {
     constructor(
         address _controller,
         uint256 _minPenaltyEscrow,
-        uint256 _unlockPeriod
+        uint256 _unlockPeriod,
+        uint256 _signerRevocationPeriod
     ) 
         Manager(_controller)
         // TODO: Consider using a initializer instead of an
         // explicit constructor in base TicketBroker since
         // upgradeable proxies do not use explicit constructors
-        TicketBroker(_minPenaltyEscrow, _unlockPeriod)
+        TicketBroker(_minPenaltyEscrow, _unlockPeriod, _signerRevocationPeriod)
         public
     {}
 
@@ -29,6 +30,10 @@ contract LivepeerETHTicketBroker is ManagerProxyTarget, TicketBroker {
 
     function setUnlockPeriod(uint256 _unlockPeriod) external onlyControllerOwner {
         unlockPeriod = _unlockPeriod;
+    }
+
+    function setSignerRevocationPeriod(uint256 _signerRevocationPeriod) external onlyControllerOwner {
+        signerRevocationPeriod = _signerRevocationPeriod;        
     }
 
     function processFunding(uint256 _amount) internal {

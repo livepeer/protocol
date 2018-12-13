@@ -1,5 +1,6 @@
 import BN from "bn.js"
 import Fixture from "./helpers/Fixture"
+import expectThrow from "../helpers/expectThrow"
 import {expectRevertWithReason} from "../helpers/expectFail"
 import {createTicket, createWinningTicket, getTicketHash} from "../helpers/ticket"
 import {functionSig} from "../../utils/helpers"
@@ -14,12 +15,13 @@ contract("LivepeerETHTicketBroker", accounts => {
     const recipient = accounts[1]
 
     const unlockPeriod = 20
+    const signerRevocationPeriod = 20
 
     before(async () => {
         fixture = new Fixture(web3)
         await fixture.deploy()
 
-        broker = await TicketBroker.new(fixture.controller.address, 0, unlockPeriod)
+        broker = await TicketBroker.new(fixture.controller.address, 0, unlockPeriod, signerRevocationPeriod)
     })
 
     beforeEach(async () => {
@@ -241,6 +243,21 @@ contract("LivepeerETHTicketBroker", accounts => {
                 assert.equal(event.returnValues.to, sender)
                 assert.equal(event.returnValues.amount.toString(), (deposit + penaltyEscrow).toString())
             })
+        })
+    })
+
+    describe("setSignerRevocationPeriod", () => {
+        it("reverts when called by an account that is not the Controller owner", async () => {
+            await expectThrow(broker.setSignerRevocationPeriod(1234, {from: accounts[5]}))
+        })
+
+        it("works when called by Controller owner", async () => {
+            const expectedPeriod = signerRevocationPeriod + 12
+            await broker.setSignerRevocationPeriod(expectedPeriod, {from: accounts[0]})
+
+            const actualPeriod = await broker.signerRevocationPeriod.call()
+
+            assert.equal(actualPeriod.toString(), expectedPeriod.toString())
         })
     })
 })
