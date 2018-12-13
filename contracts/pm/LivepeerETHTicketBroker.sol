@@ -7,12 +7,9 @@ import "../token/IMinter.sol";
 import "../bonding/IBondingManager.sol";
 import "../rounds/IRoundsManager.sol";
 import "./TicketBroker.sol";
-import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
 
 contract LivepeerETHTicketBroker is ManagerProxyTarget, TicketBroker {
-    using SafeMath for uint256;
-
     constructor(
         address _controller,
         uint256 _minPenaltyEscrow,

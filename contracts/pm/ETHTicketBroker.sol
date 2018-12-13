@@ -3,11 +3,8 @@ pragma solidity ^0.4.25;
 pragma experimental ABIEncoderV2;
 
 import "./TicketBroker.sol";
-import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
 contract ETHTicketBroker is TicketBroker {
-    using SafeMath for uint256;
-
     constructor(
         uint256 _minPenaltyEscrow, 
         uint256 _unlockPeriod,

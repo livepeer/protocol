@@ -4,7 +4,6 @@ pragma experimental ABIEncoderV2;
 
 import "./TicketBroker.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
-import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
 // JUST AN EXAMPLE
 contract ERC20TicketBroker is TicketBroker {
