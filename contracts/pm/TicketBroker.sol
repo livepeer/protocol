@@ -307,7 +307,7 @@ contract TicketBroker {
         );
 
         require(
-            isWinningTicket(_ticketHash, _recipientRand, _ticket.winProb),
+            isWinningTicket(_sig, _recipientRand, _ticket.winProb),
             "ticket did not win"
         );
     }
@@ -339,8 +339,8 @@ contract TicketBroker {
         );
     }
 
-    function isWinningTicket(bytes32 _ticketHash, uint256 _recipientRand, uint256 _winProb) internal pure returns (bool) {
-        return uint256(keccak256(abi.encodePacked(_ticketHash, _recipientRand))) < _winProb;
+    function isWinningTicket(bytes _sig, uint256 _recipientRand, uint256 _winProb) internal pure returns (bool) {
+        return uint256(keccak256(abi.encodePacked(_sig, _recipientRand))) < _winProb;
     }
 
     function _isUnlockInProgress(Sender memory sender) internal pure returns (bool) {
