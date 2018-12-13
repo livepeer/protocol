@@ -251,7 +251,7 @@ contract("LivepeerETHTicketBroker", accounts => {
             await expectThrow(broker.setSignerRevocationPeriod(1234, {from: accounts[5]}))
         })
 
-        it("works when called by the owner", async () => {
+        it("works when called by Controller owner", async () => {
             const expectedPeriod = signerRevocationPeriod + 12
             await broker.setSignerRevocationPeriod(expectedPeriod, {from: accounts[0]})
 
