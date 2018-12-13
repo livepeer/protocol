@@ -15,7 +15,7 @@ contract("LivepeerETHTicketBroker", accounts => {
     const recipient = accounts[1]
 
     const unlockPeriod = 20
-    const signerRevocationPeriod = 10
+    const signerRevocationPeriod = 20
 
     before(async () => {
         fixture = new Fixture(web3)
@@ -247,7 +247,7 @@ contract("LivepeerETHTicketBroker", accounts => {
     })
 
     describe("setSignerRevocationPeriod", () => {
-        it("reverts when called by an account that is not the owner", async () => {
+        it("reverts when called by an account that is not the Controller owner", async () => {
             await expectThrow(broker.setSignerRevocationPeriod(1234, {from: accounts[5]}))
         })
 
