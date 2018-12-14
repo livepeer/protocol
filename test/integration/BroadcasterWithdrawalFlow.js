@@ -53,7 +53,7 @@ contract("BroadcasterWithdrawalFlow", accounts => {
         await broker.unlock({from: broadcaster})
         const unlockPeriod = (await broker.unlockPeriod.call()).toNumber()
         await rpc.wait(unlockPeriod)
-        
+
         const startBroadcasterBalance = new BN(await web3.eth.getBalance(broadcaster))
         const startMinterBalance = new BN(await web3.eth.getBalance(minter.address))
 
