@@ -57,7 +57,7 @@ contract("BroadcasterWithdrawalFlow", accounts => {
         const startBroadcasterBalance = new BN(await web3.eth.getBalance(broadcaster))
         const startMinterBalance = new BN(await web3.eth.getBalance(minter.address))
 
-        const withdrawResult = await broker.withdraw()
+        const withdrawResult = await broker.withdraw({from: broadcaster})
 
         const endMinterBalance = new BN(await web3.eth.getBalance(minter.address))
         assert.equal(startMinterBalance.sub(endMinterBalance).toString(), withdrawalAmount.toString())
