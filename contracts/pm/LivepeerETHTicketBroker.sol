@@ -60,12 +60,7 @@ contract LivepeerETHTicketBroker is ManagerProxyTarget, TicketBroker {
     }
 
     // TODO: Stub for tests. Change to Livepeer specific logic
-    function requireValidTicketAuxData(bytes _auxData) internal view {
-        require(
-            getCreationTimestamp(_auxData).add(3 days) > block.timestamp,
-            "ticket is expired"
-        );
-    }
+    function requireValidTicketAuxData(bytes _auxData) internal view {}
 
     function minter() internal view returns (IMinter) {
         return IMinter(controller.getContract(keccak256("Minter")));
@@ -77,13 +72,6 @@ contract LivepeerETHTicketBroker is ManagerProxyTarget, TicketBroker {
 
     function roundsManager() internal view returns (IRoundsManager) {
         return IRoundsManager(controller.getContract(keccak256("RoundsManager")));
-    }
-
-    // TODO: Stub for tests. Change to Livepeer specific logic
-    function getCreationTimestamp(bytes _auxData) internal pure returns (uint256 creationTimestamp) {
-        assembly {
-            creationTimestamp := mload(add(_auxData, 32))
-        }
     }
 }
 

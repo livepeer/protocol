@@ -1,8 +1,7 @@
 import BN from "bn.js"
 import Fixture from "./helpers/Fixture"
 import expectThrow from "../helpers/expectThrow"
-import {expectRevertWithReason} from "../helpers/expectFail"
-import {createTicket, createWinningTicket, getTicketHash} from "../helpers/ticket"
+import {createWinningTicket, getTicketHash} from "../helpers/ticket"
 import {functionSig} from "../../utils/helpers"
 
 const TicketBroker = artifacts.require("LivepeerETHTicketBroker")
@@ -74,24 +73,6 @@ contract("LivepeerETHTicketBroker", accounts => {
     })
 
     describe("redeemWinningTicket", () => {
-        // TODO: Test for stubbed logic. Reminder to update if necessary
-        // when using Livepeer specific logic for ticket auxilary data
-        // validation
-        it("reverts if ticket is expired", async () => {
-            await expectRevertWithReason(
-                broker.redeemWinningTicket(
-                    createTicket({
-                        recipient,
-                        sender,
-                        auxData: web3.utils.numberToHex(0)
-                    }),
-                    web3.utils.asciiToHex("sig"),
-                    5
-                ),
-                "ticket is expired"
-            )
-        })
-
         describe("winningTicketTransfer", () => {
             it("updates transcoder with fees on bonding manager with deposit when deposit < faceValue", async () => {
                 const currentRound = 17
