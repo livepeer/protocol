@@ -1,7 +1,7 @@
 import BN from "bn.js"
 import Fixture from "./helpers/Fixture"
 import expectThrow from "../helpers/expectThrow"
-import {createWinningTicket, getTicketHash} from "../helpers/ticket"
+import {wrapRedeemWinningTicket, createWinningTicket, getTicketHash} from "../helpers/ticket"
 import {functionSig} from "../../utils/helpers"
 
 const TicketBroker = artifacts.require("LivepeerETHTicketBroker")
@@ -9,6 +9,7 @@ const TicketBroker = artifacts.require("LivepeerETHTicketBroker")
 contract("LivepeerETHTicketBroker", accounts => {
     let fixture
     let broker
+    let redeemWinningTicket
 
     const sender = accounts[0]
     const recipient = accounts[1]
@@ -21,6 +22,8 @@ contract("LivepeerETHTicketBroker", accounts => {
         await fixture.deploy()
 
         broker = await TicketBroker.new(fixture.controller.address, 0, unlockPeriod, signerRevocationPeriod)
+
+        redeemWinningTicket = wrapRedeemWinningTicket(broker)
     })
 
     beforeEach(async () => {
@@ -86,7 +89,7 @@ contract("LivepeerETHTicketBroker", accounts => {
                 const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
                 const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
 
-                await broker.redeemWinningTicket(ticket, senderSig, recipientRand, {from: recipient})
+                await redeemWinningTicket(ticket, senderSig, recipientRand, {from: recipient})
 
                 const events = await fixture.bondingManager.getPastEvents("UpdateTranscoderWithFees", {
                     fromBlock,
@@ -112,7 +115,7 @@ contract("LivepeerETHTicketBroker", accounts => {
                 const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
                 const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
 
-                await broker.redeemWinningTicket(ticket, senderSig, recipientRand, {from: recipient})
+                await redeemWinningTicket(ticket, senderSig, recipientRand, {from: recipient})
 
                 const events = await fixture.bondingManager.getPastEvents("UpdateTranscoderWithFees", {
                     fromBlock,
@@ -138,7 +141,7 @@ contract("LivepeerETHTicketBroker", accounts => {
                 const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
                 const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
 
-                await broker.redeemWinningTicket(ticket, senderSig, recipientRand, {from: recipient})
+                await redeemWinningTicket(ticket, senderSig, recipientRand, {from: recipient})
 
                 const events = await fixture.bondingManager.getPastEvents("UpdateTranscoderWithFees", {
                     fromBlock,
@@ -164,7 +167,7 @@ contract("LivepeerETHTicketBroker", accounts => {
                 const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
                 const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
 
-                await broker.redeemWinningTicket(ticket, senderSig, recipientRand, {from: recipient})
+                await redeemWinningTicket(ticket, senderSig, recipientRand, {from: recipient})
 
 
                 const events = await fixture.minter.getPastEvents("TrustedBurnETH", {
@@ -189,7 +192,7 @@ contract("LivepeerETHTicketBroker", accounts => {
                 const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
                 const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
 
-                await broker.redeemWinningTicket(ticket, senderSig, recipientRand, {from: recipient})
+                await redeemWinningTicket(ticket, senderSig, recipientRand, {from: recipient})
 
                 const events = await fixture.minter.getPastEvents("TrustedBurnETH", {
                     fromBlock,
