@@ -2,7 +2,7 @@ import {contractId} from "../../utils/helpers"
 import {constants} from "../../utils/constants"
 import BN from "bn.js"
 import expectThrow from "../helpers/expectThrow"
-import {createWinningTicket, getTicketHash} from "../helpers/ticket"
+import {wrapRedeemWinningTicket, createWinningTicket, getTicketHash} from "../helpers/ticket"
 
 const Controller = artifacts.require("Controller")
 const TicketBroker = artifacts.require("LivepeerETHTicketBroker")
@@ -14,6 +14,8 @@ const LivepeerToken = artifacts.require("LivepeerToken")
 contract("TicketFlow", accounts => {
     const transcoder = accounts[0]
     const broadcaster = accounts[1]
+
+    let redeemWinningTicket
 
     let controller
     let broker
@@ -30,6 +32,8 @@ contract("TicketFlow", accounts => {
 
         const brokerAddr = await controller.getContract(contractId("TicketBroker"))
         broker = await TicketBroker.at(brokerAddr)
+
+        redeemWinningTicket = wrapRedeemWinningTicket(broker)
 
         const bondingManagerAddr = await controller.getContract(contractId("BondingManager"))
         bondingManager = await BondingManager.at(bondingManagerAddr)
@@ -79,7 +83,7 @@ contract("TicketFlow", accounts => {
         const ticket = createWinningTicket(transcoder, broadcaster, recipientRand, faceValue)
         const senderSig = await web3.eth.sign(getTicketHash(ticket), broadcaster)
 
-        await broker.redeemWinningTicket(ticket, senderSig, recipientRand, {from: transcoder})
+        await redeemWinningTicket(ticket, senderSig, recipientRand, {from: transcoder})
 
         const endDeposit = (await broker.senders.call(broadcaster)).deposit.toString()
 
@@ -102,7 +106,7 @@ contract("TicketFlow", accounts => {
         const senderSig = await web3.eth.sign(getTicketHash(ticket), broadcaster)
         const startMinterBalance = new BN(await web3.eth.getBalance(minter.address))
 
-        await broker.redeemWinningTicket(ticket, senderSig, recipientRand, {from: transcoder})
+        await redeemWinningTicket(ticket, senderSig, recipientRand, {from: transcoder})
 
         const endSender = await broker.senders.call(broadcaster)
         const endMinterBalance = new BN(await web3.eth.getBalance(minter.address))

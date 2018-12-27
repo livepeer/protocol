@@ -152,7 +152,29 @@ contract TicketBroker {
         emit SignersRevocationRequested(msg.sender, _signers, revocationBlock);
     }
 
-    function redeemWinningTicket(Ticket memory _ticket, bytes _sig, uint256 _recipientRand) public {
+    function redeemWinningTicket(
+        address _recipient,
+        address _sender,
+        uint256 _faceValue,
+        uint256 _winProb,
+        uint256 _senderNonce,
+        bytes32 _recipientRandHash,
+        bytes _auxData,
+        bytes _sig,
+        uint256 _recipientRand
+    ) 
+        public
+    {
+        Ticket memory _ticket = Ticket({
+            recipient: _recipient,
+            sender: _sender,
+            faceValue: _faceValue,
+            winProb: _winProb,
+            senderNonce: _senderNonce,
+            recipientRandHash: _recipientRandHash,
+            auxData: _auxData
+        });
+
         bytes32 ticketHash = getTicketHash(_ticket);
 
         requireValidWinningTicket(_ticket, ticketHash, _sig, _recipientRand);
