@@ -21,7 +21,7 @@ contract("LivepeerETHTicketBroker", accounts => {
         fixture = new Fixture(web3)
         await fixture.deploy()
 
-        broker = await TicketBroker.new(fixture.controller.address, 0, unlockPeriod, signerRevocationPeriod)
+        broker = await TicketBroker.new(fixture.controller.address, unlockPeriod, signerRevocationPeriod)
 
         redeemWinningTicket = wrapRedeemWinningTicket(broker)
     })
@@ -44,9 +44,9 @@ contract("LivepeerETHTicketBroker", accounts => {
         })
     })
 
-    describe("fundPenaltyEscrow", () => {
+    describe("fundReserve", () => {
         it("grows the Minter ETH balance", async () => {
-            await broker.fundPenaltyEscrow({from: sender, value: 1000})
+            await broker.fundReserve({from: sender, value: 1000})
 
             const balance = await web3.eth.getBalance(fixture.minter.address)
 
@@ -57,21 +57,21 @@ contract("LivepeerETHTicketBroker", accounts => {
     describe("fundAndApproveSigners", () => {
         const signers = accounts.slice(2, 4)
 
-        it("grows the Minter's ETH balance by sum of deposit and penalty escrow amounts", async () => {
+        it("grows the Minter's ETH balance by sum of deposit and reserve amounts", async () => {
             const deposit = 500
-            const penaltyEscrow = 1000
+            const reserve = 1000
             const startMinterBalance = new BN(await web3.eth.getBalance(fixture.minter.address))
 
             await broker.fundAndApproveSigners(
                 deposit,
-                penaltyEscrow,
+                reserve,
                 signers,
-                {from: sender, value: deposit + penaltyEscrow}
+                {from: sender, value: deposit + reserve}
             )
 
             const endMinterBalance = new BN(await web3.eth.getBalance(fixture.minter.address))
 
-            assert.equal(endMinterBalance.sub(startMinterBalance).toString(), (deposit + penaltyEscrow).toString())
+            assert.equal(endMinterBalance.sub(startMinterBalance).toString(), (deposit + reserve).toString())
         })
     })
 
@@ -155,63 +155,16 @@ contract("LivepeerETHTicketBroker", accounts => {
                 assert.equal(event.returnValues.round, currentRound)
             })
         })
-
-        describe("penaltyEscrowSlash", () => {
-            it("burns sender.penaltyEscrow and sets penaltyEscrow to zero when deposit < faceValue", async () => {
-                const fromBlock = (await web3.eth.getBlock("latest")).number
-                const penaltyEscrow = 2000
-                await broker.fundPenaltyEscrow({from: sender, value: penaltyEscrow})
-
-                const recipientRand = 5
-                const faceValue = 1000
-                const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
-                const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
-
-                await redeemWinningTicket(ticket, senderSig, recipientRand, {from: recipient})
-
-
-                const events = await fixture.minter.getPastEvents("TrustedBurnETH", {
-                    fromBlock,
-                    toBlock: "latest"
-                })
-                const endPenaltyEscrow = (await broker.senders.call(sender)).penaltyEscrow.toString()
-
-                assert.equal(events.length, 1)
-                const event = events[0]
-                assert.equal(event.returnValues.amount, penaltyEscrow.toString())
-                assert.equal(endPenaltyEscrow, 0)
-            })
-
-            it("does not burn sender.penaltyEscrow when deposit < faceValue and penaltyEscrow == 0", async () => {
-                const fromBlock = (await web3.eth.getBlock("latest")).number
-                const deposit = 500
-                await broker.fundDeposit({from: sender, value: deposit})
-
-                const recipientRand = 5
-                const faceValue = 1000
-                const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
-                const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
-
-                await redeemWinningTicket(ticket, senderSig, recipientRand, {from: recipient})
-
-                const events = await fixture.minter.getPastEvents("TrustedBurnETH", {
-                    fromBlock,
-                    toBlock: "latest"
-                })
-
-                assert.equal(events.length, 0)
-            })
-        })
     })
 
     describe("withdraw", () => {
         describe("withdrawTransfer", () => {
-            it("transfers the sum of deposit and penaltyEscrow to sender", async () => {
+            it("transfers the sum of deposit and reserve to sender", async () => {
                 const fromBlock = (await web3.eth.getBlock("latest")).number
                 const deposit = 1000
-                const penaltyEscrow = 2000
+                const reserve = 2000
                 await broker.fundDeposit({from: sender, value: deposit})
-                await broker.fundPenaltyEscrow({from: sender, value: penaltyEscrow})
+                await broker.fundReserve({from: sender, value: reserve})
                 await broker.unlock({from: sender})
                 await fixture.rpc.wait(unlockPeriod)
 
@@ -225,7 +178,7 @@ contract("LivepeerETHTicketBroker", accounts => {
                 assert.equal(events.length, 1)
                 const event = events[0]
                 assert.equal(event.returnValues.to, sender)
-                assert.equal(event.returnValues.amount.toString(), (deposit + penaltyEscrow).toString())
+                assert.equal(event.returnValues.amount.toString(), (deposit + reserve).toString())
             })
         })
     })

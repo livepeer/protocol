@@ -2,12 +2,14 @@ pragma solidity ^0.4.25;
 // solium-disable-next-line
 pragma experimental ABIEncoderV2;
 
+import "./ReserveLib.sol";
 import "openzeppelin-solidity/contracts/cryptography/ECDSA.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
 
 contract TicketBroker {
     using SafeMath for uint256;
+    using ReserveLib for ReserveLib.ReserveManager;
 
     struct Signer {
         bool approved;
@@ -16,7 +18,6 @@ contract TicketBroker {
 
     struct Sender {
         uint256 deposit;
-        uint256 penaltyEscrow;
         uint256 withdrawBlock;
         mapping (address => Signer) signers;
     }
@@ -31,15 +32,16 @@ contract TicketBroker {
         bytes auxData;
     }
 
-    uint256 public minPenaltyEscrow;
     uint256 public unlockPeriod;
     uint256 public signerRevocationPeriod;
 
     mapping (address => Sender) public senders;
     mapping (bytes32 => bool) public usedTickets;
 
+    mapping (address => ReserveLib.ReserveManager) internal reserveManagers;
+
     event DepositFunded(address indexed sender, uint256 amount);
-    event PenaltyEscrowFunded(address indexed sender, uint256 amount);
+    event ReserveFunded(address indexed sender, uint256 amount);
     event SignersApproved(address indexed sender, address[] approvedSigners);
     event SignersRevocationRequested(address indexed sender, address[] signers, uint256 revocationBlock);
     event WinningTicketRedeemed(
@@ -52,15 +54,14 @@ contract TicketBroker {
         bytes auxData
     );
     event WinningTicketTransfer(address indexed sender, address indexed recipient, uint256 amount);
-    event PenaltyEscrowSlashed(address indexed sender, address indexed recipient, uint256 amount);
     event Unlock(address indexed sender, uint256 startBlock, uint256 endBlock);
     event UnlockCancelled(address indexed sender);
-    event Withdrawal(address indexed sender, uint256 deposit, uint256 penaltyEscrow);
+    event Withdrawal(address indexed sender, uint256 deposit, uint256 reserve);
 
-    modifier checkDepositPenaltyEscrowETHValueSplit(uint256 _depositAmount, uint256 _penaltyEscrowAmount) {
+    modifier checkDepositReserveETHValueSplit(uint256 _depositAmount, uint256 _reserveAmount) {
         require(
-            msg.value == _depositAmount.add(_penaltyEscrowAmount),
-            "msg.value does not equal sum of deposit amount and penalty escrow amount"
+            msg.value == _depositAmount.add(_reserveAmount),
+            "msg.value does not equal sum of deposit amount and reserve amount"
         );
 
         _;
@@ -74,56 +75,53 @@ contract TicketBroker {
         }
 
         _;
-        
+
         emit DepositFunded(_sender, _amount);
     }
 
-    modifier processPenaltyEscrow(address _sender, uint256 _amount) {
-        require(_amount >= minPenaltyEscrow, "penalty escrow amount must be >= minPenaltyEscrow");
-        
+    modifier processReserve(address _sender, uint256 _amount) {
         Sender storage sender = senders[_sender];
-        sender.penaltyEscrow = sender.penaltyEscrow.add(_amount);
+        reserveManagers[_sender].fund(_amount);
         if (_isUnlockInProgress(sender)) {
             _cancelUnlock(sender, _sender);
         }
-        
+
         _;
 
-        emit PenaltyEscrowFunded(_sender, _amount);
+        emit ReserveFunded(_sender, _amount);
     }
 
-    constructor(uint256 _minPenaltyEscrow, uint256 _unlockPeriod, uint256 _signerRevocationPeriod) internal {
-        minPenaltyEscrow = _minPenaltyEscrow;
+    constructor(uint256 _unlockPeriod, uint256 _signerRevocationPeriod) internal {
         unlockPeriod = _unlockPeriod;
         signerRevocationPeriod = _signerRevocationPeriod;
     }
 
-    function fundDeposit() 
-        external 
-        payable 
+    function fundDeposit()
+        external
+        payable
         processDeposit(msg.sender, msg.value)
     {
         processFunding(msg.value);
     }
 
-    function fundPenaltyEscrow() 
+    function fundReserve()
         external
         payable
-        processPenaltyEscrow(msg.sender, msg.value)
+        processReserve(msg.sender, msg.value)
     {
         processFunding(msg.value);
     }
 
     function fundAndApproveSigners(
         uint256 _depositAmount,
-        uint256 _penaltyEscrowAmount,
+        uint256 _reserveAmount,
         address[] _signers
     )
         external
         payable
-        checkDepositPenaltyEscrowETHValueSplit(_depositAmount, _penaltyEscrowAmount)
+        checkDepositReserveETHValueSplit(_depositAmount, _reserveAmount)
         processDeposit(msg.sender, _depositAmount)
-        processPenaltyEscrow(msg.sender, _penaltyEscrowAmount)
+        processReserve(msg.sender, _reserveAmount)
     {
         approveSigners(_signers);
         processFunding(msg.value);
@@ -162,7 +160,7 @@ contract TicketBroker {
         bytes _auxData,
         bytes _sig,
         uint256 _recipientRand
-    ) 
+    )
         public
     {
         Ticket memory _ticket = Ticket({
@@ -180,32 +178,24 @@ contract TicketBroker {
         requireValidWinningTicket(_ticket, ticketHash, _sig, _recipientRand);
 
         Sender storage sender = senders[_ticket.sender];
+        ReserveLib.ReserveManager storage reserveManager = reserveManagers[_ticket.sender];
 
         require(
-            sender.deposit > 0 || sender.penaltyEscrow > 0,
-            "sender deposit and penalty escrow are zero"
+            sender.deposit > 0 || reserveManager.fundsRemaining() > 0,
+            "sender deposit and reserve are zero"
         );
 
         usedTickets[ticketHash] = true;
 
         uint256 amountToTransfer = 0;
-        uint256 amountToSlash = 0;
 
         if (_ticket.faceValue > sender.deposit) {
             amountToTransfer = sender.deposit;
-            amountToSlash = sender.penaltyEscrow;
 
             sender.deposit = 0;
-            sender.penaltyEscrow = 0;
         } else {
             amountToTransfer = _ticket.faceValue;
             sender.deposit = sender.deposit.sub(_ticket.faceValue);
-        }
-
-        if (amountToSlash > 0) {
-            penaltyEscrowSlash(amountToSlash);
-
-            emit PenaltyEscrowSlashed(_ticket.sender, _ticket.recipient, amountToSlash);
         }
 
         if (amountToTransfer > 0) {
@@ -227,10 +217,11 @@ contract TicketBroker {
 
     function unlock() public {
         Sender storage sender = senders[msg.sender];
+        ReserveLib.ReserveManager storage reserveManager = reserveManagers[msg.sender];
 
         require(
-            sender.deposit > 0 || sender.penaltyEscrow > 0,
-            "sender deposit and penalty escrow are zero"
+            sender.deposit > 0 || reserveManager.fundsRemaining() > 0,
+            "sender deposit and reserve are zero"
         );
         require(!_isUnlockInProgress(sender), "unlock already initiated");
 
@@ -247,28 +238,33 @@ contract TicketBroker {
 
     function withdraw() public {
         Sender storage sender = senders[msg.sender];
+        ReserveLib.ReserveManager storage reserveManager = reserveManagers[msg.sender];
 
         require(
-            sender.deposit > 0 || sender.penaltyEscrow > 0,
-            "sender deposit and penalty escrow are zero"
+            sender.deposit > 0 || reserveManager.fundsRemaining() > 0,
+            "sender deposit and reserve are zero"
         );
         require(
-            _isUnlockInProgress(sender), 
+            _isUnlockInProgress(sender),
             "no unlock request in progress"
         );
         require(
-            block.number >= sender.withdrawBlock, 
+            block.number >= sender.withdrawBlock,
             "account is locked"
         );
 
         uint256 deposit = sender.deposit;
-        uint256 penaltyEscrow = sender.penaltyEscrow;
+        uint256 reserve = reserveManager.fundsRemaining();
         sender.deposit = 0;
-        sender.penaltyEscrow = 0;
+        reserveManager.clear();
 
-        withdrawTransfer(msg.sender, deposit.add(penaltyEscrow));
+        withdrawTransfer(msg.sender, deposit.add(reserve));
 
-        emit Withdrawal(msg.sender, deposit, penaltyEscrow);
+        emit Withdrawal(msg.sender, deposit, reserve);
+    }
+
+    function getReserve(address _sender) public view returns (ReserveLib.Reserve memory) {
+        return reserveManagers[_sender].reserve;
     }
 
     function isUnlockInProgress(address _sender) public view returns (bool) {
@@ -299,9 +295,6 @@ contract TicketBroker {
     function winningTicketTransfer(address _recipient, uint256 _amount) internal;
 
     // Override
-    function penaltyEscrowSlash(uint256 _amount) internal;
-
-    // Override
     function requireValidTicketAuxData(bytes _auxData) internal view;
 
     function requireValidWinningTicket(
@@ -309,7 +302,7 @@ contract TicketBroker {
         bytes32 _ticketHash,
         bytes _sig,
         uint256 _recipientRand
-    ) 
+    )
         internal
         view
     {
@@ -326,7 +319,7 @@ contract TicketBroker {
         require(!usedTickets[_ticketHash], "ticket is used");
 
         require(
-            isValidTicketSig(_ticket.sender, _sig, _ticketHash), 
+            isValidTicketSig(_ticket.sender, _sig, _ticketHash),
             "invalid signature over ticket hash"
         );
 

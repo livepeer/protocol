@@ -1,7 +1,6 @@
 import {contractId} from "../../utils/helpers"
 import {constants} from "../../utils/constants"
 import BN from "bn.js"
-import expectThrow from "../helpers/expectThrow"
 import {wrapRedeemWinningTicket, createWinningTicket, getTicketHash} from "../helpers/ticket"
 
 const Controller = artifacts.require("Controller")
@@ -67,13 +66,11 @@ contract("TicketFlow", accounts => {
 
         assert.equal(await web3.eth.getBalance(minter.address), deposit.toString())
 
-        const penaltyEscrow = await broker.minPenaltyEscrow.call()
+        const reserve = new BN(web3.utils.toWei("1", "ether"))
 
-        await expectThrow(broker.fundPenaltyEscrow({from: broadcaster, value: penaltyEscrow.sub(new BN(1))}))
+        await broker.fundReserve({from: broadcaster, value: reserve})
 
-        await broker.fundPenaltyEscrow({from: broadcaster, value: penaltyEscrow})
-
-        assert.equal(await web3.eth.getBalance(minter.address), deposit.add(penaltyEscrow).toString())
+        assert.equal(await web3.eth.getBalance(minter.address), deposit.add(reserve).toString())
     })
 
     it("broadcaster sends a winning ticket and transcoder redeems it", async () => {
@@ -104,16 +101,12 @@ contract("TicketFlow", accounts => {
         const faceValue = startSender.deposit.add(new BN(100)).toString()
         const ticket = createWinningTicket(transcoder, broadcaster, recipientRand, faceValue)
         const senderSig = await web3.eth.sign(getTicketHash(ticket), broadcaster)
-        const startMinterBalance = new BN(await web3.eth.getBalance(minter.address))
 
         await redeemWinningTicket(ticket, senderSig, recipientRand, {from: transcoder})
 
         const endSender = await broker.senders.call(broadcaster)
-        const endMinterBalance = new BN(await web3.eth.getBalance(minter.address))
 
         assert.equal(endSender.deposit.toString(), "0")
-        assert.equal(endSender.penaltyEscrow.toString(), "0")
-        assert.equal(startMinterBalance.sub(endMinterBalance).toString(), startSender.penaltyEscrow.toString())
 
         const round = await roundsManager.currentRound()
         const earningsPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder, round)

@@ -11,12 +11,11 @@ contract ERC20TicketBroker is TicketBroker {
     ERC20 public token;
 
     constructor(
-        address _token, 
-        uint256 _minPenaltyEscrow,
+        address _token,
         uint256 _unlockPeriod,
-        uint256 _signerRevocationPeriod 
+        uint256 _signerRevocationPeriod
     )
-        TicketBroker(_minPenaltyEscrow, _unlockPeriod, _signerRevocationPeriod)
+        TicketBroker(_unlockPeriod, _signerRevocationPeriod)
         public
     {
         token = ERC20(_token);
@@ -24,31 +23,31 @@ contract ERC20TicketBroker is TicketBroker {
 
     // For ERC20
     function fundDeposit(uint256 _amount)
-        external 
+        external
         processDeposit(msg.sender, _amount)
     {
         processFunding(_amount);
     }
 
-    function fundPenaltyEscrow(uint256 _amount) 
+    function fundReserve(uint256 _amount)
         external
-        processPenaltyEscrow(msg.sender, _amount)
+        processReserve(msg.sender, _amount)
     {
         processFunding(_amount);
     }
 
     function fundAndApproveSigners(
         uint256 _depositAmount,
-        uint256 _penaltyEscrowAmount,
+        uint256 _reserveAmount,
         address[] _signers
     )
         external
         payable
         processDeposit(msg.sender, _depositAmount)
-        processPenaltyEscrow(msg.sender, _penaltyEscrowAmount)
+        processReserve(msg.sender, _reserveAmount)
     {
         approveSigners(_signers);
-        processFunding(_depositAmount.add(_penaltyEscrowAmount));
+        processFunding(_depositAmount.add(_reserveAmount));
     }
 
     function processFunding(uint256 _amount) internal {
@@ -62,12 +61,8 @@ contract ERC20TicketBroker is TicketBroker {
     function withdrawTransfer(address _sender, uint256 _amount) internal {
         token.transfer(_sender, _amount);
     }
-    
+
     function winningTicketTransfer(address _recipient, uint256 _amount) internal {
         token.transfer(_recipient, _amount);
-    }
-
-    function penaltyEscrowSlash(uint256 _amount) internal {
-        token.transfer(address(0), _amount);
     }
 }

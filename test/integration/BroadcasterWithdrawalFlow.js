@@ -45,10 +45,10 @@ contract("BroadcasterWithdrawalFlow", accounts => {
 
     it("broadcaster withdraws deposit and penalty escrow", async () => {
         const deposit = new BN(web3.utils.toWei("1", "ether"))
-        const penaltyEscrow = await broker.minPenaltyEscrow.call()
+        const reserve = new BN(web3.utils.toWei("1", "ether"))
         await broker.fundDeposit({from: broadcaster, value: deposit})
-        await broker.fundPenaltyEscrow({from: broadcaster, value: penaltyEscrow})
-        const withdrawalAmount = deposit.add(penaltyEscrow)
+        await broker.fundReserve({from: broadcaster, value: reserve})
+        const withdrawalAmount = deposit.add(reserve)
 
         await broker.unlock({from: broadcaster})
         const unlockPeriod = (await broker.unlockPeriod.call()).toNumber()
