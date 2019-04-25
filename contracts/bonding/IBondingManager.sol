@@ -31,6 +31,7 @@ contract IBondingManager {
     function electActiveTranscoder(uint256 _maxPricePerSegment, bytes32 _blockHash, uint256 _round) external view returns (address);
 
     // Public functions
+    function getTranscoderPoolSize() public view returns (uint256);
     function transcoderTotalStake(address _transcoder) public view returns (uint256);
     function activeTranscoderTotalStake(address _transcoder, uint256 _round) public view returns (uint256);
     function isRegisteredTranscoder(address _transcoder) public view returns (bool);

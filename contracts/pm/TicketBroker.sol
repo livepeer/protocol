@@ -54,6 +54,14 @@ contract TicketBroker {
         bytes auxData
     );
     event WinningTicketTransfer(address indexed sender, address indexed recipient, uint256 amount);
+    event ReserveClaimed(address indexed sender, address indexed recipient, uint256 amount);
+    event ReserveFrozen(
+        address indexed sender,
+        address indexed recipient,
+        uint256 freezeRound,
+        uint256 recipientsInFreezeRound,
+        uint256 reserveFunds
+    );
     event Unlock(address indexed sender, uint256 startBlock, uint256 endBlock);
     event UnlockCancelled(address indexed sender);
     event Withdrawal(address indexed sender, uint256 deposit, uint256 reserve);
@@ -190,7 +198,12 @@ contract TicketBroker {
         uint256 amountToTransfer = 0;
 
         if (_ticket.faceValue > sender.deposit) {
-            amountToTransfer = sender.deposit;
+            amountToTransfer = sender.deposit.add(claimFromReserve(
+                reserveManager,
+                _ticket.sender,
+                _ticket.recipient,
+                _ticket.faceValue.sub(sender.deposit)
+            ));
 
             sender.deposit = 0;
         } else {
@@ -293,6 +306,16 @@ contract TicketBroker {
 
     // Override
     function winningTicketTransfer(address _recipient, uint256 _amount) internal;
+
+    // Override
+    function claimFromReserve(
+        ReserveLib.ReserveManager storage manager,
+        address _sender,
+        address _recipient,
+        uint256 _amount
+    )
+        internal
+        returns (uint256);
 
     // Override
     function requireValidTicketAuxData(bytes _auxData) internal view;

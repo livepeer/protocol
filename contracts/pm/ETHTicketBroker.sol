@@ -24,6 +24,19 @@ contract ETHTicketBroker is TicketBroker {
         _recipient.transfer(_amount);
     }
 
+    function claimFromReserve(
+        ReserveLib.ReserveManager storage manager,
+        address _sender,
+        address _recipient,
+        uint256 _amount
+    )
+        internal
+        returns (uint256)
+    {
+        // TODO: add ETHTicketBroker specific logic for claiming from reserve
+        return 0;
+    }
+
     function requireValidTicketAuxData(bytes _auxData) internal view {
         require(
             getCreationTimestamp(_auxData).add(3 days) > block.timestamp,

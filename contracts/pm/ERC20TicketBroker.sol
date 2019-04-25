@@ -65,4 +65,17 @@ contract ERC20TicketBroker is TicketBroker {
     function winningTicketTransfer(address _recipient, uint256 _amount) internal {
         token.transfer(_recipient, _amount);
     }
+
+    function claimFromReserve(
+        ReserveLib.ReserveManager storage manager,
+        address _sender,
+        address _recipient,
+        uint256 _amount
+    )
+        internal
+        returns (uint256)
+    {
+        // TODO: add ERC20TicketBroker specific logic for claiming from reserve
+        return 0;
+    }
 }

@@ -602,6 +602,8 @@ contract("TicketBroker", accounts => {
                     assert.equal(endRecipientBalance.sub(startRecipientBalance).add(txCost).toString(), "0")
                     truffleAssert.eventNotEmitted(txResult, "WinningTicketTransfer")
                 })
+
+                // TODO: tests for ETHTicketBroker specific logic for claiming from reserve
             })
 
             describe("sender.deposit is not zero", () => {
@@ -647,11 +649,13 @@ contract("TicketBroker", accounts => {
                 // TODO: tests for indexed arguments in WinningTicketTransfer
 
                 describe("sender.reserve is zero", () => {
-
+                    // TODO: tests for ETHTicketBroker specific logic for NOT claiming from reserve
                 })
 
                 describe("sender.reserve is not zero", () => {
-
+                    // TODO: tests for ETHTicketBroker specific logic for a single recipient claiming from reserve
+                    // TODO: tests for ETHTicketBroker specific logic for multiple recipients claiming from reserve
+                    // TODO: tests for emitting ReserveClaimed events
                 })
             })
         })

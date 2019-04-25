@@ -50,6 +50,47 @@ contract LivepeerETHTicketBroker is ManagerProxyTarget, TicketBroker {
         );
     }
 
+    function claimFromReserve(
+        ReserveLib.ReserveManager storage manager,
+        address _sender,
+        address _recipient,
+        uint256 _amount
+    )
+        internal
+        returns (uint256)
+    {
+        if (!manager.isFrozen()) {
+            uint256 freezeRound = roundsManager().currentRound();
+            // TODO: make sure bondingManager.getTranscoderPoolSize()
+            // returns the locked in # registered for the freeze round
+            uint256 recipientsInFreezeRound = bondingManager().getTranscoderPoolSize();
+
+            manager.freeze(freezeRound, recipientsInFreezeRound);
+
+            emit ReserveFrozen(
+                _sender,
+                _recipient,
+                freezeRound,
+                recipientsInFreezeRound,
+                manager.reserve.fundsAdded
+            );
+        }
+
+        // TODO: consider just checking if recipient is registered
+        // in current round vs. keeping track of all rounds that recipient
+        // is registered in and checking if recipient was registered
+        // during the freeze round (could be in the past)
+        if (!bondingManager().isRegisteredTranscoder(_recipient)) {
+            return 0;
+        }
+
+        uint256 claimAmount = manager.claim(_recipient, _amount);
+
+        emit ReserveClaimed(_sender, _recipient, claimAmount);
+
+        return claimAmount;
+    }
+
     // TODO: Stub for tests. Change to Livepeer specific logic
     function requireValidTicketAuxData(bytes _auxData) internal view {}
 

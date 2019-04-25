@@ -111,6 +111,6 @@ contract("TicketFlow", accounts => {
         const round = await roundsManager.currentRound()
         const earningsPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder, round)
 
-        assert.equal(earningsPool.transcoderFeePool.toString(), startSender.deposit.toString())
+        assert.equal(earningsPool.transcoderFeePool.toString(), ticket.faceValue.toString())
     })
 })
