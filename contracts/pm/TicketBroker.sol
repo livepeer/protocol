@@ -33,6 +33,7 @@ contract TicketBroker {
     }
 
     uint256 public unlockPeriod;
+    uint256 public freezePeriod;
     uint256 public signerRevocationPeriod;
 
     mapping (address => Sender) public senders;
@@ -75,6 +76,15 @@ contract TicketBroker {
         _;
     }
 
+    modifier reserveNotFrozen(address _sender) {
+        require(
+            !reserveManagers[_sender].isFrozen(),
+            "sender's reserve is frozen"
+        );
+
+        _;
+    }
+
     modifier processDeposit(address _sender, uint256 _amount) {
         Sender storage sender = senders[_sender];
         sender.deposit = sender.deposit.add(_amount);
@@ -99,14 +109,22 @@ contract TicketBroker {
         emit ReserveFunded(_sender, _amount);
     }
 
-    constructor(uint256 _unlockPeriod, uint256 _signerRevocationPeriod) internal {
+    constructor(
+        uint256 _unlockPeriod,
+        uint256 _freezePeriod,
+        uint256 _signerRevocationPeriod
+    )
+        internal
+    {
         unlockPeriod = _unlockPeriod;
+        freezePeriod = _freezePeriod;
         signerRevocationPeriod = _signerRevocationPeriod;
     }
 
     function fundDeposit()
         external
         payable
+        reserveNotFrozen(msg.sender)
         processDeposit(msg.sender, msg.value)
     {
         processFunding(msg.value);
@@ -115,6 +133,7 @@ contract TicketBroker {
     function fundReserve()
         external
         payable
+        reserveNotFrozen(msg.sender)
         processReserve(msg.sender, msg.value)
     {
         processFunding(msg.value);
@@ -127,6 +146,7 @@ contract TicketBroker {
     )
         external
         payable
+        reserveNotFrozen(msg.sender)
         checkDepositReserveETHValueSplit(_depositAmount, _reserveAmount)
         processDeposit(msg.sender, _depositAmount)
         processReserve(msg.sender, _reserveAmount)
@@ -228,7 +248,7 @@ contract TicketBroker {
         );
     }
 
-    function unlock() public {
+    function unlock() public reserveNotFrozen(msg.sender) {
         Sender storage sender = senders[msg.sender];
         ReserveLib.ReserveManager storage reserveManager = reserveManagers[msg.sender];
 
@@ -257,14 +277,19 @@ contract TicketBroker {
             sender.deposit > 0 || reserveManager.fundsRemaining() > 0,
             "sender deposit and reserve are zero"
         );
-        require(
-            _isUnlockInProgress(sender),
-            "no unlock request in progress"
-        );
-        require(
-            block.number >= sender.withdrawBlock,
-            "account is locked"
-        );
+
+        if (reserveManager.isFrozen()) {
+            requireValidFrozenReserveWithdrawal(reserveManager);
+        } else {
+            require(
+                _isUnlockInProgress(sender),
+                "no unlock request in progress"
+            );
+            require(
+                block.number >= sender.withdrawBlock,
+                "account is locked"
+            );
+        }
 
         uint256 deposit = sender.deposit;
         uint256 reserve = reserveManager.fundsRemaining();
@@ -319,6 +344,9 @@ contract TicketBroker {
 
     // Override
     function requireValidTicketAuxData(bytes _auxData) internal view;
+
+    // Override
+    function requireValidFrozenReserveWithdrawal(ReserveLib.ReserveManager storage manager) internal view;
 
     function requireValidWinningTicket(
         Ticket memory _ticket,

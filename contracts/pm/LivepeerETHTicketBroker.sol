@@ -13,18 +13,23 @@ contract LivepeerETHTicketBroker is ManagerProxyTarget, TicketBroker {
     constructor(
         address _controller,
         uint256 _unlockPeriod,
+        uint256 _freezePeriod,
         uint256 _signerRevocationPeriod
     )
         Manager(_controller)
         // TODO: Consider using a initializer instead of an
         // explicit constructor in base TicketBroker since
         // upgradeable proxies do not use explicit constructors
-        TicketBroker(_unlockPeriod, _signerRevocationPeriod)
+        TicketBroker(_unlockPeriod, _freezePeriod, _signerRevocationPeriod)
         public
     {}
 
     function setUnlockPeriod(uint256 _unlockPeriod) external onlyControllerOwner {
         unlockPeriod = _unlockPeriod;
+    }
+
+    function setFreezePeriod(uint256 _freezePeriod) external onlyControllerOwner {
+        freezePeriod = _freezePeriod;
     }
 
     function setSignerRevocationPeriod(uint256 _signerRevocationPeriod) external onlyControllerOwner {
@@ -93,6 +98,13 @@ contract LivepeerETHTicketBroker is ManagerProxyTarget, TicketBroker {
 
     // TODO: Stub for tests. Change to Livepeer specific logic
     function requireValidTicketAuxData(bytes _auxData) internal view {}
+
+    function requireValidFrozenReserveWithdrawal(ReserveLib.ReserveManager storage manager) internal view {
+        require(
+            manager.reserve.freezeRound.add(freezePeriod) <= roundsManager().currentRound(),
+            "sender's reserve is frozen and freeze period is not over"
+        );
+    }
 
     function minter() internal view returns (IMinter) {
         return IMinter(controller.getContract(keccak256("Minter")));

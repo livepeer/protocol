@@ -8,9 +8,10 @@ import "./TicketBroker.sol";
 contract ETHTicketBroker is TicketBroker {
     constructor(
         uint256 _unlockPeriod,
+        uint256 _freezePeriod,
         uint256 _signerRevocationPeriod
     )
-        TicketBroker(_unlockPeriod, _signerRevocationPeriod)
+        TicketBroker(_unlockPeriod, _freezePeriod, _signerRevocationPeriod)
         public
     {}
 
@@ -43,6 +44,8 @@ contract ETHTicketBroker is TicketBroker {
             "ticket is expired"
         );
     }
+
+    function requireValidFrozenReserveWithdrawal(ReserveLib.ReserveManager storage manager) internal view {}
 
     function getCreationTimestamp(bytes _auxData) internal pure returns (uint256 creationTimestamp) {
         assembly {

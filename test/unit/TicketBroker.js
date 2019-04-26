@@ -16,13 +16,14 @@ contract("TicketBroker", accounts => {
     const recipient = accounts[1]
 
     const unlockPeriod = 20
+    const freezePeriod = 2
     const signerRevocationPeriod = 20
 
     before(async () => {
         fixture = new Fixture(web3)
         await fixture.deploy()
 
-        broker = await TicketBroker.new(unlockPeriod, signerRevocationPeriod)
+        broker = await TicketBroker.new(unlockPeriod, freezePeriod, signerRevocationPeriod)
 
         redeemWinningTicket = wrapRedeemWinningTicket(broker)
     })

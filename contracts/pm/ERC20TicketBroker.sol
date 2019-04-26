@@ -13,9 +13,10 @@ contract ERC20TicketBroker is TicketBroker {
     constructor(
         address _token,
         uint256 _unlockPeriod,
+        uint256 _freezePeriod,
         uint256 _signerRevocationPeriod
     )
-        TicketBroker(_unlockPeriod, _signerRevocationPeriod)
+        TicketBroker(_unlockPeriod, _freezePeriod, _signerRevocationPeriod)
         public
     {
         token = ERC20(_token);
