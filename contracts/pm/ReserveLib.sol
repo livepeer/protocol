@@ -21,7 +21,15 @@ library ReserveLib {
 
     function fund(ReserveManager storage manager, uint256 _amount) internal {
         Reserve storage reserve = manager.reserve;
-        reserve.fundsAdded = reserve.fundsAdded.add(_amount);
+
+        uint256 addAmount = _amount;
+
+        if (isFrozen(manager)) {
+            addAmount = addAmount.add(fundsRemaining(manager));
+            clear(manager);
+        }
+
+        reserve.fundsAdded = reserve.fundsAdded.add(addAmount);
     }
 
     function clear(ReserveManager storage manager) internal {

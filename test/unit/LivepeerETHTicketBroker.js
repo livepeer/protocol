@@ -94,6 +94,64 @@ contract("LivepeerETHTicketBroker", accounts => {
 
             assert.equal(balance, "1000")
         })
+
+        it("migrates remaining funds from unfrozen reserve into new reserve", async () => {
+            const currentRound = 10
+            const numRecipients = 10
+            const reserve = 1000
+            const allocation = reserve / numRecipients
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
+            await fixture.bondingManager.setMockUint256(functionSig("getTranscoderPoolSize()"), numRecipients)
+            await fixture.bondingManager.setMockBool(functionSig("isRegisteredTranscoder(address)"), true)
+            await broker.fundReserve({from: sender, value: 1000})
+
+            const recipientRand = 5
+            const faceValue = 1000
+            const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
+            const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
+
+            await redeemWinningTicket(ticket, senderSig, recipientRand, {from: recipient})
+
+            const freezePeriod = await broker.freezePeriod.call()
+            const unfreezeRound = (new BN(currentRound)).add(new BN(freezePeriod))
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), unfreezeRound)
+
+            await broker.fundReserve({from: sender})
+
+            const remainingReserve = reserve - allocation
+            assert.equal((await broker.getReserve(sender)).fundsAdded.toString(), remainingReserve.toString())
+        })
+
+        it("migrates remaining funds from unfrozen reserve into new resere and additional funds", async () => {
+            const currentRound = 10
+            const numRecipients = 10
+            const reserve = 1000
+            const allocation = reserve / numRecipients
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
+            await fixture.bondingManager.setMockUint256(functionSig("getTranscoderPoolSize()"), numRecipients)
+            await fixture.bondingManager.setMockBool(functionSig("isRegisteredTranscoder(address)"), true)
+            await broker.fundReserve({from: sender, value: 1000})
+
+            const recipientRand = 5
+            const faceValue = 1000
+            const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
+            const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
+
+            await redeemWinningTicket(ticket, senderSig, recipientRand, {from: recipient})
+
+            const freezePeriod = await broker.freezePeriod.call()
+            const unfreezeRound = (new BN(currentRound)).add(new BN(freezePeriod))
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), unfreezeRound)
+
+            const additionalFunds = 100
+            await broker.fundReserve({from: sender, value: additionalFunds})
+
+            const remainingReserve = reserve - allocation
+            assert.equal(
+                (await broker.getReserve(sender)).fundsAdded.toString(),
+                (remainingReserve + additionalFunds).toString()
+            )
+        })
     })
 
     describe("fundAndApproveSigners", () => {
@@ -139,6 +197,74 @@ contract("LivepeerETHTicketBroker", accounts => {
             const endMinterBalance = new BN(await web3.eth.getBalance(fixture.minter.address))
 
             assert.equal(endMinterBalance.sub(startMinterBalance).toString(), (deposit + reserve).toString())
+        })
+
+        it("migrates remaining funds from unfrozen reserve into new reserve", async () => {
+            const currentRound = 10
+            const numRecipients = 10
+            const reserve = 1000
+            const allocation = reserve / numRecipients
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
+            await fixture.bondingManager.setMockUint256(functionSig("getTranscoderPoolSize()"), numRecipients)
+            await fixture.bondingManager.setMockBool(functionSig("isRegisteredTranscoder(address)"), true)
+            await broker.fundReserve({from: sender, value: 1000})
+
+            const recipientRand = 5
+            const faceValue = 1000
+            const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
+            const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
+
+            await redeemWinningTicket(ticket, senderSig, recipientRand, {from: recipient})
+
+            const freezePeriod = await broker.freezePeriod.call()
+            const unfreezeRound = (new BN(currentRound)).add(new BN(freezePeriod))
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), unfreezeRound)
+
+            await broker.fundAndApproveSigners(
+                100,
+                0,
+                signers,
+                {from: sender, value: 100}
+            )
+
+            const remainingReserve = reserve - allocation
+            assert.equal((await broker.getReserve(sender)).fundsAdded.toString(), remainingReserve.toString())
+        })
+
+        it("migrates remaining funds from unfrozen reserve into new resere and additional funds", async () => {
+            const currentRound = 10
+            const numRecipients = 10
+            const reserve = 1000
+            const allocation = reserve / numRecipients
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
+            await fixture.bondingManager.setMockUint256(functionSig("getTranscoderPoolSize()"), numRecipients)
+            await fixture.bondingManager.setMockBool(functionSig("isRegisteredTranscoder(address)"), true)
+            await broker.fundReserve({from: sender, value: 1000})
+
+            const recipientRand = 5
+            const faceValue = 1000
+            const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
+            const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
+
+            await redeemWinningTicket(ticket, senderSig, recipientRand, {from: recipient})
+
+            const freezePeriod = await broker.freezePeriod.call()
+            const unfreezeRound = (new BN(currentRound)).add(new BN(freezePeriod))
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), unfreezeRound)
+
+            const additionalFunds = 100
+            await broker.fundAndApproveSigners(
+                100,
+                additionalFunds,
+                signers,
+                {from: sender, value: 100 + additionalFunds}
+            )
+
+            const remainingReserve = reserve - allocation
+            assert.equal(
+                (await broker.getReserve(sender)).fundsAdded.toString(),
+                (remainingReserve + additionalFunds).toString()
+            )
         })
     })
 
@@ -524,7 +650,7 @@ contract("LivepeerETHTicketBroker", accounts => {
 
                 await expectRevertWithReason(
                     broker.withdraw({from: sender}),
-                    "sender's reserve is frozen and freeze period is not over"
+                    "sender's reserve is frozen"
                 )
             })
 

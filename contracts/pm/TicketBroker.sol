@@ -78,7 +78,7 @@ contract TicketBroker {
 
     modifier reserveNotFrozen(address _sender) {
         require(
-            !reserveManagers[_sender].isFrozen(),
+            !isReserveFrozen(reserveManagers[_sender]),
             "sender's reserve is frozen"
         );
 
@@ -269,7 +269,7 @@ contract TicketBroker {
         _cancelUnlock(sender, msg.sender);
     }
 
-    function withdraw() public {
+    function withdraw() public reserveNotFrozen(msg.sender) {
         Sender storage sender = senders[msg.sender];
         ReserveLib.ReserveManager storage reserveManager = reserveManagers[msg.sender];
 
@@ -278,9 +278,7 @@ contract TicketBroker {
             "sender deposit and reserve are zero"
         );
 
-        if (reserveManager.isFrozen()) {
-            requireValidFrozenReserveWithdrawal(reserveManager);
-        } else {
+        if (!reserveManager.isFrozen()) {
             require(
                 _isUnlockInProgress(sender),
                 "no unlock request in progress"
@@ -346,7 +344,7 @@ contract TicketBroker {
     function requireValidTicketAuxData(bytes _auxData) internal view;
 
     // Override
-    function requireValidFrozenReserveWithdrawal(ReserveLib.ReserveManager storage manager) internal view;
+    function isReserveFrozen(ReserveLib.ReserveManager storage manager) internal view returns (bool);
 
     function requireValidWinningTicket(
         Ticket memory _ticket,

@@ -99,11 +99,9 @@ contract LivepeerETHTicketBroker is ManagerProxyTarget, TicketBroker {
     // TODO: Stub for tests. Change to Livepeer specific logic
     function requireValidTicketAuxData(bytes _auxData) internal view {}
 
-    function requireValidFrozenReserveWithdrawal(ReserveLib.ReserveManager storage manager) internal view {
-        require(
-            manager.reserve.freezeRound.add(freezePeriod) <= roundsManager().currentRound(),
-            "sender's reserve is frozen and freeze period is not over"
-        );
+    function isReserveFrozen(ReserveLib.ReserveManager storage manager) internal view returns (bool) {
+        return manager.reserve.freezeRound > 0 &&
+            manager.reserve.freezeRound.add(freezePeriod) > roundsManager().currentRound();
     }
 
     function minter() internal view returns (IMinter) {

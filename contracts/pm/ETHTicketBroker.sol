@@ -45,7 +45,9 @@ contract ETHTicketBroker is TicketBroker {
         );
     }
 
-    function requireValidFrozenReserveWithdrawal(ReserveLib.ReserveManager storage manager) internal view {}
+    function isReserveFrozen(ReserveLib.ReserveManager storage manager) internal view returns (bool) {
+        return false;
+    }
 
     function getCreationTimestamp(bytes _auxData) internal pure returns (uint256 creationTimestamp) {
         assembly {
