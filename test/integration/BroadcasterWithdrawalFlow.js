@@ -4,7 +4,7 @@ import RPC from "../../utils/rpc"
 import calcTxCost from "../helpers/calcTxCost"
 
 const Controller = artifacts.require("Controller")
-const TicketBroker = artifacts.require("LivepeerETHTicketBroker")
+const TicketBroker = artifacts.require("TicketBroker")
 const BondingManager = artifacts.require("BondingManager")
 const Minter = artifacts.require("Minter")
 const AdjustableRoundsManager = artifacts.require("AdjustableRoundsManager")

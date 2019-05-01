@@ -1,10 +1,10 @@
 import {contractId} from "../../utils/helpers"
 import {constants} from "../../utils/constants"
 import BN from "bn.js"
-import {wrapRedeemWinningTicket, createWinningTicket, getTicketHash} from "../helpers/ticket"
+import {createWinningTicket, getTicketHash} from "../helpers/ticket"
 
 const Controller = artifacts.require("Controller")
-const TicketBroker = artifacts.require("LivepeerETHTicketBroker")
+const TicketBroker = artifacts.require("TicketBroker")
 const BondingManager = artifacts.require("BondingManager")
 const Minter = artifacts.require("Minter")
 const AdjustableRoundsManager = artifacts.require("AdjustableRoundsManager")
@@ -13,8 +13,6 @@ const LivepeerToken = artifacts.require("LivepeerToken")
 contract("TicketFlow", accounts => {
     const transcoder = accounts[0]
     const broadcaster = accounts[1]
-
-    let redeemWinningTicket
 
     let controller
     let broker
@@ -31,8 +29,6 @@ contract("TicketFlow", accounts => {
 
         const brokerAddr = await controller.getContract(contractId("TicketBroker"))
         broker = await TicketBroker.at(brokerAddr)
-
-        redeemWinningTicket = wrapRedeemWinningTicket(broker)
 
         const bondingManagerAddr = await controller.getContract(contractId("BondingManager"))
         bondingManager = await BondingManager.at(bondingManagerAddr)
@@ -80,7 +76,7 @@ contract("TicketFlow", accounts => {
         const ticket = createWinningTicket(transcoder, broadcaster, recipientRand, faceValue)
         const senderSig = await web3.eth.sign(getTicketHash(ticket), broadcaster)
 
-        await redeemWinningTicket(ticket, senderSig, recipientRand, {from: transcoder})
+        await broker.redeemWinningTicket(ticket, senderSig, recipientRand, {from: transcoder})
 
         const endDeposit = (await broker.senders.call(broadcaster)).deposit.toString()
 
@@ -97,16 +93,20 @@ contract("TicketFlow", accounts => {
         await roundsManager.initializeRound()
 
         const startSender = await broker.senders.call(broadcaster)
+        const startReserve = await broker.remainingReserve(broadcaster)
         const recipientRand = 6
         const faceValue = startSender.deposit.add(new BN(100)).toString()
         const ticket = createWinningTicket(transcoder, broadcaster, recipientRand, faceValue)
         const senderSig = await web3.eth.sign(getTicketHash(ticket), broadcaster)
 
-        await redeemWinningTicket(ticket, senderSig, recipientRand, {from: transcoder})
+        await broker.redeemWinningTicket(ticket, senderSig, recipientRand, {from: transcoder})
 
         const endSender = await broker.senders.call(broadcaster)
+        const endReserve = await broker.remainingReserve(broadcaster)
+        const reserveDiff = (new BN(startReserve)).sub(new BN(endReserve))
 
         assert.equal(endSender.deposit.toString(), "0")
+        assert.equal(reserveDiff.toString(), "100")
 
         const round = await roundsManager.currentRound()
         const earningsPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder, round)
