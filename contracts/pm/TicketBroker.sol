@@ -6,13 +6,15 @@ import "./mixins/MixinContractRegistry.sol";
 import "./mixins/MixinReserve.sol";
 import "./mixins/MixinTicketBrokerCore.sol";
 import "./mixins/MixinTicketProcessor.sol";
+import "./mixins/MixinWrappers.sol";
 
 
 contract TicketBroker is
     MixinContractRegistry,
     MixinReserve,
     MixinTicketBrokerCore,
-    MixinTicketProcessor
+    MixinTicketProcessor,
+    MixinWrappers
 {
     constructor(
         address _controller,

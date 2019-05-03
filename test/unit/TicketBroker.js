@@ -1181,6 +1181,181 @@ contract("TicketBroker", accounts => {
         })
     })
 
+    describe("batchRedeemWinningTickets", () => {
+        it("redeems 2 tickets from the same sender", async () => {
+            const deposit = 1500
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
+            await broker.fundDeposit({from: sender, value: deposit})
+
+            const fromBlock = (await web3.eth.getBlock("latest")).number
+            const recipientRand = 5
+            const faceValue = 500
+            const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
+            const ticket2 = createWinningTicket(recipient, sender, recipientRand, faceValue)
+            ticket2.senderNonce++
+            const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
+            const senderSig2 = await web3.eth.sign(getTicketHash(ticket2), sender)
+
+            await broker.batchRedeemWinningTickets(
+                [ticket, ticket2],
+                [senderSig, senderSig2],
+                [recipientRand, recipientRand],
+                {from: recipient}
+            )
+
+            const events = await broker.getPastEvents("WinningTicketRedeemed", {
+                filter: {
+                    recipient
+                },
+                fromBlock,
+                toBlock: "latest"
+            })
+
+            assert.equal(events.length, 2)
+        })
+
+        it("redeems 2 tickets from different senders", async () => {
+            const sender2 = accounts[2]
+            const deposit = 1500
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
+            await broker.fundDeposit({from: sender, value: deposit})
+            await broker.fundDeposit({from: sender2, value: deposit})
+
+            const fromBlock = (await web3.eth.getBlock("latest")).number
+            const recipientRand = 5
+            const faceValue = 500
+            const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
+            const ticket2 = createWinningTicket(recipient, sender2, recipientRand, faceValue)
+            const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
+            const senderSig2 = await web3.eth.sign(getTicketHash(ticket2), sender2)
+
+            await broker.batchRedeemWinningTickets(
+                [ticket, ticket2],
+                [senderSig, senderSig2],
+                [recipientRand, recipientRand],
+                {from: recipient}
+            )
+
+            const sender1Events = await broker.getPastEvents("WinningTicketRedeemed", {
+                filter: {
+                    sender,
+                    recipient
+                },
+                fromBlock,
+                toBlock: "latest"
+            })
+
+            assert.equal(sender1Events.length, 1)
+
+            const sender2Events = await broker.getPastEvents("WinningTicketRedeemed", {
+                filter: {
+                    sender: sender2,
+                    recipient
+                },
+                fromBlock,
+                toBlock: "latest"
+            })
+
+            assert.equal(sender2Events.length, 1)
+        })
+
+        it("redeems 2 tickets with 1 failure", async () => {
+            const deposit = 1500
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
+            await broker.fundDeposit({from: sender, value: deposit})
+
+            const fromBlock = (await web3.eth.getBlock("latest")).number
+            const recipientRand = 5
+            const faceValue = 500
+            const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
+            const ticket2 = createWinningTicket(constants.NULL_ADDRESS, sender, recipientRand, faceValue)
+            ticket2.senderNonce++
+            const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
+            const senderSig2 = await web3.eth.sign(getTicketHash(ticket2), sender)
+
+            await broker.batchRedeemWinningTickets(
+                [ticket, ticket2],
+                [senderSig, senderSig2],
+                [recipientRand, recipientRand],
+                {from: recipient}
+            )
+
+            const events = await broker.getPastEvents("WinningTicketRedeemed", {
+                filter: {
+                    recipient
+                },
+                fromBlock,
+                toBlock: "latest"
+            })
+
+            assert.equal(events.length, 1)
+            // The ticket with a valid recipient should be the only one redeemed
+            assert.equal(events[0].returnValues.recipient, recipient)
+        })
+
+        it("redeems 2 tickets with 1 failure because the 2nd ticket is a replay of the 1st", async () => {
+            const deposit = 1500
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
+            await broker.fundDeposit({from: sender, value: deposit})
+
+            const fromBlock = (await web3.eth.getBlock("latest")).number
+            const recipientRand = 5
+            const faceValue = 500
+            const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
+            const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
+
+            await broker.batchRedeemWinningTickets(
+                [ticket, ticket],
+                [senderSig, senderSig],
+                [recipientRand, recipientRand],
+                {from: recipient}
+            )
+
+            const events = await broker.getPastEvents("WinningTicketRedeemed", {
+                filter: {
+                    recipient
+                },
+                fromBlock,
+                toBlock: "latest"
+            })
+
+            // There should have been only one ticket redeemed because the second one is a replay
+            assert.equal(events.length, 1)
+        })
+
+        it("redeems 2 tickets with 2 failures", async () => {
+            const deposit = 1500
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
+            await broker.fundDeposit({from: sender, value: deposit})
+
+            const fromBlock = (await web3.eth.getBlock("latest")).number
+            const recipientRand = 5
+            const faceValue = 500
+            const ticket = createWinningTicket(constants.NULL_ADDRESS, sender, recipientRand, faceValue)
+            const ticket2 = createWinningTicket(constants.NULL_ADDRESS, sender, recipientRand, faceValue)
+            ticket2.senderNonce++
+            const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
+            const senderSig2 = await web3.eth.sign(getTicketHash(ticket2), sender)
+
+            await broker.batchRedeemWinningTickets(
+                [ticket, ticket2],
+                [senderSig, senderSig2],
+                [recipientRand, recipientRand],
+                {from: recipient}
+            )
+
+            const events = await broker.getPastEvents("WinningTicketRedeemed", {
+                filter: {
+                    recipient
+                },
+                fromBlock,
+                toBlock: "latest"
+            })
+
+            assert.equal(events.length, 0)
+        })
+    })
+
     describe("unlock", () => {
         it("reverts if the sender's reserve is frozen", async () => {
             const numRecipients = 10
