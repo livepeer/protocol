@@ -1,36 +1,5 @@
 import {constants} from "../../utils/constants"
 
-const wrapRedeemWinningTicket = broker => {
-    return async (ticketObj, sig, recipientRand, txOpts) => {
-        if (txOpts == undefined) {
-            return broker.redeemWinningTicket(
-                ...ticketObjToArr(ticketObj),
-                sig,
-                recipientRand
-            )
-        } else {
-            return broker.redeemWinningTicket(
-                ...ticketObjToArr(ticketObj),
-                sig,
-                recipientRand,
-                txOpts
-            )
-        }
-    }
-}
-
-const ticketObjToArr = ticketObj => {
-    return [
-        ticketObj.recipient,
-        ticketObj.sender,
-        ticketObj.faceValue,
-        ticketObj.winProb,
-        ticketObj.senderNonce,
-        ticketObj.recipientRandHash,
-        ticketObj.auxData
-    ]
-}
-
 const DUMMY_TICKET_CREATION_ROUND = 10
 const DUMMY_TICKET_CREATION_ROUND_BLOCK_HASH = web3.utils.keccak256("foo")
 
@@ -86,7 +55,6 @@ const isSet = v => {
 }
 
 module.exports = {
-    wrapRedeemWinningTicket,
     createTicket,
     createWinningTicket,
     getTicketHash,
