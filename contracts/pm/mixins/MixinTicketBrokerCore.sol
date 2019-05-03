@@ -175,7 +175,7 @@ contract MixinTicketBrokerCore is MReserve, MTicketProcessor, MTicketBrokerCore 
         }
 
         if (amountToTransfer > 0) {
-            winningTicketTransfer(_ticket.recipient, amountToTransfer);
+            winningTicketTransfer(_ticket.recipient, amountToTransfer, _ticket.auxData);
 
             emit WinningTicketTransfer(_ticket.sender, _ticket.recipient, amountToTransfer);
         }

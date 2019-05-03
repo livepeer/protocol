@@ -35,7 +35,8 @@ module.exports = function(deployer, network) {
             "TicketBroker",
             controller.address,
             config.broker.freezePeriod,
-            config.broker.unlockPeriod
+            config.broker.unlockPeriod,
+            config.broker.ticketValidityPeriod
         )
         const bondingManager = await lpDeployer.deployProxyAndRegister(BondingManager, "BondingManager", controller.address)
 
@@ -65,5 +66,6 @@ module.exports = function(deployer, network) {
         // Set TicketBroker parameters
         await broker.setUnlockPeriod(config.broker.unlockPeriod)
         await broker.setFreezePeriod(config.broker.freezePeriod)
+        await broker.setTicketValidityPeriod(config.broker.ticketValidityPeriod)
     })
 }

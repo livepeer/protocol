@@ -31,6 +31,9 @@ const ticketObjToArr = ticketObj => {
     ]
 }
 
+const DUMMY_TICKET_CREATION_ROUND = 10
+const DUMMY_TICKET_CREATION_ROUND_BLOCK_HASH = web3.utils.keccak256("foo")
+
 const createTicket = ticketObj => {
     ticketObj = ticketObj ? ticketObj : {}
 
@@ -41,18 +44,19 @@ const createTicket = ticketObj => {
         winProb: isSet(ticketObj.winProb) ? ticketObj.winProb : 0,
         senderNonce: isSet(ticketObj.senderNonce) ? ticketObj.senderNonce : 0,
         recipientRandHash: isSet(ticketObj.recipientRandHash) ? ticketObj.recipientRandHash : constants.NULL_BYTES,
-        auxData: isSet(ticketObj.auxData) ? ticketObj.auxData : web3.utils.numberToHex(getValidTimestamp())
+        auxData: isSet(ticketObj.auxData) ? ticketObj.auxData : defaultAuxData()
     }
 }
 
-const createWinningTicket = (recipient, sender, recipientRand, faceValue = 0) => {
+const createWinningTicket = (recipient, sender, recipientRand, faceValue = 0, auxData = defaultAuxData()) => {
     const recipientRandHash = web3.utils.soliditySha3(recipientRand)
     const ticketObj = {
         recipient,
         sender,
         faceValue,
         winProb: constants.MAX_UINT256.toString(),
-        recipientRandHash
+        recipientRandHash,
+        auxData
     }
 
     return createTicket(ticketObj)
@@ -70,10 +74,11 @@ const getTicketHash = ticketObj => {
     )
 }
 
-const getValidTimestamp = () => {
-    const result = new Date()
-    result.setDate(result.getDate() + 365)
-    return parseInt(result.getTime() / 1000)
+const defaultAuxData = () => {
+    return web3.eth.abi.encodeParameters(
+        ["uint256", "bytes32"],
+        [DUMMY_TICKET_CREATION_ROUND, DUMMY_TICKET_CREATION_ROUND_BLOCK_HASH]
+    )
 }
 
 const isSet = v => {
@@ -84,5 +89,7 @@ module.exports = {
     wrapRedeemWinningTicket,
     createTicket,
     createWinningTicket,
-    getTicketHash
+    getTicketHash,
+    DUMMY_TICKET_CREATION_ROUND,
+    DUMMY_TICKET_CREATION_ROUND_BLOCK_HASH
 }

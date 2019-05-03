@@ -52,6 +52,7 @@ contract("TicketFlow", accounts => {
 
         roundLength = await roundsManager.roundLength.call()
         await roundsManager.mineBlocks(roundLength.toNumber() * 1000)
+        await roundsManager.setBlockHash(web3.utils.keccak256("foo"))
         await roundsManager.initializeRound()
     })
 
@@ -70,10 +71,17 @@ contract("TicketFlow", accounts => {
     })
 
     it("broadcaster sends a winning ticket and transcoder redeems it", async () => {
+        const block = await roundsManager.blockNum()
+        const creationRound = (await roundsManager.currentRound()).toString()
+        const creationRoundBlockHash = await roundsManager.blockHash(block)
+        const auxData = web3.eth.abi.encodeParameters(
+            ["uint256", "bytes32"],
+            [creationRound, creationRoundBlockHash]
+        )
         const deposit = (await broker.senders.call(broadcaster)).deposit
         const recipientRand = 5
         const faceValue = 1000
-        const ticket = createWinningTicket(transcoder, broadcaster, recipientRand, faceValue)
+        const ticket = createWinningTicket(transcoder, broadcaster, recipientRand, faceValue, auxData)
         const senderSig = await web3.eth.sign(getTicketHash(ticket), broadcaster)
 
         await broker.redeemWinningTicket(ticket, senderSig, recipientRand, {from: transcoder})
@@ -94,9 +102,16 @@ contract("TicketFlow", accounts => {
 
         const startSender = await broker.senders.call(broadcaster)
         const startReserve = await broker.remainingReserve(broadcaster)
+        const block = await roundsManager.blockNum()
+        const creationRound = (await roundsManager.currentRound()).toString()
+        const creationRoundBlockHash = await roundsManager.blockHash(block)
+        const auxData = web3.eth.abi.encodeParameters(
+            ["uint256", "bytes32"],
+            [creationRound, creationRoundBlockHash]
+        )
         const recipientRand = 6
         const faceValue = startSender.deposit.add(new BN(100)).toString()
-        const ticket = createWinningTicket(transcoder, broadcaster, recipientRand, faceValue)
+        const ticket = createWinningTicket(transcoder, broadcaster, recipientRand, faceValue, auxData)
         const senderSig = await web3.eth.sign(getTicketHash(ticket), broadcaster)
 
         await broker.redeemWinningTicket(ticket, senderSig, recipientRand, {from: transcoder})

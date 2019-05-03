@@ -12,6 +12,7 @@ module.exports = {
         // TODO: Consider updating these values prior to deploying to testnet
         unlockPeriod: new BN(40320), // approximately 7 days worth of blocks
         freezePeriod: new BN(2),
+        ticketValidityPeriod: new BN(2)
     },
     roundsManager: {
         roundLength: 5760,

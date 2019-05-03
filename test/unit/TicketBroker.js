@@ -2,9 +2,16 @@ import BN from "bn.js"
 import truffleAssert from "truffle-assertions"
 import calcTxCost from "../helpers/calcTxCost"
 import {expectRevertWithReason} from "../helpers/expectFail"
-import {createTicket, createWinningTicket, getTicketHash} from "../helpers/ticket"
+import {
+    DUMMY_TICKET_CREATION_ROUND,
+    DUMMY_TICKET_CREATION_ROUND_BLOCK_HASH,
+    createTicket,
+    createWinningTicket,
+    getTicketHash
+} from "../helpers/ticket"
 import Fixture from "./helpers/Fixture"
 import {functionSig} from "../../utils/helpers"
+import {constants} from "../../utils/constants"
 
 const TicketBroker = artifacts.require("TicketBroker")
 
@@ -17,6 +24,9 @@ contract("TicketBroker", accounts => {
 
     const freezePeriod = 2
     const unlockPeriod = 20
+    const ticketValidityPeriod = 2
+
+    const currentRound = DUMMY_TICKET_CREATION_ROUND
 
     before(async () => {
         fixture = new Fixture(web3)
@@ -25,7 +35,13 @@ contract("TicketBroker", accounts => {
         broker = await TicketBroker.new(
             fixture.controller.address,
             freezePeriod,
-            unlockPeriod
+            unlockPeriod,
+            ticketValidityPeriod
+        )
+
+        await fixture.roundsManager.setMockBytes32(
+            functionSig("blockHashForRound(uint256)"),
+            DUMMY_TICKET_CREATION_ROUND_BLOCK_HASH
         )
     })
 
@@ -39,7 +55,6 @@ contract("TicketBroker", accounts => {
 
     describe("fundDeposit", () => {
         it("reverts if the sender's reserve is frozen", async () => {
-            const currentRound = 10
             const numRecipients = 10
             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
             await fixture.bondingManager.setMockUint256(functionSig("getTranscoderPoolSize()"), numRecipients)
@@ -147,7 +162,6 @@ contract("TicketBroker", accounts => {
 
     describe("fundReserve", () => {
         it("reverts if the sender's reserve is frozen", async () => {
-            const currentRound = 10
             const numRecipients = 10
             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
             await fixture.bondingManager.setMockUint256(functionSig("getTranscoderPoolSize()"), numRecipients)
@@ -216,7 +230,6 @@ contract("TicketBroker", accounts => {
         })
 
         it("preserves remaining funds from thawed reserve", async () => {
-            const currentRound = 10
             const numRecipients = 10
             const reserve = 1000
             const allocation = reserve / numRecipients
@@ -244,7 +257,6 @@ contract("TicketBroker", accounts => {
         })
 
         it("preserves remaining funds from thawed reserve and adds additional funds", async () => {
-            const currentRound = 10
             const numRecipients = 10
             const reserve = 1000
             const allocation = reserve / numRecipients
@@ -343,7 +355,6 @@ contract("TicketBroker", accounts => {
         })
 
         it("reverts if the sender's reserve is frozen", async () => {
-            const currentRound = 10
             const numRecipients = 10
             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
             await fixture.bondingManager.setMockUint256(functionSig("getTranscoderPoolSize()"), numRecipients)
@@ -418,7 +429,6 @@ contract("TicketBroker", accounts => {
         })
 
         it("preserves remaining funds from thawed reserve", async () => {
-            const currentRound = 10
             const numRecipients = 10
             const reserve = 1000
             const allocation = reserve / numRecipients
@@ -450,7 +460,6 @@ contract("TicketBroker", accounts => {
         })
 
         it("preserves remaining funds from thawed reserve and adds additional funds", async () => {
-            const currentRound = 10
             const numRecipients = 10
             const reserve = 1000
             const allocation = reserve / numRecipients
@@ -509,7 +518,77 @@ contract("TicketBroker", accounts => {
             )
         })
 
-        // TODO: add tests for ticket expiration once validation is added in contracts
+        it("reverts if ticket auxData != 64 bytes", async () => {
+            const auxData = web3.utils.toHex(5)
+
+            await expectRevertWithReason(
+                broker.redeemWinningTicket(
+                    createTicket({
+                        recipient,
+                        sender,
+                        auxData
+                    }),
+                    web3.utils.asciiToHex("sig"),
+                    5
+                ),
+                "invalid length for ticket auxData: must be 64 bytes"
+            )
+        })
+
+        it("reverts if block hash for ticket creationRound is null", async () => {
+            await fixture.roundsManager.setMockBytes32(
+                functionSig("blockHashForRound(uint256)"),
+                constants.NULL_BYTES
+            )
+
+            await expectRevertWithReason(
+                broker.redeemWinningTicket(
+                    createTicket({
+                        recipient,
+                        sender
+                    }),
+                    web3.utils.asciiToHex("sig"),
+                    5
+                ),
+                "ticket creationRound does not have a block hash"
+            )
+        })
+
+        it("reverts if ticket creationRoundBlockHash is invalid for ticket creationRound", async () => {
+            await fixture.roundsManager.setMockBytes32(
+                functionSig("blockHashForRound(uint256)"),
+                web3.utils.keccak256("bar")
+            )
+
+            await expectRevertWithReason(
+                broker.redeemWinningTicket(
+                    createTicket({
+                        recipient,
+                        sender
+                    }),
+                    web3.utils.asciiToHex("sig"),
+                    5
+                ),
+                "ticket creationRoundBlockHash invalid for creationRound"
+            )
+        })
+
+        it("reverts if ticket is expired based on ticket creationRound", async () => {
+            const expirationRound = currentRound + ticketValidityPeriod
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), expirationRound)
+
+            await expectRevertWithReason(
+                broker.redeemWinningTicket(
+                    createTicket({
+                        recipient,
+                        sender
+                    }),
+                    web3.utils.asciiToHex("sig"),
+                    5
+                ),
+                "ticket is expired"
+            )
+        })
 
         it("reverts if recipientRand is not the preimage for the ticket's recipientRandHash", async () => {
             await expectRevertWithReason(
@@ -602,7 +681,6 @@ contract("TicketBroker", accounts => {
         describe("deposit < faceValue", () => {
             describe("reserve is not frozen", () => {
                 it("freezes reserve", async () => {
-                    const currentRound = 10
                     const numRecipients = 10
                     const reserve = 1000
                     await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
@@ -628,7 +706,6 @@ contract("TicketBroker", accounts => {
 
             describe("reserve is frozen", () => {
                 it("does not allow a claim for an unregistered recipient", async () => {
-                    const currentRound = 10
                     const numRecipients = 10
                     await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
                     await fixture.bondingManager.setMockUint256(functionSig("getTranscoderPoolSize()"), numRecipients)
@@ -648,7 +725,6 @@ contract("TicketBroker", accounts => {
                 })
 
                 it("does not allow a claim for a registered recipient that has claimed the max allocation", async () => {
-                    const currentRound = 10
                     const numRecipients = 10
                     const reserve = 1000
                     const allocation = reserve / numRecipients
@@ -676,7 +752,6 @@ contract("TicketBroker", accounts => {
                 })
 
                 it("allows a partial claim for a registered recipient trying to claim an amount that would exceed the max allocation", async () => {
-                    const currentRound = 10
                     const numRecipients = 10
                     const reserve = 1000
                     const allocation = reserve / numRecipients
@@ -709,7 +784,6 @@ contract("TicketBroker", accounts => {
                 })
 
                 it("allows a claim from a registered recipient", async () => {
-                    const currentRound = 10
                     const numRecipients = 10
                     await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
                     await fixture.bondingManager.setMockUint256(functionSig("getTranscoderPoolSize()"), numRecipients)
@@ -732,7 +806,6 @@ contract("TicketBroker", accounts => {
                 })
 
                 it("allows multiple claims from a registered recipient", async () => {
-                    const currentRound = 10
                     const numRecipients = 10
                     await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
                     await fixture.bondingManager.setMockUint256(functionSig("getTranscoderPoolSize()"), numRecipients)
@@ -762,7 +835,6 @@ contract("TicketBroker", accounts => {
 
                 it("allows claims from multiple registered recipients", async () => {
                     const recipient2 = accounts[2]
-                    const currentRound = 10
                     const numRecipients = 10
                     await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
                     await fixture.bondingManager.setMockUint256(functionSig("getTranscoderPoolSize()"), numRecipients)
@@ -792,7 +864,6 @@ contract("TicketBroker", accounts => {
 
                 it("allows claims from all registered recipients for their full reserve allocations", async () => {
                     const recipient2 = accounts[2]
-                    const currentRound = 10
                     const numRecipients = 2
                     const reserve = 1000
                     const allocation = reserve / numRecipients
@@ -837,7 +908,6 @@ contract("TicketBroker", accounts => {
             describe("sender.deposit is zero", () => {
                 it("claims from reserve and updates recipient's fee pool in BondingManager", async () => {
                     const fromBlock = (await web3.eth.getBlock("latest")).number
-                    const currentRound = 17
                     const numRecipients = 10
                     const reserve = 1000
                     const allocation = reserve / numRecipients
@@ -870,7 +940,6 @@ contract("TicketBroker", accounts => {
                 describe("sender.reserve is zero", () => {
                     it("transfers deposit and updates recipient's fee pool in BondingManager", async () => {
                         const fromBlock = (await web3.eth.getBlock("latest")).number
-                        const currentRound = 17
                         const numRecipients = 10
                         const deposit = 500
                         await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
@@ -903,7 +972,6 @@ contract("TicketBroker", accounts => {
                 describe("sender.reserve is not zero", () => {
                     it("transfers deposit, claims from reserve and updates recipient's fee pool in BondingManager", async () => {
                         const fromBlock = (await web3.eth.getBlock("latest")).number
-                        const currentRound = 17
                         const numRecipients = 10
                         const deposit = 500
                         const reserve = 50000
@@ -939,7 +1007,6 @@ contract("TicketBroker", accounts => {
         })
 
         it("does not transfer sender.deposit to recipient when faceValue is zero", async () => {
-            const currentRound = 17
             const deposit = 1500
             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
             await broker.fundDeposit({from: sender, value: deposit})
@@ -960,7 +1027,6 @@ contract("TicketBroker", accounts => {
         it("updates recipient's fee pool in BondingManager with faceValue when deposit = faceValue", async () => {
             const fromBlock = (await web3.eth.getBlock("latest")).number
             const deposit = 1500
-            const currentRound = 17
             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
             await broker.fundDeposit({from: sender, value: deposit})
 
@@ -989,7 +1055,6 @@ contract("TicketBroker", accounts => {
         it("updates recipient's fee pool in BondingManager with faceValue when deposit > faceValue", async () => {
             const fromBlock = (await web3.eth.getBlock("latest")).number
             const deposit = 1500
-            const currentRound = 17
             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
             await broker.fundDeposit({from: sender, value: deposit})
 
@@ -1017,7 +1082,6 @@ contract("TicketBroker", accounts => {
 
         it("can be called by an account that is not the recipient", async () => {
             const thirdParty = accounts[2]
-            const currentRound = 17
             const deposit = 1500
             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
             await broker.fundDeposit({from: sender, value: deposit})
@@ -1035,7 +1099,6 @@ contract("TicketBroker", accounts => {
         })
 
         it("emits a WinningTicketRedeemed event", async () => {
-            const currentRound = 17
             const deposit = 1500
             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
             await broker.fundDeposit({from: sender, value: deposit})
@@ -1060,7 +1123,6 @@ contract("TicketBroker", accounts => {
 
         it("emits a WinningTicketRedeemed event with indexed sender", async () => {
             const sender2 = accounts[2]
-            const currentRound = 17
             const deposit = 1500
             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
             await broker.fundDeposit({from: sender, value: deposit})
@@ -1091,7 +1153,6 @@ contract("TicketBroker", accounts => {
 
         it("emits a WinningTicketRedeemed event with indexed recipient", async () => {
             const recipient2 = accounts[2]
-            const currentRound = 17
             const deposit = 1500
             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
             await broker.fundDeposit({from: sender, value: deposit})
@@ -1122,7 +1183,6 @@ contract("TicketBroker", accounts => {
 
     describe("unlock", () => {
         it("reverts if the sender's reserve is frozen", async () => {
-            const currentRound = 10
             const numRecipients = 10
             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
             await fixture.bondingManager.setMockUint256(functionSig("getTranscoderPoolSize()"), numRecipients)
@@ -1280,7 +1340,6 @@ contract("TicketBroker", accounts => {
 
         describe("sender's reserve is frozen", () => {
             it("reverts if freeze period is not over", async () => {
-                const currentRound = 10
                 const numRecipients = 10
                 await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
                 await fixture.bondingManager.setMockUint256(functionSig("getTranscoderPoolSize()"), numRecipients)
