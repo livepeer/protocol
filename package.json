@@ -15,6 +15,7 @@
     "compile": "truffle compile --all",
     "test:coverage": "SOLIDITY_COVERAGE=true npm run ganache && ./node_modules/.bin/solidity-coverage",
     "test:coverage:coveralls": "npm run test:coverage && cat coverage/lcov.info | ./node_modules/.bin/coveralls",
+    "test": "npm run test:unit && npm run test:integration",
     "test:unit": "npm run ganache && truffle test test/unit/*",
     "test:integration": "npm run ganache && truffle test test/integration/*",
     "validateDeploymentAndGenesis": "READ_ONLY=true truffle exec scripts/validateDeploymentAndGenesis.js",
