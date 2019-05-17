@@ -2,6 +2,16 @@ pragma solidity ^0.4.25;
 
 
 contract MTicketBrokerCore {
+    struct Ticket {
+        address recipient;          // Address of ticket recipient
+        address sender;             // Address of ticket sender
+        uint256 faceValue;          // Face value of ticket paid to recipient if ticket wins
+        uint256 winProb;            // Probability ticket will win represented as winProb / (2^256 - 1)
+        uint256 senderNonce;        // Sender's monotonically increasing counter for each ticket
+        bytes32 recipientRandHash;  // keccak256 hash commitment to recipient's random value
+        bytes auxData;              // Auxilary data included in ticket used for additional validation
+    }
+
     // Emitted when funds are added to a sender's deposit
     event DepositFunded(address indexed sender, uint256 amount);
     // Emitted when a winning ticket is redeemed

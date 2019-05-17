@@ -17,16 +17,6 @@ contract MixinTicketBrokerCore is MReserve, MTicketProcessor, MTicketBrokerCore 
         uint256 withdrawBlock;  // Block that sender can withdraw deposit & reserve
     }
 
-    struct Ticket {
-        address recipient;          // Address of ticket recipient
-        address sender;             // Address of ticket sender
-        uint256 faceValue;          // Face value of ticket paid to recipient if ticket wins
-        uint256 winProb;            // Probability ticket will win represented as winProb / (2^256 - 1)
-        uint256 senderNonce;        // Sender's monotonically increasing counter for each ticket
-        bytes32 recipientRandHash;  // keccak256 hash commitment to recipient's random value
-        bytes auxData;              // Auxilary data included in ticket used for additional validation
-    }
-
     // Number of blocks before a sender can withdraw after requesting an unlock
     uint256 public unlockPeriod;
 
@@ -124,7 +114,7 @@ contract MixinTicketBrokerCore is MReserve, MTicketProcessor, MTicketBrokerCore 
 
     /**
      * @dev Redeems a winning ticket that has been signed by a sender and reveals the
-     * recipient recipeintRand that corresponds to the recipientRandHash included in the ticket
+     * recipient recipientRand that corresponds to the recipientRandHash included in the ticket
      * @param _ticket Winning ticket to be redeemed in order to claim payment
      * @param _sig Sender's signature over the hash of `_ticket`
      * @param _recipientRand The preimage for the recipientRandHash included in `_ticket`
