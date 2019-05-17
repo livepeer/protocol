@@ -7,7 +7,7 @@ const ServiceRegistry = artifacts.require("ServiceRegistry")
 const BondingManager = artifacts.require("BondingManager")
 const RoundsManager = artifacts.require("RoundsManager")
 const AdjustableRoundsManager = artifacts.require("AdjustableRoundsManager")
-const TicketBroker = artifacts.require("LivepeerETHTicketBroker")
+const TicketBroker = artifacts.require("TicketBroker")
 const LivepeerVerifier = artifacts.require("LivepeerVerifier")
 const LivepeerToken = artifacts.require("LivepeerToken")
 const LivepeerTokenFaucet = artifacts.require("LivepeerTokenFaucet")
@@ -30,7 +30,14 @@ module.exports = function(deployer, network) {
         // TODO: Consider using a initializer instead of an
         // explicit constructor in base TicketBroker since
         // upgradeable proxies do not use explicit constructors
-        const broker = await lpDeployer.deployProxyAndRegister(TicketBroker, "TicketBroker", controller.address, config.broker.minPenaltyEscrow, config.broker.unlockPeriod, config.broker.signerRevocationPeriod)
+        const broker = await lpDeployer.deployProxyAndRegister(
+            TicketBroker,
+            "TicketBroker",
+            controller.address,
+            config.broker.freezePeriod,
+            config.broker.unlockPeriod,
+            config.broker.ticketValidityPeriod
+        )
         const bondingManager = await lpDeployer.deployProxyAndRegister(BondingManager, "BondingManager", controller.address)
 
         let roundsManager
@@ -57,7 +64,8 @@ module.exports = function(deployer, network) {
         await roundsManager.setRoundLockAmount(config.roundsManager.roundLockAmount)
 
         // Set TicketBroker parameters
-        await broker.setMinPenaltyEscrow(config.broker.minPenaltyEscrow)
         await broker.setUnlockPeriod(config.broker.unlockPeriod)
+        await broker.setFreezePeriod(config.broker.freezePeriod)
+        await broker.setTicketValidityPeriod(config.broker.ticketValidityPeriod)
     })
 }

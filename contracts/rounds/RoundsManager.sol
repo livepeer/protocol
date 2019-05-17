@@ -30,6 +30,9 @@ contract RoundsManager is ManagerProxyTarget, IRoundsManager {
     // Start block of the round in which roundLength was last updated
     uint256 public lastRoundLengthUpdateStartBlock;
 
+    // Mapping round number => block hash for the round
+    mapping (uint256 => bytes32) internal _blockHashForRound;
+
     /**
      * @dev RoundsManager constructor. Only invokes constructor of base Manager contract with provided Controller address
      * @param _controller Address of Controller that this contract will be registered with
@@ -85,12 +88,15 @@ contract RoundsManager is ManagerProxyTarget, IRoundsManager {
 
         // Set current round as initialized
         lastInitializedRound = currRound;
+        // Store block hash for round
+        bytes32 roundBlockHash = blockHash(blockNum().sub(1));
+        _blockHashForRound[currRound] = roundBlockHash;
         // Set active transcoders for the round
         bondingManager().setActiveTranscoders();
         // Set mintable rewards for the round
         minter().setCurrentRewardTokens();
 
-        emit NewRound(currRound);
+        emit NewRound(currRound, roundBlockHash);
     }
 
     /**
@@ -111,6 +117,15 @@ contract RoundsManager is ManagerProxyTarget, IRoundsManager {
         require(currentBlock < 256 || _block >= currentBlock - 256);
 
         return blockhash(_block);
+    }
+
+    /**
+     * @dev Return blockhash for a round
+     * @param _round Round number
+     * @return Blockhash for `_round`
+     */
+    function blockHashForRound(uint256 _round) public view returns (bytes32) {
+        return _blockHashForRound[_round];
     }
 
     /**

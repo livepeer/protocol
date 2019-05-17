@@ -10,9 +10,9 @@ module.exports = {
     },
     broker: {
         // TODO: Consider updating these values prior to deploying to testnet
-        minPenaltyEscrow: (new BN(1)).mul(constants.TOKEN_UNIT).div(new BN(2)),
         unlockPeriod: new BN(40320), // approximately 7 days worth of blocks
-        signerRevocationPeriod: new BN(40320) // approximately 7 days worth of blocks
+        freezePeriod: new BN(2),
+        ticketValidityPeriod: new BN(2)
     },
     roundsManager: {
         roundLength: 5760,
