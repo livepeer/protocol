@@ -18,8 +18,9 @@ contract MTicketProcessor {
      * @dev Transfer funds for a recipient's winning ticket
      * @param _recipient Address of recipient
      * @param _amount Amount of funds for the winning ticket
+     * @param _auxData Auxilary data for the winning ticket
      */
-    function winningTicketTransfer(address _recipient, uint256 _amount) internal;
+    function winningTicketTransfer(address _recipient, uint256 _amount, bytes _auxData) internal;
 
     /**
      * @dev Validates a ticket's auxilary data (succeeds or reverts)

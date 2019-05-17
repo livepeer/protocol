@@ -1,6 +1,8 @@
 import Fixture from "./helpers/Fixture"
 import expectThrow from "../helpers/expectThrow"
 import {contractId} from "../../utils/helpers"
+import {constants} from "../../utils/constants"
+import truffleAssert from "truffle-assertions"
 
 const RoundsManager = artifacts.require("RoundsManager")
 
@@ -188,6 +190,57 @@ contract("RoundsManager", accounts => {
             const currentRound = await roundsManager.currentRound()
             assert.equal(await roundsManager.lastInitializedRound(), currentRound.toNumber(), "wrong lastInitializedRound")
         })
+
+        it("should store the previous block hash", async () => {
+            const roundLength = await roundsManager.roundLength.call()
+            await fixture.rpc.waitUntilNextBlockMultiple(roundLength.toNumber())
+            const blockHash = (await web3.eth.getBlock("latest")).hash
+
+            await roundsManager.initializeRound()
+
+            const currentRound = await roundsManager.currentRound()
+            assert.equal(await roundsManager.blockHashForRound(currentRound), blockHash)
+        })
+
+        it("emits a NewRound event", async () => {
+            const roundLength = await roundsManager.roundLength.call()
+            await fixture.rpc.waitUntilNextBlockMultiple(roundLength.toNumber())
+            const blockHash = (await web3.eth.getBlock("latest")).hash
+
+            const txRes = await roundsManager.initializeRound()
+
+            const currentRound = await roundsManager.currentRound()
+            truffleAssert.eventEmitted(txRes, "NewRound", ev => {
+                return ev.round.toString() === currentRound.toString()
+                    && ev.blockHash === blockHash
+            })
+        })
+
+        it("emits a NewRound event with indexed round", async () => {
+            const fromBlock = (await web3.eth.getBlock("latest")).number
+            const roundLength = await roundsManager.roundLength.call()
+            await fixture.rpc.waitUntilNextBlockMultiple(roundLength.toNumber())
+            // Track block hash for round N
+            const blockHash = (await web3.eth.getBlock("latest")).hash
+            const round = (await roundsManager.currentRound()).toString()
+            // Initialize round N
+            await roundsManager.initializeRound()
+            await fixture.rpc.waitUntilNextBlockMultiple(roundLength.toNumber())
+            // Initialize round N + 1
+            await roundsManager.initializeRound()
+
+            const events = await roundsManager.getPastEvents("NewRound", {
+                filter: {
+                    round
+                },
+                fromBlock,
+                toBlock: "latest"
+            })
+
+            assert.equal(events.length, 1)
+            assert.equal(events[0].returnValues.round.toString(), round.toString())
+            assert.equal(events[0].returnValues.blockHash, blockHash)
+        })
     })
 
     describe("blockNum", () => {
@@ -227,6 +280,47 @@ contract("RoundsManager", accounts => {
 
             const blockHash = await roundsManager.blockHash(pastBlock)
             assert.equal(blockHash, pastBlockHash, "wrong block hash")
+        })
+    })
+
+    describe("blockHashForRound", () => {
+        it("should return 0x0 if the current round if it is not initialized", async () => {
+            const currentRound = await roundsManager.currentRound()
+            assert.equal(await roundsManager.blockHashForRound(currentRound), constants.NULL_BYTES)
+        })
+
+        it("should return 0x0 if a past round was not initialized", async () => {
+            // Ensure that we are past round 0
+            const roundLength = await roundsManager.roundLength.call()
+            await fixture.rpc.waitUntilNextBlockMultiple(roundLength.toNumber())
+            await roundsManager.initializeRound()
+
+            assert.equal(await roundsManager.blockHashForRound(0), constants.NULL_BYTES)
+        })
+
+        it("should return the block hash stored for the current round", async () => {
+            const roundLength = await roundsManager.roundLength.call()
+            await fixture.rpc.waitUntilNextBlockMultiple(roundLength.toNumber())
+            const blockHash = (await web3.eth.getBlock("latest")).hash
+            await roundsManager.initializeRound()
+
+            const currentRound = await roundsManager.currentRound()
+            assert.equal(await roundsManager.blockHashForRound(currentRound), blockHash)
+        })
+
+        it("should return the block hash stored for a previous round", async () => {
+            const roundLength = await roundsManager.roundLength.call()
+            await fixture.rpc.waitUntilNextBlockMultiple(roundLength.toNumber())
+            // Track block hash for round N
+            const blockHash = (await web3.eth.getBlock("latest")).hash
+            const prevRound = await roundsManager.currentRound()
+            // Initialize round N
+            await roundsManager.initializeRound()
+            await fixture.rpc.waitUntilNextBlockMultiple(roundLength.toNumber())
+            // Initialize round N + 1
+            await roundsManager.initializeRound()
+
+            assert.equal(await roundsManager.blockHashForRound(prevRound), blockHash)
         })
     })
 
