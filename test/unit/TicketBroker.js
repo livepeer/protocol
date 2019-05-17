@@ -705,6 +705,49 @@ contract("TicketBroker", accounts => {
             })
 
             describe("reserve is frozen", () => {
+                it("does not allow a claim if the freezeRound is 0 after freezing the reserve", async () => {
+                    // In practice, the freezeRound should never be 0 after the reserve is frozen
+                    // However, we can simulate the scenario in this test to check that the desired
+                    // behavior is exhibited
+
+                    const numRecipients = 10
+                    // Set current round to 0 so that the freezeRound is 0
+                    await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), 0)
+                    await fixture.bondingManager.setMockUint256(functionSig("getTranscoderPoolSize()"), numRecipients)
+                    await fixture.bondingManager.setMockBool(functionSig("isRegisteredTranscoder(address)"), true)
+                    await broker.fundReserve({from: sender, value: 1000})
+
+                    const recipientRand = 5
+                    const faceValue = 10
+                    const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
+                    const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
+
+                    // freezeRound is 0 after the reserve is frozen so the recipient should not be able to claim
+                    const txRes = await broker.redeemWinningTicket(ticket, senderSig, recipientRand, {from: recipient})
+                    truffleAssert.eventEmitted(txRes, "WinningTicketRedeemed")
+                    truffleAssert.eventNotEmitted(txRes, "ReserveClaimed")
+                    assert.equal((await broker.claimedReserve(sender, recipient)).toString(), "0")
+                })
+
+                it("does not allow a claim if there are no registered recipients", async () => {
+                    await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
+                    // Set the number of registered recipients to 0
+                    await fixture.bondingManager.setMockUint256(functionSig("getTranscoderPoolSize()"), 0)
+                    await fixture.bondingManager.setMockBool(functionSig("isRegisteredTranscoder(address)"), false)
+                    await broker.fundReserve({from: sender, value: 1000})
+
+                    const recipientRand = 5
+                    const faceValue = 10
+                    const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
+                    const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
+
+                    // There are no registered recipients so the recipients should not be able to claim
+                    const txRes = await broker.redeemWinningTicket(ticket, senderSig, recipientRand, {from: recipient})
+                    truffleAssert.eventEmitted(txRes, "WinningTicketRedeemed")
+                    truffleAssert.eventNotEmitted(txRes, "ReserveClaimed")
+                    assert.equal((await broker.claimedReserve(sender, recipient)).toString(), "0")
+                })
+
                 it("does not allow a claim for an unregistered recipient", async () => {
                     const numRecipients = 10
                     await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
@@ -1532,6 +1575,28 @@ contract("TicketBroker", accounts => {
                     broker.withdraw({from: sender}),
                     "sender's reserve is frozen"
                 )
+            })
+
+            it("succeeds if freeze period is over", async () => {
+                const numRecipients = 10
+                await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
+                await fixture.bondingManager.setMockUint256(functionSig("getTranscoderPoolSize()"), numRecipients)
+                await broker.fundReserve({from: sender, value: 1000})
+
+                const recipientRand = 5
+                const faceValue = 1000
+                const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
+                const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
+
+                // Deposit is 0 so this will freeze the reserve
+                await broker.redeemWinningTicket(ticket, senderSig, recipientRand, {from: recipient})
+
+                const freezePeriod = await broker.freezePeriod.call()
+                const thawRound = (new BN(currentRound)).add(new BN(freezePeriod))
+                await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), thawRound)
+
+                // Just make sure this doesn't revert
+                await broker.withdraw({from: sender})
             })
         })
 
