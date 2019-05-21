@@ -1,4 +1,6 @@
 pragma solidity ^0.4.25;
+// solium-disable-next-line
+pragma experimental ABIEncoderV2;
 
 import "./interfaces/MReserve.sol";
 import "./interfaces/MContractRegistry.sol";
@@ -28,13 +30,16 @@ contract MixinReserve is MContractRegistry, MReserve {
     uint256 public freezePeriod;
 
     /**
-     * @dev Returns the amount of funds remaining in a reserve
+     * @dev Returns info about a reserve
      * @param _reserveHolder Address of reserve holder
-     * @return Amount of funds remaining in the reserve for `_reserveHolder`
+     * @return Info about the reserve for `_reserveHolder`
      */
-    function remainingReserve(address _reserveHolder) public view returns (uint256) {
+    function getReserveInfo(address _reserveHolder) public view returns (ReserveInfo memory info) {
         Reserve storage reserve = reserveManagers[_reserveHolder].reserve;
-        return reserve.fundsAdded.sub(reserve.fundsClaimed);
+
+        info.fundsRemaining = remainingReserve(_reserveHolder);
+        info.state = reserveState(_reserveHolder);
+        info.thawRound = reserve.freezeRound == 0 ? 0 : reserve.freezeRound.add(freezePeriod);
     }
 
     /**
@@ -184,5 +189,15 @@ contract MixinReserve is MContractRegistry, MReserve {
         } else {
             return ReserveState.Thawed;
         }
+    }
+
+    /**
+     * @dev Returns the amount of funds remaining in a reserve
+     * @param _reserveHolder Address of reserve holder
+     * @return Amount of funds remaining in the reserve for `_reserveHolder`
+     */
+    function remainingReserve(address _reserveHolder) internal view returns (uint256) {
+        Reserve storage reserve = reserveManagers[_reserveHolder].reserve;
+        return reserve.fundsAdded.sub(reserve.fundsClaimed);
     }
 }

@@ -96,7 +96,7 @@ contract("TicketBroker", accounts => {
         it("tracks the sender's ETH deposit amount", async () => {
             await broker.fundDeposit({from: sender, value: 1000})
 
-            const deposit = (await broker.senders.call(sender)).deposit.toString()
+            const deposit = (await broker.getSenderInfo(sender)).sender.deposit.toString()
 
             assert.equal(deposit, "1000")
         })
@@ -105,7 +105,7 @@ contract("TicketBroker", accounts => {
             await broker.fundDeposit({from: sender, value: 1000})
             await broker.fundDeposit({from: sender, value: 500})
 
-            const deposit = (await broker.senders.call(sender)).deposit.toString()
+            const deposit = (await broker.getSenderInfo(sender)).sender.deposit.toString()
 
             assert.equal(deposit, "1500")
         })
@@ -115,8 +115,8 @@ contract("TicketBroker", accounts => {
             await broker.fundDeposit({from: sender, value: 1000})
             await broker.fundDeposit({from: sender2, value: 500})
 
-            const deposit = (await broker.senders.call(sender)).deposit.toString()
-            const deposit2 = (await broker.senders.call(sender2)).deposit.toString()
+            const deposit = (await broker.getSenderInfo(sender)).sender.deposit.toString()
+            const deposit2 = (await broker.getSenderInfo(sender2)).sender.deposit.toString()
 
             assert.equal(deposit, "1000")
             assert.equal(deposit2, "500")
@@ -203,7 +203,7 @@ contract("TicketBroker", accounts => {
         it("tracks the sender's ETH reserve", async () => {
             await broker.fundReserve({from: sender, value: 1000})
 
-            const reserve = (await broker.remainingReserve(sender)).toString()
+            const reserve = (await broker.getSenderInfo(sender)).reserve.fundsRemaining.toString()
 
             assert.equal(reserve, "1000")
         })
@@ -212,7 +212,7 @@ contract("TicketBroker", accounts => {
             await broker.fundReserve({from: sender, value: 1000})
             await broker.fundReserve({from: sender, value: 500})
 
-            const reserve = (await broker.remainingReserve(sender)).toString()
+            const reserve = (await broker.getSenderInfo(sender)).reserve.fundsRemaining.toString()
 
             assert.equal(reserve, "1500")
         })
@@ -222,8 +222,8 @@ contract("TicketBroker", accounts => {
             await broker.fundReserve({from: sender, value: 1000})
             await broker.fundReserve({from: sender2, value: 500})
 
-            const reserve = (await broker.remainingReserve(sender)).toString()
-            const reserve2 = (await broker.remainingReserve(sender2)).toString()
+            const reserve = (await broker.getSenderInfo(sender)).reserve.fundsRemaining.toString()
+            const reserve2 = (await broker.getSenderInfo(sender2)).reserve.fundsRemaining.toString()
 
             assert.equal(reserve, "1000")
             assert.equal(reserve2, "500")
@@ -253,7 +253,7 @@ contract("TicketBroker", accounts => {
             await broker.fundReserve({from: sender})
 
             const remainingReserve = reserve - allocation
-            assert.equal((await broker.remainingReserve(sender)).toString(), remainingReserve.toString())
+            assert.equal((await broker.getSenderInfo(sender)).reserve.fundsRemaining.toString(), remainingReserve.toString())
         })
 
         it("preserves remaining funds from thawed reserve and adds additional funds", async () => {
@@ -282,7 +282,7 @@ contract("TicketBroker", accounts => {
 
             const remainingReserve = reserve - allocation
             assert.equal(
-                (await broker.remainingReserve(sender)).toString(),
+                (await broker.getSenderInfo(sender)).reserve.fundsRemaining.toString(),
                 (remainingReserve + additionalFunds).toString()
             )
         })
@@ -421,10 +421,10 @@ contract("TicketBroker", accounts => {
                 {from: sender, value: deposit + reserve}
             )
 
-            const endSender = await broker.senders.call(sender)
-            const endReserve = await broker.remainingReserve(sender)
+            const endSenderInfo = await broker.getSenderInfo(sender)
+            const endReserve = endSenderInfo.reserve.fundsRemaining
 
-            assert.equal(endSender.deposit.toString(), deposit.toString())
+            assert.equal(endSenderInfo.sender.deposit.toString(), deposit.toString())
             assert.equal(endReserve.toString(), reserve.toString())
         })
 
@@ -456,7 +456,7 @@ contract("TicketBroker", accounts => {
             )
 
             const remainingReserve = reserve - allocation
-            assert.equal((await broker.remainingReserve(sender)).toString(), remainingReserve.toString())
+            assert.equal((await broker.getSenderInfo(sender)).reserve.fundsRemaining.toString(), remainingReserve.toString())
         })
 
         it("preserves remaining funds from thawed reserve and adds additional funds", async () => {
@@ -489,7 +489,7 @@ contract("TicketBroker", accounts => {
 
             const remainingReserve = reserve - allocation
             assert.equal(
-                (await broker.remainingReserve(sender)).toString(),
+                (await broker.getSenderInfo(sender)).reserve.fundsRemaining.toString(),
                 (remainingReserve + additionalFunds).toString()
             )
         })
@@ -942,7 +942,7 @@ contract("TicketBroker", accounts => {
                     assert.equal(event2.returnValues.reserveHolder, sender)
                     assert.equal(event2.returnValues.claimant, recipient2)
                     assert.equal(event2.returnValues.amount, allocation.toString())
-                    assert.equal((await broker.remainingReserve(sender)).toString(), "0")
+                    assert.equal((await broker.getSenderInfo(sender)).reserve.fundsRemaining.toString(), "0")
                     assert.equal((await broker.claimedReserve(sender, recipient)).toString(), allocation.toString())
                     assert.equal((await broker.claimedReserve(sender, recipient2)).toString(), allocation.toString())
                 })
@@ -1007,7 +1007,7 @@ contract("TicketBroker", accounts => {
                         assert.equal(event.returnValues.transcoder, recipient)
                         assert.equal(event.returnValues.fees, deposit.toString())
                         assert.equal(event.returnValues.round, currentRound)
-                        const endDeposit = (await broker.senders.call(sender)).deposit.toString()
+                        const endDeposit = (await broker.getSenderInfo(sender)).sender.deposit.toString()
                         assert.equal(endDeposit, "0")
                     })
                 })
@@ -1042,7 +1042,7 @@ contract("TicketBroker", accounts => {
                         assert.equal(event.returnValues.transcoder, recipient)
                         assert.equal(event.returnValues.fees, ticket.faceValue.toString())
                         assert.equal(event.returnValues.round, currentRound)
-                        const endDeposit = (await broker.senders.call(sender)).deposit.toString()
+                        const endDeposit = (await broker.getSenderInfo(sender)).sender.deposit.toString()
                         assert.equal(endDeposit, "0")
                     })
                 })
@@ -1063,7 +1063,7 @@ contract("TicketBroker", accounts => {
 
             truffleAssert.eventNotEmitted(txRes, "WinningTicketTransfer")
             truffleAssert.eventNotEmitted(txRes, "UpdateTranscoderWithFees")
-            const endDeposit = (await broker.senders.call(sender)).deposit.toString()
+            const endDeposit = (await broker.getSenderInfo(sender)).sender.deposit.toString()
             assert.equal(endDeposit, deposit)
         })
 
@@ -1091,7 +1091,7 @@ contract("TicketBroker", accounts => {
             assert.equal(event.returnValues.transcoder, recipient)
             assert.equal(event.returnValues.fees, faceValue.toString())
             assert.equal(event.returnValues.round, currentRound)
-            const endDeposit = (await broker.senders.call(sender)).deposit.toString()
+            const endDeposit = (await broker.getSenderInfo(sender)).sender.deposit.toString()
             assert.equal(endDeposit, "0")
         })
 
@@ -1119,7 +1119,7 @@ contract("TicketBroker", accounts => {
             assert.equal(event.returnValues.transcoder, recipient)
             assert.equal(event.returnValues.fees, faceValue.toString())
             assert.equal(event.returnValues.round, currentRound)
-            const endDeposit = (await broker.senders.call(sender)).deposit.toString()
+            const endDeposit = (await broker.getSenderInfo(sender)).sender.deposit.toString()
             assert.equal(endDeposit, (deposit - faceValue).toString())
         })
 
@@ -1137,7 +1137,7 @@ contract("TicketBroker", accounts => {
             // Third party redeems the ticket
             await broker.redeemWinningTicket(ticket, senderSig, recipientRand, {from: thirdParty})
 
-            const endDeposit = (await broker.senders.call(sender)).deposit.toString()
+            const endDeposit = (await broker.getSenderInfo(sender)).sender.deposit.toString()
             assert.equal(endDeposit, (deposit - faceValue).toString())
         })
 
@@ -1449,7 +1449,7 @@ contract("TicketBroker", accounts => {
 
             const fromBlock = (await web3.eth.getBlock("latest")).number
             const expectedWithdrawBlock = fromBlock + unlockPeriod
-            const withdrawBlock = (await broker.senders.call(sender)).withdrawBlock.toString()
+            const withdrawBlock = (await broker.getSenderInfo(sender)).sender.withdrawBlock.toString()
             assert.equal(withdrawBlock, expectedWithdrawBlock.toString())
         })
 
@@ -1623,8 +1623,9 @@ contract("TicketBroker", accounts => {
 
             await broker.withdraw({from: sender})
 
-            const deposit = (await broker.senders.call(sender)).deposit.toString()
-            const reserve = (await broker.remainingReserve(sender)).toString()
+            const senderInfo = await broker.getSenderInfo(sender)
+            const deposit = senderInfo.sender.deposit
+            const reserve = senderInfo.reserve.fundsRemaining
             assert.equal(deposit, "0")
             assert.equal(reserve, "0")
         })

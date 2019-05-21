@@ -1,4 +1,6 @@
 pragma solidity ^0.4.25;
+// solium-disable-next-line
+pragma experimental ABIEncoderV2;
 
 
 contract MReserve {
@@ -7,6 +9,12 @@ contract MReserve {
         NotFrozen,
         Frozen,
         Thawed
+    }
+
+    struct ReserveInfo {
+        uint256 fundsRemaining;  // Funds remaining in reserve
+        ReserveState state;      // State of reserve
+        uint256 thawRound;       // Round that the reserve can be withdrawn if it has been frozen
     }
 
     // Emitted when funds are added to a reserve
@@ -22,11 +30,11 @@ contract MReserve {
     );
 
     /**
-     * @dev Returns the amount of funds remaining in a reserve
+     * @dev Returns info about a reserve
      * @param _reserveHolder Address of reserve holder
-     * @return Amount of funds remaining in the reserve for `_reserveHolder`
+     * @return Info about the reserve for `_reserveHolder`
      */
-    function remainingReserve(address _reserveHolder) public view returns (uint256);
+    function getReserveInfo(address _reserveHolder) public view returns (ReserveInfo memory info);
 
     /**
      * @dev Returns the amount of funds claimed by a claimant from a reserve
@@ -70,4 +78,11 @@ contract MReserve {
      * @return State of the reserve for `_reserveHolder`
      */
     function reserveState(address _reserveHolder) internal view returns (ReserveState);
+
+    /**
+     * @dev Returns the amount of funds remaining in a reserve
+     * @param _reserveHolder Address of reserve holder
+     * @return Amount of funds remaining in the reserve for `_reserveHolder`
+     */
+    function remainingReserve(address _reserveHolder) internal view returns (uint256);
 }

@@ -17,11 +17,12 @@ contract MixinTicketBrokerCore is MReserve, MTicketProcessor, MTicketBrokerCore 
         uint256 withdrawBlock;  // Block that sender can withdraw deposit & reserve
     }
 
+    // Mapping of address => Sender
+    mapping (address => Sender) internal senders;
+
     // Number of blocks before a sender can withdraw after requesting an unlock
     uint256 public unlockPeriod;
 
-    // Mapping of address => Sender
-    mapping (address => Sender) public senders;
     // Mapping of ticket hashes => boolean indicating if ticket was redeemed
     mapping (bytes32 => bool) public usedTickets;
 
@@ -243,10 +244,25 @@ contract MixinTicketBrokerCore is MReserve, MTicketProcessor, MTicketBrokerCore 
     /**
      * @dev Returns whether a sender is currently in the unlock period
      * @param _sender Address of sender
+     * @return Boolean indicating whether `_sender` has an unlock in progress
      */
     function isUnlockInProgress(address _sender) public view returns (bool) {
         Sender memory sender = senders[_sender];
         return _isUnlockInProgress(sender);
+    }
+
+    /**
+     * @dev Returns info about a sender
+     * @param _sender Address of sender
+     * @return Info about the sender for `_sender`
+     */
+    function getSenderInfo(address _sender)
+        public
+        view
+        returns (Sender memory sender, ReserveInfo memory reserve)
+    {
+        sender = senders[_sender];
+        reserve = getReserveInfo(_sender);
     }
 
     /**
