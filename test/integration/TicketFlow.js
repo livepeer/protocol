@@ -78,7 +78,7 @@ contract("TicketFlow", accounts => {
             ["uint256", "bytes32"],
             [creationRound, creationRoundBlockHash]
         )
-        const deposit = (await broker.senders.call(broadcaster)).deposit
+        const deposit = new BN((await broker.getSenderInfo(broadcaster)).sender.deposit.toString())
         const recipientRand = 5
         const faceValue = 1000
         const ticket = createWinningTicket(transcoder, broadcaster, recipientRand, faceValue, auxData)
@@ -86,7 +86,7 @@ contract("TicketFlow", accounts => {
 
         await broker.redeemWinningTicket(ticket, senderSig, recipientRand, {from: transcoder})
 
-        const endDeposit = (await broker.senders.call(broadcaster)).deposit.toString()
+        const endDeposit = (await broker.getSenderInfo(broadcaster)).sender.deposit.toString()
 
         assert.equal(endDeposit, deposit.sub(new BN(faceValue)).toString())
 
@@ -100,8 +100,8 @@ contract("TicketFlow", accounts => {
         await roundsManager.mineBlocks(roundLength)
         await roundsManager.initializeRound()
 
-        const startSender = await broker.senders.call(broadcaster)
-        const startReserve = await broker.remainingReserve(broadcaster)
+        const startSenderInfo = await broker.getSenderInfo(broadcaster)
+        const startReserve = startSenderInfo.reserve.fundsRemaining
         const block = await roundsManager.blockNum()
         const creationRound = (await roundsManager.currentRound()).toString()
         const creationRoundBlockHash = await roundsManager.blockHash(block)
@@ -110,17 +110,17 @@ contract("TicketFlow", accounts => {
             [creationRound, creationRoundBlockHash]
         )
         const recipientRand = 6
-        const faceValue = startSender.deposit.add(new BN(100)).toString()
+        const faceValue = new BN(startSenderInfo.sender.deposit).add(new BN(100)).toString()
         const ticket = createWinningTicket(transcoder, broadcaster, recipientRand, faceValue, auxData)
         const senderSig = await web3.eth.sign(getTicketHash(ticket), broadcaster)
 
         await broker.redeemWinningTicket(ticket, senderSig, recipientRand, {from: transcoder})
 
-        const endSender = await broker.senders.call(broadcaster)
-        const endReserve = await broker.remainingReserve(broadcaster)
+        const endSenderInfo = await broker.getSenderInfo(broadcaster)
+        const endReserve = endSenderInfo.reserve.fundsRemaining
         const reserveDiff = (new BN(startReserve)).sub(new BN(endReserve))
 
-        assert.equal(endSender.deposit.toString(), "0")
+        assert.equal(endSenderInfo.sender.deposit.toString(), "0")
         assert.equal(reserveDiff.toString(), "100")
 
         const round = await roundsManager.currentRound()
