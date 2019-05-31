@@ -46,17 +46,20 @@ contract MixinReserve is MContractRegistry, MReserve {
      * @dev Returns the amount of funds claimable by a claimant from a reserve
      * @param _reserveHolder Address of reserve holder
      * @param _claimant Address of claimant
-     * @return Amount of funds claimable by `_claimant`from the reserve for `_reserveHolder`
+     * @return Amount of funds claimable by `_claimant` from the reserve for `_reserveHolder`
      */
     function claimableReserve(address _reserveHolder, address _claimant) public view returns (uint256) {
         ReserveManager storage manager = reserveManagers[_reserveHolder];
         Reserve storage reserve = manager.reserve;
         if (reserveState(_reserveHolder) == ReserveState.NotFrozen) {
             // TODO: Check if claimant is registered in current round
-            return reserve.fundsAdded.div(bondingManager().getTranscoderPoolSize());
+            uint256 poolSize = bondingManager().getTranscoderPoolSize();
+            return poolSize > 0 ? reserve.fundsAdded.div(poolSize) : 0;
         } else {
             // TODO: Check if claimant is registered during the freezeRound
-            return reserve.fundsAdded.div(reserve.recipientsInFreezeRound).sub(manager.claimedPerReserve[manager.reserveNonce][_claimant]);
+            return reserve.recipientsInFreezeRound > 0 ?
+                reserve.fundsAdded.div(reserve.recipientsInFreezeRound).sub(manager.claimedPerReserve[manager.reserveNonce][_claimant]) :
+                0;
         }
     }
 
