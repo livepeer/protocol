@@ -14,7 +14,7 @@ The Livepeer Protocol consists of the on-chain smart contracts that govern the l
 
 The protocol is outlined in the
 [Livepeer Whitepaper](http://github.com/livepeer/wiki/blob/master/WHITEPAPER.md)
-and is more formally specified in the [Protocol Specification](http://github.com/livepeer/wiki/blob/master/SPEC.md).
+and is more formally specified in the [Protocol Specification](https://github.com/livepeer/wiki/tree/master/spec).
 
 The current status is that this is a near complete implementation of the
 initial pass at the Livepeer protocol which accounts for the alpha
