@@ -988,13 +988,24 @@ contract("JobsManager", accounts => {
         })
 
         it("should fail if claim 0 does not exist", async () => {
-            const invalidClaimId0 = 5
+            let invalidClaimId0 = 5
+            await expectThrow(jobsManager.doubleClaimSegmentSlash(0, invalidClaimId0, 1, 0, {from: watcher}))
+
+            invalidClaimId0 = -1
             await expectThrow(jobsManager.doubleClaimSegmentSlash(0, invalidClaimId0, 1, 0, {from: watcher}))
         })
 
         it("should fail if claim 1 does not exist", async () => {
-            const invalidClaimId1 = 5
+            let invalidClaimId1 = 5
             await expectThrow(jobsManager.doubleClaimSegmentSlash(0, 0, invalidClaimId1, 0, {from: watcher}))
+
+            invalidClaimId1 = -1
+            await expectThrow(jobsManager.doubleClaimSegmentSlash(0, 0, invalidClaimId1, 0, {from: watcher}))
+        })
+
+        it("should fail if claim 0 == claim 1", async () => {
+            const claimId = 0
+            await expectThrow(jobsManager.doubleClaimSegmentSlash(0, claimId, claimId, 0, {from: watcher}))
         })
 
         it("should fail if claim 0 is slashed", async () => {
