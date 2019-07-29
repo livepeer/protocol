@@ -496,6 +496,9 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         whenSystemNotPaused
         jobExists(_jobId)
     {
+        // The provided claims must be different (i.e different IDs)
+        require(_claimId1 != _claimId2);
+
         Job storage job = jobs[_jobId];
         Claim storage claim1 = job.claims[_claimId1];
         Claim storage claim2 = job.claims[_claimId2];

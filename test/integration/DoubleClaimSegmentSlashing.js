@@ -4,6 +4,7 @@ import MerkleTree from "../../utils/merkleTree"
 import {createTranscodingOptions} from "../../utils/videoProfile"
 import Segment from "../../utils/segment"
 import BigNumber from "bignumber.js"
+import expectThrow from "../helpers/expectThrow";
 
 const Controller = artifacts.require("Controller")
 const BondingManager = artifacts.require("BondingManager")
@@ -122,6 +123,11 @@ contract("DoubleClaimSegmentSlashing", accounts => {
         await jobsManager.claimWork(0, [0, 3], merkleTree.getHexRoot(), {from: transcoder})
         // Wait for claims to be mined
         await roundsManager.mineBlocks(2)
+
+        // Watcher fails to slash transcoder by specifying the same claim twice
+        await expectThrow(jobsManager.doubleClaimSegmentSlash(0, 0, 0, 0, {from: watcher}))
+        // Watcher fails to slash transcoder by specifying the same claim twice
+        await expectThrow(jobsManager.doubleClaimSegmentSlash(0, 1, 1, 0, {from: watcher}))
 
         // Watcher slashes transcoder for double claiming segments
         // Transcoder claimed segments 0 through 3 twice
