@@ -27,6 +27,7 @@ library EarningsPool {
         uint256 transcoderRewardPool;      // Transcoder rewards. If `hasTranscoderRewardFeePool` is false, this should always be 0
         uint256 transcoderFeePool;         // Transcoder fees. If `hasTranscoderRewardFeePool` is false, this should always be 0
         bool hasTranscoderRewardFeePool;   // Flag to indicate if the earnings pool has separate transcoder reward and fee pools
+        bool active;                       // Flag to indicate if the earnings pool is active for the round
     }
 
     /**
