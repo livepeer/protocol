@@ -19,10 +19,7 @@ jobs:
       - run:
           name: Build docker image
           command: |
-            docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
-            docker pull $IMAGE_LATEST
             npm run docker:build
-            npm run docker:push
       - run:
           name: Run linting
           command: npm run docker:run:lint
