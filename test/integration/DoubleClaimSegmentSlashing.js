@@ -4,7 +4,7 @@ import MerkleTree from "../../utils/merkleTree"
 import {createTranscodingOptions} from "../../utils/videoProfile"
 import Segment from "../../utils/segment"
 import BigNumber from "bignumber.js"
-import expectThrow from "../helpers/expectThrow";
+import expectThrow from "../helpers/expectThrow"
 
 const Controller = artifacts.require("Controller")
 const BondingManager = artifacts.require("BondingManager")
