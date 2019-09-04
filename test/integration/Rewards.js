@@ -65,7 +65,7 @@ contract("Rewards", accounts => {
         // Register transcoder 1
         await token.approve(bondingManager.address, transcoder1StartStake, {from: transcoder1})
         await bondingManager.bond(transcoder1StartStake, transcoder1, {from: transcoder1})
-        await bondingManager.transcoder(rewardCut * constants.PERC_MULTIPLIER, feeShare * constants.PERC_MULTIPLIER, 200000000000, {from: transcoder1})
+        await bondingManager.transcoder(rewardCut * constants.PERC_MULTIPLIER, feeShare * constants.PERC_MULTIPLIER, {from: transcoder1})
 
         // Delegator 1 delegates to transcoder 1
         await token.approve(bondingManager.address, delegator1StartStake, {from: delegator1})
