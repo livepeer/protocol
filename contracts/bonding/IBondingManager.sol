@@ -6,7 +6,7 @@ pragma solidity ^0.4.25;
  * TODO: switch to interface type
  */
 contract IBondingManager {
-    event TranscoderUpdate(address indexed transcoder, uint256 pendingRewardCut, uint256 pendingFeeShare, uint256 pendingPricePerSegment, bool registered);
+    event TranscoderUpdate(address indexed transcoder, uint256 pendingRewardCut, uint256 pendingFeeShare, bool registered);
     event TranscoderEvicted(address indexed transcoder);
     event TranscoderResigned(address indexed transcoder);
     event TranscoderSlashed(address indexed transcoder, address finder, uint256 penalty, uint256 finderReward);
@@ -29,7 +29,6 @@ contract IBondingManager {
     function setActiveTranscoders() external;
     function updateTranscoderWithFees(address _transcoder, uint256 _fees, uint256 _round) external;
     function slashTranscoder(address _transcoder, address _finder, uint256 _slashAmount, uint256 _finderFee) external;
-    function electActiveTranscoder(uint256 _maxPricePerSegment, bytes32 _blockHash, uint256 _round) external view returns (address);
 
     // Public functions
     function getTranscoderPoolSize() public view returns (uint256);

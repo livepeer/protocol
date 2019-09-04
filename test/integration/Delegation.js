@@ -70,7 +70,7 @@ contract("Delegation", accounts => {
         // Stake doesn't count until user joins transcoder pool
         assert.equal(await bondingManager.getTotalBonded(), 0, "wrong total bonded")
 
-        await bondingManager.transcoder(0, 5, 100, {from: transcoder1})
+        await bondingManager.transcoder(0, 5, {from: transcoder1})
 
         assert.equal(await bondingManager.transcoderStatus(transcoder1), 1, "wrong transcoder status")
         // Stake counted (+1000) after user joins transcoder pool
@@ -84,7 +84,7 @@ contract("Delegation", accounts => {
         // Stake doesn't count until user joins transcoder pool
         assert.equal(await bondingManager.getTotalBonded(), 1000, "wrong total bonded")
 
-        await bondingManager.transcoder(0, 5, 100, {from: transcoder2})
+        await bondingManager.transcoder(0, 5, {from: transcoder2})
 
         assert.equal(await bondingManager.transcoderStatus(transcoder2), 1, "wrong transcoder status")
         // Stake counted (+1000) after user joins transcoder pool

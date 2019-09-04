@@ -49,7 +49,7 @@ contract("System Pause", accounts => {
     it("registers transcoder 1 that self bonds", async () => {
         await token.approve(bondingManager.address, 1000, {from: transcoder1})
         await bondingManager.bond(1000, transcoder1, {from: transcoder1})
-        await bondingManager.transcoder(0, 5, 100, {from: transcoder1})
+        await bondingManager.transcoder(0, 5, {from: transcoder1})
 
         assert.equal(await bondingManager.transcoderStatus(transcoder1), 1, "wrong transcoder status")
     })

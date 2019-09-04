@@ -31,14 +31,14 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
     // Represents a transcoder's current state
     struct Transcoder {
-        uint256 lastRewardRound;                             // Last round that the transcoder called reward
-        uint256 rewardCut;                                   // % of reward paid to transcoder by a delegator
-        uint256 feeShare;                                    // % of fees paid to delegators by transcoder
-        uint256 pricePerSegment;                             // Price per segment (denominated in LPT units) for a stream
-        uint256 pendingRewardCut;                            // Pending reward cut for next round if the transcoder is active
-        uint256 pendingFeeShare;                             // Pending fee share for next round if the transcoder is active
-        uint256 pendingPricePerSegment;                      // Pending price per segment for next round if the transcoder is active
-        mapping (uint256 => EarningsPool.Data) earningsPoolPerRound;  // Mapping of round => earnings pool for the round
+        uint256 lastRewardRound;                                        // Last round that the transcoder called reward
+        uint256 rewardCut;                                              // % of reward paid to transcoder by a delegator
+        uint256 feeShare;                                               // % of fees paid to delegators by transcoder
+        uint256 pricePerSegmentDEPRECATED;                              // DEPRECATED - DO NOT USE
+        uint256 pendingRewardCut;                                       // Pending reward cut for next round if the transcoder is active
+        uint256 pendingFeeShare;                                        // Pending fee share for next round if the transcoder is active
+        uint256 pendingPricePerSegmentDEPRECATED;                       // DEPRECATED - DO NOT USE
+        mapping (uint256 => EarningsPool.Data) earningsPoolPerRound;    // Mapping of round => earnings pool for the round
     }
 
     // The various states a transcoder can be in
@@ -174,9 +174,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * @dev The sender is declaring themselves as a candidate for active transcoding.
      * @param _rewardCut % of reward paid to transcoder by a delegator
      * @param _feeShare % of fees paid to delegators by a transcoder
-     * @param _pricePerSegment Price per segment (denominated in Wei) for a stream
      */
-    function transcoder(uint256 _rewardCut, uint256 _feeShare, uint256 _pricePerSegment)
+    function transcoder(uint256 _rewardCut, uint256 _feeShare)
         external
         whenSystemNotPaused
         currentRoundInitialized
@@ -184,88 +183,46 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         Transcoder storage t = transcoders[msg.sender];
         Delegator storage del = delegators[msg.sender];
 
-        if (roundsManager().currentRoundLocked()) {
-            // If it is the lock period of the current round
-            // the lowest price previously set by any transcoder
-            // becomes the price floor and the caller can lower its
-            // own price to a point greater than or equal to the price floor
+        // No transcoder operations can take place during the round lock period
+        require(
+            !roundsManager().currentRoundLocked(),
+            "can't update transcoder params, current round is locked"
+        );
 
-            // Caller must already be a registered transcoder
-            require(transcoderStatus(msg.sender) == TranscoderStatus.Registered);
-            // Provided rewardCut value must equal the current pendingRewardCut value
-            // This value cannot change during the lock period
-            require(_rewardCut == t.pendingRewardCut);
-            // Provided feeShare value must equal the current pendingFeeShare value
-            // This value cannot change during the lock period
-            require(_feeShare == t.pendingFeeShare);
+        // Reward cut must be a valid percentage
+        require(MathUtils.validPerc(_rewardCut));
+        // Fee share must be a valid percentage
+        require(MathUtils.validPerc(_feeShare));
 
-            // Iterate through the transcoder pool to find the price floor
-            // Since the caller must be a registered transcoder, the transcoder pool size will always at least be 1
-            // Thus, we can safely set the initial price floor to be the pendingPricePerSegment of the first
-            // transcoder in the pool
-            address currentTranscoder = transcoderPool.getFirst();
-            uint256 priceFloor = transcoders[currentTranscoder].pendingPricePerSegment;
-            for (uint256 i = 0; i < transcoderPool.getSize(); i++) {
-                if (transcoders[currentTranscoder].pendingPricePerSegment < priceFloor) {
-                    priceFloor = transcoders[currentTranscoder].pendingPricePerSegment;
-                }
+        // Must have a non-zero amount bonded to self
+        require(del.delegateAddress == msg.sender && del.bondedAmount > 0);
 
-                currentTranscoder = transcoderPool.getNext(currentTranscoder);
-            }
+        t.pendingRewardCut = _rewardCut;
+        t.pendingFeeShare = _feeShare;
 
-            // Provided pricePerSegment must be greater than or equal to the price floor and
-            // less than or equal to the previously set pricePerSegment by the caller
-            require(_pricePerSegment >= priceFloor && _pricePerSegment <= t.pendingPricePerSegment);
+        uint256 delegatedAmount = del.delegatedAmount;
 
-            t.pendingPricePerSegment = _pricePerSegment;
+        // Check if transcoder is not already registered
+        if (transcoderStatus(msg.sender) == TranscoderStatus.NotRegistered) {
+            if (!transcoderPool.isFull()) {
+                // If pool is not full add new transcoder
+                transcoderPool.insert(msg.sender, delegatedAmount, address(0), address(0));
+            } else {
+                address lastTranscoder = transcoderPool.getLast();
 
-            emit TranscoderUpdate(msg.sender, t.pendingRewardCut, t.pendingFeeShare, _pricePerSegment, true);
-        } else {
-            // It is not the lock period of the current round
-            // Caller is free to change rewardCut, feeShare, pricePerSegment as it pleases
-            // If caller is not a registered transcoder, it can also register and join the transcoder pool
-            // if it has sufficient delegated stake
-            // If caller is not a registered transcoder and does not have sufficient delegated stake
-            // to join the transcoder pool, it can change rewardCut, feeShare, pricePerSegment
-            // as information signals to delegators in an effort to camapaign and accumulate
-            // more delegated stake
-
-            // Reward cut must be a valid percentage
-            require(MathUtils.validPerc(_rewardCut));
-            // Fee share must be a valid percentage
-            require(MathUtils.validPerc(_feeShare));
-
-            // Must have a non-zero amount bonded to self
-            require(del.delegateAddress == msg.sender && del.bondedAmount > 0);
-
-            t.pendingRewardCut = _rewardCut;
-            t.pendingFeeShare = _feeShare;
-            t.pendingPricePerSegment = _pricePerSegment;
-
-            uint256 delegatedAmount = del.delegatedAmount;
-
-            // Check if transcoder is not already registered
-            if (transcoderStatus(msg.sender) == TranscoderStatus.NotRegistered) {
-                if (!transcoderPool.isFull()) {
-                    // If pool is not full add new transcoder
+                if (delegatedAmount > transcoderTotalStake(lastTranscoder)) {
+                    // If pool is full and caller has more delegated stake than the transcoder in the pool with the least delegated stake:
+                    // - Evict transcoder in pool with least delegated stake
+                    // - Add caller to pool
+                    transcoderPool.remove(lastTranscoder);
                     transcoderPool.insert(msg.sender, delegatedAmount, address(0), address(0));
-                } else {
-                    address lastTranscoder = transcoderPool.getLast();
 
-                    if (delegatedAmount > transcoderTotalStake(lastTranscoder)) {
-                        // If pool is full and caller has more delegated stake than the transcoder in the pool with the least delegated stake:
-                        // - Evict transcoder in pool with least delegated stake
-                        // - Add caller to pool
-                        transcoderPool.remove(lastTranscoder);
-                        transcoderPool.insert(msg.sender, delegatedAmount, address(0), address(0));
-
-                        emit TranscoderEvicted(lastTranscoder);
-                    }
+                    emit TranscoderEvicted(lastTranscoder);
                 }
             }
-
-            emit TranscoderUpdate(msg.sender, _rewardCut, _feeShare, _pricePerSegment, transcoderPool.contains(msg.sender));
         }
+
+        emit TranscoderUpdate(msg.sender, _rewardCut, _feeShare, transcoderPool.contains(msg.sender));
     }
 
     /**
@@ -517,13 +474,11 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             uint256 stake = transcoderTotalStake(currentTranscoder);
             uint256 rewardCut = transcoders[currentTranscoder].pendingRewardCut;
             uint256 feeShare = transcoders[currentTranscoder].pendingFeeShare;
-            uint256 pricePerSegment = transcoders[currentTranscoder].pendingPricePerSegment;
 
             Transcoder storage t = transcoders[currentTranscoder];
             // Set pending rates as current rates
             t.rewardCut = rewardCut;
             t.feeShare = feeShare;
-            t.pricePerSegment = pricePerSegment;
             // Initialize token pool
             t.earningsPoolPerRound[currentRound].init(stake, rewardCut, feeShare);
 
@@ -642,50 +597,6 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             }
         } else {
             emit TranscoderSlashed(_transcoder, _finder, 0, 0);
-        }
-    }
-
-    /**
-     * @dev Pseudorandomly elect a currently active transcoder that charges a price per segment less than or equal to the max price per segment for a job
-     * Returns address of elected active transcoder and its price per segment
-     * @param _maxPricePerSegment Max price (in LPT base units) per segment of a stream
-     * @param _blockHash Job creation block hash used as a pseudorandom seed for assigning an active transcoder
-     * @param _round Job creation round
-     */
-    function electActiveTranscoder(uint256 _maxPricePerSegment, bytes32 _blockHash, uint256 _round) external view returns (address) {
-        uint256 activeSetSize = activeTranscoderSet[_round].transcoders.length;
-        // Create array to store available transcoders charging an acceptable price per segment
-        address[] memory availableTranscoders = new address[](activeSetSize);
-        // Keep track of the actual number of available transcoders
-        uint256 numAvailableTranscoders = 0;
-        // Keep track of total stake of available transcoders
-        uint256 totalAvailableTranscoderStake = 0;
-
-        for (uint256 i = 0; i < activeSetSize; i++) {
-            address activeTranscoder = activeTranscoderSet[_round].transcoders[i];
-            // If a transcoder is active and charges an acceptable price per segment add it to the array of available transcoders
-            if (activeTranscoderSet[_round].isActive[activeTranscoder] && transcoders[activeTranscoder].pricePerSegment <= _maxPricePerSegment) {
-                availableTranscoders[numAvailableTranscoders] = activeTranscoder;
-                numAvailableTranscoders++;
-                totalAvailableTranscoderStake = totalAvailableTranscoderStake.add(activeTranscoderTotalStake(activeTranscoder, _round));
-            }
-        }
-
-        if (numAvailableTranscoders == 0) {
-            // There is no currently available transcoder that charges a price per segment less than or equal to the max price per segment for a job
-            return address(0);
-        } else {
-            // Pseudorandomly pick an available transcoder weighted by its stake relative to the total stake of all available transcoders
-            uint256 r = uint256(_blockHash) % totalAvailableTranscoderStake;
-            uint256 s = 0;
-            uint256 j = 0;
-
-            while (s <= r && j < numAvailableTranscoders) {
-                s = s.add(activeTranscoderTotalStake(availableTranscoders[j], _round));
-                j++;
-            }
-
-            return availableTranscoders[j - 1];
         }
     }
 
@@ -820,17 +731,15 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     )
         public
         view
-        returns (uint256 lastRewardRound, uint256 rewardCut, uint256 feeShare, uint256 pricePerSegment, uint256 pendingRewardCut, uint256 pendingFeeShare, uint256 pendingPricePerSegment)
+        returns (uint256 lastRewardRound, uint256 rewardCut, uint256 feeShare, uint256 pendingRewardCut, uint256 pendingFeeShare)
     {
         Transcoder storage t = transcoders[_transcoder];
 
         lastRewardRound = t.lastRewardRound;
         rewardCut = t.rewardCut;
         feeShare = t.feeShare;
-        pricePerSegment = t.pricePerSegment;
         pendingRewardCut = t.pendingRewardCut;
         pendingFeeShare = t.pendingFeeShare;
-        pendingPricePerSegment = t.pendingPricePerSegment;
     }
 
     /**

@@ -27,7 +27,7 @@ contract("RoundInitialization", accounts => {
             await token.transfer(tr, amount)
             await token.approve(bondingManager.address, amount, {from: tr})
             await bondingManager.bond(amount, tr, {from: tr})
-            await bondingManager.transcoder(0, 100, 15, {from: tr})
+            await bondingManager.transcoder(0, 100, {from: tr})
         }
 
         await mineAndInitializeRound(roundsManager)
@@ -62,7 +62,6 @@ contract("RoundInitialization", accounts => {
     it("initializes a round with numActiveTranscoders = 15 and numTranscoders = 20", async () => {
         await bondingManager.setNumActiveTranscoders(15)
         assert.equal(await bondingManager.numActiveTranscoders.call(), 15, "wrong max # of active transcoders")
-
         await mineAndInitializeRound(roundsManager)
 
         const currentRound = await roundsManager.currentRound()

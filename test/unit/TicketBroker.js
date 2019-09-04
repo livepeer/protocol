@@ -1,7 +1,7 @@
 import BN from "bn.js"
 import truffleAssert from "truffle-assertions"
 import calcTxCost from "../helpers/calcTxCost"
-import {expectRevertWithReason} from "../helpers/expectFail"
+import expectRevertWithReason from "../helpers/expectFail"
 import {
     DUMMY_TICKET_CREATION_ROUND,
     DUMMY_TICKET_CREATION_ROUND_BLOCK_HASH,
