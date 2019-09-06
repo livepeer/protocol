@@ -76,7 +76,6 @@ contract MixinTicketBrokerCore is MReserve, MTicketProcessor, MTicketBrokerCore 
     function fundDeposit()
         external
         payable
-        reserveNotFrozen(msg.sender)
         processDeposit(msg.sender, msg.value)
     {
         processFunding(msg.value);
@@ -88,7 +87,6 @@ contract MixinTicketBrokerCore is MReserve, MTicketProcessor, MTicketBrokerCore 
     function fundReserve()
         external
         payable
-        reserveNotFrozen(msg.sender)
         processReserve(msg.sender, msg.value)
     {
         processFunding(msg.value);
@@ -105,7 +103,6 @@ contract MixinTicketBrokerCore is MReserve, MTicketProcessor, MTicketBrokerCore 
     )
         external
         payable
-        reserveNotFrozen(msg.sender)
         checkDepositReserveETHValueSplit(_depositAmount, _reserveAmount)
         processDeposit(msg.sender, _depositAmount)
         processReserve(msg.sender, _reserveAmount)
@@ -221,17 +218,15 @@ contract MixinTicketBrokerCore is MReserve, MTicketProcessor, MTicketBrokerCore 
             deposit > 0 || reserve > 0,
             "sender deposit and reserve are zero"
         );
-
-        if (reserveState(msg.sender) == ReserveState.NotFrozen) {
-            require(
-                _isUnlockInProgress(sender),
-                "no unlock request in progress"
-            );
-            require(
-                block.number >= sender.withdrawBlock,
-                "account is locked"
-            );
-        }
+        require(
+            _isUnlockInProgress(sender),
+            "no unlock request in progress"
+        );
+        // TODO: make unlock period round based instead of block based
+        require(
+            block.number >= sender.withdrawBlock,
+            "account is locked"
+        );
 
         sender.deposit = 0;
         clearReserve(msg.sender);

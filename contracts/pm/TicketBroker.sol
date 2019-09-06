@@ -18,7 +18,6 @@ contract TicketBroker is
 {
     constructor(
         address _controller,
-        uint256 _freezePeriod,
         uint256 _unlockPeriod,
         uint256 _ticketValidityPeriod
     )
@@ -28,17 +27,8 @@ contract TicketBroker is
         MixinTicketBrokerCore()
         MixinTicketProcessor()
     {
-        freezePeriod = _freezePeriod;
         unlockPeriod = _unlockPeriod;
         ticketValidityPeriod = _ticketValidityPeriod;
-    }
-
-    /**
-     * @dev Sets freezePeriod value. Only callable by the Controller owner
-     * @param _freezePeriod Value for freezePeriod
-     */
-    function setFreezePeriod(uint256 _freezePeriod) external onlyControllerOwner {
-        freezePeriod = _freezePeriod;
     }
 
     /**

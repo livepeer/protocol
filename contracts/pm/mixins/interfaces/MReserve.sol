@@ -7,14 +7,12 @@ contract MReserve {
     // States for a reserve
     enum ReserveState {
         NotFrozen,
-        Frozen,
-        Thawed
+        Frozen
     }
 
     struct ReserveInfo {
         uint256 fundsRemaining;  // Funds remaining in reserve
         ReserveState state;      // State of reserve
-        uint256 thawRound;       // Round that the reserve can be withdrawn if it has been frozen
     }
 
     // Emitted when funds are added to a reserve
