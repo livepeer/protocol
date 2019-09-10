@@ -27,6 +27,7 @@ library EarningsPool {
         uint256 transcoderRewardPool;      // Transcoder rewards. If `hasTranscoderRewardFeePool` is false, this should always be 0
         uint256 transcoderFeePool;         // Transcoder fees. If `hasTranscoderRewardFeePool` is false, this should always be 0
         bool hasTranscoderRewardFeePool;   // Flag to indicate if the earnings pool has separate transcoder reward and fee pools
+        bool active;
     }
 
     /**
@@ -53,6 +54,18 @@ library EarningsPool {
      */
     function hasClaimableShares(EarningsPool.Data storage earningsPool) internal view returns (bool) {
         return earningsPool.claimableStake > 0;
+    }
+
+    function activateStake(EarningsPool.Data storage earningsPool, uint256 _stake) internal {
+        earningsPool.totalStake = _stake;
+        earningsPool.claimableStake = _stake;
+        earningsPool.active = true;
+    }
+
+    function deactivateStake(EarningsPool.Data storage earningsPool) internal {
+        earningsPool.totalStake = 0;
+        earningsPool.claimableStake = 0;
+        earningsPool.active = false;
     }
 
     /** 

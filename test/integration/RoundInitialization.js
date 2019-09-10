@@ -51,54 +51,52 @@ contract("RoundInitialization", accounts => {
         await mineAndInitializeRound(roundsManager)
     })
 
-    it("initializes a round with numActiveTranscoders = 10 and numTranscoders = 20", async () => {
-        const newTranscoders = accounts.slice(1, 21)
+    it("initializes a round with numActiveTranscoders = 10", async () => {
+        const newTranscoders = accounts.slice(1, 11)
         await registerTranscodersAndInitializeRound(bondAmount, newTranscoders, bondingManager, token, roundsManager)
 
-        const currentRound = await roundsManager.currentRound()
-        assert.equal(await bondingManager.getTotalActiveStake(currentRound), bondAmount.times(10).toNumber(), "wrong total active stake")
+        assert.equal(await bondingManager.currentRoundTotalActiveStake(), bondAmount.times(10).toNumber(), "wrong total active stake")
     })
 
-    it("initializes a round with numActiveTranscoders = 15 and numTranscoders = 20", async () => {
+    it("initializes a round with numActiveTranscoders = 15", async () => {
+        const newTranscoders = accounts.slice(11, 26)
         await bondingManager.setNumActiveTranscoders(15)
-        assert.equal(await bondingManager.numActiveTranscoders.call(), 15, "wrong max # of active transcoders")
-        await mineAndInitializeRound(roundsManager)
+        assert.equal(await bondingManager.getTranscoderPoolMaxSize(), 15, "wrong max # of active transcoders")
+        await registerTranscodersAndInitializeRound(bondAmount, newTranscoders, bondingManager, token, roundsManager)
 
-        const currentRound = await roundsManager.currentRound()
-        assert.equal(await bondingManager.getTotalActiveStake(currentRound), bondAmount.times(15).toNumber(), "wrong total active stake")
+        assert.equal(await bondingManager.currentRoundTotalActiveStake(), bondAmount.times(15).toNumber(), "wrong total active stake")
     })
 
-    it("initializes a round with numActiveTranscoders = 20 and numTranscoders = 50", async () => {
-        const newTranscoders = accounts.slice(21, 51)
+    it("initializes a round with numActiveTranscoders = 20", async () => {
+        const newTranscoders = accounts.slice(26, 46)
 
-        await bondingManager.setNumTranscoders(50)
-        assert.equal(await bondingManager.getTranscoderPoolMaxSize(), 50, "wrong transcoder pool max size")
         await bondingManager.setNumActiveTranscoders(20)
-        assert.equal(await bondingManager.numActiveTranscoders.call(), 20, "wrong max # of active transcoders")
+        assert.equal(await bondingManager.getTranscoderPoolMaxSize(), 20, "wrong max # of active transcoders")
 
         await registerTranscodersAndInitializeRound(bondAmount, newTranscoders, bondingManager, token, roundsManager)
 
-        const currentRound = await roundsManager.currentRound()
-        assert.equal(await bondingManager.getTotalActiveStake(currentRound), bondAmount.times(20).toNumber(), "wrong total active stake")
+        assert.equal(await bondingManager.currentRoundTotalActiveStake(), bondAmount.times(20).toNumber(), "wrong total active stake")
     })
 
-    it("initializes a round with numActiveTranscoders = 30 and numTranscoders = 50", async () => {
+    it("initializes a round with numActiveTranscoders = 30", async () => {
+        const newTranscoders = accounts.slice(46, 76)
+
         await bondingManager.setNumActiveTranscoders(30)
-        assert.equal(await bondingManager.numActiveTranscoders.call(), 30, "wrong max # of active transcoders")
+        assert.equal(await bondingManager.getTranscoderPoolMaxSize(), 30, "wrong max # of active transcoders")
+        await registerTranscodersAndInitializeRound(bondAmount, newTranscoders, bondingManager, token, roundsManager)
 
         await mineAndInitializeRound(roundsManager)
 
-        const currentRound = await roundsManager.currentRound()
-        assert.equal(await bondingManager.getTotalActiveStake(currentRound), bondAmount.times(30).toNumber(), "wrong total active stake")
+        assert.equal(await bondingManager.currentRoundTotalActiveStake(), bondAmount.times(30).toNumber(), "wrong total active stake")
     })
 
-    it("initializes a round with numActiveTranscoders = 40 and numTranscoders = 50", async () => {
+    it("initializes a round with numActiveTranscoders = 40", async () => {
+        const newTranscoders = accounts.slice(76, 100)
         await bondingManager.setNumActiveTranscoders(40)
-        assert.equal(await bondingManager.numActiveTranscoders.call(), 40, "wrong max # of active transcoders")
+        assert.equal(await bondingManager.getTranscoderPoolMaxSize(), 40, "wrong max # of active transcoders")
 
-        await mineAndInitializeRound(roundsManager)
+        await registerTranscodersAndInitializeRound(bondAmount, newTranscoders, bondingManager, token, roundsManager)
 
-        const currentRound = await roundsManager.currentRound()
-        assert.equal(await bondingManager.getTotalActiveStake(currentRound), bondAmount.times(40).toNumber(), "wrong total active stake")
+        assert.equal(await bondingManager.currentRoundTotalActiveStake(), bondAmount.times(40).toNumber(), "wrong total active stake")
     })
 })

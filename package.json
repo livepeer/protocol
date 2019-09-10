@@ -18,6 +18,7 @@
     "test": "npm run test:unit && npm run test:integration",
     "test:unit": "npm run ganache && truffle test test/unit/*",
     "test:integration": "npm run ganache && truffle test test/integration/*",
+    "test:describe": "func() { npm run ganache && truffle test -g \"$1\"; }; func",
     "validateDeploymentAndGenesis": "READ_ONLY=true truffle exec scripts/validateDeploymentAndGenesis.js",
     "migrate": "truffle migrate",
     "docker:build": "docker build --cache-from livepeer/protocol:latest --tag livepeer/protocol:latest -f Dockerfile .",
