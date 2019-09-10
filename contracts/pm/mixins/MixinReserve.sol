@@ -11,9 +11,9 @@ contract MixinReserve is MContractRegistry, MReserve {
     using SafeMath for uint256;
 
     struct Reserve {
-        uint256 funds;                                                     // Amount of funds in the reserve
-        mapping (uint256 => uint256) claimableForRound;                    // Mapping of round => claimable amount due to a frozen reserve
-        mapping (uint256 => mapping (address => uint256)) claimedForRound; // Mapping of round => claimant address => amount claimed
+        uint256 funds;                                                        // Amount of funds in the reserve
+        mapping (uint256 => uint256) claimedForRound;                         // Mapping of round => total amount claimed
+        mapping (uint256 => mapping (address => uint256)) claimedByAddress;   // Mapping of round => claimant address => amount claimed
     }
 
     // Mapping of address => reserve
@@ -26,7 +26,7 @@ contract MixinReserve is MContractRegistry, MReserve {
      */
     function getReserveInfo(address _reserveHolder) public view returns (ReserveInfo memory info) {
         info.fundsRemaining = remainingReserve(_reserveHolder);
-        info.state = reserveState(_reserveHolder);
+        info.claimedInCurrentRound = reserves[_reserveHolder].claimedForRound[roundsManager().currentRound()];
     }
 
     /**
@@ -42,20 +42,18 @@ contract MixinReserve is MContractRegistry, MReserve {
 
         // TODO: Check if claimant is active in the current round
         // We are just checking if it is registered for now
-        if (!bondingManager.isRegisteredTranscoder(_claimant)) {
+        if (!bondingManager().isRegisteredTranscoder(_claimant)) {
             return 0;
         }
 
         uint256 poolSize = bondingManager().getTranscoderPoolSize();
-        if poolSize == 0 {
+        if (poolSize == 0) {
             return 0;
         }
 
-        if (reserve.claimableForRound[currentRound] == 0) {
-            return reserve.funds.div(poolSize);
-        } else {
-            return reserve.claimableForRound[currentRound].div(poolSize).sub(reserve.claimedForRound[currentRound][_claimant]);
-        }
+        // Total claimable funds = remaining funds + amount claimed for the round
+        uint256 totalClaimable = reserve.funds.add(reserve.claimedForRound[currentRound]);
+        return totalClaimable.div(poolSize).sub(reserve.claimedByAddress[currentRound][_claimant]);
     }
 
     /**
@@ -67,7 +65,7 @@ contract MixinReserve is MContractRegistry, MReserve {
     function claimedReserve(address _reserveHolder, address _claimant) public view returns (uint256) {
         Reserve storage reserve = reserves[_reserveHolder];
         uint256 currentRound = roundsManager().currentRound();
-        return reserve.claimedForRound[currentRound][_claimant];
+        return reserve.claimedByAddress[currentRound][_claimant];
     }
 
     /**
@@ -78,11 +76,6 @@ contract MixinReserve is MContractRegistry, MReserve {
     function addReserve(address _reserveHolder, uint256 _amount) internal {
         Reserve storage reserve = reserves[_reserveHolder];
         reserve.funds = reserve.funds.add(_amount);
-
-        if (reserveState(_reserveHolder) == ReserveState.Frozen) {
-            uint256 currentRound = roundsManager().currentRound();
-            reserve.claimableForRound[currentRound] = reserve.claimableForRound[currentRound].add(_amount);
-        }
 
         emit ReserveFunded(_reserveHolder, _amount);
     }
@@ -113,68 +106,25 @@ contract MixinReserve is MContractRegistry, MReserve {
         Reserve storage reserve = reserves[_reserveHolder];
 
         uint256 currentRound = roundsManager().currentRound();
-        uint256 numRecipients = bondingManager().getTranscoderPoolSize();
 
-        // If reserve is not frozen then freeze it
-        if (reserveState(_reserveHolder) == ReserveState.NotFrozen) {
-            reserve.claimableForRound[currentRound] = reserve.funds;
-
-            emit ReserveFrozen(
-                _reserveHolder,
-                _claimant,
-                currentRound,
-                numRecipients
-            );
-        }
-
-        // If the reserve is not frozen or if there are no recipients
-        // registered with BondingManager during the freezeRound then
-        // no funds can be claimed from the reserve
-        if (reserve.claimableForRound[currentRound] == 0 || numRecipients == 0) {
-            return 0;
-        }
-
-        // If claimant is not registered it cannot claim any funds
-        // from the reserve
-        //
-        // TODO: Check if claimant is active in the current round
-        // We are just checking if it is registered for now
-        if (!bondingManager().isRegisteredTranscoder(_claimant)) {
-            return 0;
-        }
-
-        uint256 claimedFunds = reserve.claimedForRound[currentRound][_claimant];
-        // Amount claimable from reserve by claimant = max allocation from reserve for claimant - amount already claimed by claimant
-        uint256 claimableFunds = reserve.claimableForRound[currentRound].div(numRecipients).sub(claimedFunds);
+        uint256 claimedFunds = reserve.claimedByAddress[currentRound][_claimant];
+        uint256 claimableFunds = claimableReserve(_reserveHolder, _claimant);
         // If the given amount > claimableFunds then claim claimableFunds
         // If the given amount <= claimableFunds then claim the given amount
         uint256 claimAmount = _amount > claimableFunds ? claimableFunds : _amount;
 
         if (claimAmount > 0) {
-            reserve.claimedForRound[currentRound][_claimant] = claimedFunds.add(claimAmount);
+            // Increase total amount claimed for the round
+            reserve.claimedForRound[currentRound] = reserve.claimedForRound[currentRound].add(claimAmount);
+            // Increase amount claimed by claimant for the round
+            reserve.claimedByAddress[currentRound][_claimant] = claimedFunds.add(claimAmount);
+            // Decrease remaining reserve
             reserve.funds = reserve.funds.sub(claimAmount);
 
             emit ReserveClaimed(_reserveHolder, _claimant, claimAmount);
         }
 
         return claimAmount;
-    }
-
-    /**
-     * @dev Returns the state of a reserve
-     * @param _reserveHolder Address of reserve holder
-     * @return State of the reserve for `_reserveHolder`
-     */
-    function reserveState(address _reserveHolder) internal view returns (ReserveState) {
-        Reserve storage reserve = reserves[_reserveHolder].reserve;
-
-        uint256 currentRound = roundsManager().currentRound();
-
-        if (reserve.claimableForRound[currentRound] > 0) {
-            return ReserveState.Frozen;
-        } else {
-            return ReserveState.NotFrozen;
-        } 
     }
 
     /**
@@ -185,3 +135,4 @@ contract MixinReserve is MContractRegistry, MReserve {
     function remainingReserve(address _reserveHolder) internal view returns (uint256) {
         return reserves[_reserveHolder].funds;
     }
+}

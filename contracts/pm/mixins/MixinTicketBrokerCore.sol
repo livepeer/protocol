@@ -36,16 +36,6 @@ contract MixinTicketBrokerCore is MReserve, MTicketProcessor, MTicketBrokerCore 
         _;
     }
 
-    // Checks if sender's reserve is frozen
-    modifier reserveNotFrozen(address _sender) {
-        require(
-            reserveState(_sender) != ReserveState.Frozen,
-            "sender's reserve is frozen"
-        );
-
-        _;
-    }
-
     // Process deposit funding
     modifier processDeposit(address _sender, uint256 _amount) {
         Sender storage sender = senders[_sender];
@@ -182,7 +172,7 @@ contract MixinTicketBrokerCore is MReserve, MTicketProcessor, MTicketBrokerCore 
     /**
      * @dev Initiates the unlock period for the caller
      */
-    function unlock() public reserveNotFrozen(msg.sender) {
+    function unlock() public {
         Sender storage sender = senders[msg.sender];
 
         require(
@@ -208,7 +198,7 @@ contract MixinTicketBrokerCore is MReserve, MTicketProcessor, MTicketBrokerCore 
     /**
      * @dev Withdraws all ETH from the caller's deposit and reserve
      */
-    function withdraw() public reserveNotFrozen(msg.sender) {
+    function withdraw() public {
         Sender storage sender = senders[msg.sender];
 
         uint256 deposit = sender.deposit;
@@ -222,7 +212,6 @@ contract MixinTicketBrokerCore is MReserve, MTicketProcessor, MTicketBrokerCore 
             _isUnlockInProgress(sender),
             "no unlock request in progress"
         );
-        // TODO: make unlock period round based instead of block based
         require(
             block.number >= sender.withdrawBlock,
             "account is locked"
