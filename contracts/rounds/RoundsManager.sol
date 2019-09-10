@@ -93,6 +93,8 @@ contract RoundsManager is ManagerProxyTarget, IRoundsManager {
         _blockHashForRound[currRound] = roundBlockHash;
         // Set active transcoders for the round
         bondingManager().setActiveTranscoders();
+        // set total active stake for the round
+        bondingManager().setCurrentRoundTotalActiveStake();
         // Set mintable rewards for the round
         minter().setCurrentRewardTokens();
 

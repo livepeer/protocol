@@ -50,8 +50,9 @@ contract("System Pause", accounts => {
         await token.approve(bondingManager.address, 1000, {from: transcoder1})
         await bondingManager.bond(1000, transcoder1, {from: transcoder1})
         await bondingManager.transcoder(0, 5, {from: transcoder1})
-
-        assert.equal(await bondingManager.transcoderStatus(transcoder1), 1, "wrong transcoder status")
+        await roundsManager.mineBlocks(roundLength.toNumber() * 1)
+        await roundsManager.initializeRound()
+        assert.isTrue(await bondingManager.isRegisteredTranscoder(transcoder1), "wrong transcoder status")
     })
 
     it("delegator 1 bonds to transcoder 1", async () => {
