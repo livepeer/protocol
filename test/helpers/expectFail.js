@@ -1,4 +1,4 @@
-module.exports.expectRevertWithReason = async (promise, reason) => {
+export default async (promise, reason) => {
     try {
         await promise
     } catch (error) {
