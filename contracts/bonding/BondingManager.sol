@@ -35,12 +35,12 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         uint256 rewardCut;                                              // % of reward paid to transcoder by a delegator
         uint256 feeShare;                                               // % of fees paid to delegators by transcoder
         uint256 pricePerSegmentDEPRECATED;                              // DEPRECATED - DO NOT USE
-        uint256 pendingRewardCut;                                       // Pending reward cut for next round if the transcoder is active
-        uint256 pendingFeeShare;                                        // Pending fee share for next round if the transcoder is active
+        uint256 pendingRewardCutDEPRECATED;                             // DEPRECATED - DO NOT USE
+        uint256 pendingFeeShareDEPRECATED;                              // DEPRECATED - DO NOT USE
         uint256 pendingPricePerSegmentDEPRECATED;                       // DEPRECATED - DO NOT USE
         mapping (uint256 => EarningsPool.Data) earningsPoolPerRound;    // Mapping of round => earnings pool for the round
         uint256 lastActiveStakeUpdateRound;                             // Round for which the stake was last updated
-        uint256 activationRound;                                         // Round in which the transcoder became active - 0 if inactive
+        uint256 activationRound;                                        // Round in which the transcoder became active - 0 if inactive
     }
 
     // The various states a transcoder can be in
@@ -182,8 +182,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // Must have a non-zero amount bonded to self
         require(del.delegateAddress == msg.sender && del.bondedAmount > 0);
 
-        t.pendingRewardCut = _rewardCut;
-        t.pendingFeeShare = _feeShare;
+        t.rewardCut = _rewardCut;
+        t.feeShare = _feeShare;
 
         if (!transcoderPool.contains(msg.sender)) {
             tryToJoinActiveSet(msg.sender, del.delegatedAmount, roundsManager().currentRound());
@@ -419,15 +419,6 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             activeTranscoderSet[currentRound].isActive[currentTranscoder] = true;
 
             uint256 stake = transcoderTotalStake(currentTranscoder);
-            uint256 rewardCut = transcoders[currentTranscoder].pendingRewardCut;
-            uint256 feeShare = transcoders[currentTranscoder].pendingFeeShare;
-
-            Transcoder storage t = transcoders[currentTranscoder];
-            // Set pending rates as current rates
-            t.rewardCut = rewardCut;
-            t.feeShare = feeShare;
-            // Initialize token pool
-            t.earningsPoolPerRound[currentRound].init(stake, rewardCut, feeShare);
 
             totalStake = totalStake.add(stake);
 
@@ -447,16 +438,26 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         uint256 currentRound = roundsManager().currentRound();
 
         // Sender must be an active transcoder
-        require(activeTranscoderSet[currentRound].isActive[msg.sender]);
+        require(isActiveTranscoder(msg.sender), "caller must be an active transcoder");
 
         // Transcoder must not have called reward for this round already
-        require(transcoders[msg.sender].lastRewardRound != currentRound);
+        require(transcoders[msg.sender].lastRewardRound != currentRound, "caller has already called reward for the current round");
+        
+        Transcoder storage t = transcoders[msg.sender];
+        EarningsPool.Data storage earningsPool = t.earningsPoolPerRound[currentRound];
+
         // Set last round that transcoder called reward
-        transcoders[msg.sender].lastRewardRound = currentRound;
+        t.lastRewardRound = currentRound;
+        earningsPool.setCommission(t.rewardCut, t.feeShare);
+
+        uint256 lastUpdateRound = lastActiveStakeUpdateRound(msg.sender);
+        if (lastUpdateRound < currentRound) {
+            earningsPool.setStake(activeTranscoderTotalStake(msg.sender, lastUpdateRound));
+        }
 
         // Create reward based on active transcoder's stake relative to the total active stake
         // rewardTokens = (current mintable tokens for the round * active transcoder stake) / total active stake
-        uint256 rewardTokens = minter().createReward(activeTranscoderTotalStake(msg.sender, currentRound), activeTranscoderSet[currentRound].totalStake);
+        uint256 rewardTokens = minter().createReward(earningsPool.totalStake, currentRoundTotalActiveStake);
 
         updateTranscoderWithRewards(msg.sender, rewardTokens, currentRound);
 
@@ -482,6 +483,14 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         Transcoder storage t = transcoders[_transcoder];
 
         EarningsPool.Data storage earningsPool = t.earningsPoolPerRound[_round];
+
+        if (_round > t.lastRewardRound) {
+            earningsPool.setCommission(
+                t.rewardCut,
+                t.feeShare
+            );
+        }
+
         // Add fees to fee pool
         earningsPool.addToFeePool(_fees);
     }
@@ -547,10 +556,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * @param _endRound The last round for which to claim token pools shares for a delegator
      */
     function claimEarnings(uint256 _endRound) external whenSystemNotPaused currentRoundInitialized {
-        // End round must be after the last claim round
-        require(delegators[msg.sender].lastClaimRound < _endRound);
-        // End round must not be after the current round
-        require(_endRound <= roundsManager().currentRound());
+        require(delegators[msg.sender].lastClaimRound < _endRound, "end round must be after last claim round");
+        require(_endRound <= roundsManager().currentRound(), "end round must be before or equal to current round");
 
         updateDelegatorWithEarnings(msg.sender, _endRound);
     }
@@ -570,8 +577,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     function pendingStake(address _delegator, uint256 _endRound) public view returns (uint256) {
         uint256 currentRound = roundsManager().currentRound();
         Delegator storage del = delegators[_delegator];
-        // End round must be before or equal to current round and after lastClaimRound
-        require(_endRound <= currentRound && _endRound > del.lastClaimRound);
+        
+        require(_endRound <= currentRound && _endRound > del.lastClaimRound, "end round must be before or equal to current round and after lastClaimRound");
 
         uint256 currentBondedAmount = del.bondedAmount;
 
@@ -666,15 +673,13 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     )
         public
         view
-        returns (uint256 lastRewardRound, uint256 rewardCut, uint256 feeShare, uint256 pendingRewardCut, uint256 pendingFeeShare, uint256 activationRound)
+        returns (uint256 lastRewardRound, uint256 rewardCut, uint256 feeShare, uint256 activationRound)
     {
         Transcoder storage t = transcoders[_transcoder];
 
         lastRewardRound = t.lastRewardRound;
         rewardCut = t.rewardCut;
         feeShare = t.feeShare;
-        pendingRewardCut = t.pendingRewardCut;
-        pendingFeeShare = t.pendingFeeShare;
         activationRound = t.activationRound;
     }
 
@@ -837,7 +842,9 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             if (transcoderPool.contains(_transcoder)) {
                 transcoderPool.updateKey(_transcoder, newStake, address(0), address(0));
                 nextRoundTotalActiveStake = nextRoundTotalActiveStake.add(_amount);
-                transcoders[_transcoder].lastActiveStakeUpdateRound = nextRound;
+                Transcoder storage t = transcoders[_transcoder];
+                t.earningsPoolPerRound[nextRound].setStake(newStake);
+                t.lastActiveStakeUpdateRound = nextRound;
             } else {
                 // Check if the transcoder is eligible to join the active set in the update round
                 tryToJoinActiveSet(_transcoder, newStake, currentRound);
@@ -859,7 +866,9 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
             transcoderPool.updateKey(_transcoder, newStake, address(0), address(0));
             nextRoundTotalActiveStake = nextRoundTotalActiveStake.sub(_amount);
-            transcoders[_transcoder].lastActiveStakeUpdateRound = nextRound;
+            Transcoder storage t = transcoders[_transcoder];
+            t.lastActiveStakeUpdateRound = nextRound;
+            t.earningsPoolPerRound[nextRound].setStake(newStake);
         }
 
         // Decrease old delegate's delegated amount
@@ -882,18 +891,19 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
             // Evict the least stake transcoder from the active set for the next round
             transcoderPool.remove(lastTranscoder);
-            transcoders[lastTranscoder].earningsPoolPerRound[nextRound].deactivateStake();
             transcoders[lastTranscoder].activationRound = 0;
+            transcoders[lastTranscoder].earningsPoolPerRound[nextRound].setStake(0);
             pendingNextRoundTotalActiveStake = pendingNextRoundTotalActiveStake.sub(lastStake);
 
             emit TranscoderEvicted(lastTranscoder);
         }
 
         transcoderPool.insert(_transcoder, _totalStake, address(0), address(0));
-        transcoders[_transcoder].earningsPoolPerRound[nextRound].activateStake(_totalStake);
         pendingNextRoundTotalActiveStake = pendingNextRoundTotalActiveStake.add(_totalStake);
-        transcoders[_transcoder].lastActiveStakeUpdateRound = nextRound;
-        transcoders[_transcoder].activationRound = nextRound;
+        Transcoder storage t = transcoders[_transcoder];
+        t.lastActiveStakeUpdateRound = nextRound;
+        t.activationRound = nextRound;
+        t.earningsPoolPerRound[nextRound].setStake(_totalStake);
         nextRoundTotalActiveStake = pendingNextRoundTotalActiveStake;
     }
 
@@ -904,9 +914,9 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         uint256 transcoderStake = transcoderTotalStake(_transcoder);
         uint256 currentRound = roundsManager().currentRound();
         transcoderPool.remove(_transcoder);
-        transcoders[_transcoder].earningsPoolPerRound[currentRound].deactivateStake();
         currentRoundTotalActiveStake = currentRoundTotalActiveStake.sub(transcoderStake);
         nextRoundTotalActiveStake = nextRoundTotalActiveStake.sub(transcoderStake);
+        transcoders[_transcoder].earningsPoolPerRound[currentRound].setStake(0);
         transcoders[_transcoder].activationRound = 0;
         emit TranscoderResigned(_transcoder);
     }
@@ -924,11 +934,17 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         EarningsPool.Data storage earningsPool = t.earningsPoolPerRound[_round];
         // Add rewards to reward pool
         earningsPool.addToRewardPool(_rewards);
-        // Update transcoder's delegated amount with rewards
-        del.delegatedAmount = del.delegatedAmount.add(_rewards);
         // Update transcoder's total stake with rewards
         uint256 newStake = transcoderTotalStake(_transcoder).add(_rewards);
+        // Update transcoder's delegated amount with rewards
+        del.delegatedAmount = del.delegatedAmount.add(_rewards);
         transcoderPool.updateKey(_transcoder, newStake, address(0), address(0));
+        if (_round == roundsManager().currentRound()) {
+            uint256 nextRound = _round.add(1);
+            t.earningsPoolPerRound[nextRound].setStake(newStake);
+            t.lastActiveStakeUpdateRound = nextRound;
+            nextRoundTotalActiveStake = nextRoundTotalActiveStake.add(_rewards);
+        }
     }
 
     /**
@@ -947,7 +963,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             // we know they will require too much gas to loop through all the necessary rounds to claim earnings
             // The user should instead manually invoke `claimEarnings` to split up the claiming process
             // across multiple transactions
-            require(_endRound.sub(del.lastClaimRound) <= maxEarningsClaimsRounds);
+            require(_endRound.sub(del.lastClaimRound) <= maxEarningsClaimsRounds, "too many rounds to claim through");
 
             uint256 currentBondedAmount = del.bondedAmount;
             uint256 currentFees = del.fees;
