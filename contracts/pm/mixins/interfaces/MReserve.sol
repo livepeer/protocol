@@ -4,30 +4,15 @@ pragma experimental ABIEncoderV2;
 
 
 contract MReserve {
-    // States for a reserve
-    enum ReserveState {
-        NotFrozen,
-        Frozen,
-        Thawed
-    }
-
     struct ReserveInfo {
-        uint256 fundsRemaining;  // Funds remaining in reserve
-        ReserveState state;      // State of reserve
-        uint256 thawRound;       // Round that the reserve can be withdrawn if it has been frozen
+        uint256 fundsRemaining;        // Funds remaining in reserve
+        uint256 claimedInCurrentRound; // Funds claimed from reserve in current round
     }
 
     // Emitted when funds are added to a reserve
     event ReserveFunded(address indexed reserveHolder, uint256 amount);
-    // Emitted when funds are claimed from a frozen reserve
+    // Emitted when funds are claimed from a reserve
     event ReserveClaimed(address indexed reserveHolder, address claimant, uint256 amount);
-    // Emitted when a reserve is frozen
-    event ReserveFrozen(
-        address indexed reserveHolder,
-        address indexed claimant,
-        uint256 freezeRound,
-        uint256 recipientsInFreezeRound
-    );
 
     /**
      * @dev Returns info about a reserve
@@ -71,13 +56,6 @@ contract MReserve {
     )
         internal
         returns (uint256);
-
-    /**
-     * @dev Returns the state of a reserve
-     * @param _reserveHolder Address of reserve holder
-     * @return State of the reserve for `_reserveHolder`
-     */
-    function reserveState(address _reserveHolder) internal view returns (ReserveState);
 
     /**
      * @dev Returns the amount of funds remaining in a reserve
