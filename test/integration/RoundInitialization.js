@@ -59,7 +59,7 @@ contract("RoundInitialization", accounts => {
     })
 
     it("initializes a round with numActiveTranscoders = 15", async () => {
-        const newTranscoders = accounts.slice(11, 26)
+        const newTranscoders = accounts.slice(11, 16)
         await bondingManager.setNumActiveTranscoders(15)
         assert.equal(await bondingManager.getTranscoderPoolMaxSize(), 15, "wrong max # of active transcoders")
         await registerTranscodersAndInitializeRound(bondAmount, newTranscoders, bondingManager, token, roundsManager)
@@ -68,7 +68,7 @@ contract("RoundInitialization", accounts => {
     })
 
     it("initializes a round with numActiveTranscoders = 20", async () => {
-        const newTranscoders = accounts.slice(26, 46)
+        const newTranscoders = accounts.slice(16, 21)
 
         await bondingManager.setNumActiveTranscoders(20)
         assert.equal(await bondingManager.getTranscoderPoolMaxSize(), 20, "wrong max # of active transcoders")
@@ -79,7 +79,7 @@ contract("RoundInitialization", accounts => {
     })
 
     it("initializes a round with numActiveTranscoders = 30", async () => {
-        const newTranscoders = accounts.slice(46, 76)
+        const newTranscoders = accounts.slice(21, 31)
 
         await bondingManager.setNumActiveTranscoders(30)
         assert.equal(await bondingManager.getTranscoderPoolMaxSize(), 30, "wrong max # of active transcoders")
@@ -91,7 +91,7 @@ contract("RoundInitialization", accounts => {
     })
 
     it("initializes a round with numActiveTranscoders = 40", async () => {
-        const newTranscoders = accounts.slice(76, 100)
+        const newTranscoders = accounts.slice(31, 41)
         await bondingManager.setNumActiveTranscoders(40)
         assert.equal(await bondingManager.getTranscoderPoolMaxSize(), 40, "wrong max # of active transcoders")
 
