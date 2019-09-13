@@ -30,15 +30,12 @@ library EarningsPool {
     }
 
     /**
-     * @dev Initialize a EarningsPool struct
+     * @dev Sets transcoderRewardCut and transcoderFeeshare for an EarningsPool
      * @param earningsPool Storage pointer to EarningsPool struct
-     * @param _stake Total stake of the transcoder during the earnings pool's round
      * @param _rewardCut Reward cut of transcoder during the earnings pool's round
      * @param _feeShare Fee share of transcoder during the earnings pool's round
      */
-    function init(EarningsPool.Data storage earningsPool, uint256 _stake, uint256 _rewardCut, uint256 _feeShare) internal {
-        earningsPool.totalStake = _stake;
-        earningsPool.claimableStake = _stake;
+    function setCommission(EarningsPool.Data storage earningsPool, uint256 _rewardCut, uint256 _feeShare) internal {
         earningsPool.transcoderRewardCut = _rewardCut;
         earningsPool.transcoderFeeShare = _feeShare;
         // We set this flag to true here to differentiate between EarningsPool structs created using older versions of this library.
@@ -48,21 +45,21 @@ library EarningsPool {
     }
 
     /**
+     * @dev Sets totalStake and claimableStake for an EarningsPool
+     * @param earningsPool Storage pointer to EarningsPool struct
+     * @param _stake Total stake of the transcoder during the earnings pool's round
+     */
+    function setStake(EarningsPool.Data storage earningsPool, uint256 _stake) internal {
+        earningsPool.totalStake = _stake;
+        earningsPool.claimableStake = _stake;
+    }
+
+    /**
      * @dev Return whether this earnings pool has claimable shares i.e. is there unclaimed stake
      * @param earningsPool Storage pointer to EarningsPool struct
      */
     function hasClaimableShares(EarningsPool.Data storage earningsPool) internal view returns (bool) {
         return earningsPool.claimableStake > 0;
-    }
-
-    function activateStake(EarningsPool.Data storage earningsPool, uint256 _stake) internal {
-        earningsPool.totalStake = _stake;
-        earningsPool.claimableStake = _stake;
-    }
-
-    function deactivateStake(EarningsPool.Data storage earningsPool) internal {
-        earningsPool.totalStake = 0;
-        earningsPool.claimableStake = 0;
     }
 
     /** 

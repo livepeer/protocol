@@ -9,7 +9,8 @@ contract TestEarningsPool2 {
 
     function beforeEach() public {
         fixture = new EarningsPoolFixture();
-        fixture.init(1000, 500000, 500000);
+        fixture.setStake(1000);
+        fixture.setCommission(500000, 500000);
     }
 
     function test_claimShare_notTranscoder() public {
@@ -25,7 +26,7 @@ contract TestEarningsPool2 {
         Assert.equal(fixture.getClaimableStake(), 500, "should decrease claimable stake by stake of claimant");
     }
 
-   function test_claimShare_isTranscoder() public {
+    function test_claimShare_isTranscoder() public {
         fixture.addToFeePool(1000);
         fixture.addToRewardPool(1000);
         (uint256 fees, uint256 rewards) = fixture.claimShare(500, true);
@@ -98,7 +99,8 @@ contract TestEarningsPool2 {
     }
 
     function test_feePoolShare_noClaimableStake() public {
-        fixture.init(0, 0, 0);
+        fixture.setStake(0);
+        fixture.setCommission(0, 0);
         Assert.equal(fixture.feePoolShare(500, false), 0, "should return 0 if no claimable stake");
     }
 
@@ -113,7 +115,8 @@ contract TestEarningsPool2 {
     }
 
     function test_rewardPoolShare_noClaimableStake() public {
-        fixture.init(0, 0, 0);
+        fixture.setStake(0);
+        fixture.setCommission(0, 0);
         Assert.equal(fixture.rewardPoolShare(500, false), 0, "should return 0 if no claimable stake");
     }
 
@@ -132,7 +135,8 @@ contract TestEarningsPool2 {
     }
 
     function test_hasClaimableShares_zeroClaimableStake() public {
-        fixture.init(0, 0, 0);
+        fixture.setStake(0);
+        fixture.setCommission(0, 0);
         Assert.equal(fixture.hasClaimableShares(), false, "should return false when pool has zero claimable stake");
     }
 }
