@@ -1524,7 +1524,7 @@ contract("TicketBroker", accounts => {
     })
 
     describe("claimableReserve", () => {
-        it("Returns 0 when the reserveHolder does not have a reserve", async () => {
+        it("returns 0 when the reserveHolder does not have a reserve", async () => {
             const numRecipients = 10
             await fixture.bondingManager.setMockUint256(functionSig("getTranscoderPoolSize()"), numRecipients)
             assert.equal((await broker.claimableReserve(constants.NULL_ADDRESS, constants.NULL_ADDRESS)).toString(10), "0")
@@ -1545,7 +1545,7 @@ contract("TicketBroker", accounts => {
             assert.equal((await broker.claimableReserve(sender, constants.NULL_ADDRESS)).toString(10), "0")
         })
 
-        it("Returns claimable reserve for a claimaint if reserve was not claimed from", async () => {
+        it("returns claimable reserve for a claimaint if reserve was not claimed from", async () => {
             const numRecipients = 10
             const deposit = 1000
             const reserve = 1000
@@ -1575,7 +1575,7 @@ contract("TicketBroker", accounts => {
             )
         })
 
-        it("Returns claimable reserve for a claimant when reserve was claimed from", async () => {
+        it("returns claimable reserve for a claimant when reserve was claimed from", async () => {
             const numRecipients = 10
             const reserve = 1000
             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
@@ -1596,7 +1596,7 @@ contract("TicketBroker", accounts => {
             )
         })
 
-        it("Returns 0 if claimant has claimed all of his claimableReserve", async () => {
+        it("returns 0 if claimant has claimed all of his claimableReserve", async () => {
             const numRecipients = 10
             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
             await fixture.bondingManager.setMockUint256(functionSig("getTranscoderPoolSize()"), numRecipients)
