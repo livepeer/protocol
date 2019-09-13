@@ -84,6 +84,19 @@ contract MixinReserve is MContractRegistry, MReserve {
      * @param _reserveHolder Address of reserve holder
      */
     function clearReserve(address _reserveHolder) internal {
+        // This delete operation will only clear reserve.funds and will not clear the storage for reserve.claimedForRound
+        // reserve.claimedByAddress because these fields are mappings and the Solidity `delete` keyword will not modify mappings.
+        // This *could* be a problem in the following scenario:
+        //
+        // 1) In round N, for address A, reserve.claimedForRound[N] > 0 and reserve.claimedByAddress[N][r_i] > 0 where r_i is
+        // a member of the active set in round N
+        // 2) This function is called by MixinTicketBrokerCore.withdraw() in round N
+        // 3) Address A funds its reserve again
+        //
+        // After step 3, A has reserve.funds > 0, reserve.claimedForRound[N] > 0 and reserve.claimedByAddress[N][r_i] > 0
+        // despite having funded a fresh reserve after previously withdrawing all of its funds in the same round.
+        // We prevent this scenario by disallowing reserve claims starting at an address' withdraw round in
+        // MixinTicketBrokerCore.redeemWinningTicket()
         delete reserves[_reserveHolder];
     }
 

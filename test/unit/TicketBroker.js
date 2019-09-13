@@ -5,6 +5,7 @@ import {expectRevertWithReason} from "../helpers/expectFail"
 import {
     DUMMY_TICKET_CREATION_ROUND,
     DUMMY_TICKET_CREATION_ROUND_BLOCK_HASH,
+    createAuxData,
     createTicket,
     createWinningTicket,
     getTicketHash
@@ -37,6 +38,7 @@ contract("TicketBroker", accounts => {
             ticketValidityPeriod
         )
 
+        await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
         await fixture.roundsManager.setMockBytes32(
             functionSig("blockHashForRound(uint256)"),
             DUMMY_TICKET_CREATION_ROUND_BLOCK_HASH
@@ -521,6 +523,28 @@ contract("TicketBroker", accounts => {
                     5
                 ),
                 "recipientRand does not match recipientRandHash"
+            )
+        })
+
+        it("reverts if sender is unlocked", async () => {
+            // Unlock the sender
+            await broker.fundDeposit({from: sender, value: 100})
+            await broker.unlock({from: sender})
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + unlockPeriod)
+
+            const recipientRand = 5
+            const auxData = createAuxData(currentRound + unlockPeriod, DUMMY_TICKET_CREATION_ROUND_BLOCK_HASH)
+            const ticket = createWinningTicket(recipient, sender, recipientRand, 0, auxData)
+            const ticketHash = getTicketHash(ticket)
+            const senderSig = await web3.eth.sign(ticketHash, sender)
+
+            await expectRevertWithReason(
+                broker.redeemWinningTicket(
+                    ticket,
+                    senderSig,
+                    recipientRand
+                ),
+                "sender is unlocked"
             )
         })
 
@@ -1275,15 +1299,14 @@ contract("TicketBroker", accounts => {
             await expectRevertWithReason(broker.unlock({from: sender2}), "unlock already initiated")
         })
 
-        it("sets withdrawBlock according to constructor config", async () => {
+        it("sets withdrawRound according to constructor config", async () => {
             await broker.fundDeposit({from: sender, value: 1000})
 
             await broker.unlock({from: sender})
 
-            const fromBlock = (await web3.eth.getBlock("latest")).number
-            const expectedWithdrawBlock = fromBlock + unlockPeriod
-            const withdrawBlock = (await broker.getSenderInfo(sender)).sender.withdrawBlock.toString()
-            assert.equal(withdrawBlock, expectedWithdrawBlock.toString())
+            const expectedWithdrawRound = currentRound + unlockPeriod
+            const withdrawRound = (await broker.getSenderInfo(sender)).sender.withdrawRound.toString()
+            assert.equal(withdrawRound, expectedWithdrawRound.toString())
         })
 
         it("sets isUnlockInProgress to true", async () => {
@@ -1297,15 +1320,15 @@ contract("TicketBroker", accounts => {
 
         it("emits an Unlock event", async () => {
             await broker.fundDeposit({from: sender, value: 1000})
-            const expectedStartBlock = (await web3.eth.getBlock("latest")).number + 1
-            const expectedEndBlock = expectedStartBlock + unlockPeriod
+            const expectedStartRound = currentRound
+            const expectedEndRound = expectedStartRound + unlockPeriod
 
             const txResult = await broker.unlock({from: sender})
 
             truffleAssert.eventEmitted(txResult, "Unlock", ev => {
                 return ev.sender === sender &&
-                    ev.startBlock.toString() === expectedStartBlock.toString() &&
-                    ev.endBlock.toString() === expectedEndBlock.toString()
+                    ev.startRound.toString() === expectedStartRound.toString() &&
+                    ev.endRound.toString() === expectedEndRound.toString()
             })
         })
 
@@ -1406,7 +1429,7 @@ contract("TicketBroker", accounts => {
             await broker.fundDeposit({from: sender, value: 1000})
             await broker.fundReserve({from: sender, value: 2000})
             await broker.unlock({from: sender})
-            await fixture.rpc.wait(unlockPeriod)
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + unlockPeriod)
 
             await broker.withdraw({from: sender})
 
@@ -1424,7 +1447,7 @@ contract("TicketBroker", accounts => {
             await broker.fundDeposit({from: sender, value: deposit})
             await broker.fundReserve({from: sender, value: reserve})
             await broker.unlock({from: sender})
-            await fixture.rpc.wait(unlockPeriod)
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + unlockPeriod)
 
             await broker.withdraw({from: sender})
 
@@ -1444,7 +1467,7 @@ contract("TicketBroker", accounts => {
             const reserve = 2000
             await broker.fundReserve({from: sender, value: reserve})
             await broker.unlock({from: sender})
-            await fixture.rpc.wait(unlockPeriod)
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + unlockPeriod)
 
             await broker.withdraw({from: sender})
 
@@ -1464,7 +1487,7 @@ contract("TicketBroker", accounts => {
             const deposit = 1000
             await broker.fundDeposit({from: sender, value: deposit})
             await broker.unlock({from: sender})
-            await fixture.rpc.wait(unlockPeriod)
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + unlockPeriod)
 
             await broker.withdraw({from: sender})
 
@@ -1485,7 +1508,7 @@ contract("TicketBroker", accounts => {
             await broker.fundDeposit({from: sender, value: deposit})
             await broker.fundReserve({from: sender, value: reserve})
             await broker.unlock({from: sender})
-            await fixture.rpc.wait(unlockPeriod)
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + unlockPeriod)
 
             const txResult = await broker.withdraw({from: sender})
 
@@ -1503,7 +1526,7 @@ contract("TicketBroker", accounts => {
             await broker.fundDeposit({from: sender, value: deposit})
             await broker.fundReserve({from: sender, value: reserve})
             await broker.unlock({from: sender})
-            await fixture.rpc.wait(unlockPeriod)
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + unlockPeriod)
 
             await broker.withdraw({from: sender})
 
