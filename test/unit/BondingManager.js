@@ -422,7 +422,7 @@ contract("BondingManager", accounts => {
                     const endTotalStake = await bondingManager.nextRoundTotalActiveStake()
                     assert.equal(endTotalStake.sub(startTotalStake), 3000)
                 })
-          
+
                 it("should update transcoder's lastActiveStakeUpdateRound", async () => {
                     await bondingManager.bond(3000, transcoder0, {from: delegator})
                     assert.equal(await bondingManager.lastActiveStakeUpdateRound(transcoder0), currentRound+1)
