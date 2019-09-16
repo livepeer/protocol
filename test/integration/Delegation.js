@@ -451,7 +451,7 @@ contract("Delegation", accounts => {
 
         // Test state after rebond
         // Verify reward claiming logic
-        const transcoder2ActiveStake = await bondingManager.activeTranscoderTotalStake(transcoder2, rewardRound)
+        const transcoder2ActiveStake = (await bondingManager.getTranscoderEarningsPoolForRound(transcoder2, rewardRound)).totalStake
         const delegatorProRataShare = startDelegator1BondedAmount.mul(new BN(PERC_DIVISOR)).div(transcoder2ActiveStake)
         const rewardShare = rewardAmount.mul(delegatorProRataShare).div(new BN(PERC_DIVISOR))
         const dInfo = await bondingManager.getDelegator(delegator1)
