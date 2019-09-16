@@ -8,6 +8,7 @@
   },
   "scripts": {
     "lint": "npm run eslint && npm run solium",
+    "lint:fix": "./node_modules/.bin/eslint util/** test/** --fix",
     "eslint": "./node_modules/.bin/eslint util/** test/**",
     "solium": "./node_modules/.bin/solium --dir ./contracts",
     "ganache": "bash scripts/run_ganache.sh",
