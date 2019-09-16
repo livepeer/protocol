@@ -66,29 +66,20 @@ contract("Delegation", accounts => {
     it("registers transcoder 1 that self bonds", async () => {
         await token.approve(bondingManager.address, 1000, {from: transcoder1})
         await bondingManager.bond(1000, transcoder1, {from: transcoder1})
-
-        // Stake doesn't count until user joins transcoder pool
-        assert.equal(await bondingManager.getTotalBonded(), 0, "wrong total bonded")
-
         await bondingManager.transcoder(0, 5, {from: transcoder1})
         await roundsManager.mineBlocks(roundLength.toNumber() * 1)
         await roundsManager.initializeRound()
         assert.isTrue(await bondingManager.isRegisteredTranscoder(transcoder1), "wrong transcoder status")
-        // Stake counted (+1000) after user joins transcoder pool
         assert.equal(await bondingManager.getTotalBonded(), 1000, "wrong total bonded")
     })
 
     it("registers transcoder 2 that self bonds", async () => {
         await token.approve(bondingManager.address, 1000, {from: transcoder2})
         await bondingManager.bond(1000, transcoder2, {from: transcoder2})
-
-        // Stake doesn't count until user joins transcoder pool
-        assert.equal(await bondingManager.getTotalBonded(), 1000, "wrong total bonded")
         await bondingManager.transcoder(0, 5, {from: transcoder2})
         await roundsManager.mineBlocks(roundLength.toNumber() * 1)
         await roundsManager.initializeRound()
-        assert.isTrue(await bondingManager.isRegisteredTranscoder(transcoder1), "wrong transcoder status")
-        // Stake counted (+1000) after user joins transcoder pool
+        assert.isTrue(await bondingManager.isRegisteredTranscoder(transcoder2), "wrong transcoder status")
         assert.equal(await bondingManager.getTotalBonded(), 2000, "wrong total bonded")
     })
 
