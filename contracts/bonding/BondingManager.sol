@@ -39,6 +39,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         uint256 pendingFeeShare;                                        // Pending fee share for next round if the transcoder is active
         uint256 pendingPricePerSegmentDEPRECATED;                       // DEPRECATED - DO NOT USE
         mapping (uint256 => EarningsPool.Data) earningsPoolPerRound;    // Mapping of round => earnings pool for the round
+        uint256 lastActiveStakeUpdateRound;                             // Round for which the stake was last updated
+        uint256 activationRound;                                         // Round in which the transcoder became active - 0 if inactive
     }
 
     // The various states a transcoder can be in
@@ -92,9 +94,6 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     uint256 public currentRoundTotalActiveStake;
     // The total active stake (sum of the stake of active set members) for the next round
     uint256 public nextRoundTotalActiveStake;
-
-    // Keep track of the last stake update round for a transcoder
-    mapping(address => uint256) public lastActiveStakeUpdateRound;
 
     // Check if sender is TicketBroker
     modifier onlyTicketBroker() {
@@ -175,8 +174,6 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         Transcoder storage t = transcoders[msg.sender];
         Delegator storage del = delegators[msg.sender];
 
-        uint256 currentRound = roundsManager().currentRound();
-
         // No transcoder operations can take place during the round lock period
         require(
             !roundsManager().currentRoundLocked(),
@@ -195,7 +192,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         t.pendingFeeShare = _feeShare;
 
         if (!transcoderPool.contains(msg.sender)) {
-            tryToJoinActiveSet(msg.sender, del.delegatedAmount, currentRound);
+            tryToJoinActiveSet(msg.sender, del.delegatedAmount, roundsManager().currentRound());
         }
 
         emit TranscoderUpdate(msg.sender, _rewardCut, _feeShare, transcoderPool.contains(msg.sender));
@@ -243,14 +240,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             // Update amount to delegate with previous delegation amount
             delegationAmount = delegationAmount.add(del.bondedAmount);
 
-            if (isRegisteredTranscoder(currentDelegate)) {
-                // Previously delegated to a transcoder
-                // Decrease old transcoder's total stake
-                decreaseTranscoderTotalStake(currentDelegate, del.bondedAmount);
-            }
-
-            // Decrease old delegate's delegated amount
-            delegators[currentDelegate].delegatedAmount = delegators[currentDelegate].delegatedAmount.sub(del.bondedAmount);
+            decreaseTranscoderTotalStake(currentDelegate, del.bondedAmount);
         }
 
         // Delegation amount must be > 0 - cannot delegate to someone without having bonded stake
@@ -260,14 +250,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // Update bonded amount
         del.bondedAmount = del.bondedAmount.add(_amount);
         
-        if (isRegisteredTranscoder(_to)) {
-            // Delegated to a transcoder
-            // Increase transcoder's total stake
-            increaseTranscoderTotalStake(_to, delegationAmount);
-        }
-
-        // Update current delegate's delegated amount with delegation amount
-        delegators[_to].delegatedAmount = delegators[_to].delegatedAmount.add(delegationAmount);
+        increaseTotalStake(_to, delegationAmount);
 
         if (_amount > 0) {
             // Transfer the LPT to the Minter
@@ -316,10 +299,9 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             decreaseTranscoderTotalStake(currentDelegate, _amount);
         } else {
             resignTranscoder(msg.sender);
+            // Decrease delegate's delegated amount
+            delegators[currentDelegate].delegatedAmount = delegators[currentDelegate].delegatedAmount.sub(_amount);
         }   
-
-        // Decrease delegate's delegated amount
-        delegators[currentDelegate].delegatedAmount = delegators[currentDelegate].delegatedAmount.sub(_amount);
 
         // Check if delegator has a zero bonded amount
         // If so, update its delegation status
@@ -501,8 +483,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         whenSystemNotPaused
         onlyTicketBroker
     {
-        // Transcoder must be registered
-        require(isRegisteredTranscoder(_transcoder));
+        require(isRegisteredTranscoder(_transcoder), "transcoder must be registered");
 
         Transcoder storage t = transcoders[_transcoder];
 
@@ -581,7 +562,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     }
 
     /**
-     * @dev Called during round initialization 
+     * @dev Called during round initialization to set the total active stake for the round
      */
     function setCurrentRoundTotalActiveStake() external onlyRoundsManager {
         currentRoundTotalActiveStake = nextRoundTotalActiveStake;
@@ -691,7 +672,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     )
         public
         view
-        returns (uint256 lastRewardRound, uint256 rewardCut, uint256 feeShare, uint256 pendingRewardCut, uint256 pendingFeeShare)
+        returns (uint256 lastRewardRound, uint256 rewardCut, uint256 feeShare, uint256 pendingRewardCut, uint256 pendingFeeShare, uint256 activationRound)
     {
         Transcoder storage t = transcoders[_transcoder];
 
@@ -700,6 +681,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         feeShare = t.feeShare;
         pendingRewardCut = t.pendingRewardCut;
         pendingFeeShare = t.pendingFeeShare;
+        activationRound = t.activationRound;
     }
 
     /**
@@ -815,12 +797,21 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         return totalBonded;
     }
 
+    /**
+     * @dev Return the round for which a transcoder's stake was last updated
+     * @param _transcoder Transcoder address
+     */
+    function lastActiveStakeUpdateRound(address _transcoder) public view returns (uint256) {
+        return transcoders[_transcoder].lastActiveStakeUpdateRound;
+    }
+
    /**
      * @dev Return whether a transcoder is active for the current round
      * @param _transcoder Transcoder address
      */
     function isActiveTranscoder(address _transcoder) public view returns (bool) {
-        return lastActiveStakeUpdateRound[_transcoder] != 0 && lastActiveStakeUpdateRound[_transcoder] <= roundsManager().currentRound();
+        uint256 activationRound = transcoders[_transcoder].activationRound;
+        return activationRound != 0 && activationRound <= roundsManager().currentRound();
     }
 
     /**
@@ -828,7 +819,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * @param _transcoder Transcoder address
      */
     function isRegisteredTranscoder(address _transcoder) public view returns (bool) {
-        return delegators[_transcoder].delegateAddress == _transcoder && delegatorStatus(_transcoder) == DelegatorStatus.Bonded;
+        Delegator storage d = delegators[_transcoder];
+        return d.delegateAddress == _transcoder && d.bondedAmount > 0;
     }
 
     /**
@@ -841,37 +833,43 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         return delegators[_delegator].unbondingLocks[_unbondingLockId].withdrawRound > 0;
     }
 
-    function increaseTranscoderTotalStake(address _transcoder, uint256 _amount) internal {
-        uint256 newStake = transcoderTotalStake(_transcoder).add(_amount);
-        uint256 currentRound = roundsManager().currentRound();
-        uint256 nextRound = currentRound.add(1);
+    function increaseTotalStake(address _transcoder, uint256 _amount) internal {
+        if (isRegisteredTranscoder(_transcoder)) {
+            uint256 newStake = transcoderTotalStake(_transcoder).add(_amount);
+            uint256 currentRound = roundsManager().currentRound();
+            uint256 nextRound = currentRound.add(1);
 
-        // If the transcoder is already in the active set update its stake and return
-        if (transcoderPool.contains(_transcoder)) {
-            transcoderPool.updateKey(_transcoder, newStake, address(0), address(0));
-            nextRoundTotalActiveStake = nextRoundTotalActiveStake.add(_amount);
-            lastActiveStakeUpdateRound[_transcoder] = nextRound;
-        } else {
-            // Check if the transcoder is eligible to join the active set in the update round
-            tryToJoinActiveSet(_transcoder, newStake, currentRound);
+            // If the transcoder is already in the active set update its stake and return
+            if (transcoderPool.contains(_transcoder)) {
+                transcoderPool.updateKey(_transcoder, newStake, address(0), address(0));
+                nextRoundTotalActiveStake = nextRoundTotalActiveStake.add(_amount);
+                transcoders[_transcoder].lastActiveStakeUpdateRound = nextRound;
+            } else {
+                // Check if the transcoder is eligible to join the active set in the update round
+                tryToJoinActiveSet(_transcoder, newStake, currentRound);
+            }
         }
+
+        // Increase delegate's delegated amount
+        delegators[_transcoder].delegatedAmount = delegators[_transcoder].delegatedAmount.add(_amount);
     }
 
     function decreaseTranscoderTotalStake(address _transcoder, uint256 _amount) internal {
-        if (!transcoderPool.contains(_transcoder)) {
-            return;
+        if (isRegisteredTranscoder(_transcoder)) {
+            if (!transcoderPool.contains(_transcoder)) {
+                return;
+            }
+
+            uint256 newStake = transcoderTotalStake(_transcoder).sub(_amount);
+            uint256 nextRound = roundsManager().currentRound().add(1);
+
+            transcoderPool.updateKey(_transcoder, newStake, address(0), address(0));
+            nextRoundTotalActiveStake = nextRoundTotalActiveStake.sub(_amount);
+            transcoders[_transcoder].lastActiveStakeUpdateRound = nextRound;
         }
 
-        uint256 newStake = transcoderTotalStake(_transcoder).sub(_amount);
-        uint256 nextRound = roundsManager().currentRound().add(1);
-
-        transcoderPool.updateKey(_transcoder, newStake, address(0), address(0));
-        nextRoundTotalActiveStake = nextRoundTotalActiveStake.sub(_amount);
-        if (transcoderPool.contains(_transcoder)) {
-            lastActiveStakeUpdateRound[_transcoder] = nextRound;
-        } else {
-            lastActiveStakeUpdateRound[_transcoder] = 0;
-        }
+        // Decrease old delegate's delegated amount
+        delegators[_transcoder].delegatedAmount = delegators[_transcoder].delegatedAmount.sub(_amount);
     }
 
     function tryToJoinActiveSet(address _transcoder, uint256 _totalStake, uint256 _currentRound) internal {
@@ -891,7 +889,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             // Evict the least stake transcoder from the active set for the next round
             transcoderPool.remove(lastTranscoder);
             transcoders[lastTranscoder].earningsPoolPerRound[nextRound].deactivateStake();
-            lastActiveStakeUpdateRound[lastTranscoder] = 0;
+            transcoders[lastTranscoder].activationRound = 0;
             pendingNextRoundTotalActiveStake = pendingNextRoundTotalActiveStake.sub(lastStake);
 
             emit TranscoderEvicted(lastTranscoder);
@@ -900,7 +898,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         transcoderPool.insert(_transcoder, _totalStake, address(0), address(0));
         transcoders[_transcoder].earningsPoolPerRound[nextRound].activateStake(_totalStake);
         pendingNextRoundTotalActiveStake = pendingNextRoundTotalActiveStake.add(_totalStake);
-        lastActiveStakeUpdateRound[_transcoder] = nextRound;
+        transcoders[_transcoder].lastActiveStakeUpdateRound = nextRound;
+        transcoders[_transcoder].activationRound = nextRound;
         nextRoundTotalActiveStake = pendingNextRoundTotalActiveStake;
     }
 
@@ -909,10 +908,12 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      */
     function resignTranscoder(address _transcoder) internal {
         uint256 transcoderStake = transcoderTotalStake(_transcoder);
-        decreaseTranscoderTotalStake(_transcoder, transcoderStake);
         uint256 currentRound = roundsManager().currentRound();
+        transcoderPool.remove(_transcoder);
         transcoders[_transcoder].earningsPoolPerRound[currentRound].deactivateStake();
         currentRoundTotalActiveStake = currentRoundTotalActiveStake.sub(transcoderStake);
+        nextRoundTotalActiveStake = nextRoundTotalActiveStake.sub(transcoderStake);
+        transcoders[_transcoder].activationRound = 0;
         emit TranscoderResigned(_transcoder);
     }
 
@@ -1002,17 +1003,11 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         uint256 amount = lock.amount;
         // Increase delegator's bonded amount
         del.bondedAmount = del.bondedAmount.add(amount);
-        // Increase delegate's delegated amount
-        delegators[del.delegateAddress].delegatedAmount = delegators[del.delegateAddress].delegatedAmount.add(amount);
 
         // Delete lock
         delete del.unbondingLocks[_unbondingLockId];
 
-        if (isRegisteredTranscoder(del.delegateAddress)) {
-            // If delegate is a registered transcoder increase its delegated stake in registered pool
-            increaseTranscoderTotalStake(del.delegateAddress, amount);
-        }
-
+        increaseTotalStake(del.delegateAddress, amount);
 
         emit Rebond(del.delegateAddress, _delegator, _unbondingLockId, amount);
     }
