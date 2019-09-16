@@ -13,8 +13,19 @@ contract TestEarningsPool {
         fixture.setCommission(500000, 500000);
     }
 
-    // todo setCommission test 
-    // todo setStake test
+    function test_setCommission() public {
+        fixture.setCommission(5, 10);
+        (,,,,,,, uint256 transcoderRewardCut, uint256 transcoderFeeShare) = fixture.getEarningsPool();
+        Assert.equal(transcoderRewardCut, 5, "wrong transcoderRewardCut");
+        Assert.equal(transcoderFeeShare, 10, "wrong transcoderFeeShare");
+    }
+
+    function test_setStake() public {
+        fixture.setStake(5000);
+        (,,,,, uint256 totalStake, uint256 claimableStake,,) = fixture.getEarningsPool();
+        Assert.equal(totalStake, 5000, "wrong totalStake");
+        Assert.equal(claimableStake, 5000, "wrong claimableStake");
+    }
 
     function test_addToFeePool() public {
         fixture.addToFeePool(1000);
