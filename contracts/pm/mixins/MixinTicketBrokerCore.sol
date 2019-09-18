@@ -5,22 +5,23 @@ pragma experimental ABIEncoderV2;
 import "./interfaces/MReserve.sol";
 import "./interfaces/MTicketProcessor.sol";
 import "./interfaces/MTicketBrokerCore.sol";
+import "./interfaces/MContractRegistry.sol";
 import "openzeppelin-solidity/contracts/cryptography/ECDSA.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
 
-contract MixinTicketBrokerCore is MReserve, MTicketProcessor, MTicketBrokerCore {
+contract MixinTicketBrokerCore is MContractRegistry, MReserve, MTicketProcessor, MTicketBrokerCore {
     using SafeMath for uint256;
 
     struct Sender {
         uint256 deposit;        // Amount of funds deposited
-        uint256 withdrawBlock;  // Block that sender can withdraw deposit & reserve
+        uint256 withdrawRound;  // Round that sender can withdraw deposit & reserve
     }
 
     // Mapping of address => Sender
     mapping (address => Sender) internal senders;
 
-    // Number of blocks before a sender can withdraw after requesting an unlock
+    // Number of rounds before a sender can withdraw after requesting an unlock
     uint256 public unlockPeriod;
 
     // Mapping of ticket hashes => boolean indicating if ticket was redeemed
@@ -31,16 +32,6 @@ contract MixinTicketBrokerCore is MReserve, MTicketProcessor, MTicketBrokerCore 
         require(
             msg.value == _depositAmount.add(_reserveAmount),
             "msg.value does not equal sum of deposit amount and reserve amount"
-        );
-
-        _;
-    }
-
-    // Checks if sender's reserve is frozen
-    modifier reserveNotFrozen(address _sender) {
-        require(
-            reserveState(_sender) != ReserveState.Frozen,
-            "sender's reserve is frozen"
         );
 
         _;
@@ -76,7 +67,6 @@ contract MixinTicketBrokerCore is MReserve, MTicketProcessor, MTicketBrokerCore 
     function fundDeposit()
         external
         payable
-        reserveNotFrozen(msg.sender)
         processDeposit(msg.sender, msg.value)
     {
         processFunding(msg.value);
@@ -88,7 +78,6 @@ contract MixinTicketBrokerCore is MReserve, MTicketProcessor, MTicketBrokerCore 
     function fundReserve()
         external
         payable
-        reserveNotFrozen(msg.sender)
         processReserve(msg.sender, msg.value)
     {
         processFunding(msg.value);
@@ -105,7 +94,6 @@ contract MixinTicketBrokerCore is MReserve, MTicketProcessor, MTicketBrokerCore 
     )
         external
         payable
-        reserveNotFrozen(msg.sender)
         checkDepositReserveETHValueSplit(_depositAmount, _reserveAmount)
         processDeposit(msg.sender, _depositAmount)
         processReserve(msg.sender, _reserveAmount)
@@ -134,6 +122,11 @@ contract MixinTicketBrokerCore is MReserve, MTicketProcessor, MTicketBrokerCore 
 
         Sender storage sender = senders[_ticket.sender];
 
+        // Require sender to be locked
+        require(
+            isLocked(sender),
+            "sender is unlocked"
+        );
         // Require either a non-zero deposit or non-zero reserve for the sender
         require(
             sender.deposit > 0 || remainingReserve(_ticket.sender) > 0,
@@ -185,7 +178,7 @@ contract MixinTicketBrokerCore is MReserve, MTicketProcessor, MTicketBrokerCore 
     /**
      * @dev Initiates the unlock period for the caller
      */
-    function unlock() public reserveNotFrozen(msg.sender) {
+    function unlock() public {
         Sender storage sender = senders[msg.sender];
 
         require(
@@ -194,9 +187,10 @@ contract MixinTicketBrokerCore is MReserve, MTicketProcessor, MTicketBrokerCore 
         );
         require(!_isUnlockInProgress(sender), "unlock already initiated");
 
-        sender.withdrawBlock = block.number.add(unlockPeriod);
+        uint256 currentRound = roundsManager().currentRound();
+        sender.withdrawRound = currentRound.add(unlockPeriod);
 
-        emit Unlock(msg.sender, block.number, sender.withdrawBlock);
+        emit Unlock(msg.sender, currentRound, sender.withdrawRound);
     }
 
     /**
@@ -211,7 +205,7 @@ contract MixinTicketBrokerCore is MReserve, MTicketProcessor, MTicketBrokerCore 
     /**
      * @dev Withdraws all ETH from the caller's deposit and reserve
      */
-    function withdraw() public reserveNotFrozen(msg.sender) {
+    function withdraw() public {
         Sender storage sender = senders[msg.sender];
 
         uint256 deposit = sender.deposit;
@@ -221,17 +215,14 @@ contract MixinTicketBrokerCore is MReserve, MTicketProcessor, MTicketBrokerCore 
             deposit > 0 || reserve > 0,
             "sender deposit and reserve are zero"
         );
-
-        if (reserveState(msg.sender) == ReserveState.NotFrozen) {
-            require(
-                _isUnlockInProgress(sender),
-                "no unlock request in progress"
-            );
-            require(
-                block.number >= sender.withdrawBlock,
-                "account is locked"
-            );
-        }
+        require(
+            _isUnlockInProgress(sender),
+            "no unlock request in progress"
+        );
+        require(
+            !isLocked(sender),
+            "account is locked"
+        );
 
         sender.deposit = 0;
         clearReserve(msg.sender);
@@ -273,7 +264,7 @@ contract MixinTicketBrokerCore is MReserve, MTicketProcessor, MTicketBrokerCore 
     function _cancelUnlock(Sender storage _sender, address _senderAddress) internal {
         require(_isUnlockInProgress(_sender), "no unlock request in progress");
 
-        _sender.withdrawBlock = 0;
+        _sender.withdrawRound = 0;
 
         emit UnlockCancelled(_senderAddress);
     }
@@ -315,6 +306,15 @@ contract MixinTicketBrokerCore is MReserve, MTicketProcessor, MTicketBrokerCore 
             isWinningTicket(_sig, _recipientRand, _ticket.winProb),
             "ticket did not win"
         );
+    }
+
+    /**
+     * @dev Returns whether a sender is locked
+     * @param _sender Sender to check for locked status
+     * @return Boolean indicating whether sender is currently locked
+     */
+    function isLocked(Sender memory _sender) internal view returns (bool) {
+        return _sender.withdrawRound == 0 || roundsManager().currentRound() < _sender.withdrawRound;
     }
 
     /**
@@ -373,6 +373,6 @@ contract MixinTicketBrokerCore is MReserve, MTicketProcessor, MTicketBrokerCore 
      * @return Boolean indicating whether the sender is currently in the unlock period
      */
     function _isUnlockInProgress(Sender memory _sender) internal pure returns (bool) {
-        return _sender.withdrawBlock > 0;
+        return _sender.withdrawRound > 0;
     }
 }

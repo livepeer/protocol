@@ -5,6 +5,7 @@ import {expectRevertWithReason} from "../helpers/expectFail"
 import {
     DUMMY_TICKET_CREATION_ROUND,
     DUMMY_TICKET_CREATION_ROUND_BLOCK_HASH,
+    createAuxData,
     createTicket,
     createWinningTicket,
     getTicketHash
@@ -22,7 +23,6 @@ contract("TicketBroker", accounts => {
     const sender = accounts[0]
     const recipient = accounts[1]
 
-    const freezePeriod = 2
     const unlockPeriod = 20
     const ticketValidityPeriod = 2
 
@@ -34,11 +34,11 @@ contract("TicketBroker", accounts => {
 
         broker = await TicketBroker.new(
             fixture.controller.address,
-            freezePeriod,
             unlockPeriod,
             ticketValidityPeriod
         )
 
+        await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
         await fixture.roundsManager.setMockBytes32(
             functionSig("blockHashForRound(uint256)"),
             DUMMY_TICKET_CREATION_ROUND_BLOCK_HASH
@@ -54,26 +54,6 @@ contract("TicketBroker", accounts => {
     })
 
     describe("fundDeposit", () => {
-        it("reverts if the sender's reserve is frozen", async () => {
-            const numRecipients = 10
-            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
-            await fixture.bondingManager.setMockUint256(functionSig("getTranscoderPoolSize()"), numRecipients)
-            await broker.fundReserve({from: sender, value: 1000})
-
-            const recipientRand = 5
-            const faceValue = 1000
-            const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
-            const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
-
-            // Deposit is 0 so this will freeze the reserve
-            await broker.redeemWinningTicket(ticket, senderSig, recipientRand, {from: recipient})
-
-            await expectRevertWithReason(
-                broker.fundDeposit({from: sender, value: 1000}),
-                "sender's reserve is frozen"
-            )
-        })
-
         it("grows the Minter ETH balance", async () => {
             await broker.fundDeposit({from: sender, value: 1000})
 
@@ -161,26 +141,6 @@ contract("TicketBroker", accounts => {
     })
 
     describe("fundReserve", () => {
-        it("reverts if the sender's reserve is frozen", async () => {
-            const numRecipients = 10
-            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
-            await fixture.bondingManager.setMockUint256(functionSig("getTranscoderPoolSize()"), numRecipients)
-            await broker.fundReserve({from: sender, value: 1000})
-
-            const recipientRand = 5
-            const faceValue = 1000
-            const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
-            const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
-
-            // Deposit is 0 so this will freeze the reserve
-            await broker.redeemWinningTicket(ticket, senderSig, recipientRand, {from: recipient})
-
-            await expectRevertWithReason(
-                broker.fundReserve({from: sender, value: 1000}),
-                "sender's reserve is frozen"
-            )
-        })
-
         it("grows the Minter ETH balance", async () => {
             await broker.fundReserve({from: sender, value: 1000})
 
@@ -229,7 +189,7 @@ contract("TicketBroker", accounts => {
             assert.equal(reserve2, "500")
         })
 
-        it("preserves remaining funds from thawed reserve", async () => {
+        it("preserves remaining funds when reserve was claimed from", async () => {
             const numRecipients = 10
             const reserve = 1000
             const allocation = reserve / numRecipients
@@ -243,20 +203,17 @@ contract("TicketBroker", accounts => {
             const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
             const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
 
-            // Deposit is 0 so this will freeze the reserve
+            // Deposit is 0 so this will claim from the reserve
             await broker.redeemWinningTicket(ticket, senderSig, recipientRand, {from: recipient})
 
-            const freezePeriod = await broker.freezePeriod.call()
-            const thawRound = (new BN(currentRound)).add(new BN(freezePeriod))
-            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), thawRound)
-
+            // No additional funds so this should not increase the reserve
             await broker.fundReserve({from: sender})
 
             const remainingReserve = reserve - allocation
             assert.equal((await broker.getSenderInfo(sender)).reserve.fundsRemaining.toString(), remainingReserve.toString())
         })
 
-        it("preserves remaining funds from thawed reserve and adds additional funds", async () => {
+        it("preserves remaining funds when reserve was claimed from and adds additional funds", async () => {
             const numRecipients = 10
             const reserve = 1000
             const allocation = reserve / numRecipients
@@ -270,12 +227,8 @@ contract("TicketBroker", accounts => {
             const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
             const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
 
-            // Deposit is 0 so this will freeze the reserve
+            // Deposit is 0 so this will claim from the reserve
             await broker.redeemWinningTicket(ticket, senderSig, recipientRand, {from: recipient})
-
-            const freezePeriod = await broker.freezePeriod.call()
-            const thawRound = (new BN(currentRound)).add(new BN(freezePeriod))
-            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), thawRound)
 
             const additionalFunds = 100
             await broker.fundReserve({from: sender, value: additionalFunds})
@@ -354,30 +307,6 @@ contract("TicketBroker", accounts => {
             )
         })
 
-        it("reverts if the sender's reserve is frozen", async () => {
-            const numRecipients = 10
-            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
-            await fixture.bondingManager.setMockUint256(functionSig("getTranscoderPoolSize()"), numRecipients)
-            await broker.fundReserve({from: sender, value: 1000})
-
-            const recipientRand = 5
-            const faceValue = 1000
-            const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
-            const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
-
-            // Deposit is 0 so this will freeze the reserve
-            await broker.redeemWinningTicket(ticket, senderSig, recipientRand, {from: recipient})
-
-            await expectRevertWithReason(
-                broker.fundDepositAndReserve(
-                    500,
-                    1000,
-                    {from: sender, value: 1500}
-                ),
-                "sender's reserve is frozen"
-            )
-        })
-
         it("grows the Minter's ETH balance by sum of deposit and reserve amounts", async () => {
             const deposit = 500
             const reserve = 1000
@@ -428,7 +357,7 @@ contract("TicketBroker", accounts => {
             assert.equal(endReserve.toString(), reserve.toString())
         })
 
-        it("preserves remaining funds from thawed reserve", async () => {
+        it("preserves remaining funds when reserve was claimed from", async () => {
             const numRecipients = 10
             const reserve = 1000
             const allocation = reserve / numRecipients
@@ -442,13 +371,10 @@ contract("TicketBroker", accounts => {
             const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
             const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
 
-            // Deposit is 0 so this will freeze the reserve
+            // Deposit is 0 so this will claim from the reserve
             await broker.redeemWinningTicket(ticket, senderSig, recipientRand, {from: recipient})
 
-            const freezePeriod = await broker.freezePeriod.call()
-            const thawRound = (new BN(currentRound)).add(new BN(freezePeriod))
-            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), thawRound)
-
+            // No additional reserve funds so this should not increase reserve 
             await broker.fundDepositAndReserve(
                 100,
                 0,
@@ -459,7 +385,7 @@ contract("TicketBroker", accounts => {
             assert.equal((await broker.getSenderInfo(sender)).reserve.fundsRemaining.toString(), remainingReserve.toString())
         })
 
-        it("preserves remaining funds from thawed reserve and adds additional funds", async () => {
+        it("preserves remaining funds when reserve was claimed from and adds additional funds", async () => {
             const numRecipients = 10
             const reserve = 1000
             const allocation = reserve / numRecipients
@@ -473,12 +399,8 @@ contract("TicketBroker", accounts => {
             const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
             const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
 
-            // Deposit is 0 so this will freeze the reserve
+            // Deposit is 0 so this will claim from the reserve
             await broker.redeemWinningTicket(ticket, senderSig, recipientRand, {from: recipient})
-
-            const freezePeriod = await broker.freezePeriod.call()
-            const thawRound = (new BN(currentRound)).add(new BN(freezePeriod))
-            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), thawRound)
 
             const additionalFunds = 100
             await broker.fundDepositAndReserve(
@@ -604,6 +526,28 @@ contract("TicketBroker", accounts => {
             )
         })
 
+        it("reverts if sender is unlocked", async () => {
+            // Unlock the sender
+            await broker.fundDeposit({from: sender, value: 100})
+            await broker.unlock({from: sender})
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + unlockPeriod)
+
+            const recipientRand = 5
+            const auxData = createAuxData(currentRound + unlockPeriod, DUMMY_TICKET_CREATION_ROUND_BLOCK_HASH)
+            const ticket = createWinningTicket(recipient, sender, recipientRand, 0, auxData)
+            const ticketHash = getTicketHash(ticket)
+            const senderSig = await web3.eth.sign(ticketHash, sender)
+
+            await expectRevertWithReason(
+                broker.redeemWinningTicket(
+                    ticket,
+                    senderSig,
+                    recipientRand
+                ),
+                "sender is unlocked"
+            )
+        })
+
         it("reverts if ticket is used", async () => {
             await broker.fundDeposit({from: sender, value: 1000})
 
@@ -679,56 +623,7 @@ contract("TicketBroker", accounts => {
         })
 
         describe("deposit < faceValue", () => {
-            describe("reserve is not frozen", () => {
-                it("freezes reserve", async () => {
-                    const numRecipients = 10
-                    const reserve = 1000
-                    await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
-                    await fixture.bondingManager.setMockUint256(functionSig("getTranscoderPoolSize()"), numRecipients)
-                    await broker.fundReserve({from: sender, value: reserve})
-
-                    const recipientRand = 5
-                    const faceValue = 1000
-                    const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
-                    const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
-
-                    // Deposit is 0 so this will freeze the reserve
-                    const txRes = await broker.redeemWinningTicket(ticket, senderSig, recipientRand, {from: recipient})
-
-                    truffleAssert.eventEmitted(txRes, "ReserveFrozen", ev => {
-                        return ev.reserveHolder === sender
-                            && ev.claimant === recipient
-                            && ev.freezeRound.toString() === currentRound.toString()
-                            && ev.recipientsInFreezeRound.toString() === numRecipients.toString()
-                    })
-                })
-            })
-
-            describe("reserve is frozen", () => {
-                it("does not allow a claim if the freezeRound is 0 after freezing the reserve", async () => {
-                    // In practice, the freezeRound should never be 0 after the reserve is frozen
-                    // However, we can simulate the scenario in this test to check that the desired
-                    // behavior is exhibited
-
-                    const numRecipients = 10
-                    // Set current round to 0 so that the freezeRound is 0
-                    await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), 0)
-                    await fixture.bondingManager.setMockUint256(functionSig("getTranscoderPoolSize()"), numRecipients)
-                    await fixture.bondingManager.setMockBool(functionSig("isRegisteredTranscoder(address)"), true)
-                    await broker.fundReserve({from: sender, value: 1000})
-
-                    const recipientRand = 5
-                    const faceValue = 10
-                    const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
-                    const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
-
-                    // freezeRound is 0 after the reserve is frozen so the recipient should not be able to claim
-                    const txRes = await broker.redeemWinningTicket(ticket, senderSig, recipientRand, {from: recipient})
-                    truffleAssert.eventEmitted(txRes, "WinningTicketRedeemed")
-                    truffleAssert.eventNotEmitted(txRes, "ReserveClaimed")
-                    assert.equal((await broker.claimedReserve(sender, recipient)).toString(), "0")
-                })
-
+            describe("sender.deposit is zero", () => {
                 it("does not allow a claim if there are no registered recipients", async () => {
                     await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
                     // Set the number of registered recipients to 0
@@ -827,6 +722,7 @@ contract("TicketBroker", accounts => {
                 })
 
                 it("allows a claim from a registered recipient", async () => {
+                    const fromBlock = (await web3.eth.getBlock("latest")).number
                     const numRecipients = 10
                     await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
                     await fixture.bondingManager.setMockUint256(functionSig("getTranscoderPoolSize()"), numRecipients)
@@ -846,6 +742,18 @@ contract("TicketBroker", accounts => {
                             && ev.amount.toString() === ticket.faceValue.toString()
                     })
                     assert.equal((await broker.claimedReserve(sender, recipient)).toString(), ticket.faceValue.toString())
+
+                    // Check that fee pool in BondingManager is updated
+                    const events = await fixture.bondingManager.getPastEvents("UpdateTranscoderWithFees", {
+                        fromBlock,
+                        toBlock: "latest"
+                    })
+
+                    assert.equal(events.length, 1)
+                    const event = events[0]
+                    assert.equal(event.returnValues.transcoder, recipient)
+                    assert.equal(event.returnValues.fees, faceValue)
+                    assert.equal(event.returnValues.round, currentRound)
                 })
 
                 it("allows multiple claims from a registered recipient", async () => {
@@ -945,37 +853,6 @@ contract("TicketBroker", accounts => {
                     assert.equal((await broker.getSenderInfo(sender)).reserve.fundsRemaining.toString(), "0")
                     assert.equal((await broker.claimedReserve(sender, recipient)).toString(), allocation.toString())
                     assert.equal((await broker.claimedReserve(sender, recipient2)).toString(), allocation.toString())
-                })
-            })
-
-            describe("sender.deposit is zero", () => {
-                it("claims from reserve and updates recipient's fee pool in BondingManager", async () => {
-                    const fromBlock = (await web3.eth.getBlock("latest")).number
-                    const numRecipients = 10
-                    const reserve = 1000
-                    const allocation = reserve / numRecipients
-                    await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
-                    await fixture.bondingManager.setMockUint256(functionSig("getTranscoderPoolSize()"), numRecipients)
-                    await fixture.bondingManager.setMockBool(functionSig("isRegisteredTranscoder(address)"), true)
-                    await broker.fundReserve({from: sender, value: reserve})
-
-                    const recipientRand = 5
-                    const faceValue = 1000
-                    const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
-                    const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
-
-                    await broker.redeemWinningTicket(ticket, senderSig, recipientRand, {from: recipient})
-
-                    const events = await fixture.bondingManager.getPastEvents("UpdateTranscoderWithFees", {
-                        fromBlock,
-                        toBlock: "latest"
-                    })
-
-                    assert.equal(events.length, 1)
-                    const event = events[0]
-                    assert.equal(event.returnValues.transcoder, recipient)
-                    assert.equal(event.returnValues.fees, allocation.toString())
-                    assert.equal(event.returnValues.round, currentRound)
                 })
             })
 
@@ -1400,26 +1277,6 @@ contract("TicketBroker", accounts => {
     })
 
     describe("unlock", () => {
-        it("reverts if the sender's reserve is frozen", async () => {
-            const numRecipients = 10
-            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
-            await fixture.bondingManager.setMockUint256(functionSig("getTranscoderPoolSize()"), numRecipients)
-            await broker.fundReserve({from: sender, value: 1000})
-
-            const recipientRand = 5
-            const faceValue = 1000
-            const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
-            const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
-
-            // Deposit is 0 so this will freeze the reserve
-            await broker.redeemWinningTicket(ticket, senderSig, recipientRand, {from: recipient})
-
-            await expectRevertWithReason(
-                broker.unlock({from: sender}),
-                "sender's reserve is frozen"
-            )
-        })
-
         it("reverts when both deposit and reserve are zero", async () => {
             await expectRevertWithReason(broker.unlock(), "sender deposit and reserve are zero")
         })
@@ -1442,15 +1299,14 @@ contract("TicketBroker", accounts => {
             await expectRevertWithReason(broker.unlock({from: sender2}), "unlock already initiated")
         })
 
-        it("sets withdrawBlock according to constructor config", async () => {
+        it("sets withdrawRound according to constructor config", async () => {
             await broker.fundDeposit({from: sender, value: 1000})
 
             await broker.unlock({from: sender})
 
-            const fromBlock = (await web3.eth.getBlock("latest")).number
-            const expectedWithdrawBlock = fromBlock + unlockPeriod
-            const withdrawBlock = (await broker.getSenderInfo(sender)).sender.withdrawBlock.toString()
-            assert.equal(withdrawBlock, expectedWithdrawBlock.toString())
+            const expectedWithdrawRound = currentRound + unlockPeriod
+            const withdrawRound = (await broker.getSenderInfo(sender)).sender.withdrawRound.toString()
+            assert.equal(withdrawRound, expectedWithdrawRound.toString())
         })
 
         it("sets isUnlockInProgress to true", async () => {
@@ -1464,15 +1320,15 @@ contract("TicketBroker", accounts => {
 
         it("emits an Unlock event", async () => {
             await broker.fundDeposit({from: sender, value: 1000})
-            const expectedStartBlock = (await web3.eth.getBlock("latest")).number + 1
-            const expectedEndBlock = expectedStartBlock + unlockPeriod
+            const expectedStartRound = currentRound
+            const expectedEndRound = expectedStartRound + unlockPeriod
 
             const txResult = await broker.unlock({from: sender})
 
             truffleAssert.eventEmitted(txResult, "Unlock", ev => {
                 return ev.sender === sender &&
-                    ev.startBlock.toString() === expectedStartBlock.toString() &&
-                    ev.endBlock.toString() === expectedEndBlock.toString()
+                    ev.startRound.toString() === expectedStartRound.toString() &&
+                    ev.endRound.toString() === expectedEndRound.toString()
             })
         })
 
@@ -1556,70 +1412,24 @@ contract("TicketBroker", accounts => {
             await expectRevertWithReason(broker.withdraw(), "sender deposit and reserve are zero")
         })
 
-        describe("sender's reserve is frozen", () => {
-            it("reverts if freeze period is not over", async () => {
-                const numRecipients = 10
-                await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
-                await fixture.bondingManager.setMockUint256(functionSig("getTranscoderPoolSize()"), numRecipients)
-                await broker.fundReserve({from: sender, value: 1000})
+        it("reverts when no unlock request has been started", async () => {
+            await broker.fundDeposit({from: sender, value: 1000})
 
-                const recipientRand = 5
-                const faceValue = 1000
-                const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
-                const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
-
-                // Deposit is 0 so this will freeze the reserve
-                await broker.redeemWinningTicket(ticket, senderSig, recipientRand, {from: recipient})
-
-                await expectRevertWithReason(
-                    broker.withdraw({from: sender}),
-                    "sender's reserve is frozen"
-                )
-            })
-
-            it("succeeds if freeze period is over", async () => {
-                const numRecipients = 10
-                await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
-                await fixture.bondingManager.setMockUint256(functionSig("getTranscoderPoolSize()"), numRecipients)
-                await broker.fundReserve({from: sender, value: 1000})
-
-                const recipientRand = 5
-                const faceValue = 1000
-                const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
-                const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
-
-                // Deposit is 0 so this will freeze the reserve
-                await broker.redeemWinningTicket(ticket, senderSig, recipientRand, {from: recipient})
-
-                const freezePeriod = await broker.freezePeriod.call()
-                const thawRound = (new BN(currentRound)).add(new BN(freezePeriod))
-                await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), thawRound)
-
-                // Just make sure this doesn't revert
-                await broker.withdraw({from: sender})
-            })
+            await expectRevertWithReason(broker.withdraw(), "no unlock request in progress")
         })
 
-        describe("reserve is not frozen", () => {
-            it("reverts when no unlock request has been started", async () => {
-                await broker.fundDeposit({from: sender, value: 1000})
+        it("reverts when account is locked", async () => {
+            await broker.fundDeposit({from: sender, value: 1000})
+            await broker.unlock({from: sender})
 
-                await expectRevertWithReason(broker.withdraw(), "no unlock request in progress")
-            })
-
-            it("reverts when account is locked", async () => {
-                await broker.fundDeposit({from: sender, value: 1000})
-                await broker.unlock({from: sender})
-
-                await expectRevertWithReason(broker.withdraw(), "account is locked")
-            })
+            await expectRevertWithReason(broker.withdraw(), "account is locked")
         })
 
         it("sets deposit and reserve to zero", async () => {
             await broker.fundDeposit({from: sender, value: 1000})
             await broker.fundReserve({from: sender, value: 2000})
             await broker.unlock({from: sender})
-            await fixture.rpc.wait(unlockPeriod)
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + unlockPeriod)
 
             await broker.withdraw({from: sender})
 
@@ -1637,7 +1447,7 @@ contract("TicketBroker", accounts => {
             await broker.fundDeposit({from: sender, value: deposit})
             await broker.fundReserve({from: sender, value: reserve})
             await broker.unlock({from: sender})
-            await fixture.rpc.wait(unlockPeriod)
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + unlockPeriod)
 
             await broker.withdraw({from: sender})
 
@@ -1657,7 +1467,7 @@ contract("TicketBroker", accounts => {
             const reserve = 2000
             await broker.fundReserve({from: sender, value: reserve})
             await broker.unlock({from: sender})
-            await fixture.rpc.wait(unlockPeriod)
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + unlockPeriod)
 
             await broker.withdraw({from: sender})
 
@@ -1677,7 +1487,7 @@ contract("TicketBroker", accounts => {
             const deposit = 1000
             await broker.fundDeposit({from: sender, value: deposit})
             await broker.unlock({from: sender})
-            await fixture.rpc.wait(unlockPeriod)
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + unlockPeriod)
 
             await broker.withdraw({from: sender})
 
@@ -1698,7 +1508,7 @@ contract("TicketBroker", accounts => {
             await broker.fundDeposit({from: sender, value: deposit})
             await broker.fundReserve({from: sender, value: reserve})
             await broker.unlock({from: sender})
-            await fixture.rpc.wait(unlockPeriod)
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + unlockPeriod)
 
             const txResult = await broker.withdraw({from: sender})
 
@@ -1716,7 +1526,7 @@ contract("TicketBroker", accounts => {
             await broker.fundDeposit({from: sender, value: deposit})
             await broker.fundReserve({from: sender, value: reserve})
             await broker.unlock({from: sender})
-            await fixture.rpc.wait(unlockPeriod)
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + unlockPeriod)
 
             await broker.withdraw({from: sender})
 
@@ -1737,19 +1547,28 @@ contract("TicketBroker", accounts => {
     })
 
     describe("claimableReserve", () => {
-        it("Returns 0 when the reserveHolder does not have a reserve", async () => {
+        it("returns 0 when the reserveHolder does not have a reserve", async () => {
             const numRecipients = 10
             await fixture.bondingManager.setMockUint256(functionSig("getTranscoderPoolSize()"), numRecipients)
             assert.equal((await broker.claimableReserve(constants.NULL_ADDRESS, constants.NULL_ADDRESS)).toString(10), "0")
         })
 
-        it("Returns 0 when the active transcoder pool size is 0 if reserve is not frozen", async () => {
+        it("returns 0 if claimant is not active in the current round", async () => {
             const reserve = 1000
             await broker.fundReserve({from: sender, value: reserve})
             assert.equal((await broker.claimableReserve(sender, constants.NULL_ADDRESS)).toString(10), "0")
         })
 
-        it("Returns claimable reserve for a claimaint if reserve is not frozen", async () => {
+        it("returns 0 when the active transcoder pool size is 0", async () => {
+            await fixture.bondingManager.setMockBool(functionSig("isRegisteredTranscoder(address)"), true)
+            await fixture.bondingManager.setMockUint256(functionSig("getTranscoderPoolSize()"), 0)
+
+            const reserve = 1000
+            await broker.fundReserve({from: sender, value: reserve})
+            assert.equal((await broker.claimableReserve(sender, constants.NULL_ADDRESS)).toString(10), "0")
+        })
+
+        it("returns claimable reserve for a claimaint if reserve was not claimed from", async () => {
             const numRecipients = 10
             const deposit = 1000
             const reserve = 1000
@@ -1779,27 +1598,7 @@ contract("TicketBroker", accounts => {
             )
         })
 
-        it("Returns 0 when there are no recipients in freezeRound when the reserve is frozen", async () => {
-            const reserve = 1000
-            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
-            await broker.fundReserve({from: sender, value: reserve})
-
-            const recipientRand = 5
-            const faceValue = 10
-            const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
-            const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
-            // Claim winning ticket - will freeze reserve (deposit = 0)
-            await broker.redeemWinningTicket(ticket, senderSig, recipientRand, {from: recipient})
-            // Assert reserve is frozen
-            await expectRevertWithReason(
-                broker.fundDeposit({from: sender, value: 1000}),
-                "sender's reserve is frozen"
-            )
-
-            assert.equal((await broker.claimableReserve(sender, constants.NULL_ADDRESS)).toString(10), "0")
-        })
-
-        it("Returns claimable reserve for a claimant after reserve has been frozen", async () => {
+        it("returns claimable reserve for a claimant when reserve was claimed from", async () => {
             const numRecipients = 10
             const reserve = 1000
             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
@@ -1811,13 +1610,8 @@ contract("TicketBroker", accounts => {
             const faceValue = 10
             const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
             const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
-            // Claim winning ticket - will freeze reserve (deposit = 0)
+            // Claim winning ticket - will claim from reserve (deposit = 0)
             await broker.redeemWinningTicket(ticket, senderSig, recipientRand, {from: recipient})
-            // Assert reserve is frozen
-            await expectRevertWithReason(
-                broker.fundDeposit({from: sender, value: 1000}),
-                "sender's reserve is frozen"
-            )
             // claimableReserve should be equal to reserve/numRecipients - faceValue
             assert.equal(
                 (await broker.claimableReserve(sender, recipient)).toString(10),
@@ -1825,9 +1619,8 @@ contract("TicketBroker", accounts => {
             )
         })
 
-        it("Returns 0 if claimant has claimed all of his claimableReserve", async () => {
+        it("returns 0 if claimant has claimed all of his claimableReserve", async () => {
             const numRecipients = 10
-            const reserve = 1000
             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
             await fixture.bondingManager.setMockUint256(functionSig("getTranscoderPoolSize()"), numRecipients)
             await fixture.bondingManager.setMockBool(functionSig("isRegisteredTranscoder(address)"), true)
@@ -1840,17 +1633,10 @@ contract("TicketBroker", accounts => {
 
             // Claim winning ticket - will freeze reserve (deposit = 0)
             await broker.redeemWinningTicket(ticket, senderSig, recipientRand, {from: recipient})
-            // Assert reserve is frozen
-            await expectRevertWithReason(
-                broker.fundDeposit({from: sender, value: reserve}),
-                "sender's reserve is frozen"
-            )
             assert.equal(
                 (await broker.claimableReserve(sender, recipient)).toString(10),
                 "0"
             )
         })
-        // TODO: If not frozen Returns 0 if Orchestrator is not registered during current round
-        // TODO: If frozen returns 0 if orchestrator is not registered during freezeRound
     })
 })

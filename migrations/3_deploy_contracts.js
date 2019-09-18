@@ -34,7 +34,6 @@ module.exports = function(deployer, network) {
             TicketBroker,
             "TicketBroker",
             controller.address,
-            config.broker.freezePeriod,
             config.broker.unlockPeriod,
             config.broker.ticketValidityPeriod
         )
@@ -65,7 +64,6 @@ module.exports = function(deployer, network) {
 
         // Set TicketBroker parameters
         await broker.setUnlockPeriod(config.broker.unlockPeriod)
-        await broker.setFreezePeriod(config.broker.freezePeriod)
         await broker.setTicketValidityPeriod(config.broker.ticketValidityPeriod)
     })
 }
