@@ -3,6 +3,7 @@ import expectThrow from "../helpers/expectThrow"
 import {contractId, functionSig, functionEncodedABI} from "../../utils/helpers"
 import {constants} from "../../utils/constants"
 import BN from "bn.js"
+import {expectRevertWithReason} from "../helpers/expectFail"
 
 const BondingManager = artifacts.require("BondingManager")
 
@@ -981,7 +982,7 @@ contract("BondingManager", accounts => {
         it("should fail if system is paused", async () => {
             await fixture.controller.pause()
 
-            await expectThrow(bondingManager.rebond(unbondingLockID, {from: delegator}))
+            await expectRevertWithReason(bondingManager.rebond(unbondingLockID, {from: delegator}), "system is paused")
         })
 
         it("should fail if current round is not initialized", async () => {
@@ -1081,7 +1082,10 @@ contract("BondingManager", accounts => {
             await bondingManager.unbond(500, {from: delegator})
             await fixture.controller.pause()
 
-            await expectThrow(bondingManager.rebondFromUnbonded(transcoder, unbondingLockID, {from: delegator}))
+            await expectRevertWithReason(
+                bondingManager.rebondFromUnbonded(transcoder, unbondingLockID, {from: delegator}),
+                "system is paused"
+            )
         })
 
         it("should fail if current round is not initialized", async () => {
@@ -1204,7 +1208,7 @@ contract("BondingManager", accounts => {
         it("should fail if system is paused", async () => {
             await fixture.controller.pause()
 
-            await expectThrow(bondingManager.withdrawStake(unbondingLockID, {from: delegator}))
+            await expectRevertWithReason(bondingManager.withdrawStake(unbondingLockID, {from: delegator}), "system is paused")
         })
 
         it("should fail if current round is not initialized", async () => {
@@ -1277,7 +1281,7 @@ contract("BondingManager", accounts => {
         it("should fail if system is paused", async () => {
             await fixture.controller.pause()
 
-            await expectThrow(bondingManager.withdrawFees({from: transcoder0}))
+            await expectRevertWithReason(bondingManager.withdrawFees({from: transcoder0}), "system is paused")
         })
 
         it("should fail if current round is not initialized", async () => {
@@ -1391,7 +1395,7 @@ contract("BondingManager", accounts => {
         it("should fail if system is paused", async () => {
             await fixture.controller.pause()
 
-            await expectThrow(bondingManager.reward({from: transcoder}))
+            await expectRevertWithReason(bondingManager.reward({from: transcoder}), "system is paused")
         })
 
         it("should fail if current round is not initialized", async () => {
@@ -1818,7 +1822,7 @@ contract("BondingManager", accounts => {
         it("should fail if system is paused", async () => {
             await fixture.controller.pause()
 
-            await expectThrow(bondingManager.claimEarnings(currentRound + 1, {from: delegator1}))
+            await expectRevertWithReason(bondingManager.claimEarnings(currentRound + 1, {from: delegator1}), "system is paused")
         })
 
         it("should fail if current round is not initialized", async () => {

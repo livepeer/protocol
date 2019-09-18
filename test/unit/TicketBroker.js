@@ -47,6 +47,7 @@ contract("TicketBroker", accounts => {
 
     beforeEach(async () => {
         await fixture.setUp()
+        await fixture.roundsManager.setMockBool(functionSig("currentRoundInitialized()"), true)
     })
 
     afterEach(async () => {
@@ -54,6 +55,11 @@ contract("TicketBroker", accounts => {
     })
 
     describe("fundDeposit", () => {
+        it("should fail if the system is paused", async () => {
+            await fixture.controller.pause()
+            await expectRevertWithReason(broker.fundDeposit({from: sender, value: 1000}), "system is paused")
+        })
+
         it("grows the Minter ETH balance", async () => {
             await broker.fundDeposit({from: sender, value: 1000})
 
@@ -141,6 +147,11 @@ contract("TicketBroker", accounts => {
     })
 
     describe("fundReserve", () => {
+        it("should fail if the system is paused", async () => {
+            await fixture.controller.pause()
+            await expectRevertWithReason(broker.fundReserve({from: sender, value: 1000}), "system is paused")
+        })
+
         it("grows the Minter ETH balance", async () => {
             await broker.fundReserve({from: sender, value: 1000})
 
@@ -279,6 +290,16 @@ contract("TicketBroker", accounts => {
     })
 
     describe("fundDepositAndReserve", () => {
+        it("should fail if the system is paused", async () => {
+            const deposit = 500
+            const reserve = 1000
+            await fixture.controller.pause()
+            await expectRevertWithReason(
+                broker.fundDepositAndReserve(deposit, reserve, {from: sender, value: 1000}),
+                "system is paused"
+            )
+        })
+
         it("reverts if msg.value < sum of deposit amount and reserve amount", async () => {
             const deposit = 500
             const reserve = 1000
@@ -418,6 +439,42 @@ contract("TicketBroker", accounts => {
     })
 
     describe("redeemWinningTicket", () => {
+        it("should fail if the system is paused", async () => {
+            const deposit = 1500
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
+            await broker.fundDeposit({from: sender, value: deposit})
+
+            const recipientRand = 5
+            const faceValue = deposit
+            const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
+            const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
+
+            await fixture.controller.pause()
+
+            await expectRevertWithReason(
+                broker.redeemWinningTicket(ticket, senderSig, recipientRand, {from: recipient}),
+                "system is paused"
+            )
+        })
+
+        it("should fail if the current round is not initialized", async () => {
+            const deposit = 1500
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
+            await broker.fundDeposit({from: sender, value: deposit})
+
+            const recipientRand = 5
+            const faceValue = deposit
+            const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
+            const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
+
+            await fixture.roundsManager.setMockBool(functionSig("currentRoundInitialized()"), false)
+
+            await expectRevertWithReason(
+                broker.redeemWinningTicket(ticket, senderSig, recipientRand, {from: recipient}),
+                "current round is not initialized"
+            )
+        })
+
         it("reverts if ticket's recipient is null address", async () => {
             await expectRevertWithReason(
                 broker.redeemWinningTicket(
@@ -1102,6 +1159,58 @@ contract("TicketBroker", accounts => {
     })
 
     describe("batchRedeemWinningTickets", () => {
+        it("should fail if the system is paused", async () => {
+            const deposit = 1500
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
+            await broker.fundDeposit({from: sender, value: deposit})
+
+            const recipientRand = 5
+            const faceValue = 500
+            const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
+            const ticket2 = createWinningTicket(recipient, sender, recipientRand, faceValue)
+            ticket2.senderNonce++
+            const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
+            const senderSig2 = await web3.eth.sign(getTicketHash(ticket2), sender)
+
+            await fixture.controller.pause()
+
+            await expectRevertWithReason(
+                broker.batchRedeemWinningTickets(
+                    [ticket, ticket2],
+                    [senderSig, senderSig2],
+                    [recipientRand, recipientRand],
+                    {from: recipient}
+                ),
+                "system is paused"
+            )
+        })
+
+        it("should fail if the current round is not initialized", async () => {
+            const deposit = 1500
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
+            await broker.fundDeposit({from: sender, value: deposit})
+
+            const recipientRand = 5
+            const faceValue = 500
+            const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
+            const ticket2 = createWinningTicket(recipient, sender, recipientRand, faceValue)
+            ticket2.senderNonce++
+            const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
+            const senderSig2 = await web3.eth.sign(getTicketHash(ticket2), sender)
+
+            await fixture.roundsManager.setMockBool(functionSig("currentRoundInitialized()"), false)
+
+            await expectRevertWithReason(
+                broker.batchRedeemWinningTickets(
+                    [ticket, ticket2],
+                    [senderSig, senderSig2],
+                    [recipientRand, recipientRand],
+                    {from: recipient}
+                ),
+                "current round is not initialized"
+            )
+        })
+
         it("redeems 2 tickets from the same sender", async () => {
             const deposit = 1500
             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
@@ -1277,6 +1386,12 @@ contract("TicketBroker", accounts => {
     })
 
     describe("unlock", () => {
+        it("fails if the system is paused", async () => {
+            await broker.fundDeposit({from: sender, value: 1000})
+            await fixture.controller.pause()
+            await expectRevertWithReason(broker.unlock(), "system is paused")
+        })
+
         it("reverts when both deposit and reserve are zero", async () => {
             await expectRevertWithReason(broker.unlock(), "sender deposit and reserve are zero")
         })
@@ -1352,6 +1467,13 @@ contract("TicketBroker", accounts => {
     })
 
     describe("cancelUnlock", () => {
+        it("fails if the system is paused", async () => {
+            await broker.fundDeposit({from: sender, value: 1000})
+            await broker.unlock()
+            await fixture.controller.pause()
+            await expectRevertWithReason(broker.cancelUnlock(), "system is paused")
+        })
+
         it("reverts if sender is not in an unlocking state", async () => {
             await expectRevertWithReason(broker.cancelUnlock(), "no unlock request in progress")
         })
@@ -1408,6 +1530,14 @@ contract("TicketBroker", accounts => {
     })
 
     describe("withdraw", () => {
+        it("fails if the system is paused", async () => {
+            await broker.fundDeposit({value: 1000})
+            await broker.unlock()
+            await fixture.rpc.wait(unlockPeriod)
+            await fixture.controller.pause()
+            await expectRevertWithReason(broker.withdraw(), "system is paused")
+        })
+
         it("reverts when both deposit and reserve are zero", async () => {
             await expectRevertWithReason(broker.withdraw(), "sender deposit and reserve are zero")
         })
