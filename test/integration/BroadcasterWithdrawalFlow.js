@@ -1,6 +1,5 @@
 import {contractId} from "../../utils/helpers"
 import BN from "bn.js"
-import RPC from "../../utils/rpc"
 import calcTxCost from "../helpers/calcTxCost"
 
 const Controller = artifacts.require("Controller")
@@ -15,8 +14,8 @@ contract("BroadcasterWithdrawalFlow", accounts => {
 
     let broker
     let minter
+    let roundsManager
 
-    const rpc = new RPC(web3)
     const unlockPeriod = 100
 
     before(async () => {
@@ -30,7 +29,7 @@ contract("BroadcasterWithdrawalFlow", accounts => {
         await BondingManager.at(bondingManagerAddr)
 
         const roundsManagerAddr = await controller.getContract(contractId("RoundsManager"))
-        await AdjustableRoundsManager.at(roundsManagerAddr)
+        roundsManager = await AdjustableRoundsManager.at(roundsManagerAddr)
 
         const tokenAddr = await controller.getContract(contractId("LivepeerToken"))
         await LivepeerToken.at(tokenAddr)
@@ -52,7 +51,9 @@ contract("BroadcasterWithdrawalFlow", accounts => {
 
         await broker.unlock({from: broadcaster})
         const unlockPeriod = (await broker.unlockPeriod.call()).toNumber()
-        await rpc.wait(unlockPeriod)
+        const currentRound = (await roundsManager.currentRound()).toNumber()
+        const roundLength = (await roundsManager.roundLength()).toNumber()
+        await roundsManager.setBlockNum((currentRound * roundLength) + (unlockPeriod * roundLength))
 
         const startBroadcasterBalance = new BN(await web3.eth.getBalance(broadcaster))
         const startMinterBalance = new BN(await web3.eth.getBalance(minter.address))

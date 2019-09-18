@@ -43,10 +43,12 @@ const getTicketHash = ticketObj => {
     )
 }
 
-const defaultAuxData = () => {
+const defaultAuxData = () => createAuxData(DUMMY_TICKET_CREATION_ROUND, DUMMY_TICKET_CREATION_ROUND_BLOCK_HASH)
+
+const createAuxData = (creationRound, blockHash) => {
     return web3.eth.abi.encodeParameters(
         ["uint256", "bytes32"],
-        [DUMMY_TICKET_CREATION_ROUND, DUMMY_TICKET_CREATION_ROUND_BLOCK_HASH]
+        [creationRound, blockHash]
     )
 }
 
@@ -55,6 +57,7 @@ const isSet = v => {
 }
 
 module.exports = {
+    createAuxData,
     createTicket,
     createWinningTicket,
     getTicketHash,

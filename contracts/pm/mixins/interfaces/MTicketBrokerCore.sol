@@ -27,7 +27,7 @@ contract MTicketBrokerCore {
     // Emitted when a funds transfer for a winning ticket redemption is executed
     event WinningTicketTransfer(address indexed sender, address indexed recipient, uint256 amount);
     // Emitted when a sender requests an unlock
-    event Unlock(address indexed sender, uint256 startBlock, uint256 endBlock);
+    event Unlock(address indexed sender, uint256 startRound, uint256 endRound);
     // Emitted when a sender cancels an unlock
     event UnlockCancelled(address indexed sender);
     // Emitted when a sender withdraws its deposit & reserve
