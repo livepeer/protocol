@@ -3,9 +3,11 @@ pragma solidity ^0.4.25;
 pragma experimental ABIEncoderV2;
 
 import "./interfaces/MTicketBrokerCore.sol";
+import "./interfaces/MContractRegistry.sol";
 
 
-contract MixinWrappers is MTicketBrokerCore {
+contract MixinWrappers is MContractRegistry, MTicketBrokerCore {
+
     /**
      * @dev Redeems multiple winning tickets. The function will redeem all of the provided
      * tickets and handle any failures gracefully without reverting the entire function
@@ -19,6 +21,8 @@ contract MixinWrappers is MTicketBrokerCore {
         uint256[] _recipientRands
     )
         public
+        whenSystemNotPaused
+        currentRoundInitialized
     {
         for (uint256 i = 0; i < _tickets.length; i++) {
             redeemWinningTicketNoRevert(

@@ -3,6 +3,7 @@ import expectThrow from "../helpers/expectThrow"
 import {contractId} from "../../utils/helpers"
 import {constants} from "../../utils/constants"
 import truffleAssert from "truffle-assertions"
+import {expectRevertWithReason} from "../helpers/expectFail"
 
 const RoundsManager = artifacts.require("RoundsManager")
 
@@ -170,7 +171,7 @@ contract("RoundsManager", accounts => {
             await fixture.rpc.waitUntilNextBlockMultiple(roundLength.toNumber())
             await fixture.controller.pause()
 
-            await expectThrow(roundsManager.initializeRound())
+            await expectRevertWithReason(roundsManager.initializeRound(), "system is paused")
         })
 
         it("should fail if current round is already initialized", async () => {

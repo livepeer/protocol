@@ -4,7 +4,15 @@ import "../../ManagerProxyTarget.sol";
 import "./interfaces/MContractRegistry.sol";
 
 
-contract MixinContractRegistry is ManagerProxyTarget, MContractRegistry {
+contract MixinContractRegistry is MContractRegistry, ManagerProxyTarget {
+    /**
+     * @dev Checks if the current round has been initialized
+     */
+    modifier currentRoundInitialized() {
+        require(roundsManager().currentRoundInitialized(), "current round is not initialized");
+        _;
+    }
+
     constructor(address _controller)
         internal
         Manager(_controller)

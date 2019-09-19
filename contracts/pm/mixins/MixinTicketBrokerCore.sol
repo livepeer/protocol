@@ -67,6 +67,7 @@ contract MixinTicketBrokerCore is MContractRegistry, MReserve, MTicketProcessor,
     function fundDeposit()
         external
         payable
+        whenSystemNotPaused
         processDeposit(msg.sender, msg.value)
     {
         processFunding(msg.value);
@@ -78,6 +79,7 @@ contract MixinTicketBrokerCore is MContractRegistry, MReserve, MTicketProcessor,
     function fundReserve()
         external
         payable
+        whenSystemNotPaused
         processReserve(msg.sender, msg.value)
     {
         processFunding(msg.value);
@@ -94,6 +96,7 @@ contract MixinTicketBrokerCore is MContractRegistry, MReserve, MTicketProcessor,
     )
         external
         payable
+        whenSystemNotPaused
         checkDepositReserveETHValueSplit(_depositAmount, _reserveAmount)
         processDeposit(msg.sender, _depositAmount)
         processReserve(msg.sender, _reserveAmount)
@@ -114,6 +117,8 @@ contract MixinTicketBrokerCore is MContractRegistry, MReserve, MTicketProcessor,
         uint256 _recipientRand
     )
         public
+        whenSystemNotPaused
+        currentRoundInitialized
     {
         bytes32 ticketHash = getTicketHash(_ticket);
 
@@ -178,7 +183,7 @@ contract MixinTicketBrokerCore is MContractRegistry, MReserve, MTicketProcessor,
     /**
      * @dev Initiates the unlock period for the caller
      */
-    function unlock() public {
+    function unlock() public whenSystemNotPaused {
         Sender storage sender = senders[msg.sender];
 
         require(
@@ -196,7 +201,7 @@ contract MixinTicketBrokerCore is MContractRegistry, MReserve, MTicketProcessor,
     /**
      * @dev Cancels the unlock period for the caller
      */
-    function cancelUnlock() public {
+    function cancelUnlock() public whenSystemNotPaused {
         Sender storage sender = senders[msg.sender];
 
         _cancelUnlock(sender, msg.sender);
@@ -205,7 +210,7 @@ contract MixinTicketBrokerCore is MContractRegistry, MReserve, MTicketProcessor,
     /**
      * @dev Withdraws all ETH from the caller's deposit and reserve
      */
-    function withdraw() public {
+    function withdraw() public whenSystemNotPaused {
         Sender storage sender = senders[msg.sender];
 
         uint256 deposit = sender.deposit;
