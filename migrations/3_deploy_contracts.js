@@ -8,7 +8,6 @@ const BondingManager = artifacts.require("BondingManager")
 const RoundsManager = artifacts.require("RoundsManager")
 const AdjustableRoundsManager = artifacts.require("AdjustableRoundsManager")
 const TicketBroker = artifacts.require("TicketBroker")
-const LivepeerVerifier = artifacts.require("LivepeerVerifier")
 const LivepeerToken = artifacts.require("LivepeerToken")
 const LivepeerTokenFaucet = artifacts.require("LivepeerTokenFaucet")
 const ManagerProxy = artifacts.require("ManagerProxy")
@@ -20,7 +19,6 @@ module.exports = function(deployer, network) {
         const controller = await lpDeployer.deployController()
         const token = await lpDeployer.deployAndRegister(LivepeerToken, "LivepeerToken")
         await lpDeployer.deployAndRegister(Minter, "Minter", controller.address, config.minter.inflation, config.minter.inflationChange, config.minter.targetBondingRate)
-        await lpDeployer.deployAndRegister(LivepeerVerifier, "Verifier", controller.address, config.verifier.solver, config.verifier.verificationCodeHash)
 
         if (!lpDeployer.isProduction(network)) {
             // Only deploy a faucet if not in production
