@@ -8,7 +8,7 @@ import truffleAssert from "truffle-assertions"
 
 const BondingManager = artifacts.require("BondingManager")
 
-const {DelegatorStatus} = constants
+const {DelegatorStatus, TranscoderStatus} = constants
 
 contract("BondingManager", accounts => {
     let fixture
@@ -336,16 +336,28 @@ contract("BondingManager", accounts => {
                 assert.equal(secondStake.toString(), secondDel.delegatedAmount.toString())
             })
 
-            it("evicts a transcoder from the pool", async () => {
-                bondingManager.TranscoderEvicted({}).on("data", e => {
-                    assert.equal(e.returnValues.transcoder, transcoder0)
+            describe("evicts a transcoder from the pool", () => {
+                it("last transcoder gets evicted and new transcoder gets inserted", async () => {
+                    const txRes = await bondingManager.bond(2000, transcoder2, {from: delegator})
+                    truffleAssert.eventEmitted(txRes, "TranscoderEvicted", e => {
+                        return e.transcoder == transcoder0
+                    })
+                    await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 2)
+                    assert.isTrue(await bondingManager.isActiveTranscoder(transcoder2))
+                    assert.isTrue(await bondingManager.isActiveTranscoder(transcoder1))
+                    assert.isFalse(await bondingManager.isActiveTranscoder(transcoder0))
+                    assert.equal((await bondingManager.transcoderTotalStake(transcoder2)).toString(), "2500")
                 })
-                await bondingManager.bond(2000, transcoder2, {from: delegator})
-                await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound+2)
-                assert.isTrue(await bondingManager.isActiveTranscoder(transcoder2))
-                assert.isTrue(await bondingManager.isActiveTranscoder(transcoder1))
-                assert.isFalse(await bondingManager.isActiveTranscoder(transcoder0))
-                assert.equal((await bondingManager.transcoderTotalStake(transcoder2)).toString(), "2500")
+
+                it("sets deactivationRound for the inserted transcoder to the max possible round number", async () => {
+                    await bondingManager.bond(2000, transcoder2, {from: delegator})
+                    assert.equal((await bondingManager.getTranscoder(transcoder2)).deactivationRound, 2**256-1)
+                })
+
+                it("sets the deactivationRound for the evicted transcoder to the next round", async () => {
+                    await bondingManager.bond(2000, transcoder2, {from: delegator})
+                    assert.equal((await bondingManager.getTranscoder(transcoder0)).deactivationRound, currentRound + 2)
+                })
             })
 
             it("inserts into pool without evicting if pool is not full", async () => {
@@ -1091,9 +1103,9 @@ contract("BondingManager", accounts => {
                     assert.equal(startTotalStake.sub(endTotalStake), 2000, "wrong change in total next round stake")
                 })
 
-                it("sets transcoder's activation round to 0", async () => {
+                it("sets transcoder's deactivation round to next round", async () => {
                     await bondingManager.unbond(1000, {from: transcoder})
-                    assert.equal((await bondingManager.getTranscoder(transcoder)).activationRound, 0)
+                    assert.equal((await bondingManager.getTranscoder(transcoder)).deactivationRound, currentRound + 2)
                 })
             })
 
@@ -1200,15 +1212,15 @@ contract("BondingManager", accounts => {
                 await bondingManager.transcoder(5, 10, {from: transcoder1})
                 await bondingManager.bond(1800, transcoder2, {from: transcoder2})
                 await bondingManager.transcoder(5, 10, {from: transcoder2})
-                assert.isFalse(await bondingManager.isActiveTranscoder(transcoder))
                 bondingManager.TranscoderEvicted({}).on("data", e => {
                     assert.equal(e.returnValues.transcoder, transcoder2)
                 })
                 await bondingManager.rebond(unbondingLockID, {from: delegator})
-                await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound+2)
+                await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 2)
                 assert.isTrue(await bondingManager.isActiveTranscoder(transcoder))
-                assert.isFalse(await bondingManager.isActiveTranscoder(transcoder2))
-                const pool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder, currentRound+2)
+                // Check that transcoder2's deactivation round is the next round
+                assert.equal((await bondingManager.getTranscoder(transcoder2)).deactivationRound, currentRound + 2)
+                const pool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder, currentRound + 2)
                 assert.equal(pool.totalStake.toNumber(), 2000)
             })
         })
@@ -1661,8 +1673,9 @@ contract("BondingManager", accounts => {
 
     describe("slashTranscoder", () => {
         const transcoder = accounts[0]
-        const finder = accounts[1]
-        const nonTranscoder = accounts[2]
+        const transcoder1 = accounts[1]
+        const finder = accounts[2]
+        const nonTranscoder = accounts[3]
         const currentRound = 100
 
         beforeEach(async () => {
@@ -1750,8 +1763,8 @@ contract("BondingManager", accounts => {
             })
         })
 
-        describe("transcoder is registered", () => {
-            it("removes active transcoder from active set for the current round", async () => {
+        describe("transcoder is active", () => {
+            it("transcoder remains active until the next round", async () => {
                 await fixture.verifier.execute(
                     bondingManager.address,
                     functionEncodedABI(
@@ -1760,7 +1773,7 @@ contract("BondingManager", accounts => {
                         [transcoder, constants.NULL_ADDRESS, PERC_DIVISOR / 2, 0]
                     )
                 )
-                assert.isNotOk(await bondingManager.isActiveTranscoder(transcoder), "should set active transcoder as inactive for the round")
+                assert.isOk(await bondingManager.isActiveTranscoder(transcoder), "should set active transcoder as inactive for the round")
             })
 
             it("deducts the transcoder's stake from the total for the next round", async () => {
@@ -1777,8 +1790,8 @@ contract("BondingManager", accounts => {
                 assert.equal(startTotalActiveStake.sub(endTotalActiveStake).toNumber(), 1000, "should decrease total active stake by total stake of transcoder")
             })
 
-            it("sets the transcoder's activation round to 0", async () => {
-                await fixture.ticketBroker.execute(
+            it("sets the transcoder's deactivation round to next round", async () => {
+                await fixture.verifier.execute(
                     bondingManager.address,
                     functionEncodedABI(
                         "slashTranscoder(address,address,uint256,uint256)",
@@ -1786,30 +1799,53 @@ contract("BondingManager", accounts => {
                         [transcoder, constants.NULL_ADDRESS, PERC_DIVISOR / 2, 0]
                     )
                 )
-                assert.equal((await bondingManager.getTranscoder(transcoder)).activationRound, 0)
+                assert.equal((await bondingManager.getTranscoder(transcoder)).deactivationRound, currentRound + 2)
             })
         })
 
-        describe("transcoder is not registered", () => {
-            it("still decreases transcoder's bondedAmount", () => {
-                it("still decreases transcoder's bondedAmount", async () => {
-                    const startBondedAmount = (await bondingManager.getDelegator(transcoder))[0]
-                    await fixture.verifier.execute(
-                        bondingManager.address,
-                        functionEncodedABI(
-                            "slashTranscoder(address,address,uint256,uint256)",
-                            ["address", "uint256", "uint256", "uint256"],
-                            [transcoder, constants.NULL_ADDRESS, PERC_DIVISOR / 2, 0]
-                        )
-                    )
-                    const endBondedAmount = (await bondingManager.getDelegator(transcoder))[0]
-
-                    assert.equal(endBondedAmount, startBondedAmount.div(2).toNumber(), "should decrease transcoder's bondedAmount by slashAmount")
-                })
+        describe("transcoder is not active but is in pool", () => {
+            beforeEach(async () => {
+                await bondingManager.bond(2000, transcoder1, {from: transcoder1})
+                await bondingManager.transcoder(5, 10, {from: transcoder1})
             })
 
-            it("doesn't change the total for the current round", async () => {
-                const startTotalActiveStake = await bondingManager.currentRoundTotalActiveStake()
+            it("still decreases transcoder's bondedAmount", async () => {
+                const startBondedAmount = (await bondingManager.getDelegator(transcoder1))[0]
+                await fixture.verifier.execute(
+                    bondingManager.address,
+                    functionEncodedABI(
+                        "slashTranscoder(address,address,uint256,uint256)",
+                        ["address", "uint256", "uint256", "uint256"],
+                        [transcoder1, constants.NULL_ADDRESS, PERC_DIVISOR / 2, 0]
+                    )
+                )
+                const endBondedAmount = (await bondingManager.getDelegator(transcoder1))[0]
+
+                assert.equal(endBondedAmount, startBondedAmount.div(new BN(2)).toNumber(), "should decrease transcoder's bondedAmount by slashAmount")
+            })
+
+            it("decreases the total active stake for the next round", async () => {
+                const startTotalActiveStake = await bondingManager.nextRoundTotalActiveStake()
+                await fixture.verifier.execute(
+                    bondingManager.address,
+                    functionEncodedABI(
+                        "slashTranscoder(address,address,uint256,uint256)",
+                        ["address", "uint256", "uint256", "uint256"],
+                        [transcoder1, constants.NULL_ADDRESS, PERC_DIVISOR / 2, 0]
+                    )
+                )
+                const endTotalActiveStake = await bondingManager.nextRoundTotalActiveStake()
+                assert.equal(startTotalActiveStake.sub(endTotalActiveStake).toNumber(), 2000, "should decrease total active stake by total stake of transcoder")
+            })
+        })
+
+        describe("transcoder is registered but not in pool", () => {
+            beforeEach(async () => {
+                await bondingManager.bond(2000, transcoder1, {from: transcoder1})
+                await bondingManager.bond(100, nonTranscoder, {from: nonTranscoder})
+            })
+            it("still decreases transcoder's bondedAmount", async () => {
+                const startBondedAmount = (await bondingManager.getDelegator(nonTranscoder))[0]
                 await fixture.verifier.execute(
                     bondingManager.address,
                     functionEncodedABI(
@@ -1818,10 +1854,9 @@ contract("BondingManager", accounts => {
                         [nonTranscoder, constants.NULL_ADDRESS, PERC_DIVISOR / 2, 0]
                     )
                 )
-                await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound+2)
-                const endTotalActiveStake = await bondingManager.currentRoundTotalActiveStake()
-                assert.isNotOk(await bondingManager.isActiveTranscoder(nonTranscoder), "should remain inactive for the round")
-                assert.equal(startTotalActiveStake.sub(endTotalActiveStake).toNumber(), 0, "should decrease total active stake by total stake of transcoder")
+                const endBondedAmount = (await bondingManager.getDelegator(nonTranscoder))[0]
+
+                assert.equal(endBondedAmount, startBondedAmount.div(new BN(2)).toNumber(), "should decrease transcoder's bondedAmount by slashAmount")
             })
 
             it("doesn't change the total for the next round", async () => {
@@ -2374,6 +2409,51 @@ contract("BondingManager", accounts => {
                     pendingFees,
                     "should return sum of collected fees and pending fees as both a delegator and transcoder for a round"
                 )
+            })
+        })
+    })
+
+    describe("setCurrentRoundTotalActiveStake", () => {
+        const transcoder = accounts[0]
+
+        beforeEach(async () => {
+            await fixture.roundsManager.setMockBool(functionSig("currentRoundInitialized()"), true)
+            await fixture.roundsManager.setMockBool(functionSig("currentRoundLocked()"), false)
+
+            await bondingManager.bond(1000, transcoder, {from: transcoder})
+            await bondingManager.transcoder(5, 10, {from: transcoder})
+        })
+
+        it("fails if caller is not RoundsManager", async () => {
+            await expectRevertWithReason(bondingManager.setCurrentRoundTotalActiveStake(), "caller must be RoundsManager")
+        })
+
+        it("sets currentRoundTotalActiveStake equal to nextRoundTotalActiveStake", async () => {
+            await fixture.roundsManager.execute(bondingManager.address, functionSig("setCurrentRoundTotalActiveStake()"))
+            assert.equal(await bondingManager.currentRoundTotalActiveStake(), 1000)
+        })
+    })
+
+    describe("transcoderStatus", () => {
+        const transcoder = accounts[0]
+
+        beforeEach(async () => {
+            await fixture.roundsManager.setMockBool(functionSig("currentRoundInitialized()"), true)
+            await bondingManager.bond(1000, transcoder, {from: transcoder})
+        })
+
+        describe("caller is not bonded to self", () => {
+            it("returns NotRegistered", async () => {
+                await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), 1)
+                await bondingManager.unbond(1000, {from: transcoder})
+
+                assert.equal(await bondingManager.transcoderStatus(transcoder), TranscoderStatus.NotRegistered, "should return NotRegistered")
+            })
+        })
+
+        describe("caller is bonded to self", () => {
+            it("returns Registered", async () => {
+                assert.equal(await bondingManager.transcoderStatus(transcoder), TranscoderStatus.Registered, "should return Registered")
             })
         })
     })

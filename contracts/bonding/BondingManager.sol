@@ -22,6 +22,11 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     using SortedDoublyLL for SortedDoublyLL.Data;
     using EarningsPool for EarningsPool.Data;
 
+    // Constants
+    // Occurances are replaced at compile time
+    // and computed to a single value if possible by the optimizer
+    uint256 constant MAX_FUTURE_ROUND = 2**256 - 1;
+
     // Time between unbonding and possible withdrawl in rounds
     uint64 public unbondingPeriod;
     // DEPRECATED - DO NOT USE
@@ -41,6 +46,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         mapping (uint256 => EarningsPool.Data) earningsPoolPerRound;    // Mapping of round => earnings pool for the round
         uint256 lastActiveStakeUpdateRound;                             // Round for which the stake was last updated while the transcoder is active
         uint256 activationRound;                                        // Round in which the transcoder became active - 0 if inactive
+        uint256 deactivationRound;                                      // Round in which the transcoder will become inactive
     }
 
     // The various states a transcoder can be in
@@ -103,7 +109,10 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
     // Check if sender is RoundsManager
     modifier onlyRoundsManager() {
-        require(msg.sender == controller.getContract(keccak256("RoundsManager")));
+        require(
+            msg.sender == controller.getContract(keccak256("RoundsManager")),
+            "caller must be RoundsManager"
+        );
         _;
     }
 
@@ -654,7 +663,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     )
         public
         view
-        returns (uint256 lastRewardRound, uint256 rewardCut, uint256 feeShare, uint256 lastActiveStakeUpdateRound, uint256 activationRound)
+        returns (uint256 lastRewardRound, uint256 rewardCut, uint256 feeShare, uint256 lastActiveStakeUpdateRound, uint256 activationRound, uint256 deactivationRound)
     {
         Transcoder storage t = transcoders[_transcoder];
 
@@ -663,6 +672,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         feeShare = t.feeShare;
         lastActiveStakeUpdateRound = t.lastActiveStakeUpdateRound;
         activationRound = t.activationRound;
+        deactivationRound = t.deactivationRound;
     }
 
     /**
@@ -783,8 +793,9 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * @param _transcoder Transcoder address
      */
     function isActiveTranscoder(address _transcoder) public view returns (bool) {
-        uint256 activationRound = transcoders[_transcoder].activationRound;
-        return activationRound != 0 && activationRound <= roundsManager().currentRound();
+        Transcoder storage t = transcoders[_transcoder];
+        uint256 currentRound = roundsManager().currentRound();
+        return t.activationRound <= currentRound && currentRound < t.deactivationRound;
     }
 
     /**
@@ -879,7 +890,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             // Not zeroing the stake on the current round's 'EarningsPool' saves gas and should have no side effects as long as
             // 'EarningsPool.setStake()' is called whenever a transcoder becomes active again.
             transcoderPool.remove(lastTranscoder);
-            transcoders[lastTranscoder].activationRound = 0;
+            transcoders[lastTranscoder].deactivationRound = _activationRound;
             pendingNextRoundTotalActiveStake = pendingNextRoundTotalActiveStake.sub(lastStake);
 
             emit TranscoderEvicted(lastTranscoder);
@@ -890,6 +901,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         Transcoder storage t = transcoders[_transcoder];
         t.lastActiveStakeUpdateRound = _activationRound;
         t.activationRound = _activationRound;
+        t.deactivationRound = MAX_FUTURE_ROUND;
         t.earningsPoolPerRound[_activationRound].setStake(_totalStake);
         nextRoundTotalActiveStake = pendingNextRoundTotalActiveStake;
     }
@@ -904,7 +916,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // 'EarningsPool.setStake()' is called whenever a transcoder becomes active again.
         transcoderPool.remove(_transcoder);
         nextRoundTotalActiveStake = nextRoundTotalActiveStake.sub(transcoderTotalStake(_transcoder));
-        transcoders[_transcoder].activationRound = 0;
+        transcoders[_transcoder].deactivationRound = roundsManager().currentRound().add(1);
         emit TranscoderResigned(_transcoder);
     }
 
