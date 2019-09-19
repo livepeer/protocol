@@ -100,6 +100,12 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         _;
     }
 
+    // Check if sender is Verifier
+    modifier onlyVerifier() {
+        require(msg.sender == controller.getContract(keccak256("Verifier")));
+        _;
+    }
+
     // Check if current round is initialized
     modifier currentRoundInitialized() {
         require(roundsManager().currentRoundInitialized());
@@ -594,7 +600,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     )
         external
         whenSystemNotPaused
-        onlyTicketBroker
+        onlyVerifier
     {
         Delegator storage del = delegators[_transcoder];
 
