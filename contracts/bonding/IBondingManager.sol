@@ -16,6 +16,7 @@ contract IBondingManager {
     event Rebond(address indexed delegate, address indexed delegator, uint256 unbondingLockId, uint256 amount);
     event WithdrawStake(address indexed delegator, uint256 unbondingLockId, uint256 amount, uint256 withdrawRound);
     event WithdrawFees(address indexed delegator);
+    event EarningsClaimed(address indexed delegate, address indexed delegator, uint256 rewards, uint256 fees, uint256 startRound, uint256 endRound);
 
     // Deprecated events
     // These event signatures can be used to construct the appropriate topic hashes to filter for past logs corresponding

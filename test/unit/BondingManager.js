@@ -4,6 +4,7 @@ import {contractId, functionSig, functionEncodedABI} from "../../utils/helpers"
 import {constants} from "../../utils/constants"
 import BN from "bn.js"
 import {expectRevertWithReason} from "../helpers/expectFail"
+import truffleAssert from "truffle-assertions"
 
 const BondingManager = artifacts.require("BondingManager")
 
@@ -1843,6 +1844,21 @@ contract("BondingManager", accounts => {
             await bondingManager.claimEarnings(currentRound + 1, {from: delegator1})
 
             assert.equal((await bondingManager.getDelegator(delegator1))[5], currentRound + 1, "should update caller's lastClaimRound to the current round")
+        })
+
+        it("fires an EarningsClaimed event", async () => {
+            const expRewards = new BN(delegatorRewards * .3) // 30%
+            const expFees = new BN(delegatorFees * .3) // 30%
+            const txResult = await bondingManager.claimEarnings(currentRound + 1, {from: delegator1})
+
+            truffleAssert.eventEmitted(txResult, "EarningsClaimed", e => {
+                return e.delegate === transcoder &&
+                           e.delegator == delegator1 &&
+                           e.fees == expFees.toString() &&
+                           e.rewards == expRewards.toString() &&
+                           e.startRound == (currentRound + 1).toString() &&
+                           e.endRound == (currentRound + 1).toString()
+            })
         })
 
         describe("caller has a delegate", () => {
