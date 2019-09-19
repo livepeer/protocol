@@ -26,11 +26,5 @@ module.exports = {
         inflation: 137,
         inflationChange: 3,
         targetBondingRate: 500000
-    },
-    verifier: {
-        verificationCodeHash: "QmUMk1wF6YmFLFyydhSVgeNCSKk4J8G38DzTzcx6FdYSzV",
-        solver: "0xc613674f1876eeb89821bcaa9CfC5B9299BACBF2",
-        gasPrice: 20000000000,
-        gasLimit: 3000000
     }
 }
