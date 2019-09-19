@@ -1518,7 +1518,7 @@ contract("BondingManager", accounts => {
             await fixture.controller.pause()
 
             await expectThrow(
-                fixture.ticketBroker.execute(
+                fixture.verifier.execute(
                     bondingManager.address,
                     functionEncodedABI(
                         "slashTranscoder(address,address,uint256,uint256)",
@@ -1535,7 +1535,7 @@ contract("BondingManager", accounts => {
 
         it("decreases transcoder's bondedAmount", async () => {
             const startBondedAmount = (await bondingManager.getDelegator(transcoder))[0].toNumber()
-            await fixture.ticketBroker.execute(
+            await fixture.verifier.execute(
                 bondingManager.address,
                 functionEncodedABI(
                     "slashTranscoder(address,address,uint256,uint256)",
@@ -1551,7 +1551,7 @@ contract("BondingManager", accounts => {
         describe("transcoder is bonded", () => {
             it("updates delegated amount and total bonded tokens", async () => {
                 const startTotalBonded = await bondingManager.getTotalBonded()
-                await fixture.ticketBroker.execute(
+                await fixture.verifier.execute(
                     bondingManager.address,
                     functionEncodedABI(
                         "slashTranscoder(address,address,uint256,uint256)",
@@ -1573,7 +1573,7 @@ contract("BondingManager", accounts => {
 
             it("still decreases transcoder's bondedAmount", async () => {
                 const startBondedAmount = (await bondingManager.getDelegator(transcoder))[0].toNumber()
-                await fixture.ticketBroker.execute(
+                await fixture.verifier.execute(
                     bondingManager.address,
                     functionEncodedABI(
                         "slashTranscoder(address,address,uint256,uint256)",
@@ -1589,7 +1589,7 @@ contract("BondingManager", accounts => {
 
         describe("transcoder is registered", () => {
             it("removes transcoder from the pool", async () => {
-                await fixture.ticketBroker.execute(
+                await fixture.verifier.execute(
                     bondingManager.address,
                     functionEncodedABI(
                         "slashTranscoder(address,address,uint256,uint256)",
@@ -1604,7 +1604,7 @@ contract("BondingManager", accounts => {
             describe("transcoder is active", () => {
                 it("removes transcoder from active set for the current round", async () => {
                     const startTotalActiveStake = await bondingManager.getTotalActiveStake(currentRound + 1)
-                    await fixture.ticketBroker.execute(
+                    await fixture.verifier.execute(
                         bondingManager.address,
                         functionEncodedABI(
                             "slashTranscoder(address,address,uint256,uint256)",
@@ -1624,7 +1624,7 @@ contract("BondingManager", accounts => {
             it("still decreases transcoder's bondedAmount", () => {
                 it("still decreases transcoder's bondedAmount", async () => {
                     const startBondedAmount = (await bondingManager.getDelegator(transcoder))[0]
-                    await fixture.ticketBroker.execute(
+                    await fixture.verifier.execute(
                         bondingManager.address,
                         functionEncodedABI(
                             "slashTranscoder(address,address,uint256,uint256)",
@@ -1647,7 +1647,7 @@ contract("BondingManager", accounts => {
                     assert.equal(e.returnValues.finderReward, 250, "should fire TranscoderSlashed event with finder reward computed with finderFee")
                 })
 
-                await fixture.ticketBroker.execute(
+                await fixture.verifier.execute(
                     bondingManager.address,
                     functionEncodedABI(
                         "slashTranscoder(address,address,uint256,uint256)",
@@ -1666,7 +1666,7 @@ contract("BondingManager", accounts => {
                     assert.equal(e.returnValues.finderReward, 0, "should fire TranscoderSlashed event with finder reward of 0")
                 })
 
-                await fixture.ticketBroker.execute(
+                await fixture.verifier.execute(
                     bondingManager.address,
                     functionEncodedABI(
                         "slashTranscoder(address,address,uint256,uint256)",
@@ -1692,7 +1692,7 @@ contract("BondingManager", accounts => {
                     assert.equal(e.returnValues.finderReward, 0, "should fire TranscoderSlashed event with finder reward of 0")
                 })
 
-                await fixture.ticketBroker.execute(
+                await fixture.verifier.execute(
                     bondingManager.address,
                     functionEncodedABI(
                         "slashTranscoder(address,address,uint256,uint256)",
