@@ -10,13 +10,13 @@ contract Manager is IManager {
 
     // Check if sender is controller
     modifier onlyController() {
-        require(msg.sender == address(controller));
+        require(msg.sender == address(controller), "caller must be Controller");
         _;
     }
 
     // Check if sender is controller owner
     modifier onlyControllerOwner() {
-        require(msg.sender == controller.owner());
+        require(msg.sender == controller.owner(), "caller must be Controller owner");
         _;
     }
 
@@ -28,7 +28,7 @@ contract Manager is IManager {
 
     // Check if controller is paused
     modifier whenSystemPaused() {
-        require(controller.paused());
+        require(controller.paused(), "system is not paused");
         _;
     }
 

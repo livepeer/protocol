@@ -38,8 +38,7 @@ library SortedDoublyLL {
      * @param _size Maximum size
      */
     function setMaxSize(Data storage self, uint256 _size) public {
-        // New max size must be greater than old max size
-        require(_size > self.maxSize);
+        require(_size > self.maxSize, "new max size must be greater than old max size");
 
         self.maxSize = _size;
     }
@@ -53,13 +52,13 @@ library SortedDoublyLL {
      */
     function insert(Data storage self, address _id, uint256 _key, address _prevId, address _nextId) public {
         // List must not be full
-        require(!isFull(self));
+        require(!isFull(self), "list is full");
         // List must not already contain node
-        require(!contains(self, _id));
+        require(!contains(self, _id), "node already in list");
         // Node id must not be null
-        require(_id != address(0));
+        require(_id != address(0), "node id is null");
         // Key must be non-zero
-        require(_key > 0);
+        require(_key > 0, "key is zero");
 
         address prevId = _prevId;
         address nextId = _nextId;
@@ -103,7 +102,7 @@ library SortedDoublyLL {
      */
     function remove(Data storage self, address _id) public {
         // List must contain the node
-        require(contains(self, _id));
+        require(contains(self, _id), "node not in list");
 
         if (self.size > 1) {
             // List contains more than a single node
@@ -146,7 +145,7 @@ library SortedDoublyLL {
      */
     function updateKey(Data storage self, address _id, uint256 _newKey, address _prevId, address _nextId) public {
         // List must contain the node
-        require(contains(self, _id));
+        require(contains(self, _id), "node not in list");
 
         // Remove node from the list
         remove(self, _id);

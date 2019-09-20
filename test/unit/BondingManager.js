@@ -42,7 +42,7 @@ contract("BondingManager", accounts => {
 
     describe("setController", () => {
         it("should fail if caller is not Controller", async () => {
-            await expectThrow(bondingManager.setController(accounts[0]))
+            await expectRevertWithReason(bondingManager.setController(accounts[0]), "caller must be Controller")
         })
 
         it("should set new Controller", async () => {
@@ -54,7 +54,7 @@ contract("BondingManager", accounts => {
 
     describe("setUnbondingPeriod", () => {
         it("should fail if caller is not Controller owner", async () => {
-            await expectThrow(bondingManager.setUnbondingPeriod(5, {from: accounts[2]}))
+            await expectRevertWithReason(bondingManager.setUnbondingPeriod(5, {from: accounts[2]}), "caller must be Controller owner")
         })
 
         it("should set unbondingPeriod", async () => {
@@ -66,7 +66,7 @@ contract("BondingManager", accounts => {
 
     describe("setNumActiveTranscoders", () => {
         it("should fail if caller is not Controller owner", async () => {
-            await expectThrow(bondingManager.setNumActiveTranscoders(7, {from: accounts[2]}))
+            await expectRevertWithReason(bondingManager.setNumActiveTranscoders(7, {from: accounts[2]}), "caller must be Controller owner")
         })
 
         it("should set numActiveTranscoders", async () => {
@@ -78,7 +78,7 @@ contract("BondingManager", accounts => {
 
     describe("setMaxEarningsClaimsRounds", () => {
         it("should fail if caller is not Controller owner", async () => {
-            await expectThrow(bondingManager.setMaxEarningsClaimsRounds(2, {from: accounts[2]}))
+            await expectRevertWithReason(bondingManager.setMaxEarningsClaimsRounds(2, {from: accounts[2]}), "caller must be Controller owner")
         })
 
         it("should set maxEarningsClaimsRounds", async () => {
@@ -99,7 +99,7 @@ contract("BondingManager", accounts => {
         it("should fail if current round is not initialized", async () => {
             await fixture.roundsManager.setMockBool(functionSig("currentRoundInitialized()"), false)
 
-            await expectThrow(bondingManager.transcoder(5, 10))
+            await expectRevertWithReason(bondingManager.transcoder(5, 10), "current round is not initialized")
         })
 
         it("should fail if the current round is locked", async () => {
@@ -321,7 +321,7 @@ contract("BondingManager", accounts => {
         it("should fail if current round is not initialized", async () => {
             await fixture.roundsManager.setMockBool(functionSig("currentRoundInitialized()"), false)
 
-            await expectThrow(bondingManager.bond(1000, transcoder0, {from: delegator}))
+            await expectRevertWithReason(bondingManager.bond(1000, transcoder0, {from: delegator}), "current round is not initialized")
         })
 
         describe("update transcoder pool", () => {
@@ -408,7 +408,7 @@ contract("BondingManager", accounts => {
 
         describe("caller is unbonded", () => {
             it("should fail if provided amount = 0", async () => {
-                await expectThrow(bondingManager.bond(0, transcoder0, {from: delegator}))
+                await expectRevertWithReason(bondingManager.bond(0, transcoder0, {from: delegator}), "delegation amount must be greater than 0")
             })
 
             it("should set startRound to the next round", async () => {
@@ -832,7 +832,7 @@ contract("BondingManager", accounts => {
 
             describe("caller is increasing bonded amount", () => {
                 it("should fail if provided amount = 0", async () => {
-                    await expectThrow(bondingManager.bond(0, transcoder0, {from: delegator}))
+                    await expectRevertWithReason(bondingManager.bond(0, transcoder0, {from: delegator}), "delegation amount must be greater than 0")
                 })
 
                 it("should update bonded amount", async () => {
@@ -907,7 +907,7 @@ contract("BondingManager", accounts => {
         it("should fail if current round is not initialized", async () => {
             await fixture.roundsManager.setMockBool(functionSig("currentRoundInitialized()"), false)
 
-            await expectThrow(bondingManager.unbond(500, {from: delegator}))
+            await expectRevertWithReason(bondingManager.unbond(500, {from: delegator}), "current round is not initialized")
         })
 
         it("should fail if the caller is not bonded", async () => {
@@ -1116,8 +1116,8 @@ contract("BondingManager", accounts => {
             await bondingManager.bond(1000, transcoder, {from: transcoder})
             await bondingManager.transcoder(5, 10, {from: transcoder})
             await bondingManager.bond(1000, transcoder, {from: delegator})
-
             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 1)
+
             await bondingManager.unbond(500, {from: delegator})
         })
 
@@ -1130,7 +1130,7 @@ contract("BondingManager", accounts => {
         it("should fail if current round is not initialized", async () => {
             await fixture.roundsManager.setMockBool(functionSig("currentRoundInitialized()"), false)
 
-            await expectThrow(bondingManager.rebond(unbondingLockID, {from: delegator}))
+            await expectRevertWithReason(bondingManager.rebond(unbondingLockID, {from: delegator}), "current round is not initialized")
         })
 
         it("should fail if delegator is not in the Bonded or Pending state", async () => {
@@ -1142,7 +1142,7 @@ contract("BondingManager", accounts => {
 
         it("should fail for invalid unbonding lock ID", async () => {
             // Unbonding lock for ID does not exist
-            await expectThrow(bondingManager.rebond(unbondingLockID + 5, {from: delegator}))
+            await expectRevertWithReason(bondingManager.rebond(unbondingLockID + 5, {from: delegator}), "invalid unbonding lock ID")
         })
 
         it("should rebond tokens for unbonding lock to delegator's current delegate", async () => {
@@ -1270,11 +1270,11 @@ contract("BondingManager", accounts => {
             await bondingManager.unbond(500, {from: delegator})
             await fixture.roundsManager.setMockBool(functionSig("currentRoundInitialized()"), false)
 
-            await expectThrow(bondingManager.rebondFromUnbonded(transcoder, unbondingLockID, {from: delegator}))
+            await expectRevertWithReason(bondingManager.rebondFromUnbonded(transcoder, unbondingLockID, {from: delegator}), "current round is not initialized")
         })
 
         it("should fail if delegator is not in Unbonded state", async () => {
-            await expectThrow(bondingManager.rebondFromUnbonded(transcoder, unbondingLockID, {from: delegator}))
+            await expectRevertWithReason(bondingManager.rebondFromUnbonded(transcoder, unbondingLockID, {from: delegator}), "caller must be unbonded")
         })
 
         it("should fail for invalid unbonding lock ID", async () => {
@@ -1282,7 +1282,7 @@ contract("BondingManager", accounts => {
             await bondingManager.unbond(500, {from: delegator})
 
             // Unbonding lock for ID does not exist
-            await expectThrow(bondingManager.rebond(unbondingLockID + 5, {from: delegator}))
+            await expectRevertWithReason(bondingManager.rebondFromUnbonded(transcoder, unbondingLockID + 5, {from: delegator}), "invalid unbonding lock ID")
         })
 
         it("should set delegator's start round and delegate address", async () => {
@@ -1401,16 +1401,16 @@ contract("BondingManager", accounts => {
         it("should fail if current round is not initialized", async () => {
             await fixture.roundsManager.setMockBool(functionSig("currentRoundInitialized()"), false)
 
-            await expectThrow(bondingManager.withdrawStake(unbondingLockID, {from: delegator}))
+            await expectRevertWithReason(bondingManager.withdrawStake(unbondingLockID, {from: delegator}), "current round is not initialized")
         })
 
         it("should fail if unbonding lock is invalid", async () => {
             // Unbonding lock for ID does not exist
-            await expectThrow(bondingManager.withdrawStake(unbondingLockID + 5, {from: delegator}))
+            await expectRevertWithReason(bondingManager.withdrawStake(unbondingLockID + 5, {from: delegator}), "invalid unbonding lock ID")
         })
 
         it("should fail if unbonding lock withdraw round is in the future", async () => {
-            await expectThrow(bondingManager.withdrawStake(unbondingLockID, {from: delegator}))
+            await expectRevertWithReason(bondingManager.withdrawStake(unbondingLockID, {from: delegator}), "withdraw round must be before or equal to the current round")
         })
 
         it("should withdraw tokens for unbonding lock", async () => {
@@ -1476,11 +1476,11 @@ contract("BondingManager", accounts => {
         it("should fail if current round is not initialized", async () => {
             await fixture.roundsManager.setMockBool(functionSig("currentRoundInitialized()"), false)
 
-            await expectThrow(bondingManager.withdrawFees({from: transcoder0}))
+            await expectRevertWithReason(bondingManager.withdrawFees({from: transcoder0}), "current round is not initialized")
         })
 
         it("should fail if there are no fees to withdraw", async () => {
-            await expectThrow(bondingManager.withdrawFees({from: transcoder1}))
+            await expectRevertWithReason(bondingManager.withdrawFees({from: transcoder1}), "no fees to withdraw")
         })
 
         it("should withdraw caller's fees", async () => {
@@ -1521,7 +1521,7 @@ contract("BondingManager", accounts => {
         it("should fail if current round is not initialized", async () => {
             await fixture.roundsManager.setMockBool(functionSig("currentRoundInitialized()"), false)
 
-            await expectThrow(bondingManager.reward({from: transcoder}))
+            await expectRevertWithReason(bondingManager.reward({from: transcoder}), "current round is not initialized")
         })
 
         it("should fail if caller is not an active transcoder for the current round", async () => {
@@ -1612,7 +1612,7 @@ contract("BondingManager", accounts => {
         })
 
         it("should fail if caller is not TicketBroker", async () => {
-            await expectThrow(bondingManager.updateTranscoderWithFees(transcoder, 1000, currentRound + 1))
+            await expectRevertWithReason(bondingManager.updateTranscoderWithFees(transcoder, 1000, currentRound + 1), "caller must be TicketBroker")
         })
 
         it("should fail if transcoder is not registered", async () => {
@@ -1678,7 +1678,7 @@ contract("BondingManager", accounts => {
         })
 
         it("should fail if caller is not Verifier", async () => {
-            await expectThrow(bondingManager.slashTranscoder(transcoder, constants.NULL_ADDRESS, PERC_DIVISOR / 2, PERC_DIVISOR / 2))
+            await expectRevertWithReason(bondingManager.slashTranscoder(transcoder, constants.NULL_ADDRESS, PERC_DIVISOR / 2, PERC_DIVISOR / 2), "caller must be Verifier")
         })
 
         it("decreases transcoder's bondedAmount", async () => {
@@ -1993,7 +1993,7 @@ contract("BondingManager", accounts => {
         it("should fail if current round is not initialized", async () => {
             await fixture.roundsManager.setMockBool(functionSig("currentRoundInitialized()"), false)
 
-            await expectThrow(bondingManager.claimEarnings(currentRound + 1, {from: delegator1}))
+            await expectRevertWithReason(bondingManager.claimEarnings(currentRound + 1, {from: delegator1}), "current round is not initialized")
         })
 
         it("should fail if provided endRound is before caller's lastClaimRound", async () => {
@@ -2264,15 +2264,15 @@ contract("BondingManager", accounts => {
         })
 
         it("should fail if endRound is after current round", async () => {
-            await expectThrow(bondingManager.pendingStake(delegator, currentRound + 3))
+            await expectRevertWithReason(bondingManager.pendingStake(delegator, currentRound + 3), "end round must be before or equal to current round")
         })
 
         it("should fail if endRound is before lastClaimRound", async () => {
-            await expectThrow(bondingManager.pendingStake(delegator, currentRound - 2))
+            await expectRevertWithReason(bondingManager.pendingStake(delegator, currentRound - 2), "end round must be after last claim round")
         })
 
         it("should fail if endRound = lastClaimRound", async () => {
-            await expectThrow(bondingManager.pendingStake(delegator, currentRound - 1))
+            await expectRevertWithReason(bondingManager.pendingStake(delegator, currentRound - 1), "end round must be after last claim round")
         })
 
         it("should return pending rewards for 1 round", async () => {
@@ -2378,15 +2378,15 @@ contract("BondingManager", accounts => {
         })
 
         it("should fail if endRound is after current round", async () => {
-            await expectThrow(bondingManager.pendingFees(delegator, currentRound + 3))
+            await expectRevertWithReason(bondingManager.pendingFees(delegator, currentRound + 3), "end round must be before or equal to current round")
         })
 
         it("should fail if endRound is before lastClaimRound", async () => {
-            await expectThrow(bondingManager.pendingFees(delegator, currentRound - 1))
+            await expectRevertWithReason(bondingManager.pendingFees(delegator, currentRound - 1), "end round must be after last claim round")
         })
 
         it("should fail if endRound = lastClaimRound", async () => {
-            await expectThrow(bondingManager.pendingFees(delegator, currentRound))
+            await expectRevertWithReason(bondingManager.pendingFees(delegator, currentRound), "end round must be after last claim round")
         })
 
         it("should return pending fees for 1 round", async () => {

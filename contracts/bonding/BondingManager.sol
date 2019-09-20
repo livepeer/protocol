@@ -102,7 +102,10 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
     // Check if sender is TicketBroker
     modifier onlyTicketBroker() {
-        require(msg.sender == controller.getContract(keccak256("TicketBroker")));
+        require(
+            msg.sender == controller.getContract(keccak256("TicketBroker")),
+            "caller must be TicketBroker"
+        );
         _;
     }
 
@@ -117,13 +120,13 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
     // Check if sender is Verifier
     modifier onlyVerifier() {
-        require(msg.sender == controller.getContract(keccak256("Verifier")));
+        require(msg.sender == controller.getContract(keccak256("Verifier")), "caller must be Verifier");
         _;
     }
 
     // Check if current round is initialized
     modifier currentRoundInitialized() {
-        require(roundsManager().currentRoundInitialized());
+        require(roundsManager().currentRoundInitialized(), "current round is not initialized");
         _;
     }
 
@@ -250,7 +253,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             decreaseTotalStake(currentDelegate, del.bondedAmount);
         }
 
-        // Delegation amount must be > 0 - cannot delegate to someone without having bonded stake
+        // cannot delegate to someone without having bonded stake
         require(delegationAmount > 0, "delegation amount must be greater than 0");
         // Update delegate
         del.delegateAddress = _to;
@@ -329,7 +332,6 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         currentRoundInitialized
         autoClaimEarnings
     {
-        // Caller must not be an unbonded delegator
         require(delegatorStatus(msg.sender) != DelegatorStatus.Unbonded, "caller must be bonded");
 
         // Process rebond using unbonding lock
@@ -351,8 +353,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         currentRoundInitialized
         autoClaimEarnings
     {
-        // Caller must be an unbonded delegator
-        require(delegatorStatus(msg.sender) == DelegatorStatus.Unbonded);
+        require(delegatorStatus(msg.sender) == DelegatorStatus.Unbonded, "caller must be unbonded");
 
         // Set delegator's start round and transition into Pending state
         delegators[msg.sender].startRound = roundsManager().currentRound().add(1);
@@ -374,10 +375,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         Delegator storage del = delegators[msg.sender];
         UnbondingLock storage lock = del.unbondingLocks[_unbondingLockId];
 
-        // Unbonding lock must be valid
-        require(isValidUnbondingLock(msg.sender, _unbondingLockId));
-        // Withdrawal must be valid for the unbonding lock i.e. the withdraw round is now or in the past
-        require(lock.withdrawRound <= roundsManager().currentRound());
+        require(isValidUnbondingLock(msg.sender, _unbondingLockId), "invalid unbonding lock ID");
+        require(lock.withdrawRound <= roundsManager().currentRound(), "withdraw round must be before or equal to the current round");
 
         uint256 amount = lock.amount;
         uint256 withdrawRound = lock.withdrawRound;
@@ -399,8 +398,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         currentRoundInitialized
         autoClaimEarnings
     {
-        // Delegator must have fees
-        require(delegators[msg.sender].fees > 0);
+        require(delegators[msg.sender].fees > 0, "no fees to withdraw");
 
         uint256 amount = delegators[msg.sender].fees;
         delegators[msg.sender].fees = 0;
@@ -418,10 +416,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     function reward() external whenSystemNotPaused currentRoundInitialized {
         uint256 currentRound = roundsManager().currentRound();
 
-        // Sender must be an active transcoder
         require(isActiveTranscoder(msg.sender), "caller must be an active transcoder");
-
-        // Transcoder must not have called reward for this round already
         require(transcoders[msg.sender].lastRewardRound != currentRound, "caller has already called reward for the current round");
 
         Transcoder storage t = transcoders[msg.sender];
@@ -566,8 +561,9 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     function pendingStake(address _delegator, uint256 _endRound) public view returns (uint256) {
         uint256 currentRound = roundsManager().currentRound();
         Delegator storage del = delegators[_delegator];
-
-        require(_endRound <= currentRound && _endRound > del.lastClaimRound, "end round must be before or equal to current round and after lastClaimRound");
+        
+        require(_endRound <= currentRound, "end round must be before or equal to current round");
+        require(_endRound > del.lastClaimRound, "end round must be after last claim round");
 
         uint256 currentBondedAmount = del.bondedAmount;
 
@@ -592,8 +588,9 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     function pendingFees(address _delegator, uint256 _endRound) public view returns (uint256) {
         uint256 currentRound = roundsManager().currentRound();
         Delegator storage del = delegators[_delegator];
-        // End round must be before or equal to current round and after lastClaimRound
-        require(_endRound <= currentRound && _endRound > del.lastClaimRound);
+
+        require(_endRound <= currentRound, "end round must be before or equal to current round");
+        require(_endRound > del.lastClaimRound, "end round must be after last claim round");
 
         uint256 currentFees = del.fees;
         uint256 currentBondedAmount = del.bondedAmount;
@@ -983,8 +980,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         Delegator storage del = delegators[_delegator];
         UnbondingLock storage lock = del.unbondingLocks[_unbondingLockId];
 
-        // Unbonding lock must be valid
-        require(isValidUnbondingLock(_delegator, _unbondingLockId));
+        require(isValidUnbondingLock(_delegator, _unbondingLockId), "invalid unbonding lock ID");
 
         uint256 amount = lock.amount;
         // Increase delegator's bonded amount
