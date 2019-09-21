@@ -2535,8 +2535,6 @@ contract("BondingManager", accounts => {
                 })
             })
         })
-
-        // There should be no case where a delegator has a non-zero bonded amount, but does not have a start round
     })
 
     describe("isRegisteredTranscoder", () => {
