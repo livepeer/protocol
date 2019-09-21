@@ -88,10 +88,10 @@ contract("Rewards", accounts => {
             const currentRound = await roundsManager.currentRound()
             const d = await bondingManager.getDelegator(addr)
 
-            if (d[5].toNumber() < currentRound.toNumber()) {
+            if (d.lastClaimRound.toNumber() < currentRound.toNumber()) {
                 return await bondingManager.pendingStake(addr, currentRound)
             } else {
-                return d[0]
+                return d.bondedAmount
             }
         }
 

@@ -84,15 +84,15 @@ contract RoundsManager is ManagerProxyTarget, IRoundsManager {
         uint256 currRound = currentRound();
 
         // Check if already called for the current round
-        require(lastInitializedRound < currRound);
+        require(lastInitializedRound < currRound, "round already initialized");
 
         // Set current round as initialized
         lastInitializedRound = currRound;
         // Store block hash for round
         bytes32 roundBlockHash = blockHash(blockNum().sub(1));
         _blockHashForRound[currRound] = roundBlockHash;
-        // Set active transcoders for the round
-        bondingManager().setActiveTranscoders();
+        // Set total active stake for the round
+        bondingManager().setCurrentRoundTotalActiveStake();
         // Set mintable rewards for the round
         minter().setCurrentRewardTokens();
 
