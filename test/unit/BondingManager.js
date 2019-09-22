@@ -1705,7 +1705,7 @@ contract("BondingManager", accounts => {
             )
         })
 
-        it("should fail if caller is not TicketBroker", async () => {
+        it("should fail if caller is not Verifier", async () => {
             await expectThrow(bondingManager.slashTranscoder(transcoder, constants.NULL_ADDRESS, PERC_DIVISOR / 2, PERC_DIVISOR / 2))
         })
 
