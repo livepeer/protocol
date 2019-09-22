@@ -2402,16 +2402,31 @@ contract("BondingManager", accounts => {
         })
 
         describe("no claimable shares for the round", async () => {
+            const fees = 125 + Math.floor((250 * (1250 * PERC_DIVISOR / 3000)) / PERC_DIVISOR)
+
             beforeEach(async () => {
                 await bondingManager.claimEarnings(currentRound + 2, {from: delegator})
 
                 await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 3)
             })
 
-            it("should return fees + 0 (pending fees)", async () => {
-                const fees = 125 + Math.floor((250 * (1250 * PERC_DIVISOR / 3000)) / PERC_DIVISOR)
-
+            it("should return fees + 0 (pending new fees) when pool.claimableStake > 0", async () => {
+                // The transcoder's pool has claimableStake > 0 for currentRound + 3 because the transcoder called reward()
+                // in currentRound + 2 which updates the claimableStake in the transcoder's pool for currentRound + 3
                 assert.equal(await bondingManager.pendingFees(delegator, currentRound + 3), fees, "should return sum of collected fees + 0 (pending fees) for 1 round")
+            })
+
+            it("should return fees + 0 (pending new fees) when pool.claimableStake = 0", async () => {
+                // Claim fees through currentRound + 3
+                // At this point, the delegator's fees should not have changed because the delegator received 0 fees
+                // for currentRound + 3
+                await bondingManager.claimEarnings(currentRound + 3, {from: delegator})
+
+                await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 4)
+
+                // The transcoder's pool has claimableStake = 0 for currentRound + 4 because the transcoder did not call reward()
+                // in currentRound + 3 so it did not update the claimableStake in its pool for currentRound + 4
+                assert.equal(await bondingManager.pendingFees(delegator, currentRound + 4), fees)
             })
         })
 
