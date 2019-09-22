@@ -2292,16 +2292,31 @@ contract("BondingManager", accounts => {
         })
 
         describe("no claimable shares for the round", async () => {
+            const bondedAmount = 1000 + 250 + Math.floor((500 * (1250 * PERC_DIVISOR / 3000)) / PERC_DIVISOR)
+
             beforeEach(async () => {
                 await bondingManager.claimEarnings(currentRound + 1, {from: delegator})
 
                 await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 2)
             })
 
-            it("should return bondedAmount + 0 (pending rewards)", async () => {
-                const bondedAmount = 1000 + 250 + Math.floor((500 * (1250 * PERC_DIVISOR / 3000)) / PERC_DIVISOR)
-
+            it("should return bondedAmount + 0 (pending rewards) when pool.claimableStake > 0", async () => {
+                // The transcoder's pool has claimableStake > 0 for currentRound + 2 because the transcoder called reward()
+                // in currentRound + 1 which updates the claimableStake in the transcoder's pool for currentRound + 2
                 assert.equal(await bondingManager.pendingStake(delegator, currentRound + 2), bondedAmount, "should return sum of bondedAmount + 0 (pending rewards) for 1 round")
+            })
+
+            it("should return bondedAmount + 0 (pending rewards) when pool.claimableStake = 0", async () => {
+                // Claim rewards through currentRound + 2
+                // At this point, the delegator's bondedAmount should not have changed because the delegator received 0 rewards
+                // for currentRound + 1
+                await bondingManager.claimEarnings(currentRound + 2, {from: delegator})
+
+                await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 3)
+
+                // The transcoder's pool has claimableStake = 0 for currentRound + 3 because the transcoder did not call reward()
+                // in currentRound + 2 so it did not update the claimableStake in its pool for currentRound + 3
+                assert.equal(await bondingManager.pendingStake(delegator, currentRound + 3), bondedAmount)
             })
         })
 
