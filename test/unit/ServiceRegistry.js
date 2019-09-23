@@ -1,4 +1,6 @@
 import Fixture from "./helpers/Fixture"
+import truffleAssert from "truffle-assertions"
+
 
 const ServiceRegistry = artifacts.require("ServiceRegistry")
 
@@ -46,12 +48,13 @@ contract("ServiceRegistry", accounts => {
         })
 
         it("fires ServiceURIUpdate event", async () => {
-            registry.ServiceURIUpdate({}).on("data", e => {
-                assert.equal(e.returnValues.addr, accounts[0], "wrong address in ServiceURIUpdate event")
-                assert.equal(e.returnValues.serviceURI, "foo", "wrong service URI in ServiceURIUpdate event")
-            })
-
-            await registry.setServiceURI("foo", {from: accounts[0]})
+            const txRes = await registry.setServiceURI("foo", {from: accounts[0]})
+            truffleAssert.eventEmitted(
+                txRes,
+                "ServiceURIUpdate",
+                e => e.addr == accounts[0] && e.serviceURI == "foo",
+                "ServiceURIUpdate event no emitted correctly"
+            )
         })
     })
 
