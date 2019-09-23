@@ -39,7 +39,7 @@ npm run test:integration
 
 All contributions and bug fixes are welcome as pull requests back into the repo.
 
-Built using [OpenZeppelin](https://github.com/OpenZeppelin/zeppelin-solidity) and [Truffle](http://truffle.readthedocs.io).
+Built using [OpenZeppelin](https://github.com/OpenZeppelin/zeppelin-solidity) and [Truffle](https://www.trufflesuite.com/docs/truffle/overview).
 
 ## Bugs
 
