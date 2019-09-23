@@ -40,9 +40,7 @@ contract MixinReserve is MContractRegistry, MReserve {
 
         uint256 currentRound = roundsManager().currentRound();
 
-        // TODO: Check if claimant is active in the current round
-        // We are just checking if it is registered for now
-        if (!bondingManager().isRegisteredTranscoder(_claimant)) {
+        if (!bondingManager().isActiveTranscoder(_claimant)) {
             return 0;
         }
 
