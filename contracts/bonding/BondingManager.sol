@@ -645,12 +645,11 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         } else if (del.startRound > roundsManager().currentRound()) {
             // Delegator round start is in the future
             return DelegatorStatus.Pending;
-        } else if (del.startRound > 0 && del.startRound <= roundsManager().currentRound()) {
-            // Delegator round start is now or in the past
-            return DelegatorStatus.Bonded;
         } else {
-            // Default to unbonded
-            return DelegatorStatus.Unbonded;
+            // Delegator round start is now or in the past
+            // del.startRound != 0 here because if del.startRound = 0 then del.bondedAmount = 0 which
+            // would trigger the first if clause
+            return DelegatorStatus.Bonded;
         }
     }
 
