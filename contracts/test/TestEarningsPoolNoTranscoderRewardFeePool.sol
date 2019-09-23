@@ -9,7 +9,8 @@ contract TestEarningsPoolNoTranscoderRewardFeePool {
 
     function beforeEach() public {
         fixture = new EarningsPoolFixture();
-        fixture.init(1000, 500000, 500000);
+        fixture.setStake(1000);
+        fixture.setCommission(500000, 500000);
         fixture.setHasTranscoderRewardFeePool(false);
     }
 
@@ -119,7 +120,8 @@ contract TestEarningsPoolNoTranscoderRewardFeePool {
     }
 
     function test_feePoolShare_noClaimableStake() public {
-        fixture.init(0, 0, 0);
+        fixture.setStake(0);
+        fixture.setCommission(0, 0);
         fixture.setHasTranscoderRewardFeePool(false);
         Assert.equal(fixture.feePoolShare(500, false), 0, "should return 0 if no claimable stake");
     }
@@ -135,7 +137,8 @@ contract TestEarningsPoolNoTranscoderRewardFeePool {
     }
 
     function test_rewardPoolShare_noClaimableStake() public {
-        fixture.init(0, 0, 0);
+        fixture.setStake(0);
+        fixture.setCommission(0, 0);
         fixture.setHasTranscoderRewardFeePool(false);
         Assert.equal(fixture.rewardPoolShare(500, false), 0, "should return 0 if no claimable stake");
     }
@@ -155,7 +158,8 @@ contract TestEarningsPoolNoTranscoderRewardFeePool {
     }
 
     function test_hasClaimableShares_zeroClaimableStake() public {
-        fixture.init(0, 0, 0);
+        fixture.setStake(0);
+        fixture.setCommission(0, 0);
         fixture.setHasTranscoderRewardFeePool(false);
         Assert.equal(fixture.hasClaimableShares(), false, "should return false when pool has zero claimable stake");
     }

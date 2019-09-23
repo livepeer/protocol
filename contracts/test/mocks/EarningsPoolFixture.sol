@@ -8,8 +8,12 @@ contract EarningsPoolFixture {
 
     EarningsPool.Data pool;
 
-    function init(uint256 _stake, uint256 _rewardCut, uint256 _feeShare) public {
-        pool.init(_stake, _rewardCut, _feeShare);
+    function setCommission(uint256 _rewardCut, uint256 _feeShare) public {
+        pool.setCommission(_rewardCut, _feeShare);
+    }
+
+    function setStake(uint256 _stake) public {
+        pool.setStake(_stake);
     }
 
     function setHasTranscoderRewardFeePool(bool _hasTranscoderRewardFeePool) public {

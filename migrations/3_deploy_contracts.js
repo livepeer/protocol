@@ -52,7 +52,6 @@ module.exports = function(deployer, network) {
 
         // Set BondingManager parameters
         await bondingManager.setUnbondingPeriod(config.bondingManager.unbondingPeriod)
-        await bondingManager.setNumTranscoders(config.bondingManager.numTranscoders)
         await bondingManager.setNumActiveTranscoders(config.bondingManager.numActiveTranscoders)
         await bondingManager.setMaxEarningsClaimsRounds(config.bondingManager.maxEarningsClaimsRounds)
 

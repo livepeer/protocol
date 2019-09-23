@@ -3,7 +3,7 @@ import expectThrow from "../helpers/expectThrow"
 import {contractId} from "../../utils/helpers"
 import {constants} from "../../utils/constants"
 import truffleAssert from "truffle-assertions"
-import {expectRevertWithReason} from "../helpers/expectFail"
+import expectRevertWithReason from "../helpers/expectFail"
 
 const RoundsManager = artifacts.require("RoundsManager")
 

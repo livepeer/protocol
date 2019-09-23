@@ -66,28 +66,16 @@ contract("Delegation", accounts => {
     it("registers transcoder 1 that self bonds", async () => {
         await token.approve(bondingManager.address, 1000, {from: transcoder1})
         await bondingManager.bond(1000, transcoder1, {from: transcoder1})
-
-        // Stake doesn't count until user joins transcoder pool
-        assert.equal(await bondingManager.getTotalBonded(), 0, "wrong total bonded")
-
-        await bondingManager.transcoder(0, 5, 100, {from: transcoder1})
-
-        assert.equal(await bondingManager.transcoderStatus(transcoder1), 1, "wrong transcoder status")
-        // Stake counted (+1000) after user joins transcoder pool
+        await bondingManager.transcoder(0, 5, {from: transcoder1})
+        assert.isTrue(await bondingManager.isRegisteredTranscoder(transcoder1), "wrong transcoder status")
         assert.equal(await bondingManager.getTotalBonded(), 1000, "wrong total bonded")
     })
 
     it("registers transcoder 2 that self bonds", async () => {
         await token.approve(bondingManager.address, 1000, {from: transcoder2})
         await bondingManager.bond(1000, transcoder2, {from: transcoder2})
-
-        // Stake doesn't count until user joins transcoder pool
-        assert.equal(await bondingManager.getTotalBonded(), 1000, "wrong total bonded")
-
-        await bondingManager.transcoder(0, 5, 100, {from: transcoder2})
-
-        assert.equal(await bondingManager.transcoderStatus(transcoder2), 1, "wrong transcoder status")
-        // Stake counted (+1000) after user joins transcoder pool
+        await bondingManager.transcoder(0, 5, {from: transcoder2})
+        assert.isTrue(await bondingManager.isRegisteredTranscoder(transcoder2), "wrong transcoder status")
         assert.equal(await bondingManager.getTotalBonded(), 2000, "wrong total bonded")
     })
 
@@ -459,7 +447,7 @@ contract("Delegation", accounts => {
 
         // Test state after rebond
         // Verify reward claiming logic
-        const transcoder2ActiveStake = await bondingManager.activeTranscoderTotalStake(transcoder2, rewardRound)
+        const transcoder2ActiveStake = (await bondingManager.getTranscoderEarningsPoolForRound(transcoder2, rewardRound)).totalStake
         const delegatorProRataShare = startDelegator1BondedAmount.mul(new BN(PERC_DIVISOR)).div(transcoder2ActiveStake)
         const rewardShare = rewardAmount.mul(delegatorProRataShare).div(new BN(PERC_DIVISOR))
         const dInfo = await bondingManager.getDelegator(delegator1)

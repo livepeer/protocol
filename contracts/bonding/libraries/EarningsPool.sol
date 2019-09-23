@@ -30,21 +30,28 @@ library EarningsPool {
     }
 
     /**
-     * @dev Initialize a EarningsPool struct
+     * @dev Sets transcoderRewardCut and transcoderFeeshare for an EarningsPool
      * @param earningsPool Storage pointer to EarningsPool struct
-     * @param _stake Total stake of the transcoder during the earnings pool's round
      * @param _rewardCut Reward cut of transcoder during the earnings pool's round
      * @param _feeShare Fee share of transcoder during the earnings pool's round
      */
-    function init(EarningsPool.Data storage earningsPool, uint256 _stake, uint256 _rewardCut, uint256 _feeShare) internal {
-        earningsPool.totalStake = _stake;
-        earningsPool.claimableStake = _stake;
+    function setCommission(EarningsPool.Data storage earningsPool, uint256 _rewardCut, uint256 _feeShare) internal {
         earningsPool.transcoderRewardCut = _rewardCut;
         earningsPool.transcoderFeeShare = _feeShare;
         // We set this flag to true here to differentiate between EarningsPool structs created using older versions of this library.
         // When using a version of this library after the introduction of this flag to read an EarningsPool struct created using an older version
         // of this library, this flag should be false in the returned struct because the default value for EVM storage is 0
         earningsPool.hasTranscoderRewardFeePool = true;
+    }
+
+    /**
+     * @dev Sets totalStake and claimableStake for an EarningsPool
+     * @param earningsPool Storage pointer to EarningsPool struct
+     * @param _stake Total stake of the transcoder during the earnings pool's round
+     */
+    function setStake(EarningsPool.Data storage earningsPool, uint256 _stake) internal {
+        earningsPool.totalStake = _stake;
+        earningsPool.claimableStake = _stake;
     }
 
     /**

@@ -48,7 +48,7 @@ contract("TicketFlow", accounts => {
         // Register transcoder
         await token.approve(bondingManager.address, amount, {from: transcoder})
         await bondingManager.bond(amount, transcoder, {from: transcoder})
-        await bondingManager.transcoder(0, 0, 0, {from: transcoder})
+        await bondingManager.transcoder(0, 0, {from: transcoder})
 
         roundLength = await roundsManager.roundLength.call()
         await roundsManager.mineBlocks(roundLength.toNumber() * 1000)
