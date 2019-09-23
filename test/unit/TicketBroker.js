@@ -206,7 +206,7 @@ contract("TicketBroker", accounts => {
             const allocation = reserve / numRecipients
             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
             await fixture.bondingManager.setMockUint256(functionSig("getTranscoderPoolSize()"), numRecipients)
-            await fixture.bondingManager.setMockBool(functionSig("isRegisteredTranscoder(address)"), true)
+            await fixture.bondingManager.setMockBool(functionSig("isActiveTranscoder(address)"), true)
             await broker.fundReserve({from: sender, value: reserve})
 
             const recipientRand = 5
@@ -230,7 +230,7 @@ contract("TicketBroker", accounts => {
             const allocation = reserve / numRecipients
             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
             await fixture.bondingManager.setMockUint256(functionSig("getTranscoderPoolSize()"), numRecipients)
-            await fixture.bondingManager.setMockBool(functionSig("isRegisteredTranscoder(address)"), true)
+            await fixture.bondingManager.setMockBool(functionSig("isActiveTranscoder(address)"), true)
             await broker.fundReserve({from: sender, value: reserve})
 
             const recipientRand = 5
@@ -384,7 +384,7 @@ contract("TicketBroker", accounts => {
             const allocation = reserve / numRecipients
             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
             await fixture.bondingManager.setMockUint256(functionSig("getTranscoderPoolSize()"), numRecipients)
-            await fixture.bondingManager.setMockBool(functionSig("isRegisteredTranscoder(address)"), true)
+            await fixture.bondingManager.setMockBool(functionSig("isActiveTranscoder(address)"), true)
             await broker.fundReserve({from: sender, value: reserve})
 
             const recipientRand = 5
@@ -412,7 +412,7 @@ contract("TicketBroker", accounts => {
             const allocation = reserve / numRecipients
             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
             await fixture.bondingManager.setMockUint256(functionSig("getTranscoderPoolSize()"), numRecipients)
-            await fixture.bondingManager.setMockBool(functionSig("isRegisteredTranscoder(address)"), true)
+            await fixture.bondingManager.setMockBool(functionSig("isActiveTranscoder(address)"), true)
             await broker.fundReserve({from: sender, value: reserve})
 
             const recipientRand = 5
@@ -685,7 +685,7 @@ contract("TicketBroker", accounts => {
                     await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
                     // Set the number of registered recipients to 0
                     await fixture.bondingManager.setMockUint256(functionSig("getTranscoderPoolSize()"), 0)
-                    await fixture.bondingManager.setMockBool(functionSig("isRegisteredTranscoder(address)"), false)
+                    await fixture.bondingManager.setMockBool(functionSig("isActiveTranscoder(address)"), false)
                     await broker.fundReserve({from: sender, value: 1000})
 
                     const recipientRand = 5
@@ -704,7 +704,7 @@ contract("TicketBroker", accounts => {
                     const numRecipients = 10
                     await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
                     await fixture.bondingManager.setMockUint256(functionSig("getTranscoderPoolSize()"), numRecipients)
-                    await fixture.bondingManager.setMockBool(functionSig("isRegisteredTranscoder(address)"), false)
+                    await fixture.bondingManager.setMockBool(functionSig("isActiveTranscoder(address)"), false)
                     await broker.fundReserve({from: sender, value: 1000})
 
                     const recipientRand = 5
@@ -725,7 +725,7 @@ contract("TicketBroker", accounts => {
                     const allocation = reserve / numRecipients
                     await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
                     await fixture.bondingManager.setMockUint256(functionSig("getTranscoderPoolSize()"), numRecipients)
-                    await fixture.bondingManager.setMockBool(functionSig("isRegisteredTranscoder(address)"), true)
+                    await fixture.bondingManager.setMockBool(functionSig("isActiveTranscoder(address)"), true)
                     await broker.fundReserve({from: sender, value: reserve})
 
                     const recipientRand = 5
@@ -753,7 +753,7 @@ contract("TicketBroker", accounts => {
                     const partialAmount = 10
                     await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
                     await fixture.bondingManager.setMockUint256(functionSig("getTranscoderPoolSize()"), numRecipients)
-                    await fixture.bondingManager.setMockBool(functionSig("isRegisteredTranscoder(address)"), true)
+                    await fixture.bondingManager.setMockBool(functionSig("isActiveTranscoder(address)"), true)
                     await broker.fundReserve({from: sender, value: reserve})
 
                     const recipientRand = 5
@@ -783,7 +783,7 @@ contract("TicketBroker", accounts => {
                     const numRecipients = 10
                     await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
                     await fixture.bondingManager.setMockUint256(functionSig("getTranscoderPoolSize()"), numRecipients)
-                    await fixture.bondingManager.setMockBool(functionSig("isRegisteredTranscoder(address)"), true)
+                    await fixture.bondingManager.setMockBool(functionSig("isActiveTranscoder(address)"), true)
                     await broker.fundReserve({from: sender, value: 1000})
 
                     const recipientRand = 5
@@ -817,7 +817,7 @@ contract("TicketBroker", accounts => {
                     const numRecipients = 10
                     await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
                     await fixture.bondingManager.setMockUint256(functionSig("getTranscoderPoolSize()"), numRecipients)
-                    await fixture.bondingManager.setMockBool(functionSig("isRegisteredTranscoder(address)"), true)
+                    await fixture.bondingManager.setMockBool(functionSig("isActiveTranscoder(address)"), true)
                     await broker.fundReserve({from: sender, value: 1000})
 
                     const recipientRand = 5
@@ -846,7 +846,7 @@ contract("TicketBroker", accounts => {
                     const numRecipients = 10
                     await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
                     await fixture.bondingManager.setMockUint256(functionSig("getTranscoderPoolSize()"), numRecipients)
-                    await fixture.bondingManager.setMockBool(functionSig("isRegisteredTranscoder(address)"), true)
+                    await fixture.bondingManager.setMockBool(functionSig("isActiveTranscoder(address)"), true)
                     await broker.fundReserve({from: sender, value: 1000})
 
                     const recipientRand = 5
@@ -878,7 +878,7 @@ contract("TicketBroker", accounts => {
                     const fromBlock = (await web3.eth.getBlock("latest")).number
                     await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
                     await fixture.bondingManager.setMockUint256(functionSig("getTranscoderPoolSize()"), numRecipients)
-                    await fixture.bondingManager.setMockBool(functionSig("isRegisteredTranscoder(address)"), true)
+                    await fixture.bondingManager.setMockBool(functionSig("isActiveTranscoder(address)"), true)
                     await broker.fundReserve({from: sender, value: reserve})
 
                     const recipientRand = 5
@@ -921,7 +921,7 @@ contract("TicketBroker", accounts => {
                         const deposit = 500
                         await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
                         await fixture.bondingManager.setMockUint256(functionSig("getTranscoderPoolSize()"), numRecipients)
-                        await fixture.bondingManager.setMockBool(functionSig("isRegisteredTranscoder(address)"), true)
+                        await fixture.bondingManager.setMockBool(functionSig("isActiveTranscoder(address)"), true)
                         await broker.fundDeposit({from: sender, value: deposit})
 
                         const recipientRand = 5
@@ -954,7 +954,7 @@ contract("TicketBroker", accounts => {
                         const reserve = 50000
                         await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
                         await fixture.bondingManager.setMockUint256(functionSig("getTranscoderPoolSize()"), numRecipients)
-                        await fixture.bondingManager.setMockBool(functionSig("isRegisteredTranscoder(address)"), true)
+                        await fixture.bondingManager.setMockBool(functionSig("isActiveTranscoder(address)"), true)
                         await broker.fundDeposit({from: sender, value: deposit})
                         await broker.fundReserve({from: sender, value: reserve})
 
@@ -1690,7 +1690,7 @@ contract("TicketBroker", accounts => {
         })
 
         it("returns 0 when the active transcoder pool size is 0", async () => {
-            await fixture.bondingManager.setMockBool(functionSig("isRegisteredTranscoder(address)"), true)
+            await fixture.bondingManager.setMockBool(functionSig("isActiveTranscoder(address)"), true)
             await fixture.bondingManager.setMockUint256(functionSig("getTranscoderPoolSize()"), 0)
 
             const reserve = 1000
@@ -1704,7 +1704,7 @@ contract("TicketBroker", accounts => {
             const reserve = 1000
             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
             await fixture.bondingManager.setMockUint256(functionSig("getTranscoderPoolSize()"), numRecipients)
-            await fixture.bondingManager.setMockBool(functionSig("isRegisteredTranscoder(address)"), true)
+            await fixture.bondingManager.setMockBool(functionSig("isActiveTranscoder(address)"), true)
             await broker.fundDepositAndReserve(deposit, reserve, {from: sender, value: deposit+reserve})
             assert.equal(
                 (await broker.claimableReserve(sender, recipient)).toString(10),
@@ -1733,7 +1733,7 @@ contract("TicketBroker", accounts => {
             const reserve = 1000
             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
             await fixture.bondingManager.setMockUint256(functionSig("getTranscoderPoolSize()"), numRecipients)
-            await fixture.bondingManager.setMockBool(functionSig("isRegisteredTranscoder(address)"), true)
+            await fixture.bondingManager.setMockBool(functionSig("isActiveTranscoder(address)"), true)
             await broker.fundReserve({from: sender, value: reserve})
 
             const recipientRand = 5
@@ -1753,7 +1753,7 @@ contract("TicketBroker", accounts => {
             const numRecipients = 10
             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
             await fixture.bondingManager.setMockUint256(functionSig("getTranscoderPoolSize()"), numRecipients)
-            await fixture.bondingManager.setMockBool(functionSig("isRegisteredTranscoder(address)"), true)
+            await fixture.bondingManager.setMockBool(functionSig("isActiveTranscoder(address)"), true)
             await broker.fundReserve({from: sender, value: 1000})
 
             let recipientRand = 5

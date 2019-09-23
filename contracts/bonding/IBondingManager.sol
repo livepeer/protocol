@@ -29,10 +29,10 @@ contract IBondingManager {
     function updateTranscoderWithFees(address _transcoder, uint256 _fees, uint256 _round) external;
     function slashTranscoder(address _transcoder, address _finder, uint256 _slashAmount, uint256 _finderFee) external;
     function setCurrentRoundTotalActiveStake() external;
-    
+
     // Public functions
     function getTranscoderPoolSize() public view returns (uint256);
     function transcoderTotalStake(address _transcoder) public view returns (uint256);
-    function isRegisteredTranscoder(address _transcoder) public view returns (bool);
+    function isActiveTranscoder(address _transcoder) public view returns (bool);
     function getTotalBonded() public view returns (uint256);
 }
