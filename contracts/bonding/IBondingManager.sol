@@ -6,7 +6,7 @@ pragma solidity ^0.4.25;
  * TODO: switch to interface type
  */
 contract IBondingManager {
-    event TranscoderUpdate(address indexed transcoder, uint256 pendingRewardCut, uint256 pendingFeeShare, bool registered);
+    event TranscoderUpdate(address indexed transcoder, uint256 rewardCut, uint256 feeShare, bool registered);
     event TranscoderEvicted(address indexed transcoder);
     event TranscoderResigned(address indexed transcoder);
     event TranscoderSlashed(address indexed transcoder, address finder, uint256 penalty, uint256 finderReward);

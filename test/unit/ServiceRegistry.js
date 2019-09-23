@@ -1,7 +1,6 @@
 import Fixture from "./helpers/Fixture"
 import truffleAssert from "truffle-assertions"
 
-
 const ServiceRegistry = artifacts.require("ServiceRegistry")
 
 contract("ServiceRegistry", accounts => {
@@ -53,7 +52,7 @@ contract("ServiceRegistry", accounts => {
                 txRes,
                 "ServiceURIUpdate",
                 e => e.addr == accounts[0] && e.serviceURI == "foo",
-                "ServiceURIUpdate event no emitted correctly"
+                "ServiceURIUpdate event not emitted correctly"
             )
         })
     })

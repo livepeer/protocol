@@ -1,7 +1,6 @@
 import Fixture from "./helpers/Fixture"
 import expectThrow from "../helpers/expectThrow"
 import expectRevertWithReason from "../helpers/expectFail"
-import expectEvent from "../helpers/expectEvent"
 import {contractId, functionSig, functionEncodedABI} from "../../utils/helpers"
 import {constants} from "../../utils/constants"
 import BN from "bn.js"
@@ -139,7 +138,10 @@ contract("BondingManager", accounts => {
                     truffleAssert.eventEmitted(
                         txRes,
                         "TranscoderUpdate",
-                        e => e.transcoder == accounts[0] && e.rewardCut == 5 && e.feeShare == 10 && e.registered == true,
+                        e => e.transcoder == accounts[0] &&
+                            e.rewardCut == 5 &&
+                            e.feeShare == 10 &&
+                            e.registered,
                         "TranscoderUpdate event not correct"
                     )
 
@@ -184,9 +186,10 @@ contract("BondingManager", accounts => {
                         truffleAssert.eventEmitted(
                             txRes,
                             "TranscoderUpdate",
-                            e => {
-                                return e.transcoder == newTranscoder && e.rewardCut == 5 && e.feeShare == 10 && e.registered == true
-                            },
+                            e => e.transcoder == newTranscoder &&
+                                    e.rewardCut == 5 &&
+                                    e.feeShare == 10 &&
+                                    e.registered,
                             "TranscoderUpdate event not correct"
                         )
                         await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound+1)
@@ -220,7 +223,10 @@ contract("BondingManager", accounts => {
                         truffleAssert.eventEmitted(
                             txRes,
                             "TranscoderUpdate",
-                            e => e.transcoder == newTranscoder && e.rewardCut == 5 && e.feeShare == 10 && e.registered == false,
+                            e => e.transcoder == newTranscoder &&
+                                e.rewardCut == 5 &&
+                                e.feeShare == 10 &&
+                                !e.registered,
                             "TranscoderUpdate event not correct"
                         )
                         await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound+1)
@@ -244,7 +250,10 @@ contract("BondingManager", accounts => {
                         truffleAssert.eventEmitted(
                             txRes,
                             "TranscoderUpdate",
-                            e => e.transcoder == newTranscoder && e.rewardCut == 5 && e.feeShare == 10 && e.registered == false,
+                            e => e.transcoder == newTranscoder &&
+                                e.rewardCut == 5 &&
+                                e.feeShare == 10 &&
+                                !e.registered,
                             "TranscoderUpdate event not correct"
                         )
                         await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound+1)
@@ -344,9 +353,12 @@ contract("BondingManager", accounts => {
             describe("evicts a transcoder from the pool", () => {
                 it("last transcoder gets evicted and new transcoder gets inserted", async () => {
                     const txRes = await bondingManager.bond(2000, transcoder2, {from: delegator})
-                    truffleAssert.eventEmitted(txRes, "TranscoderEvicted", e => {
-                        return e.transcoder == transcoder0
-                    })
+                    truffleAssert.eventEmitted(
+                        txRes,
+                        "TranscoderEvicted",
+                        e => e.transcoder == transcoder0,
+                        "TranscoderEvicted event not emitted correctly"
+                    )
                     await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 2)
                     assert.isTrue(await bondingManager.isActiveTranscoder(transcoder2))
                     assert.isTrue(await bondingManager.isActiveTranscoder(transcoder1))
@@ -421,8 +433,11 @@ contract("BondingManager", accounts => {
                 truffleAssert.eventEmitted(
                     txRes,
                     "Bond",
-                    e => e.newDelegate == transcoder0 && e.oldDelegate == constants.NULL_ADDRESS &&
-                        e.delegator == delegator && e.additionalAmount == 1000 && e.bondedAmount == 1000,
+                    e => e.newDelegate == transcoder0 &&
+                        e.oldDelegate == constants.NULL_ADDRESS &&
+                        e.delegator == delegator &&
+                        e.additionalAmount == 1000 &&
+                        e.bondedAmount == 1000,
                     "Bond event not emitted correctly"
                 )
             })
@@ -619,8 +634,11 @@ contract("BondingManager", accounts => {
                         truffleAssert.eventEmitted(
                             txRes,
                             "Bond",
-                            e => e.newDelegate == transcoder1 && e.oldDelegate == transcoder0 && e.delegator == delegator &&
-                                e.additionalAmount == 0 && e.bondedAmount == 2000,
+                            e => e.newDelegate == transcoder1 &&
+                                e.oldDelegate == transcoder0 &&
+                                e.delegator == delegator &&
+                                e.additionalAmount == 0 &&
+                                e.bondedAmount == 2000,
                             "Bond event not emitted correctly"
                         )
                     })
@@ -724,8 +742,11 @@ contract("BondingManager", accounts => {
                         truffleAssert.eventEmitted(
                             txRes,
                             "Bond",
-                            e => e.newDelegate == transcoder1 && e.oldDelegate == transcoder0 && e.delegator == delegator &&
-                                e.additionalAmount == 1000 && e.bondedAmount == 3000,
+                            e => e.newDelegate == transcoder1 &&
+                                e.oldDelegate == transcoder0 &&
+                                e.delegator == delegator &&
+                                e.additionalAmount == 1000 &&
+                                e.bondedAmount == 3000,
                             "Bond event not emitted correctly"
                         )
                     })
@@ -845,8 +866,11 @@ contract("BondingManager", accounts => {
                     truffleAssert.eventEmitted(
                         txRes,
                         "Bond",
-                        e => e.newDelegate == transcoder0 && e.oldDelegate == transcoder0 && e.delegator == delegator &&
-                            e.additionalAmount == 1000 && e.bondedAmount == 3000,
+                        e => e.newDelegate == transcoder0 &&
+                            e.oldDelegate == transcoder0 &&
+                            e.delegator == delegator &&
+                            e.additionalAmount == 1000 &&
+                            e.bondedAmount == 3000,
                         "Bond event not emitted correctly"
                     )
                 })
@@ -925,8 +949,11 @@ contract("BondingManager", accounts => {
                 truffleAssert.eventEmitted(
                     txRes,
                     "Unbond",
-                    e => (e.delegate == transcoder && e.delegator == delegator && e.unbondingLockId == unbondingLockID.toNumber() &&
-                        e.amount == 500 && e.withdrawRound == currentRound + 1 + unbondingPeriod),
+                    e => e.delegate == transcoder &&
+                        e.delegator == delegator &&
+                        e.unbondingLockId == unbondingLockID.toNumber() &&
+                        e.amount == 500 &&
+                        e.withdrawRound == currentRound + 1 + unbondingPeriod,
                     "Unbond event not emitted correctly"
                 )
             })
@@ -1015,8 +1042,11 @@ contract("BondingManager", accounts => {
                 truffleAssert.eventEmitted(
                     txRes,
                     "Unbond",
-                    e => (e.delegate == transcoder && e.delegator == delegator && e.unbondingLockId == unbondingLockID.toNumber() &&
-                        e.amount == 1000 && e.withdrawRound == currentRound + 1 + unbondingPeriod),
+                    e => e.delegate == transcoder &&
+                        e.delegator == delegator &&
+                        e.unbondingLockId == unbondingLockID.toNumber() &&
+                        e.amount == 1000 &&
+                        e.withdrawRound == currentRound + 1 + unbondingPeriod,
                     "Unbond event not emitted correctly"
                 )
             })
@@ -1174,8 +1204,10 @@ contract("BondingManager", accounts => {
             truffleAssert.eventEmitted(
                 txRes,
                 "Rebond",
-                e => e.delegate == transcoder && e.delegator == delegator &&
-                    e.unbondingLockId == unbondingLockID && e.amount == 500,
+                e => e.delegate == transcoder &&
+                    e.delegator == delegator &&
+                    e.unbondingLockId == unbondingLockID &&
+                    e.amount == 500,
                 "Rebond event not emitted correctly"
             )
         })
@@ -1311,8 +1343,10 @@ contract("BondingManager", accounts => {
             truffleAssert.eventEmitted(
                 txRes,
                 "Rebond",
-                e => e.delegate == transcoder && e.delegator == delegator &&
-                    e.unbondingLockId == unbondingLockID && e.amount == 500,
+                e => e.delegate == transcoder &&
+                    e.delegator == delegator &&
+                    e.unbondingLockId == unbondingLockID &&
+                    e.amount == 500,
                 "Rebond event not emitted correctly"
             )
         })
@@ -1377,7 +1411,9 @@ contract("BondingManager", accounts => {
             truffleAssert.eventEmitted(
                 txRes,
                 "WithdrawStake",
-                e => e.delegator == delegator && e.unbondingLockId == unbondingLockID && e.amount == 500 &&
+                e => e.delegator == delegator &&
+                    e.unbondingLockId == unbondingLockID &&
+                    e.amount == 500 &&
                     e.withdrawRound == currentRound + 1 + unbondingPeriod,
                 "WithdrawStake event not emitted correctly"
             )
@@ -1800,14 +1836,13 @@ contract("BondingManager", accounts => {
                     )
                 )
 
-                // 'expectEvent' is used to parse deep events that don't occur in the base contract being called
-                // These events are not included as decoded event logs in a transaction receipt's 'logs' field
-                // Rather they are still encoded as a hex string in the 'rawLogs' field
-                expectEvent(
-                    BondingManager.abi,
-                    txRes,
+                truffleAssert.eventEmitted(
+                    await truffleAssert.createTransactionResult(bondingManager, txRes.tx),
                     "TranscoderSlashed",
-                    {transcoder, finder, penalty: 500, finderReward: 250},
+                    e => e.transcoder == transcoder &&
+                        e.finder == finder &&
+                        e.penalty == 500 &&
+                        e.finderReward == 250,
                     "TranscoderSlashed event not emitted correctly"
                 )
             })
@@ -1824,14 +1859,13 @@ contract("BondingManager", accounts => {
                     )
                 )
 
-                // 'expectEvent' is used to parse deep events that don't occur in the base contract being called
-                // These events are not included as decoded event logs in a transaction receipt's 'logs' field
-                // Rather they are still encoded as a hex string in the 'rawLogs' field
-                expectEvent(
-                    BondingManager.abi,
-                    txRes,
+                truffleAssert.eventEmitted(
+                    await truffleAssert.createTransactionResult(bondingManager, txRes.tx),
                     "TranscoderSlashed",
-                    {transcoder, finder: constants.NULL_ADDRESS, penalty: 500, finderReward: 0},
+                    e => e.transcoder == transcoder &&
+                        e.finder == constants.NULL_ADDRESS &&
+                        e.penalty == 500 &&
+                        e.finderReward == 0,
                     "TranscoderSlashed event not emitted correctly"
                 )
             })
@@ -1855,14 +1889,13 @@ contract("BondingManager", accounts => {
                     )
                 )
 
-                // 'expectEvent' is used to parse deep events that don't occur in the base contract being called
-                // These events are not included as decoded event logs in a transaction receipt's 'logs' field
-                // Rather they are still encoded as a hex string in the 'rawLogs' field
-                expectEvent(
-                    BondingManager.abi,
-                    txRes,
+                truffleAssert.eventEmitted(
+                    await truffleAssert.createTransactionResult(bondingManager, txRes.tx),
                     "TranscoderSlashed",
-                    {transcoder, finder: constants.NULL_ADDRESS, penalty: 0, finderReward: 0},
+                    e => e.transcoder == transcoder &&
+                        e.finder == constants.NULL_ADDRESS &&
+                        e.penalty == 0 &&
+                        e.finderReward == 0,
                     "TranscoderSlashed event not emitted correctly"
                 )
             })
@@ -1944,14 +1977,17 @@ contract("BondingManager", accounts => {
             const expFees = new BN(delegatorFees * .3) // 30%
             const txResult = await bondingManager.claimEarnings(currentRound + 1, {from: delegator1})
 
-            truffleAssert.eventEmitted(txResult, "EarningsClaimed", e => {
-                return e.delegate === transcoder &&
-                           e.delegator == delegator1 &&
-                           e.fees == expFees.toString() &&
-                           e.rewards == expRewards.toString() &&
-                           e.startRound == (currentRound + 1).toString() &&
-                           e.endRound == (currentRound + 1).toString()
-            })
+            truffleAssert.eventEmitted(
+                txResult,
+                "EarningsClaimed",
+                e => e.delegate === transcoder &&
+                    e.delegator == delegator1 &&
+                    e.fees == expFees.toString() &&
+                    e.rewards == expRewards.toString() &&
+                    e.startRound == (currentRound + 1).toString() &&
+                    e.endRound == (currentRound + 1).toString(),
+                "EarningsClaimed event not emitted correctly"
+            )
         })
 
         describe("caller has a delegate", () => {
