@@ -247,30 +247,26 @@ contract("RoundsManager", accounts => {
     describe("blockNum", () => {
         it("should return the current block number", async () => {
             const latestBlock = await web3.eth.getBlockNumber()
-            // Note that the current block from the context of the contract is the block to be mined
-            assert.equal(await roundsManager.blockNum(), latestBlock + 1, "wrong block number")
+            assert.equal(await roundsManager.blockNum(), latestBlock, "wrong block number")
         })
     })
 
     describe("blockHash", () => {
         it("should fail if block is in the future", async () => {
             const latestBlock = await web3.eth.getBlockNumber()
-            // Note that current block = latestBlock + 1, so latestBlock + 2 is in the future
-            await expectThrow(roundsManager.blockHash(latestBlock + 2))
+            await expectThrow(roundsManager.blockHash(latestBlock + 1))
         })
 
         it("should fail if the current block >= 256 and the block is more than 256 blocks in the past", async () => {
             await fixture.rpc.wait(256)
 
             const latestBlock = await web3.eth.getBlockNumber()
-            // Note that current block = latestBlock + 1, so latestBlock - 256 = current block - 257
-            await expectThrow(roundsManager.blockHash(latestBlock - 256))
+            await expectThrow(roundsManager.blockHash(latestBlock - 257))
         })
 
         it("should fail if block is the current block", async () => {
             const latestBlock = await web3.eth.getBlockNumber()
-            // Note that current block = latestBlock + 1
-            await expectThrow(roundsManager.blockHash(latestBlock + 1))
+            await expectThrow(roundsManager.blockHash(latestBlock))
         })
 
         it("should return the block hash if the current block is >= 256 and the block is not more than 256 blocks in the past", async () => {
