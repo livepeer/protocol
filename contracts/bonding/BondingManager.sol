@@ -773,18 +773,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * @dev Return total bonded tokens
      */
     function getTotalBonded() public view returns (uint256) {
-        uint256 totalBonded = 0;
-        uint256 totalTranscoders = transcoderPool.getSize();
-        address currentTranscoder = transcoderPool.getFirst();
-
-        for (uint256 i = 0; i < totalTranscoders; i++) {
-            // Add current transcoder's total delegated stake to total bonded counter
-            totalBonded = totalBonded.add(transcoderTotalStake(currentTranscoder));
-            // Get next transcoder in the pool
-            currentTranscoder = transcoderPool.getNext(currentTranscoder);
-        }
-
-        return totalBonded;
+        return currentRoundTotalActiveStake;
     }
 
    /**
