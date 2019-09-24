@@ -21,7 +21,7 @@ const processResult = receipt => {
 /**
  * Deploy and link `libName` to provided contract artifact.
  * Modifies bytecode in place
- * 
+ *
  * @param {string} contract Contract name
  * @param {string} libName Library name
 */
@@ -43,7 +43,7 @@ const linkLib = async (contract, libName) => {
 /**
  * Runs a solidity test file, via javascript.
  * Required to smooth over some technical problems in solidity-coverage
- * 
+ *
  * @param {string} c Name of Solidity test file
  * @param {Array} libs Array of names of Solidity libraries to link with test file
  * @param {Object} mochaContext Mocha context

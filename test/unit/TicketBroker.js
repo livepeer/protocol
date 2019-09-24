@@ -396,7 +396,7 @@ contract("TicketBroker", accounts => {
             // Deposit is 0 so this will claim from the reserve
             await broker.redeemWinningTicket(ticket, senderSig, recipientRand, {from: recipient})
 
-            // No additional reserve funds so this should not increase reserve 
+            // No additional reserve funds so this should not increase reserve
             await broker.fundDepositAndReserve(
                 100,
                 0,
@@ -1717,7 +1717,7 @@ contract("TicketBroker", accounts => {
             const senderSig = await signMsg(getTicketHash(ticket), sender)
             // Redeem a winning ticket
             await broker.redeemWinningTicket(ticket, senderSig, recipientRand, {from: recipient})
-            // Reserve allocated for recipient should still be 100 since ticket was drawn from deposit 
+            // Reserve allocated for recipient should still be 100 since ticket was drawn from deposit
             assert.equal(
                 (await broker.claimableReserve(sender, recipient)).toString(10),
                 "100"
