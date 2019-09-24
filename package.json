@@ -60,7 +60,7 @@
     "solidity-coverage": "^0.5.11",
     "solium": "^1.1.8",
     "truffle": "5.0.0-next.17",
-    "truffle-keystore-provider": "^1.0.2",
-    "truffle-assertions": "0.6.3"
+    "truffle-assertions": "0.6.3",
+    "truffle-keystore-provider": "^1.0.2"
   }
 }

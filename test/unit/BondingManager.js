@@ -132,14 +132,18 @@ contract("BondingManager", accounts => {
 
             describe("transcoder pool is not full", () => {
                 it("should add new transcoder to the pool", async () => {
-                    bondingManager.TranscoderUpdate({transcoder: accounts[0]}).on("data", e => {
-                        assert.equal(e.returnValues.pendingRewardCut, 5, "should fire TranscoderUpdate event with provided rewardCut")
-                        assert.equal(e.returnValues.pendingFeeShare, 10, "should fire TranscoderUpdate event with provided feeShare")
-                        assert.equal(e.returnValues.args.registered, true, "should fire TranscoderUpdate event with registered set to true")
-                    })
-
                     await bondingManager.bond(1000, accounts[0])
-                    await bondingManager.transcoder(5, 10)
+                    const txRes = await bondingManager.transcoder(5, 10)
+
+                    truffleAssert.eventEmitted(
+                        txRes,
+                        "TranscoderUpdate",
+                        e => e.transcoder == accounts[0] &&
+                            e.rewardCut == 5 &&
+                            e.feeShare == 10 &&
+                            e.registered,
+                        "TranscoderUpdate event not correct"
+                    )
 
                     assert.equal(await bondingManager.nextRoundTotalActiveStake(), 1000, "wrong next total stake")
                     assert.equal(await bondingManager.getTranscoderPoolSize(), 1, "wrong transcoder pool size")
@@ -174,17 +178,20 @@ contract("BondingManager", accounts => {
                             })
                         }))
 
-                        bondingManager.TranscoderUpdate({transcoder: newTranscoder}).on("data", e => {
-                            assert.equal(e.returnValues.pendingRewardCut, 5, "should fire TranscoderUpdate event with provided rewardCut")
-                            assert.equal(e.returnValues.pendingFeeShare, 10, "should fire TranscoderUpdate event with provided feeShare")
-                            assert.equal(e.returnValues.registered, true, "should fire TranscoderUpdate event with registered set to true")
-                        })
-
                         const nextTotalStake = (await bondingManager.nextRoundTotalActiveStake()).toNumber()
 
                         // Caller bonds 6000 which is more than transcoder with least delegated stake
                         await bondingManager.bond(6000, newTranscoder, {from: newTranscoder})
-                        await bondingManager.transcoder(5, 10, {from: newTranscoder})
+                        const txRes = await bondingManager.transcoder(5, 10, {from: newTranscoder})
+                        truffleAssert.eventEmitted(
+                            txRes,
+                            "TranscoderUpdate",
+                            e => e.transcoder == newTranscoder &&
+                                    e.rewardCut == 5 &&
+                                    e.feeShare == 10 &&
+                                    e.registered,
+                            "TranscoderUpdate event not correct"
+                        )
                         await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound+1)
 
                         // Subtract evicted transcoder's delegated stake and add new transcoder's delegated stake
@@ -209,15 +216,19 @@ contract("BondingManager", accounts => {
                             })
                         }))
 
-                        bondingManager.TranscoderUpdate({transcoder: newTranscoder}).on("data", e => {
-                            assert.equal(e.returnValues.pendingRewardCut, 5, "should fire TranscoderUpdate event with provided rewardCut")
-                            assert.equal(e.returnValues.pendingFeeShare, 10, "should fire TranscoderUpdate event with provided feeShare")
-                            assert.equal(e.returnValues.registered, false, "should fire TranscoderUpdate event with registered set to true")
-                        })
-
                         // Caller bonds 600 - less than transcoder with least delegated stake
                         await bondingManager.bond(600, newTranscoder, {from: newTranscoder})
                         await bondingManager.transcoder(5, 10, {from: newTranscoder})
+                        const txRes = await bondingManager.transcoder(5, 10, {from: newTranscoder})
+                        truffleAssert.eventEmitted(
+                            txRes,
+                            "TranscoderUpdate",
+                            e => e.transcoder == newTranscoder &&
+                                e.rewardCut == 5 &&
+                                e.feeShare == 10 &&
+                                !e.registered,
+                            "TranscoderUpdate event not correct"
+                        )
                         await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound+1)
 
                         assert.isFalse(await bondingManager.isActiveTranscoder(newTranscoder), "should not register caller as a transcoder in the pool")
@@ -233,15 +244,18 @@ contract("BondingManager", accounts => {
                             })
                         }))
 
-                        bondingManager.TranscoderUpdate({transcoder: newTranscoder}).on("data", e => {
-                            assert.equal(e.returnValues.pendingRewardCut, 5, "should fire TranscoderUpdate event with provided rewardCut")
-                            assert.equal(e.returnValues.pendingFeeShare, 10, "should fire TranscoderUpdate event with provided feeShare")
-                            assert.equal(e.returnValues.registered, false, "should fire TranscoderUpdate event with registered set to true")
-                        })
-
                         // Caller bonds 2000 - same as transcoder with least delegated stake
                         await bondingManager.bond(2000, newTranscoder, {from: newTranscoder})
-                        await bondingManager.transcoder(5, 10, {from: newTranscoder})
+                        const txRes = await bondingManager.transcoder(5, 10, {from: newTranscoder})
+                        truffleAssert.eventEmitted(
+                            txRes,
+                            "TranscoderUpdate",
+                            e => e.transcoder == newTranscoder &&
+                                e.rewardCut == 5 &&
+                                e.feeShare == 10 &&
+                                !e.registered,
+                            "TranscoderUpdate event not correct"
+                        )
                         await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound+1)
                         assert.isFalse(await bondingManager.isActiveTranscoder(newTranscoder), "should not register caller as a transcoder in the pool")
                     })
@@ -339,9 +353,12 @@ contract("BondingManager", accounts => {
             describe("evicts a transcoder from the pool", () => {
                 it("last transcoder gets evicted and new transcoder gets inserted", async () => {
                     const txRes = await bondingManager.bond(2000, transcoder2, {from: delegator})
-                    truffleAssert.eventEmitted(txRes, "TranscoderEvicted", e => {
-                        return e.transcoder == transcoder0
-                    })
+                    truffleAssert.eventEmitted(
+                        txRes,
+                        "TranscoderEvicted",
+                        e => e.transcoder == transcoder0,
+                        "TranscoderEvicted event not emitted correctly"
+                    )
                     await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 2)
                     assert.isTrue(await bondingManager.isActiveTranscoder(transcoder2))
                     assert.isTrue(await bondingManager.isActiveTranscoder(transcoder1))
@@ -412,15 +429,17 @@ contract("BondingManager", accounts => {
             })
 
             it("should fire a Bond event when bonding from unbonded", async () => {
-                bondingManager.Bond({}).on("data", e => {
-                    assert.equal(e.returnValues.newDelegate, transcoder0, "wrong newDelegate in Bond event")
-                    assert.equal(e.returnValues.oldDelegate, constants.NULL_ADDRESS, "wrong oldDelegate in Bond event")
-                    assert.equal(e.returnValues.delegator, delegator, "wrong delegator in Bond event")
-                    assert.equal(e.returnValues.additionalAmount, 1000, "wrong additionalAmount in Bond event")
-                    assert.equal(e.returnValues.bondedAmount, 1000, "wrong bondedAmount in Bond event")
-                })
-
-                await bondingManager.bond(1000, transcoder0, {from: delegator})
+                const txRes = await bondingManager.bond(1000, transcoder0, {from: delegator})
+                truffleAssert.eventEmitted(
+                    txRes,
+                    "Bond",
+                    e => e.newDelegate == transcoder0 &&
+                        e.oldDelegate == constants.NULL_ADDRESS &&
+                        e.delegator == delegator &&
+                        e.additionalAmount == 1000 &&
+                        e.bondedAmount == 1000,
+                    "Bond event not emitted correctly"
+                )
             })
 
             describe("delegate is a registered transcoder", () => {
@@ -611,15 +630,17 @@ contract("BondingManager", accounts => {
                     })
 
                     it("should fire a Bond event when changing delegates", async () => {
-                        bondingManager.Bond({}).on("data", e => {
-                            assert.equal(e.returnValues.newDelegate, transcoder1, "wrong newDelegate in Bond event")
-                            assert.equal(e.returnValues.oldDelegate, transcoder0, "wrong oldDelegate in Bond event")
-                            assert.equal(e.returnValues.delegator, delegator, "wrong delegator in Bond event")
-                            assert.equal(e.returnValues.additionalAmount, 0, "wrong additionalAmount in Bond event")
-                            assert.equal(e.returnValues.bondedAmount, 2000, "wrong bondedAmount in Bond event")
-                        })
-
-                        await bondingManager.bond(0, transcoder1, {from: delegator})
+                        const txRes = await bondingManager.bond(0, transcoder1, {from: delegator})
+                        truffleAssert.eventEmitted(
+                            txRes,
+                            "Bond",
+                            e => e.newDelegate == transcoder1 &&
+                                e.oldDelegate == transcoder0 &&
+                                e.delegator == delegator &&
+                                e.additionalAmount == 0 &&
+                                e.bondedAmount == 2000,
+                            "Bond event not emitted correctly"
+                        )
                     })
 
                     describe("new delegate is registered transcoder", () => {
@@ -717,15 +738,17 @@ contract("BondingManager", accounts => {
                     })
 
                     it("should fire a Bond event when increasing bonded stake and changing delegates", async () => {
-                        bondingManager.Bond({}).on("data", e => {
-                            assert.equal(e.returnValues.newDelegate, transcoder1, "wrong newDelegate in Bond event")
-                            assert.equal(e.returnValues.oldDelegate, transcoder0, "wrong oldDelegate in Bond event")
-                            assert.equal(e.returnValues.delegator, delegator, "wrong delegator in Bond event")
-                            assert.equal(e.returnValues.additionalAmount, 1000, "wrong additionalAmount in Bond event")
-                            assert.equal(e.returnValues.bondedAmount, 3000, "wrong bondedAmount in Bond event")
-                        })
-
-                        await bondingManager.bond(1000, transcoder1, {from: delegator})
+                        const txRes = await bondingManager.bond(1000, transcoder1, {from: delegator})
+                        truffleAssert.eventEmitted(
+                            txRes,
+                            "Bond",
+                            e => e.newDelegate == transcoder1 &&
+                                e.oldDelegate == transcoder0 &&
+                                e.delegator == delegator &&
+                                e.additionalAmount == 1000 &&
+                                e.bondedAmount == 3000,
+                            "Bond event not emitted correctly"
+                        )
                     })
 
                     describe("new delegate is registered transcoder", () => {
@@ -839,15 +862,17 @@ contract("BondingManager", accounts => {
                 })
 
                 it("should fire a Bond event when increasing bonded amount", async () => {
-                    bondingManager.Bond({}).on("data", e => {
-                        assert.equal(e.returnValues.newDelegate, transcoder0, "wrong newDelegate in Bond event")
-                        assert.equal(e.returnValues.oldDelegate, transcoder0, "wrong oldDelegate in Bond event")
-                        assert.equal(e.returnValues.delegator, delegator, "wrong delegator in Bond event")
-                        assert.equal(e.returnValues.additionalAmount, 1000, "wrong additionalAmount in Bond event")
-                        assert.equal(e.returnValues.bondedAmount, 3000, "wrong bondedAmount in Bond event")
-                    })
-
-                    await bondingManager.bond(1000, transcoder0, {from: delegator})
+                    const txRes = await bondingManager.bond(1000, transcoder0, {from: delegator})
+                    truffleAssert.eventEmitted(
+                        txRes,
+                        "Bond",
+                        e => e.newDelegate == transcoder0 &&
+                            e.oldDelegate == transcoder0 &&
+                            e.delegator == delegator &&
+                            e.additionalAmount == 1000 &&
+                            e.bondedAmount == 3000,
+                        "Bond event not emitted correctly"
+                    )
                 })
             })
         })
@@ -919,15 +944,18 @@ contract("BondingManager", accounts => {
             it("should fire an Unbond event with an unbonding lock representing a partial unbond", async () => {
                 const unbondingLockID = (await bondingManager.getDelegator(delegator))[6]
                 const unbondingPeriod = (await bondingManager.unbondingPeriod.call()).toNumber()
-                bondingManager.Unbond({}).on("data", e => {
-                    assert.equal(e.returnValues.delegate, transcoder, "wrong delegate in Unbond event")
-                    assert.equal(e.returnValues.delegator, delegator, "wrong delegator in Unbond event")
-                    assert.equal(e.returnValues.unbondingLockId, unbondingLockID.toNumber(), "wrong unbondingLockId in Unbond event")
-                    assert.equal(e.returnValues.amount, 500, "wrong amount in Unbond event")
-                    assert.equal(e.returnValues.withdrawRound, currentRound + 1 + unbondingPeriod, "wrong withdrawRound in Unbond event")
-                })
 
-                await bondingManager.unbond(500, {from: delegator})
+                const txRes = await bondingManager.unbond(500, {from: delegator})
+                truffleAssert.eventEmitted(
+                    txRes,
+                    "Unbond",
+                    e => e.delegate == transcoder &&
+                        e.delegator == delegator &&
+                        e.unbondingLockId == unbondingLockID.toNumber() &&
+                        e.amount == 500 &&
+                        e.withdrawRound == currentRound + 1 + unbondingPeriod,
+                    "Unbond event not emitted correctly"
+                )
             })
 
             describe("delegated to non-transcoder", () => {
@@ -1009,15 +1037,18 @@ contract("BondingManager", accounts => {
             it("should fire an Unbond event with an unbonding lock representing a full unbond", async () => {
                 const unbondingLockID = (await bondingManager.getDelegator(delegator))[6]
                 const unbondingPeriod = (await bondingManager.unbondingPeriod.call()).toNumber()
-                bondingManager.Unbond({}).on("data", e => {
-                    assert.equal(e.returnValues.delegate, transcoder, "wrong delegate in Unbond event")
-                    assert.equal(e.returnValues.delegator, delegator, "wrong delegator in Unbond event")
-                    assert.equal(e.returnValues.unbondingLockId, unbondingLockID.toNumber(), "wrong unbondingLockId in Unbond event")
-                    assert.equal(e.returnValues.amount, 1000, "wrong amount in Unbond event")
-                    assert.equal(e.returnValues.withdrawRound, currentRound + 1 + unbondingPeriod, "wrong withdrawRound in Unbond event")
-                })
 
-                await bondingManager.unbond(1000, {from: delegator})
+                const txRes = await bondingManager.unbond(1000, {from: delegator})
+                truffleAssert.eventEmitted(
+                    txRes,
+                    "Unbond",
+                    e => e.delegate == transcoder &&
+                        e.delegator == delegator &&
+                        e.unbondingLockId == unbondingLockID.toNumber() &&
+                        e.amount == 1000 &&
+                        e.withdrawRound == currentRound + 1 + unbondingPeriod,
+                    "Unbond event not emitted correctly"
+                )
             })
 
             describe("is a registered transcoder", () => {
@@ -1137,10 +1168,9 @@ contract("BondingManager", accounts => {
                 await bondingManager.transcoder(5, 10, {from: transcoder1})
                 await bondingManager.bond(1800, transcoder2, {from: transcoder2})
                 await bondingManager.transcoder(5, 10, {from: transcoder2})
-                bondingManager.TranscoderEvicted({}).on("data", e => {
-                    assert.equal(e.returnValues.transcoder, transcoder2)
-                })
-                await bondingManager.rebond(unbondingLockID, {from: delegator})
+
+                const txRes = await bondingManager.rebond(unbondingLockID, {from: delegator})
+                truffleAssert.eventEmitted(txRes, "TranscoderEvicted", e => e.transcoder == transcoder2, "TranscoderEvicted event not emitted correctly")
                 await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 2)
                 assert.isTrue(await bondingManager.isActiveTranscoder(transcoder))
                 // Check that transcoder2's deactivation round is the next round
@@ -1170,14 +1200,16 @@ contract("BondingManager", accounts => {
         })
 
         it("should create an Rebond event", async () => {
-            bondingManager.Rebond({}).on("data", e => {
-                assert.equal(e.returnValues.delegate, transcoder, "wrong delegate in Rebond event")
-                assert.equal(e.returnValues.delegator, delegator, "wrong delegator in Rebond event")
-                assert.equal(e.returnValues.unbondingLockId, unbondingLockID, "wrong unbondingLockId in Rebond event")
-                assert.equal(e.returnValues.amount, 500, "wrong amount in Rebond event")
-            })
-
-            await bondingManager.rebond(unbondingLockID, {from: delegator})
+            const txRes = await bondingManager.rebond(unbondingLockID, {from: delegator})
+            truffleAssert.eventEmitted(
+                txRes,
+                "Rebond",
+                e => e.delegate == transcoder &&
+                    e.delegator == delegator &&
+                    e.unbondingLockId == unbondingLockID &&
+                    e.amount == 500,
+                "Rebond event not emitted correctly"
+            )
         })
     })
 
@@ -1307,14 +1339,16 @@ contract("BondingManager", accounts => {
             // Delegator unbonds rest of tokens transitioning to the Unbonded state
             await bondingManager.unbond(500, {from: delegator})
 
-            bondingManager.Rebond({}).on("data", e => {
-                assert.equal(e.returnValues.delegate, transcoder, "wrong delegate in Rebond event")
-                assert.equal(e.returnValues.delegator, delegator, "wrong delegator in Rebond event")
-                assert.equal(e.returnValues.unbondingLockId, unbondingLockID, "wrong unbondingLockId in Rebond event")
-                assert.equal(e.returnValues.amount, 500, "wrong amount in Rebond event")
-            })
-
-            await bondingManager.rebondFromUnbonded(transcoder, unbondingLockID, {from: delegator})
+            const txRes = await bondingManager.rebondFromUnbonded(transcoder, unbondingLockID, {from: delegator})
+            truffleAssert.eventEmitted(
+                txRes,
+                "Rebond",
+                e => e.delegate == transcoder &&
+                    e.delegator == delegator &&
+                    e.unbondingLockId == unbondingLockID &&
+                    e.amount == 500,
+                "Rebond event not emitted correctly"
+            )
         })
     })
 
@@ -1372,14 +1406,17 @@ contract("BondingManager", accounts => {
         it("should create an WithdrawStake event", async () => {
             const unbondingPeriod = (await bondingManager.unbondingPeriod.call()).toNumber()
             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 1 + unbondingPeriod)
-            bondingManager.WithdrawStake({}).on("data", e => {
-                assert.equal(e.returnValues.delegator, delegator, "wrong delegator in WithdrawStake event")
-                assert.equal(e.returnValues.unbondingLockId, unbondingLockID, "wrong unbondingLockId in WithdrawStake event")
-                assert.equal(e.returnValues.amount, 500, "wrong amount in WithdrawStake event")
-                assert.equal(e.returnValues.withdrawRound, currentRound + 1 + unbondingPeriod, "wrong withdrawRound in WithdrawStake event")
-            })
 
-            await bondingManager.withdrawStake(unbondingLockID, {from: delegator})
+            const txRes = await bondingManager.withdrawStake(unbondingLockID, {from: delegator})
+            truffleAssert.eventEmitted(
+                txRes,
+                "WithdrawStake",
+                e => e.delegator == delegator &&
+                    e.unbondingLockId == unbondingLockID &&
+                    e.amount == 500 &&
+                    e.withdrawRound == currentRound + 1 + unbondingPeriod,
+                "WithdrawStake event not emitted correctly"
+            )
         })
     })
 
@@ -1509,6 +1546,16 @@ contract("BondingManager", accounts => {
             assert.equal(endDelegatedAmount.sub(startDelegatedAmount), 1000, "should update delegatedAmount with new rewards")
             assert.equal(endTotalStake.sub(startTotalStake), 1000, "should update transcoder's total stake in the pool with new rewards")
             assert.equal(endNextTotalStake.sub(startNextTotalStake), 1000, "should update next total stake with new rewards")
+        })
+
+        it("Should emit a Reward event", async () => {
+            const txRes = await bondingManager.reward({from: transcoder})
+            truffleAssert.eventEmitted(
+                txRes,
+                "Reward",
+                e => e.transcoder == transcoder && e.amount == 1000,
+                "Reward event not emitted correctly"
+            )
         })
     })
 
@@ -1780,13 +1827,7 @@ contract("BondingManager", accounts => {
 
         describe("invoked with a finder", () => {
             it("slashes transcoder and rewards finder", async () => {
-                bondingManager.TranscoderSlashed({transcoder: transcoder}).on("data", e => {
-                    assert.equal(e.returnValues.finder, finder, "should fire TranscoderSlashed event with finder")
-                    assert.equal(e.returnValues.penalty, 500, "should fire TranscoderSlashed event with slashed amount penalty")
-                    assert.equal(e.returnValues.finderReward, 250, "should fire TranscoderSlashed event with finder reward computed with finderFee")
-                })
-
-                await fixture.verifier.execute(
+                const txRes = await fixture.verifier.execute(
                     bondingManager.address,
                     functionEncodedABI(
                         "slashTranscoder(address,address,uint256,uint256)",
@@ -1794,24 +1835,38 @@ contract("BondingManager", accounts => {
                         [transcoder, finder, PERC_DIVISOR / 2, PERC_DIVISOR / 2]
                     )
                 )
+
+                truffleAssert.eventEmitted(
+                    await truffleAssert.createTransactionResult(bondingManager, txRes.tx),
+                    "TranscoderSlashed",
+                    e => e.transcoder == transcoder &&
+                        e.finder == finder &&
+                        e.penalty == 500 &&
+                        e.finderReward == 250,
+                    "TranscoderSlashed event not emitted correctly"
+                )
             })
         })
 
         describe("invoked without a finder", () => {
             it("slashes transcoder", async () => {
-                bondingManager.TranscoderSlashed({transcoder: transcoder}).on("data", e => {
-                    assert.equal(e.returnValues.finder, constants.NULL_ADDRESS, "should fire TranscoderSlashed event with null finder")
-                    assert.equal(e.returnValues.penalty, 500, "should fire TranscoderSlashed event with slashed amount penalty")
-                    assert.equal(e.returnValues.finderReward, 0, "should fire TranscoderSlashed event with finder reward of 0")
-                })
-
-                await fixture.verifier.execute(
+                const txRes = await fixture.verifier.execute(
                     bondingManager.address,
                     functionEncodedABI(
                         "slashTranscoder(address,address,uint256,uint256)",
                         ["address", "uint256", "uint256", "uint256"],
                         [transcoder, constants.NULL_ADDRESS, PERC_DIVISOR / 2, 0]
                     )
+                )
+
+                truffleAssert.eventEmitted(
+                    await truffleAssert.createTransactionResult(bondingManager, txRes.tx),
+                    "TranscoderSlashed",
+                    e => e.transcoder == transcoder &&
+                        e.finder == constants.NULL_ADDRESS &&
+                        e.penalty == 500 &&
+                        e.finderReward == 0,
+                    "TranscoderSlashed event not emitted correctly"
                 )
             })
         })
@@ -1825,19 +1880,23 @@ contract("BondingManager", accounts => {
             })
 
             it("fires a TranscoderSlashed event, but transcoder is not penalized because it does not have a bonded amount", async () => {
-                bondingManager.TranscoderSlashed({transcoder: transcoder}).on("data", e => {
-                    assert.equal(e.returnValues.finder, constants.NULL_ADDRESS, "should fire TranscoderSlashed event with null finder")
-                    assert.equal(e.returnValues.penalty, 0, "should fire TranscoderSlashed event with slashed amount penalty of 0")
-                    assert.equal(e.returnValues.finderReward, 0, "should fire TranscoderSlashed event with finder reward of 0")
-                })
-
-                await fixture.verifier.execute(
+                const txRes = await fixture.verifier.execute(
                     bondingManager.address,
                     functionEncodedABI(
                         "slashTranscoder(address,address,uint256,uint256)",
                         ["address", "uint256", "uint256", "uint256"],
                         [transcoder, constants.NULL_ADDRESS, PERC_DIVISOR / 2, 0]
                     )
+                )
+
+                truffleAssert.eventEmitted(
+                    await truffleAssert.createTransactionResult(bondingManager, txRes.tx),
+                    "TranscoderSlashed",
+                    e => e.transcoder == transcoder &&
+                        e.finder == constants.NULL_ADDRESS &&
+                        e.penalty == 0 &&
+                        e.finderReward == 0,
+                    "TranscoderSlashed event not emitted correctly"
                 )
             })
         })
@@ -1918,14 +1977,17 @@ contract("BondingManager", accounts => {
             const expFees = new BN(delegatorFees * .3) // 30%
             const txResult = await bondingManager.claimEarnings(currentRound + 1, {from: delegator1})
 
-            truffleAssert.eventEmitted(txResult, "EarningsClaimed", e => {
-                return e.delegate === transcoder &&
-                           e.delegator == delegator1 &&
-                           e.fees == expFees.toString() &&
-                           e.rewards == expRewards.toString() &&
-                           e.startRound == (currentRound + 1).toString() &&
-                           e.endRound == (currentRound + 1).toString()
-            })
+            truffleAssert.eventEmitted(
+                txResult,
+                "EarningsClaimed",
+                e => e.delegate === transcoder &&
+                    e.delegator == delegator1 &&
+                    e.fees == expFees.toString() &&
+                    e.rewards == expRewards.toString() &&
+                    e.startRound == (currentRound + 1).toString() &&
+                    e.endRound == (currentRound + 1).toString(),
+                "EarningsClaimed event not emitted correctly"
+            )
         })
 
         describe("caller has a delegate", () => {
