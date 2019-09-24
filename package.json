@@ -59,7 +59,7 @@
     "openzeppelin-solidity": "2.0.0",
     "solidity-coverage": "^0.5.11",
     "solium": "^1.1.8",
-    "truffle": "5.0.0-next.17",
+    "truffle": "^5.0.37",
     "truffle-assertions": "0.6.3",
     "truffle-keystore-provider": "^1.0.2"
   }
