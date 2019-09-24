@@ -10,6 +10,7 @@ import {
     createWinningTicket,
     getTicketHash
 } from "../helpers/ticket"
+import signMsg from "../helpers/signMsg"
 import Fixture from "./helpers/Fixture"
 import {functionSig} from "../../utils/helpers"
 import {constants} from "../../utils/constants"
@@ -212,7 +213,7 @@ contract("TicketBroker", accounts => {
             const recipientRand = 5
             const faceValue = 1000
             const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
-            const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
+            const senderSig = await signMsg(getTicketHash(ticket), sender)
 
             // Deposit is 0 so this will claim from the reserve
             await broker.redeemWinningTicket(ticket, senderSig, recipientRand, {from: recipient})
@@ -236,7 +237,7 @@ contract("TicketBroker", accounts => {
             const recipientRand = 5
             const faceValue = 1000
             const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
-            const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
+            const senderSig = await signMsg(getTicketHash(ticket), sender)
 
             // Deposit is 0 so this will claim from the reserve
             await broker.redeemWinningTicket(ticket, senderSig, recipientRand, {from: recipient})
@@ -390,7 +391,7 @@ contract("TicketBroker", accounts => {
             const recipientRand = 5
             const faceValue = 1000
             const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
-            const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
+            const senderSig = await signMsg(getTicketHash(ticket), sender)
 
             // Deposit is 0 so this will claim from the reserve
             await broker.redeemWinningTicket(ticket, senderSig, recipientRand, {from: recipient})
@@ -418,7 +419,7 @@ contract("TicketBroker", accounts => {
             const recipientRand = 5
             const faceValue = 1000
             const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
-            const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
+            const senderSig = await signMsg(getTicketHash(ticket), sender)
 
             // Deposit is 0 so this will claim from the reserve
             await broker.redeemWinningTicket(ticket, senderSig, recipientRand, {from: recipient})
@@ -447,7 +448,7 @@ contract("TicketBroker", accounts => {
             const recipientRand = 5
             const faceValue = deposit
             const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
-            const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
+            const senderSig = await signMsg(getTicketHash(ticket), sender)
 
             await fixture.controller.pause()
 
@@ -465,7 +466,7 @@ contract("TicketBroker", accounts => {
             const recipientRand = 5
             const faceValue = deposit
             const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
-            const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
+            const senderSig = await signMsg(getTicketHash(ticket), sender)
 
             await fixture.roundsManager.setMockBool(functionSig("currentRoundInitialized()"), false)
 
@@ -593,7 +594,7 @@ contract("TicketBroker", accounts => {
             const auxData = createAuxData(currentRound + unlockPeriod, DUMMY_TICKET_CREATION_ROUND_BLOCK_HASH)
             const ticket = createWinningTicket(recipient, sender, recipientRand, 0, auxData)
             const ticketHash = getTicketHash(ticket)
-            const senderSig = await web3.eth.sign(ticketHash, sender)
+            const senderSig = await signMsg(ticketHash, sender)
 
             await expectRevertWithReason(
                 broker.redeemWinningTicket(
@@ -611,7 +612,7 @@ contract("TicketBroker", accounts => {
             const recipientRand = 5
             const ticket = createWinningTicket(recipient, sender, recipientRand)
             const ticketHash = getTicketHash(ticket)
-            const senderSig = await web3.eth.sign(ticketHash, sender)
+            const senderSig = await signMsg(ticketHash, sender)
 
             await broker.redeemWinningTicket(ticket, senderSig, recipientRand)
 
@@ -652,7 +653,7 @@ contract("TicketBroker", accounts => {
                 sender,
                 recipientRandHash
             })
-            const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
+            const senderSig = await signMsg(getTicketHash(ticket), sender)
 
             await expectRevertWithReason(
                 broker.redeemWinningTicket(
@@ -667,7 +668,7 @@ contract("TicketBroker", accounts => {
         it("reverts if sender's deposit and reserve are zero", async () => {
             const recipientRand = 5
             const ticket = createWinningTicket(recipient, sender, recipientRand)
-            const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
+            const senderSig = await signMsg(getTicketHash(ticket), sender)
 
             await expectRevertWithReason(
                 broker.redeemWinningTicket(
@@ -691,7 +692,7 @@ contract("TicketBroker", accounts => {
                     const recipientRand = 5
                     const faceValue = 10
                     const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
-                    const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
+                    const senderSig = await signMsg(getTicketHash(ticket), sender)
 
                     // There are no registered recipients so the recipients should not be able to claim
                     const txRes = await broker.redeemWinningTicket(ticket, senderSig, recipientRand, {from: recipient})
@@ -710,7 +711,7 @@ contract("TicketBroker", accounts => {
                     const recipientRand = 5
                     const faceValue = 10
                     const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
-                    const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
+                    const senderSig = await signMsg(getTicketHash(ticket), sender)
 
                     // Recipient is not registered so it should not be able to claim from the reserve
                     const txRes = await broker.redeemWinningTicket(ticket, senderSig, recipientRand, {from: recipient})
@@ -731,14 +732,14 @@ contract("TicketBroker", accounts => {
                     const recipientRand = 5
                     const faceValue = allocation
                     const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
-                    const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
+                    const senderSig = await signMsg(getTicketHash(ticket), sender)
 
                     // Claim with faceValue = max allocation
                     await broker.redeemWinningTicket(ticket, senderSig, recipientRand, {from: recipient})
 
                     const ticket2 = createWinningTicket(recipient, sender, recipientRand, faceValue)
                     ticket2.senderNonce++
-                    const senderSig2 = await web3.eth.sign(getTicketHash(ticket2), sender)
+                    const senderSig2 = await signMsg(getTicketHash(ticket2), sender)
 
                     // Should not claim anything because recipient has already claimed the max allocation
                     const txRes = await broker.redeemWinningTicket(ticket2, senderSig2, recipientRand, {from: recipient})
@@ -759,14 +760,14 @@ contract("TicketBroker", accounts => {
                     const recipientRand = 5
                     const faceValue = allocation - partialAmount
                     const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
-                    const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
+                    const senderSig = await signMsg(getTicketHash(ticket), sender)
 
                     // Leave partialAmount unclaimed
                     await broker.redeemWinningTicket(ticket, senderSig, recipientRand, {from: recipient})
 
                     const ticket2 = createWinningTicket(recipient, sender, recipientRand, faceValue)
                     ticket2.senderNonce++
-                    const senderSig2 = await web3.eth.sign(getTicketHash(ticket2), sender)
+                    const senderSig2 = await signMsg(getTicketHash(ticket2), sender)
 
                     // Claim the remaining partialAmount
                     const txRes = await broker.redeemWinningTicket(ticket2, senderSig2, recipientRand, {from: recipient})
@@ -789,7 +790,7 @@ contract("TicketBroker", accounts => {
                     const recipientRand = 5
                     const faceValue = 10
                     const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
-                    const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
+                    const senderSig = await signMsg(getTicketHash(ticket), sender)
 
                     const txRes = await broker.redeemWinningTicket(ticket, senderSig, recipientRand, {from: recipient})
 
@@ -823,13 +824,13 @@ contract("TicketBroker", accounts => {
                     const recipientRand = 5
                     const faceValue = 10
                     const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
-                    const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
+                    const senderSig = await signMsg(getTicketHash(ticket), sender)
 
                     await broker.redeemWinningTicket(ticket, senderSig, recipientRand, {from: recipient})
 
                     const ticket2 = createWinningTicket(recipient, sender, recipientRand, faceValue + 15)
                     ticket2.senderNonce++
-                    const senderSig2 = await web3.eth.sign(getTicketHash(ticket2), sender)
+                    const senderSig2 = await signMsg(getTicketHash(ticket2), sender)
 
                     const txRes = await broker.redeemWinningTicket(ticket2, senderSig2, recipientRand, {from: recipient})
 
@@ -852,12 +853,12 @@ contract("TicketBroker", accounts => {
                     const recipientRand = 5
                     const faceValue = 10
                     const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
-                    const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
+                    const senderSig = await signMsg(getTicketHash(ticket), sender)
 
                     await broker.redeemWinningTicket(ticket, senderSig, recipientRand, {from: recipient})
 
                     const ticket2 = createWinningTicket(recipient2, sender, recipientRand, faceValue + 15)
-                    const senderSig2 = await web3.eth.sign(getTicketHash(ticket2), sender)
+                    const senderSig2 = await signMsg(getTicketHash(ticket2), sender)
 
                     const txRes = await broker.redeemWinningTicket(ticket2, senderSig2, recipientRand, {from: recipient2})
 
@@ -884,12 +885,12 @@ contract("TicketBroker", accounts => {
                     const recipientRand = 5
                     const faceValue = allocation * 2
                     const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
-                    const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
+                    const senderSig = await signMsg(getTicketHash(ticket), sender)
 
                     await broker.redeemWinningTicket(ticket, senderSig, recipientRand, {from: recipient})
 
                     const ticket2 = createWinningTicket(recipient2, sender, recipientRand, faceValue + 15)
-                    const senderSig2 = await web3.eth.sign(getTicketHash(ticket2), sender)
+                    const senderSig2 = await signMsg(getTicketHash(ticket2), sender)
 
                     await broker.redeemWinningTicket(ticket2, senderSig2, recipientRand, {from: recipient2})
 
@@ -927,7 +928,7 @@ contract("TicketBroker", accounts => {
                         const recipientRand = 5
                         const faceValue = 1000
                         const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
-                        const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
+                        const senderSig = await signMsg(getTicketHash(ticket), sender)
 
                         await broker.redeemWinningTicket(ticket, senderSig, recipientRand, {from: recipient})
 
@@ -962,7 +963,7 @@ contract("TicketBroker", accounts => {
                         // Should be covered by deposit = 500 and reserve allocation = 50000 / 10 = 500
                         const faceValue = 1000
                         const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
-                        const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
+                        const senderSig = await signMsg(getTicketHash(ticket), sender)
 
                         await broker.redeemWinningTicket(ticket, senderSig, recipientRand, {from: recipient})
 
@@ -990,7 +991,7 @@ contract("TicketBroker", accounts => {
 
             const recipientRand = 5
             const ticket = createWinningTicket(recipient, sender, recipientRand)
-            const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
+            const senderSig = await signMsg(getTicketHash(ticket), sender)
 
             // Redeem with ticket faceValue = 0
             const txRes = await broker.redeemWinningTicket(ticket, senderSig, recipientRand, {from: recipient})
@@ -1010,7 +1011,7 @@ contract("TicketBroker", accounts => {
             const recipientRand = 5
             const faceValue = deposit
             const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
-            const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
+            const senderSig = await signMsg(getTicketHash(ticket), sender)
 
             // Redeem with ticket faceValue = deposit
             await broker.redeemWinningTicket(ticket, senderSig, recipientRand, {from: recipient})
@@ -1038,7 +1039,7 @@ contract("TicketBroker", accounts => {
             const recipientRand = 5
             const faceValue = deposit - 100
             const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
-            const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
+            const senderSig = await signMsg(getTicketHash(ticket), sender)
 
             // Redeem with ticket faceValue < deposit
             await broker.redeemWinningTicket(ticket, senderSig, recipientRand, {from: recipient})
@@ -1066,7 +1067,7 @@ contract("TicketBroker", accounts => {
             const recipientRand = 5
             const faceValue = 1000
             const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
-            const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
+            const senderSig = await signMsg(getTicketHash(ticket), sender)
 
             // Third party redeems the ticket
             await broker.redeemWinningTicket(ticket, senderSig, recipientRand, {from: thirdParty})
@@ -1083,7 +1084,7 @@ contract("TicketBroker", accounts => {
             const recipientRand = 5
             const faceValue = 1500
             const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
-            const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
+            const senderSig = await signMsg(getTicketHash(ticket), sender)
 
             const txResult = await broker.redeemWinningTicket(ticket, senderSig, recipientRand, {from: recipient})
 
@@ -1109,8 +1110,8 @@ contract("TicketBroker", accounts => {
             const faceValue = 1500
             const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
             const ticket2 = createWinningTicket(recipient, sender2, recipientRand, faceValue)
-            const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
-            const senderSig2 = await web3.eth.sign(getTicketHash(ticket2), sender2)
+            const senderSig = await signMsg(getTicketHash(ticket), sender)
+            const senderSig2 = await signMsg(getTicketHash(ticket2), sender2)
             const fromBlock = (await web3.eth.getBlock("latest")).number
 
             await broker.redeemWinningTicket(ticket, senderSig, recipientRand, {from: recipient})
@@ -1138,8 +1139,8 @@ contract("TicketBroker", accounts => {
             const faceValue = 200
             const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
             const ticket2 = createWinningTicket(recipient2, sender, recipientRand, faceValue)
-            const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
-            const senderSig2 = await web3.eth.sign(getTicketHash(ticket2), sender)
+            const senderSig = await signMsg(getTicketHash(ticket), sender)
+            const senderSig2 = await signMsg(getTicketHash(ticket2), sender)
             const fromBlock = (await web3.eth.getBlock("latest")).number
 
             await broker.redeemWinningTicket(ticket, senderSig, recipientRand, {from: recipient})
@@ -1169,8 +1170,8 @@ contract("TicketBroker", accounts => {
             const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
             const ticket2 = createWinningTicket(recipient, sender, recipientRand, faceValue)
             ticket2.senderNonce++
-            const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
-            const senderSig2 = await web3.eth.sign(getTicketHash(ticket2), sender)
+            const senderSig = await signMsg(getTicketHash(ticket), sender)
+            const senderSig2 = await signMsg(getTicketHash(ticket2), sender)
 
             await fixture.controller.pause()
 
@@ -1195,8 +1196,8 @@ contract("TicketBroker", accounts => {
             const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
             const ticket2 = createWinningTicket(recipient, sender, recipientRand, faceValue)
             ticket2.senderNonce++
-            const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
-            const senderSig2 = await web3.eth.sign(getTicketHash(ticket2), sender)
+            const senderSig = await signMsg(getTicketHash(ticket), sender)
+            const senderSig2 = await signMsg(getTicketHash(ticket2), sender)
 
             await fixture.roundsManager.setMockBool(functionSig("currentRoundInitialized()"), false)
 
@@ -1222,8 +1223,8 @@ contract("TicketBroker", accounts => {
             const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
             const ticket2 = createWinningTicket(recipient, sender, recipientRand, faceValue)
             ticket2.senderNonce++
-            const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
-            const senderSig2 = await web3.eth.sign(getTicketHash(ticket2), sender)
+            const senderSig = await signMsg(getTicketHash(ticket), sender)
+            const senderSig2 = await signMsg(getTicketHash(ticket2), sender)
 
             await broker.batchRedeemWinningTickets(
                 [ticket, ticket2],
@@ -1255,8 +1256,8 @@ contract("TicketBroker", accounts => {
             const faceValue = 500
             const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
             const ticket2 = createWinningTicket(recipient, sender2, recipientRand, faceValue)
-            const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
-            const senderSig2 = await web3.eth.sign(getTicketHash(ticket2), sender2)
+            const senderSig = await signMsg(getTicketHash(ticket), sender)
+            const senderSig2 = await signMsg(getTicketHash(ticket2), sender2)
 
             await broker.batchRedeemWinningTickets(
                 [ticket, ticket2],
@@ -1299,8 +1300,8 @@ contract("TicketBroker", accounts => {
             const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
             const ticket2 = createWinningTicket(constants.NULL_ADDRESS, sender, recipientRand, faceValue)
             ticket2.senderNonce++
-            const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
-            const senderSig2 = await web3.eth.sign(getTicketHash(ticket2), sender)
+            const senderSig = await signMsg(getTicketHash(ticket), sender)
+            const senderSig2 = await signMsg(getTicketHash(ticket2), sender)
 
             await broker.batchRedeemWinningTickets(
                 [ticket, ticket2],
@@ -1331,7 +1332,7 @@ contract("TicketBroker", accounts => {
             const recipientRand = 5
             const faceValue = 500
             const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
-            const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
+            const senderSig = await signMsg(getTicketHash(ticket), sender)
 
             await broker.batchRedeemWinningTickets(
                 [ticket, ticket],
@@ -1363,8 +1364,8 @@ contract("TicketBroker", accounts => {
             const ticket = createWinningTicket(constants.NULL_ADDRESS, sender, recipientRand, faceValue)
             const ticket2 = createWinningTicket(constants.NULL_ADDRESS, sender, recipientRand, faceValue)
             ticket2.senderNonce++
-            const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
-            const senderSig2 = await web3.eth.sign(getTicketHash(ticket2), sender)
+            const senderSig = await signMsg(getTicketHash(ticket), sender)
+            const senderSig2 = await signMsg(getTicketHash(ticket2), sender)
 
             await broker.batchRedeemWinningTickets(
                 [ticket, ticket2],
@@ -1713,7 +1714,7 @@ contract("TicketBroker", accounts => {
             const recipientRand = 5
             const faceValue = 10
             const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
-            const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
+            const senderSig = await signMsg(getTicketHash(ticket), sender)
             // Redeem a winning ticket
             await broker.redeemWinningTicket(ticket, senderSig, recipientRand, {from: recipient})
             // Reserve allocated for recipient should still be 100 since ticket was drawn from deposit 
@@ -1739,7 +1740,7 @@ contract("TicketBroker", accounts => {
             const recipientRand = 5
             const faceValue = 10
             const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
-            const senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
+            const senderSig = await signMsg(getTicketHash(ticket), sender)
             // Claim winning ticket - will claim from reserve (deposit = 0)
             await broker.redeemWinningTicket(ticket, senderSig, recipientRand, {from: recipient})
             // claimableReserve should be equal to reserve/numRecipients - faceValue
@@ -1759,7 +1760,7 @@ contract("TicketBroker", accounts => {
             let recipientRand = 5
             const faceValue = 100
             let ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
-            let senderSig = await web3.eth.sign(getTicketHash(ticket), sender)
+            let senderSig = await signMsg(getTicketHash(ticket), sender)
 
             // Claim winning ticket - will freeze reserve (deposit = 0)
             await broker.redeemWinningTicket(ticket, senderSig, recipientRand, {from: recipient})
