@@ -8,9 +8,9 @@
   },
   "scripts": {
     "lint": "npm run eslint && npm run solium",
-    "lint:fix": "./node_modules/.bin/eslint util/** test/** --fix",
-    "eslint": "./node_modules/.bin/eslint util/** test/**",
-    "solium": "./node_modules/.bin/solium --dir ./contracts",
+    "eslint:fix": "eslint util/** test/** --fix",
+    "eslint": "eslint util/** test/**",
+    "solium": "solium --dir ./contracts",
     "ganache": "ganache-cli -l 0x7A1200 -a 100",
     "clean": "rm -rf build/contracts",
     "compile": "truffle compile --all",
