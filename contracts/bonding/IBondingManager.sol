@@ -6,9 +6,9 @@ pragma solidity ^0.4.25;
  * TODO: switch to interface type
  */
 contract IBondingManager {
-    event TranscoderUpdate(address indexed transcoder, uint256 rewardCut, uint256 feeShare, bool registered);
-    event TranscoderEvicted(address indexed transcoder);
-    event TranscoderResigned(address indexed transcoder);
+    event TranscoderUpdate(address indexed transcoder, uint256 pendingRewardCut, uint256 pendingFeeShare, bool registered);
+    event TranscoderActivated(address indexed transcoder, uint256 activationRound);
+    event TranscoderDeactivated(address indexed transcoder, uint256 deactivationRound);
     event TranscoderSlashed(address indexed transcoder, address finder, uint256 penalty, uint256 finderReward);
     event Reward(address indexed transcoder, uint256 amount);
     event Bond(address indexed newDelegate, address indexed oldDelegate, address indexed delegator, uint256 additionalAmount, uint256 bondedAmount);
@@ -24,6 +24,8 @@ contract IBondingManager {
     // event Bond(address indexed delegate, address indexed delegator);
     // event Unbond(address indexed delegate, address indexed delegator);
     // event WithdrawStake(address indexed delegator);
+    // event TranscoderEvicted(address indexed transcoder);
+    // event TranscoderResigned(address indexed transcoder);
 
     // External functions
     function updateTranscoderWithFees(address _transcoder, uint256 _fees, uint256 _round) external;

@@ -203,7 +203,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             tryToJoinActiveSet(msg.sender, delegators[msg.sender].delegatedAmount, currentRound.add(1));
         }
 
-        emit TranscoderUpdate(msg.sender, _rewardCut, _feeShare, transcoderPool.contains(msg.sender));
+        emit TranscoderUpdate(msg.sender, _rewardCut, _feeShare, transcoderPoolcontains(_transcoder));
     }
 
     /**
@@ -881,7 +881,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             transcoders[lastTranscoder].deactivationRound = _activationRound;
             pendingNextRoundTotalActiveStake = pendingNextRoundTotalActiveStake.sub(lastStake);
 
-            emit TranscoderEvicted(lastTranscoder);
+            emit TranscoderDeactivated(lastTranscoder, _activationRound);
         }
 
         transcoderPool.insert(_transcoder, _totalStake, address(0), address(0));
@@ -892,6 +892,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         t.deactivationRound = MAX_FUTURE_ROUND;
         t.earningsPoolPerRound[_activationRound].setStake(_totalStake);
         nextRoundTotalActiveStake = pendingNextRoundTotalActiveStake;
+        emit TranscoderActivated(_transcoder, _activationRound);
     }
 
     /**
@@ -904,8 +905,9 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // 'EarningsPool.setStake()' is called whenever a transcoder becomes active again.
         transcoderPool.remove(_transcoder);
         nextRoundTotalActiveStake = nextRoundTotalActiveStake.sub(transcoderTotalStake(_transcoder));
-        transcoders[_transcoder].deactivationRound = roundsManager().currentRound().add(1);
-        emit TranscoderResigned(_transcoder);
+        uint256 deactivationRound = roundsManager().currentRound().add(1);
+        transcoders[_transcoder].deactivationRound = deactivationRound;
+        emit TranscoderDeactivated(_transcoder, deactivationRound);
     }
 
     /**
