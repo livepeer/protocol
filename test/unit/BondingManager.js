@@ -140,9 +140,8 @@ contract("BondingManager", accounts => {
                         "TranscoderUpdate",
                         e => e.transcoder == accounts[0] &&
                             e.rewardCut == 5 &&
-                            e.feeShare == 10 &&
-                            e.registered,
-                        "TranscoderUpdate event not correct"
+                            e.feeShare == 10,
+                        "TranscoderUpdate event not emitted correctly"
                     )
 
                     assert.equal(await bondingManager.nextRoundTotalActiveStake(), 1000, "wrong next total stake")
@@ -188,9 +187,8 @@ contract("BondingManager", accounts => {
                             "TranscoderUpdate",
                             e => e.transcoder == newTranscoder &&
                                     e.rewardCut == 5 &&
-                                    e.feeShare == 10 &&
-                                    e.registered,
-                            "TranscoderUpdate event not correct"
+                                    e.feeShare == 10,
+                            "TranscoderUpdate event not emitted correctly"
                         )
                         await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound+1)
 
@@ -225,9 +223,8 @@ contract("BondingManager", accounts => {
                             "TranscoderUpdate",
                             e => e.transcoder == newTranscoder &&
                                 e.rewardCut == 5 &&
-                                e.feeShare == 10 &&
-                                !e.registered,
-                            "TranscoderUpdate event not correct"
+                                e.feeShare == 10,
+                            "TranscoderUpdate event not emitted correctly"
                         )
                         await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound+1)
 
@@ -252,9 +249,8 @@ contract("BondingManager", accounts => {
                             "TranscoderUpdate",
                             e => e.transcoder == newTranscoder &&
                                 e.rewardCut == 5 &&
-                                e.feeShare == 10 &&
-                                !e.registered,
-                            "TranscoderUpdate event not correct"
+                                e.feeShare == 10,
+                            "TranscoderUpdate event not emitted correctly"
                         )
                         await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound+1)
                         assert.isFalse(await bondingManager.isActiveTranscoder(newTranscoder), "should not register caller as a transcoder in the pool")
@@ -355,9 +351,9 @@ contract("BondingManager", accounts => {
                     const txRes = await bondingManager.bond(2000, transcoder2, {from: delegator})
                     truffleAssert.eventEmitted(
                         txRes,
-                        "TranscoderEvicted",
-                        e => e.transcoder == transcoder0,
-                        "TranscoderEvicted event not emitted correctly"
+                        "TranscoderDeactivated",
+                        e => e.transcoder == transcoder0 && e.deactivationRound == currentRound + 2,
+                        "TranscoderDeactivated event not emitted correctly"
                     )
                     await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 2)
                     assert.isTrue(await bondingManager.isActiveTranscoder(transcoder2))
@@ -374,6 +370,16 @@ contract("BondingManager", accounts => {
                 it("sets the deactivationRound for the evicted transcoder to the next round", async () => {
                     await bondingManager.bond(2000, transcoder2, {from: delegator})
                     assert.equal((await bondingManager.getTranscoder(transcoder0)).deactivationRound, currentRound + 2)
+                })
+
+                it("fires a TranscoderActivated event for the new transcoder", async () => {
+                    const txRes = await bondingManager.bond(2000, transcoder2, {from: delegator})
+                    truffleAssert.eventEmitted(
+                        txRes,
+                        "TranscoderActivated",
+                        e => e.transcoder == transcoder2 && e.activationRound == currentRound + 2,
+                        "TranscoderActivated event not emitted correctly"
+                    )
                 })
             })
 
@@ -394,7 +400,6 @@ contract("BondingManager", accounts => {
             })
 
             it("updates total stake in earnings pool for next round", async () => {
-                // evict transcoder0 from the pool
                 await bondingManager.bond(2000, transcoder2, {from: delegator})
                 const poolT2 = await bondingManager.getTranscoderEarningsPoolForRound(transcoder2, currentRound+2)
                 assert.equal(poolT2.totalStake, 2500)
@@ -1051,7 +1056,7 @@ contract("BondingManager", accounts => {
                 )
             })
 
-            describe("is a registered transcoder", () => {
+            describe("is an active transcoder", () => {
                 it("should resign as a transcoder", async () => {
                     // Caller is transcoder delegated to self
                     await bondingManager.unbond(1000, {from: transcoder})
@@ -1071,9 +1076,19 @@ contract("BondingManager", accounts => {
                     await bondingManager.unbond(1000, {from: transcoder})
                     assert.equal((await bondingManager.getTranscoder(transcoder)).deactivationRound, currentRound + 2)
                 })
+
+                it("should fire a TranscoderDeactivated event", async () => {
+                    const txRes = await bondingManager.unbond(1000, {from: transcoder})
+                    truffleAssert.eventEmitted(
+                        txRes,
+                        "TranscoderDeactivated",
+                        e => e.transcoder == transcoder && e.deactivationRound == currentRound + 2,
+                        "TranscoderDeactivated event not emitted correctly"
+                    )
+                })
             })
 
-            describe("is not a registered transcoder", () => {
+            describe("is not an active transcoder", () => {
                 it("should not update total active stake for the next round", async () => {
                     const startTotalStake = await bondingManager.nextRoundTotalActiveStake()
                     await bondingManager.unbond(1000, {from: delegator2})
@@ -1170,7 +1185,13 @@ contract("BondingManager", accounts => {
                 await bondingManager.transcoder(5, 10, {from: transcoder2})
 
                 const txRes = await bondingManager.rebond(unbondingLockID, {from: delegator})
-                truffleAssert.eventEmitted(txRes, "TranscoderEvicted", e => e.transcoder == transcoder2, "TranscoderEvicted event not emitted correctly")
+                truffleAssert.eventEmitted(
+                    txRes,
+                    "TranscoderDeactivated",
+                    e => e.transcoder == transcoder2 && e.deactivationRound == currentRound + 2,
+                    "TranscoderDeactivated event not emitted correctly"
+                )
+
                 await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 2)
                 assert.isTrue(await bondingManager.isActiveTranscoder(transcoder))
                 // Check that transcoder2's deactivation round is the next round
@@ -1751,6 +1772,23 @@ contract("BondingManager", accounts => {
                     )
                 )
                 assert.equal((await bondingManager.getTranscoder(transcoder)).deactivationRound, currentRound + 2)
+            })
+
+            it("fires a TranscoderDeactivated event", async () => {
+                const txRes = await fixture.verifier.execute(
+                    bondingManager.address,
+                    functionEncodedABI(
+                        "slashTranscoder(address,address,uint256,uint256)",
+                        ["address", "uint256", "uint256", "uint256"],
+                        [transcoder, constants.NULL_ADDRESS, PERC_DIVISOR / 2, 0]
+                    )
+                )
+                truffleAssert.eventEmitted(
+                    await truffleAssert.createTransactionResult(bondingManager, txRes.tx),
+                    "TranscoderDeactivated",
+                    e => e.transcoder == transcoder && e.deactivationRound == currentRound + 2,
+                    "TranscoderDeactivated event not emitted correctly"
+                )
             })
         })
 
