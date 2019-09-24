@@ -190,7 +190,7 @@ contract("BondingManager", accounts => {
                                     e.feeShare == 10,
                             "TranscoderUpdate event not emitted correctly"
                         )
-                        await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound+1)
+                        await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 1)
 
                         // Subtract evicted transcoder's delegated stake and add new transcoder's delegated stake
                         const expNextTotalStake = nextTotalStake - 1000 + 6000
@@ -226,7 +226,7 @@ contract("BondingManager", accounts => {
                                 e.feeShare == 10,
                             "TranscoderUpdate event not emitted correctly"
                         )
-                        await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound+1)
+                        await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 1)
 
                         assert.isFalse(await bondingManager.isActiveTranscoder(newTranscoder), "should not register caller as a transcoder in the pool")
                     })
@@ -252,7 +252,7 @@ contract("BondingManager", accounts => {
                                 e.feeShare == 10,
                             "TranscoderUpdate event not emitted correctly"
                         )
-                        await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound+1)
+                        await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 1)
                         assert.isFalse(await bondingManager.isActiveTranscoder(newTranscoder), "should not register caller as a transcoder in the pool")
                     })
                 })
@@ -309,7 +309,7 @@ contract("BondingManager", accounts => {
         beforeEach(async () => {
             await fixture.roundsManager.setMockBool(functionSig("currentRoundInitialized()"), true)
             await fixture.roundsManager.setMockBool(functionSig("currentRoundLocked()"), false)
-            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound-1)
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound - 1)
 
             await bondingManager.bond(1000, transcoder0, {from: transcoder0})
             await bondingManager.transcoder(5, 10, {from: transcoder0})
@@ -328,7 +328,7 @@ contract("BondingManager", accounts => {
             beforeEach(async () => {
                 await bondingManager.bond(500, transcoder2, {from: transcoder2})
                 await bondingManager.transcoder(5, 10, {from: transcoder2})
-                await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound+1)
+                await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 1)
                 await fixture.roundsManager.execute(bondingManager.address, functionSig("setCurrentRoundTotalActiveStake()"))
             })
 
@@ -364,7 +364,7 @@ contract("BondingManager", accounts => {
 
                 it("sets deactivationRound for the inserted transcoder to the max possible round number", async () => {
                     await bondingManager.bond(2000, transcoder2, {from: delegator})
-                    assert.equal((await bondingManager.getTranscoder(transcoder2)).deactivationRound, 2**256-1)
+                    assert.equal((await bondingManager.getTranscoder(transcoder2)).deactivationRound, 2 ** 256 - 1)
                 })
 
                 it("sets the deactivationRound for the evicted transcoder to the next round", async () => {
@@ -386,7 +386,7 @@ contract("BondingManager", accounts => {
             it("inserts into pool without evicting if pool is not full", async () => {
                 await bondingManager.unbond(2000, {from: transcoder1})
                 await bondingManager.bond(2500, transcoder2, {from: delegator})
-                await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound+2)
+                await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 2)
                 assert.isTrue(await bondingManager.isActiveTranscoder(transcoder2))
                 assert.isTrue(await bondingManager.isActiveTranscoder(transcoder0))
                 // transcoder 2 should be first
@@ -395,13 +395,13 @@ contract("BondingManager", accounts => {
 
             it("doesn't insert into pool when stake is too low", async () => {
                 await bondingManager.bond(10, transcoder2, {from: delegator})
-                await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound+2)
+                await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 2)
                 assert.isFalse(await bondingManager.isActiveTranscoder(transcoder2))
             })
 
             it("updates total stake in earnings pool for next round", async () => {
                 await bondingManager.bond(2000, transcoder2, {from: delegator})
-                const poolT2 = await bondingManager.getTranscoderEarningsPoolForRound(transcoder2, currentRound+2)
+                const poolT2 = await bondingManager.getTranscoderEarningsPoolForRound(transcoder2, currentRound + 2)
                 assert.equal(poolT2.totalStake, 2500)
             })
         })
@@ -473,7 +473,7 @@ contract("BondingManager", accounts => {
 
                 it("should update transcoder's lastActiveStakeUpdateRound", async () => {
                     await bondingManager.bond(3000, transcoder0, {from: delegator})
-                    assert.equal((await bondingManager.getTranscoder(transcoder0)).lastActiveStakeUpdateRound, currentRound+1)
+                    assert.equal((await bondingManager.getTranscoder(transcoder0)).lastActiveStakeUpdateRound, currentRound + 1)
                 })
             })
 
@@ -549,8 +549,8 @@ contract("BondingManager", accounts => {
 
                         it("should update old delegate and new delegate's lastActiveStakeUpdateRound", async () => {
                             await bondingManager.bond(0, transcoder1, {from: delegator})
-                            assert.equal((await bondingManager.getTranscoder(transcoder0)).lastActiveStakeUpdateRound, currentRound+1)
-                            assert.equal((await bondingManager.getTranscoder(transcoder1)).lastActiveStakeUpdateRound, currentRound+1)
+                            assert.equal((await bondingManager.getTranscoder(transcoder0)).lastActiveStakeUpdateRound, currentRound + 1)
+                            assert.equal((await bondingManager.getTranscoder(transcoder1)).lastActiveStakeUpdateRound, currentRound + 1)
                         })
                     })
 
@@ -570,7 +570,7 @@ contract("BondingManager", accounts => {
 
                         it("should only update old delegate's lastActiveStakeUpdateRound", async () => {
                             await bondingManager.bond(0, nonTranscoder, {from: delegator})
-                            assert.equal((await bondingManager.getTranscoder(transcoder0)).lastActiveStakeUpdateRound, currentRound +1)
+                            assert.equal((await bondingManager.getTranscoder(transcoder0)).lastActiveStakeUpdateRound, currentRound + 1)
                             assert.equal((await bondingManager.getTranscoder(nonTranscoder)).lastActiveStakeUpdateRound, 0)
                         })
                     })
@@ -597,7 +597,7 @@ contract("BondingManager", accounts => {
 
                         it("should only update new delegate lastActiveStakeUpdateRound", async () => {
                             await bondingManager.bond(0, transcoder0, {from: delegator})
-                            assert.equal((await bondingManager.getTranscoder(transcoder0)).lastActiveStakeUpdateRound, currentRound+1)
+                            assert.equal((await bondingManager.getTranscoder(transcoder0)).lastActiveStakeUpdateRound, currentRound + 1)
                             assert.equal((await bondingManager.getTranscoder(delegator2)).lastActiveStakeUpdateRound, 0)
                         })
                     })
@@ -994,7 +994,7 @@ contract("BondingManager", accounts => {
 
                 it("should update delegate's lastActiveStakeUpdateRound", async () => {
                     await bondingManager.unbond(500, {from: delegator})
-                    assert.equal((await bondingManager.getTranscoder(transcoder)).lastActiveStakeUpdateRound, currentRound+2)
+                    assert.equal((await bondingManager.getTranscoder(transcoder)).lastActiveStakeUpdateRound, currentRound + 2)
                 })
             })
 
@@ -1015,7 +1015,7 @@ contract("BondingManager", accounts => {
 
                 it("should update delegate's lastActiveStakeUpdateRound", async () => {
                     await bondingManager.unbond(500, {from: delegator})
-                    assert.equal((await bondingManager.getTranscoder(transcoder)).lastActiveStakeUpdateRound, currentRound+2)
+                    assert.equal((await bondingManager.getTranscoder(transcoder)).lastActiveStakeUpdateRound, currentRound + 2)
                 })
             })
         })
@@ -1175,7 +1175,7 @@ contract("BondingManager", accounts => {
 
             it("should update delegate's lastActiveStakeUpdateRound", async () => {
                 await bondingManager.rebond(unbondingLockID, {from: delegator})
-                assert.equal((await bondingManager.getTranscoder(transcoder)).lastActiveStakeUpdateRound, currentRound+2)
+                assert.equal((await bondingManager.getTranscoder(transcoder)).lastActiveStakeUpdateRound, currentRound + 2)
             })
 
             it("should evict when rebonding and pool is full", async () => {
@@ -1332,7 +1332,7 @@ contract("BondingManager", accounts => {
 
             it("should update delegate's lastActiveStakeUpdateRound", async () => {
                 await bondingManager.rebondFromUnbonded(transcoder, unbondingLockID, {from: delegator})
-                assert.equal((await bondingManager.getTranscoder(transcoder)).lastActiveStakeUpdateRound, currentRound+2)
+                assert.equal((await bondingManager.getTranscoder(transcoder)).lastActiveStakeUpdateRound, currentRound + 2)
             })
         })
 
@@ -2034,7 +2034,7 @@ contract("BondingManager", accounts => {
                 const maxClaimRound = currentRound + 1 + maxEarningsClaimsRounds.toNumber()
                 await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), maxClaimRound + 1)
 
-                await expectRevertWithReason(bondingManager.claimEarnings(maxClaimRound+ 1, {from: delegator1}), "too many rounds to claim through")
+                await expectRevertWithReason(bondingManager.claimEarnings(maxClaimRound + 1, {from: delegator1}), "too many rounds to claim through")
             })
 
             it("should claim earnings for 1 round", async () => {
@@ -2511,7 +2511,7 @@ contract("BondingManager", accounts => {
         describe("caller is not in transcoder pool", () => {
             it("returns false", async () => {
                 await bondingManager.unbond(1000, {from: transcoder})
-                await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound+1)
+                await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 1)
                 assert.isFalse(await bondingManager.isActiveTranscoder(transcoder), "should return NotRegistered for caller not in transcoder pool")
             })
         })
@@ -2578,7 +2578,7 @@ contract("BondingManager", accounts => {
         beforeEach(async () => {
             await fixture.roundsManager.setMockBool(functionSig("currentRoundInitialized()"), true)
             await fixture.roundsManager.setMockBool(functionSig("currentRoundLocked()"), false)
-            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound-1)
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound - 1)
 
             await bondingManager.bond(1000, transcoder, {from: transcoder})
             await bondingManager.transcoder(5, 10, {from: transcoder})
