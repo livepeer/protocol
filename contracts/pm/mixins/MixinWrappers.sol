@@ -1,4 +1,4 @@
-pragma solidity ^0.4.25;
+pragma solidity ^0.5.11;
 // solium-disable-next-line
 pragma experimental ABIEncoderV2;
 
@@ -17,8 +17,8 @@ contract MixinWrappers is MContractRegistry, MTicketBrokerCore {
      */
     function batchRedeemWinningTickets(
         Ticket[] memory _tickets,
-        bytes[] _sigs,
-        uint256[] _recipientRands
+        bytes[] memory _sigs,
+        uint256[] memory _recipientRands
     )
         public
         whenSystemNotPaused
@@ -44,7 +44,7 @@ contract MixinWrappers is MContractRegistry, MTicketBrokerCore {
      */
     function redeemWinningTicketNoRevert(
         Ticket memory _ticket,
-        bytes _sig,
+        bytes memory _sig,
         uint256 _recipientRand
     )
         internal

@@ -55,6 +55,19 @@ function runSolidityTest(c, libs, mochaContext) {
 
         before(async () => {
             await linkLib(artifact, "Assert")
+            await linkLib(artifact, "AssertAddress")
+            await linkLib(artifact, "AssertAddressArray")
+            await linkLib(artifact, "AssertBalance")
+            await linkLib(artifact, "AssertBool")
+            await linkLib(artifact, "AssertBytes32")
+            await linkLib(artifact, "AssertBytes32Array")
+            await linkLib(artifact, "AssertGeneral")
+            await linkLib(artifact, "AssertInt")
+            await linkLib(artifact, "AssertIntArray")
+            await linkLib(artifact, "AssertIntArray")
+            await linkLib(artifact, "AssertString")
+            await linkLib(artifact, "AssertUint")
+            await linkLib(artifact, "AssertUintArray")
 
             if (libs) {
                 for (let lib of libs) {

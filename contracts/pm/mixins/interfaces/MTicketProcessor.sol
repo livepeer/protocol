@@ -1,4 +1,4 @@
-pragma solidity ^0.4.25;
+pragma solidity ^0.5.11;
 
 
 contract MTicketProcessor {
@@ -12,7 +12,7 @@ contract MTicketProcessor {
      * @dev Transfer withdrawal funds for a ticket sender
      * @param _amount Amount of withdrawal funds
      */
-    function withdrawTransfer(address _sender, uint256 _amount) internal;
+    function withdrawTransfer(address payable _sender, uint256 _amount) internal;
 
     /**
      * @dev Transfer funds for a recipient's winning ticket
@@ -20,11 +20,11 @@ contract MTicketProcessor {
      * @param _amount Amount of funds for the winning ticket
      * @param _auxData Auxilary data for the winning ticket
      */
-    function winningTicketTransfer(address _recipient, uint256 _amount, bytes _auxData) internal;
+    function winningTicketTransfer(address _recipient, uint256 _amount, bytes memory _auxData) internal;
 
     /**
      * @dev Validates a ticket's auxilary data (succeeds or reverts)
      * @param _auxData Auxilary data inclueded in a ticket
      */
-    function requireValidTicketAuxData(bytes _auxData) internal view;
+    function requireValidTicketAuxData(bytes memory _auxData) internal view;
 }

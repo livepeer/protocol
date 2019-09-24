@@ -1,8 +1,8 @@
-pragma solidity ^0.4.25;
+pragma solidity ^0.5.11;
 
 import "./mocks/SortedDoublyLLFixture.sol";
 import "./helpers/RevertProxy.sol";
-import "./helpers/Assert.sol";
+import "./helpers/truffle/Assert.sol";
 
 
 contract TestSortedDoublyLLRemove {

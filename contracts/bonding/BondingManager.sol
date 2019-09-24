@@ -1,4 +1,4 @@
-pragma solidity ^0.4.25;
+pragma solidity ^0.5.11;
 
 import "../ManagerProxyTarget.sol";
 import "./IBondingManager.sol";
@@ -261,7 +261,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
         if (_amount > 0) {
             // Transfer the LPT to the Minter
-            livepeerToken().transferFrom(msg.sender, minter(), _amount);
+            livepeerToken().transferFrom(msg.sender, address(minter()), _amount);
         }
 
         emit Bond(_to, currentDelegate, msg.sender, _amount, del.bondedAmount);

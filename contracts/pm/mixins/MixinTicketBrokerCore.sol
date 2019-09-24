@@ -1,4 +1,4 @@
-pragma solidity ^0.4.25;
+pragma solidity ^0.5.11;
 // solium-disable-next-line
 pragma experimental ABIEncoderV2;
 
@@ -113,7 +113,7 @@ contract MixinTicketBrokerCore is MContractRegistry, MReserve, MTicketProcessor,
      */
     function redeemWinningTicket(
         Ticket memory _ticket,
-        bytes _sig,
+        bytes memory _sig,
         uint256 _recipientRand
     )
         public
@@ -284,7 +284,7 @@ contract MixinTicketBrokerCore is MContractRegistry, MReserve, MTicketProcessor,
     function requireValidWinningTicket(
         Ticket memory _ticket,
         bytes32 _ticketHash,
-        bytes _sig,
+        bytes memory _sig,
         uint256 _recipientRand
     )
         internal
@@ -331,7 +331,7 @@ contract MixinTicketBrokerCore is MContractRegistry, MReserve, MTicketProcessor,
      */
     function isValidTicketSig(
         address _sender,
-        bytes _sig,
+        bytes memory _sig,
         bytes32 _ticketHash
     )
         internal
@@ -368,7 +368,7 @@ contract MixinTicketBrokerCore is MContractRegistry, MReserve, MTicketProcessor,
      * @param _winProb The winning probability of the ticket
      * @return Boolean indicating whether the ticket won
      */
-    function isWinningTicket(bytes _sig, uint256 _recipientRand, uint256 _winProb) internal pure returns (bool) {
+    function isWinningTicket(bytes memory _sig, uint256 _recipientRand, uint256 _winProb) internal pure returns (bool) {
         return uint256(keccak256(abi.encodePacked(_sig, _recipientRand))) < _winProb;
     }
 
