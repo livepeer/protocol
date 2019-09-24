@@ -141,7 +141,7 @@ contract("BondingManager", accounts => {
                         e => e.transcoder == accounts[0] &&
                             e.rewardCut == 5 &&
                             e.feeShare == 10,
-                        "TranscoderUpdate event not correct"
+                        "TranscoderUpdate event not emitted correctly"
                     )
 
                     assert.equal(await bondingManager.nextRoundTotalActiveStake(), 1000, "wrong next total stake")
@@ -188,7 +188,7 @@ contract("BondingManager", accounts => {
                             e => e.transcoder == newTranscoder &&
                                     e.rewardCut == 5 &&
                                     e.feeShare == 10,
-                            "TranscoderUpdate event not correct"
+                            "TranscoderUpdate event not emitted correctly"
                         )
                         await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound+1)
 
@@ -224,7 +224,7 @@ contract("BondingManager", accounts => {
                             e => e.transcoder == newTranscoder &&
                                 e.rewardCut == 5 &&
                                 e.feeShare == 10,
-                            "TranscoderUpdate event not correct"
+                            "TranscoderUpdate event not emitted correctly"
                         )
                         await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound+1)
 
@@ -250,7 +250,7 @@ contract("BondingManager", accounts => {
                             e => e.transcoder == newTranscoder &&
                                 e.rewardCut == 5 &&
                                 e.feeShare == 10,
-                            "TranscoderUpdate event not correct"
+                            "TranscoderUpdate event not emitted correctly"
                         )
                         await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound+1)
                         assert.isFalse(await bondingManager.isActiveTranscoder(newTranscoder), "should not register caller as a transcoder in the pool")
@@ -1191,7 +1191,7 @@ contract("BondingManager", accounts => {
                     e => e.transcoder == transcoder2 && e.deactivationRound == currentRound + 2,
                     "TranscoderDeactivated event not emitted correctly"
                 )
-                
+
                 await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 2)
                 assert.isTrue(await bondingManager.isActiveTranscoder(transcoder))
                 // Check that transcoder2's deactivation round is the next round

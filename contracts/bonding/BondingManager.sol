@@ -203,7 +203,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             tryToJoinActiveSet(msg.sender, delegators[msg.sender].delegatedAmount, currentRound.add(1));
         }
 
-        emit TranscoderUpdate(msg.sender, _rewardCut, _feeShare, transcoderPoolcontains(_transcoder));
+        emit TranscoderUpdate(msg.sender, _rewardCut, _feeShare);
     }
 
     /**
