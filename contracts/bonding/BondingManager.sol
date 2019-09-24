@@ -257,7 +257,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         del.delegateAddress = _to;
         // Update bonded amount
         del.bondedAmount = del.bondedAmount.add(_amount);
-        
+
         increaseTotalStake(_to, delegationAmount);
 
         if (_amount > 0) {
@@ -324,10 +324,10 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      */
     function rebond(
         uint256 _unbondingLockId
-    ) 
+    )
         external
         whenSystemNotPaused
-        currentRoundInitialized 
+        currentRoundInitialized
         autoClaimEarnings
     {
         // Caller must not be an unbonded delegator
@@ -424,7 +424,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
         // Transcoder must not have called reward for this round already
         require(transcoders[msg.sender].lastRewardRound != currentRound, "caller has already called reward for the current round");
-        
+
         Transcoder storage t = transcoders[msg.sender];
         EarningsPool.Data storage earningsPool = t.earningsPoolPerRound[currentRound];
 
@@ -567,7 +567,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     function pendingStake(address _delegator, uint256 _endRound) public view returns (uint256) {
         uint256 currentRound = roundsManager().currentRound();
         Delegator storage del = delegators[_delegator];
-        
+
         require(_endRound <= currentRound && _endRound > del.lastClaimRound, "end round must be before or equal to current round and after lastClaimRound");
 
         uint256 currentBondedAmount = del.bondedAmount;
@@ -730,10 +730,10 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     function getDelegatorUnbondingLock(
         address _delegator,
         uint256 _unbondingLockId
-    ) 
+    )
         public
         view
-        returns (uint256 amount, uint256 withdrawRound) 
+        returns (uint256 amount, uint256 withdrawRound)
     {
         UnbondingLock storage lock = delegators[_delegator].unbondingLocks[_unbondingLockId];
 

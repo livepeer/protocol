@@ -1,6 +1,5 @@
 pragma solidity ^0.4.25;
 
-// solium-disable
 
 contract Migrations {
     address public owner;

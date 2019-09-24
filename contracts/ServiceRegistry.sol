@@ -26,7 +26,7 @@ contract ServiceRegistry is ManagerProxyTarget {
     constructor(address _controller) public Manager(_controller) {}
 
     /**
-     * @dev Stores service URI endpoint for the caller that can be used to send requests to the caller off-chain 
+     * @dev Stores service URI endpoint for the caller that can be used to send requests to the caller off-chain
      * @param _serviceURI Service URI endpoint for the caller
      */
     function setServiceURI(string _serviceURI) external {
