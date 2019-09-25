@@ -6,19 +6,28 @@ const Web3 = require("web3")
 
 let mochaConfig = {}
 
-// Enable Mocha's --grep feature
+// CLI options
 for (let i = 0; i < process.argv.length; i++) {
-    const arg = process.argv[i]
-    if (arg !== "-g" &&  arg !== "--grep") continue
-    if (++i >= process.argv.length) {
-        console.error(arg + " option requires argument")
-        process.exit(1)
+    switch (process.argv[i]) {
+        case "-g":
+        case "--grep":
+            if (process.argv.length == i + 1 || process.argv[i+1].startsWith("-")) {
+                console.error(`${process.argv[i]} option requires argument`)
+                process.exit(1)
+            }
+            const re = new RegExp(process.argv[i + 1])
+            mochaConfig.grep = new RegExp(process.argv[i + 1])
+            console.log("RegExp: " + i + ": " + re)
+            break
+        case "-r":
+        case "--report":
+            mochaConfig.reporter = "eth-gas-reporter"
+            mochaConfig.reporterOptions = {
+                rst: true,
+                currency: "USD"
+            }
+            break
     }
-
-    const re = new RegExp(process.argv[i])
-    mochaConfig.grep = new RegExp(process.argv[i])
-    console.log("RegExp: " + i + ": " + re)
-    break
 }
 
 const memoizeProviderCreator = () => {
