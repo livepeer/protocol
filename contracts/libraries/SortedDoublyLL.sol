@@ -48,10 +48,8 @@ library SortedDoublyLL {
      * @dev Add a node to the list
      * @param _id Node's id
      * @param _key Node's key
-     * @param _prevId Id of previous node for the insert position
-     * @param _nextId Id of next node for the insert position
      */
-    function insert(Data storage self, address _id, uint256 _key, address _prevId, address _nextId) public {
+    function insert(Data storage self, address _id, uint256 _key) public {
         // List must not be full
         require(!isFull(self));
         // List must not already contain node
@@ -61,37 +59,17 @@ library SortedDoublyLL {
         // Key must be non-zero
         require(_key > 0);
 
-        address prevId = _prevId;
-        address nextId = _nextId;
-
-        if (!validInsertPosition(self, _key, prevId, nextId)) {
-            // Sender's hint was not a valid insert position
-            // Use sender's hint to find a valid insert position
-            (prevId, nextId) = findInsertPosition(self, _key, prevId, nextId);
-        }
-
         self.nodes[_id].key = _key;
 
-        if (prevId == address(0) && nextId == address(0)) {
-            // Insert as head and tail
+        if (self.head == address(0) && self.tail == address(0)) {
+            // Insert first node in the list
             self.head = _id;
-            self.tail = _id;
-        } else if (prevId == address(0)) {
-            // Insert before `prevId` as the head
-            self.nodes[_id].nextId = self.head;
-            self.nodes[self.head].prevId = _id;
-            self.head = _id;
-        } else if (nextId == address(0)) {
-            // Insert after `nextId` as the tail
-            self.nodes[_id].prevId = self.tail;
-            self.nodes[self.tail].nextId = _id;
             self.tail = _id;
         } else {
-            // Insert at insert position between `prevId` and `nextId`
-            self.nodes[_id].nextId = nextId;
-            self.nodes[_id].prevId = prevId;
-            self.nodes[prevId].nextId = _id;
-            self.nodes[nextId].prevId = _id;
+            // Insert after current tail
+            self.nodes[self.tail].nextId = _id;
+            self.nodes[_id].prevId = self.tail;
+            self.tail = _id;
         }
 
         self.size = self.size.add(1);
@@ -141,20 +119,12 @@ library SortedDoublyLL {
      * @dev Update the key of a node in the list
      * @param _id Node's id
      * @param _newKey Node's new key
-     * @param _prevId Id of previous node for the new insert position
-     * @param _nextId Id of next node for the new insert position
      */
-    function updateKey(Data storage self, address _id, uint256 _newKey, address _prevId, address _nextId) public {
+    function updateKey(Data storage self, address _id, uint256 _newKey) public {
         // List must contain the node
         require(contains(self, _id));
 
-        // Remove node from the list
-        remove(self, _id);
-
-        if (_newKey > 0) {
-            // Insert node if it has a non-zero key
-            insert(self, _id, _newKey, _prevId, _nextId);
-        }
+        self.nodes[_id].key = _newKey;
     }
 
     /*
@@ -232,110 +202,26 @@ library SortedDoublyLL {
         return self.nodes[_id].prevId;
     }
 
-    /*
-     * @dev Check if a pair of nodes is a valid insertion point for a new node with the given key
-     * @param _key Node's key
-     * @param _prevId Id of previous node for the insert position
-     * @param _nextId Id of next node for the insert position
-     */
-    function validInsertPosition(Data storage self, uint256 _key, address _prevId, address _nextId) public view returns (bool) {
-        if (_prevId == address(0) && _nextId == address(0)) {
-            // `(null, null)` is a valid insert position if the list is empty
-            return isEmpty(self);
-        } else if (_prevId == address(0)) {
-            // `(null, _nextId)` is a valid insert position if `_nextId` is the head of the list
-            return self.head == _nextId && _key >= self.nodes[_nextId].key;
-        } else if (_nextId == address(0)) {
-            // `(_prevId, null)` is a valid insert position if `_prevId` is the tail of the list
-            return self.tail == _prevId && _key <= self.nodes[_prevId].key;
-        } else {
-            // `(_prevId, _nextId)` is a valid insert position if they are adjacent nodes and `_key` falls between the two nodes' keys
-            return self.nodes[_prevId].nextId == _nextId && self.nodes[_prevId].key >= _key && _key >= self.nodes[_nextId].key;
-        }
-    }
+    /**
+     * @dev Returns the id and key of the node in the list with the smallest key
+    */
+    function findMin(Data storage self) public view returns (address, uint256) {
+        address minId = self.head;
+        uint256 minKey = self.nodes[minId].key;
 
-    /*
-     * @dev Descend the list (larger keys to smaller keys) to find a valid insert position
-     * @param _key Node's key
-     * @param _startId Id of node to start ascending the list from
-     */
-    function descendList(Data storage self, uint256 _key, address _startId) private view returns (address, address) {
-        // If `_startId` is the head, check if the insert position is before the head
-        if (self.head == _startId && _key >= self.nodes[_startId].key) {
-            return (address(0), _startId);
-        }
+        address currId = minId;
 
-        address prevId = _startId;
-        address nextId = self.nodes[prevId].nextId;
-
-        // Descend the list until we reach the end or until we find a valid insert position
-        while (prevId != address(0) && !validInsertPosition(self, _key, prevId, nextId)) {
-            prevId = self.nodes[prevId].nextId;
-            nextId = self.nodes[prevId].nextId;
-        }
-
-        return (prevId, nextId);
-    }
-
-    /*
-     * @dev Ascend the list (smaller keys to larger keys) to find a valid insert position
-     * @param _key Node's key
-     * @param _startId Id of node to start descending the list from
-     */
-    function ascendList(Data storage self, uint256 _key, address _startId) private view returns (address, address) {
-        // If `_startId` is the tail, check if the insert position is after the tail
-        if (self.tail == _startId && _key <= self.nodes[_startId].key) {
-            return (_startId, address(0));
-        }
-
-        address nextId = _startId;
-        address prevId = self.nodes[nextId].prevId;
-
-        // Ascend the list until we reach the end or until we find a valid insertion point
-        while (nextId != address(0) && !validInsertPosition(self, _key, prevId, nextId)) {
-            nextId = self.nodes[nextId].prevId;
-            prevId = self.nodes[nextId].prevId;
-        }
-
-        return (prevId, nextId);
-    }
-
-    /*
-     * @dev Find the insert position for a new node with the given key
-     * @param _key Node's key
-     * @param _prevId Id of previous node for the insert position
-     * @param _nextId Id of next node for the insert position
-     */
-    function findInsertPosition(Data storage self, uint256 _key, address _prevId, address _nextId) private view returns (address, address) {
-        address prevId = _prevId;
-        address nextId = _nextId;
-
-        if (prevId != address(0)) {
-            if (!contains(self, prevId) || _key > self.nodes[prevId].key) {
-                // `prevId` does not exist anymore or now has a smaller key than the given key
-                prevId = address(0);
+        // Descend the list and keep track of the node with the smallest key
+        while (currId != address(0)) {
+            uint256 currKey = self.nodes[currId].key;
+            if (currKey < minKey) {
+                minId = currId;
+                minKey = currKey;
             }
+
+            currId = self.nodes[currId].nextId;
         }
 
-        if (nextId != address(0)) {
-            if (!contains(self, nextId) || _key < self.nodes[nextId].key) {
-                // `nextId` does not exist anymore or now has a larger key than the given key
-                nextId = address(0);
-            }
-        }
-
-        if (prevId == address(0) && nextId == address(0)) {
-            // No hint - descend list starting from head
-            return descendList(self, _key, self.head);
-        } else if (prevId == address(0)) {
-            // No `prevId` for hint - ascend list starting from `nextId`
-            return ascendList(self, _key, nextId);
-        } else if (nextId == address(0)) {
-            // No `nextId` for hint - descend list starting from `prevId`
-            return descendList(self, _key, prevId);
-        } else {
-            // Descend list starting from `prevId`
-            return descendList(self, _key, prevId);
-        }
+        return (minId, minKey);
     }
 }

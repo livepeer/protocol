@@ -816,7 +816,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
             // If the transcoder is already in the active set update its stake and return
             if (transcoderPool.contains(_delegate)) {
-                transcoderPool.updateKey(_delegate, newStake, address(0), address(0));
+                transcoderPool.updateKey(_delegate, newStake);
                 nextRoundTotalActiveStake = nextRoundTotalActiveStake.add(_amount);
                 Transcoder storage t = transcoders[_delegate];
                 t.earningsPoolPerRound[nextRound].setStake(newStake);
@@ -841,7 +841,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             uint256 newStake = transcoderTotalStake(_delegate).sub(_amount);
             uint256 nextRound = roundsManager().currentRound().add(1);
 
-            transcoderPool.updateKey(_delegate, newStake, address(0), address(0));
+            transcoderPool.updateKey(_delegate, newStake);
             nextRoundTotalActiveStake = nextRoundTotalActiveStake.sub(_amount);
             Transcoder storage t = transcoders[_delegate];
             t.lastActiveStakeUpdateRound = nextRound;
@@ -862,8 +862,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         uint256 pendingNextRoundTotalActiveStake = nextRoundTotalActiveStake;
 
         if (transcoderPool.isFull()) {
-            address lastTranscoder = transcoderPool.getLast();
-            uint256 lastStake = transcoderTotalStake(lastTranscoder);
+            (address lastTranscoder, uint256 lastStake) = transcoderPool.findMin();
 
             // If the pool is full and the transcoder has less stake than the least stake transcoder in the pool
             // then the transcoder is unable to join the active set for the next round
@@ -883,7 +882,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             emit TranscoderDeactivated(lastTranscoder, _activationRound);
         }
 
-        transcoderPool.insert(_transcoder, _totalStake, address(0), address(0));
+        transcoderPool.insert(_transcoder, _totalStake);
         pendingNextRoundTotalActiveStake = pendingNextRoundTotalActiveStake.add(_totalStake);
         Transcoder storage t = transcoders[_transcoder];
         t.lastActiveStakeUpdateRound = _activationRound;

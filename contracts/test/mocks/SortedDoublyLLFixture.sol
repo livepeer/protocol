@@ -12,16 +12,16 @@ contract SortedDoublyLLFixture {
         list.setMaxSize(_size);
     }
 
-    function insert(address _id, uint256 _key, address _prevId, address _nextId) public {
-        list.insert(_id, _key, _prevId, _nextId);
+    function insert(address _id, uint256 _key) public {
+        list.insert(_id, _key);
     }
 
     function remove(address _id) public {
         list.remove(_id);
     }
 
-    function updateKey(address _id, uint256 _newKey, address _prevId, address _nextId) public {
-        list.updateKey(_id, _newKey, _prevId, _nextId);
+    function updateKey(address _id, uint256 _newKey) public {
+        list.updateKey(_id, _newKey);
     }
 
     function contains(address _id) public view returns (bool) {

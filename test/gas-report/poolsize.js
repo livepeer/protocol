@@ -274,8 +274,8 @@ contract("gas report", accounts => {
 
 
     testWithPoolSize(100)
-    testWithPoolSize(150)
-    testWithPoolSize(200)
-    testWithPoolSize(250)
-    testWithPoolSize(300)
+    // testWithPoolSize(150)
+    // testWithPoolSize(200)
+    // testWithPoolSize(250)
+    // testWithPoolSize(300)
 })

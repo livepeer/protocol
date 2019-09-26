@@ -52,6 +52,7 @@
     "coveralls": "^3.0.2",
     "eslint": "^4.3.0",
     "eslint-config-google": "^0.9.1",
+    "eth-gas-reporter": "^0.2.11",
     "ethereumjs-abi": "github:ethereumjs/ethereumjs-abi#09c3c48fd3bed143df7fa8f36f6f164205e23796",
     "ethereumjs-util": "^5.1.2",
     "ganache-cli": "^6.7.0",
