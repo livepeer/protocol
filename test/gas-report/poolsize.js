@@ -62,7 +62,7 @@ contract("transcoder pool size gas report", accounts => {
             const newTranscoder = accounts[size]
             const delegator = accounts[size + 1]
 
-            let baseSnapshotID 
+            let baseSnapshotID
             let testSnapshotID
 
             before(async () => {
