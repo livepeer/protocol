@@ -2,6 +2,7 @@ import {contractId} from "../../utils/helpers"
 import {constants} from "../../utils/constants"
 import BN from "bn.js"
 import {createWinningTicket, getTicketHash} from "../helpers/ticket"
+import signMsg from "../helpers/signMsg"
 
 const Controller = artifacts.require("Controller")
 const TicketBroker = artifacts.require("TicketBroker")
@@ -82,7 +83,7 @@ contract("TicketFlow", accounts => {
         const recipientRand = 5
         const faceValue = 1000
         const ticket = createWinningTicket(transcoder, broadcaster, recipientRand, faceValue, auxData)
-        const senderSig = await web3.eth.sign(getTicketHash(ticket), broadcaster)
+        const senderSig = await signMsg(getTicketHash(ticket), broadcaster)
 
         await broker.redeemWinningTicket(ticket, senderSig, recipientRand, {from: transcoder})
 
@@ -112,7 +113,7 @@ contract("TicketFlow", accounts => {
         const recipientRand = 6
         const faceValue = new BN(startSenderInfo.sender.deposit).add(new BN(100)).toString()
         const ticket = createWinningTicket(transcoder, broadcaster, recipientRand, faceValue, auxData)
-        const senderSig = await web3.eth.sign(getTicketHash(ticket), broadcaster)
+        const senderSig = await signMsg(getTicketHash(ticket), broadcaster)
 
         await broker.redeemWinningTicket(ticket, senderSig, recipientRand, {from: transcoder})
 

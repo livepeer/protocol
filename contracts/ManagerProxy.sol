@@ -1,4 +1,4 @@
-pragma solidity ^0.4.25;
+pragma solidity ^0.5.11;
 
 import "./ManagerProxyTarget.sol";
 
@@ -28,10 +28,12 @@ contract ManagerProxy is ManagerProxyTarget {
      * It will then use the calldata for a function call as the data payload for a delegatecall on the target contract. The return value
      * of the executed function call will also be returned
      */
-    function() public payable {
+    function() external payable {
         address target = controller.getContract(targetContractId);
-        // Target contract must be registered
-        require(target > 0);
+        require(
+            target != address(0),
+            "target contract must be registered"
+        );
 
         assembly {
             // Solidity keeps a free memory pointer at position 0x40 in memory

@@ -9,6 +9,7 @@
     "emit": "off",
     "max-len": ["warning", 160],
     "lbrace": "off",
+    "no-empty-blocks": "off",
     "security/enforce-loop-bounds": "warning",
     "security/no-block-members": "off",
     "security/no-inline-assembly": "off"

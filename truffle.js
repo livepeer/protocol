@@ -99,8 +99,9 @@ module.exports = {
     },
     compilers: {
         solc: {
-            version: "0.4.25",
+            version: "0.5.11",
             docker: true,
+            parser: "solcjs",
             settings: {
                 optimizer: {
                     enabled: true,

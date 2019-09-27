@@ -1,4 +1,4 @@
-pragma solidity ^0.4.25;
+pragma solidity ^0.5.11;
 
 
 /*
@@ -23,7 +23,7 @@ contract GenericMock {
     /*
      * @dev Return mock value for a functione
      */
-    function() public payable {
+    function() external payable {
         bytes4 func;
         assembly { func := calldataload(0) }
 
@@ -48,9 +48,10 @@ contract GenericMock {
      * @param _target Target contract to call with data
      * @param _data Transaction data to be used to call the target contract
      */
-    function execute(address _target, bytes _data) external payable {
+    function execute(address _target, bytes calldata _data) external payable {
         // solium-disable-next-line
-        require(_target.call.value(msg.value)(_data));
+        (bool ok, bytes memory res) = _target.call.value(msg.value)(_data);
+        require(ok, string(res));
     }
 
     /*

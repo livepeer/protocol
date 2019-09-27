@@ -1,4 +1,4 @@
-pragma solidity ^0.4.25;
+pragma solidity ^0.5.11;
 
 import "../Manager.sol";
 import "./IMinter.sol";
@@ -122,9 +122,9 @@ contract Minter is Manager, IMinter {
         require(newMinterController.getContract(keccak256("Minter")) == address(this));
 
         // Transfer ownership of token to new Minter
-        livepeerToken().transferOwnership(_newMinter);
+        livepeerToken().transferOwnership(address(_newMinter));
         // Transfer current Minter's token balance to new Minter
-        livepeerToken().transfer(_newMinter, livepeerToken().balanceOf(this));
+        livepeerToken().transfer(address(_newMinter), livepeerToken().balanceOf(address(this)));
         // Transfer current Minter's ETH balance to new Minter
         _newMinter.trustedDepositETH.value(address(this).balance)();
     }
@@ -142,7 +142,7 @@ contract Minter is Manager, IMinter {
         // Minted tokens must not exceed mintable tokens
         require(currentMintedTokens <= currentMintableTokens);
         // Mint new tokens
-        livepeerToken().mint(this, mintAmount);
+        livepeerToken().mint(address(this), mintAmount);
 
         // Reward = minted tokens
         return mintAmount;
@@ -170,7 +170,7 @@ contract Minter is Manager, IMinter {
      * @param _to Recipient address
      * @param _amount Amount of ETH
      */
-    function trustedWithdrawETH(address _to, uint256 _amount) external onlyBondingManagerOrTicketBroker whenSystemNotPaused {
+    function trustedWithdrawETH(address payable _to, uint256 _amount) external onlyBondingManagerOrTicketBroker whenSystemNotPaused {
         _to.transfer(_amount);
     }
 

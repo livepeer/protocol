@@ -1,4 +1,4 @@
-pragma solidity ^0.4.25;
+pragma solidity ^0.5.11;
 
 import "../ManagerProxyTarget.sol";
 import "./IBondingManager.sol";
@@ -9,7 +9,6 @@ import "../token/ILivepeerToken.sol";
 import "../token/IMinter.sol";
 import "../rounds/IRoundsManager.sol";
 
-import "openzeppelin-solidity/contracts/math/Math.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
 
@@ -257,12 +256,12 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         del.delegateAddress = _to;
         // Update bonded amount
         del.bondedAmount = del.bondedAmount.add(_amount);
-        
+
         increaseTotalStake(_to, delegationAmount);
 
         if (_amount > 0) {
             // Transfer the LPT to the Minter
-            livepeerToken().transferFrom(msg.sender, minter(), _amount);
+            livepeerToken().transferFrom(msg.sender, address(minter()), _amount);
         }
 
         emit Bond(_to, currentDelegate, msg.sender, _amount, del.bondedAmount);
@@ -324,10 +323,10 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      */
     function rebond(
         uint256 _unbondingLockId
-    ) 
+    )
         external
         whenSystemNotPaused
-        currentRoundInitialized 
+        currentRoundInitialized
         autoClaimEarnings
     {
         // Caller must not be an unbonded delegator
@@ -424,7 +423,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
         // Transcoder must not have called reward for this round already
         require(transcoders[msg.sender].lastRewardRound != currentRound, "caller has already called reward for the current round");
-        
+
         Transcoder storage t = transcoders[msg.sender];
         EarningsPool.Data storage earningsPool = t.earningsPoolPerRound[currentRound];
 
@@ -567,7 +566,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     function pendingStake(address _delegator, uint256 _endRound) public view returns (uint256) {
         uint256 currentRound = roundsManager().currentRound();
         Delegator storage del = delegators[_delegator];
-        
+
         require(_endRound <= currentRound && _endRound > del.lastClaimRound, "end round must be before or equal to current round and after lastClaimRound");
 
         uint256 currentBondedAmount = del.bondedAmount;
@@ -730,10 +729,10 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     function getDelegatorUnbondingLock(
         address _delegator,
         uint256 _unbondingLockId
-    ) 
+    )
         public
         view
-        returns (uint256 amount, uint256 withdrawRound) 
+        returns (uint256 amount, uint256 withdrawRound)
     {
         UnbondingLock storage lock = delegators[_delegator].unbondingLocks[_unbondingLockId];
 

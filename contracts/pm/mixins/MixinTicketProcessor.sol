@@ -1,4 +1,4 @@
-pragma solidity ^0.4.25;
+pragma solidity ^0.5.11;
 
 import "./interfaces/MTicketProcessor.sol";
 import "./interfaces/MContractRegistry.sol";
@@ -25,7 +25,7 @@ contract MixinTicketProcessor is MContractRegistry, MTicketProcessor {
      * @dev Transfer withdrawal funds for a ticket sender
      * @param _amount Amount of withdrawal funds
      */
-    function withdrawTransfer(address _sender, uint256 _amount) internal {
+    function withdrawTransfer(address payable _sender, uint256 _amount) internal {
         // Ask Minter to send withdrawal funds to the ticket sender
         minter().trustedWithdrawETH(_sender, _amount);
     }
@@ -36,7 +36,7 @@ contract MixinTicketProcessor is MContractRegistry, MTicketProcessor {
      * @param _amount Amount of funds for the winning ticket
      * @param _auxData Auxilary data for the winning ticket
      */
-    function winningTicketTransfer(address _recipient, uint256 _amount, bytes _auxData) internal {
+    function winningTicketTransfer(address _recipient, uint256 _amount, bytes memory _auxData) internal {
         (uint256 creationRound,) = getCreationRoundAndBlockHash(_auxData);
 
         // Ask BondingManager to update fee pool for recipient with
@@ -52,7 +52,7 @@ contract MixinTicketProcessor is MContractRegistry, MTicketProcessor {
      * @dev Validates a ticket's auxilary data (succeeds or reverts)
      * @param _auxData Auxilary data inclueded in a ticket
      */
-    function requireValidTicketAuxData(bytes _auxData) internal view {
+    function requireValidTicketAuxData(bytes memory _auxData) internal view {
         (uint256 creationRound, bytes32 creationRoundBlockHash) = getCreationRoundAndBlockHash(_auxData);
         bytes32 blockHash = roundsManager().blockHashForRound(creationRound);
 
@@ -78,7 +78,7 @@ contract MixinTicketProcessor is MContractRegistry, MTicketProcessor {
      * @param _auxData Auxilary data for a ticket
      * @return creationRound and creationRoundBlockHash parsed from `_auxData`
      */
-    function getCreationRoundAndBlockHash(bytes _auxData)
+    function getCreationRoundAndBlockHash(bytes memory _auxData)
         internal
         pure
         returns (

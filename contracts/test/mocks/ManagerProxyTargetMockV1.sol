@@ -1,4 +1,4 @@
-pragma solidity ^0.4.25;
+pragma solidity ^0.5.11;
 
 import "../../ManagerProxyTarget.sol";
 
@@ -38,11 +38,11 @@ contract ManagerProxyTargetMockV1 is ManagerProxyTarget {
         addressValue = _value;
     }
 
-    function setString(string _value) external {
+    function setString(string calldata _value) external {
         stringValue = _value;
     }
 
-    function setBytes(bytes _value) external {
+    function setBytes(bytes calldata _value) external {
         bytesValue = _value;
     }
 

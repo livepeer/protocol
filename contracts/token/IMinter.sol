@@ -1,4 +1,4 @@
-pragma solidity ^0.4.25;
+pragma solidity ^0.5.11;
 
 import "../IController.sol";
 
@@ -14,7 +14,7 @@ contract IMinter {
     function createReward(uint256 _fracNum, uint256 _fracDenom) external returns (uint256);
     function trustedTransferTokens(address _to, uint256 _amount) external;
     function trustedBurnTokens(uint256 _amount) external;
-    function trustedWithdrawETH(address _to, uint256 _amount) external;
+    function trustedWithdrawETH(address payable _to, uint256 _amount) external;
     function trustedBurnETH(uint256 _amount) external;
     function trustedDepositETH() external payable;
     function setCurrentRewardTokens() external;

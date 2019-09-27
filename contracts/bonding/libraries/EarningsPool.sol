@@ -1,4 +1,4 @@
-pragma solidity ^0.4.25;
+pragma solidity ^0.5.11;
 
 import "../../libraries/MathUtils.sol";
 
@@ -62,7 +62,7 @@ library EarningsPool {
         return earningsPool.claimableStake > 0;
     }
 
-    /** 
+    /**
      * @dev Add fees to the earnings pool
      * @param earningsPool Storage pointer to EarningsPools struct
      * @param _fees Amount of fees to add
@@ -80,7 +80,7 @@ library EarningsPool {
         }
     }
 
-    /** 
+    /**
      * @dev Add rewards to the earnings pool
      * @param earningsPool Storage pointer to EarningsPool struct
      * @param _rewards Amount of rewards to add
@@ -154,7 +154,7 @@ library EarningsPool {
         return (totalFees, totalRewards);
     }
 
-    /** 
+    /**
      * @dev Returns the fee pool share for a claimant. If the claimant is a transcoder, include transcoder fees as well.
      * @param earningsPool Storage pointer to EarningsPool struct
      * @param _stake Stake of claimant
@@ -173,7 +173,7 @@ library EarningsPool {
         return delegatorFees.add(transcoderFees);
     }
 
-    /** 
+    /**
      * @dev Returns the reward pool share for a claimant. If the claimant is a transcoder, include transcoder rewards as well.
      * @param earningsPool Storage pointer to EarningsPool struct
      * @param _stake Stake of claimant
@@ -192,7 +192,7 @@ library EarningsPool {
         return delegatorRewards.add(transcoderRewards);
     }
 
-    /** 
+    /**
      * @dev Helper function to calculate fee pool share if the earnings pool has a separate transcoder fee pool
      * @param earningsPool Storage pointer to EarningsPool struct
      * @param _stake Stake of claimant
@@ -202,7 +202,7 @@ library EarningsPool {
         EarningsPool.Data storage earningsPool,
         uint256 _stake,
         bool _isTranscoder
-    ) 
+    )
         internal
         view
         returns (uint256, uint256)
@@ -215,7 +215,7 @@ library EarningsPool {
         return _isTranscoder ? (delegatorFees, earningsPool.transcoderFeePool) : (delegatorFees, 0);
     }
 
-    /** 
+    /**
      * @dev Helper function to calculate reward pool share if the earnings pool has a separate transcoder reward pool
      * @param earningsPool Storage pointer to EarningsPool struct
      * @param _stake Stake of claimant
@@ -237,7 +237,7 @@ library EarningsPool {
         // If claimant is a transcoder, include transcoder reward pool as well
         return _isTranscoder ? (delegatorRewards, earningsPool.transcoderRewardPool) : (delegatorRewards, 0);
     }
-   
+
     /**
      * @dev Helper function to calculate the fee pool share if the earnings pool does not have a separate transcoder fee pool
      * This implements calculation logic from a previous version of this library
@@ -249,7 +249,7 @@ library EarningsPool {
         EarningsPool.Data storage earningsPool,
         uint256 _stake,
         bool _isTranscoder
-    ) 
+    )
         internal
         view
         returns (uint256, uint256)

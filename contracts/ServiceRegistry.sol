@@ -1,4 +1,4 @@
-pragma solidity ^0.4.25;
+pragma solidity ^0.5.11;
 
 import "./ManagerProxyTarget.sol";
 
@@ -26,10 +26,10 @@ contract ServiceRegistry is ManagerProxyTarget {
     constructor(address _controller) public Manager(_controller) {}
 
     /**
-     * @dev Stores service URI endpoint for the caller that can be used to send requests to the caller off-chain 
+     * @dev Stores service URI endpoint for the caller that can be used to send requests to the caller off-chain
      * @param _serviceURI Service URI endpoint for the caller
      */
-    function setServiceURI(string _serviceURI) external {
+    function setServiceURI(string calldata _serviceURI) external {
         records[msg.sender].serviceURI = _serviceURI;
 
         emit ServiceURIUpdate(msg.sender, _serviceURI);
@@ -39,7 +39,7 @@ contract ServiceRegistry is ManagerProxyTarget {
      * @dev Returns service URI endpoint stored for a given address
      * @param _addr Address for which a service URI endpoint is desired
      */
-    function getServiceURI(address _addr) public view returns (string) {
+    function getServiceURI(address _addr) public view returns (string memory) {
         return records[_addr].serviceURI;
     }
 }
