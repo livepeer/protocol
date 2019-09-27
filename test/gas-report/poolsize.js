@@ -119,8 +119,10 @@ contract("gas report", accounts => {
                         await roundsManager.initializeRound()
                         // if we run the entire test file first transcoder will be 'newTranscoder2'
                         // if we only run this describe block first transcoder will be 'accounts[size - 1]'
-                        const first = await bondingManager.getFirstTranscoderInPool()
-                        const unbondAmount = first == newTranscoder2 ? size : size - 1
+                        // const first = await bondingManager.getFirstTranscoderInPool()
+                        const first = accounts[size - 1]
+                        // const unbondAmount = first == newTranscoder2 ? size : size - 1
+                        const unbondAmount = size - 1
                         await provisionDelegator(delegator1, unbondAmount)
                         await bondingManager.unbond(unbondAmount, {from: first})
                         await bondingManager.bond(unbondAmount, first, {from: delegator1})
@@ -274,8 +276,8 @@ contract("gas report", accounts => {
 
 
     testWithPoolSize(100)
-    // testWithPoolSize(150)
-    // testWithPoolSize(200)
-    // testWithPoolSize(250)
-    // testWithPoolSize(300)
+    testWithPoolSize(150)
+    testWithPoolSize(200)
+    testWithPoolSize(250)
+    testWithPoolSize(300)
 })
