@@ -12,6 +12,7 @@ module.exports = {
 		"semi": ["error", "never"],
 		"quotes": ["error", "double"],
 		"comma-dangle": ["error", "never"],
-		"indent": ["error", 4]
+		"indent": ["error", 4],
+		"space-infix-ops": ["error"]
 	}
 };

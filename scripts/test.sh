@@ -1,3 +1,15 @@
+set -e
+
+# Cleanup ganache when the script exits
+trap cleanup EXIT
+
+cleanup() {
+    if [ -n "$ganache_pid" ] && ps -p $ganache_pid > /dev/null; then
+        # Signal the ganache process to exit
+        kill -s TERM $ganache_pid
+    fi
+}
+
 if [ "$SOLIDITY_COVERAGE" = true ]; then
     ganache_port=8555
 else
@@ -23,4 +35,10 @@ if ganache_running; then
 else
     echo "Starting new ganache instance at port $ganache_port"
     start_ganache
+fi
+
+if [ "$SOLIDITY_COVERAGE" = true ]; then
+    node_modules/.bin/solidity-coverage
+else
+    node_modules/.bin/truffle test "$@"
 fi

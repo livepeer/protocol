@@ -1706,10 +1706,10 @@ contract("TicketBroker", accounts => {
             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
             await fixture.bondingManager.setMockUint256(functionSig("getTranscoderPoolSize()"), numRecipients)
             await fixture.bondingManager.setMockBool(functionSig("isActiveTranscoder(address)"), true)
-            await broker.fundDepositAndReserve(deposit, reserve, {from: sender, value: deposit+reserve})
+            await broker.fundDepositAndReserve(deposit, reserve, {from: sender, value: deposit + reserve})
             assert.equal(
                 (await broker.claimableReserve(sender, recipient)).toString(10),
-                (reserve/numRecipients).toString(10)
+                (reserve / numRecipients).toString(10)
             )
             const recipientRand = 5
             const faceValue = 10
@@ -1724,7 +1724,7 @@ contract("TicketBroker", accounts => {
             )
             // Ticket faceValue should be substracted from deposit
             assert.equal(
-                (deposit-faceValue).toString(10),
+                (deposit - faceValue).toString(10),
                 (await broker.getSenderInfo(sender)).sender.deposit.toString(10)
             )
         })
@@ -1746,7 +1746,7 @@ contract("TicketBroker", accounts => {
             // claimableReserve should be equal to reserve/numRecipients - faceValue
             assert.equal(
                 (await broker.claimableReserve(sender, recipient)).toString(10),
-                (reserve/numRecipients - faceValue).toString(10)
+                (reserve / numRecipients - faceValue).toString(10)
             )
         })
 
