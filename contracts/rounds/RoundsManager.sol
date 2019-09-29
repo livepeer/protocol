@@ -44,8 +44,7 @@ contract RoundsManager is ManagerProxyTarget, IRoundsManager {
      * @param _roundLength Round length in blocks
      */
     function setRoundLength(uint256 _roundLength) external onlyControllerOwner {
-        // Round length cannot be 0
-        require(_roundLength > 0);
+        require(_roundLength > 0, "round length cannot be 0");
 
         if (roundLength == 0) {
             // If first time initializing roundLength, set roundLength before
@@ -69,8 +68,7 @@ contract RoundsManager is ManagerProxyTarget, IRoundsManager {
      * @param _roundLockAmount Round lock amount as a % of the number of blocks in a round
      */
     function setRoundLockAmount(uint256 _roundLockAmount) external onlyControllerOwner {
-        // Must be a valid percentage
-        require(MathUtils.validPerc(_roundLockAmount));
+        require(MathUtils.validPerc(_roundLockAmount), "round lock amount must be a valid percentage");
 
         roundLockAmount = _roundLockAmount;
 
@@ -111,10 +109,8 @@ contract RoundsManager is ManagerProxyTarget, IRoundsManager {
      */
     function blockHash(uint256 _block) public view returns (bytes32) {
         uint256 currentBlock = blockNum();
-        // Can only retrieve past block hashes
-        require(_block < currentBlock);
-        // Can only retrieve hashes for last 256 blocks
-        require(currentBlock < 256 || _block >= currentBlock - 256);
+        require(_block < currentBlock, "can only retrieve past block hashes");
+        require(currentBlock < 256 || _block >= currentBlock - 256, "can only retrieve hashes for last 256 blocks");
 
         return blockhash(_block);
     }

@@ -1,9 +1,8 @@
 import Fixture from "./helpers/Fixture"
-import expectThrow from "../helpers/expectThrow"
+import expectRevertWithReason from "../helpers/expectFail"
 import {contractId} from "../../utils/helpers"
 import {constants} from "../../utils/constants"
 import truffleAssert from "truffle-assertions"
-import expectRevertWithReason from "../helpers/expectFail"
 
 const RoundsManager = artifacts.require("RoundsManager")
 
@@ -37,7 +36,7 @@ contract("RoundsManager", accounts => {
 
     describe("setController", () => {
         it("should fail if caller is not Controller", async () => {
-            await expectThrow(roundsManager.setController(accounts[0]))
+            await expectRevertWithReason(roundsManager.setController(accounts[0]), "caller must be Controller")
         })
 
         it("should set new Controller", async () => {
@@ -49,11 +48,11 @@ contract("RoundsManager", accounts => {
 
     describe("setRoundLength", () => {
         it("should fail if caller is not the Controller owner", async () => {
-            await expectThrow(roundsManager.setRoundLength(10, {from: accounts[2]}))
+            await expectRevertWithReason(roundsManager.setRoundLength(10, {from: accounts[2]}), "caller must be Controller owner")
         })
 
         it("should fail if provided roundLength == 0", async () => {
-            await expectThrow(roundsManager.setRoundLength(0))
+            await expectRevertWithReason(roundsManager.setRoundLength(0), "round length cannot be 0")
         })
 
         it("should set roundLength before lastRoundLengthUpdateRound and lastRoundLengthUpdateStartBlock when roundLength = 0", async () => {
@@ -151,11 +150,11 @@ contract("RoundsManager", accounts => {
 
     describe("setRoundLockAmount", () => {
         it("should fail if caller is not the Controller owner", async () => {
-            await expectThrow(roundsManager.setRoundLockAmount(50, {from: accounts[2]}))
+            await expectRevertWithReason(roundsManager.setRoundLockAmount(50, {from: accounts[2]}), "caller must be Controller owner")
         })
 
         it("should fail if provided roundLockAmount is an invalid percentage (> 100%)", async () => {
-            await expectThrow(roundsManager.setRoundLockAmount(PERC_DIVISOR + 1))
+            await expectRevertWithReason(roundsManager.setRoundLockAmount(PERC_DIVISOR + 1), "round lock amount must be a valid percentage")
         })
 
         it("should set roundLockAmount", async () => {
@@ -179,7 +178,7 @@ contract("RoundsManager", accounts => {
             await fixture.rpc.waitUntilNextBlockMultiple(roundLength.toNumber())
             await roundsManager.initializeRound()
 
-            await expectThrow(roundsManager.initializeRound())
+            await expectRevertWithReason(roundsManager.initializeRound(), "round already initialized")
         })
 
         it("should set the current round as initialized", async () => {
@@ -254,19 +253,19 @@ contract("RoundsManager", accounts => {
     describe("blockHash", () => {
         it("should fail if block is in the future", async () => {
             const latestBlock = await web3.eth.getBlockNumber()
-            await expectThrow(roundsManager.blockHash(latestBlock + 1))
+            await expectRevertWithReason(roundsManager.blockHash(latestBlock + 1), "can only retrieve past block hashes")
         })
 
         it("should fail if the current block >= 256 and the block is more than 256 blocks in the past", async () => {
             await fixture.rpc.wait(256)
 
             const latestBlock = await web3.eth.getBlockNumber()
-            await expectThrow(roundsManager.blockHash(latestBlock - 257))
+            await expectRevertWithReason(roundsManager.blockHash(latestBlock - 257), "can only retrieve hashes for last 256 blocks")
         })
 
         it("should fail if block is the current block", async () => {
             const latestBlock = await web3.eth.getBlockNumber()
-            await expectThrow(roundsManager.blockHash(latestBlock))
+            await expectRevertWithReason(roundsManager.blockHash(latestBlock), "can only retrieve past block hashes")
         })
 
         it("should return the block hash if the current block is >= 256 and the block is not more than 256 blocks in the past", async () => {

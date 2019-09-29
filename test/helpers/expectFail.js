@@ -2,7 +2,7 @@ export default async (promise, reason) => {
     try {
         await promise
     } catch (error) {
-        assert.equal(error.reason, reason, "Reverted, but with a different reason")
+        assert.isTrue(error.message.includes(reason), `Reverted, but with a different reason: ${error.message}`)
         return
     }
 
