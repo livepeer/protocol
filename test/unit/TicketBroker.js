@@ -55,6 +55,21 @@ contract("TicketBroker", accounts => {
         await fixture.tearDown()
     })
 
+    describe("setUnlockPeriod", () => {
+        it("should fail if caller is not Controller owner", async () => {
+            await expectRevertWithReason(
+                broker.setUnlockPeriod(200, {from: accounts[1]}),
+                "caller must be Controller owner"
+            )
+        })
+
+        it("sets unlockPeriod", async () => {
+            await broker.setUnlockPeriod(200)
+
+            assert.equal("200", (await broker.unlockPeriod()).toString())
+        })
+    })
+
     describe("setTicketValidityPeriod", () => {
         it("should fail if caller is not Controller owner", async () => {
             await expectRevertWithReason(
