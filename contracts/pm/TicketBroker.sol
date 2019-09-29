@@ -44,6 +44,8 @@ contract TicketBroker is
      * @param _ticketValidityPeriod Value for ticketValidityPeriod
      */
     function setTicketValidityPeriod(uint256 _ticketValidityPeriod) external onlyControllerOwner {
+        require(_ticketValidityPeriod > 0, "ticketValidityPeriod must be greater than 0");
+
         ticketValidityPeriod = _ticketValidityPeriod;
     }
 }
