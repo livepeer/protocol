@@ -561,7 +561,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     function pendingStake(address _delegator, uint256 _endRound) public view returns (uint256) {
         uint256 currentRound = roundsManager().currentRound();
         Delegator storage del = delegators[_delegator];
-        
+
         require(_endRound <= currentRound, "end round must be before or equal to current round");
         require(_endRound > del.lastClaimRound, "end round must be after last claim round");
 
