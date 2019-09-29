@@ -1,4 +1,5 @@
 import {contractId} from "../../utils/helpers"
+import {constants} from "../../utils/constants"
 import RPC from "../../utils/rpc"
 
 const Controller = artifacts.require("Controller")
@@ -120,6 +121,10 @@ contract("transcoder pool size gas report", accounts => {
                     it("insert a new transcoder in the last position and evict the last transcoder", async () => {
                         await bondingManager.transcoder(1, 1, {from: newTranscoder})
                     })
+
+                    it("insert a new transcoder in the last position and evict the last transcoder (with hint)", async () => {
+                        await bondingManager.transcoderWithHint(1, 1, transcoders[2], constants.NULL_ADDRESS, {from: newTranscoder})
+                    })
                 })
             })
 
@@ -140,6 +145,18 @@ contract("transcoder pool size gas report", accounts => {
                         it("insert new transcoder into the last position and evict the last transcoder", async () => {
                             await bondingManager.bond(2, newTranscoder, {from: newTranscoder})
                         })
+
+                        it("insert new transcoder into the last position and evict the last transcoder (with hint)", async () => {
+                            await bondingManager.bondWithHint(
+                                2,
+                                newTranscoder,
+                                constants.NULL_ADDRESS,
+                                constants.NULL_ADDRESS,
+                                transcoders[2],
+                                constants.NULL_ADDRESS,
+                                {from: newTranscoder}
+                            )
+                        })
                     })
 
                     describe("new transcoder bonds enough to join at first position", () => {
@@ -149,6 +166,18 @@ contract("transcoder pool size gas report", accounts => {
 
                         it("insert new transcoder into the first position and evict the last transcoder", async () => {
                             await bondingManager.bond(size + 1, newTranscoder, {from: newTranscoder})
+                        })
+
+                        it("insert new transcoder into the first position and evict the last transcoder (with hint)", async () => {
+                            await bondingManager.bondWithHint(
+                                size + 1,
+                                newTranscoder,
+                                constants.NULL_ADDRESS,
+                                constants.NULL_ADDRESS,
+                                constants.NULL_ADDRESS,
+                                transcoders[size - 2],
+                                {from: newTranscoder}
+                            )
                         })
                     })
                 })
@@ -176,6 +205,18 @@ contract("transcoder pool size gas report", accounts => {
                         it("move first transcoder to last position and last transcoder to first position", async () => {
                             await bondingManager.bond(0, transcoders[1], {from: delegator})
                         })
+
+                        it("move first transcoder to last position and last transcoder to first position (with hint)", async () => {
+                            await bondingManager.bondWithHint(
+                                0,
+                                transcoders[1],
+                                transcoders[1],
+                                constants.NULL_ADDRESS,
+                                constants.NULL_ADDRESS,
+                                transcoders[size - 2],
+                                {from: delegator}
+                            )
+                        })
                     })
 
                     describe("delegator delegates to first transcoder", () => {
@@ -185,6 +226,18 @@ contract("transcoder pool size gas report", accounts => {
 
                         it("delegate to first transcoder", async () => {
                             await bondingManager.bond(100, transcoders[size - 1], {from: delegator})
+                        })
+
+                        it("delegate to first transcoder (with hint)", async () => {
+                            await bondingManager.bondWithHint(
+                                100,
+                                transcoders[size - 1],
+                                constants.NULL_ADDRESS,
+                                constants.NULL_ADDRESS,
+                                constants.NULL_ADDRESS,
+                                transcoders[size - 2],
+                                {from: delegator}
+                            )
                         })
                     })
                 })
@@ -206,8 +259,16 @@ contract("transcoder pool size gas report", accounts => {
                     await bondingManager.unbond(size - 1, {from: transcoders[size - 1]})
                 })
 
+                it("moves the first transcoder to the last position (with hint)", async () => {
+                    await bondingManager.unbondWithHint(size - 1, transcoders[1], constants.NULL_ADDRESS, {from: transcoders[size - 1]})
+                })
+
                 it("keeps the first transcoder in first position", async () => {
                     await bondingManager.unbond(1, {from: transcoders[size - 1]})
+                })
+
+                it("keeps the first transcoder in first position (with hint)", async () => {
+                    await bondingManager.unbondWithHint(1, constants.NULL_ADDRESS, transcoders[size - 2], {from: transcoders[size - 1]})
                 })
             })
 
@@ -232,6 +293,10 @@ contract("transcoder pool size gas report", accounts => {
                     it("inserts a transcoder into the last spot", async () => {
                         await bondingManager.rebond(unbondingLockID, {from: transcoders[0]})
                     })
+
+                    it("inserts a transcoder into the last spot (with hint)", async () => {
+                        await bondingManager.rebondWithHint(unbondingLockID, transcoders[2], constants.NULL_ADDRESS, {from: transcoders[0]})
+                    })
                 })
 
                 describe("first transcoder can rebond and still be first", () => {
@@ -241,6 +306,10 @@ contract("transcoder pool size gas report", accounts => {
 
                     it("keeps transcoder in first place", async () => {
                         await bondingManager.rebond(unbondingLockID, {from: transcoders[size - 1]})
+                    })
+
+                    it("keeps transcoder in first place (with hint)", async () => {
+                        await bondingManager.rebondWithHint(unbondingLockID, constants.NULL_ADDRESS, transcoders[size - 2], {from: transcoders[size - 1]})
                     })
                 })
             })
@@ -259,6 +328,16 @@ contract("transcoder pool size gas report", accounts => {
                     it("inserts a transcoder back into the last spot", async () => {
                         await bondingManager.rebondFromUnbonded(transcoders[0], unbondingLockID, {from: transcoders[0]})
                     })
+
+                    it("inserts a transcoder back into the last spot (with hint)", async () => {
+                        await bondingManager.rebondFromUnbondedWithHint(
+                            transcoders[0],
+                            unbondingLockID,
+                            transcoders[1],
+                            constants.NULL_ADDRESS,
+                            {from: transcoders[0]}
+                        )
+                    })
                 })
 
                 describe("first transcoder is unbonded", () => {
@@ -269,6 +348,16 @@ contract("transcoder pool size gas report", accounts => {
 
                     it("inserts a transcoder back into the first spot", async () => {
                         await bondingManager.rebondFromUnbonded(accounts[size - 1], unbondingLockID, {from: transcoders[size - 1]})
+                    })
+
+                    it("inserts a transcoder back into the first spot (with hint)", async () => {
+                        await bondingManager.rebondFromUnbondedWithHint(
+                            accounts[size - 1],
+                            unbondingLockID,
+                            constants.NULL_ADDRESS,
+                            transcoders[size - 2],
+                            {from: transcoders[size - 1]}
+                        )
                     })
                 })
             })
@@ -294,6 +383,10 @@ contract("transcoder pool size gas report", accounts => {
 
                     it("updates the key for the last transcoder in the pool", async () => {
                         await bondingManager.reward({from: transcoders[0]})
+                    })
+
+                    it("updates the key for the last transcoder in the pool (with hint)", async () => {
+                        await bondingManager.rewardWithHint(transcoders[1], constants.NULL_ADDRESS, {from: transcoders[0]})
                     })
                 })
             })
