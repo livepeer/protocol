@@ -33,11 +33,9 @@ contract("TicketBroker", accounts => {
         fixture = new Fixture(web3)
         await fixture.deploy()
 
-        broker = await TicketBroker.new(
-            fixture.controller.address,
-            unlockPeriod,
-            ticketValidityPeriod
-        )
+        broker = await TicketBroker.new(fixture.controller.address)
+        await broker.setUnlockPeriod(unlockPeriod)
+        await broker.setTicketValidityPeriod(ticketValidityPeriod)
 
         await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
         await fixture.roundsManager.setMockBytes32(

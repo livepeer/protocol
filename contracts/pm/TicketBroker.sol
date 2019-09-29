@@ -17,19 +17,14 @@ contract TicketBroker is
     MixinWrappers
 {
     constructor(
-        address _controller,
-        uint256 _unlockPeriod,
-        uint256 _ticketValidityPeriod
+        address _controller
     )
         public
         MixinContractRegistry(_controller)
         MixinReserve()
         MixinTicketBrokerCore()
         MixinTicketProcessor()
-    {
-        unlockPeriod = _unlockPeriod;
-        ticketValidityPeriod = _ticketValidityPeriod;
-    }
+    {}
 
     /**
      * @dev Sets unlockPeriod value. Only callable by the Controller owner
