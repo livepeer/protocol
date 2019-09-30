@@ -5,7 +5,7 @@ import "./ILivepeerToken.sol";
 import "../zeppelin/Ownable.sol";
 
 
-/*
+/**
  * @title Faucet for the Livepeer Token
  */
 contract LivepeerTokenFaucet is Ownable {
@@ -32,8 +32,8 @@ contract LivepeerTokenFaucet is Ownable {
 
     event Request(address indexed to, uint256 amount);
 
-    /*
-     * @dev LivepeerTokenFacuet constructor
+    /**
+     * @notice LivepeerTokenFacuet constructor
      * @param _token Address of LivepeerToken
      * @param _requestAmount Amount of token sent to sender for a request
      * @param _requestWait Amount of time a sender must wait between request (denominated in hours)
@@ -44,24 +44,24 @@ contract LivepeerTokenFaucet is Ownable {
         requestWait = _requestWait;
     }
 
-    /*
-     * @dev Add an address to the whitelist
+    /**
+     * @notice Add an address to the whitelist
      * @param _addr Address to be whitelisted
      */
     function addToWhitelist(address _addr) external onlyOwner {
         isWhitelisted[_addr] = true;
     }
 
-    /*
-     * @dev Remove an address from the whitelist
+    /**
+     * @notice Remove an address from the whitelist
      * @param _addr Address to be removed from whitelist
      */
     function removeFromWhitelist(address _addr) external onlyOwner {
         isWhitelisted[_addr] = false;
     }
 
-    /*
-     * @dev Request an amount of token to be sent to sender
+    /**
+     * @notice Request an amount of token to be sent to sender
      */
     function request() external validRequest {
         if (!isWhitelisted[msg.sender]) {

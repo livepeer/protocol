@@ -11,7 +11,7 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
 /**
  * @title RoundsManager
- * @dev Manages round progression and other blockchain time related operations of the Livepeer protocol
+ * @notice Manages round progression and other blockchain time related operations of the Livepeer protocol
  */
 contract RoundsManager is ManagerProxyTarget, IRoundsManager {
     using SafeMath for uint256;
@@ -34,13 +34,13 @@ contract RoundsManager is ManagerProxyTarget, IRoundsManager {
     mapping (uint256 => bytes32) internal _blockHashForRound;
 
     /**
-     * @dev RoundsManager constructor. Only invokes constructor of base Manager contract with provided Controller address
+     * @notice RoundsManager constructor. Only invokes constructor of base Manager contract with provided Controller address
      * @param _controller Address of Controller that this contract will be registered with
      */
     constructor(address _controller) public Manager(_controller) {}
 
     /**
-     * @dev Set round length. Only callable by the controller owner
+     * @notice Set round length. Only callable by the controller owner
      * @param _roundLength Round length in blocks
      */
     function setRoundLength(uint256 _roundLength) external onlyControllerOwner {
@@ -64,7 +64,7 @@ contract RoundsManager is ManagerProxyTarget, IRoundsManager {
     }
 
     /**
-     * @dev Set round lock amount. Only callable by the controller owner
+     * @notice Set round lock amount. Only callable by the controller owner
      * @param _roundLockAmount Round lock amount as a % of the number of blocks in a round
      */
     function setRoundLockAmount(uint256 _roundLockAmount) external onlyControllerOwner {
@@ -76,7 +76,7 @@ contract RoundsManager is ManagerProxyTarget, IRoundsManager {
     }
 
     /**
-     * @dev Initialize the current round. Called once at the start of any round
+     * @notice Initialize the current round. Called once at the start of any round
      */
     function initializeRound() external whenSystemNotPaused {
         uint256 currRound = currentRound();
@@ -98,14 +98,14 @@ contract RoundsManager is ManagerProxyTarget, IRoundsManager {
     }
 
     /**
-     * @dev Return current block number
+     * @notice Return current block number
      */
     function blockNum() public view returns (uint256) {
         return block.number;
     }
 
     /**
-     * @dev Return blockhash for a block
+     * @notice Return blockhash for a block
      */
     function blockHash(uint256 _block) public view returns (bytes32) {
         uint256 currentBlock = blockNum();
@@ -116,7 +116,7 @@ contract RoundsManager is ManagerProxyTarget, IRoundsManager {
     }
 
     /**
-     * @dev Return blockhash for a round
+     * @notice Return blockhash for a round
      * @param _round Round number
      * @return Blockhash for `_round`
      */
@@ -125,7 +125,7 @@ contract RoundsManager is ManagerProxyTarget, IRoundsManager {
     }
 
     /**
-     * @dev Return current round
+     * @notice Return current round
      */
     function currentRound() public view returns (uint256) {
         // Compute # of rounds since roundLength was last updated
@@ -135,7 +135,7 @@ contract RoundsManager is ManagerProxyTarget, IRoundsManager {
     }
 
     /**
-     * @dev Return start block of current round
+     * @notice Return start block of current round
      */
     function currentRoundStartBlock() public view returns (uint256) {
         // Compute # of rounds since roundLength was last updated
@@ -145,14 +145,14 @@ contract RoundsManager is ManagerProxyTarget, IRoundsManager {
     }
 
     /**
-     * @dev Check if current round is initialized
+     * @notice Check if current round is initialized
      */
     function currentRoundInitialized() public view returns (bool) {
         return lastInitializedRound == currentRound();
     }
 
     /**
-     * @dev Check if we are in the lock period of the current round
+     * @notice Check if we are in the lock period of the current round
      */
     function currentRoundLocked() public view returns (bool) {
         uint256 lockedBlocks = MathUtils.percOf(roundLength, roundLockAmount);

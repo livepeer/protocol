@@ -15,14 +15,14 @@ contract MReserve {
     event ReserveClaimed(address indexed reserveHolder, address claimant, uint256 amount);
 
     /**
-     * @dev Returns info about a reserve
+     * @notice Returns info about a reserve
      * @param _reserveHolder Address of reserve holder
      * @return Info about the reserve for `_reserveHolder`
      */
     function getReserveInfo(address _reserveHolder) public view returns (ReserveInfo memory info);
 
     /**
-     * @dev Returns the amount of funds claimed by a claimant from a reserve
+     * @notice Returns the amount of funds claimed by a claimant from a reserve
      * @param _reserveHolder Address of reserve holder
      * @param _claimant Address of claimant
      * @return Amount of funds claimed by `_claimant` from the reserve for `_reserveHolder`

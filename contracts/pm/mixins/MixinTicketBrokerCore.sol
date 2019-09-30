@@ -62,7 +62,7 @@ contract MixinTicketBrokerCore is MContractRegistry, MReserve, MTicketProcessor,
     }
 
     /**
-     * @dev Adds ETH to the caller's deposit
+     * @notice Adds ETH to the caller's deposit
      */
     function fundDeposit()
         external
@@ -74,7 +74,7 @@ contract MixinTicketBrokerCore is MContractRegistry, MReserve, MTicketProcessor,
     }
 
     /**
-     * @dev Adds ETH to the caller's reserve
+     * @notice Adds ETH to the caller's reserve
      */
     function fundReserve()
         external
@@ -86,7 +86,7 @@ contract MixinTicketBrokerCore is MContractRegistry, MReserve, MTicketProcessor,
     }
 
     /**
-     * @dev Adds ETH to the caller's deposit and reserve
+     * @notice Adds ETH to the caller's deposit and reserve
      * @param _depositAmount Amount of ETH to add to the caller's deposit
      * @param _reserveAmount Amount of ETH to add to the caller's reserve
      */
@@ -105,8 +105,8 @@ contract MixinTicketBrokerCore is MContractRegistry, MReserve, MTicketProcessor,
     }
 
     /**
-     * @dev Redeems a winning ticket that has been signed by a sender and reveals the
-     * recipient recipientRand that corresponds to the recipientRandHash included in the ticket
+     * @notice Redeems a winning ticket that has been signed by a sender and reveals the
+     recipient recipientRand that corresponds to the recipientRandHash included in the ticket
      * @param _ticket Winning ticket to be redeemed in order to claim payment
      * @param _sig Sender's signature over the hash of `_ticket`
      * @param _recipientRand The preimage for the recipientRandHash included in `_ticket`
@@ -181,7 +181,7 @@ contract MixinTicketBrokerCore is MContractRegistry, MReserve, MTicketProcessor,
     }
 
     /**
-     * @dev Initiates the unlock period for the caller
+     * @notice Initiates the unlock period for the caller
      */
     function unlock() public whenSystemNotPaused {
         Sender storage sender = senders[msg.sender];
@@ -199,7 +199,7 @@ contract MixinTicketBrokerCore is MContractRegistry, MReserve, MTicketProcessor,
     }
 
     /**
-     * @dev Cancels the unlock period for the caller
+     * @notice Cancels the unlock period for the caller
      */
     function cancelUnlock() public whenSystemNotPaused {
         Sender storage sender = senders[msg.sender];
@@ -208,7 +208,7 @@ contract MixinTicketBrokerCore is MContractRegistry, MReserve, MTicketProcessor,
     }
 
     /**
-     * @dev Withdraws all ETH from the caller's deposit and reserve
+     * @notice Withdraws all ETH from the caller's deposit and reserve
      */
     function withdraw() public whenSystemNotPaused {
         Sender storage sender = senders[msg.sender];
@@ -238,7 +238,7 @@ contract MixinTicketBrokerCore is MContractRegistry, MReserve, MTicketProcessor,
     }
 
     /**
-     * @dev Returns whether a sender is currently in the unlock period
+     * @notice Returns whether a sender is currently in the unlock period
      * @param _sender Address of sender
      * @return Boolean indicating whether `_sender` has an unlock in progress
      */
@@ -248,7 +248,7 @@ contract MixinTicketBrokerCore is MContractRegistry, MReserve, MTicketProcessor,
     }
 
     /**
-     * @dev Returns info about a sender
+     * @notice Returns info about a sender
      * @param _sender Address of sender
      * @return Info about the sender for `_sender`
      */
@@ -275,7 +275,7 @@ contract MixinTicketBrokerCore is MContractRegistry, MReserve, MTicketProcessor,
     }
 
     /**
-     * @dev Validates a winning ticket (succeeds or reverts)
+     * @dev Validates a winning ticket, succeeds or reverts
      * @param _ticket Winning ticket to be validated
      * @param _ticketHash Hash of `_ticket`
      * @param _sig Sender's signature over `_ticketHash`

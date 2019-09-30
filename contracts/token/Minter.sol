@@ -54,7 +54,7 @@ contract Minter is Manager, IMinter {
     }
 
     /**
-     * @dev Minter constructor
+     * @notice Minter constructor
      * @param _inflation Base inflation rate as a percentage of current total token supply
      * @param _inflationChange Change in inflation rate each round (increase or decrease) if target bonding rate is not achieved
      * @param _targetBondingRate Target bonding rate as a percentage of total bonded tokens / total token supply
@@ -73,7 +73,7 @@ contract Minter is Manager, IMinter {
     }
 
     /**
-     * @dev Set targetBondingRate. Only callable by Controller owner
+     * @notice Set targetBondingRate. Only callable by Controller owner
      * @param _targetBondingRate Target bonding rate as a percentage of total bonded tokens / total token supply
      */
     function setTargetBondingRate(uint256 _targetBondingRate) external onlyControllerOwner {
@@ -86,7 +86,7 @@ contract Minter is Manager, IMinter {
     }
 
     /**
-     * @dev Set inflationChange. Only callable by Controller owner
+     * @notice Set inflationChange. Only callable by Controller owner
      * @param _inflationChange Inflation change as a percentage of total token supply
      */
     function setInflationChange(uint256 _inflationChange) external onlyControllerOwner {
@@ -99,7 +99,7 @@ contract Minter is Manager, IMinter {
     }
 
     /**
-     * @dev Migrate to a new Minter by transferring ownership of the token as well
+     * @notice Migrate to a new Minter by transferring ownership of the token as well
      * as the current Minter's token balance to the new Minter. Only callable by Controller when system is paused
      * @param _newMinter Address of new Minter
      */
@@ -124,7 +124,7 @@ contract Minter is Manager, IMinter {
     }
 
     /**
-     * @dev Create reward based on a fractional portion of the mintable tokens for the current round
+     * @notice Create reward based on a fractional portion of the mintable tokens for the current round
      * @param _fracNum Numerator of fraction (active transcoder's stake)
      * @param _fracDenom Denominator of fraction (total active stake)
      */
@@ -143,7 +143,7 @@ contract Minter is Manager, IMinter {
     }
 
     /**
-     * @dev Transfer tokens to a receipient. Only callable by BondingManager - always trusts BondingManager
+     * @notice Transfer tokens to a receipient. Only callable by BondingManager - always trusts BondingManager
      * @param _to Recipient address
      * @param _amount Amount of tokens
      */
@@ -152,7 +152,7 @@ contract Minter is Manager, IMinter {
     }
 
     /**
-     * @dev Burn tokens. Only callable by BondingManager - always trusts BondingManager
+     * @notice Burn tokens. Only callable by BondingManager - always trusts BondingManager
      * @param _amount Amount of tokens to burn
      */
     function trustedBurnTokens(uint256 _amount) external onlyBondingManager whenSystemNotPaused {
@@ -160,7 +160,7 @@ contract Minter is Manager, IMinter {
     }
 
     /**
-     * @dev Withdraw ETH to a recipient. Only callable by BondingManager or TicketBroker - always trusts these two contracts
+     * @notice Withdraw ETH to a recipient. Only callable by BondingManager or TicketBroker - always trusts these two contracts
      * @param _to Recipient address
      * @param _amount Amount of ETH
      */
@@ -169,14 +169,14 @@ contract Minter is Manager, IMinter {
     }
 
     /**
-     * @dev Deposit ETH to this contract. Only callable by the currently registered Minter or JobsManager
+     * @notice Deposit ETH to this contract. Only callable by the currently registered Minter or JobsManager
      */
     function depositETH() external payable onlyMinterOrJobsManager whenSystemNotPaused returns (bool) {
         return true;
     }
 
     /**
-     * @dev Set inflation and mintable tokens for the round. Only callable by the RoundsManager
+     * @notice Set inflation and mintable tokens for the round. Only callable by the RoundsManager
      */
     function setCurrentRewardTokens() external onlyRoundsManager whenSystemNotPaused {
         setInflation();

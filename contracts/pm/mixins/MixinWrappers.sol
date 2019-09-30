@@ -9,8 +9,7 @@ import "./interfaces/MContractRegistry.sol";
 contract MixinWrappers is MContractRegistry, MTicketBrokerCore {
 
     /**
-     * @dev Redeems multiple winning tickets. The function will redeem all of the provided
-     * tickets and handle any failures gracefully without reverting the entire function
+     * @notice Redeems multiple winning tickets. The function will redeem all of the provided tickets and handle any failures gracefully without reverting the entire function
      * @param _tickets Array of winning tickets to be redeemed in order to claim payment
      * @param _sigs Array of sender signatures over the hash of tickets (`_sigs[i]` corresponds to `_tickets[i]`)
      * @param _recipientRands Array of preimages for the recipientRandHash included in each ticket (`_recipientRands[i]` corresponds to `_tickets[i]`)
@@ -35,8 +34,8 @@ contract MixinWrappers is MContractRegistry, MTicketBrokerCore {
 
     /**
      * @dev Redeems a winning ticket that has been signed by a sender and reveals the
-     * recipient recipientRand that corresponds to the recipientRandHash included in the ticket
-     * This function wraps `redeemWinningTicket()` and returns false if the underlying call reverts
+     recipient recipientRand that corresponds to the recipientRandHash included in the ticket
+     This function wraps `redeemWinningTicket()` and returns false if the underlying call reverts
      * @param _ticket Winning ticket to be redeemed in order to claim payment
      * @param _sig Sender's signature over the hash of `_ticket`
      * @param _recipientRand The preimage for the recipientRandHash included in `_ticket`

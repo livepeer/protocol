@@ -1,7 +1,7 @@
 pragma solidity ^0.5.11;
 
 
-/*
+/**
  * @title A mock contract that can set/return mock values and execute functions
  * on target contracts
  */
@@ -20,7 +20,7 @@ contract GenericMock {
     // Track function selectors and mapped mock values
     mapping (bytes4 => MockValue) mockValues;
 
-    /*
+    /**
      * @dev Return mock value for a functione
      */
     function() external payable {
@@ -43,7 +43,7 @@ contract GenericMock {
         }
     }
 
-    /*
+    /**
      * @dev Call a function on a target address using provided calldata for a function
      * @param _target Target contract to call with data
      * @param _data Transaction data to be used to call the target contract
@@ -54,7 +54,7 @@ contract GenericMock {
         require(ok, string(res));
     }
 
-    /*
+    /**
      * @dev Set a mock uint256 value for a function
      * @param _func Function selector (bytes4(keccak256(FUNCTION_SIGNATURE)))
      * @param _value Mock uint256 value
@@ -65,7 +65,7 @@ contract GenericMock {
         mockValues[_func].set = true;
     }
 
-    /*
+    /**
      * @dev Set a mock bytes32 value for a function
      * @param _func Function selector (bytes4(keccak256(FUNCTION_SIGNATURE)))
      * param _value Mock bytes32 value
@@ -76,7 +76,7 @@ contract GenericMock {
         mockValues[_func].set = true;
     }
 
-    /*
+    /**
      * @dev Set a mock bool value for a function
      * @param _func Function selector (bytes4(keccak256(FUNCTION_SIGNATURE)))
      * @param _value Mock bool value
@@ -87,7 +87,7 @@ contract GenericMock {
         mockValues[_func].set = true;
     }
 
-    /*
+    /**
      * @dev Set a mock address value for a function
      * @param _func Function selector (bytes4(keccak256(FUNCTION_SIGNATURE)))
      * @param _value Mock address value
@@ -98,7 +98,7 @@ contract GenericMock {
         mockValues[_func].set = true;
     }
 
-    /*
+    /**
      * @dev Load a uint256 value into memory and return it
      * @param _value Uint256 value
      */
@@ -111,7 +111,7 @@ contract GenericMock {
         }
     }
 
-    /*
+    /**
      * @dev Load a bytes32 value into memory and return it
      * @param _value Bytes32 value
      */
@@ -124,7 +124,7 @@ contract GenericMock {
         }
     }
 
-    /*
+    /**
      * @dev Load a bool value into memory and return it
      * @param _value Bool value
      */
@@ -137,7 +137,7 @@ contract GenericMock {
         }
     }
 
-    /*
+    /**
      * @dev Load an address value into memory and return it
      * @param _value Address value
      */

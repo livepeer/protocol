@@ -5,7 +5,7 @@ import "./ManagerProxyTarget.sol";
 
 /**
  * @title ServiceRegistry
- * @dev Maintains a registry of service metadata associated with service provider addresses (transcoders/orchestrators)
+ * @notice Maintains a registry of service metadata associated with service provider addresses (transcoders/orchestrators)
  */
 contract ServiceRegistry is ManagerProxyTarget {
     // Store service metadata
@@ -20,13 +20,13 @@ contract ServiceRegistry is ManagerProxyTarget {
     event ServiceURIUpdate(address indexed addr, string serviceURI);
 
     /**
-     * @dev ServiceRegistry constructor. Only invokes constructor of base Manager contract with provided Controller address
+     * @notice ServiceRegistry constructor. Only invokes constructor of base Manager contract with provided Controller address
      * @param _controller Address of a Controller that this contract will be registered with
      */
     constructor(address _controller) public Manager(_controller) {}
 
     /**
-     * @dev Stores service URI endpoint for the caller that can be used to send requests to the caller off-chain
+     * @notice Stores service URI endpoint for the caller that can be used to send requests to the caller off-chain
      * @param _serviceURI Service URI endpoint for the caller
      */
     function setServiceURI(string calldata _serviceURI) external {
@@ -36,7 +36,7 @@ contract ServiceRegistry is ManagerProxyTarget {
     }
 
     /**
-     * @dev Returns service URI endpoint stored for a given address
+     * @notice Returns service URI endpoint stored for a given address
      * @param _addr Address for which a service URI endpoint is desired
      */
     function getServiceURI(address _addr) public view returns (string memory) {

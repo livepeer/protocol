@@ -27,7 +27,7 @@ contract TicketBroker is
     {}
 
     /**
-     * @dev Sets unlockPeriod value. Only callable by the Controller owner
+     * @notice Sets unlockPeriod value. Only callable by the Controller owner
      * @param _unlockPeriod Value for unlockPeriod
      */
     function setUnlockPeriod(uint256 _unlockPeriod) external onlyControllerOwner {
@@ -35,7 +35,7 @@ contract TicketBroker is
     }
 
     /**
-     * @dev Sets ticketValidityPeriod value. Only callable by the Controller owner
+     * @notice Sets ticketValidityPeriod value. Only callable by the Controller owner
      * @param _ticketValidityPeriod Value for ticketValidityPeriod
      */
     function setTicketValidityPeriod(uint256 _ticketValidityPeriod) external onlyControllerOwner {
