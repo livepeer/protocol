@@ -30,6 +30,10 @@ module.exports = function(deployer, network) {
             "TicketBroker",
             controller.address
         )
+        // Register TicketBroker with JobsManager contract ID because in a production system the Minter likely will not be upgraded to be
+        // aware of the TicketBroker contract ID and it will only be aware of the JobsManager contract ID
+        await lpDeployer.register("JobsManager", broker.address)
+
         const bondingManager = await lpDeployer.deployProxyAndRegister(BondingManager, "BondingManager", controller.address)
 
         let roundsManager

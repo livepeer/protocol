@@ -41,21 +41,15 @@ contract Minter is Manager, IMinter {
         _;
     }
 
-    // Checks if caller is TicketBroker
-    modifier onlyTicketBroker() {
-        require(msg.sender == controller.getContract(keccak256("TicketBroker")));
+    // Checks if caller is either BondingManager or JobsManager
+    modifier onlyBondingManagerOrJobsManager() {
+        require(msg.sender == controller.getContract(keccak256("BondingManager")) || msg.sender == controller.getContract(keccak256("JobsManager")));
         _;
     }
 
-    // Checks if caller is either BondingManager or TicketBroker
-    modifier onlyBondingManagerOrTicketBroker() {
-        require(msg.sender == controller.getContract(keccak256("BondingManager")) || msg.sender == controller.getContract(keccak256("TicketBroker")));
-        _;
-    }
-
-    // Checks if caller is either the currently registered Minter or TicketBroker
-    modifier onlyMinterOrTicketBroker() {
-        require(msg.sender == controller.getContract(keccak256("Minter")) || msg.sender == controller.getContract(keccak256("TicketBroker")));
+    // Checks if caller is either the currently registered Minter or JobsManager
+    modifier onlyMinterOrJobsManager() {
+        require(msg.sender == controller.getContract(keccak256("Minter")) || msg.sender == controller.getContract(keccak256("JobsManager")));
         _;
     }
 
@@ -126,7 +120,7 @@ contract Minter is Manager, IMinter {
         // Transfer current Minter's token balance to new Minter
         livepeerToken().transfer(address(_newMinter), livepeerToken().balanceOf(address(this)));
         // Transfer current Minter's ETH balance to new Minter
-        _newMinter.trustedDepositETH.value(address(this).balance)();
+        _newMinter.depositETH.value(address(this).balance)();
     }
 
     /**
@@ -170,20 +164,15 @@ contract Minter is Manager, IMinter {
      * @param _to Recipient address
      * @param _amount Amount of ETH
      */
-    function trustedWithdrawETH(address payable _to, uint256 _amount) external onlyBondingManagerOrTicketBroker whenSystemNotPaused {
+    function trustedWithdrawETH(address payable _to, uint256 _amount) external onlyBondingManagerOrJobsManager whenSystemNotPaused {
         _to.transfer(_amount);
     }
 
     /**
-     * @dev Deposit ETH to this contract. Only callable by the currently registered Minter or TicketBroker
+     * @dev Deposit ETH to this contract. Only callable by the currently registered Minter or JobsManager
      */
-    function trustedDepositETH() external payable onlyMinterOrTicketBroker whenSystemNotPaused {}
-
-    /**
-     * @dev Burn ETH held by this contract. Only callable by the currently registered TicketBroker
-     */
-    function trustedBurnETH(uint256 _amount) external onlyTicketBroker whenSystemNotPaused {
-        address(0).transfer(_amount);
+    function depositETH() external payable onlyMinterOrJobsManager whenSystemNotPaused returns (bool) {
+        return true;
     }
 
     /**

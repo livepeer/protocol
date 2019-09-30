@@ -29,10 +29,14 @@ class ContractDeployer {
         return this.controller
     }
 
+    async register(name, addr) {
+        const commitHash = await this.getGitHeadCommitHash()
+        await this.controller.setContractInfo(contractId(name), addr, commitHash)
+    }
+
     async deployAndRegister(artifact, name, ...args) {
         const contract = await this.deploy(artifact, ...args)
-        const commitHash = await this.getGitHeadCommitHash()
-        await this.controller.setContractInfo(contractId(name), contract.address, commitHash)
+        await this.register(name, contract.address)
         return contract
     }
 

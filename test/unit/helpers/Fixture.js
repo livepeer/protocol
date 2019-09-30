@@ -23,15 +23,23 @@ export default class Fixture {
         this.minter = await this.deployAndRegister(MinterMock, "Minter")
         this.bondingManager = await this.deployAndRegister(BondingManagerMock, "BondingManager")
         this.roundsManager = await this.deployAndRegister(GenericMock, "RoundsManager")
+        this.jobsManager = await this.deployAndRegister(GenericMock, "JobsManager")
         this.ticketBroker = await this.deployAndRegister(GenericMock, "TicketBroker")
+        // Register TicketBroker with JobsManager contract ID because in a production system the Minter likely will not be upgraded to be
+        // aware of the TicketBroker contract ID and it will only be aware of the JobsManager contract ID
+        await this.register("JobsManager", this.ticketBroker.address)
         this.verifier = await this.deployAndRegister(GenericMock, "Verifier")
+    }
+
+    async register(name, addr) {
+        // Use dummy Git commit hash
+        const commitHash = web3.utils.asciiToHex("0x123")
+        await this.controller.setContractInfo(contractId(name), addr, commitHash)
     }
 
     async deployAndRegister(artifact, name, ...args) {
         const contract = await artifact.new(...args)
-        // Use dummy Git commit hash
-        const commitHash = web3.utils.asciiToHex("0x123")
-        await this.controller.setContractInfo(contractId(name), contract.address, commitHash)
+        await this.register(name, contract.address)
         return contract
     }
 
