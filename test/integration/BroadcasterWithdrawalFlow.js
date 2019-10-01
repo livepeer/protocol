@@ -22,7 +22,7 @@ contract("BroadcasterWithdrawalFlow", accounts => {
         const controller = await Controller.deployed()
         await controller.unpause()
 
-        const brokerAddr = await controller.getContract(contractId("TicketBroker"))
+        const brokerAddr = await controller.getContract(contractId("JobsManager"))
         broker = await TicketBroker.at(brokerAddr)
 
         const bondingManagerAddr = await controller.getContract(contractId("BondingManager"))

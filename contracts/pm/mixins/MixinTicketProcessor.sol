@@ -18,7 +18,7 @@ contract MixinTicketProcessor is MContractRegistry, MTicketProcessor {
      */
     function processFunding(uint256 _amount) internal {
         // Send funds to Minter
-        minter().trustedDepositETH.value(_amount)();
+        minter().depositETH.value(_amount)();
     }
 
     /**
