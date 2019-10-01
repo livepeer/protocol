@@ -1,5 +1,4 @@
 import Fixture from "./helpers/Fixture"
-import expectThrow from "../helpers/expectThrow"
 import expectRevertWithReason from "../helpers/expectFail"
 import {contractId, functionSig, functionEncodedABI} from "../../utils/helpers"
 import {constants} from "../../utils/constants"
@@ -1599,7 +1598,7 @@ contract("BondingManager", accounts => {
         it("should fail if system is paused", async () => {
             await fixture.controller.pause()
 
-            await expectThrow(
+            await expectRevertWithReason(
                 fixture.ticketBroker.execute(
                     bondingManager.address,
                     functionEncodedABI(
@@ -1607,7 +1606,8 @@ contract("BondingManager", accounts => {
                         ["address", "uint256", "uint256"],
                         [transcoder, 1000, currentRound + 1]
                     )
-                )
+                ),
+                "system is paused"
             )
         })
 
@@ -1616,7 +1616,7 @@ contract("BondingManager", accounts => {
         })
 
         it("should fail if transcoder is not registered", async () => {
-            await expectThrow(
+            await expectRevertWithReason(
                 fixture.ticketBroker.execute(
                     bondingManager.address,
                     functionEncodedABI(
@@ -1624,7 +1624,8 @@ contract("BondingManager", accounts => {
                         ["address", "uint256", "uint256"],
                         [nonTranscoder, 1000, currentRound + 1]
                     )
-                )
+                ),
+                "transcoder must be registered"
             )
         })
 
@@ -1665,7 +1666,7 @@ contract("BondingManager", accounts => {
         it("should fail if system is paused", async () => {
             await fixture.controller.pause()
 
-            await expectThrow(
+            await expectRevertWithReason(
                 fixture.verifier.execute(
                     bondingManager.address,
                     functionEncodedABI(
@@ -1673,7 +1674,8 @@ contract("BondingManager", accounts => {
                         ["address", "uint256", "uint256", "uint256"],
                         [transcoder, constants.NULL_ADDRESS, PERC_DIVISOR / 2, PERC_DIVISOR / 2]
                     )
-                )
+                ),
+                "system is paused"
             )
         })
 
