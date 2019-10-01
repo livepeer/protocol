@@ -17,19 +17,14 @@ contract TicketBroker is
     MixinWrappers
 {
     constructor(
-        address _controller,
-        uint256 _unlockPeriod,
-        uint256 _ticketValidityPeriod
+        address _controller
     )
         public
         MixinContractRegistry(_controller)
         MixinReserve()
         MixinTicketBrokerCore()
         MixinTicketProcessor()
-    {
-        unlockPeriod = _unlockPeriod;
-        ticketValidityPeriod = _ticketValidityPeriod;
-    }
+    {}
 
     /**
      * @dev Sets unlockPeriod value. Only callable by the Controller owner
@@ -44,6 +39,8 @@ contract TicketBroker is
      * @param _ticketValidityPeriod Value for ticketValidityPeriod
      */
     function setTicketValidityPeriod(uint256 _ticketValidityPeriod) external onlyControllerOwner {
+        require(_ticketValidityPeriod > 0, "ticketValidityPeriod must be greater than 0");
+
         ticketValidityPeriod = _ticketValidityPeriod;
     }
 }

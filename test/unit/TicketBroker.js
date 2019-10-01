@@ -33,11 +33,9 @@ contract("TicketBroker", accounts => {
         fixture = new Fixture(web3)
         await fixture.deploy()
 
-        broker = await TicketBroker.new(
-            fixture.controller.address,
-            unlockPeriod,
-            ticketValidityPeriod
-        )
+        broker = await TicketBroker.new(fixture.controller.address)
+        await broker.setUnlockPeriod(unlockPeriod)
+        await broker.setTicketValidityPeriod(ticketValidityPeriod)
 
         await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
         await fixture.roundsManager.setMockBytes32(
@@ -53,6 +51,43 @@ contract("TicketBroker", accounts => {
 
     afterEach(async () => {
         await fixture.tearDown()
+    })
+
+    describe("setUnlockPeriod", () => {
+        it("should fail if caller is not Controller owner", async () => {
+            await expectRevertWithReason(
+                broker.setUnlockPeriod(200, {from: accounts[1]}),
+                "caller must be Controller owner"
+            )
+        })
+
+        it("sets unlockPeriod", async () => {
+            await broker.setUnlockPeriod(200)
+
+            assert.equal("200", (await broker.unlockPeriod()).toString())
+        })
+    })
+
+    describe("setTicketValidityPeriod", () => {
+        it("should fail if caller is not Controller owner", async () => {
+            await expectRevertWithReason(
+                broker.setTicketValidityPeriod(200, {from: accounts[1]}),
+                "caller must be Controller owner"
+            )
+        })
+
+        it("should fail if provided value is 0", async () => {
+            await expectRevertWithReason(
+                broker.setTicketValidityPeriod(0),
+                "ticketValidityPeriod must be greater than 0"
+            )
+        })
+
+        it("sets ticketValidityPeriod", async () => {
+            await broker.setTicketValidityPeriod(200)
+
+            assert.equal("200", (await broker.ticketValidityPeriod()).toString())
+        })
     })
 
     describe("fundDeposit", () => {

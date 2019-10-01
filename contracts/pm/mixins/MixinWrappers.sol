@@ -60,17 +60,7 @@ contract MixinWrappers is MContractRegistry, MTicketBrokerCore {
         );
 
         // Call `redeemWinningTicket()`
-        assembly {
-            // call will return false upon hitting a revert
-            success := call(
-                gas,                                   // Forward all gas
-                address,                               // Address of this contract (calling self)
-                0,                                     // Send 0 ETH
-                add(redeemWinningTicketCalldata, 32),  // Start of calldata (skip first 32 bytes containing array length)
-                mload(redeemWinningTicketCalldata),    // Length of calldata (first 32 bytes contains array length)
-                0,                                     // Ignore start of output
-                0                                      // Ignore size of output
-            )
-        }
+        // solium-disable-next-line
+        (success,) = address(this).call(redeemWinningTicketCalldata);
     }
 }

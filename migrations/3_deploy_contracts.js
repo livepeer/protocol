@@ -25,15 +25,10 @@ module.exports = function(deployer, network) {
             await lpDeployer.deployAndRegister(LivepeerTokenFaucet, "LivepeerTokenFaucet", token.address, config.faucet.requestAmount, config.faucet.requestWait)
         }
 
-        // TODO: Consider using a initializer instead of an
-        // explicit constructor in base TicketBroker since
-        // upgradeable proxies do not use explicit constructors
         const broker = await lpDeployer.deployProxyAndRegister(
             TicketBroker,
             "TicketBroker",
-            controller.address,
-            config.broker.unlockPeriod,
-            config.broker.ticketValidityPeriod
+            controller.address
         )
         const bondingManager = await lpDeployer.deployProxyAndRegister(BondingManager, "BondingManager", controller.address)
 
