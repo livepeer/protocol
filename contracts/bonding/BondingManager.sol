@@ -178,198 +178,58 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     }
 
     /**
-     * @dev The sender is declaring themselves as a candidate for active transcoding.
+     * @notice Sets commission rates as a transcoder and if the caller is not in the transcoder pool tries to add it
+     * @dev Percentages are represented as numerators of fractions over MathUtils.PERC_DIVISOR
      * @param _rewardCut % of reward paid to transcoder by a delegator
      * @param _feeShare % of fees paid to delegators by a transcoder
      */
-    function transcoder(uint256 _rewardCut, uint256 _feeShare)
-        external
-        whenSystemNotPaused
-        currentRoundInitialized
-    {
-        require(
-            !roundsManager().currentRoundLocked(),
-            "can't update transcoder params, current round is locked"
-        );
-        require(MathUtils.validPerc(_rewardCut), "invalid rewardCut percentage");
-        require(MathUtils.validPerc(_feeShare), "invalid feeShare percentage");
-        require(isRegisteredTranscoder(msg.sender), "transcoder must be registered");
-
-        Transcoder storage t = transcoders[msg.sender];
-        uint256 currentRound = roundsManager().currentRound();
-
-        require(
-            !isActiveTranscoder(msg.sender) || t.lastRewardRound == currentRound,
-            "caller can't be active or must have already called reward for the current round"
-        );
-
-        t.rewardCut = _rewardCut;
-        t.feeShare = _feeShare;
-
-        if (!transcoderPoolV2.contains(msg.sender)) {
-            tryToJoinActiveSet(msg.sender, delegators[msg.sender].delegatedAmount, currentRound.add(1));
-        }
-
-        emit TranscoderUpdate(msg.sender, _rewardCut, _feeShare);
+    function transcoder(uint256 _rewardCut, uint256 _feeShare) external {
+        transcoderWithHint(_rewardCut, _feeShare, address(0), address(0));
     }
 
     /**
-     * @dev Delegate stake towards a specific address.
-     * @param _amount The amount of LPT to stake.
-     * @param _to The address of the transcoder to stake towards.
+     * @notice Delegate stake towards a specific address
+     * @param _amount The amount of tokens to stake
+     * @param _to The address of the transcoder to stake towards
      */
-    function bond(
-        uint256 _amount,
-        address _to
-    )
-        external
-        whenSystemNotPaused
-        currentRoundInitialized
-        autoClaimEarnings
-    {
-        Delegator storage del = delegators[msg.sender];
-
-        uint256 currentRound = roundsManager().currentRound();
-        // Amount to delegate
-        uint256 delegationAmount = _amount;
-        // Current delegate
-        address currentDelegate = del.delegateAddress;
-
-        if (delegatorStatus(msg.sender) == DelegatorStatus.Unbonded) {
-            // New delegate
-            // Set start round
-            // Don't set start round if delegator is in pending state because the start round would not change
-            del.startRound = currentRound.add(1);
-            // Unbonded state = no existing delegate and no bonded stake
-            // Thus, delegation amount = provided amount
-        } else if (currentDelegate != address(0) && currentDelegate != _to) {
-            // A registered transcoder cannot delegate its bonded stake toward another address
-            // because it can only be delegated toward itself
-            // In the future, if delegation towards another registered transcoder as an already
-            // registered transcoder becomes useful (i.e. for transitive delegation), this restriction
-            // could be removed
-            require(!isRegisteredTranscoder(msg.sender), "registered transcoders can't delegate towards other addresses");
-            // Changing delegate
-            // Set start round
-            del.startRound = currentRound.add(1);
-            // Update amount to delegate with previous delegation amount
-            delegationAmount = delegationAmount.add(del.bondedAmount);
-
-            decreaseTotalStake(currentDelegate, del.bondedAmount);
-        }
-
-        // cannot delegate to someone without having bonded stake
-        require(delegationAmount > 0, "delegation amount must be greater than 0");
-        // Update delegate
-        del.delegateAddress = _to;
-        // Update bonded amount
-        del.bondedAmount = del.bondedAmount.add(_amount);
-
-        increaseTotalStake(_to, delegationAmount);
-
-        if (_amount > 0) {
-            // Transfer the LPT to the Minter
-            livepeerToken().transferFrom(msg.sender, address(minter()), _amount);
-        }
-
-        emit Bond(_to, currentDelegate, msg.sender, _amount, del.bondedAmount);
+    function bond(uint256 _amount, address _to) external {
+        bondWithHint(
+            _amount,
+            _to,
+            address(0),
+            address(0),
+            address(0),
+            address(0)
+        );
     }
 
     /**
-     * @dev Unbond an amount of the delegator's bonded stake
+     * @notice Unbond an amount of the delegator's bonded stake
      * @param _amount Amount of tokens to unbond
      */
-    function unbond(uint256 _amount)
-        external
-        whenSystemNotPaused
-        currentRoundInitialized
-        autoClaimEarnings
-    {
-        require(delegatorStatus(msg.sender) == DelegatorStatus.Bonded, "caller must be bonded");
-
-        Delegator storage del = delegators[msg.sender];
-
-        require(_amount > 0, "unbond amount must be greater than 0");
-        require(_amount <= del.bondedAmount, "amount is greater than bonded amount");
-
-        address currentDelegate = del.delegateAddress;
-        uint256 currentRound = roundsManager().currentRound();
-        uint256 withdrawRound = currentRound.add(unbondingPeriod);
-        uint256 unbondingLockId = del.nextUnbondingLockId;
-
-        // Create new unbonding lock
-        del.unbondingLocks[unbondingLockId] = UnbondingLock({
-            amount: _amount,
-            withdrawRound: withdrawRound
-        });
-        // Increment ID for next unbonding lock
-        del.nextUnbondingLockId = unbondingLockId.add(1);
-        // Decrease delegator's bonded amount
-        del.bondedAmount = del.bondedAmount.sub(_amount);
-
-        if (del.bondedAmount == 0) {
-            // Delegator no longer delegated to anyone if it does not have a bonded amount
-            del.delegateAddress = address(0);
-            // Delegator does not have a start round if it is no longer delegated to anyone
-            del.startRound = 0;
-
-            if (transcoderPoolV2.contains(msg.sender)) {
-                resignTranscoder(msg.sender);
-            }
-        }
-
-        // If msg.sender was resigned this statement will only decrease delegators[currentDelegate].delegatedAmount
-        decreaseTotalStake(currentDelegate, _amount);
-
-        emit Unbond(currentDelegate, msg.sender, unbondingLockId, _amount, withdrawRound);
+    function unbond(uint256 _amount) external {
+        unbondWithHint(_amount, address(0), address(0));
     }
 
     /**
-     * @dev Rebond tokens for an unbonding lock to a delegator's current delegate while a delegator
-     * is in the Bonded or Pending states
+     * @notice Rebond tokens for an unbonding lock to a delegator's current delegate while a delegator is in the Bonded or Pending status
      * @param _unbondingLockId ID of unbonding lock to rebond with
      */
-    function rebond(
-        uint256 _unbondingLockId
-    )
-        external
-        whenSystemNotPaused
-        currentRoundInitialized
-        autoClaimEarnings
-    {
-        require(delegatorStatus(msg.sender) != DelegatorStatus.Unbonded, "caller must be bonded");
-
-        // Process rebond using unbonding lock
-        processRebond(msg.sender, _unbondingLockId);
+    function rebond(uint256 _unbondingLockId) external {
+        rebondWithHint(_unbondingLockId, address(0), address(0));
     }
 
     /**
-     * @dev Rebond tokens for an unbonding lock to a delegate while a delegator
-     * is in the Unbonded state
+     * @notice Rebond tokens for an unbonding lock to a delegate while a delegator is in the Unbonded status
      * @param _to Address of delegate
      * @param _unbondingLockId ID of unbonding lock to rebond with
      */
-    function rebondFromUnbonded(
-        address _to,
-        uint256 _unbondingLockId
-    )
-        external
-        whenSystemNotPaused
-        currentRoundInitialized
-        autoClaimEarnings
-    {
-        require(delegatorStatus(msg.sender) == DelegatorStatus.Unbonded, "caller must be unbonded");
-
-        // Set delegator's start round and transition into Pending state
-        delegators[msg.sender].startRound = roundsManager().currentRound().add(1);
-        // Set delegator's delegate
-        delegators[msg.sender].delegateAddress = _to;
-        // Process rebond using unbonding lock
-        processRebond(msg.sender, _unbondingLockId);
+    function rebondFromUnbonded(address _to, uint256 _unbondingLockId) external {
+        rebondFromUnbondedWithHint(_to, _unbondingLockId, address(0), address(0));
     }
 
     /**
-     * @dev Withdraws tokens for an unbonding lock that has existed through an unbonding period
+     * @notice Withdraws tokens for an unbonding lock that has existed through an unbonding period
      * @param _unbondingLockId ID of unbonding lock to withdraw with
      */
     function withdrawStake(uint256 _unbondingLockId)
@@ -395,7 +255,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     }
 
     /**
-     * @dev Withdraws fees to the caller
+     * @notice Withdraws fees to the caller
      */
     function withdrawFees()
         external
@@ -415,44 +275,16 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     }
 
     /**
-     * @dev Distribute the token rewards to transcoder and delegates.
-     * Active transcoders call this once per cycle when it is their turn.
+     * @notice Mint token rewards for an active transcoder and its delegators
      */
-    function reward() external whenSystemNotPaused currentRoundInitialized {
-        uint256 currentRound = roundsManager().currentRound();
-
-        require(isActiveTranscoder(msg.sender), "caller must be an active transcoder");
-        require(transcoders[msg.sender].lastRewardRound != currentRound, "caller has already called reward for the current round");
-
-        Transcoder storage t = transcoders[msg.sender];
-        EarningsPool.Data storage earningsPool = t.earningsPoolPerRound[currentRound];
-
-        // Set last round that transcoder called reward
-        t.lastRewardRound = currentRound;
-        earningsPool.setCommission(t.rewardCut, t.feeShare);
-
-        // If transcoder didn't receive stake updates during the previous round and hasn't called reward for > 1 round
-        // the 'totalStake' and 'claimableStake' on its 'EarningsPool' for the current round wouldn't be initialized
-        // Thus we sync the the transcoder's stake to when it was last updated
-        // 'updateTrancoderWithRewards()' will set the update round to 'currentRound +1' so this synchronization shouldn't occur frequently
-        uint256 lastUpdateRound = t.lastActiveStakeUpdateRound;
-        if (lastUpdateRound < currentRound) {
-            earningsPool.setStake(t.earningsPoolPerRound[lastUpdateRound].totalStake);
-        }
-
-        // Create reward based on active transcoder's stake relative to the total active stake
-        // rewardTokens = (current mintable tokens for the round * active transcoder stake) / total active stake
-        uint256 rewardTokens = minter().createReward(earningsPool.totalStake, currentRoundTotalActiveStake);
-
-        updateTranscoderWithRewards(msg.sender, rewardTokens, currentRound);
-
-        emit Reward(msg.sender, rewardTokens);
+    function reward() external {
+        rewardWithHint(address(0), address(0));
     }
 
     /**
-     * @dev Update transcoder's fee pool
+     * @dev Update transcoder's fee pool. Only callable by the TicketBroker
      * @param _transcoder Transcoder address
-     * @param _fees Fees from verified job claims
+     * @param _fees Fees to be added to the fee pool
      */
     function updateTranscoderWithFees(
         address _transcoder,
@@ -483,7 +315,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     }
 
     /**
-     * @dev Slash a transcoder. Slashing can be invoked by the protocol or a finder.
+     * @dev Slash a transcoder. Only callable by the Verifier
      * @param _transcoder Transcoder address
      * @param _finder Finder that proved a transcoder violated a slashing condition. Null address if there is no finder
      * @param _slashAmount Percentage of transcoder bond to be slashed
@@ -541,7 +373,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     }
 
     /**
-     * @dev Claim token pools shares for a delegator from its lastClaimRound through the end round
+     * @notice Claim token pools shares for a delegator from its lastClaimRound through the end round
      * @param _endRound The last round for which to claim token pools shares for a delegator
      */
     function claimEarnings(uint256 _endRound) external whenSystemNotPaused currentRoundInitialized {
@@ -552,10 +384,279 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     }
 
     /**
-     * @dev Called during round initialization to set the total active stake for the round
+     * @dev Called during round initialization to set the total active stake for the round. Only callable by the RoundsManager
      */
     function setCurrentRoundTotalActiveStake() external onlyRoundsManager {
         currentRoundTotalActiveStake = nextRoundTotalActiveStake;
+    }
+
+    /**
+     * @notice Sets commission rates as a transcoder and if the caller is not in the transcoder pool tries to add it using an optional list hint
+     * @dev Percentages are represented as numerators of fractions over MathUtils.PERC_DIVISOR. If the caller is going to be added to the pool, the
+     * caller can provide an optional hint for the insertion position in the pool via the `_newPosPrev` and `_newPosNext` params. A linear search will
+     * be executed starting at the hint to find the correct position - in the best case, the hint is the correct position so no search is executed.
+     * See SortedDoublyLL.sol for details on list hints
+     * @param _rewardCut % of reward paid to transcoder by a delegator
+     * @param _feeShare % of fees paid to delegators by a transcoder
+     * @param _newPosPrev Address of previous transcoder in pool if the caller joins the pool
+     * @param _newPosNext Address of next transcoder in pool if the caller joins the pool
+     */
+    function transcoderWithHint(uint256 _rewardCut, uint256 _feeShare, address _newPosPrev, address _newPosNext)
+        public
+        whenSystemNotPaused
+        currentRoundInitialized
+    {
+        require(
+            !roundsManager().currentRoundLocked(),
+            "can't update transcoder params, current round is locked"
+        );
+        require(MathUtils.validPerc(_rewardCut), "invalid rewardCut percentage");
+        require(MathUtils.validPerc(_feeShare), "invalid feeShare percentage");
+        require(isRegisteredTranscoder(msg.sender), "transcoder must be registered");
+
+        Transcoder storage t = transcoders[msg.sender];
+        uint256 currentRound = roundsManager().currentRound();
+
+        require(
+            !isActiveTranscoder(msg.sender) || t.lastRewardRound == currentRound,
+            "caller can't be active or must have already called reward for the current round"
+        );
+
+        t.rewardCut = _rewardCut;
+        t.feeShare = _feeShare;
+
+        if (!transcoderPoolV2.contains(msg.sender)) {
+            tryToJoinActiveSet(msg.sender, delegators[msg.sender].delegatedAmount, currentRound.add(1), _newPosPrev, _newPosNext);
+        }
+
+        emit TranscoderUpdate(msg.sender, _rewardCut, _feeShare);
+    }
+
+    /**
+     * @notice Delegate stake towards a specific address and updates the transcoder pool using optional list hints if needed
+     * @dev If the caller is decreasing the stake of its old delegate in the transcoder pool, the caller can provide an optional hint
+     * for the insertion position of the old delegate via the `_oldDelegateNewPosPrev` and `_oldDelegateNewPosNext` params.
+     * If the caller is delegating to a delegate that is in the transcoder pool, the caller can provide an optional hint for the
+     * insertion position of the delegate via the `_currDelegateNewPosPrev` and `_currDelegateNewPosNext` params.
+     * In both cases, a linear search will be executed starting at the hint to find the correct position. In the best case, the hint
+     * is the correct position so no search is executed. See SortedDoublyLL.sol for details on list hints
+     * @param _amount The amount of tokens to stake.
+     * @param _to The address of the transcoder to stake towards
+     * @param _oldDelegateNewPosPrev The address of the previous transcoder in the pool for the old delegate
+     * @param _oldDelegateNewPosNext The address of the next transcoder in the pool for the old delegate
+     * @param _currDelegateNewPosPrev The address of the previous transcoder in the pool for the current delegate
+     * @param _currDelegateNewPosNext The address of the next transcoder in the pool for the current delegate
+     */
+    function bondWithHint(
+        uint256 _amount,
+        address _to,
+        address _oldDelegateNewPosPrev,
+        address _oldDelegateNewPosNext,
+        address _currDelegateNewPosPrev,
+        address _currDelegateNewPosNext
+    )
+        public
+        whenSystemNotPaused
+        currentRoundInitialized
+        autoClaimEarnings
+    {
+        Delegator storage del = delegators[msg.sender];
+
+        uint256 currentRound = roundsManager().currentRound();
+        // Amount to delegate
+        uint256 delegationAmount = _amount;
+        // Current delegate
+        address currentDelegate = del.delegateAddress;
+
+        if (delegatorStatus(msg.sender) == DelegatorStatus.Unbonded) {
+            // New delegate
+            // Set start round
+            // Don't set start round if delegator is in pending state because the start round would not change
+            del.startRound = currentRound.add(1);
+            // Unbonded state = no existing delegate and no bonded stake
+            // Thus, delegation amount = provided amount
+        } else if (currentDelegate != address(0) && currentDelegate != _to) {
+            // A registered transcoder cannot delegate its bonded stake toward another address
+            // because it can only be delegated toward itself
+            // In the future, if delegation towards another registered transcoder as an already
+            // registered transcoder becomes useful (i.e. for transitive delegation), this restriction
+            // could be removed
+            require(!isRegisteredTranscoder(msg.sender), "registered transcoders can't delegate towards other addresses");
+            // Changing delegate
+            // Set start round
+            del.startRound = currentRound.add(1);
+            // Update amount to delegate with previous delegation amount
+            delegationAmount = delegationAmount.add(del.bondedAmount);
+
+            decreaseTotalStake(currentDelegate, del.bondedAmount, _oldDelegateNewPosPrev, _oldDelegateNewPosNext);
+        }
+
+        // cannot delegate to someone without having bonded stake
+        require(delegationAmount > 0, "delegation amount must be greater than 0");
+        // Update delegate
+        del.delegateAddress = _to;
+        // Update bonded amount
+        del.bondedAmount = del.bondedAmount.add(_amount);
+
+        increaseTotalStake(_to, delegationAmount, _currDelegateNewPosPrev, _currDelegateNewPosNext);
+
+        if (_amount > 0) {
+            // Transfer the LPT to the Minter
+            livepeerToken().transferFrom(msg.sender, address(minter()), _amount);
+        }
+
+        emit Bond(_to, currentDelegate, msg.sender, _amount, del.bondedAmount);
+    }
+
+    /**
+     * @notice Unbond an amount of the delegator's bonded stake and updates the transcoder pool using an optional list hint if needed
+     * @dev If the caller remains in the transcoder pool, the caller can provide an optional hint for its insertion position in the
+     * pool via the `_newPosPrev` and `_newPosNext` params. A linear search will be executed starting at the hint to find the correct position.
+     * In the best case, the hint is the correct position so no search is executed. See SortedDoublyLL.sol details on list hints
+     * @param _amount Amount of tokens to unbond
+     * @param _newPosPrev Address of previous transcoder in pool if the caller remains in the pool
+     * @param _newPosNext Address of next transcoder in pool if the caller remains in the pool
+     */
+    function unbondWithHint(uint256 _amount, address _newPosPrev, address _newPosNext)
+        public
+        whenSystemNotPaused
+        currentRoundInitialized
+        autoClaimEarnings
+    {
+        require(delegatorStatus(msg.sender) == DelegatorStatus.Bonded, "caller must be bonded");
+
+        Delegator storage del = delegators[msg.sender];
+
+        require(_amount > 0, "unbond amount must be greater than 0");
+        require(_amount <= del.bondedAmount, "amount is greater than bonded amount");
+
+        address currentDelegate = del.delegateAddress;
+        uint256 currentRound = roundsManager().currentRound();
+        uint256 withdrawRound = currentRound.add(unbondingPeriod);
+        uint256 unbondingLockId = del.nextUnbondingLockId;
+
+        // Create new unbonding lock
+        del.unbondingLocks[unbondingLockId] = UnbondingLock({
+            amount: _amount,
+            withdrawRound: withdrawRound
+        });
+        // Increment ID for next unbonding lock
+        del.nextUnbondingLockId = unbondingLockId.add(1);
+        // Decrease delegator's bonded amount
+        del.bondedAmount = del.bondedAmount.sub(_amount);
+
+        if (del.bondedAmount == 0) {
+            // Delegator no longer delegated to anyone if it does not have a bonded amount
+            del.delegateAddress = address(0);
+            // Delegator does not have a start round if it is no longer delegated to anyone
+            del.startRound = 0;
+
+            if (transcoderPoolV2.contains(msg.sender)) {
+                resignTranscoder(msg.sender);
+            }
+        }
+
+        // If msg.sender was resigned this statement will only decrease delegators[currentDelegate].delegatedAmount
+        decreaseTotalStake(currentDelegate, _amount, _newPosPrev, _newPosNext);
+
+        emit Unbond(currentDelegate, msg.sender, unbondingLockId, _amount, withdrawRound);
+    }
+
+    /**
+     * @notice Rebond tokens for an unbonding lock to a delegator's current delegate while a delegator is in the Bonded or Pending status and updates
+     * the transcoder pool using an optional list hint if needed
+     * @dev If the delegate is in the transcoder pool, the caller can provide an optional hint for the delegate's insertion position in the
+     * pool via the `_newPosPrev` and `_newPosNext` params. A linear search will be executed starting at the hint to find the correct position.
+     * In the best case, the hint is the correct position so no search is executed. See SortedDoublyLL.sol details on list hints
+     * @param _unbondingLockId ID of unbonding lock to rebond with
+     * @param _newPosPrev Address of previous transcoder in pool if the delegate is in the pool
+     * @param _newPosNext Address of next transcoder in pool if the delegate is in the pool
+     */
+    function rebondWithHint(
+        uint256 _unbondingLockId,
+        address _newPosPrev,
+        address _newPosNext
+    )
+        public
+        whenSystemNotPaused
+        currentRoundInitialized
+        autoClaimEarnings
+    {
+        require(delegatorStatus(msg.sender) != DelegatorStatus.Unbonded, "caller must be bonded");
+
+        // Process rebond using unbonding lock
+        processRebond(msg.sender, _unbondingLockId, _newPosPrev, _newPosNext);
+    }
+
+    /**
+     * @notice Rebond tokens for an unbonding lock to a delegate while a delegator is in the Unbonded status and updates the transcoder pool using
+     * an optional list hint if needed
+     * @dev If the delegate joins the transcoder pool, the caller can provide an optional hint for the delegate's insertion position in the
+     * pool via the `_newPosPrev` and `_newPosNext` params. A linear search will be executed starting at the hint to find the correct position.
+     * In the best case, the hint is the correct position so no search is executed. See SortedDoublyLL.sol for details on list hints
+     * @param _to Address of delegate
+     * @param _unbondingLockId ID of unbonding lock to rebond with
+     * @param _newPosPrev Address of previous transcoder in pool if the delegate joins the pool
+     * @param _newPosNext Address of next transcoder in pool if the delegate joins the pool
+     */
+    function rebondFromUnbondedWithHint(
+        address _to,
+        uint256 _unbondingLockId,
+        address _newPosPrev,
+        address _newPosNext
+    )
+        public
+        whenSystemNotPaused
+        currentRoundInitialized
+        autoClaimEarnings
+    {
+        require(delegatorStatus(msg.sender) == DelegatorStatus.Unbonded, "caller must be unbonded");
+
+        // Set delegator's start round and transition into Pending state
+        delegators[msg.sender].startRound = roundsManager().currentRound().add(1);
+        // Set delegator's delegate
+        delegators[msg.sender].delegateAddress = _to;
+        // Process rebond using unbonding lock
+        processRebond(msg.sender, _unbondingLockId, _newPosPrev, _newPosNext);
+    }
+
+    /**
+     * @notice Mint token rewards for an active transcoder and its delegators and update the transcoder pool using an optional list hint if needed
+     * @dev If the caller is in the transcoder pool, the caller can provide an optional hint for its insertion position in the
+     * pool via the `_newPosPrev` and `_newPosNext` params. A linear search will be executed starting at the hint to find the correct position.
+     * In the best case, the hint is the correct position so no search is executed. See SortedDoublyLL.sol for details on list hints
+     * @param _newPosPrev Address of previous transcoder in pool if the caller is in the pool
+     * @param _newPosNext Address of next transcoder in pool if the caller is in the pool
+     */
+    function rewardWithHint(address _newPosPrev, address _newPosNext) public whenSystemNotPaused currentRoundInitialized {
+        uint256 currentRound = roundsManager().currentRound();
+
+        require(isActiveTranscoder(msg.sender), "caller must be an active transcoder");
+        require(transcoders[msg.sender].lastRewardRound != currentRound, "caller has already called reward for the current round");
+
+        Transcoder storage t = transcoders[msg.sender];
+        EarningsPool.Data storage earningsPool = t.earningsPoolPerRound[currentRound];
+
+        // Set last round that transcoder called reward
+        t.lastRewardRound = currentRound;
+        earningsPool.setCommission(t.rewardCut, t.feeShare);
+
+        // If transcoder didn't receive stake updates during the previous round and hasn't called reward for > 1 round
+        // the 'totalStake' and 'claimableStake' on its 'EarningsPool' for the current round wouldn't be initialized
+        // Thus we sync the the transcoder's stake to when it was last updated
+        // 'updateTrancoderWithRewards()' will set the update round to 'currentRound +1' so this synchronization shouldn't occur frequently
+        uint256 lastUpdateRound = t.lastActiveStakeUpdateRound;
+        if (lastUpdateRound < currentRound) {
+            earningsPool.setStake(t.earningsPoolPerRound[lastUpdateRound].totalStake);
+        }
+
+        // Create reward based on active transcoder's stake relative to the total active stake
+        // rewardTokens = (current mintable tokens for the round * active transcoder stake) / total active stake
+        uint256 rewardTokens = minter().createReward(earningsPool.totalStake, currentRoundTotalActiveStake);
+
+        updateTranscoderWithRewards(msg.sender, rewardTokens, currentRound, _newPosPrev, _newPosNext);
+
+        emit Reward(msg.sender, rewardTokens);
     }
 
     /**
@@ -811,21 +912,21 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * @param _delegate The delegate to increase the stake for
      * @param _amount The amount to increase the stake for '_delegate' by
      */
-    function increaseTotalStake(address _delegate, uint256 _amount) internal {
+    function increaseTotalStake(address _delegate, uint256 _amount, address _newPosPrev, address _newPosNext) internal {
         if (isRegisteredTranscoder(_delegate)) {
             uint256 newStake = transcoderTotalStake(_delegate).add(_amount);
             uint256 nextRound = roundsManager().currentRound().add(1);
 
             // If the transcoder is already in the active set update its stake and return
             if (transcoderPoolV2.contains(_delegate)) {
-                transcoderPoolV2.updateKey(_delegate, newStake, address(0), address(0));
+                transcoderPoolV2.updateKey(_delegate, newStake, _newPosPrev, _newPosNext);
                 nextRoundTotalActiveStake = nextRoundTotalActiveStake.add(_amount);
                 Transcoder storage t = transcoders[_delegate];
                 t.earningsPoolPerRound[nextRound].setStake(newStake);
                 t.lastActiveStakeUpdateRound = nextRound;
             } else {
                 // Check if the transcoder is eligible to join the active set in the update round
-                tryToJoinActiveSet(_delegate, newStake, nextRound);
+                tryToJoinActiveSet(_delegate, newStake, nextRound, _newPosPrev, _newPosNext);
             }
         }
 
@@ -838,12 +939,12 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * @param _delegate The transcoder to decrease the stake for
      * @param _amount The amount to decrease the stake for '_delegate' by
      */
-    function decreaseTotalStake(address _delegate, uint256 _amount) internal {
+    function decreaseTotalStake(address _delegate, uint256 _amount, address _newPosPrev, address _newPosNext) internal {
         if (transcoderPoolV2.contains(_delegate)) {
             uint256 newStake = transcoderTotalStake(_delegate).sub(_amount);
             uint256 nextRound = roundsManager().currentRound().add(1);
 
-            transcoderPoolV2.updateKey(_delegate, newStake, address(0), address(0));
+            transcoderPoolV2.updateKey(_delegate, newStake, _newPosPrev, _newPosNext);
             nextRoundTotalActiveStake = nextRoundTotalActiveStake.sub(_amount);
             Transcoder storage t = transcoders[_delegate];
             t.lastActiveStakeUpdateRound = nextRound;
@@ -860,7 +961,15 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * @param _totalStake The total stake for '_transcoder'
      * @param _activationRound The round in which the transcoder should become active
      */
-    function tryToJoinActiveSet(address _transcoder, uint256 _totalStake, uint256 _activationRound) internal {
+    function tryToJoinActiveSet(
+        address _transcoder,
+        uint256 _totalStake,
+        uint256 _activationRound,
+        address _newPosPrev,
+        address _newPosNext
+    )
+        internal
+    {
         uint256 pendingNextRoundTotalActiveStake = nextRoundTotalActiveStake;
 
         if (transcoderPoolV2.isFull()) {
@@ -885,7 +994,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             emit TranscoderDeactivated(lastTranscoder, _activationRound);
         }
 
-        transcoderPoolV2.insert(_transcoder, _totalStake, address(0), address(0));
+        transcoderPoolV2.insert(_transcoder, _totalStake, _newPosPrev, _newPosNext);
         pendingNextRoundTotalActiveStake = pendingNextRoundTotalActiveStake.add(_totalStake);
         Transcoder storage t = transcoders[_transcoder];
         t.lastActiveStakeUpdateRound = _activationRound;
@@ -912,17 +1021,28 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     }
 
     /**
-     * @dev Update a transcoder with rewards
+     * @dev Update a transcoder with rewards and update the transcoder pool with an optional list hint if needed.
+     * See SortedDoublyLL.sol for details on list hints
      * @param _transcoder Address of transcoder
      * @param _rewards Amount of rewards
      * @param _round Round that transcoder is updated
+     * @param _newPosPrev Address of previous transcoder in pool if the transcoder is in the pool
+     * @param _newPosNext Address of next transcoder in pool if the transcoder is in the pool
      */
-    function updateTranscoderWithRewards(address _transcoder, uint256 _rewards, uint256 _round) internal {
+    function updateTranscoderWithRewards(
+        address _transcoder,
+        uint256 _rewards,
+        uint256 _round,
+        address _newPosPrev,
+        address _newPosNext
+    )
+        internal
+    {
         EarningsPool.Data storage earningsPool = transcoders[_transcoder].earningsPoolPerRound[_round];
         // Add rewards to reward pool
         earningsPool.addToRewardPool(_rewards);
         // Update transcoder's total stake with rewards
-        increaseTotalStake(_transcoder, _rewards);
+        increaseTotalStake(_transcoder, _rewards, _newPosPrev, _newPosNext);
     }
 
     /**
@@ -977,11 +1097,14 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     }
 
     /**
-     * @dev Update the state of a delegator and its delegate by processing a rebond using an unbonding lock
+     * @dev Update the state of a delegator and its delegate by processing a rebond using an unbonding lock and update the transcoder pool with an optional
+     * list hint if needed. See SortedDoublyLL.sol for details on list hints
      * @param _delegator Address of delegator
      * @param _unbondingLockId ID of unbonding lock to rebond with
+     * @param _newPosPrev Address of previous transcoder in pool if the delegate is already in or joins the pool
+     * @param _newPosNext Address of next transcoder in pool if the delegate is already in or joins the pool
      */
-    function processRebond(address _delegator, uint256 _unbondingLockId) internal {
+    function processRebond(address _delegator, uint256 _unbondingLockId, address _newPosPrev, address _newPosNext) internal {
         Delegator storage del = delegators[_delegator];
         UnbondingLock storage lock = del.unbondingLocks[_unbondingLockId];
 
@@ -994,7 +1117,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // Delete lock
         delete del.unbondingLocks[_unbondingLockId];
 
-        increaseTotalStake(del.delegateAddress, amount);
+        increaseTotalStake(del.delegateAddress, amount, _newPosPrev, _newPosNext);
 
         emit Rebond(del.delegateAddress, _delegator, _unbondingLockId, amount);
     }
