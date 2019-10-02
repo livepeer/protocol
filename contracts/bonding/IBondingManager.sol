@@ -1,7 +1,7 @@
 pragma solidity ^0.5.11;
 
 
-/*
+/**
  * @title Interface for BondingManager
  * TODO: switch to interface type
  */

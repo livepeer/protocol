@@ -14,7 +14,7 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
 /**
  * @title BondingManager
- * @dev Manages bonding, transcoder and rewards/fee accounting related operations of the Livepeer protocol
+ * @notice Manages bonding, transcoder and rewards/fee accounting related operations of the Livepeer protocol
  */
 contract BondingManager is ManagerProxyTarget, IBondingManager {
     using SafeMath for uint256;
@@ -142,13 +142,13 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     }
 
     /**
-     * @dev BondingManager constructor. Only invokes constructor of base Manager contract with provided Controller address
+     * @notice BondingManager constructor. Only invokes constructor of base Manager contract with provided Controller address
      * @param _controller Address of Controller that this contract will be registered with
      */
     constructor(address _controller) public Manager(_controller) {}
 
     /**
-     * @dev Set unbonding period. Only callable by Controller owner
+     * @notice Set unbonding period. Only callable by Controller owner
      * @param _unbondingPeriod Rounds between unbonding and possible withdrawal
      */
     function setUnbondingPeriod(uint64 _unbondingPeriod) external onlyControllerOwner {
@@ -158,7 +158,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     }
 
     /**
-     * @dev Set number of active transcoders. Only callable by Controller owner
+     * @notice Set maximum number of active transcoders. Only callable by Controller owner
      * @param _numActiveTranscoders Number of active transcoders
      */
     function setNumActiveTranscoders(uint256 _numActiveTranscoders) external onlyControllerOwner {
@@ -168,7 +168,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     }
 
     /**
-     * @dev Set max number of rounds a caller can claim earnings for at once. Only callable by Controller owner
+     * @notice Set max number of rounds a caller can claim earnings for at once. Only callable by Controller owner
      * @param _maxEarningsClaimsRounds Max number of rounds a caller can claim earnings for at once
      */
     function setMaxEarningsClaimsRounds(uint256 _maxEarningsClaimsRounds) external onlyControllerOwner {
@@ -282,7 +282,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     }
 
     /**
-     * @dev Update transcoder's fee pool. Only callable by the TicketBroker
+     * @notice Update transcoder's fee pool. Only callable by the TicketBroker
      * @param _transcoder Transcoder address
      * @param _fees Fees to be added to the fee pool
      */
@@ -315,7 +315,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     }
 
     /**
-     * @dev Slash a transcoder. Only callable by the Verifier
+     * @notice Slash a transcoder. Only callable by the Verifier
      * @param _transcoder Transcoder address
      * @param _finder Finder that proved a transcoder violated a slashing condition. Null address if there is no finder
      * @param _slashAmount Percentage of transcoder bond to be slashed
@@ -384,7 +384,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     }
 
     /**
-     * @dev Called during round initialization to set the total active stake for the round. Only callable by the RoundsManager
+     * @notice Called during round initialization to set the total active stake for the round. Only callable by the RoundsManager
      */
     function setCurrentRoundTotalActiveStake() external onlyRoundsManager {
         currentRoundTotalActiveStake = nextRoundTotalActiveStake;
@@ -660,9 +660,10 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     }
 
     /**
-     * @dev Returns pending bonded stake for a delegator from its lastClaimRound through an end round
+     * @notice Returns pending bonded stake for a delegator from its lastClaimRound through an end round
      * @param _delegator Address of delegator
      * @param _endRound The last round to compute pending stake from
+     * @return pending bonded stake for '_delegator' since last claiming rewards
      */
     function pendingStake(address _delegator, uint256 _endRound) public view returns (uint256) {
         uint256 currentRound = roundsManager().currentRound();
@@ -687,9 +688,10 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     }
 
     /**
-     * @dev Returns pending fees for a delegator from its lastClaimRound through an end round
+     * @notice Returns pending fees for a delegator from its lastClaimRound through an end round
      * @param _delegator Address of delegator
      * @param _endRound The last round to compute pending fees from
+     * @return pending fees for '_delegator' since last claiming fees
      */
     function pendingFees(address _delegator, uint256 _endRound) public view returns (uint256) {
         uint256 currentRound = roundsManager().currentRound();
@@ -718,16 +720,18 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     }
 
     /**
-     * @dev Returns total bonded stake for a transcoder
+     * @notice Returns total bonded stake for a transcoder
      * @param _transcoder Address of transcoder
+     * @return total bonded stake for a delegator
      */
     function transcoderTotalStake(address _transcoder) public view returns (uint256) {
         return delegators[_transcoder].delegatedAmount;
     }
 
-    /*
-     * @dev Computes transcoder status
+    /**
+     * @notice Computes transcoder status
      * @param _transcoder Address of transcoder
+     * @return registered or not registered transcoder status
      */
     function transcoderStatus(address _transcoder) public view returns (TranscoderStatus) {
         if (isRegisteredTranscoder(_transcoder)) return TranscoderStatus.Registered;
@@ -735,8 +739,9 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     }
 
     /**
-     * @dev Computes delegator status
+     * @notice Computes delegator status
      * @param _delegator Address of delegator
+     * @return bonded, unbonded or pending delegator status
      */
     function delegatorStatus(address _delegator) public view returns (DelegatorStatus) {
         Delegator storage del = delegators[_delegator];
@@ -756,8 +761,14 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     }
 
     /**
-     * @dev Return transcoder information
+     * @notice Return transcoder information
      * @param _transcoder Address of transcoder
+     * @return trancoder's last reward round
+     * @return transcoder's reward cut
+     * @return transcoder's fee share
+     * @return round in which transcoder's stake was last updated while active
+     * @return round in which transcoder became active
+     * @return round in which transcoder will no longer be active
      */
     function getTranscoder(
         address _transcoder
@@ -777,9 +788,18 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     }
 
     /**
-     * @dev Return transcoder's token pools for a given round
+     * @notice Return transcoder's token pools for a given round
      * @param _transcoder Address of transcoder
      * @param _round Round number
+     * @return reward pool for delegates to '_transcoder'
+     * @return fee pool for delegates to '_trancoder'
+     * @return transcoder's total stake
+     * @return claimable stake left on transcoder's earningspool for '_round'
+     * @return transcoder's reward cut for '_round'
+     * @return transcoder's fee share for '_round'
+     * @return transcoder's rewards for '_round'
+     * @return transcoder's fees for '_round'
+     * @return true if transcoder has a split reward and fee pool
      */
     function getTranscoderEarningsPoolForRound(
         address _transcoder,
@@ -803,8 +823,15 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     }
 
     /**
-     * @dev Return delegator info
+     * @notice Return delegator info
      * @param _delegator Address of delegator
+     * @return total amount bonded by '_delegator'
+     * @return amount of fees collected by '_delegator'
+     * @return address '_delegator' has bonded to
+     * @return total amount delegated to '_delegator'
+     * @return round in which bond for '_delegator' became effective
+     * @return round for which '_delegator' has last claimed earnings
+     * @return ID for the next unbonding lock created for '_delegator'
      */
     function getDelegator(
         address _delegator
@@ -825,9 +852,11 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     }
 
     /**
-     * @dev Return delegator's unbonding lock info
+     * @notice Return delegator's unbonding lock info
      * @param _delegator Address of delegator
      * @param _unbondingLockId ID of unbonding lock
+     * @return amount of stake locked up by unbonding lock
+     * @return round in which 'amount' becomes available for withdrawal
      */
     function getDelegatorUnbondingLock(
         address _delegator,
@@ -843,44 +872,50 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     }
 
     /**
-     * @dev Returns max size of transcoder pool
+     * @notice Returns max size of transcoder pool
+     * @return transcoder pool max size
      */
     function getTranscoderPoolMaxSize() public view returns (uint256) {
         return transcoderPoolV2.getMaxSize();
     }
 
     /**
-     * @dev Returns size of transcoder pool
+     * @notice Returns size of transcoder pool
+     * @return transcoder pool current size
      */
     function getTranscoderPoolSize() public view returns (uint256) {
         return transcoderPoolV2.getSize();
     }
 
     /**
-     * @dev Returns transcoder with most stake in pool
+     * @notice Returns transcoder with most stake in pool
+     * @return address for transcoder with highest stake in transcoder pool
      */
     function getFirstTranscoderInPool() public view returns (address) {
         return transcoderPoolV2.getFirst();
     }
 
     /**
-     * @dev Returns next transcoder in pool for a given transcoder
+     * @notice Returns next transcoder in pool for a given transcoder
      * @param _transcoder Address of a transcoder in the pool
+     * @return address for the transcoder after '_transcoder' in transcoder pool
      */
     function getNextTranscoderInPool(address _transcoder) public view returns (address) {
         return transcoderPoolV2.getNext(_transcoder);
     }
 
     /**
-     * @dev Return total bonded tokens
+     * @notice Return total bonded tokens
+     * @return total active stake for the current round
      */
     function getTotalBonded() public view returns (uint256) {
         return currentRoundTotalActiveStake;
     }
 
    /**
-     * @dev Return whether a transcoder is active for the current round
+     * @notice Return whether a transcoder is active for the current round
      * @param _transcoder Transcoder address
+     * @return true if transcoder is active
      */
     function isActiveTranscoder(address _transcoder) public view returns (bool) {
         Transcoder storage t = transcoders[_transcoder];
@@ -889,8 +924,9 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     }
 
     /**
-     * @dev Return whether a transcoder is registered
+     * @notice Return whether a transcoder is registered
      * @param _transcoder Transcoder address
+     * @return true if transcoder is self-bonded
      */
     function isRegisteredTranscoder(address _transcoder) public view returns (bool) {
         Delegator storage d = delegators[_transcoder];
@@ -898,9 +934,10 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     }
 
     /**
-     * @dev Return whether an unbonding lock for a delegator is valid
+     * @notice Return whether an unbonding lock for a delegator is valid
      * @param _delegator Address of delegator
      * @param _unbondingLockId ID of unbonding lock
+     * @return true if unbondingLock for ID has a non-zero withdraw round
      */
     function isValidUnbondingLock(address _delegator, uint256 _unbondingLockId) public view returns (bool) {
         // A unbonding lock is only valid if it has a non-zero withdraw round (the default value is zero)
@@ -1006,7 +1043,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     }
 
     /**
-     * @dev Remove transcoder
+     * @dev Remove a transcoder from the pool and deactivate it
      */
     function resignTranscoder(address _transcoder) internal {
         // Not zeroing 'Transcoder.lastActiveStakeUpdateRound' saves gas (5k when transcoder is evicted and 20k when transcoder is reinserted)
@@ -1124,6 +1161,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
     /**
      * @dev Return LivepeerToken interface
+     * @return Livepeer token contract registered with Controller
      */
     function livepeerToken() internal view returns (ILivepeerToken) {
         return ILivepeerToken(controller.getContract(keccak256("LivepeerToken")));
@@ -1131,6 +1169,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
     /**
      * @dev Return Minter interface
+     * @return Minter contract registered with Controller
      */
     function minter() internal view returns (IMinter) {
         return IMinter(controller.getContract(keccak256("Minter")));
@@ -1138,6 +1177,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
     /**
      * @dev Return RoundsManager interface
+     * @return RoundsManager contract registered with Controller
      */
     function roundsManager() internal view returns (IRoundsManager) {
         return IRoundsManager(controller.getContract(keccak256("RoundsManager")));

@@ -3,7 +3,7 @@ pragma solidity ^0.5.11;
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
 
-/*
+/**
  * @title A sorted doubly linked list with nodes sorted in descending order. Optionally accepts insert position hints
  *
  * Given a new node with a `key`, a hint is of the form `(prevId, nextId)` s.t. `prevId` and `nextId` are adjacent in the list.
@@ -33,7 +33,7 @@ library SortedDoublyLL {
         mapping (address => Node) nodes;     // Track the corresponding ids for each node in the list
     }
 
-    /*
+    /**
      * @dev Set the maximum size of the list
      * @param _size Maximum size
      */
@@ -43,7 +43,7 @@ library SortedDoublyLL {
         self.maxSize = _size;
     }
 
-    /*
+    /**
      * @dev Add a node to the list
      * @param _id Node's id
      * @param _key Node's key
@@ -96,7 +96,7 @@ library SortedDoublyLL {
         self.size = self.size.add(1);
     }
 
-    /*
+    /**
      * @dev Remove a node from the list
      * @param _id Node's id
      */
@@ -136,7 +136,7 @@ library SortedDoublyLL {
         self.size = self.size.sub(1);
     }
 
-    /*
+    /**
      * @dev Update the key of a node in the list
      * @param _id Node's id
      * @param _newKey Node's new key
@@ -156,86 +156,96 @@ library SortedDoublyLL {
         }
     }
 
-    /*
+    /**
      * @dev Checks if the list contains a node
-     * @param _transcoder Address of transcoder
+     * @param _id Address of transcoder
+     * @return true if '_id' is in list
      */
     function contains(Data storage self, address _id) public view returns (bool) {
         // List only contains non-zero keys, so if key is non-zero the node exists
         return self.nodes[_id].key > 0;
     }
 
-    /*
+    /**
      * @dev Checks if the list is full
+     * @return true if list is full
      */
     function isFull(Data storage self) public view returns (bool) {
         return self.size == self.maxSize;
     }
 
-    /*
+    /**
      * @dev Checks if the list is empty
+     * @return true if list is empty
      */
     function isEmpty(Data storage self) public view returns (bool) {
         return self.size == 0;
     }
 
-    /*
+    /**
      * @dev Returns the current size of the list
+     * @return current size of the list
      */
     function getSize(Data storage self) public view returns (uint256) {
         return self.size;
     }
 
-    /*
+    /**
      * @dev Returns the maximum size of the list
      */
     function getMaxSize(Data storage self) public view returns (uint256) {
         return self.maxSize;
     }
 
-    /*
+    /**
      * @dev Returns the key of a node in the list
      * @param _id Node's id
+     * @return key for node with '_id'
      */
     function getKey(Data storage self, address _id) public view returns (uint256) {
         return self.nodes[_id].key;
     }
 
-    /*
+    /**
      * @dev Returns the first node in the list (node with the largest key)
+     * @return address for the head of the list
      */
     function getFirst(Data storage self) public view returns (address) {
         return self.head;
     }
 
-    /*
+    /**
      * @dev Returns the last node in the list (node with the smallest key)
+     * @return address for the tail of the list
      */
     function getLast(Data storage self) public view returns (address) {
         return self.tail;
     }
 
-    /*
+    /**
      * @dev Returns the next node (with a smaller key) in the list for a given node
      * @param _id Node's id
+     * @return address for the node following node in list with '_id'
      */
     function getNext(Data storage self, address _id) public view returns (address) {
         return self.nodes[_id].nextId;
     }
 
-    /*
+    /**
      * @dev Returns the previous node (with a larger key) in the list for a given node
      * @param _id Node's id
+     * address for the node before node in list with '_id'
      */
     function getPrev(Data storage self, address _id) public view returns (address) {
         return self.nodes[_id].prevId;
     }
 
-    /*
+    /**
      * @dev Check if a pair of nodes is a valid insertion point for a new node with the given key
      * @param _key Node's key
      * @param _prevId Id of previous node for the insert position
      * @param _nextId Id of next node for the insert position
+     * @return if the insert position is valid
      */
     function validInsertPosition(Data storage self, uint256 _key, address _prevId, address _nextId) public view returns (bool) {
         if (_prevId == address(0) && _nextId == address(0)) {
@@ -253,7 +263,7 @@ library SortedDoublyLL {
         }
     }
 
-    /*
+    /**
      * @dev Descend the list (larger keys to smaller keys) to find a valid insert position
      * @param _key Node's key
      * @param _startId Id of node to start ascending the list from
@@ -276,7 +286,7 @@ library SortedDoublyLL {
         return (prevId, nextId);
     }
 
-    /*
+    /**
      * @dev Ascend the list (smaller keys to larger keys) to find a valid insert position
      * @param _key Node's key
      * @param _startId Id of node to start descending the list from
@@ -299,7 +309,7 @@ library SortedDoublyLL {
         return (prevId, nextId);
     }
 
-    /*
+    /**
      * @dev Find the insert position for a new node with the given key
      * @param _key Node's key
      * @param _prevId Id of previous node for the insert position

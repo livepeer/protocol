@@ -21,10 +21,10 @@ contract Controller is Pausable, IController {
         paused = true;
     }
 
-    /*
-     * @dev Register contract id and mapped address
+    /**
+     * @notice Register contract id and mapped address
      * @param _id Contract id (keccak256 hash of contract name)
-     * @param _contract Contract address
+     * @param _contractAddress Contract address
      */
     function setContractInfo(bytes32 _id, address _contractAddress, bytes20 _gitCommitHash) external onlyOwner {
         registry[_id].contractAddress = _contractAddress;
@@ -33,8 +33,8 @@ contract Controller is Pausable, IController {
         emit SetContractInfo(_id, _contractAddress, _gitCommitHash);
     }
 
-    /*
-     * @dev Update contract's controller
+    /**
+     * @notice Update contract's controller
      * @param _id Contract id (keccak256 hash of contract name)
      * @param _controller Controller address
      */
@@ -42,16 +42,16 @@ contract Controller is Pausable, IController {
         return IManager(registry[_id].contractAddress).setController(_controller);
     }
 
-    /*
-     * @dev Return contract info for a given contract id
+    /**
+     * @notice Return contract info for a given contract id
      * @param _id Contract id (keccak256 hash of contract name)
      */
     function getContractInfo(bytes32 _id) public view returns (address, bytes20) {
         return (registry[_id].contractAddress, registry[_id].gitCommitHash);
     }
 
-    /*
-     * @dev Get contract address for an id
+    /**
+     * @notice Get contract address for an id
      * @param _id Contract id
      */
     function getContract(bytes32 _id) public view returns (address) {
