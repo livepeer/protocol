@@ -1805,4 +1805,21 @@ contract("TicketBroker", accounts => {
             )
         })
     })
+
+    describe("getTicketHash", () => {
+        it("returns the hash of the ticket", async () => {
+            // Check that web3.utils.soliditySHA3() outputs the same value
+
+            let ticket = createTicket()
+            let web3TicketHash = getTicketHash(ticket)
+            assert.equal(await broker.getTicketHash(ticket), web3TicketHash)
+
+            ticket = createTicket({
+                faceValue: 777,
+                winProb: 666
+            })
+            web3TicketHash = getTicketHash(ticket)
+            assert.equal(await broker.getTicketHash(ticket), web3TicketHash)
+        })
+    })
 })
