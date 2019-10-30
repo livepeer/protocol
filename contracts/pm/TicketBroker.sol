@@ -16,6 +16,14 @@ contract TicketBroker is
     MixinTicketProcessor,
     MixinWrappers
 {
+    /**
+     * @notice TicketBroker constructor. Only invokes constructor of base Manager contract with provided Controller address
+     * @dev This constructor will not initialize any state variables besides `controller`. The following setter functions
+     * should be used to initialize state variables post-deployment:
+     * - setUnlockPeriod()
+     * - setTicketValidityPeriod()
+     * @param _controller Address of Controller that this contract will be registered with
+     */
     constructor(
         address _controller
     )
