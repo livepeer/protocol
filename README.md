@@ -26,6 +26,8 @@ All contributions and bug fixes are welcome as pull requests back into the repo.
 
 ### Install 
 
+Make sure Node.js v10.17.0 is installed.
+
 ```
 git clone https://github.com/livepeer/protocol.git
 cd protocol

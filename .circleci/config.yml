@@ -3,7 +3,7 @@ version: 2
 jobs:
     build:
         docker:
-            - image: circleci/node:8
+            - image: circleci/node:10.17.0
         working_directory: ~/protocol
         steps:
             - checkout
@@ -16,7 +16,7 @@ jobs:
                     - ~/protocol
     lint:
         docker:
-            - image: circleci/node:8
+            - image: circleci/node:10.17.0
         working_directory: ~/protocol
         steps:
             - restore_cache:
@@ -27,7 +27,7 @@ jobs:
                 command: npm run lint
     test-contracts:
         docker: 
-            - image: circleci/node:8
+            - image: circleci/node:10.17.0
         environment:
             SOLC_VERSION: '0.5.11'
         working_directory: ~/protocol
