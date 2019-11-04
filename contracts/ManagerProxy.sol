@@ -9,7 +9,12 @@ import "./ManagerProxyTarget.sol";
  The target contract is a Manager contract that is registered with the Controller.
  * @dev Both this proxy contract and its target contract MUST inherit from ManagerProxyTarget in order to guarantee
  that both contracts have the same storage layout. Differing storage layouts in a proxy contract and target contract can
- potentially break the delegate proxy upgradeability mechanism
+ potentially break the delegate proxy upgradeability mechanism. Since this proxy contract inherits from ManagerProxyTarget which inherits
+ from Manager, it implements the setController() function. The target contract will also implement setController() since it also inherits
+ from ManagerProxyTarget. Thus, any transaction sent to the proxy that calls setController() will execute against the proxy instead
+ of the target. As a result, developers should keep in mind that the proxy will always execute the same logic for setController() regardless
+ of the setController() implementation on the target contract. Generally, developers should not add any additional functions to this proxy contract
+ because any function implemented on the proxy will always be executed against the proxy and the call **will not** be forwarded to the target contract
  */
 contract ManagerProxy is ManagerProxyTarget {
     /**

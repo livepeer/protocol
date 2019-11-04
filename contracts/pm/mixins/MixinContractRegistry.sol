@@ -4,7 +4,7 @@ import "../../ManagerProxyTarget.sol";
 import "./interfaces/MContractRegistry.sol";
 
 
-contract MixinContractRegistry is MContractRegistry, ManagerProxyTarget { 
+contract MixinContractRegistry is MContractRegistry, ManagerProxyTarget {
     /**
      * @dev Checks if the current round has been initialized
      */

@@ -262,6 +262,25 @@ contract MixinTicketBrokerCore is MContractRegistry, MReserve, MTicketProcessor,
     }
 
     /**
+     * @dev Returns the hash of a ticket
+     * @param _ticket Ticket to be hashed
+     * @return keccak256 hash of `_ticket`
+     */
+    function getTicketHash(Ticket memory _ticket) public pure returns (bytes32) {
+        return keccak256(
+            abi.encodePacked(
+                _ticket.recipient,
+                _ticket.sender,
+                _ticket.faceValue,
+                _ticket.winProb,
+                _ticket.senderNonce,
+                _ticket.recipientRandHash,
+                _ticket.auxData
+            )
+        );
+    }
+
+    /**
      * @dev Helper to cancel an unlock
      * @param _sender Sender that is cancelling an unlock
      * @param _senderAddress Address of sender
@@ -340,25 +359,6 @@ contract MixinTicketBrokerCore is MContractRegistry, MReserve, MTicketProcessor,
     {
         address signer = ECDSA.recover(ECDSA.toEthSignedMessageHash(_ticketHash), _sig);
         return signer != address(0) && _sender == signer;
-    }
-
-    /**
-     * @dev Returns the hash of a ticket
-     * @param _ticket Ticket to be hashed
-     * @return keccak256 hash of `_ticket`
-     */
-    function getTicketHash(Ticket memory _ticket) internal pure returns (bytes32) {
-        return keccak256(
-            abi.encodePacked(
-                _ticket.recipient,
-                _ticket.sender,
-                _ticket.faceValue,
-                _ticket.winProb,
-                _ticket.senderNonce,
-                _ticket.recipientRandHash,
-                _ticket.auxData
-            )
-        );
     }
 
     /**
