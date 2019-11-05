@@ -137,7 +137,11 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
     // Automatically claim earnings from lastClaimRound through the current round
     modifier autoClaimEarnings() {
-        updateDelegatorWithEarnings(msg.sender, roundsManager().currentRound());
+        uint256 currentRound = roundsManager().currentRound();
+        uint256 lastClaimRound = delegators[msg.sender].lastClaimRound;
+        if (lastClaimRound < currentRound) {
+            updateDelegatorWithEarnings(msg.sender, currentRound, lastClaimRound);
+        }
         _;
     }
 
@@ -382,10 +386,11 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * @param _endRound The last round for which to claim token pools shares for a delegator
      */
     function claimEarnings(uint256 _endRound) external whenSystemNotPaused currentRoundInitialized {
-        require(delegators[msg.sender].lastClaimRound < _endRound, "end round must be after last claim round");
+        uint256 lastClaimRound = delegators[msg.sender].lastClaimRound;
+        require(lastClaimRound < _endRound, "end round must be after last claim round");
         require(_endRound <= roundsManager().currentRound(), "end round must be before or equal to current round");
 
-        updateDelegatorWithEarnings(msg.sender, _endRound);
+        updateDelegatorWithEarnings(msg.sender, _endRound, lastClaimRound);
     }
 
     /**
@@ -1091,9 +1096,13 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * @dev Update a delegator with token pools shares from its lastClaimRound through a given round
      * @param _delegator Delegator address
      * @param _endRound The last round for which to update a delegator's stake with token pools shares
+     * @param _lastClaimRound The round for which a delegator has last claimed earnings
      */
-    function updateDelegatorWithEarnings(address _delegator, uint256 _endRound) internal {
+    function updateDelegatorWithEarnings(address _delegator, uint256 _endRound, uint256 _lastClaimRound) internal {
         Delegator storage del = delegators[_delegator];
+        uint256 startRound = _lastClaimRound.add(1);
+        uint256 currentBondedAmount = del.bondedAmount;
+        uint256 currentFees = del.fees;
 
         // Only will have earnings to claim if you have a delegate
         // If not delegated, skip the earnings claim process
@@ -1103,12 +1112,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             // we know they will require too much gas to loop through all the necessary rounds to claim earnings
             // The user should instead manually invoke `claimEarnings` to split up the claiming process
             // across multiple transactions
-            uint256 lastClaimRound = del.lastClaimRound;
-            require(_endRound.sub(lastClaimRound) <= maxEarningsClaimsRounds, "too many rounds to claim through");
-            uint256 startRound = lastClaimRound.add(1);
-
-            uint256 currentBondedAmount = del.bondedAmount;
-            uint256 currentFees = del.fees;
+            require(_endRound.sub(_lastClaimRound) <= maxEarningsClaimsRounds, "too many rounds to claim through");
 
             for (uint256 i = startRound; i <= _endRound; i++) {
                 EarningsPool.Data storage earningsPool = transcoders[del.delegateAddress].earningsPoolPerRound[i];
@@ -1120,22 +1124,21 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
                     currentBondedAmount = currentBondedAmount.add(rewards);
                 }
             }
-
-            emit EarningsClaimed(
-                del.delegateAddress,
-                _delegator,
-                currentBondedAmount.sub(del.bondedAmount),
-                currentFees.sub(del.fees),
-                startRound,
-                _endRound
-            );
-
-            // Rewards are bonded by default
-            del.bondedAmount = currentBondedAmount;
-            del.fees = currentFees;
         }
 
+        emit EarningsClaimed(
+            del.delegateAddress,
+            _delegator,
+            currentBondedAmount.sub(del.bondedAmount),
+            currentFees.sub(del.fees),
+            startRound,
+            _endRound
+        );
+
         del.lastClaimRound = _endRound;
+        // Rewards are bonded by default
+        del.bondedAmount = currentBondedAmount;
+        del.fees = currentFees;
     }
 
     /**

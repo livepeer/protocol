@@ -446,6 +446,29 @@ contract("BondingManager", accounts => {
                 )
             })
 
+            it("fires an EarningsClaimed event when bonding from unbonded", async () => {
+                const txResult = await bondingManager.bond(1000, transcoder0, {from: delegator})
+
+                truffleAssert.eventEmitted(
+                    txResult,
+                    "EarningsClaimed",
+                    e => e.delegate === constants.NULL_ADDRESS &&
+                        e.delegator == delegator &&
+                        e.fees == 0 &&
+                        e.rewards == 0 &&
+                        e.startRound == 1 &&
+                        e.endRound == currentRound,
+                    "EarningsClaimed event not emitted correctly"
+                )
+            })
+
+            it("it doesn't fire an EarningsClaimed event when bonding twice in the same round", async () => {
+                await bondingManager.bond(1000, transcoder0, {from: delegator})
+                const txResult = await bondingManager.bond(1000, transcoder0, {from: delegator})
+
+                truffleAssert.eventNotEmitted(txResult, "EarningsClaimed", e => e.delegator == delegator, "Logs should not include an EarningsClaimed event")
+            })
+
             describe("delegate is a registered transcoder", () => {
                 it("should increase transcoder's delegated stake in pool", async () => {
                     const startNextTotalStake = await bondingManager.nextRoundTotalActiveStake()
