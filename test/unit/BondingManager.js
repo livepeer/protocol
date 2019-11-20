@@ -2288,18 +2288,6 @@ contract("BondingManager", accounts => {
             await bondingManager.reward({from: transcoder})
         })
 
-        it("should fail if endRound is after current round", async () => {
-            await expectRevertWithReason(bondingManager.pendingStake(delegator, currentRound + 3), "end round must be before or equal to current round")
-        })
-
-        it("should fail if endRound is before lastClaimRound", async () => {
-            await expectRevertWithReason(bondingManager.pendingStake(delegator, currentRound - 2), "end round must be after last claim round")
-        })
-
-        it("should fail if endRound = lastClaimRound", async () => {
-            await expectRevertWithReason(bondingManager.pendingStake(delegator, currentRound - 1), "end round must be after last claim round")
-        })
-
         it("should return pending rewards for 1 round", async () => {
             const pendingRewards0 = 250
             assert.equal(
@@ -2317,6 +2305,36 @@ contract("BondingManager", accounts => {
                 (await bondingManager.pendingStake(delegator, currentRound + 1)).toString(),
                 1000 + pendingRewards0 + pendingRewards1,
                 "should return sum of bondedAmount and pending rewards for 2 rounds"
+            )
+        })
+
+        it("should return pending rewards for > 1 round when endRound > currentRound", async () => {
+            const pendingRewards0 = 250
+            const pendingRewards1 = Math.floor((500 * (1250 * PERC_DIVISOR / 3000)) / PERC_DIVISOR)
+
+            assert.equal(
+                (await bondingManager.pendingStake(delegator, currentRound + 2)).toString(),
+                (1000 + pendingRewards0 + pendingRewards1).toString()
+            )
+        })
+
+        it("should return delegator.bondedAmount when endRound < lastClaimRound", async () => {
+            await bondingManager.claimEarnings(currentRound + 1, {from: delegator})
+
+            const bondedAmount = (await bondingManager.getDelegator(delegator)).bondedAmount
+            assert.equal(
+                (await bondingManager.pendingStake(delegator, currentRound)).toString(),
+                bondedAmount.toString()
+            )
+        })
+
+        it("should return delegator.bondedAmount when endRound = lastClaimRound", async () => {
+            await bondingManager.claimEarnings(currentRound + 1, {from: delegator})
+
+            const bondedAmount = (await bondingManager.getDelegator(delegator)).bondedAmount
+            assert.equal(
+                (await bondingManager.pendingStake(delegator, currentRound + 1)).toString(),
+                bondedAmount.toString()
             )
         })
 
@@ -2402,18 +2420,6 @@ contract("BondingManager", accounts => {
             await bondingManager.reward({from: transcoder})
         })
 
-        it("should fail if endRound is after current round", async () => {
-            await expectRevertWithReason(bondingManager.pendingFees(delegator, currentRound + 3), "end round must be before or equal to current round")
-        })
-
-        it("should fail if endRound is before lastClaimRound", async () => {
-            await expectRevertWithReason(bondingManager.pendingFees(delegator, currentRound - 1), "end round must be after last claim round")
-        })
-
-        it("should fail if endRound = lastClaimRound", async () => {
-            await expectRevertWithReason(bondingManager.pendingFees(delegator, currentRound), "end round must be after last claim round")
-        })
-
         it("should return pending fees for 1 round", async () => {
             const pendingFees0 = 125
             assert.equal((await bondingManager.pendingFees(delegator, currentRound + 1)).toString(), pendingFees0, "should return sum of collected fees and pending fees for 1 round")
@@ -2427,6 +2433,36 @@ contract("BondingManager", accounts => {
                 await bondingManager.pendingFees(delegator, currentRound + 2),
                 pendingFees0 + pendingFees1,
                 "should return sum of collected fees and pending fees for 2 rounds"
+            )
+        })
+
+        it("should return pending fees for > 1 round when endRound > currentRound", async () => {
+            const pendingFees0 = 125
+            const pendingFees1 = Math.floor((250 * (1250 * PERC_DIVISOR / 3000)) / PERC_DIVISOR)
+
+            assert.equal(
+                (await bondingManager.pendingFees(delegator, currentRound + 3)).toString(),
+                (pendingFees0 + pendingFees1).toString()
+            )
+        })
+
+        it("should return delegator.fees when endRound < lastClaimRound", async () => {
+            await bondingManager.claimEarnings(currentRound + 2, {from: delegator})
+
+            const fees = (await bondingManager.getDelegator(delegator)).fees
+            assert.equal(
+                (await bondingManager.pendingFees(delegator, currentRound + 1)).toString(),
+                fees.toString()
+            )
+        })
+
+        it("should return delegator.fees when endRound = lastClaimRound", async () => {
+            await bondingManager.claimEarnings(currentRound + 2, {from: delegator})
+
+            const fees = (await bondingManager.getDelegator(delegator)).fees
+            assert.equal(
+                (await bondingManager.pendingFees(delegator, currentRound + 2)).toString(),
+                fees.toString()
             )
         })
 

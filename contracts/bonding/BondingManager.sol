@@ -673,15 +673,18 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * @notice Returns pending bonded stake for a delegator from its lastClaimRound through an end round
      * @param _delegator Address of delegator
      * @param _endRound The last round to compute pending stake from
-     * @return pending bonded stake for '_delegator' since last claiming rewards
+     * @return Pending bonded stake for '_delegator' since last claiming rewards
      */
     function pendingStake(address _delegator, uint256 _endRound) public view returns (uint256) {
         uint256 currentRound = roundsManager().currentRound();
+        uint256 endRound = _endRound;
+
+        if (endRound > currentRound) {
+            // Highest round we can calculate up to is the current round
+            endRound = currentRound;
+        }
+
         Delegator storage del = delegators[_delegator];
-
-        require(_endRound <= currentRound, "end round must be before or equal to current round");
-        require(_endRound > del.lastClaimRound, "end round must be after last claim round");
-
         uint256 currentBondedAmount = del.bondedAmount;
 
         for (uint256 i = del.lastClaimRound + 1; i <= _endRound; i++) {
@@ -701,15 +704,18 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * @notice Returns pending fees for a delegator from its lastClaimRound through an end round
      * @param _delegator Address of delegator
      * @param _endRound The last round to compute pending fees from
-     * @return pending fees for '_delegator' since last claiming fees
+     * @return Pending fees for '_delegator' since last claiming fees
      */
     function pendingFees(address _delegator, uint256 _endRound) public view returns (uint256) {
         uint256 currentRound = roundsManager().currentRound();
+        uint256 endRound = _endRound;
+
+        if (endRound > currentRound) {
+            // Highest round we can calculate up to is the current round
+            endRound = currentRound;
+        }
+
         Delegator storage del = delegators[_delegator];
-
-        require(_endRound <= currentRound, "end round must be before or equal to current round");
-        require(_endRound > del.lastClaimRound, "end round must be after last claim round");
-
         uint256 currentFees = del.fees;
         uint256 currentBondedAmount = del.bondedAmount;
 
