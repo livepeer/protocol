@@ -21,9 +21,8 @@ ganache_running() {
 }
 
 start_ganache() {
-    if [ "$SOLIDITY_COVERAGE" = true ]; then
-        node_modules/.bin/testrpc-sc -l 0xfffffffffff -p "$ganache_port" -a 310 > /dev/null &
-    else
+    if [ "$SOLIDITY_COVERAGE" = false ]; then
+        echo "Starting new ganache instance at port $ganache_port"
         node_modules/.bin/ganache-cli -k istanbul -l 0x7A1200 -a 310 > /dev/null &
     fi
 
@@ -33,12 +32,11 @@ start_ganache() {
 if ganache_running; then
     echo "Using existing ganache instance at port $ganache_port"
 else
-    echo "Starting new ganache instance at port $ganache_port"
     start_ganache
 fi
 
 if [ "$SOLIDITY_COVERAGE" = true ]; then
-    node_modules/.bin/solidity-coverage
+    node_modules/.bin/truffle run coverage
 else
     node_modules/.bin/truffle test "$@"
 fi
