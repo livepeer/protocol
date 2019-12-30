@@ -5,7 +5,7 @@ import BigNumber from "bignumber.js"
 const Controller = artifacts.require("Controller")
 const ServiceRegistry = artifacts.require("ServiceRegistry")
 const BondingManager = artifacts.require("BondingManager")
-const JobsManager = artifacts.require("JobsManager")
+const JobsManager = artifacts.require("PreMigrationJobsManager")
 const AdjustableRoundsManager = artifacts.require("AdjustableRoundsManager")
 const LivepeerToken = artifacts.require("LivepeerToken")
 

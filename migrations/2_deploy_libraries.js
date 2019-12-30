@@ -3,7 +3,7 @@ const MerkleProof = artifacts.require("MerkleProof")
 const ECRecovery = artifacts.require("ECRecovery")
 const JobLib = artifacts.require("JobLib")
 
-const JobsManager = artifacts.require("JobsManager")
+const JobsManager = artifacts.require("PreMigrationJobsManager")
 const BondingManager = artifacts.require("BondingManager")
 const MerkleMine = artifacts.require("MerkleMine")
 
