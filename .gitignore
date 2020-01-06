@@ -9,3 +9,5 @@ coverageEnv/
 coverage/
 scTopics
 coverage.json
+.coverage_artifacts
+.coverage_contracts

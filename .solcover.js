@@ -1,7 +1,9 @@
 module.exports = {
-    norpc: true,
-    testCommand: "node --max-old-space-size=4096 ../node_modules/.bin/truffle test --network coverage",
-    compileCommand: "node --max-old-space-size=4096 ../node_modules/.bin/truffle compile --network coverage",
-    copyPackages: ["openzeppelin-solidity"],
+    client: require("ganache-cli"),
+    providerOptions: {
+        hardfork: "istanbul",
+        gasLimit: "0x7A1200",
+        total_accounts: 310
+    },
     skipFiles: ["Migrations.sol", "test", "zeppelin", "rounds/AdjustableRoundsManager.sol", "pm/mixins/interfaces"]
 }
