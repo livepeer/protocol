@@ -14,4 +14,5 @@ contract IJobsManager {
     event DistributeFees(address indexed transcoder, uint256 indexed jobId, uint256 indexed claimId, uint256 fees);
     event PassedVerification(address indexed transcoder, uint256 indexed jobId, uint256 indexed claimId, uint256 segmentNumber);
     event FailedVerification(address indexed transcoder, uint256 indexed jobId, uint256 indexed claimId, uint256 segmentNumber);
+    event FundsMigrated(address refunder, uint256 amount);
 }

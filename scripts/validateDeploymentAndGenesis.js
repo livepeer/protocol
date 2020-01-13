@@ -5,7 +5,7 @@ const genesisConfig = require("../migrations/genesis.config.js")
 
 const Controller = artifacts.require("Controller")
 const BondingManager = artifacts.require("BondingManager")
-const JobsManager = artifacts.require("JobsManager")
+const JobsManager = artifacts.require("PreMigrationJobsManager")
 const RoundsManager = artifacts.require("RoundsManager")
 const Minter = artifacts.require("Minter")
 const LivepeerVerifier = artifacts.require("LivepeerVerifier")

@@ -8,7 +8,7 @@ import Segment from "../../utils/segment"
 import batchTranscodeReceiptHashes from "../../utils/batchTranscodeReceipts"
 import ethUtil from "ethereumjs-util"
 
-const JobsManager = artifacts.require("JobsManager")
+const JobsManager = artifacts.require("PreMigrationJobsManager")
 
 contract("JobsManager", accounts => {
     let fixture

@@ -14,7 +14,7 @@ import "../libraries/MathUtils.sol";
 import "zeppelin-solidity/contracts/math/SafeMath.sol";
 
 
-contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
+contract PreMigrationJobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
     using SafeMath for uint256;
 
     // % of segments to be verified. 1 / verificationRate == % to be verified
@@ -84,9 +84,6 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
     // Number of jobs created. Also used for sequential identifiers
     uint256 public numJobs;
 
-    // Flag indicating whether funds have been migrated
-    bool public fundsMigrated;
-
     // Check if sender is Verifier
     modifier onlyVerifier() {
         require(msg.sender == controller.getContract(keccak256("Verifier")));
@@ -105,31 +102,7 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         _;
     }
 
-    modifier noStateUpdates() {
-        // No state updates allowed - contract deprecated since Streamflow upgrade
-        revert();
-        _;
-    }
-
-    function JobsManager(address _controller) public Manager(_controller) {}
-
-    /*
-     * @dev Migrate deposited funds to a refunder
-     * @param _refunder Address of refunder
-     * @param _amount The amount of funds deposited via this contract into the Minter that should be migrated to the refunder.
-     * _amount should be calculated off-chain AFTER state updates are disabled to ensure that the calculation is accurate
-     */
-    function migrateFunds(address _refunder, uint256 _amount) external onlyControllerOwner {
-        require(!fundsMigrated);
-
-        // Funds can only be migrated once
-        fundsMigrated = true;
-
-        // Send funds to the refunder
-        minter().trustedWithdrawETH(_refunder, _amount);
-
-        FundsMigrated(_refunder, _amount);
-    }
+    function PreMigrationJobsManager(address _controller) public Manager(_controller) {}
 
     /*
      * @dev Set verification rate. Only callable by the controller owner
@@ -227,7 +200,7 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
     /*
      * @dev Deposit ETH for jobs
      */
-    function deposit() external payable noStateUpdates whenSystemNotPaused {
+    function deposit() external payable whenSystemNotPaused {
         broadcasters[msg.sender].deposit = broadcasters[msg.sender].deposit.add(msg.value);
         // Transfer ETH for deposit to Minter
         minter().depositETH.value(msg.value)();
@@ -238,7 +211,7 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
     /*
      * @dev Withdraw deposited funds
      */
-    function withdraw() external noStateUpdates whenSystemNotPaused {
+    function withdraw() external whenSystemNotPaused {
         // Can only withdraw at or after the broadcster's withdraw block
         require(broadcasters[msg.sender].withdrawBlock <= roundsManager().blockNum());
 
@@ -258,7 +231,6 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
      */
     function job(string _streamId, string _transcodingOptions, uint256 _maxPricePerSegment, uint256 _endBlock)
         external
-        noStateUpdates
         whenSystemNotPaused
     {
         uint256 blockNum = roundsManager().blockNum();
@@ -305,7 +277,6 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
      */
     function claimWork(uint256 _jobId, uint256[2] _segmentRange, bytes32 _claimRoot)
         external
-        noStateUpdates
         whenSystemNotPaused
         jobExists(_jobId)
     {
@@ -376,7 +347,6 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
     )
         external
         payable
-        noStateUpdates
         whenSystemNotPaused
         sufficientPayment
         jobExists(_jobId)
@@ -431,7 +401,6 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
      */
     function receiveVerification(uint256 _jobId, uint256 _claimId, uint256 _segmentNumber, bool _result)
         external
-        noStateUpdates
         whenSystemNotPaused
         onlyVerifier
         jobExists(_jobId)
@@ -481,7 +450,6 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
      */
     function missedVerificationSlash(uint256 _jobId, uint256 _claimId, uint256 _segmentNumber)
         external
-        noStateUpdates
         whenSystemNotPaused
         jobExists(_jobId)
     {
@@ -525,7 +493,6 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
         uint256 _segmentNumber
     )
         external
-        noStateUpdates
         whenSystemNotPaused
         jobExists(_jobId)
     {
@@ -563,7 +530,6 @@ contract JobsManager is ManagerProxyTarget, IVerifiable, IJobsManager {
      */
     function distributeFees(uint256 _jobId, uint256 _claimId)
         public
-        noStateUpdates
         whenSystemNotPaused
         jobExists(_jobId)
     {

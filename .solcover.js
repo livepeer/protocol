@@ -15,7 +15,10 @@ const interfaces = [
     "verification/IVerifiable.sol",
     "verification/IVerifier.sol"
 ]
-const miscFiles = ["token/MerkleMine.sol"] // Tests are here https://github.com/livepeer/merkle-mine/blob/master/test/MerkleMine.js so skip for this repo
+const miscFiles = [
+    "token/MerkleMine.sol", // Tests are here https://github.com/livepeer/merkle-mine/blob/master/test/MerkleMine.js so skip for this repo
+    "jobs/JobsManager.sol"
+] 
 
 module.exports = {
     norpc: true,
