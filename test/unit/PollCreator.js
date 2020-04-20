@@ -18,7 +18,7 @@ contract("PollCreator", accounts => {
 
     before(async () => {
         fixture = new Fixture(web3)
-        token = await GenericMock.new("LivepeerToken")
+        token = await GenericMock.new()
     })
 
     beforeEach(async () => {

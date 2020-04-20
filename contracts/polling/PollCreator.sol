@@ -12,7 +12,6 @@ contract PollCreator {
     uint256 public constant POLL_CREATION_COST = 100 * 1 ether;
 
     ILivepeerToken public token;
-    uint256 public pollCreationCost;
 
     event PollCreated(
         address indexed poll,
