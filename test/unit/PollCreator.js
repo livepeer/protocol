@@ -7,8 +7,8 @@ import {functionSig} from "../../utils/helpers"
 const PollCreator = artifacts.require("PollCreator")
 const GenericMock = artifacts.require("GenericMock")
 
-const QUORUM = 20
-const THRESHOLD = 50
+const QUORUM = 333300
+const QUOTA = 500000
 const POLL_PERIOD = 10 * 5760
 
 contract("PollCreator", accounts => {
@@ -61,7 +61,7 @@ contract("PollCreator", accounts => {
                 e => e.proposal == hash
                 && e.endBlock.toNumber() == end
                 && e.quorum.toNumber() == QUORUM
-                && e.threshold.toNumber() == THRESHOLD
+                && e.quota.toNumber() == QUOTA
                 ,
                 "PollCreated event not emitted correctly"
             )

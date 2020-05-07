@@ -5,9 +5,11 @@ import "../token/ILivepeerToken.sol";
 
 
 contract PollCreator {
-    // TODO: Update these values
-    uint256 public constant QUORUM = 20;
-    uint256 public constant THRESHOLD = 50;
+    // 33.33%
+    uint256 public constant QUORUM = 333300;
+    // 50%
+    uint256 public constant QUOTA = 500000;
+    // 10 rounds
     uint256 public constant POLL_PERIOD = 10 * 5760;
     uint256 public constant POLL_CREATION_COST = 100 * 1 ether;
 
@@ -18,7 +20,7 @@ contract PollCreator {
         bytes proposal,
         uint256 endBlock,
         uint256 quorum,
-        uint256 threshold
+        uint256 quota
     );
 
     constructor(address _tokenAddr) public {
@@ -46,7 +48,7 @@ contract PollCreator {
             _proposal,
             endBlock,
             QUORUM,
-            THRESHOLD
+            QUOTA
         );
     }
 }
