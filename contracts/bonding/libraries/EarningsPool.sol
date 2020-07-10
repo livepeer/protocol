@@ -27,6 +27,10 @@ library EarningsPool {
         uint256 transcoderRewardPool;      // Transcoder rewards. If `hasTranscoderRewardFeePool` is false, this should always be 0
         uint256 transcoderFeePool;         // Transcoder fees. If `hasTranscoderRewardFeePool` is false, this should always be 0
         bool hasTranscoderRewardFeePool;   // Flag to indicate if the earnings pool has separate transcoder reward and fee pools
+
+        bool hasCumulative;
+        uint256 cumulativeRewardFactor;
+        uint256 cumulativeFeeFactor;
     }
 
     /**
@@ -41,7 +45,7 @@ library EarningsPool {
         // We set this flag to true here to differentiate between EarningsPool structs created using older versions of this library.
         // When using a version of this library after the introduction of this flag to read an EarningsPool struct created using an older version
         // of this library, this flag should be false in the returned struct because the default value for EVM storage is 0
-        earningsPool.hasTranscoderRewardFeePool = true;
+        earningsPool.hasCumulative = true;
     }
 
     /**
@@ -51,7 +55,6 @@ library EarningsPool {
      */
     function setStake(EarningsPool.Data storage earningsPool, uint256 _stake) internal {
         earningsPool.totalStake = _stake;
-        earningsPool.claimableStake = _stake;
     }
 
     /**
@@ -67,16 +70,26 @@ library EarningsPool {
      * @param earningsPool Storage pointer to EarningsPools struct
      * @param _fees Amount of fees to add
      */
-    function addToFeePool(EarningsPool.Data storage earningsPool, uint256 _fees) internal {
-        if (earningsPool.hasTranscoderRewardFeePool) {
-            // If the earnings pool has a separate transcoder fee pool, calculate the portion of incoming fees
-            // to put into the delegator fee pool and the portion to put into the transcoder fee pool
-            uint256 delegatorFees = MathUtils.percOf(_fees, earningsPool.transcoderFeeShare);
-            earningsPool.feePool = earningsPool.feePool.add(delegatorFees);
-            earningsPool.transcoderFeePool = earningsPool.transcoderFeePool.add(_fees.sub(delegatorFees));
+    function addToFeePool(EarningsPool.Data storage earningsPool, EarningsPool.Data storage _prevEarningsPool, uint256 _fees) internal {
+        uint256 prevCumulativeFeeFactor = _prevEarningsPool.cumulativeFeeFactor;
+        uint256 prevCumulativeRewardFactor = _prevEarningsPool.cumulativeRewardFactor;
+
+        if (prevCumulativeRewardFactor == 0) {
+            prevCumulativeRewardFactor = 1;
+        }
+
+        if (earningsPool.cumulativeFeeFactor == 0) {
+            earningsPool.cumulativeFeeFactor = prevCumulativeFeeFactor.add(
+                prevCumulativeRewardFactor.mul(
+                    MathUtils.percPoints(_fees, earningsPool.totalStake)
+                )
+            );
         } else {
-            // If the earnings pool does not have a separate transcoder fee pool, put all the fees into the delegator fee pool
-            earningsPool.feePool = earningsPool.feePool.add(_fees);
+            earningsPool.cumulativeFeeFactor = earningsPool.cumulativeFeeFactor.add(
+                prevCumulativeRewardFactor.mul(
+                    MathUtils.percPoints(_fees, earningsPool.totalStake)
+                )
+            );
         }
     }
 
@@ -85,17 +98,18 @@ library EarningsPool {
      * @param earningsPool Storage pointer to EarningsPool struct
      * @param _rewards Amount of rewards to add
      */
-    function addToRewardPool(EarningsPool.Data storage earningsPool, uint256 _rewards) internal {
-        if (earningsPool.hasTranscoderRewardFeePool) {
-            // If the earnings pool has a separate transcoder reward pool, calculate the portion of incoming rewards
-            // to put into the delegator reward pool and the portion to put into the transcoder reward pool
-            uint256 transcoderRewards = MathUtils.percOf(_rewards, earningsPool.transcoderRewardCut);
-            earningsPool.rewardPool = earningsPool.rewardPool.add(_rewards.sub(transcoderRewards));
-            earningsPool.transcoderRewardPool = earningsPool.transcoderRewardPool.add(transcoderRewards);
-        } else {
-            // If the earnings pool does not have a separate transcoder reward pool, put all the rewards into the delegator reward pool
-            earningsPool.rewardPool = earningsPool.rewardPool.add(_rewards);
+    function addToRewardPool(EarningsPool.Data storage earningsPool, EarningsPool.Data storage _prevEarningsPool, uint256 _rewards) internal {
+        uint256 prevCumulativeRewardFactor = _prevEarningsPool.cumulativeRewardFactor;
+
+        if (prevCumulativeRewardFactor == 0) {
+            prevCumulativeRewardFactor = 1;
         }
+
+        earningsPool.cumulativeRewardFactor = prevCumulativeRewardFactor.mul(
+            MathUtils.percPoints(1, 1).add(
+                MathUtils.percPoints(_rewards, earningsPool.totalStake)
+            )
+        );
     }
 
     /**
