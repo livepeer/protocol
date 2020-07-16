@@ -1,4 +1,6 @@
-// Taken from https://github.com/aragon/aragonOS/blob/bfed147dd906a7ecb39dd36848353986d21134cc/test/helpers/runSolidityTest.js
+// Taken from https://github.com/aragon/aragonOS/blob/ae3b1bde5da14fd5f696d04111d7c5cf57ad7dd1/test/helpers/runSolidityTest.js
+const abi = require("ethereumjs-abi")
+const {eventSig} = require("../../../utils/helpers")
 
 const HOOKS_MAP = {
     beforeAll: "before",
@@ -7,13 +9,25 @@ const HOOKS_MAP = {
     afterAll: "afterAll"
 }
 
-const processResult = receipt => {
-    if (!receipt) {
+const processResult = (txRes, mustAssert) => {
+    if (!txRes || !txRes.receipt) {
         return
     }
-    receipt.logs.forEach(log => {
-        if (log.event === "TestEvent" && log.args.result !== true) {
-            throw new Error(log.args.message)
+
+    // Event defined in the libraries used by contracts/test/helpers/truffle/Assert.sol
+    const eventSignature = eventSig("TestEvent(bool,string)")
+    const rawLogs = txRes.receipt.rawLogs.filter(log => log.topics[0] === eventSignature)
+
+    if (mustAssert && !rawLogs.length) {
+        throw new Error("No assertions made")
+    }
+
+    rawLogs.forEach(log => {
+        const result = abi.rawDecode(["bool"], Buffer.from(log.topics[1].slice(2), "hex"))[0]
+        const message = abi.rawDecode(["string"], Buffer.from(log.data.slice(2), "hex"))[0]
+
+        if (!result) {
+            throw new Error(message)
         }
     })
 }
@@ -84,11 +98,11 @@ function runSolidityTest(c, libs, mochaContext) {
                     if (["beforeAll", "beforeEach", "afterEach", "afterAll"].includes(iface.name)) {
                         // Set up hooks
                         global[HOOKS_MAP[iface.name]](() => {
-                            return deployed[iface.name]().then(processResult)
+                            return deployed[iface.name]().then(txRes => processResult(txRes, false))
                         })
                     } else if (iface.name.startsWith("test")) {
                         it(iface.name, () => {
-                            return deployed[iface.name]().then(processResult)
+                            return deployed[iface.name]().then(txRes => processResult(txRes, true))
                         })
                     }
                 }
