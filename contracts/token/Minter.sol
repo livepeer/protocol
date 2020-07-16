@@ -5,7 +5,7 @@ import "./IMinter.sol";
 import "./ILivepeerToken.sol";
 import "../rounds/IRoundsManager.sol";
 import "../bonding/IBondingManager.sol";
-import "../libraries/MathUtils.sol";
+import "../libraries/MathUtilsV2.sol";
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 

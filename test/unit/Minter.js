@@ -11,7 +11,7 @@ contract("Minter", accounts => {
     let fixture
     let minter
 
-    const PERC_DIVISOR = 1000000
+    const PERC_DIVISOR = 1000000000
     const PERC_MULTIPLIER = PERC_DIVISOR / 100
 
     const INFLATION = 26 * PERC_MULTIPLIER
@@ -468,6 +468,37 @@ contract("Minter", accounts => {
             const expCurrentMintableTokens = Math.floor((1000 * inflation.toNumber()) / PERC_DIVISOR)
 
             assert.equal(await minter.currentMintableTokens.call(), expCurrentMintableTokens, "wrong currentMintableTokens")
+        })
+
+        it("should set currentMintableTokens and inflation correctly for different inflationChange values", async () => {
+            const totalSupply = new BN("21645383016495782629665363")
+            const inflation = .0455 * PERC_MULTIPLIER
+            const targetBondingRate = 50 * PERC_MULTIPLIER
+            const currentBondingRate = 51 * PERC_MULTIPLIER
+            const totalBonded = totalSupply.mul(new BN(currentBondingRate)).div(new BN(PERC_DIVISOR))
+
+            await fixture.token.setMockUint256(functionSig("totalSupply()"), totalSupply)
+            // Set total bonded tokens - we are above the target bonding rate so inflation decreases
+            await fixture.bondingManager.setMockUint256(functionSig("getTotalBonded()"), totalBonded)
+
+            let inflationChange = Math.ceil(.0003 * PERC_MULTIPLIER)
+            let newMinter = await fixture.deployAndRegister(Minter, "Minter", fixture.controller.address, inflation, inflationChange, targetBondingRate)
+
+            await fixture.roundsManager.execute(newMinter.address, functionSig("setCurrentRewardTokens()"))
+
+            assert.equal(await newMinter.inflation.call(), .0452 * PERC_MULTIPLIER)
+            const currentMintableTokens1 = await newMinter.currentMintableTokens.call()
+
+            inflationChange = .00005 * PERC_MULTIPLIER
+            newMinter = await fixture.deployAndRegister(Minter, "Minter", fixture.controller.address, inflation, inflationChange, targetBondingRate)
+
+            await fixture.roundsManager.execute(newMinter.address, functionSig("setCurrentRewardTokens()"))
+
+            assert.equal(await newMinter.inflation.call(), .04545 * PERC_MULTIPLIER)
+            const currentMintableTokens2 = await newMinter.currentMintableTokens.call()
+
+            // Check that currentMintableTokens is greater when using a smaller inflationChange value
+            assert.isOk(currentMintableTokens2.gt(currentMintableTokens1))
         })
 
         it("should set currentMintedTokens = 0", async () => {
