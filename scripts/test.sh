@@ -38,5 +38,10 @@ fi
 if [ "$SOLIDITY_COVERAGE" = true ]; then
     node_modules/.bin/truffle run coverage
 else
-    node_modules/.bin/truffle test "$@"
+    args="$@"
+    if echo $args | grep -q "unit"; then
+        node_modules/.bin/truffle test --network=unitTest $args
+    else
+        node_modules/.bin/truffle test $args
+    fi
 fi

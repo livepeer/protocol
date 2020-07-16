@@ -13,6 +13,10 @@ const LivepeerTokenFaucet = artifacts.require("LivepeerTokenFaucet")
 const ManagerProxy = artifacts.require("ManagerProxy")
 
 module.exports = function(deployer, network) {
+    if (network === "unitTest") {
+        return
+    }
+
     deployer.then(async () => {
         const lpDeployer = new ContractDeployer(deployer, Controller, ManagerProxy)
 
