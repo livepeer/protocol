@@ -21,7 +21,7 @@ ganache_running() {
 }
 
 start_ganache() {
-    if [ "$SOLIDITY_COVERAGE" = false ]; then
+    if [ "$SOLIDITY_COVERAGE" != true ]; then
         echo "Starting new ganache instance at port $ganache_port"
         node_modules/.bin/ganache-cli -k istanbul -l 0x7A1200 -a 310 > /dev/null &
     fi
@@ -38,5 +38,10 @@ fi
 if [ "$SOLIDITY_COVERAGE" = true ]; then
     node_modules/.bin/truffle run coverage
 else
-    node_modules/.bin/truffle test "$@"
+    args="$@"
+    if echo $args | grep -q "unit"; then
+        node_modules/.bin/truffle test --network=unitTest $args
+    else
+        node_modules/.bin/truffle test $args
+    fi
 fi

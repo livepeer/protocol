@@ -58,6 +58,13 @@ module.exports = {
             network_id: "*", // Match any network id
             gas: 8000000
         },
+        // This network should be used when running unit tests so migrations can be skipped
+        unitTest: {
+            host: "localhost",
+            port: 8545,
+            network_id: "*",
+            gas: 8000000
+        },
         parityDev: {
             host: "parity-dev",
             port: 8545,
