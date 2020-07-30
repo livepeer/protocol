@@ -8,6 +8,7 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 /**
  * @title EarningsPool
  * @dev Manages reward and fee pools for delegators and transcoders
+ * @dev v1 DEPRECATED
  */
 library EarningsPool {
     using SafeMath for uint256;
