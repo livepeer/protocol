@@ -4,6 +4,7 @@ import {contractId, functionSig, functionEncodedABI} from "../../utils/helpers"
 import {constants} from "../../utils/constants"
 import BN from "bn.js"
 import truffleAssert from "truffle-assertions"
+import {assert} from "chai"
 
 const BondingManager = artifacts.require("BondingManager")
 
@@ -1528,7 +1529,7 @@ contract("BondingManager", accounts => {
             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
 
             await bondingManager.bond(1000, transcoder, {from: transcoder})
-            await bondingManager.transcoder(5, 10, {from: transcoder})
+            await bondingManager.transcoder(50 * PERC_MULTIPLIER, 10, {from: transcoder})
 
             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 1)
             await fixture.minter.setMockUint256(functionSig("createReward(uint256,uint256)"), 1000)
@@ -1565,8 +1566,9 @@ contract("BondingManager", accounts => {
             const endTotalStake = await bondingManager.transcoderTotalStake(transcoder)
             const endNextTotalStake = await bondingManager.nextRoundTotalActiveStake()
 
-            const earningsPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder, currentRound + 1)
-            assert.equal(earningsPool[0], 1000, "should update rewards in earnings pool for current round")
+            const earningsPool = await bondingManager.getTranscoderCumulativeEarningsPoolForRound(transcoder, currentRound + 1)
+            const expRewardFactor = 1 * PERC_DIVISOR + 500 * PERC_DIVISOR / 1000
+            assert.equal(earningsPool.cumulativeRewardFactor.toString(), expRewardFactor.toString(), "should update cumulativeRewardFactor in earningsPool")
 
             assert.equal(endDelegatedAmount.sub(startDelegatedAmount), 1000, "should update delegatedAmount with new rewards")
             assert.equal(endTotalStake.sub(startTotalStake), 1000, "should update transcoder's total stake in the pool with new rewards")
@@ -1583,8 +1585,9 @@ contract("BondingManager", accounts => {
             const endTotalStake = await bondingManager.transcoderTotalStake(transcoder)
             const endNextTotalStake = await bondingManager.nextRoundTotalActiveStake()
 
-            const earningsPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder, currentRound + 3)
-            assert.equal(earningsPool[0], 1000, "should update rewards in earnings pool for current round")
+            const earningsPool = await bondingManager.getTranscoderCumulativeEarningsPoolForRound(transcoder, currentRound + 3)
+            const expRewardFactor = 1 * PERC_DIVISOR + 500 * PERC_DIVISOR / 1000
+            assert.equal(earningsPool.cumulativeRewardFactor.toString(), expRewardFactor.toString(), "should update cumulativeRewardFactor in earningsPool")
 
             assert.equal(endDelegatedAmount.sub(startDelegatedAmount), 1000, "should update delegatedAmount with new rewards")
             assert.equal(endTotalStake.sub(startTotalStake), 1000, "should update transcoder's total stake in the pool with new rewards")
@@ -1613,7 +1616,7 @@ contract("BondingManager", accounts => {
             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
 
             await bondingManager.bond(1000, transcoder, {from: transcoder})
-            await bondingManager.transcoder(0, 0, {from: transcoder})
+            await bondingManager.transcoder(50 * PERC_MULTIPLIER, 50 * PERC_MULTIPLIER, {from: transcoder})
 
             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 1)
         })
@@ -1652,6 +1655,43 @@ contract("BondingManager", accounts => {
             )
         })
 
+        it("should set activeCumulativeRewards on transcoder if transcoder hasn't called reward", async () => {
+            // set current cumulativeRewards to 500
+            await fixture.minter.setMockUint256(functionSig("createReward(uint256,uint256)"), 1000)
+            await bondingManager.reward()
+
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 2)
+
+            let tr = await bondingManager.getTranscoder(transcoder)
+            let cumulativeRewards = tr.cumulativeRewards
+            assert.equal(cumulativeRewards.toString(), "500")
+
+            await fixture.ticketBroker.execute(
+                bondingManager.address,
+                functionEncodedABI(
+                    "updateTranscoderWithFees(address,uint256,uint256)",
+                    ["address", "uint256", "uint256"],
+                    [transcoder, 1000, currentRound + 2]
+                )
+            )
+            tr = await bondingManager.getTranscoder(transcoder)
+
+            assert.equal(tr.activeCumulativeRewards.toString(), cumulativeRewards.toString(), "transcoder's activeCumulativeRewards should be set to cumulativeRewards")
+        })
+
+        it("should update earningsPool cumulativeFeeFactor", async () => {
+            await fixture.ticketBroker.execute(
+                bondingManager.address,
+                functionEncodedABI(
+                    "updateTranscoderWithFees(address,uint256,uint256)",
+                    ["address", "uint256", "uint256"],
+                    [transcoder, 1000, currentRound + 1]
+                )
+            )
+            const earningsPool = await bondingManager.getTranscoderCumulativeEarningsPoolForRound(transcoder, currentRound + 1)
+            assert.equal(earningsPool.cumulativeFeeFactor.toString(), "500000", "wrong cumulativeFeeFactor")
+        })
+
         it("should update transcoder with fees", async () => {
             await fixture.ticketBroker.execute(
                 bondingManager.address,
@@ -1662,8 +1702,9 @@ contract("BondingManager", accounts => {
                 )
             )
 
-            const earningsPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder, currentRound + 1)
-            assert.equal(earningsPool.transcoderFeePool, 1000, "should update fees in earnings pool for current round")
+            // set t.cumulativeFees to t.cumulativeFees + fees from fee cut and fees from staked rewards
+            let tr = await bondingManager.getTranscoder(accounts[0])
+            assert.equal(tr.cumulativeFees.toString(), "500", "should set transcoder's cumulativeFees to 1000")
         })
     })
 
@@ -2035,6 +2076,17 @@ contract("BondingManager", accounts => {
             assert.equal((await bondingManager.getDelegator(delegator1))[5], currentRound + 1, "should update caller's lastClaimRound to the current round")
         })
 
+        it("updates transcoders cumulativeRewardFactor for _endRound EarningsPool if reward is not called for _endRound yet", async () => {
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 2)
+
+            await bondingManager.claimEarnings(currentRound + 2, {from: delegator1})
+
+            assert.equal(
+                (await bondingManager.getTranscoderCumulativeEarningsPoolForRound(transcoder, currentRound + 2)).cumulativeRewardFactor.toString(),
+                (await bondingManager.getTranscoderCumulativeEarningsPoolForRound(transcoder, currentRound + 1)).cumulativeRewardFactor
+            )
+        })
+
         it("fires an EarningsClaimed event", async () => {
             const expRewards = new BN(delegatorRewards * .3) // 30%
             const expFees = new BN(delegatorFees * .3) // 30%
@@ -2055,6 +2107,7 @@ contract("BondingManager", accounts => {
 
         describe("caller has a delegate", () => {
             it("should fail if endRound - lastClaimRound > maxEarningsClaimsRounds (too many rounds to claim through)", async () => {
+                await bondingManager.setLIPUpgradeRound(36, 5000)
                 const maxEarningsClaimsRounds = await bondingManager.maxEarningsClaimsRounds.call()
                 const maxClaimRound = currentRound + 1 + maxEarningsClaimsRounds.toNumber()
                 await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), maxClaimRound + 1)
@@ -2097,16 +2150,6 @@ contract("BondingManager", accounts => {
                 assert.isAtMost(d1Fees.sub(expFees).abs().toNumber(), acceptableDelta)
                 assert.isAtMost(d2Fees.sub(expFees).abs().toNumber(), acceptableDelta)
                 assert.isAtMost(d3Fees.sub(expFees).abs().toNumber(), acceptableDelta)
-
-                const claimedRewards = d1Rewards.add(d2Rewards).add(d3Rewards)
-                const claimedFees = d1Fees.add(d2Fees).add(d3Fees)
-
-                const earningsPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder, currentRound + 1)
-                assert.equal(earningsPool[0], delegatorRewards - claimedRewards.toNumber())
-                assert.equal(earningsPool[1], delegatorFees - claimedFees.toNumber())
-                assert.equal(earningsPool[3], 1000)
-                assert.equal(earningsPool[6], transcoderRewards)
-                assert.equal(earningsPool[7], transcoderFees)
             })
 
             it("should claim earnings for > 1 round", async () => {
@@ -2166,24 +2209,6 @@ contract("BondingManager", accounts => {
                 assert.isAtMost(d1Fees.sub(expFees).abs().toNumber(), acceptableDelta)
                 assert.isAtMost(d2Fees.sub(expFees).abs().toNumber(), acceptableDelta)
                 assert.isAtMost(d3Fees.sub(expFees).abs().toNumber(), acceptableDelta)
-
-                const earningsPoolFirstRound = await bondingManager.getTranscoderEarningsPoolForRound(transcoder, currentRound + 1)
-                const earningsPoolSecondRound = await bondingManager.getTranscoderEarningsPoolForRound(transcoder, currentRound + 2)
-                const expRemainingRewardsFirstRound = delegatorRewards - (3 * expRewardsFirstRound)
-                const expRemainingFeesFirstRound = delegatorFees - (3 * expFeesFirstRound)
-                const expRemainingRewardsSecondRound = delegatorRewards - (3 * expRewardsSecondRound)
-                const expRemainingFeesSecondRound = delegatorFees - (3 * expFeesSecondRound)
-
-                assert.isAtMost(earningsPoolFirstRound[0].sub(new BN(expRemainingRewardsFirstRound)).abs().toNumber(), acceptableDelta, "should decrease delegator reward pool by delegator's claimed rewards for round")
-                assert.isAtMost(earningsPoolFirstRound[1].sub(new BN(expRemainingFeesFirstRound)).abs().toNumber(), acceptableDelta, "should decrease delegator fee pool by delegator's claimed fees for round")
-                assert.equal(earningsPoolFirstRound[6], transcoderRewards, "should not affect transcoder reward pool")
-                assert.equal(earningsPoolFirstRound[7], transcoderFees, "should not affect transcoder fee pool")
-                assert.equal(earningsPoolFirstRound[3], 1000, "should decrease claimableStake for earningsPool by delegator's stake for round")
-                assert.isAtMost(earningsPoolSecondRound[0].sub(new BN(expRemainingRewardsSecondRound)).abs().toNumber(), acceptableDelta, "should decrease delegator reward pool by delegator's claimed rewards for round")
-                assert.isAtMost(earningsPoolSecondRound[1].sub(new BN(expRemainingFeesSecondRound)).abs().toNumber(), acceptableDelta, "should decrease delegator fee pool by delegator's claimed fees for round")
-                assert.equal(earningsPoolSecondRound[6], transcoderRewards, "should not affect transcoder reward pool")
-                assert.equal(earningsPoolSecondRound[7], transcoderFees, "should not affect transcoder fee pool")
-                assert.isAtMost(earningsPoolSecondRound[3].sub(new BN(1550)).toNumber(), acceptableDelta, "should decrease claimableStake for earningsPool by delegator's stake for round")
             })
 
             describe("caller is a transcoder", () => {
@@ -2202,13 +2227,6 @@ contract("BondingManager", accounts => {
 
                     assert.isAtMost(tRewards.sub(expRewards).abs().toNumber(), acceptableDelta)
                     assert.isAtMost(tFees.sub(expFees).abs().toNumber(), acceptableDelta)
-
-                    const earningsPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder, currentRound + 1)
-                    assert.equal(earningsPool[0], delegatorRewards - tRewards.sub(new BN(transcoderRewards)).toNumber(), "should decrease delegator reward pool by transcoder's claimed rewards for round")
-                    assert.equal(earningsPool[1], delegatorFees - tFees.sub(new BN(transcoderFees)).toNumber(), "should decrease delegator fee pool by transcoder's claimed fees for round")
-                    assert.equal(earningsPool[6], 0, "should set transcoder reward pool to 0")
-                    assert.equal(earningsPool[7], 0, "should set transcoder fee pool to 0")
-                    assert.equal(earningsPool[3], 9000, "should decrease claimableStake for earningsPool by transcoder's stake for round")
                 })
 
                 it("should claim earnings as both a delegator and a transcoder regardless of when other delegators claim", async () => {
@@ -2264,35 +2282,20 @@ contract("BondingManager", accounts => {
             await bondingManager.bond(1000, transcoder, {from: delegator})
             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
 
-            await fixture.ticketBroker.execute(
-                bondingManager.address,
-                functionEncodedABI(
-                    "updateTranscoderWithFees(address,uint256,uint256)",
-                    ["address", "uint256", "uint256"],
-                    [transcoder, 1000, currentRound]
-                )
-            )
             await fixture.minter.setMockUint256(functionSig("createReward(uint256,uint256)"), 1000)
             await bondingManager.reward({from: transcoder})
 
             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 1)
-            await fixture.ticketBroker.execute(
-                bondingManager.address,
-                functionEncodedABI(
-                    "updateTranscoderWithFees(address,uint256,uint256)",
-                    ["address", "uint256", "uint256"],
-                    [transcoder, 1000, currentRound + 1]
-                )
-            )
-            await fixture.minter.setMockUint256(functionSig("createReward(uint256,uint256)"), 1000)
+
             await bondingManager.reward({from: transcoder})
         })
 
         it("should return pending rewards for 1 round", async () => {
             const pendingRewards0 = 250
+
             assert.equal(
-                await bondingManager.pendingStake(delegator, currentRound),
-                1000 + pendingRewards0,
+                (await bondingManager.pendingStake(delegator, currentRound)).toString(),
+                (1000 + pendingRewards0).toString(),
                 "should return sum of bondedAmount and pending rewards for 1 round"
             )
         })
@@ -2338,7 +2341,34 @@ contract("BondingManager", accounts => {
             )
         })
 
-        describe("no claimable shares for the round", async () => {
+        it("should return pending rewards through lastRewardRound if transcoder hasn't called reward for the end round", async () => {
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 2)
+
+            const pendingRewards0 = 250
+            const pendingRewards1 = Math.floor((500 * (1250 * PERC_DIVISOR / 3000)) / PERC_DIVISOR)
+
+            assert.equal(
+                (await bondingManager.pendingStake(delegator, currentRound + 2)).toString(),
+                (1000 + pendingRewards0 + pendingRewards1).toString()
+            )
+        })
+
+        it("should return pending rewards even if transcoder hasn't called reward for it's lastClaimRound", async () => {
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 2)
+
+            await bondingManager.claimEarnings(currentRound + 2, {from: delegator})
+
+            const pendingRewards0 = 250
+            const pendingRewards1 = Math.floor((500 * (1250 * PERC_DIVISOR / 3000)) / PERC_DIVISOR)
+            const pendingRewards2 = Math.floor((500 * ((1000 + pendingRewards0 + pendingRewards1) * PERC_DIVISOR / 4000 ) ) / PERC_DIVISOR)
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 3)
+
+            await bondingManager.reward({from: transcoder})
+
+            assert.equal((await bondingManager.pendingStake(delegator, currentRound + 3)).toNumber(), 1000 + pendingRewards0 + pendingRewards1 + pendingRewards2)
+        })
+
+        describe("no rewards since last claim round", async () => {
             const bondedAmount = 1000 + 250 + Math.floor((500 * (1250 * PERC_DIVISOR / 3000)) / PERC_DIVISOR)
 
             beforeEach(async () => {
@@ -2347,32 +2377,24 @@ contract("BondingManager", accounts => {
                 await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 2)
             })
 
-            it("should return bondedAmount + 0 (pending rewards) when pool.claimableStake > 0", async () => {
-                // The transcoder's pool has claimableStake > 0 for currentRound + 2 because the transcoder called reward()
-                // in currentRound + 1 which updates the claimableStake in the transcoder's pool for currentRound + 2
-                assert.equal(await bondingManager.pendingStake(delegator, currentRound + 2), bondedAmount, "should return sum of bondedAmount + 0 (pending rewards) for 1 round")
-            })
-
-            it("should return bondedAmount + 0 (pending rewards) when pool.claimableStake = 0", async () => {
+            it("should return bondedAmount when transcoder.lastRewardRound < delegator.lastClaimRound", async () => {
                 // Claim rewards through currentRound + 2
-                // At this point, the delegator's bondedAmount should not have changed because the delegator received 0 rewards
-                // for currentRound + 1
                 await bondingManager.claimEarnings(currentRound + 2, {from: delegator})
 
                 await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 3)
-
                 // The transcoder's pool has claimableStake = 0 for currentRound + 3 because the transcoder did not call reward()
                 // in currentRound + 2 so it did not update the claimableStake in its pool for currentRound + 3
-                assert.equal(await bondingManager.pendingStake(delegator, currentRound + 3), bondedAmount)
+                assert.equal((await bondingManager.pendingStake(delegator, currentRound + 3)).toNumber(), bondedAmount)
             })
         })
 
         describe("delegator is a transcoder", () => {
             it("should return pending rewards as both a delegator and a transcoder", async () => {
-                const pendingRewards = 500 + 250
+                let cumulativeRewards = (await bondingManager.getTranscoder(transcoder)).cumulativeRewards.toNumber()
+                const pendingRewards = 250 + cumulativeRewards
 
                 assert.equal(
-                    await bondingManager.pendingStake(transcoder, currentRound),
+                    (await bondingManager.pendingStake(transcoder, currentRound)).toNumber(),
                     1000 + pendingRewards,
                     "should return sum of bondedAmount and pending rewards as both a delegator and transcoder for a round"
                 )
@@ -2416,12 +2438,13 @@ contract("BondingManager", accounts => {
                     [transcoder, 1000, currentRound + 2]
                 )
             )
-            await fixture.minter.setMockUint256(functionSig("createReward(uint256,uint256)"), 1000)
+
             await bondingManager.reward({from: transcoder})
         })
 
         it("should return pending fees for 1 round", async () => {
             const pendingFees0 = 125
+
             assert.equal((await bondingManager.pendingFees(delegator, currentRound + 1)).toString(), pendingFees0, "should return sum of collected fees and pending fees for 1 round")
         })
 
@@ -2430,7 +2453,7 @@ contract("BondingManager", accounts => {
             const pendingFees1 = Math.floor((250 * (1250 * PERC_DIVISOR / 3000)) / PERC_DIVISOR)
 
             assert.equal(
-                await bondingManager.pendingFees(delegator, currentRound + 2),
+                (await bondingManager.pendingFees(delegator, currentRound + 2)).toNumber(),
                 pendingFees0 + pendingFees1,
                 "should return sum of collected fees and pending fees for 2 rounds"
             )
@@ -2466,7 +2489,7 @@ contract("BondingManager", accounts => {
             )
         })
 
-        describe("no claimable shares for the round", async () => {
+        describe("no fees since lastClaimRound", async () => {
             const fees = 125 + Math.floor((250 * (1250 * PERC_DIVISOR / 3000)) / PERC_DIVISOR)
 
             beforeEach(async () => {
@@ -2475,13 +2498,7 @@ contract("BondingManager", accounts => {
                 await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 3)
             })
 
-            it("should return fees + 0 (pending new fees) when pool.claimableStake > 0", async () => {
-                // The transcoder's pool has claimableStake > 0 for currentRound + 3 because the transcoder called reward()
-                // in currentRound + 2 which updates the claimableStake in the transcoder's pool for currentRound + 3
-                assert.equal(await bondingManager.pendingFees(delegator, currentRound + 3), fees, "should return sum of collected fees + 0 (pending fees) for 1 round")
-            })
-
-            it("should return fees + 0 (pending new fees) when pool.claimableStake = 0", async () => {
+            it("should return current fees when there are no additional fees since last claim round", async () => {
                 // Claim fees through currentRound + 3
                 // At this point, the delegator's fees should not have changed because the delegator received 0 fees
                 // for currentRound + 3
@@ -2489,18 +2506,18 @@ contract("BondingManager", accounts => {
 
                 await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 4)
 
-                // The transcoder's pool has claimableStake = 0 for currentRound + 4 because the transcoder did not call reward()
-                // in currentRound + 3 so it did not update the claimableStake in its pool for currentRound + 4
-                assert.equal(await bondingManager.pendingFees(delegator, currentRound + 4), fees)
+                assert.equal((await bondingManager.pendingFees(delegator, currentRound + 4)).toNumber(), fees)
             })
         })
 
         describe("delegator is a transcoder", () => {
             it("should return pending fees as both a delegator and a transcoder", async () => {
-                const pendingFees = 750 + 125
+                let cumulativeFees = (await bondingManager.getTranscoder(transcoder)).cumulativeFees.toNumber()
+
+                const pendingFees = 125 + cumulativeFees
 
                 assert.equal(
-                    await bondingManager.pendingFees(transcoder, currentRound + 1),
+                    (await bondingManager.pendingFees(transcoder, currentRound + 1)).toNumber(),
                     pendingFees,
                     "should return sum of collected fees and pending fees as both a delegator and transcoder for a round"
                 )

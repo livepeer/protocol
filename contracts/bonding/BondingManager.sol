@@ -4,7 +4,7 @@ import "../ManagerProxyTarget.sol";
 import "./IBondingManager.sol";
 import "../libraries/SortedDoublyLL.sol";
 import "../libraries/MathUtils.sol";
-import "./libraries/EarningsPool.sol";
+import "./libraries/EarningsPoolV2.sol";
 import "../token/ILivepeerToken.sol";
 import "../token/IMinter.sol";
 import "../rounds/IRoundsManager.sol";
@@ -46,6 +46,10 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         uint256 lastActiveStakeUpdateRound;                             // Round for which the stake was last updated while the transcoder is active
         uint256 activationRound;                                        // Round in which the transcoder became active - 0 if inactive
         uint256 deactivationRound;                                      // Round in which the transcoder will become inactive
+        uint256 activeCumulativeRewards;                                // The orchestrator's cumulative rewards that are active in the current round
+        uint256 cumulativeRewards;                                      // The orchestrator's cumulative rewards (rewards earned via the orchestrator's active staked rewards and via the orchestrator's reward cut).
+        uint256 cumulativeFees;                                         // The orchestrator's cumulative fees (fees earned via the orchestrator's active staked rewards and via the orchestrator's fee share)
+        uint256 lastFeeRound;                                            // Latest round in which the transcoder received fees
     }
 
     // The various states a transcoder can be in
@@ -105,6 +109,11 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     // in the pool are locked into the active set for round N + 1
     SortedDoublyLL.Data private transcoderPoolV2;
 
+    // LIP Upgrade Rounds 
+    // These can be used as conditionals to ensure backwards compatibility or skip such backwards compatibility logic
+    // in case 'currentRound' > LIP-X upgrade round
+    mapping(uint256 => uint256) LIP_UPGRADE_ROUNDS; // mapping(LIP-number > round number)
+
     // Check if sender is TicketBroker
     modifier onlyTicketBroker() {
         require(
@@ -155,6 +164,16 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * @param _controller Address of Controller that this contract will be registered with
      */
     constructor(address _controller) public Manager(_controller) {}
+
+    /**
+    * @notice setLIPUpgradeRound sets the round an LIP upgrade would become active. 
+    * @dev if no '_round' is provided '_round' will be set to 'currentRound + 1'
+    * @param _LIP the LIP number.
+    * @param _round (optional) the round in which the LIP becomes active
+    */
+    function setLIPUpgradeRound(uint256 _LIP, uint256 _round) external onlyControllerOwner {
+        LIP_UPGRADE_ROUNDS[_LIP] = _round != 0 ? _round : roundsManager().currentRound().add(1);
+    }
 
     /**
      * @notice Set unbonding period. Only callable by Controller owner
@@ -271,14 +290,14 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         whenSystemNotPaused
         currentRoundInitialized
         autoClaimEarnings
-    {
-        require(delegators[msg.sender].fees > 0, "no fees to withdraw");
+    {   
+        uint256 fees = delegators[msg.sender].fees;
+        require(fees > 0, "no fees to withdraw");
 
-        uint256 amount = delegators[msg.sender].fees;
         delegators[msg.sender].fees = 0;
 
         // Tell Minter to transfer fees (ETH) to the delegator
-        minter().trustedWithdrawETH(msg.sender, amount);
+        minter().trustedWithdrawETH(msg.sender, fees);
 
         emit WithdrawFees(msg.sender);
     }
@@ -309,18 +328,33 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         Transcoder storage t = transcoders[_transcoder];
 
         EarningsPool.Data storage earningsPool = t.earningsPoolPerRound[_round];
+        EarningsPool.Data storage prevEarningsPool = t.earningsPoolPerRound[_round.sub(1)];
 
-        // if transcoder hasn't called 'reward()' for '_round' its 'transcoderFeeShare' and 'transcoderRewardCut'
+        // if transcoder hasn't called 'reward()' for '_round' its 'transcoderFeeShare', 'transcoderRewardCut' and 'totalStake'
         // on the 'EarningsPool' for '_round' would not be initialized and the fee distribution wouldn't happen as expected
+        // for cumulative fee calculation this would result in division by zero. 
         if (_round > t.lastRewardRound) {
             earningsPool.setCommission(
                 t.rewardCut,
                 t.feeShare
             );
+            
+            earningsPool.setStake(t.earningsPoolPerRound[t.lastActiveStakeUpdateRound].totalStake);
+        
+            t.activeCumulativeRewards = t.cumulativeRewards;
         }
 
+        uint256 delegatorsFees = MathUtils.percOf(_fees, earningsPool.transcoderFeeShare);
+        uint256 transcoderCommissionFees = _fees.sub(delegatorsFees);
+        uint256 transcoderRewardStakeFees = MathUtils.percOf(delegatorsFees, t.activeCumulativeRewards, earningsPool.totalStake);
+
+        t.cumulativeFees = t.cumulativeFees.add(transcoderRewardStakeFees).add(transcoderCommissionFees);
         // Add fees to fee pool
-        earningsPool.addToFeePool(_fees);
+        earningsPool.addToFeePool(prevEarningsPool, delegatorsFees);
+
+        if (t.lastFeeRound < _round) {
+            t.lastFeeRound = _round;
+        }
     }
 
     /**
@@ -652,7 +686,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         earningsPool.setCommission(t.rewardCut, t.feeShare);
 
         // If transcoder didn't receive stake updates during the previous round and hasn't called reward for > 1 round
-        // the 'totalStake' and 'claimableStake' on its 'EarningsPool' for the current round wouldn't be initialized
+        // the 'totalStake' on its 'EarningsPool' for the current round wouldn't be initialized
         // Thus we sync the the transcoder's stake to when it was last updated
         // 'updateTrancoderWithRewards()' will set the update round to 'currentRound +1' so this synchronization shouldn't occur frequently
         uint256 lastUpdateRound = t.lastActiveStakeUpdateRound;
@@ -676,30 +710,47 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * @return Pending bonded stake for '_delegator' since last claiming rewards
      */
     function pendingStake(address _delegator, uint256 _endRound) public view returns (uint256) {
-        uint256 currentRound = roundsManager().currentRound();
-        uint256 endRound = _endRound;
-
-        if (endRound > currentRound) {
-            // Highest round we can calculate up to is the current round
-            endRound = currentRound;
-        }
-
         Delegator storage del = delegators[_delegator];
+        uint256 startRound = del.lastClaimRound.add(1);
+
         uint256 currentBondedAmount = del.bondedAmount;
 
-        for (uint256 i = del.lastClaimRound + 1; i <= _endRound; i++) {
-            EarningsPool.Data storage earningsPool = transcoders[del.delegateAddress].earningsPoolPerRound[i];
+        if (_endRound < startRound) {
+            return currentBondedAmount;
+        }
 
-            bool isTranscoder = _delegator == del.delegateAddress;
+        address delegateAddr = del.delegateAddress;
+        Transcoder storage transcoder = transcoders[delegateAddr];
+
+        uint256 lastRewardRound = transcoder.lastRewardRound;
+        if (lastRewardRound < startRound) {
+            return currentBondedAmount;
+        }
+
+        bool isTranscoder = _delegator == delegateAddr;
+
+        for (startRound; startRound < _endRound; startRound.add(1)) {
+            if (startRound >= LIP_UPGRADE_ROUNDS[36]) {break;}
+
+            EarningsPool.Data storage earningsPool = transcoders[delegateAddr].earningsPoolPerRound[startRound];
+
             if (earningsPool.hasClaimableShares()) {
                 // Calculate and add reward pool share from this round
                 currentBondedAmount = currentBondedAmount.add(earningsPool.rewardPoolShare(currentBondedAmount, isTranscoder));
             }
         }
 
-        return currentBondedAmount;
-    }
+        EarningsPool.Data storage endEarningsPool = transcoder.earningsPoolPerRound[_endRound];
+        EarningsPool.Data storage startEarningsPool = transcoder.earningsPoolPerRound[startRound-1];   
 
+        currentBondedAmount = MathUtils.percOf(
+            currentBondedAmount,
+            endEarningsPool.cumulativeRewardFactor != 0 ? endEarningsPool.cumulativeRewardFactor : transcoder.earningsPoolPerRound[transcoder.lastRewardRound].cumulativeRewardFactor,
+            startEarningsPool.cumulativeRewardFactor != 0 ? startEarningsPool.cumulativeRewardFactor : MathUtils.percPoints(1,1)
+        );
+
+        return isTranscoder ? currentBondedAmount.add(transcoder.cumulativeRewards) : currentBondedAmount;
+    }
     /**
      * @notice Returns pending fees for a delegator from its lastClaimRound through an end round
      * @param _delegator Address of delegator
@@ -707,23 +758,32 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * @return Pending fees for '_delegator' since last claiming fees
      */
     function pendingFees(address _delegator, uint256 _endRound) public view returns (uint256) {
-        uint256 currentRound = roundsManager().currentRound();
-        uint256 endRound = _endRound;
+        Delegator storage del = delegators[_delegator];
+        uint256 startRound = del.lastClaimRound.add(1);
 
-        if (endRound > currentRound) {
-            // Highest round we can calculate up to is the current round
-            endRound = currentRound;
+        uint256 currentFees = del.fees;
+
+        if (_endRound < startRound) {
+            return currentFees;
         }
 
-        Delegator storage del = delegators[_delegator];
-        uint256 currentFees = del.fees;
+        address delegateAddr = del.delegateAddress;
+        Transcoder storage transcoder = transcoders[delegateAddr];
+        bool isTranscoder = _delegator == delegateAddr;
+
         uint256 currentBondedAmount = del.bondedAmount;
 
-        for (uint256 i = del.lastClaimRound + 1; i <= _endRound; i++) {
-            EarningsPool.Data storage earningsPool = transcoders[del.delegateAddress].earningsPoolPerRound[i];
+        uint256 lastFeeRound = transcoder.lastFeeRound;
+        if (lastFeeRound < startRound) {
+            return currentFees;
+        }
+
+        for (startRound; startRound < _endRound; startRound++) {
+            if (startRound >= LIP_UPGRADE_ROUNDS[36]) {break;}
+
+            EarningsPool.Data storage earningsPool = transcoders[delegateAddr].earningsPoolPerRound[startRound];
 
             if (earningsPool.hasClaimableShares()) {
-                bool isTranscoder = _delegator == del.delegateAddress;
                 // Calculate and add fee pool share from this round
                 currentFees = currentFees.add(earningsPool.feePoolShare(currentBondedAmount, isTranscoder));
                 // Calculate new bonded amount with rewards from this round. Updated bonded amount used
@@ -732,7 +792,20 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             }
         }
 
-        return currentFees;
+
+
+        EarningsPool.Data storage startEarningsPool = transcoder.earningsPoolPerRound[startRound - 1];
+        EarningsPool.Data storage endEarningsPool = transcoder.earningsPoolPerRound[_endRound];
+
+        currentFees = currentFees.add(
+            MathUtils.percOf(
+                currentBondedAmount,
+                endEarningsPool.cumulativeFeeFactor != 0 ? endEarningsPool.cumulativeFeeFactor : transcoder.earningsPoolPerRound[lastFeeRound].cumulativeFeeFactor,
+                startEarningsPool.cumulativeRewardFactor != 0 ? startEarningsPool.cumulativeRewardFactor : MathUtils.percPoints(1,1)
+            )
+        );
+
+        return isTranscoder ? currentFees.add(transcoder.cumulativeFees) : currentFees;
     }
 
     /**
@@ -791,7 +864,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     )
         public
         view
-        returns (uint256 lastRewardRound, uint256 rewardCut, uint256 feeShare, uint256 lastActiveStakeUpdateRound, uint256 activationRound, uint256 deactivationRound)
+        returns (uint256 lastRewardRound, uint256 rewardCut, uint256 feeShare, uint256 lastActiveStakeUpdateRound, uint256 activationRound, uint256 deactivationRound, uint256 activeCumulativeRewards, uint256 cumulativeRewards, uint256 cumulativeFees)
     {
         Transcoder storage t = transcoders[_transcoder];
 
@@ -801,10 +874,14 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         lastActiveStakeUpdateRound = t.lastActiveStakeUpdateRound;
         activationRound = t.activationRound;
         deactivationRound = t.deactivationRound;
+        activeCumulativeRewards = t.activeCumulativeRewards;
+        cumulativeRewards = t.cumulativeRewards;
+        cumulativeFees = t.cumulativeFees;
     }
 
     /**
      * @notice Return transcoder's token pools for a given round
+     * @dev used to retrieve earnings pool before LIP-36
      * @param _transcoder Address of transcoder
      * @param _round Round number
      * @return reward pool for delegates to '_transcoder'
@@ -837,6 +914,29 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         transcoderFeePool = earningsPool.transcoderFeePool;
         hasTranscoderRewardFeePool = earningsPool.hasTranscoderRewardFeePool;
     }
+
+    /**
+     * @notice Return transcoder's token pools for a given round
+     * @dev used to retrieve LIP-36 earnings pool
+     * @param _transcoder Address of transcoder
+     * @param _round Round number
+     * @return transcoder's total stake
+     * @return transcoder's reward cut for '_round'
+     * @return transcoder's fee share for '_round'
+     */
+    function getTranscoderCumulativeEarningsPoolForRound(
+        address _transcoder,
+        uint256 _round
+    ) public view returns (uint256 totalStake, uint256 transcoderRewardCut, uint256 transcoderFeeShare, uint256 cumulativeFeeFactor, uint256 cumulativeRewardFactor) {
+        EarningsPool.Data storage earningsPool = transcoders[_transcoder].earningsPoolPerRound[_round];
+        totalStake = earningsPool.totalStake;
+        transcoderRewardCut = earningsPool.transcoderRewardCut;
+        transcoderFeeShare = earningsPool.transcoderFeeShare;
+        cumulativeFeeFactor = earningsPool.cumulativeFeeFactor;
+        cumulativeRewardFactor = earningsPool.cumulativeRewardFactor;
+    }
+
+
 
     /**
      * @notice Return delegator info
@@ -1091,9 +1191,19 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     )
         internal
     {
-        EarningsPool.Data storage earningsPool = transcoders[_transcoder].earningsPoolPerRound[_round];
+        Transcoder storage t = transcoders[_transcoder];
+        EarningsPool.Data storage earningsPool = t.earningsPoolPerRound[_round];
+        EarningsPool.Data storage prevEarningsPool = t.earningsPoolPerRound[_round.sub(1)];
+
+        t.activeCumulativeRewards = t.cumulativeRewards;
+
+        uint256 transcoderCommissionRewards = MathUtils.percOf(_rewards, earningsPool.transcoderRewardCut);
+        uint256 delegatorsRewards = _rewards.sub(transcoderCommissionRewards);
+        uint256 transcoderRewardStakeRewards = MathUtils.percOf(delegatorsRewards, t.activeCumulativeRewards, earningsPool.totalStake);
+
+        t.cumulativeRewards = t.cumulativeRewards.add(transcoderRewardStakeRewards).add(transcoderCommissionRewards);
         // Add rewards to reward pool
-        earningsPool.addToRewardPool(_rewards);
+        earningsPool.addToRewardPool(prevEarningsPool, delegatorsRewards);
         // Update transcoder's total stake with rewards
         increaseTotalStake(_transcoder, _rewards, _newPosPrev, _newPosNext);
     }
@@ -1113,25 +1223,41 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // Only will have earnings to claim if you have a delegate
         // If not delegated, skip the earnings claim process
         if (del.delegateAddress != address(0)) {
-            // Cannot claim earnings for more than maxEarningsClaimsRounds
-            // This is a number to cause transactions to fail early if
-            // we know they will require too much gas to loop through all the necessary rounds to claim earnings
-            // The user should instead manually invoke `claimEarnings` to split up the claiming process
-            // across multiple transactions
-            require(_endRound.sub(_lastClaimRound) <= maxEarningsClaimsRounds, "too many rounds to claim through");
 
-            for (uint256 i = startRound; i <= _endRound; i++) {
-                EarningsPool.Data storage earningsPool = transcoders[del.delegateAddress].earningsPoolPerRound[i];
+            // 'pendingFees()' and 'pendingStake()' are O(1) operations after LIP-36
+            if (startRound < LIP_UPGRADE_ROUNDS[36]) {
+                // Cannot claim earnings for more than maxEarningsClaimsRounds before LIP-36
+                // This is a number to cause transactions to fail early if
+                // we know they will require too much gas to loop through all the necessary rounds to claim earnings
+                // The user should instead manually invoke `claimEarnings` to split up the claiming process
+                // across multiple transactions
+                require(_endRound.sub(_lastClaimRound) <= maxEarningsClaimsRounds, "too many rounds to claim through");
+            }
 
-                if (earningsPool.hasClaimableShares()) {
-                    (uint256 fees, uint256 rewards) = earningsPool.claimShare(currentBondedAmount, _delegator == del.delegateAddress);
+            bool isTranscoder = _delegator == del.delegateAddress;
 
-                    currentFees = currentFees.add(fees);
-                    currentBondedAmount = currentBondedAmount.add(rewards);
-                }
+            Transcoder storage transcoder = transcoders[del.delegateAddress];
+
+            // Check whether the endEarningsPool is initialised
+            // If it is not initialised set it to the value from the transcoder's last reward round
+            // This serves two purposes:
+            // - Initialise the correct values for the current claimEarnings 'epoch' to calculate cumulative rewards
+            // - Initialise the correct startEarningsPool for the next claimEarnings 'epoch' to calculate cumulative rewards and fees
+            EarningsPool.Data storage endEarningsPool = transcoder.earningsPoolPerRound[_endRound];
+            if (endEarningsPool.cumulativeRewardFactor == 0) {
+                endEarningsPool.cumulativeRewardFactor = transcoder.earningsPoolPerRound[transcoder.lastRewardRound].cumulativeRewardFactor;
+            }
+
+            currentFees = pendingFees(_delegator, _endRound);
+
+            currentBondedAmount = pendingStake(_delegator, _endRound);
+
+            if (isTranscoder) {
+                transcoder.cumulativeFees = 0;
+                transcoder.cumulativeRewards = 0;
             }
         }
-
+        
         emit EarningsClaimed(
             del.delegateAddress,
             _delegator,
