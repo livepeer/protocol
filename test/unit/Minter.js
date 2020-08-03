@@ -346,18 +346,6 @@ contract("Minter", accounts => {
             await expectThrow(minter.depositETH({from: accounts[1], value: 100}))
         })
 
-        it("should fail if Controller is paused", async () => {
-            await fixture.controller.pause()
-
-            await expectThrow(
-                fixture.ticketBroker.execute(
-                    minter.address,
-                    functionSig("depositETH()"),
-                    {from: accounts[1], value: 100}
-                )
-            )
-        })
-
         it("should receive ETH from currently registered Minter", async () => {
             // Register mock Minter
             const mockMinter = await fixture.deployAndRegister(GenericMock, "Minter")

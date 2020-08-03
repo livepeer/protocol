@@ -171,7 +171,7 @@ contract Minter is Manager, IMinter {
     /**
      * @notice Deposit ETH to this contract. Only callable by the currently registered Minter or JobsManager
      */
-    function depositETH() external payable onlyMinterOrJobsManager whenSystemNotPaused returns (bool) {
+    function depositETH() external payable onlyMinterOrJobsManager returns (bool) {
         return true;
     }
 
