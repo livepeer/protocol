@@ -8,7 +8,7 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 /**
  * @title EarningsPool
  * @dev Manages reward and fee pools for delegators and transcoders
- * @dev v1 DEPRECATED
+ * @dev v2.0
  */
 library EarningsPool {
     using SafeMath for uint256;
@@ -28,10 +28,14 @@ library EarningsPool {
         uint256 transcoderRewardPool;      // Transcoder rewards. If `hasTranscoderRewardFeePool` is false, this should always be 0
         uint256 transcoderFeePool;         // Transcoder fees. If `hasTranscoderRewardFeePool` is false, this should always be 0
         bool hasTranscoderRewardFeePool;   // Flag to indicate if the earnings pool has separate transcoder reward and fee pools
+
+        // LIP36 Cumulative Earnings Calculation https://github.com/livepeer/LIPs/blob/master/LIPs/LIP-36.md
+        uint256 cumulativeRewardFactor; // cumulative reward factor since using LIP36
+        uint256 cumulativeFeeFactor; // cumulative fee factor since using LIP36
     }
 
     /**
-     * @dev Sets transcoderRewardCut and transcoderFeeshare for an EarningsPool
+     * @notice Sets transcoderRewardCut and transcoderFeeshare for an EarningsPool
      * @param earningsPool Storage pointer to EarningsPool struct
      * @param _rewardCut Reward cut of transcoder during the earnings pool's round
      * @param _feeShare Fee share of transcoder during the earnings pool's round
@@ -39,24 +43,20 @@ library EarningsPool {
     function setCommission(EarningsPool.Data storage earningsPool, uint256 _rewardCut, uint256 _feeShare) internal {
         earningsPool.transcoderRewardCut = _rewardCut;
         earningsPool.transcoderFeeShare = _feeShare;
-        // We set this flag to true here to differentiate between EarningsPool structs created using older versions of this library.
-        // When using a version of this library after the introduction of this flag to read an EarningsPool struct created using an older version
-        // of this library, this flag should be false in the returned struct because the default value for EVM storage is 0
-        earningsPool.hasTranscoderRewardFeePool = true;
     }
 
     /**
-     * @dev Sets totalStake and claimableStake for an EarningsPool
+     * @notice Sets totalStake for an EarningsPool
      * @param earningsPool Storage pointer to EarningsPool struct
      * @param _stake Total stake of the transcoder during the earnings pool's round
      */
     function setStake(EarningsPool.Data storage earningsPool, uint256 _stake) internal {
         earningsPool.totalStake = _stake;
-        earningsPool.claimableStake = _stake;
     }
 
     /**
-     * @dev Return whether this earnings pool has claimable shares i.e. is there unclaimed stake
+     * @notice Return whether this earnings pool has claimable shares i.e. is there unclaimed stake
+     * @dev DEPRECATED - for backwards compatibility with v1 EarningsPools
      * @param earningsPool Storage pointer to EarningsPool struct
      */
     function hasClaimableShares(EarningsPool.Data storage earningsPool) internal view returns (bool) {
@@ -64,21 +64,24 @@ library EarningsPool {
     }
 
     /**
-     * @dev Add fees to the earnings pool
+     * @notice Add fees to the earnings pool
      * @param earningsPool Storage pointer to EarningsPools struct
      * @param _fees Amount of fees to add
      */
-    function addToFeePool(EarningsPool.Data storage earningsPool, uint256 _fees) internal {
-        if (earningsPool.hasTranscoderRewardFeePool) {
-            // If the earnings pool has a separate transcoder fee pool, calculate the portion of incoming fees
-            // to put into the delegator fee pool and the portion to put into the transcoder fee pool
-            uint256 delegatorFees = MathUtils.percOf(_fees, earningsPool.transcoderFeeShare);
-            earningsPool.feePool = earningsPool.feePool.add(delegatorFees);
-            earningsPool.transcoderFeePool = earningsPool.transcoderFeePool.add(_fees.sub(delegatorFees));
-        } else {
-            // If the earnings pool does not have a separate transcoder fee pool, put all the fees into the delegator fee pool
-            earningsPool.feePool = earningsPool.feePool.add(_fees);
+    function addToFeePool(EarningsPool.Data storage earningsPool, EarningsPool.Data storage _prevEarningsPool, uint256 _fees) internal {
+        uint256 prevCumulativeFeeFactor = _prevEarningsPool.cumulativeFeeFactor;
+        uint256 prevCumulativeRewardFactor = _prevEarningsPool.cumulativeRewardFactor != 0 ? _prevEarningsPool.cumulativeRewardFactor : MathUtils.percPoints(1,1);
+
+        if (earningsPool.cumulativeFeeFactor == 0) {
+            earningsPool.cumulativeFeeFactor = prevCumulativeFeeFactor.add(
+                MathUtils.percOf(prevCumulativeRewardFactor, _fees, earningsPool.totalStake)
+            );
+            return;
         }
+
+        earningsPool.cumulativeFeeFactor = earningsPool.cumulativeFeeFactor.add(
+                MathUtils.percOf(prevCumulativeRewardFactor, _fees, earningsPool.totalStake)
+            );
     }
 
     /**
@@ -86,21 +89,17 @@ library EarningsPool {
      * @param earningsPool Storage pointer to EarningsPool struct
      * @param _rewards Amount of rewards to add
      */
-    function addToRewardPool(EarningsPool.Data storage earningsPool, uint256 _rewards) internal {
-        if (earningsPool.hasTranscoderRewardFeePool) {
-            // If the earnings pool has a separate transcoder reward pool, calculate the portion of incoming rewards
-            // to put into the delegator reward pool and the portion to put into the transcoder reward pool
-            uint256 transcoderRewards = MathUtils.percOf(_rewards, earningsPool.transcoderRewardCut);
-            earningsPool.rewardPool = earningsPool.rewardPool.add(_rewards.sub(transcoderRewards));
-            earningsPool.transcoderRewardPool = earningsPool.transcoderRewardPool.add(transcoderRewards);
-        } else {
-            // If the earnings pool does not have a separate transcoder reward pool, put all the rewards into the delegator reward pool
-            earningsPool.rewardPool = earningsPool.rewardPool.add(_rewards);
-        }
+    function addToRewardPool(EarningsPool.Data storage earningsPool, EarningsPool.Data storage _prevEarningsPool, uint256 _rewards) internal {
+        uint256 prevCumulativeRewardFactor = _prevEarningsPool.cumulativeRewardFactor != 0 ? _prevEarningsPool.cumulativeRewardFactor : MathUtils.percPoints(1,1);
+
+        earningsPool.cumulativeRewardFactor = prevCumulativeRewardFactor.add(
+            MathUtils.percOf(prevCumulativeRewardFactor, _rewards, earningsPool.totalStake)
+        );
     }
 
     /**
-     * @dev Claim reward and fee shares which decreases the reward/fee pools and the remaining claimable stake
+     * @notice Claim reward and fee shares which decreases the reward/fee pools and the remaining claimable stake
+     * @dev DEPRECATED - for backwards compatibility with v1 EarningsPools
      * @param earningsPool Storage pointer to EarningsPool struct
      * @param _stake Stake of claimant
      * @param _isTranscoder Flag indicating whether the claimant is a transcoder
@@ -149,14 +148,17 @@ library EarningsPool {
             earningsPool.rewardPool = earningsPool.rewardPool.sub(totalRewards);
         }
 
-        // Update remaining claimable stake
-        earningsPool.claimableStake = earningsPool.claimableStake.sub(_stake);
+        // Update remaining claimable stake if not using a cumulativeEarningsPool 
+        if (earningsPool.claimableStake > 0 ) {
+            earningsPool.claimableStake = earningsPool.claimableStake.sub(_stake);
+        }
 
         return (totalFees, totalRewards);
     }
 
     /**
-     * @dev Returns the fee pool share for a claimant. If the claimant is a transcoder, include transcoder fees as well.
+     * @notice Returns the fee pool share for a claimant. If the claimant is a transcoder, include transcoder fees as well.
+     * @dev DEPRECATED - for backwards compatibility with v1 EarningsPools
      * @param earningsPool Storage pointer to EarningsPool struct
      * @param _stake Stake of claimant
      * @param _isTranscoder Flag indicating whether the claimant is a transcoder
@@ -175,7 +177,7 @@ library EarningsPool {
     }
 
     /**
-     * @dev Returns the reward pool share for a claimant. If the claimant is a transcoder, include transcoder rewards as well.
+     * @notice Returns the reward pool share for a claimant. If the claimant is a transcoder, include transcoder rewards as well.
      * @param earningsPool Storage pointer to EarningsPool struct
      * @param _stake Stake of claimant
      * @param _isTranscoder Flag indicating whether the claimant is a transcoder
