@@ -6,6 +6,7 @@ import BN from "bn.js"
 import truffleAssert from "truffle-assertions"
 
 const BondingManager = artifacts.require("BondingManager")
+const LinkedList = artifacts.require("SortedDoublyLL")
 
 const {DelegatorStatus, TranscoderStatus} = constants
 
@@ -24,6 +25,8 @@ contract("BondingManager", accounts => {
         fixture = new Fixture(web3)
         await fixture.deploy()
 
+        const ll = await LinkedList.new()
+        BondingManager.link("SortedDoublyLL", ll.address)
         bondingManager = await fixture.deployAndRegister(BondingManager, "BondingManager", fixture.controller.address)
 
         await bondingManager.setUnbondingPeriod(UNBONDING_PERIOD)
