@@ -4,7 +4,6 @@ import {contractId, functionSig, functionEncodedABI} from "../../utils/helpers"
 import {constants} from "../../utils/constants"
 import BN from "bn.js"
 import truffleAssert from "truffle-assertions"
-import {assert} from "chai"
 
 const BondingManager = artifacts.require("BondingManager")
 
@@ -1594,6 +1593,10 @@ contract("BondingManager", accounts => {
             assert.equal(endNextTotalStake.sub(startNextTotalStake), 1000, "should update next total stake with new rewards")
         })
 
+        it("should correctly update caller with rewards if cumulativeRewardFactor was set in the last reward round and the last reward round < currentRound - 1 ", async () => {
+            
+        })
+
         it("Should emit a Reward event", async () => {
             const txRes = await bondingManager.reward({from: transcoder})
             truffleAssert.eventEmitted(
@@ -2092,6 +2095,7 @@ contract("BondingManager", accounts => {
             const expFees = new BN(delegatorFees * .3) // 30%
             const txResult = await bondingManager.claimEarnings(currentRound + 1, {from: delegator1})
 
+            console.log(expRewards.toString(), expFees.toString()) 
             truffleAssert.eventEmitted(
                 txResult,
                 "EarningsClaimed",
