@@ -109,8 +109,7 @@ contract("LIP36 transition", accounts => {
 
        describe("transcoder", () => {
         it("should return pending rewards for a round before LIP-36", async () => {
-            let cumulativeRewards = (await bondingManager.getTranscoder(transcoder)).cumulativeRewards.toNumber()
-            const pendingRewards = 250 + cumulativeRewards
+            const pendingRewards = 250 + 500 
 
             assert.equal(
                 (await bondingManager.pendingStake(transcoder, currentRound)).toNumber(),
@@ -121,8 +120,8 @@ contract("LIP36 transition", accounts => {
 
         it("should return pending rewards for rounds both before and after LIP-36 combined", async () => {
             const cumulativeRewards = 500
-            const pendingRewards0 = 250
-            const pendingRewards1 = Math.floor((500 * (1250 * PERC_DIVISOR / 3000)) / PERC_DIVISOR)
+            const pendingRewards0 = 250 + 500
+            const pendingRewards1 = Math.floor((500 * (1750 * PERC_DIVISOR / 3000)) / PERC_DIVISOR)
 
             assert.equal(
                 (await bondingManager.pendingStake(transcoder, currentRound + 1)).toString(),
@@ -193,7 +192,6 @@ contract("LIP36 transition", accounts => {
             it("should return pending fees for rounds both before and after LIP-36 combined", async () => {
                 const pendingFees0 = 125
                 const pendingFees1 = Math.floor((250 * (1250 * PERC_DIVISOR / 3000)) / PERC_DIVISOR)
-    
                 assert.equal(
                     (await bondingManager.pendingFees(delegator, currentRound + 1)).toNumber(),
                     pendingFees0 + pendingFees1,
@@ -204,21 +202,19 @@ contract("LIP36 transition", accounts => {
 
         describe("transcoder", () => {
             it("should return pending fees for a round before LIP-36", async () => {
-                const cumulativeFees = 750    
-                const pendingFees = 125
+                const pendingFees = 125 + 750
     
                 assert.equal(
                     (await bondingManager.pendingFees(transcoder, currentRound )).toNumber(),
-                    pendingFees + cumulativeFees,
+                    pendingFees ,
                     "should return sum of collected fees and pending fees as both a delegator and transcoder for a round"
                 )
             })
 
             it("should return pending fees for a round before LIP-36", async () => {
                 let cumulativeFees = (await bondingManager.getTranscoder(transcoder)).cumulativeFees.toNumber()
-                const pendingFees0 = 125
-                const pendingFees1 = pendingFees0 + Math.floor((250 * (1750 * PERC_DIVISOR / 3000)) / PERC_DIVISOR)
-                console.log(cumulativeFees, pendingFees0, pendingFees1)
+                const pendingFees0 = 125 + 750
+                const pendingFees1 =  Math.floor((250 * (1750 * PERC_DIVISOR / 3000)) / PERC_DIVISOR)
                 assert.equal(
                     (await bondingManager.pendingFees(transcoder, currentRound + 1)).toNumber(),
                     pendingFees0 +  pendingFees1 + cumulativeFees,
@@ -226,9 +222,5 @@ contract("LIP36 transition", accounts => {
                 )
             })
         })
-    })
-
-    describe("claimEarnings", () => {
-
     })
 })
