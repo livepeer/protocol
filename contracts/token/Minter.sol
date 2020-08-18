@@ -5,7 +5,7 @@ import "./IMinter.sol";
 import "./ILivepeerToken.sol";
 import "../rounds/IRoundsManager.sol";
 import "../bonding/IBondingManager.sol";
-import "../libraries/MathUtils.sol";
+import "../libraries/MathUtilsV2.sol";
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
@@ -31,25 +31,31 @@ contract Minter is Manager, IMinter {
 
     // Checks if caller is BondingManager
     modifier onlyBondingManager() {
-        require(msg.sender == controller.getContract(keccak256("BondingManager")));
+        require(msg.sender == controller.getContract(keccak256("BondingManager")), "msg.sender not BondingManager");
         _;
     }
 
     // Checks if caller is RoundsManager
     modifier onlyRoundsManager() {
-        require(msg.sender == controller.getContract(keccak256("RoundsManager")));
+        require(msg.sender == controller.getContract(keccak256("RoundsManager")), "msg.sender not RoundsManager");
         _;
     }
 
     // Checks if caller is either BondingManager or JobsManager
     modifier onlyBondingManagerOrJobsManager() {
-        require(msg.sender == controller.getContract(keccak256("BondingManager")) || msg.sender == controller.getContract(keccak256("JobsManager")));
+        require(
+            msg.sender == controller.getContract(keccak256("BondingManager")) || msg.sender == controller.getContract(keccak256("JobsManager")),
+            "msg.sender not BondingManager or JobsManager"
+        );
         _;
     }
 
     // Checks if caller is either the currently registered Minter or JobsManager
     modifier onlyMinterOrJobsManager() {
-        require(msg.sender == controller.getContract(keccak256("Minter")) || msg.sender == controller.getContract(keccak256("JobsManager")));
+        require(
+            msg.sender == controller.getContract(keccak256("Minter")) || msg.sender == controller.getContract(keccak256("JobsManager")),
+            "msg.sender not Minter or JobsManager"
+        );
         _;
     }
 
@@ -61,11 +67,11 @@ contract Minter is Manager, IMinter {
      */
     constructor(address _controller, uint256 _inflation, uint256 _inflationChange, uint256 _targetBondingRate) public Manager(_controller) {
         // Inflation must be valid percentage
-        require(MathUtils.validPerc(_inflation));
+        require(MathUtils.validPerc(_inflation), "_inflation is invalid percentage");
         // Inflation change must be valid percentage
-        require(MathUtils.validPerc(_inflationChange));
+        require(MathUtils.validPerc(_inflationChange), "_inflationChange is invalid percentage");
         // Target bonding rate must be valid percentage
-        require(MathUtils.validPerc(_targetBondingRate));
+        require(MathUtils.validPerc(_targetBondingRate), "_targetBondingRate is invalid percentage");
 
         inflation = _inflation;
         inflationChange = _inflationChange;
@@ -78,7 +84,7 @@ contract Minter is Manager, IMinter {
      */
     function setTargetBondingRate(uint256 _targetBondingRate) external onlyControllerOwner {
         // Must be valid percentage
-        require(MathUtils.validPerc(_targetBondingRate));
+        require(MathUtils.validPerc(_targetBondingRate), "_targetBondingRate is invalid percentage");
 
         targetBondingRate = _targetBondingRate;
 
@@ -91,7 +97,7 @@ contract Minter is Manager, IMinter {
      */
     function setInflationChange(uint256 _inflationChange) external onlyControllerOwner {
         // Must be valid percentage
-        require(MathUtils.validPerc(_inflationChange));
+        require(MathUtils.validPerc(_inflationChange), "_inflationChange is invalid percentage");
 
         inflationChange = _inflationChange;
 
@@ -105,15 +111,15 @@ contract Minter is Manager, IMinter {
      */
     function migrateToNewMinter(IMinter _newMinter) external onlyControllerOwner whenSystemPaused {
         // New Minter cannot be the current Minter
-        require(_newMinter != this);
+        require(_newMinter != this, "new Minter cannot be current Minter");
         // Check for null address
-        require(address(_newMinter) != address(0));
+        require(address(_newMinter) != address(0), "new Minter cannot be null address");
 
         IController newMinterController = _newMinter.getController();
         // New Minter must have same Controller as current Minter
-        require(newMinterController == controller);
+        require(newMinterController == controller, "new Minter Controller must be current Controller");
         // New Minter's Controller must have the current Minter registered
-        require(newMinterController.getContract(keccak256("Minter")) == address(this));
+        require(newMinterController.getContract(keccak256("Minter")) == address(this), "new Minter must be registered");
 
         // Transfer ownership of token to new Minter
         livepeerToken().transferOwnership(address(_newMinter));
@@ -134,7 +140,7 @@ contract Minter is Manager, IMinter {
         // Update amount of minted tokens for round
         currentMintedTokens = currentMintedTokens.add(mintAmount);
         // Minted tokens must not exceed mintable tokens
-        require(currentMintedTokens <= currentMintableTokens);
+        require(currentMintedTokens <= currentMintableTokens, "minted tokens cannot exceed mintable tokens");
         // Mint new tokens
         livepeerToken().mint(address(this), mintAmount);
 
@@ -171,7 +177,7 @@ contract Minter is Manager, IMinter {
     /**
      * @notice Deposit ETH to this contract. Only callable by the currently registered Minter or JobsManager
      */
-    function depositETH() external payable onlyMinterOrJobsManager whenSystemNotPaused returns (bool) {
+    function depositETH() external payable onlyMinterOrJobsManager returns (bool) {
         return true;
     }
 

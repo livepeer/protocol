@@ -1,6 +1,7 @@
 import Fixture from "./helpers/Fixture"
 import BN from "bn.js"
 import expectThrow from "../helpers/expectThrow"
+import expectRevertWithReason from "../helpers/expectFail"
 import {constants} from "../../utils/constants"
 import {contractId, functionSig, functionEncodedABI} from "../../utils/helpers"
 
@@ -11,7 +12,7 @@ contract("Minter", accounts => {
     let fixture
     let minter
 
-    const PERC_DIVISOR = 1000000
+    const PERC_DIVISOR = 1000000000
     const PERC_MULTIPLIER = PERC_DIVISOR / 100
 
     const INFLATION = 26 * PERC_MULTIPLIER
@@ -20,15 +21,24 @@ contract("Minter", accounts => {
 
     describe("constructor", () => {
         it("should fail if provided inflation is invalid percentage > 100%", async () => {
-            await expectThrow(Minter.new(accounts[0], PERC_DIVISOR + 1, INFLATION_CHANGE, TARGET_BONDING_RATE))
+            await expectRevertWithReason(
+                Minter.new(accounts[0], PERC_DIVISOR + 1, INFLATION_CHANGE, TARGET_BONDING_RATE),
+                "_inflation is invalid percentage"
+            )
         })
 
         it("should fail if provided inflationChange is invalid percentage > 100%", async () => {
-            await expectThrow(Minter.new(accounts[0], INFLATION, PERC_DIVISOR + 1, TARGET_BONDING_RATE))
+            await expectRevertWithReason(
+                Minter.new(accounts[0], INFLATION, PERC_DIVISOR + 1, TARGET_BONDING_RATE),
+                "_inflationChange is invalid percentage"
+            )
         })
 
         it("should fail if provided targetBondingRate is invalid percentage > 100%", async () => {
-            await expectThrow(Minter.new(accounts[0], INFLATION, INFLATION_CHANGE, PERC_DIVISOR + 1))
+            await expectRevertWithReason(
+                Minter.new(accounts[0], INFLATION, INFLATION_CHANGE, PERC_DIVISOR + 1),
+                "_targetBondingRate is invalid percentage"
+            )
         })
 
         it("should create contract", async () => {
@@ -62,7 +72,10 @@ contract("Minter", accounts => {
         })
 
         it("should fail if provided targetBondingRate is not a valid percentage", async () => {
-            await expectThrow(minter.setTargetBondingRate(PERC_DIVISOR + 1))
+            await expectRevertWithReason(
+                minter.setTargetBondingRate(PERC_DIVISOR + 1),
+                "_targetBondingRate is invalid percentage"
+            )
         })
 
         it("should set targetBondingRate", async () => {
@@ -78,7 +91,10 @@ contract("Minter", accounts => {
         })
 
         it("should fail if provided inflationChange is not a valid percentage", async () => {
-            await expectThrow(minter.setInflationChange(PERC_DIVISOR + 1))
+            await expectRevertWithReason(
+                minter.setInflationChange(PERC_DIVISOR + 1),
+                "_inflationChange is invalid percentage"
+            )
         })
 
         it("should set inflationChange", async () => {
@@ -104,12 +120,18 @@ contract("Minter", accounts => {
 
         it("should fail if provided new minter is the current minter", async () => {
             await fixture.controller.pause()
-            await expectThrow(minter.migrateToNewMinter(minter.address))
+            await expectRevertWithReason(
+                minter.migrateToNewMinter(minter.address),
+                "new Minter cannot be current Minter"
+            )
         })
 
         it("should fail if provided new minter is null address", async () => {
             await fixture.controller.pause()
-            await expectThrow(minter.migrateToNewMinter(constants.NULL_ADDRESS))
+            await expectRevertWithReason(
+                minter.migrateToNewMinter(constants.NULL_ADDRESS),
+                "new Minter cannot be null address"
+            )
         })
 
         it("should fail if provided new minter does not have a getController() function", async () => {
@@ -122,7 +144,10 @@ contract("Minter", accounts => {
             const newMinter = await GenericMock.new()
             await newMinter.setMockAddress(functionSig("getController()"), accounts[1])
 
-            await expectThrow(minter.migrateToNewMinter(newMinter.address))
+            await expectRevertWithReason(
+                minter.migrateToNewMinter(newMinter.address),
+                "new Minter Controller must be current Controller"
+            )
         })
 
         it("should fail if provided new minter's controller does not have current minter registered", async () => {
@@ -132,7 +157,10 @@ contract("Minter", accounts => {
             await newMinter.setMockAddress(functionSig("getController()"), controllerAddr)
             await fixture.controller.setContractInfo(contractId("Minter"), accounts[1], web3.utils.asciiToHex("0x123"))
 
-            await expectThrow(minter.migrateToNewMinter(newMinter.address))
+            await expectRevertWithReason(
+                minter.migrateToNewMinter(newMinter.address),
+                "new Minter must be registered"
+            )
         })
 
         it("should transfer ownership of the token, current token balance and current ETH balance to new minter", async () => {
@@ -160,7 +188,10 @@ contract("Minter", accounts => {
         })
 
         it("should fail if caller is not BondingManager", async () => {
-            await expectThrow(minter.createReward(10, 100))
+            await expectRevertWithReason(
+                minter.createReward(10, 100),
+                "msg.sender not BondingManager"
+            )
         })
 
         it("should fail if Controller is paused", async () => {
@@ -232,13 +263,19 @@ contract("Minter", accounts => {
             // Set up reward call via BondingManager
             await fixture.bondingManager.execute(minter.address, functionEncodedABI("createReward(uint256,uint256)", ["uint256", "uint256"], [100, 100]))
 
-            await expectThrow(fixture.bondingManager.execute(minter.address, functionEncodedABI("createReward(uint256,uint256)", ["uint256", "uint256"], [10, 100])))
+            await expectRevertWithReason(
+                fixture.bondingManager.execute(minter.address, functionEncodedABI("createReward(uint256,uint256)", ["uint256", "uint256"], [10, 100])),
+                "minted tokens cannot exceed mintable tokens"
+            )
         })
     })
 
     describe("trustedTransferTokens", () => {
         it("should fail if caller is not BondingManager", async () => {
-            await expectThrow(minter.trustedTransferTokens(accounts[1], 100))
+            await expectRevertWithReason(
+                minter.trustedTransferTokens(accounts[1], 100),
+                "msg.sender not BondingManager"
+            )
         })
 
         it("should fail if Controller is paused", async () => {
@@ -264,7 +301,10 @@ contract("Minter", accounts => {
 
     describe("trustedBurnTokens", () => {
         it("should fail if caller is not BondingManager", async () => {
-            await expectThrow(minter.trustedBurnTokens(100))
+            await expectRevertWithReason(
+                minter.trustedBurnTokens(100),
+                "msg.sender not BondingManager"
+            )
         })
 
         it("should fail if Controller is paused", async () => {
@@ -290,7 +330,10 @@ contract("Minter", accounts => {
 
     describe("trustedWithdrawETH", () => {
         it("should fail if caller is not BondingManager or JobsManager", async () => {
-            await expectThrow(minter.trustedWithdrawETH(accounts[1], 100))
+            await expectRevertWithReason(
+                minter.trustedWithdrawETH(accounts[1], 100),
+                "msg.sender not BondingManager or JobsManager"
+            )
         })
 
         it("should fail if Controller is paused", async () => {
@@ -343,18 +386,9 @@ contract("Minter", accounts => {
 
     describe("depositETH", () => {
         it("should fail if caller is not currently registered Minter or JobsManager", async () => {
-            await expectThrow(minter.depositETH({from: accounts[1], value: 100}))
-        })
-
-        it("should fail if Controller is paused", async () => {
-            await fixture.controller.pause()
-
-            await expectThrow(
-                fixture.ticketBroker.execute(
-                    minter.address,
-                    functionSig("depositETH()"),
-                    {from: accounts[1], value: 100}
-                )
+            await expectRevertWithReason(
+                minter.depositETH({from: accounts[1], value: 100}),
+                "msg.sender not Minter or JobsManager"
             )
         })
 
@@ -381,7 +415,10 @@ contract("Minter", accounts => {
         })
 
         it("should fail if caller is not RoundsManager", async () => {
-            await expectThrow(minter.setCurrentRewardTokens())
+            await expectRevertWithReason(
+                minter.setCurrentRewardTokens(),
+                "msg.sender not RoundsManager"
+            )
         })
 
         it("should fail if Controller is paused", async () => {
@@ -468,6 +505,37 @@ contract("Minter", accounts => {
             const expCurrentMintableTokens = Math.floor((1000 * inflation.toNumber()) / PERC_DIVISOR)
 
             assert.equal(await minter.currentMintableTokens.call(), expCurrentMintableTokens, "wrong currentMintableTokens")
+        })
+
+        it("should set currentMintableTokens and inflation correctly for different inflationChange values", async () => {
+            const totalSupply = new BN("21645383016495782629665363")
+            const inflation = .0455 * PERC_MULTIPLIER
+            const targetBondingRate = 50 * PERC_MULTIPLIER
+            const currentBondingRate = 51 * PERC_MULTIPLIER
+            const totalBonded = totalSupply.mul(new BN(currentBondingRate)).div(new BN(PERC_DIVISOR))
+
+            await fixture.token.setMockUint256(functionSig("totalSupply()"), totalSupply)
+            // Set total bonded tokens - we are above the target bonding rate so inflation decreases
+            await fixture.bondingManager.setMockUint256(functionSig("getTotalBonded()"), totalBonded)
+
+            let inflationChange = Math.ceil(.0003 * PERC_MULTIPLIER)
+            let newMinter = await fixture.deployAndRegister(Minter, "Minter", fixture.controller.address, inflation, inflationChange, targetBondingRate)
+
+            await fixture.roundsManager.execute(newMinter.address, functionSig("setCurrentRewardTokens()"))
+
+            assert.equal(await newMinter.inflation.call(), .0452 * PERC_MULTIPLIER)
+            const currentMintableTokens1 = await newMinter.currentMintableTokens.call()
+
+            inflationChange = .00005 * PERC_MULTIPLIER
+            newMinter = await fixture.deployAndRegister(Minter, "Minter", fixture.controller.address, inflation, inflationChange, targetBondingRate)
+
+            await fixture.roundsManager.execute(newMinter.address, functionSig("setCurrentRewardTokens()"))
+
+            assert.equal(await newMinter.inflation.call(), .04545 * PERC_MULTIPLIER)
+            const currentMintableTokens2 = await newMinter.currentMintableTokens.call()
+
+            // Check that currentMintableTokens is greater when using a smaller inflationChange value
+            assert.isOk(currentMintableTokens2.gt(currentMintableTokens1))
         })
 
         it("should set currentMintedTokens = 0", async () => {
