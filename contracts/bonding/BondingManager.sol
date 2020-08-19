@@ -743,7 +743,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         bool isTranscoder = _delegator == del.delegateAddress;
 
         uint256 LIP_36_ROUND = LIP_UPGRADE_ROUNDS[36];
-        while(startRound <= _endRound && startRound < LIP_36_ROUND ) {
+        while(startRound <= _endRound && startRound <= LIP_36_ROUND ) {
             EarningsPool.Data storage earningsPool = transcoders[del.delegateAddress].earningsPoolPerRound[startRound];
 
             if (earningsPool.hasClaimableShares()) {
@@ -753,7 +753,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             startRound = startRound.add(1);
         }
 
-        if (_endRound < LIP_36_ROUND) { return currentBondedAmount; }
+        if (_endRound <= LIP_36_ROUND) { return currentBondedAmount; }
 
         uint256 startRewardFactor = transcoder.earningsPoolPerRound[startRound.sub(1)].cumulativeRewardFactor; 
         uint256 endRewardFactor = transcoder.earningsPoolPerRound[_endRound].cumulativeRewardFactor;
@@ -796,7 +796,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         }
 
         uint256 LIP_36_ROUND = LIP_UPGRADE_ROUNDS[36];
-        while(startRound <= _endRound && startRound < LIP_36_ROUND ) {
+        while(startRound <= _endRound && startRound <= LIP_36_ROUND ) {
             EarningsPool.Data storage earningsPool = transcoders[del.delegateAddress].earningsPoolPerRound[startRound];
 
             if (earningsPool.hasClaimableShares()) {
@@ -810,7 +810,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             startRound = startRound.add(1);
         }
 
-        if (_endRound < LIP_36_ROUND) { return currentFees; }
+        if (_endRound <= LIP_36_ROUND) { return currentFees; }
 
         uint256 startRewardFactor = transcoder.earningsPoolPerRound[startRound.sub(1)].cumulativeRewardFactor; 
         uint256 endFeeFactor = transcoder.earningsPoolPerRound[_endRound].cumulativeFeeFactor;

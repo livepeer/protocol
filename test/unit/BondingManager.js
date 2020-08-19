@@ -2022,6 +2022,8 @@ contract("BondingManager", accounts => {
         let delegatorFees
 
         beforeEach(async () => {
+            await bondingManager.setLIPUpgradeRound(36, 1)
+
             await fixture.roundsManager.setMockBool(functionSig("currentRoundInitialized()"), true)
             await fixture.roundsManager.setMockBool(functionSig("currentRoundLocked()"), false)
             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound - 1)
@@ -2276,6 +2278,8 @@ contract("BondingManager", accounts => {
         const currentRound = 100
 
         beforeEach(async () => {
+            await bondingManager.setLIPUpgradeRound(36, 1)
+
             await fixture.roundsManager.setMockBool(functionSig("currentRoundInitialized()"), true)
             await fixture.roundsManager.setMockBool(functionSig("currentRoundLocked()"), false)
             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound - 2)
@@ -2412,6 +2416,8 @@ contract("BondingManager", accounts => {
         const currentRound = 100
 
         beforeEach(async () => {
+            await bondingManager.setLIPUpgradeRound(36, 1)
+
             await fixture.roundsManager.setMockBool(functionSig("currentRoundInitialized()"), true)
             await fixture.roundsManager.setMockBool(functionSig("currentRoundLocked()"), false)
             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound - 1)
