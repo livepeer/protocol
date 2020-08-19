@@ -325,26 +325,18 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     {
         require(isRegisteredTranscoder(_transcoder), "transcoder must be registered");
 
+        uint256 currentRound = roundsManager().currentRound();
+
         Transcoder storage t = transcoders[_transcoder];
+        uint256 lastRewardRound = t.lastRewardRound;
 
-        EarningsPool.Data storage earningsPool = t.earningsPoolPerRound[_round];
-        EarningsPool.Data storage prevEarningsPool = t.earningsPoolPerRound[_round.sub(1)];
-
-        if (prevEarningsPool.cumulativeRewardFactor == 0 && _round < t.lastRewardRound) {
-            prevEarningsPool.cumulativeRewardFactor = t.earningsPoolPerRound[t.lastRewardRound].cumulativeRewardFactor;
-        } else {
-            // WHAT IF t.lastRewardRound >= _round ? This would be incorrect because this would be the 'currentEarningsPool'.cumulativeRewardFactor
-        }
-
-        // prevEarningsPool.cumulativeFeeFactor will only be used if lastFeeRound < _round, otherwise earningsPool.cumulativeFeeFactor will be initialised already
-        if (prevEarningsPool.cumulativeFeeFactor == 0) {
-            prevEarningsPool.cumulativeFeeFactor = t.earningsPoolPerRound[t.lastFeeRound].cumulativeFeeFactor;
-        }
+        EarningsPool.Data storage earningsPool = t.earningsPoolPerRound[currentRound];
+        EarningsPool.Data storage prevEarningsPool = t.earningsPoolPerRound[currentRound.sub(1)];
 
         // if transcoder hasn't called 'reward()' for '_round' its 'transcoderFeeShare', 'transcoderRewardCut' and 'totalStake'
         // on the 'EarningsPoolV2' for '_round' would not be initialized and the fee distribution wouldn't happen as expected
         // for cumulative fee calculation this would result in division by zero. 
-        if (_round > t.lastRewardRound) {
+        if (lastRewardRound < currentRound) {
             earningsPool.setCommission(
                 t.rewardCut,
                 t.feeShare
@@ -355,15 +347,40 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             t.activeCumulativeRewards = t.cumulativeRewards;
         }
 
+        // LIP-36: Add fees for the current round instead of '_round'
+        // https://github.com/livepeer/LIPs/issues/35#issuecomment-673659199
+        uint256 totalStake = earningsPool.totalStake;
+        if ( prevEarningsPool.cumulativeRewardFactor == 0 && lastRewardRound > LIP_UPGRADE_ROUNDS[36]) {
+            // if transcoder didn't call reward for 'currentRound - 1' nor 'currentRound', use the cumulativeRewardFactor for 'lastRewardRound'
+             if (lastRewardRound < currentRound) {
+                prevEarningsPool.cumulativeRewardFactor = t.earningsPoolPerRound[lastRewardRound].cumulativeRewardFactor;
+             } else {
+                // if transcoder called reward for 'currentRound' but not for 'currentRound - 1' (missed reward call)
+                // retroactively calculate what its cumulativeRewardFactor would have been for 'currentRound - 1' (cfr. previous lastRewardRound for transcoder)  
+                // based on rewards for currentRound
+                uint256 rewards = MathUtils.percOf(minter().currentMintableTokens(), totalStake, currentRoundTotalActiveStake);
+                uint256 transcoderCommissionRewards = MathUtils.percOf(rewards, earningsPool.transcoderRewardCut);
+                uint256 delegatorRewards = rewards.sub(transcoderCommissionRewards);
+                prevEarningsPool.cumulativeRewardFactor = MathUtils.percOf(earningsPool.cumulativeRewardFactor, MathUtils.percOf(delegatorRewards, totalStake).add(1));
+            }
+        }
+
+        uint256 prevCumulativeFeeFactor; 
+        uint256 lastFeeRound = t.lastFeeRound;
+        // prevEarningsPool.cumulativeFeeFactor will only be used if 'transcoder.lastFeeRound' < 'currentRound', otherwise earningsPool.cumulativeFeeFactor will be initialised already
+        if (prevEarningsPool.cumulativeFeeFactor == 0) {
+            prevEarningsPool.cumulativeFeeFactor = t.earningsPoolPerRound[lastFeeRound].cumulativeFeeFactor;
+        }
+
         uint256 delegatorsFees = MathUtils.percOf(_fees, earningsPool.transcoderFeeShare);
         uint256 transcoderCommissionFees = _fees.sub(delegatorsFees);
-        uint256 transcoderRewardStakeFees = MathUtils.percOf(delegatorsFees, t.activeCumulativeRewards, earningsPool.totalStake);
+        uint256 transcoderRewardStakeFees = MathUtils.percOf(delegatorsFees, t.activeCumulativeRewards, totalStake);
 
         t.cumulativeFees = t.cumulativeFees.add(transcoderRewardStakeFees).add(transcoderCommissionFees);
         // Add fees to fee pool
         earningsPool.addToFeePool(prevEarningsPool, delegatorsFees);
 
-        if (t.lastFeeRound < _round) {
+        if (lastFeeRound < _round) {
             t.lastFeeRound = _round;
         }
     }
@@ -796,7 +813,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         }
 
         uint256 LIP_36_ROUND = LIP_UPGRADE_ROUNDS[36];
-        while(startRound <= _endRound && startRound < LIP_36_ROUND ) {
+        while(startRound <= _endRound && startRound <= LIP_36_ROUND ) {
             EarningsPool.Data storage earningsPool = transcoders[del.delegateAddress].earningsPoolPerRound[startRound];
 
             if (earningsPool.hasClaimableShares()) {
@@ -810,19 +827,28 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             startRound = startRound.add(1);
         }
 
-        if (_endRound < LIP_36_ROUND) { return currentFees; }
+        if (_endRound <= LIP_36_ROUND) { return currentFees; }
 
         uint256 startRewardFactor = transcoder.earningsPoolPerRound[startRound.sub(1)].cumulativeRewardFactor; 
         uint256 endFeeFactor = transcoder.earningsPoolPerRound[_endRound].cumulativeFeeFactor;
 
-        currentFees = currentFees.add(
-            MathUtils.percOf(
+        uint256 cumulativeFees =  MathUtils.percOf(
                 currentBondedAmount,
                 endFeeFactor != 0 ? endFeeFactor : transcoder.earningsPoolPerRound[lastFeeRound].cumulativeFeeFactor,
                 startRewardFactor != 0 ? startRewardFactor : MathUtils.percPoints(1,1)
-            )
-        );
+            );
 
+        
+        
+        if (del.lastClaimRound > LIP_36_ROUND) {
+            currentFees = cumulativeFees;
+        } else {
+            currentFees = currentFees.add(cumulativeFees);
+        }
+        
+
+        // currentFees = currentFees.add(cumulativeFees);
+        
         return isTranscoder ? currentFees.add(transcoder.cumulativeFees) : currentFees;
     }
 

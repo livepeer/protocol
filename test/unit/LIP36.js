@@ -2,6 +2,7 @@
 
 import Fixture from "./helpers/Fixture"
 import { contractId, functionSig, functionEncodedABI} from "../../utils/helpers"
+import { assert } from "chai"
 
 const ManagerProxy = artifacts.require("ManagerProxy")
 const BondingManagerV1 = artifacts.require("BondingManagerV1")
@@ -105,6 +106,17 @@ contract("LIP36 transition", accounts => {
                     "should return sum of bondedAmount and pending rewards for 2 rounds"
                 )
             })
+
+            it("should return pending rewards if transcoder has already claimed since LIP-36", async () => {
+                const pendingRewards0 = 250
+                const pendingRewards1 = Math.floor((500 * (1250 * PERC_DIVISOR / 3000)) / PERC_DIVISOR)
+                const pendingRewards2 = Math.floor((500 * (1458 * PERC_DIVISOR / 4000)) / PERC_DIVISOR)
+                await bondingManager.claimEarnings(currentRound + 1, {from: delegator})
+                await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 2)
+    
+                await bondingManager.reward({from: transcoder})
+                assert.equal((await bondingManager.pendingStake(delegator, currentRound + 2)).toString(), (1000+pendingRewards0+pendingRewards1+pendingRewards2).toString())
+            })
        })
 
        describe("transcoder", () => {
@@ -166,7 +178,7 @@ contract("LIP36 transition", accounts => {
              // deploy LIP-36
             await fixture.deployAndRegister(BondingManager, "BondingManager", fixture.controller.address)
              bondingManager = await BondingManager.at(proxy.address)
-            await bondingManager.setLIPUpgradeRound(36, currentRound + 1)
+            await bondingManager.setLIPUpgradeRound(36, currentRound)
 
             // assign fees post-LIP36
             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 1)
@@ -185,17 +197,59 @@ contract("LIP36 transition", accounts => {
         describe("delegator", () => {
             it("should return pending fees for a round before LIP-36", async () => {
                 const pendingFees0 = 125
-    
+                const ep = await bondingManager.getTranscoderEarningsPoolForRound(transcoder, currentRound)
+                assert.equal(ep.feePool.toString(), "250")
+                assert.equal(ep.transcoderFeePool.toString(), "750")
                 assert.equal((await bondingManager.pendingFees(delegator, currentRound)).toString(), pendingFees0, "should return sum of collected fees and pending fees for 1 round")
             })
     
             it("should return pending fees for rounds both before and after LIP-36 combined", async () => {
                 const pendingFees0 = 125
                 const pendingFees1 = Math.floor((250 * (1250 * PERC_DIVISOR / 3000)) / PERC_DIVISOR)
+
+                const ep0 = await bondingManager.getTranscoderEarningsPoolForRound(transcoder, currentRound)
+                assert.equal(ep0.feePool.toString(), "250")
+                assert.equal(ep0.transcoderFeePool.toString(), "750")
+                const cumulEp0 = await bondingManager.getTranscoderCumulativeEarningsPoolForRound(transcoder, currentRound)
+                assert.equal(cumulEp0.cumulativeFeeFactor.toString(), "0")
+                console.log("prevCRF", cumulEp0.cumulativeRewardFactor.toString())
+                const ep1 = await bondingManager.getTranscoderEarningsPoolForRound(transcoder, currentRound +1)
+                assert.equal(ep1.feePool.toString(), "0")
+                const cumulEp1 = await bondingManager.getTranscoderCumulativeEarningsPoolForRound(transcoder, currentRound + 1)
+                console.log(cumulEp1.totalStake.toString())
+                console.log(cumulEp1.cumulativeRewardFactor.toString())
+                // assert.equal(cumulEp1.cumulativeFeeFactor.toString(), "125000")
+                
                 assert.equal(
                     (await bondingManager.pendingFees(delegator, currentRound + 1)).toNumber(),
                     pendingFees0 + pendingFees1,
                     "should return sum of collected fees and pending fees for 2 rounds"
+                )
+            })
+
+            it("should return pending fees when transcoder has claimed earnings since LIP36", async () => {
+                const pendingFees0 = 125
+                const pendingFees1 = Math.floor((250 * (1250 * PERC_DIVISOR / 3000)) / PERC_DIVISOR)
+                const pendingFees2 = Math.floor((250 * (1458 * PERC_DIVISOR / 4000)) / PERC_DIVISOR)
+    
+                await bondingManager.claimEarnings(currentRound, {from: delegator})
+                const fees = (await bondingManager.getDelegator(delegator)).fees
+                assert.equal(pendingFees0, fees.toNumber(), "delegator fees not correct")
+                console.log("fees", fees.toString())
+                await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 2)
+    
+                await fixture.ticketBroker.execute(
+                    bondingManager.address,
+                    functionEncodedABI(
+                        "updateTranscoderWithFees(address,uint256,uint256)",
+                        ["address", "uint256", "uint256"],
+                        [transcoder, 1000, currentRound +2]
+                    )
+                )
+                        
+                assert.equal(
+                    (await bondingManager.pendingFees(delegator, currentRound +2)).toString(),
+                    (fees.toNumber()+pendingFees1+pendingFees2).toString()
                 )
             })
         })
