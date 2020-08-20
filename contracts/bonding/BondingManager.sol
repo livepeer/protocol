@@ -363,7 +363,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
                 uint256 rewards = MathUtils.percOf(minter().currentMintableTokens(), totalStake, currentRoundTotalActiveStake);
                 uint256 transcoderCommissionRewards = MathUtils.percOf(rewards, earningsPool.transcoderRewardCut);
                 uint256 delegatorRewards = rewards.sub(transcoderCommissionRewards);
-                prevEarningsPool.cumulativeRewardFactor = MathUtils.percOf(earningsPool.cumulativeRewardFactor, MathUtils.percOf(delegatorRewards, totalStake).add(1));
+                prevEarningsPool.cumulativeRewardFactor = MathUtils.percOf(earningsPool.cumulativeRewardFactor, MathUtils.percOf(delegatorRewards, totalStake)).add(MathUtils.percPoints(1,1));
             }
         }
         /// !!!!!!!!!! TODO !!!!!!!!!!!!!!!!!
