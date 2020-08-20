@@ -1594,7 +1594,7 @@ contract("BondingManager", accounts => {
         })
 
         it("should correctly update caller with rewards if cumulativeRewardFactor was set in the last reward round and the last reward round < currentRound - 1 ", async () => {
-            
+
         })
 
         it("Should emit a Reward event", async () => {
@@ -2097,7 +2097,7 @@ contract("BondingManager", accounts => {
             const expFees = new BN(delegatorFees * .3) // 30%
             const txResult = await bondingManager.claimEarnings(currentRound + 1, {from: delegator1})
 
-            console.log(expRewards.toString(), expFees.toString()) 
+            console.log(expRewards.toString(), expFees.toString())
             truffleAssert.eventEmitted(
                 txResult,
                 "EarningsClaimed",
@@ -2506,7 +2506,7 @@ contract("BondingManager", accounts => {
 
             await bondingManager.claimEarnings(currentRound + 2, {from: delegator})
             const fees = (await bondingManager.getDelegator(delegator)).fees
-            assert.equal(pendingFees0+pendingFees1, fees.toNumber(), "delegator fees not correct")
+            assert.equal(pendingFees0 + pendingFees1, fees.toNumber(), "delegator fees not correct")
 
             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 3)
 
@@ -2515,13 +2515,13 @@ contract("BondingManager", accounts => {
                 functionEncodedABI(
                     "updateTranscoderWithFees(address,uint256,uint256)",
                     ["address", "uint256", "uint256"],
-                    [transcoder, 1000, currentRound +3]
+                    [transcoder, 1000, currentRound + 3]
                 )
             )
-                    
+
             assert.equal(
-                (await bondingManager.pendingFees(delegator, currentRound +3)).toString(),
-                (fees.toNumber()+pendingFees2).toString()
+                (await bondingManager.pendingFees(delegator, currentRound + 3)).toString(),
+                (fees.toNumber() + pendingFees2).toString()
             )
 
             await bondingManager.withdrawFees({from: delegator})
@@ -2533,10 +2533,10 @@ contract("BondingManager", accounts => {
                 functionEncodedABI(
                     "updateTranscoderWithFees(address,uint256,uint256)",
                     ["address", "uint256", "uint256"],
-                    [transcoder, 1000, currentRound +4]
+                    [transcoder, 1000, currentRound + 4]
                 )
             )
-            assert.equal((await bondingManager.pendingFees(delegator, currentRound +4)).toString(), pendingFees2.toString())
+            assert.equal((await bondingManager.pendingFees(delegator, currentRound + 4)).toString(), pendingFees2.toString())
         })
 
         describe("no fees since lastClaimRound", async () => {
