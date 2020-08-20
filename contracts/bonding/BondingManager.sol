@@ -66,6 +66,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         uint256 lastClaimRound;                  // The last round during which the delegator claimed its earnings
         uint256 nextUnbondingLockId;             // ID for the next unbonding lock created
         mapping (uint256 => UnbondingLock) unbondingLocks; // Mapping of unbonding lock ID => unbonding lock
+        uint256 pastFees;
     }
 
     // The various states a delegator can be in
@@ -293,7 +294,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     {   
         uint256 fees = delegators[msg.sender].fees;
         require(fees > 0, "no fees to withdraw");
-
+        delegators[msg.sender].pastFees = delegators[msg.sender].pastFees.add(fees);
         delegators[msg.sender].fees = 0;
 
         // Tell Minter to transfer fees (ETH) to the delegator
@@ -815,13 +816,19 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         uint256 startRewardFactor = transcoder.earningsPoolPerRound[startRound.sub(1)].cumulativeRewardFactor; 
         uint256 endFeeFactor = transcoder.earningsPoolPerRound[_endRound].cumulativeFeeFactor;
 
-        currentFees = currentFees.add(
-            MathUtils.percOf(
+        uint256 cumulativeFees = MathUtils.percOf(
                 currentBondedAmount,
                 endFeeFactor != 0 ? endFeeFactor : transcoder.earningsPoolPerRound[lastFeeRound].cumulativeFeeFactor,
                 startRewardFactor != 0 ? startRewardFactor : MathUtils.percPoints(1,1)
-            )
-        );
+            );
+
+        if (del.lastClaimRound > LIP_36_ROUND) {
+            currentFees = cumulativeFees;
+        } else {
+            currentFees = currentFees.add(cumulativeFees);
+        }
+        
+        currentFees = currentFees.sub(del.pastFees);
 
         return isTranscoder ? currentFees.add(transcoder.cumulativeFees) : currentFees;
     }
@@ -972,7 +979,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     )
         public
         view
-        returns (uint256 bondedAmount, uint256 fees, address delegateAddress, uint256 delegatedAmount, uint256 startRound, uint256 lastClaimRound, uint256 nextUnbondingLockId)
+        returns (uint256 bondedAmount, uint256 fees, address delegateAddress, uint256 delegatedAmount, uint256 startRound, uint256 lastClaimRound, uint256 nextUnbondingLockId, uint256 pastFees)
     {
         Delegator storage del = delegators[_delegator];
 
@@ -983,6 +990,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         startRound = del.startRound;
         lastClaimRound = del.lastClaimRound;
         nextUnbondingLockId = del.nextUnbondingLockId;
+        pastFees = del.pastFees;
     }
 
     /**
