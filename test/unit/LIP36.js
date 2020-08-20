@@ -105,6 +105,17 @@ contract("LIP36 transition", accounts => {
                     "should return sum of bondedAmount and pending rewards for 2 rounds"
                 )
             })
+
+            it("should return pending rewards if transcoder has already claimed since LIP-36", async () => {
+                const pendingRewards0 = 250
+                const pendingRewards1 = Math.floor((500 * (1250 * PERC_DIVISOR / 3000)) / PERC_DIVISOR)
+                const pendingRewards2 = Math.floor((500 * (1458 * PERC_DIVISOR / 4000)) / PERC_DIVISOR)
+                await bondingManager.claimEarnings(currentRound + 1, {from: delegator})
+                await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 2)
+    
+                await bondingManager.reward({from: transcoder})
+                assert.equal((await bondingManager.pendingStake(delegator, currentRound + 2)).toString(), (1000+pendingRewards0+pendingRewards1+pendingRewards2).toString())
+            })
        })
 
        describe("transcoder", () => {
@@ -196,6 +207,31 @@ contract("LIP36 transition", accounts => {
                     (await bondingManager.pendingFees(delegator, currentRound + 1)).toNumber(),
                     pendingFees0 + pendingFees1,
                     "should return sum of collected fees and pending fees for 2 rounds"
+                )
+            })
+
+            it("should return pending fees when transcoder has claimed earnings since LIP36", async () => {
+                const pendingFees0 = 125
+                const pendingFees1 = Math.floor((250 * (1250 * PERC_DIVISOR / 3000)) / PERC_DIVISOR)
+                const pendingFees2 = Math.floor((250 * (1458 * PERC_DIVISOR / 4000)) / PERC_DIVISOR)
+    
+                await bondingManager.claimEarnings(currentRound +1, {from: delegator})
+                const fees = (await bondingManager.getDelegator(delegator)).fees
+                assert.equal(pendingFees0+pendingFees1, fees.toNumber(), "delegator fees not correct")
+                await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 2)
+    
+                await fixture.ticketBroker.execute(
+                    bondingManager.address,
+                    functionEncodedABI(
+                        "updateTranscoderWithFees(address,uint256,uint256)",
+                        ["address", "uint256", "uint256"],
+                        [transcoder, 1000, currentRound +2]
+                    )
+                )
+                        
+                assert.equal(
+                    (await bondingManager.pendingFees(delegator, currentRound +2)).toString(),
+                    (fees.toNumber()+pendingFees2).toString()
                 )
             })
         })
