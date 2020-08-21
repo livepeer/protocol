@@ -2044,7 +2044,7 @@ contract("BondingManager", accounts => {
             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 1)
             await fixture.minter.setMockUint256(functionSig("createReward(uint256,uint256)"), 1000)
             await bondingManager.reward({from: transcoder})
-        
+
             await fixture.ticketBroker.execute(
                 bondingManager.address,
                 functionEncodedABI(
@@ -2053,7 +2053,6 @@ contract("BondingManager", accounts => {
                     [transcoder, 1000, currentRound + 1]
                 )
             )
-            
         })
 
         it("should fail if system is paused", async () => {
@@ -2096,7 +2095,7 @@ contract("BondingManager", accounts => {
         it("fires an EarningsClaimed event", async () => {
             const expRewards = new BN(delegatorRewards * .3) // 30%
             const expFees = new BN(delegatorFees * .3) // 30%
- 
+
             const txResult = await bondingManager.claimEarnings(currentRound + 1, {from: delegator1})
 
             truffleAssert.eventEmitted(

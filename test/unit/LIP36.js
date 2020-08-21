@@ -216,7 +216,6 @@ contract("LIP36 transition", accounts => {
                 const pendingFees2 = Math.floor((250 * (1458 * PERC_DIVISOR / 4000)) / PERC_DIVISOR)
 
                 await bondingManager.claimEarnings(currentRound + 1, {from: delegator})
-                const del = await bondingManager.getDelegator(delegator)
                 const fees = (await bondingManager.getDelegator(delegator)).fees
                 assert.equal(pendingFees0 + pendingFees1, fees.toNumber(), "delegator fees not correct")
                 await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 2)
@@ -241,7 +240,7 @@ contract("LIP36 transition", accounts => {
 
                 assert.equal(
                     (await bondingManager.pendingFees(delegator, currentRound + 2)).toString(),
-                    (pendingFees0+pendingFees1 + pendingFees2*2).toString()
+                    (pendingFees0 + pendingFees1 + pendingFees2 * 2).toString()
                 )
             })
         })
