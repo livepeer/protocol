@@ -2096,16 +2096,9 @@ contract("BondingManager", accounts => {
         it("fires an EarningsClaimed event", async () => {
             const expRewards = new BN(delegatorRewards * .3) // 30%
             const expFees = new BN(delegatorFees * .3) // 30%
-
-            console.log((await bondingManager.pendingStake(delegator1, currentRound + 1)).toString())
-            const prevEp = await bondingManager.getTranscoderCumulativeEarningsPoolForRound(transcoder, currentRound )
-            const ep = await bondingManager.getTranscoderCumulativeEarningsPoolForRound(transcoder, currentRound + 1)
-            console.log("totalStake", ep.totalStake.toString())
-            console.log("CRF", ep.cumulativeRewardFactor.toString())
-            console.log("prev CRF", prevEp.cumulativeRewardFactor.toString())
+ 
             const txResult = await bondingManager.claimEarnings(currentRound + 1, {from: delegator1})
 
-            console.log(expRewards.toString(), expFees.toString())
             truffleAssert.eventEmitted(
                 txResult,
                 "EarningsClaimed",
