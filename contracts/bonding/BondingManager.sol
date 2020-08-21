@@ -66,7 +66,6 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         uint256 lastClaimRound;                  // The last round during which the delegator claimed its earnings
         uint256 nextUnbondingLockId;             // ID for the next unbonding lock created
         mapping (uint256 => UnbondingLock) unbondingLocks; // Mapping of unbonding lock ID => unbonding lock
-        uint256 pastFees;
     }
 
     // The various states a delegator can be in
@@ -294,7 +293,6 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     {   
         uint256 fees = delegators[msg.sender].fees;
         require(fees > 0, "no fees to withdraw");
-        delegators[msg.sender].pastFees = delegators[msg.sender].pastFees.add(fees);
         delegators[msg.sender].fees = 0;
 
         // Tell Minter to transfer fees (ETH) to the delegator
@@ -351,7 +349,6 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // LIP-36: Add fees for the current round instead of '_round'
         // https://github.com/livepeer/LIPs/issues/35#issuecomment-673659199
         uint256 totalStake = earningsPool.totalStake;
-        /// !!!!!! TODO !!!!!!! THIS PART BREAKS EARNINGS CALCULATION 
         if ( prevEarningsPool.cumulativeRewardFactor == 0 && lastRewardRound > LIP_UPGRADE_ROUNDS[36]) {
             // if transcoder didn't call reward for 'currentRound - 1' nor 'currentRound', use the cumulativeRewardFactor for 'lastRewardRound'
              if (lastRewardRound < currentRound) {
@@ -366,7 +363,6 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
                 prevEarningsPool.cumulativeRewardFactor = MathUtils.percOf(earningsPool.cumulativeRewardFactor, MathUtils.percOf(delegatorRewards, totalStake)).add(MathUtils.percPoints(1,1));
             }
         }
-        /// !!!!!!!!!! TODO !!!!!!!!!!!!!!!!!
 
         uint256 lastFeeRound = t.lastFeeRound;
         // prevEarningsPool.cumulativeFeeFactor will only be used if 'transcoder.lastFeeRound' < 'currentRound', otherwise earningsPool.cumulativeFeeFactor will be initialised already
@@ -832,21 +828,19 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         if (_endRound <= LIP_36_ROUND) { return currentFees; }
 
         uint256 startRewardFactor = transcoder.earningsPoolPerRound[startRound.sub(1)].cumulativeRewardFactor; 
-        uint256 endFeeFactor = transcoder.earningsPoolPerRound[_endRound].cumulativeFeeFactor;
-
+        
+        uint256 endFeeFactor = transcoder.earningsPoolPerRound[_endRound].cumulativeFeeFactor != 0 ? transcoder.earningsPoolPerRound[_endRound].cumulativeFeeFactor : transcoder.earningsPoolPerRound[lastFeeRound].cumulativeFeeFactor;
+        uint256 startFeeFactor = transcoder.earningsPoolPerRound[startRound.sub(1)].cumulativeFeeFactor;
+        // Get the actual cumulative fee factor from start round until the end round to get the correct amount of fees for that time period
+        uint256 feeFactor = endFeeFactor.sub(startFeeFactor);
+        
         uint256 cumulativeFees = MathUtils.percOf(
                 currentBondedAmount,
-                endFeeFactor != 0 ? endFeeFactor : transcoder.earningsPoolPerRound[lastFeeRound].cumulativeFeeFactor,
+                feeFactor,
                 startRewardFactor != 0 ? startRewardFactor : MathUtils.percPoints(1,1)
             );
 
-        if (del.lastClaimRound > LIP_36_ROUND) {
-            currentFees = cumulativeFees;
-        } else {
-            currentFees = currentFees.add(cumulativeFees);
-        }
-        
-        currentFees = currentFees.sub(del.pastFees);
+        currentFees = currentFees.add(cumulativeFees);
 
         return isTranscoder ? currentFees.add(transcoder.cumulativeFees) : currentFees;
     }
@@ -997,7 +991,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     )
         public
         view
-        returns (uint256 bondedAmount, uint256 fees, address delegateAddress, uint256 delegatedAmount, uint256 startRound, uint256 lastClaimRound, uint256 nextUnbondingLockId, uint256 pastFees)
+        returns (uint256 bondedAmount, uint256 fees, address delegateAddress, uint256 delegatedAmount, uint256 startRound, uint256 lastClaimRound, uint256 nextUnbondingLockId)
     {
         Delegator storage del = delegators[_delegator];
 
@@ -1008,7 +1002,6 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         startRound = del.startRound;
         lastClaimRound = del.lastClaimRound;
         nextUnbondingLockId = del.nextUnbondingLockId;
-        pastFees = del.pastFees;
     }
 
     /**
@@ -1269,7 +1262,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         if (del.delegateAddress != address(0)) {
 
             // 'pendingFees()' and 'pendingStake()' are O(1) operations after LIP-36
-            if (startRound < LIP_UPGRADE_ROUNDS[36]) {
+            if (startRound <= LIP_UPGRADE_ROUNDS[36]) {
                 // Cannot claim earnings for more than maxEarningsClaimsRounds before LIP-36
                 // This is a number to cause transactions to fail early if
                 // we know they will require too much gas to loop through all the necessary rounds to claim earnings
@@ -1283,13 +1276,16 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             Transcoder storage transcoder = transcoders[del.delegateAddress];
 
             // Check whether the endEarningsPool is initialised
-            // If it is not initialised set it to the value from the transcoder's last reward round
+            // If it is not initialised set it's cumulative earnings factors (fees and rewards)
             // This serves two purposes:
-            // - Initialise the correct values for the current claimEarnings 'epoch' to calculate cumulative rewards
-            // - Initialise the correct startEarningsPool for the next claimEarnings 'epoch' to calculate cumulative rewards and fees
+            // - Initialise the correct values for the current claimEarnings 'epoch' to calculate cumulative earnings
+            // - Initialise the correct startEarningsPool for the next claimEarnings 'epoch' to calculate cumulative earnings
             EarningsPool.Data storage endEarningsPool = transcoder.earningsPoolPerRound[_endRound];
             if (endEarningsPool.cumulativeRewardFactor == 0) {
                 endEarningsPool.cumulativeRewardFactor = transcoder.earningsPoolPerRound[transcoder.lastRewardRound].cumulativeRewardFactor;
+            }
+            if (endEarningsPool.cumulativeFeeFactor == 0) {
+                endEarningsPool.cumulativeFeeFactor == transcoder.earningsPoolPerRound[transcoder.lastFeeRound].cumulativeFeeFactor;
             }
 
             currentFees = pendingFees(_delegator, _endRound);
