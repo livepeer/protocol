@@ -2539,6 +2539,44 @@ contract("BondingManager", accounts => {
             assert.equal((await bondingManager.pendingFees(delegator, currentRound + 4)).toString(), pendingFees2.toString())
         })
 
+        it("should return pending fees when transcoder hasn't called reward since the previous round", async () => {
+            const pendingFees0 = 125
+            const pendingFees1 = Math.floor((250 * (1250 * PERC_DIVISOR / 3000)) / PERC_DIVISOR)
+            const pendingFees2 = Math.floor((250 * (1458 * PERC_DIVISOR / 4000)) / PERC_DIVISOR)
+
+            await bondingManager.claimEarnings(currentRound + 2, {from: delegator})
+            const fees = (await bondingManager.getDelegator(delegator)).fees
+            assert.equal(pendingFees0 + pendingFees1, fees.toNumber(), "delegator fees not correct")
+
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 3)
+
+            await fixture.ticketBroker.execute(
+                bondingManager.address,
+                functionEncodedABI(
+                    "updateTranscoderWithFees(address,uint256,uint256)",
+                    ["address", "uint256", "uint256"],
+                    [transcoder, 1000, currentRound + 3]
+                )
+            )
+
+            assert.equal(
+                (await bondingManager.pendingFees(delegator, currentRound + 3)).toString(),
+                (fees.toNumber() + pendingFees2).toString()
+            )
+
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 4)
+
+            await fixture.ticketBroker.execute(
+                bondingManager.address,
+                functionEncodedABI(
+                    "updateTranscoderWithFees(address,uint256,uint256)",
+                    ["address", "uint256", "uint256"],
+                    [transcoder, 1000, currentRound + 4]
+                )
+            )
+            assert.equal((await bondingManager.pendingFees(delegator, currentRound + 4)).toString(), (pendingFees0+pendingFees1+pendingFees2*2).toString())
+        })
+
         describe("no fees since lastClaimRound", async () => {
             const fees = 125 + Math.floor((250 * (1250 * PERC_DIVISOR / 3000)) / PERC_DIVISOR)
 
