@@ -5,5 +5,5 @@ module.exports = {
         gasLimit: "0xfffffffffff",
         total_accounts: 310
     },
-    skipFiles: ["Migrations.sol", "test", "zeppelin", "rounds/AdjustableRoundsManager.sol", "pm/mixins/interfaces"]
+    skipFiles: ["Migrations.sol", "test", "zeppelin", "rounds/AdjustableRoundsManager.sol", "pm/mixins/interfaces", "bonding/deprecated"]
 }
