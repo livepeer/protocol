@@ -149,7 +149,7 @@ library EarningsPool {
         }
 
         // Update remaining claimable stake if not using a cumulativeEarningsPool 
-        if (earningsPool.claimableStake > 0 ) {
+        if (earningsPool.claimableStake >= _stake ) {
             earningsPool.claimableStake = earningsPool.claimableStake.sub(_stake);
         }
 

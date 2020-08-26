@@ -1,10 +1,13 @@
 pragma solidity ^0.5.11;
 
 import "../../bonding/libraries/EarningsPoolV2.sol";
+import "../../libraries/MathUtils.sol";
 
+import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
 contract EarningsPoolFixture {
     using EarningsPool for EarningsPool.Data;
+    using SafeMath for uint256;
 
     EarningsPool.Data prevPool;
     EarningsPool.Data pool;
@@ -32,6 +35,23 @@ contract EarningsPoolFixture {
     function setPrevPoolEarningsFactors(uint256 _cumulativeFeeFactor, uint256 _cumulativeRewardFactor) public {
         prevPool.cumulativeFeeFactor = _cumulativeFeeFactor;
         prevPool.cumulativeRewardFactor = _cumulativeRewardFactor;
+    }
+
+    function setV1PoolEarnings(uint256 _rewards, uint256 _fees) public {
+        uint256 transcoderRewards = MathUtils.percOf(_rewards, pool.transcoderRewardCut);
+        pool.rewardPool = pool.rewardPool.add(_rewards.sub(transcoderRewards));
+        pool.transcoderRewardPool = pool.transcoderRewardPool.add(transcoderRewards);
+
+        uint256 delegatorFees = MathUtils.percOf(_fees, pool.transcoderFeeShare);
+        pool.feePool = pool.feePool.add(delegatorFees);
+        pool.transcoderFeePool = pool.transcoderFeePool.add(_fees.sub(delegatorFees));
+       
+        pool.hasTranscoderRewardFeePool = true;
+    }
+
+    function setV1PoolStake(uint256 _totalStake, uint256 _claimableStake) public {
+        pool.totalStake = _totalStake;
+        pool.claimableStake = _claimableStake;
     }
 
     function hasClaimableShares() public view returns (bool) {

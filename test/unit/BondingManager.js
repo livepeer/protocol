@@ -2574,7 +2574,10 @@ contract("BondingManager", accounts => {
                     [transcoder, 1000, currentRound + 4]
                 )
             )
-            assert.equal((await bondingManager.pendingFees(delegator, currentRound + 4)).toString(), (pendingFees0+pendingFees1+pendingFees2*2).toString())
+            assert.equal(
+                (await bondingManager.pendingFees(delegator, currentRound + 4)).toString(),
+                (pendingFees0 + pendingFees1 + pendingFees2 * 2).toString()
+            )
         })
 
         describe("no fees since lastClaimRound", async () => {

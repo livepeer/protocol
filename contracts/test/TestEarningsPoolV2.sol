@@ -90,6 +90,32 @@ contract TestEarningsPoolV2 {
         Assert.equal(fixture.getClaimableStake(), 0, "getClaimableStake should be 0");
     }
 
+    function test_claimShare_earningsPoolV1() public {
+        fixture.setV1PoolEarnings(1000,1000);
+        fixture.setV1PoolStake(1000, 1000);
+        (uint256 fees, uint256 rewards) = fixture.claimShare(500, false);
+        Assert.equal(fees, 250, "should claim delegator's share of fee pool");
+        Assert.equal(rewards, 250, "should claim delegator's share of reward pool");
+        Assert.equal(fixture.getFeePool(), 250, "should decrease fee pool by claimant's share of fees");
+        Assert.equal(fixture.getRewardPool(), 250, "should decrease reward pool by claimant's share of rewards");
+        Assert.equal(fixture.getTranscoderFeePool(), 500, "transcoderFeePool should be unchanged with transcoder fees");
+        Assert.equal(fixture.getTranscoderRewardPool(), 500, "transcoderRewardPool should be unchanged with transcoder rewards");
+        Assert.equal(fixture.getClaimableStake(), 500, "should decrease claimable stake by stake of claimant");
+    }
+
+    function test_claimShare_earningsPoolV1_isTranscoder() public {
+        fixture.setV1PoolEarnings(1000,1000);
+        fixture.setV1PoolStake(1000, 1000);
+        (uint256 fees, uint256 rewards) = fixture.claimShare(500, true);
+        Assert.equal(fees, 750, "should claim transcoder's share of fee pool which includes its share as a delegator");
+        Assert.equal(rewards, 750, "should claim transcoder's share of reward pool which includes its share as a delegator");
+        Assert.equal(fixture.getFeePool(), 250, "should decrease fee pool by claimant's share of fees");
+        Assert.equal(fixture.getRewardPool(), 250, "should decrease reward pool by claimant's share of rewards");
+        Assert.equal(fixture.getTranscoderFeePool(), 0, "transcoderFeePool should be decreased to 0");
+        Assert.equal(fixture.getTranscoderRewardPool(), 0, "transcoderRewardPool should be decreased to 0");
+        Assert.equal(fixture.getClaimableStake(), 500, "should decrease claimable stake by stake of claimant");
+    }
+
     function test_feePoolShare_not_used_in_v2() public {
         fixture.addToFeePool(500);
         Assert.equal(fixture.feePoolShare(500, false), 0, "should always return 0 in v2");
