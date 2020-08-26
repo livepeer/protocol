@@ -3,6 +3,7 @@ import expectRevertWithReason from "../helpers/expectFail"
 import {contractId} from "../../utils/helpers"
 import {constants} from "../../utils/constants"
 import truffleAssert from "truffle-assertions"
+import { assert } from "chai"
 
 const RoundsManager = artifacts.require("RoundsManager")
 
@@ -453,6 +454,27 @@ contract("RoundsManager", accounts => {
 
         it("should return false if the current round is not locked", async () => {
             assert.isNotOk(await roundsManager.currentRoundLocked(), "not false when not in lock period")
+        })
+    })
+
+    describe("setLIPUpgradeRounds", () => {
+        it("reverts when the LIP Upgrade round is already set", async () => {
+            const currentRound = (await roundsManager.currentRound()).toNumber()
+            await roundsManager.setLIPUpgradeRound(50, currentRound + 100)
+            assert.equal((await roundsManager.LIPUpgradeRounds(50)).toNumber(), currentRound + 100)
+            await truffleAssert.reverts(roundsManager.setLIPUpgradeRound(50, currentRound + 100), "LIP upgrade round already set")
+        })
+
+        it("sets LIP upgrade round for a LIP to currentRound + 1 if the provided round is 0", async () => {
+            const currentRound = (await roundsManager.currentRound()).toNumber()
+            await roundsManager.setLIPUpgradeRound(50, 0)
+            assert.equal((await roundsManager.LIPUpgradeRounds(50)).toNumber(), currentRound + 1)
+        })
+
+        it("sets LIP upgrade round for a LIP to the provided round", async () => {
+            const currentRound = (await roundsManager.currentRound()).toNumber()
+            await roundsManager.setLIPUpgradeRound(50, currentRound + 100)
+            assert.equal((await roundsManager.LIPUpgradeRounds(50)).toNumber(), currentRound + 100)
         })
     })
 })

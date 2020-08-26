@@ -109,11 +109,6 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     // in the pool are locked into the active set for round N + 1
     SortedDoublyLL.Data private transcoderPoolV2;
 
-    // LIP Upgrade Rounds 
-    // These can be used as conditionals to ensure backwards compatibility or skip such backwards compatibility logic
-    // in case 'currentRound' > LIP-X upgrade round
-    mapping(uint256 => uint256) public LIP_UPGRADE_ROUNDS; // mapping(LIP-number > round number)
-
     // Check if sender is TicketBroker
     modifier onlyTicketBroker() {
         require(
@@ -164,16 +159,6 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * @param _controller Address of Controller that this contract will be registered with
      */
     constructor(address _controller) public Manager(_controller) {}
-
-    /**
-    * @notice setLIPUpgradeRound sets the round an LIP upgrade would become active. 
-    * @dev if no '_round' is provided '_round' will be set to 'currentRound + 1'
-    * @param _LIP the LIP number.
-    * @param _round (optional) the round in which the LIP becomes active
-    */
-    function setLIPUpgradeRound(uint256 _LIP, uint256 _round) external onlyControllerOwner {
-        LIP_UPGRADE_ROUNDS[_LIP] = _round != 0 ? _round : roundsManager().currentRound().add(1);
-    }
 
     /**
      * @notice Set unbonding period. Only callable by Controller owner
@@ -349,7 +334,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // LIP-36: Add fees for the current round instead of '_round'
         // https://github.com/livepeer/LIPs/issues/35#issuecomment-673659199
         uint256 totalStake = earningsPool.totalStake;
-        if ( prevEarningsPool.cumulativeRewardFactor == 0 && lastRewardRound > LIP_UPGRADE_ROUNDS[36]) {
+        if ( prevEarningsPool.cumulativeRewardFactor == 0 && lastRewardRound > roundsManager().LIPUpgradeRounds(36)) {
             // if transcoder didn't call reward for 'currentRound - 1' nor 'currentRound', use the cumulativeRewardFactor for 'lastRewardRound'
              if (lastRewardRound < currentRound) {
                 prevEarningsPool.cumulativeRewardFactor = t.earningsPoolPerRound[lastRewardRound].cumulativeRewardFactor;
@@ -757,7 +742,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
         bool isTranscoder = _delegator == del.delegateAddress;
 
-        uint256 LIP_36_ROUND = LIP_UPGRADE_ROUNDS[36];
+        uint256 LIP_36_ROUND = roundsManager().LIPUpgradeRounds(36);
         while(startRound <= _endRound && startRound <= LIP_36_ROUND ) {
             EarningsPool.Data storage earningsPool = transcoders[del.delegateAddress].earningsPoolPerRound[startRound];
 
@@ -810,7 +795,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             return currentFees;
         }
 
-        uint256 LIP_36_ROUND = LIP_UPGRADE_ROUNDS[36];
+        uint256 LIP_36_ROUND = roundsManager().LIPUpgradeRounds(36);
         while(startRound <= _endRound && startRound <= LIP_36_ROUND ) {
             EarningsPool.Data storage earningsPool = transcoders[del.delegateAddress].earningsPoolPerRound[startRound];
 
@@ -1262,7 +1247,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         if (del.delegateAddress != address(0)) {
 
             // 'pendingFees()' and 'pendingStake()' are O(1) operations after LIP-36
-            if (startRound <= LIP_UPGRADE_ROUNDS[36]) {
+            if (startRound <= roundsManager().LIPUpgradeRounds(36)) {
                 // Cannot claim earnings for more than maxEarningsClaimsRounds before LIP-36
                 // This is a number to cause transactions to fail early if
                 // we know they will require too much gas to loop through all the necessary rounds to claim earnings

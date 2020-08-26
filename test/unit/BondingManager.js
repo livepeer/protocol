@@ -2022,8 +2022,6 @@ contract("BondingManager", accounts => {
         let delegatorFees
 
         beforeEach(async () => {
-            await bondingManager.setLIPUpgradeRound(36, 1)
-
             await fixture.roundsManager.setMockBool(functionSig("currentRoundInitialized()"), true)
             await fixture.roundsManager.setMockBool(functionSig("currentRoundLocked()"), false)
             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound - 1)
@@ -2113,7 +2111,7 @@ contract("BondingManager", accounts => {
 
         describe("caller has a delegate", () => {
             it("should fail if endRound - lastClaimRound > maxEarningsClaimsRounds (too many rounds to claim through)", async () => {
-                await bondingManager.setLIPUpgradeRound(36, 5000)
+                await fixture.roundsManager.setMockUint256(functionSig("LIPUpgradeRounds(uint256)"), currentRound + 5000)
                 const maxEarningsClaimsRounds = await bondingManager.maxEarningsClaimsRounds.call()
                 const maxClaimRound = currentRound + 1 + maxEarningsClaimsRounds.toNumber()
                 await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), maxClaimRound + 1)
@@ -2278,8 +2276,6 @@ contract("BondingManager", accounts => {
         const currentRound = 100
 
         beforeEach(async () => {
-            await bondingManager.setLIPUpgradeRound(36, 1)
-
             await fixture.roundsManager.setMockBool(functionSig("currentRoundInitialized()"), true)
             await fixture.roundsManager.setMockBool(functionSig("currentRoundLocked()"), false)
             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound - 2)
@@ -2416,8 +2412,6 @@ contract("BondingManager", accounts => {
         const currentRound = 100
 
         beforeEach(async () => {
-            await bondingManager.setLIPUpgradeRound(36, 1)
-
             await fixture.roundsManager.setMockBool(functionSig("currentRoundInitialized()"), true)
             await fixture.roundsManager.setMockBool(functionSig("currentRoundLocked()"), false)
             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound - 1)
