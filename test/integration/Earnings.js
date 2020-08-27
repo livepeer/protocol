@@ -26,6 +26,8 @@ contract("Earnigns", accounts => {
     const transcoderStake = 1000 
     const delegatorStake = 3000 
 
+    let roundLength 
+
     before(async () => {
 
         controller = await Controller.deployed()
@@ -60,6 +62,11 @@ contract("Earnigns", accounts => {
         await token.approve(bondingManager.address, delegatorStake, {from: delegator})
         await bondingManager.bond(delegatorStake, transcoder, {from: delegator})
 
-
+        roundLength = await roundsManager.roundLength.call()
+        await roundsManager.mineBlocks(roundLength.toNumber() * 1000)
+        await roundsManager.setBlockHash(web3.utils.keccak256("foo"))
+        await roundsManager.initializeRound()
     })
+
+    
 })

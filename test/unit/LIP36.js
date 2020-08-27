@@ -154,13 +154,13 @@ contract("LIP36 transition", accounts => {
             await fixture.roundsManager.setMockBool(functionSig("currentRoundLocked()"), false)
 
             // register transcoder
-            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound - 2)
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound - 3)
             await bondingManager.bond(1000, transcoder, {from: transcoder})
             await bondingManager.transcoder(50 * PERC_MULTIPLIER, 25 * PERC_MULTIPLIER, {from: transcoder})
-            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound - 1)
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound - 2)
             // delegate stake to transcoder
             await bondingManager.bond(1000, transcoder, {from: delegator})
-            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound - 1)
 
             // assign fees pre-LIP36
             await fixture.ticketBroker.execute(
@@ -168,7 +168,7 @@ contract("LIP36 transition", accounts => {
                 functionEncodedABI(
                     "updateTranscoderWithFees(address,uint256,uint256)",
                     ["address", "uint256", "uint256"],
-                    [transcoder, 1000, currentRound]
+                    [transcoder, 1000, currentRound - 1]
                 )
             )
 
@@ -198,7 +198,7 @@ contract("LIP36 transition", accounts => {
             it("should return pending fees for a round before LIP-36", async () => {
                 const pendingFees0 = 125
 
-                assert.equal((await bondingManager.pendingFees(delegator, currentRound)).toString(), pendingFees0, "should return sum of collected fees and pending fees for 1 round")
+                assert.equal((await bondingManager.pendingFees(delegator, currentRound - 1)).toString(), pendingFees0, "should return sum of collected fees and pending fees for 1 round")
             })
 
             it("should return pending fees for rounds both before and after LIP-36 combined", async () => {
