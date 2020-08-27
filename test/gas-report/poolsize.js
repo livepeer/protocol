@@ -395,5 +395,5 @@ contract("transcoder pool size gas report", accounts => {
 
     testWithPoolSize(100)
     testWithPoolSize(200)
-    testWithPoolSize(300)
+    // testWithPoolSize(300)
 })
