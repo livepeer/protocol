@@ -64,18 +64,19 @@ contract("LIP36 transition", accounts => {
             await fixture.minter.setMockUint256(functionSig("createReward(uint256,uint256)"), 1000)
 
             // register transcoder
-            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound - 2)
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound - 3)
             await bondingManager.bond(1000, transcoder, {from: transcoder})
             await bondingManager.transcoder(50 * PERC_MULTIPLIER, 25 * PERC_MULTIPLIER, {from: transcoder})
-            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound - 1)
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound - 2)
             // delegate stake to transcoder
             await bondingManager.bond(1000, transcoder, {from: delegator})
-            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound - 1)
 
             // call reward (pre-LIP36)
             await bondingManager.reward({from: transcoder})
 
             // deploy LIP-36
+            // Don't call reward for this round to ensure testing code paths for a pool without claimable shares pre-LIP36
             await fixture.deployAndRegister(BondingManager, "BondingManager", fixture.controller.address)
             bondingManager = await BondingManager.at(proxy.address)
             await fixture.roundsManager.setMockUint256(functionSig("LIPUpgradeRounds(uint256)"), currentRound)
