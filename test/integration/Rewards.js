@@ -100,9 +100,9 @@ contract("Rewards", accounts => {
             const currentRound = await roundsManager.currentRound()
 
             const lastClaimRoundT1 = (await bondingManager.getDelegator(transcoder1)).lastClaimRound
-            let startRewardFactor = (await bondingManager.getTranscoderCumulativeEarningsPoolForRound(transcoder1, lastClaimRoundT1)).cumulativeRewardFactor
+            let startRewardFactor = (await bondingManager.getTranscoderEarningsPoolForRound(transcoder1, lastClaimRoundT1)).cumulativeRewardFactor
             startRewardFactor = startRewardFactor.toString() != "0" ? startRewardFactor : new BN(1000000)
-            const endRewardFactor = (await bondingManager.getTranscoderCumulativeEarningsPoolForRound(transcoder1, currentRound)).cumulativeRewardFactor
+            const endRewardFactor = (await bondingManager.getTranscoderEarningsPoolForRound(transcoder1, currentRound)).cumulativeRewardFactor
             const transcoderRewards = (await bondingManager.getTranscoder(transcoder1)).cumulativeRewards
 
             const expT1RewardShare = calcRewardShare(t1StartStake, startRewardFactor, endRewardFactor).add(transcoderRewards)

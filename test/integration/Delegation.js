@@ -432,8 +432,8 @@ contract("Delegation", accounts => {
         await bondingManager.reward({from: transcoder2})
 
         const rewardRound = await roundsManager.currentRound()
-        const endRewardFactor = (await bondingManager.getTranscoderCumulativeEarningsPoolForRound(transcoder2, rewardRound)).cumulativeRewardFactor
-        const bondedAmount = (await bondingManager.getTranscoderCumulativeEarningsPoolForRound(transcoder2, rewardRound)).totalStake
+        const endRewardFactor = (await bondingManager.getTranscoderEarningsPoolForRound(transcoder2, rewardRound)).cumulativeRewardFactor
+        const bondedAmount = (await bondingManager.getTranscoderEarningsPoolForRound(transcoder2, rewardRound)).totalStake
         const rewardAmount = bondedAmount.mul(endRewardFactor.div(new BN(1000000)))
         // Newly minted rewards added
         currTotalBonded = currTotalBonded.add(rewardAmount)

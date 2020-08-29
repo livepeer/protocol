@@ -5,7 +5,7 @@ const LivepeerToken = artifacts.require("LivepeerToken")
 const Minter = artifacts.require("Minter")
 const TicketBroker = artifacts.require("TicketBroker")
 
-const { constants } = require("../../utils/constants")
+const {constants} = require("../../utils/constants")
 
 
 contract("Earnigns", accounts => {
@@ -14,22 +14,21 @@ contract("Earnigns", accounts => {
     let roundsManager
     let token
     let minter
-    let broker 
+    let broker
 
     const transcoder = accounts[0]
     const broadcaster = accounts[1]
-    const delegator = accounts[2] 
+    const delegator = accounts[2]
 
     const rewardCut = 50 * constants.PERC_MULTIPLIER // 50%
     const feeShare = 25 * constants.PERC_MULTIPLIER // 5%
 
-    const transcoderStake = 1000 
-    const delegatorStake = 3000 
+    const transcoderStake = 1000
+    const delegatorStake = 3000
 
-    let roundLength 
+    let roundLength
 
     before(async () => {
-
         controller = await Controller.deployed()
         await controller.unpause()
 
@@ -53,7 +52,7 @@ contract("Earnigns", accounts => {
         await token.transfer(transcoder, amount, {from: accounts[0]})
         await token.transfer(delegator, amount, {from: accounts[0]})
 
-        // Register transcoder 
+        // Register transcoder
         await token.approve(bondingManager.address, transcoderStake, {from: transcoder})
         await bondingManager.bond(transcodeStake, transcoder1, {from: transcoder})
         await bondingManager.transcoder(rewardCut * constants.PERC_MULTIPLIER, feeShare * constants.PERC_MULTIPLIER, {from: transcoder})
@@ -67,6 +66,4 @@ contract("Earnigns", accounts => {
         await roundsManager.setBlockHash(web3.utils.keccak256("foo"))
         await roundsManager.initializeRound()
     })
-
-    
 })
