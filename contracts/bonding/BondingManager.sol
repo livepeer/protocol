@@ -1047,7 +1047,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * @param _endRound end round for the cumulative fee calculation
      * @param _isTranscoder bool indicating whether the delegator is self-bonded (and thus is a transcoder)
      */
-    function cumulativeFees(Transcoder storage _transcoder, uint256 _stake, uint256 _startRound, uint256 _endRound, bool isTranscoder) internal view returns(uint256) {
+    function cumulativeFees(Transcoder storage _transcoder, uint256 _stake, uint256 _startRound, uint256 _endRound, bool _isTranscoder) internal view returns(uint256) {
         uint256 startRewardFactor = _transcoder.earningsPoolPerRound[_startRound].cumulativeRewardFactor != 0 ? _transcoder.earningsPoolPerRound[_startRound].cumulativeRewardFactor : MathUtils.percPoints(1,1); 
         uint256 startFeeFactor = _transcoder.earningsPoolPerRound[_startRound].cumulativeFeeFactor;
         uint256 endFeeFactor = _transcoder.earningsPoolPerRound[_endRound].cumulativeFeeFactor != 0 ? _transcoder.earningsPoolPerRound[_endRound].cumulativeFeeFactor : _transcoder.earningsPoolPerRound[_transcoder.lastFeeRound].cumulativeFeeFactor;
@@ -1060,7 +1060,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             startRewardFactor
         );
 
-        return isTranscoder ? cumulativeFees.add(_transcoder.cumulativeFees) : cumulativeFees;
+        return _isTranscoder ? cumulativeFees.add(_transcoder.cumulativeFees) : cumulativeFees;
     }
 
     /**
@@ -1071,7 +1071,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * @param _endRound end round for the cumulative rewards calculation
      * @param _isTranscoder bool indicating whether the delegator is self-bonded (and thus is a transcoder)
      */
-    function cumulativeRewards(Transcoder storage _transcoder, uint256 _stake, uint256 _startRound, uint256 _endRound, bool isTranscoder) internal view returns(uint256) {
+    function cumulativeRewards(Transcoder storage _transcoder, uint256 _stake, uint256 _startRound, uint256 _endRound, bool _isTranscoder) internal view returns(uint256) {
         uint256 startRewardFactor = _transcoder.earningsPoolPerRound[_startRound].cumulativeRewardFactor != 0 ? _transcoder.earningsPoolPerRound[_startRound].cumulativeRewardFactor : MathUtils.percPoints(1,1); 
         uint256 endRewardFactor = _transcoder.earningsPoolPerRound[_endRound].cumulativeRewardFactor != 0 ? _transcoder.earningsPoolPerRound[_endRound].cumulativeRewardFactor : _transcoder.earningsPoolPerRound[_transcoder.lastRewardRound].cumulativeRewardFactor;
         endRewardFactor = endRewardFactor != 0 ? endRewardFactor : MathUtils.percPoints(1,1);
@@ -1082,7 +1082,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             startRewardFactor
         );
 
-        return isTranscoder ? cumulativeRewards.add(_transcoder.cumulativeRewards) : cumulativeRewards;
+        return _isTranscoder ? cumulativeRewards.add(_transcoder.cumulativeRewards) : cumulativeRewards;
     }
 
     /**
