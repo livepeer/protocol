@@ -1565,7 +1565,7 @@ contract("BondingManager", accounts => {
             const endTotalStake = await bondingManager.transcoderTotalStake(transcoder)
             const endNextTotalStake = await bondingManager.nextRoundTotalActiveStake()
 
-            const earningsPool = await bondingManager.getTranscoderCumulativeEarningsPoolForRound(transcoder, currentRound + 1)
+            const earningsPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder, currentRound + 1)
             const expRewardFactor = 1 * PERC_DIVISOR + 500 * PERC_DIVISOR / 1000
             assert.equal(earningsPool.cumulativeRewardFactor.toString(), expRewardFactor.toString(), "should update cumulativeRewardFactor in earningsPool")
 
@@ -1584,7 +1584,7 @@ contract("BondingManager", accounts => {
             const endTotalStake = await bondingManager.transcoderTotalStake(transcoder)
             const endNextTotalStake = await bondingManager.nextRoundTotalActiveStake()
 
-            const earningsPool = await bondingManager.getTranscoderCumulativeEarningsPoolForRound(transcoder, currentRound + 3)
+            const earningsPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder, currentRound + 3)
             const expRewardFactor = 1 * PERC_DIVISOR + 500 * PERC_DIVISOR / 1000
             assert.equal(earningsPool.cumulativeRewardFactor.toString(), expRewardFactor.toString(), "should update cumulativeRewardFactor in earningsPool")
 
@@ -1691,7 +1691,7 @@ contract("BondingManager", accounts => {
                     [transcoder, 1000, currentRound + 1]
                 )
             )
-            const earningsPool = await bondingManager.getTranscoderCumulativeEarningsPoolForRound(transcoder, currentRound + 1)
+            const earningsPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder, currentRound + 1)
             assert.equal(earningsPool.cumulativeFeeFactor.toString(), "500000", "wrong cumulativeFeeFactor")
         })
 
@@ -2085,8 +2085,8 @@ contract("BondingManager", accounts => {
             await bondingManager.claimEarnings(currentRound + 2, {from: delegator1})
 
             assert.equal(
-                (await bondingManager.getTranscoderCumulativeEarningsPoolForRound(transcoder, currentRound + 2)).cumulativeRewardFactor.toString(),
-                (await bondingManager.getTranscoderCumulativeEarningsPoolForRound(transcoder, currentRound + 1)).cumulativeRewardFactor
+                (await bondingManager.getTranscoderEarningsPoolForRound(transcoder, currentRound + 2)).cumulativeRewardFactor.toString(),
+                (await bondingManager.getTranscoderEarningsPoolForRound(transcoder, currentRound + 1)).cumulativeRewardFactor
             )
         })
 
