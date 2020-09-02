@@ -1,16 +1,27 @@
+import BN from "bn.js"
+
+const {constants} = require("../../utils/constants")
+const { contractId } = require("../../utils/helpers")
+import {createWinningTicket, getTicketHash} from "../helpers/ticket"
+import signMsg from "../helpers/signMsg"
+import { assert } from "chai"
+
 const Controller = artifacts.require("Controller")
 const BondingManager = artifacts.require("BondingManager")
+const BondingManagerV1 = artifacts.require("BondingManagerV1")
 const AdjustableRoundsManager = artifacts.require("AdjustableRoundsManager")
 const LivepeerToken = artifacts.require("LivepeerToken")
 const Minter = artifacts.require("Minter")
 const TicketBroker = artifacts.require("TicketBroker")
 
-const {constants} = require("../../utils/constants")
+const LinkedList = artifacts.require("SortedDoublyLL")
 
+const ManagerProxy = artifacts.require("ManagerProxy")
 
-contract("Earnigns", accounts => {
+contract("Earnings", accounts => {
     let controller
     let bondingManager
+    let bondingProxy
     let roundsManager
     let token
     let minter
@@ -21,19 +32,55 @@ contract("Earnigns", accounts => {
     const delegator = accounts[2]
 
     const rewardCut = 50 * constants.PERC_MULTIPLIER // 50%
-    const feeShare = 25 * constants.PERC_MULTIPLIER // 5%
+    const feeShare = 25 * constants.PERC_MULTIPLIER // 25%
 
     const transcoderStake = 1000
     const delegatorStake = 3000
 
     let roundLength
 
+    const acceptableDelta = constants.TOKEN_UNIT.div(new BN(1000)) // .001
+
+    const NUM_ACTIVE_TRANSCODERS = 2
+    const UNBONDING_PERIOD = 2
+    const MAX_EARNINGS_CLAIMS_ROUNDS = 20
+
+    const PERC_DIVISOR = 1000000
+    const PERC_MULTIPLIER = PERC_DIVISOR / 100
+
+    const faceValue = new BN(web3.utils.toWei("0.1", "ether")).toString() // 0.1 ETH
+
+
+    async function redeemWinningTicket(transcoder, broadcaster, faceValue) {
+        const block = await roundsManager.blockNum()
+        const creationRound = (await roundsManager.currentRound()).toString()
+        const creationRoundBlockHash = await roundsManager.blockHash(block)
+        const auxData = web3.eth.abi.encodeParameters(
+            ["uint256", "bytes32"],
+            [creationRound, creationRoundBlockHash]
+        )
+        const recipientRand = 5
+        const ticket = createWinningTicket(transcoder, broadcaster, recipientRand, faceValue, auxData)
+        const senderSig = await signMsg(getTicketHash(ticket), broadcaster)
+
+        await broker.redeemWinningTicket(ticket, senderSig, recipientRand, {from: transcoder})
+    }
+
     before(async () => {
         controller = await Controller.deployed()
         await controller.unpause()
 
-        const bondingManagerAddr = await controller.getContract(contractId("BondingManager"))
-        bondingManager = await BondingManager.at(bondingManagerAddr)
+        const ll = await LinkedList.new()
+        BondingManagerV1.link("SortedDoublyLL", ll.address)
+        const bondingTarget = await BondingManagerV1.new(controller.address)
+        await controller.setContractInfo(contractId("BondingManagerTarget"), bondingTarget.address, web3.utils.asciiToHex("0x123"))
+        bondingProxy = await ManagerProxy.new(controller.address, contractId("BondingManagerTarget"))
+        await controller.setContractInfo(contractId("BondingManager"), bondingProxy.address, web3.utils.asciiToHex("0x123"))
+        bondingManager = await BondingManagerV1.at(bondingProxy.address)
+
+        await bondingManager.setUnbondingPeriod(UNBONDING_PERIOD)
+        await bondingManager.setNumActiveTranscoders(NUM_ACTIVE_TRANSCODERS)
+        await bondingManager.setMaxEarningsClaimsRounds(MAX_EARNINGS_CLAIMS_ROUNDS)
 
         const roundsManagerAddr = await controller.getContract(contractId("RoundsManager"))
         roundsManager = await AdjustableRoundsManager.at(roundsManagerAddr)
@@ -52,18 +99,262 @@ contract("Earnigns", accounts => {
         await token.transfer(transcoder, amount, {from: accounts[0]})
         await token.transfer(delegator, amount, {from: accounts[0]})
 
+        roundLength = await roundsManager.roundLength.call()
+        await roundsManager.mineBlocks(roundLength.toNumber() * 10)
+        await roundsManager.setBlockHash(web3.utils.keccak256("foo"))
+        await roundsManager.initializeRound()
+
         // Register transcoder
         await token.approve(bondingManager.address, transcoderStake, {from: transcoder})
-        await bondingManager.bond(transcodeStake, transcoder1, {from: transcoder})
-        await bondingManager.transcoder(rewardCut * constants.PERC_MULTIPLIER, feeShare * constants.PERC_MULTIPLIER, {from: transcoder})
+        await bondingManager.bond(transcoderStake, transcoder, {from: transcoder})
+        await bondingManager.transcoder(rewardCut, feeShare, {from: transcoder})
 
         // Delegate from delegator
         await token.approve(bondingManager.address, delegatorStake, {from: delegator})
         await bondingManager.bond(delegatorStake, transcoder, {from: delegator})
 
-        roundLength = await roundsManager.roundLength.call()
-        await roundsManager.mineBlocks(roundLength.toNumber() * 1000)
-        await roundsManager.setBlockHash(web3.utils.keccak256("foo"))
-        await roundsManager.initializeRound()
+        const deposit = new BN(web3.utils.toWei("5", "ether"))
+        await broker.fundDeposit({from: broadcaster, value: deposit})
+        const reserve = new BN(web3.utils.toWei("5", "ether"))
+        await broker.fundReserve({from: broadcaster, value: reserve})
     })
+
+    const getStake = async addr => {
+        const currentRound = await roundsManager.currentRound()
+        const d = await bondingManager.getDelegator(addr)
+
+        if (d.lastClaimRound.toNumber() < currentRound.toNumber()) {
+            return await bondingManager.pendingStake(addr, currentRound)
+        } else {
+            return d.bondedAmount
+        }
+    }
+
+    const getFees = async addr => {
+        const currentRound = await roundsManager.currentRound()
+        const d = await bondingManager.getDelegator(addr)
+
+        if (d.lastClaimRound.toNumber() < currentRound.toNumber()) {
+            return await bondingManager.pendingFees(addr, currentRound)
+        } else {
+            return d.fees
+        }
+    }
+
+    const oldEarningsAndCheck = async () => {
+        const transcoderStartStake = await getStake(transcoder)
+        const delegatorStartStake = await getStake(delegator)
+        const totalStartStake = transcoderStartStake.add(delegatorStartStake)
+
+        const transcoderStartFees = await getFees(transcoder)
+        const delegatorStartFees = await getFees(delegator)
+
+        const transcoderFeeCut = (faceValue * (PERC_DIVISOR - feeShare)) / PERC_DIVISOR
+        await bondingManager.reward({from: transcoder})
+        await redeemWinningTicket(transcoder, broadcaster, faceValue)
+
+        const currentRound = await roundsManager.currentRound()
+
+        const earningsPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder, currentRound)
+        const delegatorRewardPool = earningsPool.rewardPool
+        const transcoderRewardPool = earningsPool.transcoderRewardPool
+        const delegatorFeePool = earningsPool.feePool 
+        const transcoderFeePool = earningsPool.transcoderFeePool 
+
+        const expTRewardShare = delegatorRewardPool.mul(transcoderStartStake).div(totalStartStake).add(transcoderRewardPool)
+        const expDRewardShare = delegatorRewardPool.mul(delegatorStartStake).div(totalStartStake)
+        const expTFees = delegatorFeePool.mul(transcoderStartStake).div(totalStartStake).add(transcoderFeePool)
+        const expDFees = delegatorFeePool.mul(delegatorStartStake).div(totalStartStake)
+        
+        const transcoderEndStake = await bondingManager.pendingStake(transcoder, currentRound)
+        const delegatorEndStake = await bondingManager.pendingStake(delegator, currentRound)
+        const transcoderEndFees = await bondingManager.pendingFees(transcoder, currentRound)
+        const delegatorEndFees = await bondingManager.pendingFees(delegator, currentRound)
+
+        const transcoderRewardShare = transcoderEndStake.sub(transcoderStartStake)
+        const delegatorRewardShare = delegatorEndStake.sub(delegatorStartStake)
+        const transcoderFees = transcoderEndFees.sub(transcoderStartFees)
+        const delegatorFees = delegatorEndFees.sub(delegatorStartFees)
+
+        assert.isOk(transcoderRewardShare.sub(expTRewardShare).abs().lte(acceptableDelta))
+        assert.isOk(delegatorRewardShare.sub(expDRewardShare).abs().lte(acceptableDelta))
+        assert.isOk(transcoderFees.sub(expTFees).abs().lte(acceptableDelta))
+        assert.isOk(delegatorFees.sub(expDFees).abs().lte(acceptableDelta))
+    }
+
+    const cumulativeEarningsAndCheck = async () => {
+        const calcRewardShare = (startStake, startRewardFactor, endRewardFactor) => {
+            return startStake.mul(endRewardFactor.mul(new BN(constants.PERC_DIVISOR)).div(startRewardFactor)).div(new BN(constants.PERC_DIVISOR)).sub(startStake)
+        }
+
+        const calcFeeShare = (startStake, startFees, startFeeFactor, endFeeFactor, startRewardFactor) => {
+            const feeFactor = endFeeFactor.sub(startFeeFactor)
+            return startStake.mul(feeFactor).div(startRewardFactor).sub(startFees)
+        }
+
+        const transcoderDel = await bondingManager.getDelegator(transcoder) 
+        const delegatorDel = await bondingManager.getDelegator(delegator)
+        let transcoderStartStake = transcoderDel.bondedAmount
+        let delegatorStartStake = delegatorDel.bondedAmount
+        let transcoderStartFees = transcoderDel.fees
+        let delegatorStartFees = delegatorDel.fees
+
+        const lastClaimRoundTranscoder = transcoderDel.lastClaimRound
+
+        const LIP36Round = await roundsManager.LIPUpgradeRounds(36)
+        let LIP36EarningsPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder, LIP36Round) 
+        if (lastClaimRoundTranscoder <= LIP36Round) {
+            let round = LIP36EarningsPool.hasTranscoderRewardFeePool ? LIP36Round : LIP36Round.sub(1)
+            transcoderStartStake = await bondingManager.pendingStake(transcoder, round)
+            delegatorStartStake = await bondingManager.pendingStake(delegator, round)
+            transcoderStartFees = await bondingManager.pendingFees(transcoder, round)
+            delegatorStartFees = await bondingManager.pendingFees(delegator, round)
+        }
+
+        console.log("transcoder start stake and fees", transcoderStartStake.toString(), transcoderStartFees.toString())
+        console.log("delegator start stake and fees", delegatorStartStake.toString(), delegatorStartFees.toString())
+        await bondingManager.reward({from: transcoder})
+        await redeemWinningTicket(transcoder, broadcaster, faceValue)
+
+        const currentRound = await roundsManager.currentRound()
+
+
+        const transC = await bondingManager.getTranscoder(transcoder)
+        const startEarningsPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder, lastClaimRoundTranscoder)
+        let startRewardFactor = startEarningsPool.cumulativeRewardFactor
+        startRewardFactor = startRewardFactor.toString() != "0" ? startRewardFactor : new BN(1000000)
+        const startFeeFactor = startEarningsPool.cumulativeFeeFactor
+        const endEarningsPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder, currentRound)
+        let endRewardFactor = endEarningsPool.cumulativeRewardFactor
+        if (endRewardFactor.toString() == "0") {
+            let lastRewFactor = await bondingManager.getTranscoderEarningsPoolForRound(transcoder, transC.lastRewardRound)
+            lastRewFactor = lastRewFactor.toString() != "0" ? lastRewFactor : new BN(1000000)
+            endRewardFactor = lastRewFactor
+        }
+
+        const endFeeFactor = endEarningsPool.cumulativeFeeFactor.toString() != "0" ? endEarningsPool.cumulativeFeeFactor : (await bondingManager.getTranscoderEarningsPoolForRound(transcoder, transC.lastFeeRound)).cumulativeFeeFactor
+        const transcoderRewards = transC.cumulativeRewards
+        const transcoderFees = transC.cumulativeFees 
+
+        const expTranscoderRewardShare = calcRewardShare(transcoderStartStake, startRewardFactor, endRewardFactor).add(transcoderRewards)
+        const expDelegatorRewardShare = calcRewardShare(delegatorStartStake, startRewardFactor, endRewardFactor)
+        const expTranscoderFeeShare = calcFeeShare(transcoderStartStake, startFeeFactor, endFeeFactor, startRewardFactor, transcoderStartFees).add(transcoderFees)
+        const expDelegatorFeeShare = calcFeeShare(delegatorStartStake, startFeeFactor, endFeeFactor, startRewardFactor, delegatorStartFees)
+
+        const transcoderEndStake = await bondingManager.pendingStake(transcoder, currentRound)
+        const delegatorEndStake = await bondingManager.pendingStake(delegator, currentRound)
+        const transcoderEndFees = await bondingManager.pendingFees(transcoder, currentRound)
+        const delegatorEndFees = await bondingManager.pendingFees(delegator, currentRound)
+
+        console.log("transcoder end stake and fees", transcoderEndStake.toString(), transcoderEndFees.toString())
+        console.log("delegator end stake and fees", delegatorEndStake.toString(), delegatorEndFees.toString())
+
+        const transcoderRewardShare = transcoderEndStake.sub(transcoderStartStake)
+        const delegatorRewardShare = delegatorEndStake.sub(delegatorStartStake)
+        const transcoderFeeShare = transcoderEndFees.sub(transcoderStartFees)
+        const delegatorFeeShare = delegatorEndFees.sub(delegatorStartFees)
+        
+        console.log("transcoderRewardShare", transcoderRewardShare.toString(), "expTranscoderRewardShare", expTranscoderRewardShare.toString())
+        console.log("transcoderFeeShare", transcoderFeeShare.toString(), "expTranscoderFeeShare", expTranscoderFeeShare.toString())
+        console.log("delegatorRewardShare", delegatorRewardShare.toString(), "expDelgatorRewardShare", expDelegatorRewardShare.toString())
+        console.log("delegatorFeeShare", delegatorFeeShare.toString(), "expDelegatorFeeShare", delegatorFeeShare.toString())
+        assert.isOk(transcoderRewardShare.sub(expTranscoderRewardShare).abs().lte(acceptableDelta))
+        assert.isOk(delegatorRewardShare.sub(expDelegatorRewardShare).abs().lte(acceptableDelta))
+        assert.isOk(transcoderFeeShare.sub(expTranscoderFeeShare).abs().lte(acceptableDelta))
+        assert.isOk(delegatorFeeShare.sub(expDelegatorFeeShare).abs().lte(acceptableDelta))
+    }
+
+    const claimEarningsAndCheckStakes = async () => {
+        const acceptableDelta = constants.TOKEN_UNIT.div(new BN(1000)) // .001
+
+        const currentRound = await roundsManager.currentRound()
+
+        const transcoderStartStake = await getStake(transcoder)
+        const delegatorStartStake = await getStake(delegator)
+        const transcoderStartFees = await getFees(transcoder)
+        const delegatorStartFees = await getFees(delegator)
+
+        await bondingManager.claimEarnings(currentRound, {from: transcoder})
+        await bondingManager.claimEarnings(currentRound, {from: delegator})
+
+
+        const transcoderDel = await bondingManager.getDelegator(transcoder)
+        const delegatorDel = await bondingManager.getDelegator(delegator)
+        const transcoderEndStake = transcoderDel.bondedAmount
+        const delegatorEndStake = delegatorDel.bondedAmount
+        const transcoderEndFees = transcoderDel.fees 
+        const delegatorEndFees = delegatorDel.fees
+        assert.isOk(transcoderEndStake.sub(transcoderStartStake).abs().lte(acceptableDelta))
+        assert.isOk(delegatorEndStake.sub(delegatorStartStake).abs().lte(acceptableDelta))
+        assert.isOk(transcoderEndFees.sub(transcoderStartFees).abs().lte(acceptableDelta))
+        assert.isOk(delegatorEndFees.sub(delegatorStartFees).abs().lte(acceptableDelta))
+        assert.equal(transcoderDel.lastClaimRound.toString(), currentRound.toString())
+        assert.equal(delegatorDel.lastClaimRound.toString(), currentRound.toString())
+    }
+
+    describe("earnings before LIP-36", async () => {
+        beforeEach(async () => {
+            await roundsManager.mineBlocks(roundLength.toNumber())
+            await roundsManager.initializeRound()
+        })
+
+        it("calculates earnings for one round before LIP-36", async () => {
+           await oldEarningsAndCheck()
+        })
+
+        it("calculates earnings for two rounds before LIP-36", async () => {
+            await oldEarningsAndCheck()
+        })
+
+        it("claims earnings for rounds before LIP-36", async () => {
+            await claimEarningsAndCheckStakes()
+        })
+    })
+
+    describe("earnings before and after LIP-36 combined", async () => {
+        beforeEach(async () => {
+            await roundsManager.mineBlocks(roundLength.toNumber())
+            await roundsManager.initializeRound()
+        })
+
+        it("calculates earnings before LIP-36", async () => {
+            await oldEarningsAndCheck()
+        })
+
+        it("calculates earnings and deploys LIP-36", async () => {
+            await oldEarningsAndCheck()
+
+            const currentRound = await roundsManager.currentRound()
+            const ll = await LinkedList.new()
+            BondingManager.link("SortedDoublyLL", ll.address)
+            const bondingTarget = await BondingManager.new(controller.address)
+            await controller.setContractInfo(contractId("BondingManagerTarget"), bondingTarget.address, web3.utils.asciiToHex("0x123"))
+            bondingManager = await BondingManager.at(bondingProxy.address)
+            await roundsManager.setLIPUpgradeRound(new BN(36), currentRound)
+
+            console.log("last transcoder stake and fees", (await bondingManager.pendingStake(transcoder, currentRound)).toString(), (await bondingManager.pendingFees(transcoder, currentRound)).toString())
+            console.log("last delegator stake and fees", (await bondingManager.pendingStake(delegator, currentRound)).toString(), (await bondingManager.pendingFees(delegator, currentRound)).toString())
+
+        })
+
+        it("calculates earnings after LIP-36", async () => {
+            await cumulativeEarningsAndCheck()
+        })
+
+        it("claims earnings for rounds before and after LIP-36 combined", async () => {
+            await claimEarningsAndCheckStakes()
+        })
+    })
+    
 })
+
+// 1. Pre-LIP 36 rewards & fees 
+// 2. Pre-LIP 36 claiming
+// 3. Transitional rewards & fees 
+// 4. Claiming for the transitional rounds 
+// 5. Post-LIP 36 rewards & fees
+// 6. Claiming post LIP-36
+// 7. Repeat 5 & 6 
+// 8. Withdraw earnings
+// 9. Repeat 5&6
+// 10. Withdraw earnings.
