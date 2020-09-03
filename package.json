@@ -11,7 +11,7 @@
     "eslint:fix": "eslint util/** test/** --fix",
     "eslint": "eslint util/** test/**",
     "solium": "solium --dir ./contracts",
-    "ganache": "ganache-cli -k istanbul -l 0x7A1200 -a 310",
+    "ganache": "ganache-cli -k istanbul -l 0x989680 -a 310",
     "clean": "rm -rf build/contracts",
     "compile": "truffle compile --all",
     "test:coverage": "SOLIDITY_COVERAGE=true npm run test",
