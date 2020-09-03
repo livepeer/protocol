@@ -312,10 +312,25 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         uint256 currentRound = roundsManager().currentRound();
 
         Transcoder storage t = transcoders[_transcoder];
+
         uint256 lastRewardRound = t.lastRewardRound;
 
+        uint256 prevRewardRound = lastRewardRound;
+        if (prevRewardRound == currentRound) {
+            prevRewardRound = currentRound.sub(1);
+        }
+
+        // prevEarningsPool.cumulativeFeeFactor will only be used if 'transcoder.lastFeeRound' < 'currentRound', otherwise earningsPool.cumulativeFeeFactor will be initialised already
+        uint256 prevFeeRound = t.lastFeeRound;
+        if (prevFeeRound == currentRound) {
+            prevFeeRound = currentRound.sub(1);
+        }
+
+        EarningsPool.Data memory prevEarningsPool;
+        prevEarningsPool.cumulativeRewardFactor = t.earningsPoolPerRound[prevRewardRound].cumulativeRewardFactor;
+        prevEarningsPool.cumulativeFeeFactor = t.earningsPoolPerRound[prevFeeRound].cumulativeFeeFactor;
+
         EarningsPool.Data storage earningsPool = t.earningsPoolPerRound[currentRound];
-        EarningsPool.Data storage prevEarningsPool = t.earningsPoolPerRound[currentRound.sub(1)];
 
         // if transcoder hasn't called 'reward()' for '_round' its 'transcoderFeeShare', 'transcoderRewardCut' and 'totalStake'
         // on the 'EarningsPoolV2' for '_round' would not be initialized and the fee distribution wouldn't happen as expected
@@ -334,28 +349,17 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // LIP-36: Add fees for the current round instead of '_round'
         // https://github.com/livepeer/LIPs/issues/35#issuecomment-673659199
         uint256 totalStake = earningsPool.totalStake;
-        if ( prevEarningsPool.cumulativeRewardFactor == 0 && lastRewardRound > roundsManager().LIPUpgradeRounds(36)) {
-            // if transcoder didn't call reward for 'currentRound - 1' nor 'currentRound', use the cumulativeRewardFactor for 'lastRewardRound'
-            if (lastRewardRound < currentRound) {
-                prevEarningsPool.cumulativeRewardFactor = t.earningsPoolPerRound[lastRewardRound].cumulativeRewardFactor;
-            } else {
-                // if transcoder called reward for 'currentRound' but not for 'currentRound - 1' (missed reward call)
-                // retroactively calculate what its cumulativeRewardFactor would have been for 'currentRound - 1' (cfr. previous lastRewardRound for transcoder)  
-                // based on rewards for currentRound
-                uint256 rewards = MathUtils.percOf(minter().currentMintableTokens().add(minter().currentMintedTokens()), totalStake, currentRoundTotalActiveStake);
-                uint256 transcoderCommissionRewards = MathUtils.percOf(rewards, earningsPool.transcoderRewardCut);
-                uint256 delegatorRewards = rewards.sub(transcoderCommissionRewards);
-                prevEarningsPool.cumulativeRewardFactor = MathUtils.percOf(
-                    earningsPool.cumulativeRewardFactor,
-                    MathUtils.percPoints(1, MathUtils.percPoints(1, 1).add(MathUtils.percPoints(delegatorRewards, totalStake)))
-                );        
-            }
-        }
-
-        uint256 lastFeeRound = t.lastFeeRound;
-        // prevEarningsPool.cumulativeFeeFactor will only be used if 'transcoder.lastFeeRound' < 'currentRound', otherwise earningsPool.cumulativeFeeFactor will be initialised already
-        if (prevEarningsPool.cumulativeFeeFactor == 0) {
-            prevEarningsPool.cumulativeFeeFactor = t.earningsPoolPerRound[lastFeeRound].cumulativeFeeFactor;
+        if (prevEarningsPool.cumulativeRewardFactor == 0 && prevRewardRound == currentRound && prevRewardRound > roundsManager().LIPUpgradeRounds(36)) {
+            // if transcoder called reward for 'currentRound' but not for 'currentRound - 1' (missed reward call)
+            // retroactively calculate what its cumulativeRewardFactor would have been for 'currentRound - 1' (cfr. previous lastRewardRound for transcoder)  
+            // based on rewards for currentRound
+            uint256 rewards = MathUtils.percOf(minter().currentMintableTokens().add(minter().currentMintedTokens()), totalStake, currentRoundTotalActiveStake);
+            uint256 transcoderCommissionRewards = MathUtils.percOf(rewards, earningsPool.transcoderRewardCut);
+            uint256 delegatorRewards = rewards.sub(transcoderCommissionRewards);
+            prevEarningsPool.cumulativeRewardFactor = MathUtils.percOf(
+                earningsPool.cumulativeRewardFactor,
+                MathUtils.percPoints(1, MathUtils.percPoints(1, 1).add(MathUtils.percPoints(delegatorRewards, totalStake)))
+            );    
         }
 
         uint256 delegatorsFees = MathUtils.percOf(_fees, earningsPool.transcoderFeeShare);
@@ -369,63 +373,64 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         t.lastFeeRound = _round;
     }
 
-    /**
-     * @notice Slash a transcoder. Only callable by the Verifier
-     * @param _transcoder Transcoder address
-     * @param _finder Finder that proved a transcoder violated a slashing condition. Null address if there is no finder
-     * @param _slashAmount Percentage of transcoder bond to be slashed
-     * @param _finderFee Percentage of penalty awarded to finder. Zero if there is no finder
-     */
-    function slashTranscoder(
-        address _transcoder,
-        address _finder,
-        uint256 _slashAmount,
-        uint256 _finderFee
-    )
-        external
-        whenSystemNotPaused
-        onlyVerifier
-    {
-        Delegator storage del = delegators[_transcoder];
+    // /**
+    //  * @notice Slash a transcoder. Only callable by the Verifier
+    //  * @param _transcoder Transcoder address
+    //  * @param _finder Finder that proved a transcoder violated a slashing condition. Null address if there is no finder
+    //  * @param _slashAmount Percentage of transcoder bond to be slashed
+    //  * @param _finderFee Percentage of penalty awarded to finder. Zero if there is no finder
+    //  */
+    // function slashTranscoder(
+    //     address _transcoder,
+    //     address _finder,
+    //     uint256 _slashAmount,
+    //     uint256 _finderFee
+    // )
+    //     external
+    //     whenSystemNotPaused
+    //     onlyVerifier
+    // {
+    //     Delegator storage del = delegators[_transcoder];
 
-        if (del.bondedAmount > 0) {
-            uint256 penalty = MathUtils.percOf(delegators[_transcoder].bondedAmount, _slashAmount);
+    //     if (del.bondedAmount > 0) {
+    //         uint256 penalty = MathUtils.percOf(delegators[_transcoder].bondedAmount, _slashAmount);
 
-            // If active transcoder, resign it
-            if (transcoderPoolV2.contains(_transcoder)) {
-                resignTranscoder(_transcoder);
-            }
+    //         // If active transcoder, resign it
+    //         if (transcoderPoolV2.contains(_transcoder)) {
+    //             resignTranscoder(_transcoder);
+    //         }
 
-            // Decrease bonded stake
-            del.bondedAmount = del.bondedAmount.sub(penalty);
+    //         // Decrease bonded stake
+    //         del.bondedAmount = del.bondedAmount.sub(penalty);
 
-            // If still bonded decrease delegate's delegated amount
-            if (delegatorStatus(_transcoder) == DelegatorStatus.Bonded) {
-                delegators[del.delegateAddress].delegatedAmount = delegators[del.delegateAddress].delegatedAmount.sub(penalty);
-            }
+    //         // If still bonded decrease delegate's delegated amount
+    //         if (delegatorStatus(_transcoder) == DelegatorStatus.Bonded) {
+    //             delegators[del.delegateAddress].delegatedAmount = delegators[del.delegateAddress].delegatedAmount.sub(penalty);
+    //         }
 
-            // Account for penalty
-            uint256 burnAmount = penalty;
+    //         // Account for penalty
+    //         uint256 burnAmount = penalty;
 
-            // Award finder fee if there is a finder address
-            if (_finder != address(0)) {
-                uint256 finderAmount = MathUtils.percOf(penalty, _finderFee);
-                minter().trustedTransferTokens(_finder, finderAmount);
+    //         // Award finder fee if there is a finder address
+    //         if (_finder != address(0)) {
+    //             uint256 finderAmount = MathUtils.percOf(penalty, _finderFee);
+    //             minter().trustedTransferTokens(_finder, finderAmount);
 
-                // Minter burns the slashed funds - finder reward
-                minter().trustedBurnTokens(burnAmount.sub(finderAmount));
+    //             // Minter burns the slashed funds - finder reward
+    //             minter().trustedBurnTokens(burnAmount.sub(finderAmount));
 
-                emit TranscoderSlashed(_transcoder, _finder, penalty, finderAmount);
-            } else {
-                // Minter burns the slashed funds
-                minter().trustedBurnTokens(burnAmount);
+    //             emit TranscoderSlashed(_transcoder, _finder, penalty, finderAmount);
+    //         } else {
+    //             // Minter burns the slashed funds
+    //             minter().trustedBurnTokens(burnAmount);
 
-                emit TranscoderSlashed(_transcoder, address(0), penalty, 0);
-            }
-        } else {
-            emit TranscoderSlashed(_transcoder, _finder, 0, 0);
-        }
-    }
+    //             emit TranscoderSlashed(_transcoder, address(0), penalty, 0);
+    //         }
+    //     } else {
+    //         emit TranscoderSlashed(_transcoder, _finder, 0, 0);
+    //     }
+    // }
+
 
     /**
      * @notice Claim token pools shares for a delegator from its lastClaimRound through the end round

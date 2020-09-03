@@ -68,7 +68,7 @@ library EarningsPool {
      * @param earningsPool Storage pointer to EarningsPools struct
      * @param _fees Amount of fees to add
      */
-    function addToFeePool(EarningsPool.Data storage earningsPool, EarningsPool.Data storage _prevEarningsPool, uint256 _fees) internal {
+    function addToFeePool(EarningsPool.Data storage earningsPool, EarningsPool.Data memory _prevEarningsPool, uint256 _fees) internal {
         uint256 prevCumulativeFeeFactor = _prevEarningsPool.cumulativeFeeFactor;
         uint256 prevCumulativeRewardFactor = _prevEarningsPool.cumulativeRewardFactor != 0 ? _prevEarningsPool.cumulativeRewardFactor : MathUtils.percPoints(1,1);
 
