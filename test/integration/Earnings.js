@@ -184,7 +184,7 @@ contract("Earnings", accounts => {
 
     const cumulativeEarningsAndCheck = async () => {
         const calcRewardShare = (startStake, startRewardFactor, endRewardFactor) => {
-            return startStake.mul(endRewardFactor.mul(new BN(constants.PERC_DIVISOR)).div(startRewardFactor)).div(new BN(constants.PERC_DIVISOR)).sub(startStake)
+            return startStake.mul(endRewardFactor).div(startRewardFactor).sub(startStake)
         }
 
         const calcFeeShare = (startStake, startFees, startFeeFactor, endFeeFactor, startRewardFactor) => {
@@ -203,8 +203,8 @@ contract("Earnings", accounts => {
 
         const LIP36Round = await roundsManager.LIPUpgradeRounds(36)
         let LIP36EarningsPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder, LIP36Round) 
-        if (lastClaimRoundTranscoder <= LIP36Round) {
-            let round = LIP36EarningsPool.hasTranscoderRewardFeePool ? LIP36Round : LIP36Round.sub(1)
+        if (lastClaimRoundTranscoder.cmp(LIP36Round) <= 0) {
+            let round = LIP36EarningsPool.hasTranscoderRewardFeePool ? LIP36Round : LIP36Round.sub(new BN(1))
             transcoderStartStake = await bondingManager.pendingStake(transcoder, round)
             delegatorStartStake = await bondingManager.pendingStake(delegator, round)
             transcoderStartFees = await bondingManager.pendingFees(transcoder, round)
@@ -218,28 +218,28 @@ contract("Earnings", accounts => {
 
         const currentRound = await roundsManager.currentRound()
 
-
         const transC = await bondingManager.getTranscoder(transcoder)
         const startEarningsPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder, lastClaimRoundTranscoder)
         let startRewardFactor = startEarningsPool.cumulativeRewardFactor
-        startRewardFactor = startRewardFactor.toString() != "0" ? startRewardFactor : new BN(1000000)
+        startRewardFactor = startRewardFactor.gt(new BN(0)) ? startRewardFactor : new BN(PERC_DIVISOR)
+
         const startFeeFactor = startEarningsPool.cumulativeFeeFactor
         const endEarningsPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder, currentRound)
         let endRewardFactor = endEarningsPool.cumulativeRewardFactor
-        if (endRewardFactor.toString() == "0") {
+        if (endRewardFactor.eq(new BN(0))) {
             let lastRewFactor = await bondingManager.getTranscoderEarningsPoolForRound(transcoder, transC.lastRewardRound)
-            lastRewFactor = lastRewFactor.toString() != "0" ? lastRewFactor : new BN(1000000)
+            lastRewFactor = lastRewFactor.gt(new BN(0)) ? lastRewFactor : new BN(PERC_DIVISOR)
             endRewardFactor = lastRewFactor
         }
 
-        const endFeeFactor = endEarningsPool.cumulativeFeeFactor.toString() != "0" ? endEarningsPool.cumulativeFeeFactor : (await bondingManager.getTranscoderEarningsPoolForRound(transcoder, transC.lastFeeRound)).cumulativeFeeFactor
+        const endFeeFactor = endEarningsPool.cumulativeFeeFactor.gt(new BN(0)) ? endEarningsPool.cumulativeFeeFactor : (await bondingManager.getTranscoderEarningsPoolForRound(transcoder, transC.lastFeeRound)).cumulativeFeeFactor
         const transcoderRewards = transC.cumulativeRewards
         const transcoderFees = transC.cumulativeFees 
 
         const expTranscoderRewardShare = calcRewardShare(transcoderStartStake, startRewardFactor, endRewardFactor).add(transcoderRewards)
         const expDelegatorRewardShare = calcRewardShare(delegatorStartStake, startRewardFactor, endRewardFactor)
-        const expTranscoderFeeShare = calcFeeShare(transcoderStartStake, startFeeFactor, endFeeFactor, startRewardFactor, transcoderStartFees).add(transcoderFees)
-        const expDelegatorFeeShare = calcFeeShare(delegatorStartStake, startFeeFactor, endFeeFactor, startRewardFactor, delegatorStartFees)
+        const expTranscoderFeeShare = calcFeeShare(transcoderStartStake, transcoderStartFees, startFeeFactor, endFeeFactor, startRewardFactor).add(transcoderFees)
+        const expDelegatorFeeShare = calcFeeShare(delegatorStartStake, delegatorStartFees, startFeeFactor, endFeeFactor, startRewardFactor)
 
         const transcoderEndStake = await bondingManager.pendingStake(transcoder, currentRound)
         const delegatorEndStake = await bondingManager.pendingStake(delegator, currentRound)
@@ -344,17 +344,5 @@ contract("Earnings", accounts => {
         it("claims earnings for rounds before and after LIP-36 combined", async () => {
             await claimEarningsAndCheckStakes()
         })
-    })
-    
+    })  
 })
-
-// 1. Pre-LIP 36 rewards & fees 
-// 2. Pre-LIP 36 claiming
-// 3. Transitional rewards & fees 
-// 4. Claiming for the transitional rounds 
-// 5. Post-LIP 36 rewards & fees
-// 6. Claiming post LIP-36
-// 7. Repeat 5 & 6 
-// 8. Withdraw earnings
-// 9. Repeat 5&6
-// 10. Withdraw earnings.
