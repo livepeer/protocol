@@ -32,6 +32,7 @@ contract IBondingManager {
     function updateTranscoderWithFees(address _transcoder, uint256 _fees, uint256 _round) external;
     function slashTranscoder(address _transcoder, address _finder, uint256 _slashAmount, uint256 _finderFee) external;
     function setCurrentRoundTotalActiveStake() external;
+    function mintRewards() external returns (uint256);
 
     // Public functions
     function getTranscoderPoolSize() public view returns (uint256);

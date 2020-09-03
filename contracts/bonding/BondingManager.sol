@@ -400,6 +400,10 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         currentRoundTotalActiveStake = nextRoundTotalActiveStake;
     }
 
+    function mintRewards() external onlyRoundsManager returns (uint256) {
+        return minter().createReward(1, 1);
+    }
+
     /**
      * @notice Sets commission rates as a transcoder and if the caller is not in the transcoder pool tries to add it using an optional list hint
      * @dev Percentages are represented as numerators of fractions over MathUtils.PERC_DIVISOR. If the caller is going to be added to the pool, the
@@ -660,9 +664,16 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             earningsPool.setStake(t.earningsPoolPerRound[lastUpdateRound].totalStake);
         }
 
+        uint256 rewardTokens = 0;
         // Create reward based on active transcoder's stake relative to the total active stake
-        // rewardTokens = (current mintable tokens for the round * active transcoder stake) / total active stake
-        uint256 rewardTokens = minter().createReward(earningsPool.totalStake, currentRoundTotalActiveStake);
+        if (currentRound >= roundsManager().lipUpgradeRound(56)) {
+            require(roundsManager().currentRoundIsRewardRound(), "current round is not a reward round");
+            // rewardTokens = (minted tokens for the reward period * active transcoder stake) / total active stake
+            rewardTokens = MathUtils.percOf(roundsManager().mintedInRewardPeriod(), earningsPool.totalStake, currentRoundTotalActiveStake);
+        } else {
+            // rewardTokens = (current mintable tokens for the round * active transcoder stake) / total active stake
+            rewardTokens = minter().createReward(earningsPool.totalStake, currentRoundTotalActiveStake);
+        }
 
         updateTranscoderWithRewards(msg.sender, rewardTokens, currentRound, _newPosPrev, _newPosNext);
 

@@ -33,6 +33,17 @@ contract RoundsManager is ManagerProxyTarget, IRoundsManager {
     // Mapping round number => block hash for the round
     mapping (uint256 => bytes32) internal _blockHashForRound;
 
+    // Mapping LIP # => upgrade round when the LIP goes into effect
+    mapping (uint256 => uint256) public lipUpgradeRound;
+
+    // Number of rounds in a reward period
+    uint256 public rewardPeriodLength;
+    // The round at which the current reward period ends
+    uint256 public nextRewardRound;
+    // The amount of rewards minted in the current reward period
+    // Rewards minted in the current reward period can be distributed in nextRewardRound
+    uint256 public mintedInRewardPeriod;
+
     /**
      * @notice RoundsManager constructor. Only invokes constructor of base Manager contract with provided Controller address
      * @dev This constructor will not initialize any state variables besides `controller`. The following setter functions
@@ -79,6 +90,27 @@ contract RoundsManager is ManagerProxyTarget, IRoundsManager {
         emit ParameterUpdate("roundLockAmount");
     }
 
+    function setLIPUpgradeRound(uint256 _lip, uint256 _round) external onlyControllerOwner {
+        require(lipUpgradeRound[_lip] == 0, "LIP upgrade round already set");
+
+        lipUpgradeRound[_lip] = _round;
+    }
+
+    function setRewardPeriod(uint256 _rewardPeriodLength) external onlyControllerOwner {
+        require(
+            _rewardPeriodLength > 0,
+            "_rewardPeriodLength must be greater than 0"
+        );
+
+        // The new rewardPeriodLength will be used to set the nextRewardRound when the current reward period is over
+        rewardPeriodLength = _rewardPeriodLength;
+
+        // Initialize nextRewardRound if it has not been set yet
+        if (nextRewardRound == 0) {
+            nextRewardRound = currentRound().add(_rewardPeriodLength);
+        }
+    }
+
     /**
      * @notice Initialize the current round. Called once at the start of any round
      */
@@ -97,6 +129,15 @@ contract RoundsManager is ManagerProxyTarget, IRoundsManager {
         bondingManager().setCurrentRoundTotalActiveStake();
         // Set mintable rewards for the round
         minter().setCurrentRewardTokens();
+        // Mint rewards for the round 
+        uint256 rewards = bondingManager().mintRewards();
+        if (currRound > nextRewardRound) {
+            // We are at the start of a new reward period so overwrite mintedInRewardPeriod instead of adding to it
+            mintedInRewardPeriod = rewards;
+            nextRewardRound = nextRewardRound.add(rewardPeriodLength);
+        } else {
+            mintedInRewardPeriod = mintedInRewardPeriod.add(rewards);
+        }
 
         emit NewRound(currRound, roundBlockHash);
     }
@@ -161,6 +202,10 @@ contract RoundsManager is ManagerProxyTarget, IRoundsManager {
     function currentRoundLocked() public view returns (bool) {
         uint256 lockedBlocks = MathUtils.percOf(roundLength, roundLockAmount);
         return blockNum().sub(currentRoundStartBlock()) >= roundLength.sub(lockedBlocks);
+    }
+
+    function currentRoundIsRewardRound() public view returns (bool) {
+        return nextRewardRound.sub(1) == currentRound();
     }
 
     /**
