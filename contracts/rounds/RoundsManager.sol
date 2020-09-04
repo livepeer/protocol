@@ -36,7 +36,7 @@ contract RoundsManager is ManagerProxyTarget, IRoundsManager {
     // LIP Upgrade Rounds 
     // These can be used as conditionals to ensure backwards compatibility or skip such backwards compatibility logic
     // in case 'currentRound' > LIP-X upgrade round
-    mapping(uint256 => uint256) public LIPUpgradeRounds; // mapping(LIP-number > round number)
+    mapping(uint256 => uint256) public LIPUpgradeRound; // mapping(LIP-number > round number)
 
     /**
      * @notice RoundsManager constructor. Only invokes constructor of base Manager contract with provided Controller address
@@ -108,13 +108,12 @@ contract RoundsManager is ManagerProxyTarget, IRoundsManager {
 
     /**
     * @notice setLIPUpgradeRound sets the round an LIP upgrade would become active. 
-    * @dev if no '_round' is provided '_round' will be set to 'currentRound + 1'
     * @param _LIP the LIP number.
     * @param _round (optional) the round in which the LIP becomes active
     */
     function setLIPUpgradeRound(uint256 _LIP, uint256 _round) external onlyControllerOwner {
-        require(LIPUpgradeRounds[_LIP] == 0, "LIP upgrade round already set");
-        LIPUpgradeRounds[_LIP] = _round != 0 ? _round : currentRound().add(1);
+        require(LIPUpgradeRound[_LIP] == 0, "LIP upgrade round already set");
+        LIPUpgradeRound[_LIP] = _round;
     }
     
     /**

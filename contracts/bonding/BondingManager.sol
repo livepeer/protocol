@@ -749,7 +749,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
         bool isTranscoder = _delegator == del.delegateAddress;
 
-        uint256 LIP_36_ROUND = roundsManager().LIPUpgradeRounds(36);
+        uint256 LIP_36_ROUND = roundsManager().LIPUpgradeRound(36);
         while (startRound <= _endRound && startRound <= LIP_36_ROUND ) {
             EarningsPool.Data storage earningsPool = transcoder.earningsPoolPerRound[startRound];
             if (startRound == LIP_36_ROUND && !earningsPool.hasTranscoderRewardFeePool) {
@@ -799,7 +799,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             return currentFees;
         }
 
-        uint256 LIP_36_ROUND = roundsManager().LIPUpgradeRounds(36);
+        uint256 LIP_36_ROUND = roundsManager().LIPUpgradeRound(36);
         while (startRound <= _endRound && startRound <= LIP_36_ROUND ) {
             EarningsPool.Data storage earningsPool = transcoder.earningsPoolPerRound[startRound];
 
@@ -1263,7 +1263,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         uint256 currentBondedAmount = del.bondedAmount;
         uint256 currentFees = del.fees;
 
-        uint256 LIP_36_ROUND = roundsManager().LIPUpgradeRounds(36);
+        uint256 LIP_36_ROUND = roundsManager().LIPUpgradeRound(36);
 
         // Only will have earnings to claim if you have a delegate
         // If not delegated, skip the earnings claim process
