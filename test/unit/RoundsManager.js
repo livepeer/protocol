@@ -464,6 +464,11 @@ contract("RoundsManager", accounts => {
             await truffleAssert.reverts(roundsManager.setLIPUpgradeRound(50, currentRound + 100), "LIP upgrade round already set")
         })
 
+        it("reverts when msg.sender is not the controller owner", async () => {
+            const currentRound = (await roundsManager.currentRound()).toNumber()
+            await truffleAssert.reverts(roundsManager.setLIPUpgradeRound(50, currentRound + 100, {from: accounts[1]}), "caller must be Controller owner")
+        })
+
         it("sets LIP upgrade round for a LIP to the provided round", async () => {
             const currentRound = (await roundsManager.currentRound()).toNumber()
             await roundsManager.setLIPUpgradeRound(50, currentRound + 100)
