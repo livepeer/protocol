@@ -1,7 +1,7 @@
 import Fixture from "./helpers/Fixture"
 import expectThrow from "../helpers/expectThrow"
 import {contractId} from "../../utils/helpers"
-import ethUtil from "ethereumjs-util"
+const {toBuffer, bufferToHex} = require("ethereumjs-util")
 import ethAbi from "ethereumjs-abi"
 
 const ManagerProxy = artifacts.require("ManagerProxy")
@@ -188,7 +188,7 @@ contract("ManagerProxy", accounts => {
             await managerProxy.setBytes32(web3.utils.sha3("bye"))
 
             const value = await managerProxy.bytes32Value.call()
-            assert.equal(value, ethUtil.bufferToHex(ethAbi.soliditySHA3(["bytes"], [ethUtil.toBuffer(web3.utils.sha3("bye"))])), "bytes32 value incorrect")
+            assert.equal(value, bufferToHex(ethAbi.soliditySHA3(["bytes"], [toBuffer(web3.utils.sha3("bye"))])), "bytes32 value incorrect")
         })
 
         it("should set a null address", async () => {

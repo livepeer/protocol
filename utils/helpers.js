@@ -1,18 +1,18 @@
-import ethUtil from "ethereumjs-util"
+const { keccak256, bufferToHex } = require('ethereumjs-util');
 import ethAbi from "ethereumjs-abi"
 
 export function contractId(name) {
-    return ethUtil.bufferToHex(ethAbi.soliditySHA3(["string"], [name]))
+    return bufferToHex(ethAbi.soliditySHA3(["string"], [name]))
 }
 
 export function functionSig(name) {
-    return ethUtil.bufferToHex(ethUtil.sha3(name).slice(0, 4))
+    return bufferToHex(keccak256(name).slice(0, 4))
 }
 
 export function eventSig(name) {
-    return ethUtil.bufferToHex(ethUtil.sha3(name))
+    return bufferToHex(keccak256(name))
 }
 
 export function functionEncodedABI(name, params, values) {
-    return ethUtil.bufferToHex(Buffer.concat([ethUtil.sha3(name).slice(0, 4), ethAbi.rawEncode(params, values)]))
+    return bufferToHex(Buffer.concat([keccak256(name).slice(0, 4), ethAbi.rawEncode(params, values)]))
 }
