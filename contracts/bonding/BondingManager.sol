@@ -349,23 +349,24 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // LIP-36: Add fees for the current round instead of '_round'
         // https://github.com/livepeer/LIPs/issues/35#issuecomment-673659199
         uint256 totalStake = earningsPool.totalStake;
-        if (prevEarningsPool.cumulativeRewardFactor == 0 && prevRewardRound == currentRound && prevRewardRound > roundsManager().LIPUpgradeRounds(36)) {
+        if (prevEarningsPool.cumulativeRewardFactor == 0 && lastRewardRound == currentRound) {
             // if transcoder called reward for 'currentRound' but not for 'currentRound - 1' (missed reward call)
             // retroactively calculate what its cumulativeRewardFactor would have been for 'currentRound - 1' (cfr. previous lastRewardRound for transcoder)  
             // based on rewards for currentRound
             uint256 rewards = MathUtils.percOf(minter().currentMintableTokens().add(minter().currentMintedTokens()), totalStake, currentRoundTotalActiveStake);
             uint256 transcoderCommissionRewards = MathUtils.percOf(rewards, earningsPool.transcoderRewardCut);
-            uint256 delegatorRewards = rewards.sub(transcoderCommissionRewards);
+            uint256 delegatorsRewards = rewards.sub(transcoderCommissionRewards);
+
             prevEarningsPool.cumulativeRewardFactor = MathUtils.percOf(
                 earningsPool.cumulativeRewardFactor,
-                MathUtils.percPoints(1, MathUtils.percPoints(1, 1).add(MathUtils.percPoints(delegatorRewards, totalStake)))
+                totalStake,
+                delegatorsRewards.add(totalStake)
             );    
         }
 
         uint256 delegatorsFees = MathUtils.percOf(_fees, earningsPool.transcoderFeeShare);
         uint256 transcoderCommissionFees = _fees.sub(delegatorsFees);
         uint256 transcoderRewardStakeFees = MathUtils.percOf(delegatorsFees, t.activeCumulativeRewards, totalStake);
-
         t.cumulativeFees = t.cumulativeFees.add(transcoderRewardStakeFees).add(transcoderCommissionFees);
         // Add fees to fee pool
         earningsPool.addToFeePool(prevEarningsPool, delegatorsFees);

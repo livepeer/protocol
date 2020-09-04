@@ -2010,7 +2010,7 @@ contract("BondingManager", accounts => {
         })
     })
     */
-   
+
     describe("claimEarnings", () => {
         const transcoder = accounts[0]
         const delegator1 = accounts[1]
@@ -2095,7 +2095,7 @@ contract("BondingManager", accounts => {
         it("fires an EarningsClaimed event", async () => {
             const expRewards = new BN(delegatorRewards * .3) // 30%
             const expFees = new BN(delegatorFees * .3) // 30%
-
+            const acceptableDelta = 5
             const txResult = await bondingManager.claimEarnings(currentRound + 1, {from: delegator1})
 
             truffleAssert.eventEmitted(
@@ -2103,7 +2103,7 @@ contract("BondingManager", accounts => {
                 "EarningsClaimed",
                 e => e.delegate === transcoder &&
                     e.delegator == delegator1 &&
-                    e.fees == expFees.toString() &&
+                    e.fees - expFees <= acceptableDelta &&
                     e.rewards == expRewards.toString() &&
                     e.startRound == (currentRound + 1).toString() &&
                     e.endRound == (currentRound + 1).toString(),
@@ -2124,7 +2124,7 @@ contract("BondingManager", accounts => {
             it("should claim earnings for 1 round", async () => {
                 const expRewards = new BN(delegatorRewards * .3) // 30%
                 const expFees = new BN(delegatorFees * .3) // 30%
-                const acceptableDelta = 2
+                const acceptableDelta = 5
 
                 const startDInfo1 = await bondingManager.getDelegator(delegator1)
                 await bondingManager.claimEarnings(currentRound + 1, {from: delegator1})
@@ -2171,7 +2171,7 @@ contract("BondingManager", accounts => {
                 const expFeesSecondRound = Math.floor(delegatorFees * .286) // 28.6%
                 const expRewards = new BN(expRewardsFirstRound + expRewardsSecondRound)
                 const expFees = new BN(expFeesFirstRound + expFeesSecondRound)
-                const acceptableDelta = 2
+                const acceptableDelta = 5
 
                 await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 2)
                 await fixture.minter.setMockUint256(functionSig("createReward(uint256,uint256)"), 1000)
@@ -2223,7 +2223,7 @@ contract("BondingManager", accounts => {
                     const expRewards = new BN(expDelegatorRewards + transcoderRewards)
                     const expDelegatorFees = delegatorFees * .1
                     const expFees = new BN(expDelegatorFees + transcoderFees)
-                    const acceptableDelta = 2
+                    const acceptableDelta = 5
 
                     const startDInfo = await bondingManager.getDelegator(transcoder)
                     await bondingManager.claimEarnings(currentRound + 1, {from: transcoder})
@@ -2240,7 +2240,7 @@ contract("BondingManager", accounts => {
                     const expRewards = new BN(expDelegatorRewards + transcoderRewards)
                     const expDelegatorFees = delegatorFees * .1
                     const expFees = new BN(expDelegatorFees + transcoderFees)
-                    const acceptableDelta = 2
+                    const acceptableDelta = 5
 
                     await bondingManager.claimEarnings(currentRound + 1, {from: delegator1})
                     await bondingManager.claimEarnings(currentRound + 1, {from: delegator2})
@@ -2580,6 +2580,7 @@ contract("BondingManager", accounts => {
             const pendingFees0 = 125
             const pendingFees1 = Math.floor((250 * (1250 * PERC_DIVISOR / 3000)) / PERC_DIVISOR)
             const pendingFees2 = Math.floor((250 * (1458 * PERC_DIVISOR / 4000)) / PERC_DIVISOR)
+            const pendingFees3 = Math.floor((250 * (1640 * PERC_DIVISOR / 5000)) / PERC_DIVISOR)
 
             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 3)
 
@@ -2598,6 +2599,10 @@ contract("BondingManager", accounts => {
             )
 
             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 4)
+            await fixture.minter.setMockUint256(functionSig("currentMintableTokens()"), 0)
+            await fixture.minter.setMockUint256(functionSig("currentMintedTokens()"), 1000)
+            await fixture.roundsManager.execute(bondingManager.address, functionSig("setCurrentRoundTotalActiveStake()"))
+
             await bondingManager.reward({from: transcoder})
 
             await fixture.ticketBroker.execute(
@@ -2608,11 +2613,20 @@ contract("BondingManager", accounts => {
                     [transcoder, 1000, currentRound + 4]
                 )
             )
-            let prevEP = await bondingManager.getTranscoderEarningsPoolForRound(transcoder, currentRound + 3)
-            console.log(prevEP.cumulativeRewardFactor.toString())
+
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 5)
+            await fixture.ticketBroker.execute(
+                bondingManager.address,
+                functionEncodedABI(
+                    "updateTranscoderWithFees(address,uint256,uint256)",
+                    ["address", "uint256", "uint256"],
+                    [transcoder, 1000, currentRound + 4]
+                )
+            )
+
             assert.equal(
-                (await bondingManager.pendingFees(delegator, currentRound + 4)).toString(),
-                (pendingFees0 + pendingFees1 + pendingFees2 * 2).toString()
+                (await bondingManager.pendingFees(delegator, currentRound + 5)).toString(),
+                (pendingFees0 + pendingFees1 + pendingFees2 * 2+pendingFees3).toString()
             )
         })
 
