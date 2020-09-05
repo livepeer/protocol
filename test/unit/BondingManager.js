@@ -2502,6 +2502,112 @@ contract("BondingManager", accounts => {
         })
     })
 
+    describe("claimSnapshotEarnings", () => {
+        const currentRound = 100
+        const delegator = accounts[0]
+
+        beforeEach(async () => {
+            await fixture.roundsManager.setMockBool(functionSig("currentRoundInitialized()"), true)
+            await fixture.roundsManager.setMockBool(functionSig("currentRoundLocked()"), false)
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound - 2)
+            await bondingManager.bond(1000, delegator, {from: delegator})
+
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
+            await fixture.roundsManager.setMockUint256(functionSig("lipUpgradeRound(uint256)"), currentRound)
+            await fixture.merkleSnapshot.setMockBool(functionSig("verify(bytes32,bytes32[],bytes32)"), true)
+        })
+
+        it("reverts if system is paused", async () => {
+            await fixture.controller.pause()
+
+            await truffleAssert.reverts(
+                bondingManager.claimSnapshotEarnings(500, 1000, [], []),
+                "system is paused"
+            )
+        })
+
+        it("reverts if current round is not initialized", async () => {
+            await fixture.roundsManager.setMockBool(functionSig("currentRoundInitialized()"), false)
+
+            await truffleAssert.reverts(
+                bondingManager.claimSnapshotEarnings(1500, 1000, [], []),
+                "current round is not initialized"
+            )
+        })
+
+        it("reverts if the delegator has already claimed past the LIP-52 upgrade round", async () => {
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 1)
+
+            // claim earnings up until and including snapshot round
+            await bondingManager.claimEarnings(currentRound + 1)
+
+            await truffleAssert.reverts(
+                bondingManager.claimSnapshotEarnings(1500, 1000, [], []),
+                "delegator has already claimed earnings past the LIP-52 round"
+            )
+        })
+
+        it("reverts if proof is invalid", async () => {
+            await fixture.merkleSnapshot.setMockBool(functionSig("verify(bytes32,bytes32[],bytes32)"), false)
+
+            await truffleAssert.reverts(
+                bondingManager.claimSnapshotEarnings(1500, 1000, [], []),
+                "Merkle proof is invalid"
+            )
+        })
+
+        it("sets delegators lastClaimRound to the LIP-52 upgrade round", async () => {
+            await bondingManager.claimSnapshotEarnings(1500, 1000, [], [])
+
+            assert.equal((await bondingManager.getDelegator(delegator)).lastClaimRound.toNumber(), currentRound)
+        })
+
+        it("updates a delegator's stake and fees", async () => {
+            await bondingManager.claimSnapshotEarnings(1500, 1000, [], [])
+
+            const del = await bondingManager.getDelegator(delegator)
+            assert.equal(del.bondedAmount.toNumber(), 1500)
+            assert.equal(del.fees.toNumber(), 1000)
+        })
+
+        it("emits an EarningsClaimed event", async () => {
+            const lastClaimRound = (await bondingManager.getDelegator(delegator)).lastClaimRound
+            truffleAssert.eventEmitted(
+                await bondingManager.claimSnapshotEarnings(1500, 1000, [], []),
+                "EarningsClaimed",
+                e => e.delegate == delegator
+                && e.delegator == delegator
+                && e.rewards == 500
+                && e.fees == 1000
+                && e.startRound == lastClaimRound.add(new BN(1)).toNumber()
+                && e.endRound == currentRound
+
+            )
+        })
+
+        it("executes an unbonding operation as additional call through the 'data' argument", async () => {
+            const data = bondingManager.contract.methods.unbond(500).encodeABI()
+            await bondingManager.claimSnapshotEarnings(1500, 1000, [], data)
+            const del = await bondingManager.getDelegator(delegator)
+            assert.equal(del.bondedAmount.toNumber(), 1000)
+        })
+
+        it("executes a bond operation as additional call through the 'data' argument", async () => {
+            const data = bondingManager.contract.methods.bond(500, delegator).encodeABI()
+            await bondingManager.claimSnapshotEarnings(1500, 1000, [], data)
+            const del = await bondingManager.getDelegator(delegator)
+            assert.equal(del.bondedAmount.toNumber(), 2000)
+        })
+
+        it("reverts when executing a claimEarnings operation that is not past the lastClaimRound as additional call through the 'data' argument", async () => {
+            const data = bondingManager.contract.methods.claimEarnings(currentRound - 1).encodeABI()
+            await truffleAssert.reverts(
+                bondingManager.claimSnapshotEarnings(1500, 1000, [], data),
+                "end round must be after last claim round"
+            )
+        })
+    })
+
     describe("pendingStake", () => {
         const transcoder = accounts[0]
         const delegator = accounts[1]

@@ -9,6 +9,7 @@ import "./libraries/EarningsPoolLIP36.sol";
 import "../token/ILivepeerToken.sol";
 import "../token/IMinter.sol";
 import "../rounds/IRoundsManager.sol";
+import "../snapshots/IMerkleSnapshot.sol";
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
@@ -447,6 +448,59 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         require(_endRound <= roundsManager().currentRound(), "end round must be before or equal to current round");
 
         updateDelegatorWithEarnings(msg.sender, _endRound, lastClaimRound);
+    }
+
+    /**
+     * @notice Claim earnings for a delegator based on the snapshot taken in LIP-52
+     * @dev https://github.com/livepeer/LIPs/blob/master/LIPs/LIP-52.md
+     * @param _pendingStake the amount of pending stake for the delegator (current stake + pending rewards)
+     * @param _pendingFees the amount of pending fees for the delegator (current fees + pending fees)
+     * @param _earningsProof array of keccak256 sibling hashes on the branch of the leaf for the delegator up to the root
+     * @param _data (optional) raw transaction data to be executed on behalf of msg.sender after claiming snapshot earnings
+     */
+    function claimSnapshotEarnings(
+        uint256 _pendingStake,
+        uint256 _pendingFees,
+        bytes32[] calldata _earningsProof,
+        bytes calldata _data
+    )
+        external
+        whenSystemNotPaused
+        currentRoundInitialized
+    {
+        Delegator storage del = delegators[msg.sender];
+
+        uint256 lip52Round = roundsManager().lipUpgradeRound(52);
+
+        uint256 lastClaimRound = del.lastClaimRound;
+
+        require(lastClaimRound <= lip52Round, "delegator has already claimed earnings past the LIP-52 round");
+
+        bytes32 leaf = keccak256(abi.encode(msg.sender, _pendingStake, _pendingFees));
+
+        require(
+            IMerkleSnapshot(controller.getContract(keccak256("MerkleSnapshot"))).verify(keccak256("LIP-52"), _earningsProof, leaf),
+            "Merkle proof is invalid"
+        );
+
+        emit EarningsClaimed(
+            del.delegateAddress,
+            msg.sender,
+            _pendingStake.sub(del.bondedAmount),
+            _pendingFees.sub(del.fees),
+            lastClaimRound.add(1),
+            lip52Round
+        );
+
+        del.lastClaimRound = lip52Round;
+        del.bondedAmount = _pendingStake;
+        del.fees = _pendingFees;
+
+        // allow for execution of subsequent claiming or staking operations
+        if (_data.length > 0) {
+            (bool success, bytes memory returnData) = address(this).delegatecall(_data);
+            require(success, string(returnData));
+        }
     }
 
     /**
