@@ -187,9 +187,9 @@ contract("Earnings", accounts => {
             return startStake.mul(endRewardFactor).div(startRewardFactor).sub(startStake)
         }
 
-        const calcFeeShare = (startStake, startFees, startFeeFactor, endFeeFactor, startRewardFactor) => {
+        const calcFeeShare = (startStake, startFeeFactor, endFeeFactor, startRewardFactor) => {
             const feeFactor = endFeeFactor.sub(startFeeFactor)
-            return startStake.mul(feeFactor).div(startRewardFactor).sub(startFees)
+            return startStake.mul(feeFactor).div(startRewardFactor)
         }
 
         const transcoderDel = await bondingManager.getDelegator(transcoder) 
@@ -201,7 +201,10 @@ contract("Earnings", accounts => {
 
         const lastClaimRoundTranscoder = transcoderDel.lastClaimRound
 
-        const LIP36Round = await roundsManager.LIPUpgradeRounds(36)
+        await bondingManager.reward({from: transcoder})
+        await redeemWinningTicket(transcoder, broadcaster, faceValue)
+
+        const LIP36Round = await roundsManager.LIPUpgradeRound(36)
         let LIP36EarningsPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder, LIP36Round) 
         if (lastClaimRoundTranscoder.cmp(LIP36Round) <= 0) {
             let round = LIP36EarningsPool.hasTranscoderRewardFeePool ? LIP36Round : LIP36Round.sub(new BN(1))
@@ -210,11 +213,6 @@ contract("Earnings", accounts => {
             transcoderStartFees = await bondingManager.pendingFees(transcoder, round)
             delegatorStartFees = await bondingManager.pendingFees(delegator, round)
         }
-
-        console.log("transcoder start stake and fees", transcoderStartStake.toString(), transcoderStartFees.toString())
-        console.log("delegator start stake and fees", delegatorStartStake.toString(), delegatorStartFees.toString())
-        await bondingManager.reward({from: transcoder})
-        await redeemWinningTicket(transcoder, broadcaster, faceValue)
 
         const currentRound = await roundsManager.currentRound()
 
@@ -238,26 +236,19 @@ contract("Earnings", accounts => {
 
         const expTranscoderRewardShare = calcRewardShare(transcoderStartStake, startRewardFactor, endRewardFactor).add(transcoderRewards)
         const expDelegatorRewardShare = calcRewardShare(delegatorStartStake, startRewardFactor, endRewardFactor)
-        const expTranscoderFeeShare = calcFeeShare(transcoderStartStake, transcoderStartFees, startFeeFactor, endFeeFactor, startRewardFactor).add(transcoderFees)
-        const expDelegatorFeeShare = calcFeeShare(delegatorStartStake, delegatorStartFees, startFeeFactor, endFeeFactor, startRewardFactor)
+        const expTranscoderFeeShare = calcFeeShare(transcoderStartStake, startFeeFactor, endFeeFactor, startRewardFactor).add(transcoderFees)
+        const expDelegatorFeeShare = calcFeeShare(delegatorStartStake, startFeeFactor, endFeeFactor, startRewardFactor)
 
         const transcoderEndStake = await bondingManager.pendingStake(transcoder, currentRound)
         const delegatorEndStake = await bondingManager.pendingStake(delegator, currentRound)
         const transcoderEndFees = await bondingManager.pendingFees(transcoder, currentRound)
         const delegatorEndFees = await bondingManager.pendingFees(delegator, currentRound)
 
-        console.log("transcoder end stake and fees", transcoderEndStake.toString(), transcoderEndFees.toString())
-        console.log("delegator end stake and fees", delegatorEndStake.toString(), delegatorEndFees.toString())
-
         const transcoderRewardShare = transcoderEndStake.sub(transcoderStartStake)
         const delegatorRewardShare = delegatorEndStake.sub(delegatorStartStake)
         const transcoderFeeShare = transcoderEndFees.sub(transcoderStartFees)
         const delegatorFeeShare = delegatorEndFees.sub(delegatorStartFees)
         
-        console.log("transcoderRewardShare", transcoderRewardShare.toString(), "expTranscoderRewardShare", expTranscoderRewardShare.toString())
-        console.log("transcoderFeeShare", transcoderFeeShare.toString(), "expTranscoderFeeShare", expTranscoderFeeShare.toString())
-        console.log("delegatorRewardShare", delegatorRewardShare.toString(), "expDelgatorRewardShare", expDelegatorRewardShare.toString())
-        console.log("delegatorFeeShare", delegatorFeeShare.toString(), "expDelegatorFeeShare", delegatorFeeShare.toString())
         assert.isOk(transcoderRewardShare.sub(expTranscoderRewardShare).abs().lte(acceptableDelta))
         assert.isOk(delegatorRewardShare.sub(expDelegatorRewardShare).abs().lte(acceptableDelta))
         assert.isOk(transcoderFeeShare.sub(expTranscoderFeeShare).abs().lte(acceptableDelta))
