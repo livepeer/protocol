@@ -23,7 +23,7 @@ ganache_running() {
 start_ganache() {
     if [ "$SOLIDITY_COVERAGE" != true ]; then
         echo "Starting new ganache instance at port $ganache_port"
-        node_modules/.bin/ganache-cli -k istanbul -l 15000000 -a 310 > /dev/null &
+        node_modules/.bin/ganache-cli -k istanbul -l 0x7A1200 -a 310 > /dev/null &
     fi
 
     ganache_pid=$!

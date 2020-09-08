@@ -56,7 +56,7 @@ module.exports = {
             host: "localhost",
             port: 8545,
             network_id: "*", // Match any network id
-            gas: 10000000
+            gas: 8000000
         },
         // This network should be used when running unit tests so migrations can be skipped
         unitTest: {
