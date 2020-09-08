@@ -1714,7 +1714,6 @@ contract("BondingManager", accounts => {
         })
     })
 
-    /*
     describe("slashTranscoder", () => {
         const transcoder = accounts[0]
         const transcoder1 = accounts[1]
@@ -2012,7 +2011,6 @@ contract("BondingManager", accounts => {
             })
         })
     })
-    */
 
     describe("claimEarnings", () => {
         const transcoder = accounts[0]

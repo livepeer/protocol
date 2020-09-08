@@ -374,64 +374,63 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         t.lastFeeRound = _round;
     }
 
-    // /**
-    //  * @notice Slash a transcoder. Only callable by the Verifier
-    //  * @param _transcoder Transcoder address
-    //  * @param _finder Finder that proved a transcoder violated a slashing condition. Null address if there is no finder
-    //  * @param _slashAmount Percentage of transcoder bond to be slashed
-    //  * @param _finderFee Percentage of penalty awarded to finder. Zero if there is no finder
-    //  */
-    // function slashTranscoder(
-    //     address _transcoder,
-    //     address _finder,
-    //     uint256 _slashAmount,
-    //     uint256 _finderFee
-    // )
-    //     external
-    //     whenSystemNotPaused
-    //     onlyVerifier
-    // {
-    //     Delegator storage del = delegators[_transcoder];
+    /**
+     * @notice Slash a transcoder. Only callable by the Verifier
+     * @param _transcoder Transcoder address
+     * @param _finder Finder that proved a transcoder violated a slashing condition. Null address if there is no finder
+     * @param _slashAmount Percentage of transcoder bond to be slashed
+     * @param _finderFee Percentage of penalty awarded to finder. Zero if there is no finder
+     */
+    function slashTranscoder(
+        address _transcoder,
+        address _finder,
+        uint256 _slashAmount,
+        uint256 _finderFee
+    )
+        external
+        whenSystemNotPaused
+        onlyVerifier
+    {
+        Delegator storage del = delegators[_transcoder];
 
-    //     if (del.bondedAmount > 0) {
-    //         uint256 penalty = MathUtils.percOf(delegators[_transcoder].bondedAmount, _slashAmount);
+        if (del.bondedAmount > 0) {
+            uint256 penalty = MathUtils.percOf(delegators[_transcoder].bondedAmount, _slashAmount);
 
-    //         // If active transcoder, resign it
-    //         if (transcoderPoolV2.contains(_transcoder)) {
-    //             resignTranscoder(_transcoder);
-    //         }
+            // If active transcoder, resign it
+            if (transcoderPoolV2.contains(_transcoder)) {
+                resignTranscoder(_transcoder);
+            }
 
-    //         // Decrease bonded stake
-    //         del.bondedAmount = del.bondedAmount.sub(penalty);
+            // Decrease bonded stake
+            del.bondedAmount = del.bondedAmount.sub(penalty);
 
-    //         // If still bonded decrease delegate's delegated amount
-    //         if (delegatorStatus(_transcoder) == DelegatorStatus.Bonded) {
-    //             delegators[del.delegateAddress].delegatedAmount = delegators[del.delegateAddress].delegatedAmount.sub(penalty);
-    //         }
+            // If still bonded decrease delegate's delegated amount
+            if (delegatorStatus(_transcoder) == DelegatorStatus.Bonded) {
+                delegators[del.delegateAddress].delegatedAmount = delegators[del.delegateAddress].delegatedAmount.sub(penalty);
+            }
 
-    //         // Account for penalty
-    //         uint256 burnAmount = penalty;
+            // Account for penalty
+            uint256 burnAmount = penalty;
 
-    //         // Award finder fee if there is a finder address
-    //         if (_finder != address(0)) {
-    //             uint256 finderAmount = MathUtils.percOf(penalty, _finderFee);
-    //             minter().trustedTransferTokens(_finder, finderAmount);
+            // Award finder fee if there is a finder address
+            if (_finder != address(0)) {
+                uint256 finderAmount = MathUtils.percOf(penalty, _finderFee);
+                minter().trustedTransferTokens(_finder, finderAmount);
 
-    //             // Minter burns the slashed funds - finder reward
-    //             minter().trustedBurnTokens(burnAmount.sub(finderAmount));
+                // Minter burns the slashed funds - finder reward
+                minter().trustedBurnTokens(burnAmount.sub(finderAmount));
 
-    //             emit TranscoderSlashed(_transcoder, _finder, penalty, finderAmount);
-    //         } else {
-    //             // Minter burns the slashed funds
-    //             minter().trustedBurnTokens(burnAmount);
+                emit TranscoderSlashed(_transcoder, _finder, penalty, finderAmount);
+            } else {
+                // Minter burns the slashed funds
+                minter().trustedBurnTokens(burnAmount);
 
-    //             emit TranscoderSlashed(_transcoder, address(0), penalty, 0);
-    //         }
-    //     } else {
-    //         emit TranscoderSlashed(_transcoder, _finder, 0, 0);
-    //     }
-    // }
-
+                emit TranscoderSlashed(_transcoder, address(0), penalty, 0);
+            }
+        } else {
+            emit TranscoderSlashed(_transcoder, _finder, 0, 0);
+        }
+    }
 
     /**
      * @notice Claim token pools shares for a delegator from its lastClaimRound through the end round
