@@ -49,8 +49,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         uint256 activationRound;                                        // Round in which the transcoder became active - 0 if inactive
         uint256 deactivationRound;                                      // Round in which the transcoder will become inactive
         uint256 activeCumulativeRewards;                                // The transcoder's cumulative rewards that are active in the current round
-        uint256 cumulativeRewards;                                      // The transcoder's cumulative rewards (rewards earned via the transcoder's active staked rewards and via the transcoder's reward cut).
-        uint256 cumulativeFees;                                         // The transcoder's cumulative fees (fees earned via the transcoder's active staked rewards and via the transcoder's fee share)
+        uint256 cumulativeRewards;                                      // The transcoder's cumulative rewards (earned via the transcoder's active staked rewards and via the transcoder's reward cut).
+        uint256 cumulativeFees;                                         // The transcoder's cumulative fees (earned via the transcoder's active staked rewards and via the transcoder's fee share)
         uint256 lastFeeRound;                                           // Latest round in which the transcoder received fees
     }
 
@@ -277,7 +277,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         whenSystemNotPaused
         currentRoundInitialized
         autoClaimEarnings
-    {   
+    {
         uint256 fees = delegators[msg.sender].fees;
         require(fees > 0, "no fees to withdraw");
         delegators[msg.sender].fees = 0;
@@ -322,13 +322,13 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
         // if transcoder hasn't called 'reward()' for '_round' its 'transcoderFeeShare', 'transcoderRewardCut' and 'totalStake'
         // on the 'EarningsPoolV2' for '_round' would not be initialized and the fee distribution wouldn't happen as expected
-        // for cumulative fee calculation this would result in division by zero. 
+        // for cumulative fee calculation this would result in division by zero.
         if (currentRound > lastRewardRound) {
             earningsPool.setCommission(
                 t.rewardCut,
                 t.feeShare
             );
-            
+
             earningsPool.setStake(t.earningsPoolPerRound[t.lastActiveStakeUpdateRound].totalStake);
 
             t.activeCumulativeRewards = t.cumulativeRewards;
@@ -339,7 +339,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         uint256 totalStake = earningsPool.totalStake;
         if (prevEarningsPool.cumulativeRewardFactor == 0 && lastRewardRound == currentRound) {
             // if transcoder called reward for 'currentRound' but not for 'currentRound - 1' (missed reward call)
-            // retroactively calculate what its cumulativeRewardFactor would have been for 'currentRound - 1' (cfr. previous lastRewardRound for transcoder)  
+            // retroactively calculate what its cumulativeRewardFactor would have been for 'currentRound - 1' (cfr. previous lastRewardRound for transcoder)
             // based on rewards for currentRound
             uint256 rewards = MathUtils.percOf(minter().currentMintableTokens().add(minter().currentMintedTokens()), totalStake, currentRoundTotalActiveStake);
             uint256 transcoderCommissionRewards = MathUtils.percOf(rewards, earningsPool.transcoderRewardCut);
@@ -349,7 +349,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
                 earningsPool.cumulativeRewardFactor,
                 totalStake,
                 delegatorsRewards.add(totalStake)
-            );    
+            );
         }
 
         uint256 delegatorsFees = MathUtils.percOf(_fees, earningsPool.transcoderFeeShare);
@@ -1066,14 +1066,14 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         address delegateAddr = del.delegateAddress;
         bool isTranscoder = _delegator == delegateAddr;
 
-        uint256 LIP_36_ROUND = roundsManager().LIPUpgradeRound(36);
-        while (startRound <= _endRound && startRound <= LIP_36_ROUND) {
+        uint256 lip36Round = roundsManager().lipUpgradeRound(36);
+        while (startRound <= _endRound && startRound <= lip36Round) {
             EarningsPool.Data storage earningsPool = t.earningsPoolPerRound[startRound];
 
-            // If earningsPool.hasTranscoderRewardFeePool is not set during LIP_36_ROUND then the transcoder did not call
-            // reward during LIP_36_ROUND before the upgrade. In this case, if the transcoder calls reward in LIP_36_ROUND
-            // the delegator can use the LIP-36 earnings claiming algorithm to claim for LIP_36_ROUND
-            if (startRound == LIP_36_ROUND && !earningsPool.hasTranscoderRewardFeePool) {
+            // If earningsPool.hasTranscoderRewardFeePool is not set during lip36Round then the transcoder did not call
+            // reward during lip36Round before the upgrade. In this case, if the transcoder calls reward in lip36Round
+            // the delegator can use the LIP-36 earnings claiming algorithm to claim for lip36Round
+            if (startRound == lip36Round && !earningsPool.hasTranscoderRewardFeePool) {
                 break;
             }
 
@@ -1088,13 +1088,13 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             startRound = startRound.add(1);
         }
 
-        // If the transcoder called reward during LIP_36_ROUND before the upgrade, then startRound = LIP_36_ROUND
-        // Otherwise, startRound = LIP_36_ROUND + 1
+        // If the transcoder called reward during lip36Round the upgrade, then startRound = lip36Round
+        // Otherwise, startRound = lip36Round + 1
 
         // If the start round is greater than the end round, we've already claimed for the end round so we do not
         // need to execute the LIP-36 earnings claiming algorithm. This could be the case if:
-        // - _endRound < LIP_36_ROUND i.e. we are not claiming through the LIP_36_ROUND
-        // - _endRound == LIP_36_ROUND AND startRound = LIP_36_ROUND + 1 i.e we already claimed through the LIP_36_ROUND
+        // - _endRound < lip36Round i.e. we are not claiming through the lip36Round
+        // - _endRound == lip36Round AND startRound = lip36Round + 1 i.e we already claimed through the lip36Round
         if (startRound > _endRound) {
             return (stake, fees);
         }
@@ -1274,18 +1274,18 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         uint256 currentBondedAmount = del.bondedAmount;
         uint256 currentFees = del.fees;
 
-        uint256 LIP_36_ROUND = roundsManager().LIPUpgradeRound(36);
+        uint256 lip36Round = roundsManager().lipUpgradeRound(36);
 
         // Only will have earnings to claim if you have a delegate
         // If not delegated, skip the earnings claim process
         if (del.delegateAddress != address(0)) {
-            if (startRound <= LIP_36_ROUND) {
+            if (startRound <= lip36Round) {
                 // Cannot claim earnings for more than maxEarningsClaimsRounds before LIP-36
                 // This is a number to cause transactions to fail early if
                 // we know they will require too much gas to loop through all the necessary rounds to claim earnings
                 // The user should instead manually invoke `claimEarnings` to split up the claiming process
                 // across multiple transactions
-                uint256 endLoopRound = _endRound <= LIP_36_ROUND ? _endRound : LIP_36_ROUND;
+                uint256 endLoopRound = _endRound <= lip36Round ? _endRound : lip36Round;
                 require(endLoopRound.sub(_lastClaimRound) <= maxEarningsClaimsRounds, "too many rounds to claim through");
             }
 
@@ -1313,8 +1313,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
                 t.cumulativeRewards = 0;
             }
         }
-        
-        
+
         emit EarningsClaimed(
             del.delegateAddress,
             _delegator,
@@ -1323,7 +1322,6 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             startRound,
             _endRound
         );
-        
 
         del.lastClaimRound = _endRound;
         // Rewards are bonded by default

@@ -78,7 +78,7 @@ contract("LIP36 transition", accounts => {
             // deploy LIP-36
             await fixture.deployAndRegister(BondingManager, "BondingManager", fixture.controller.address)
             bondingManager = await BondingManager.at(proxy.address)
-            await fixture.roundsManager.setMockUint256(functionSig("LIPUpgradeRound(uint256)"), currentRound)
+            await fixture.roundsManager.setMockUint256(functionSig("lipUpgradeRound(uint256)"), currentRound)
 
             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 1)
             await bondingManager.reward({from: transcoder})
@@ -177,7 +177,7 @@ contract("LIP36 transition", accounts => {
             // deploy LIP-36
             await fixture.deployAndRegister(BondingManager, "BondingManager", fixture.controller.address)
             bondingManager = await BondingManager.at(proxy.address)
-            await fixture.roundsManager.setMockUint256(functionSig("LIPUpgradeRound(uint256)"), currentRound)
+            await fixture.roundsManager.setMockUint256(functionSig("lipUpgradeRound(uint256)"), currentRound)
 
             // assign fees post-LIP36
             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 1)

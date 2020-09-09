@@ -30,8 +30,8 @@ library EarningsPool {
 
         // LIP-36 (https://github.com/livepeer/LIPs/blob/master/LIPs/LIP-36.md) fields
         // See EarningsPoolLIP36.sol
-        uint256 cumulativeRewardFactor; 
-        uint256 cumulativeFeeFactor; 
+        uint256 cumulativeRewardFactor;
+        uint256 cumulativeFeeFactor;
     }
 
     /**

@@ -456,11 +456,11 @@ contract("RoundsManager", accounts => {
         })
     })
 
-    describe("setLIPUpgradeRounds", () => {
+    describe("setLIPUpgradeRound", () => {
         it("reverts when the LIP Upgrade round is already set", async () => {
             const currentRound = (await roundsManager.currentRound()).toNumber()
             await roundsManager.setLIPUpgradeRound(50, currentRound + 100)
-            assert.equal((await roundsManager.LIPUpgradeRound(50)).toNumber(), currentRound + 100)
+            assert.equal((await roundsManager.lipUpgradeRound(50)).toNumber(), currentRound + 100)
             await truffleAssert.reverts(roundsManager.setLIPUpgradeRound(50, currentRound + 100), "LIP upgrade round already set")
         })
 
@@ -472,7 +472,7 @@ contract("RoundsManager", accounts => {
         it("sets LIP upgrade round for a LIP to the provided round", async () => {
             const currentRound = (await roundsManager.currentRound()).toNumber()
             await roundsManager.setLIPUpgradeRound(50, currentRound + 100)
-            assert.equal((await roundsManager.LIPUpgradeRound(50)).toNumber(), currentRound + 100)
+            assert.equal((await roundsManager.lipUpgradeRound(50)).toNumber(), currentRound + 100)
         })
     })
 })

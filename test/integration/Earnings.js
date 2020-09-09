@@ -196,7 +196,7 @@ contract("Earnings", accounts => {
         await bondingManager.reward({from: transcoder})
         await redeemWinningTicket(transcoder, broadcaster, faceValue)
 
-        const LIP36Round = await roundsManager.LIPUpgradeRound(36)
+        const LIP36Round = await roundsManager.lipUpgradeRound(36)
         let LIP36EarningsPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder, LIP36Round)
         if (lastClaimRoundTranscoder.cmp(LIP36Round) <= 0) {
             let round = LIP36EarningsPool.hasTranscoderRewardFeePool ? LIP36Round : LIP36Round.sub(new BN(1))

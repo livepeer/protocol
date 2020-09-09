@@ -2114,7 +2114,7 @@ contract("BondingManager", accounts => {
 
         describe("caller has a delegate", () => {
             it("should fail if endRound - lastClaimRound > maxEarningsClaimsRounds (too many rounds to claim through)", async () => {
-                await fixture.roundsManager.setMockUint256(functionSig("LIPUpgradeRound(uint256)"), currentRound + 5000)
+                await fixture.roundsManager.setMockUint256(functionSig("lipUpgradeRound(uint256)"), currentRound + 5000)
                 const maxEarningsClaimsRounds = await bondingManager.maxEarningsClaimsRounds.call()
                 const maxClaimRound = currentRound + 1 + maxEarningsClaimsRounds.toNumber()
                 await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), maxClaimRound + 1)
