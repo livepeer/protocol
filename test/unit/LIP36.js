@@ -4,7 +4,7 @@ import Fixture from "./helpers/Fixture"
 import {contractId, functionSig, functionEncodedABI} from "../../utils/helpers"
 
 const ManagerProxy = artifacts.require("ManagerProxy")
-const BondingManagerV1 = artifacts.require("BondingManagerV1")
+const BondingManagerPreLIP36 = artifacts.require("BondingManagerPreLIP36")
 const BondingManager = artifacts.require("BondingManager")
 const LinkedList = artifacts.require("SortedDoublyLL")
 
@@ -26,17 +26,17 @@ contract("LIP36 transition", accounts => {
 
         // Link DoubleSortedLL
         const ll = await LinkedList.new()
-        BondingManagerV1.link("SortedDoublyLL", ll.address)
+        BondingManagerPreLIP36.link("SortedDoublyLL", ll.address)
         BondingManager.link("SortedDoublyLL", ll.address)
 
         // deploy proxy
         proxy = await ManagerProxy.new(fixture.controller.address, contractId("BondingManager"))
 
         // deploy proxy target implementation
-        await fixture.deployAndRegister(BondingManagerV1, "BondingManager", fixture.controller.address)
+        await fixture.deployAndRegister(BondingManagerPreLIP36, "BondingManager", fixture.controller.address)
 
         // bind ABI to proxy
-        bondingManager = await BondingManagerV1.at(proxy.address)
+        bondingManager = await BondingManagerPreLIP36.at(proxy.address)
 
         await bondingManager.setUnbondingPeriod(UNBONDING_PERIOD)
         await bondingManager.setNumActiveTranscoders(NUM_ACTIVE_TRANSCODERS)

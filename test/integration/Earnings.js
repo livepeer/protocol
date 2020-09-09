@@ -7,7 +7,7 @@ import signMsg from "../helpers/signMsg"
 
 const Controller = artifacts.require("Controller")
 const BondingManager = artifacts.require("BondingManager")
-const BondingManagerV1 = artifacts.require("BondingManagerV1")
+const BondingManagerPreLIP36 = artifacts.require("BondingManagerPreLIP36")
 const AdjustableRoundsManager = artifacts.require("AdjustableRoundsManager")
 const LivepeerToken = artifacts.require("LivepeerToken")
 const TicketBroker = artifacts.require("TicketBroker")
@@ -67,12 +67,12 @@ contract("Earnings", accounts => {
         await controller.unpause()
 
         const ll = await LinkedList.new()
-        BondingManagerV1.link("SortedDoublyLL", ll.address)
-        const bondingTarget = await BondingManagerV1.new(controller.address)
+        BondingManagerPreLIP36.link("SortedDoublyLL", ll.address)
+        const bondingTarget = await BondingManagerPreLIP36.new(controller.address)
         await controller.setContractInfo(contractId("BondingManagerTarget"), bondingTarget.address, web3.utils.asciiToHex("0x123"))
         bondingProxy = await ManagerProxy.new(controller.address, contractId("BondingManagerTarget"))
         await controller.setContractInfo(contractId("BondingManager"), bondingProxy.address, web3.utils.asciiToHex("0x123"))
-        bondingManager = await BondingManagerV1.at(bondingProxy.address)
+        bondingManager = await BondingManagerPreLIP36.at(bondingProxy.address)
 
         await bondingManager.setUnbondingPeriod(UNBONDING_PERIOD)
         await bondingManager.setNumActiveTranscoders(NUM_ACTIVE_TRANSCODERS)

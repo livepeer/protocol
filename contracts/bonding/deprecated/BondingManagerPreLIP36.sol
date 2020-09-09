@@ -4,7 +4,7 @@ import "../../ManagerProxyTarget.sol";
 import "../IBondingManager.sol";
 import "../../libraries/SortedDoublyLL.sol";
 import "../../libraries/MathUtils.sol";
-import "./../libraries/EarningsPool.sol";
+import "./EarningsPoolPreLIP36.sol";
 import "../../token/ILivepeerToken.sol";
 import "../../token/IMinter.sol";
 import "../../rounds/IRoundsManager.sol";
@@ -16,7 +16,7 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
  * @title BondingManager
  * @notice Manages bonding, transcoder and rewards/fee accounting related operations of the Livepeer protocol
  */
-contract BondingManagerV1 is ManagerProxyTarget, IBondingManager {
+contract BondingManagerPreLIP36 is ManagerProxyTarget, IBondingManager {
     using SafeMath for uint256;
     using SortedDoublyLL for SortedDoublyLL.Data;
     using EarningsPool for EarningsPool.Data;
