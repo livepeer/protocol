@@ -5,7 +5,6 @@ import BN from "bn.js"
 import {createWinningTicket, getTicketHash} from "../helpers/ticket"
 import signMsg from "../helpers/signMsg"
 import expectRevertWithReason from "../helpers/expectFail"
-import {assert} from "chai"
 
 const Controller = artifacts.require("Controller")
 const TicketBroker = artifacts.require("TicketBroker")
