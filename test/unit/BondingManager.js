@@ -2627,7 +2627,7 @@ contract("BondingManager", accounts => {
 
             assert.equal(
                 (await bondingManager.pendingFees(delegator, currentRound + 5)).toString(),
-                (pendingFees0 + pendingFees1 + pendingFees2 * 2+pendingFees3).toString()
+                (pendingFees0 + pendingFees1 + pendingFees2 * 2 + pendingFees3).toString()
             )
         })
 
