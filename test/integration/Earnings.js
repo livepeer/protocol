@@ -36,7 +36,7 @@ contract("Earnings", accounts => {
 
     let roundLength
 
-    const acceptableDelta = constants.TOKEN_UNIT.div(new BN(1000)) // .001
+    const acceptableDelta = constants.TOKEN_UNIT.div(new BN(100)) // .001
 
     const NUM_ACTIVE_TRANSCODERS = 2
     const UNBONDING_PERIOD = 2
@@ -314,9 +314,6 @@ contract("Earnings", accounts => {
             await controller.setContractInfo(contractId("BondingManagerTarget"), bondingTarget.address, web3.utils.asciiToHex("0x123"))
             bondingManager = await BondingManager.at(bondingProxy.address)
             await roundsManager.setLIPUpgradeRound(new BN(36), currentRound)
-
-            console.log("last transcoder stake and fees", (await bondingManager.pendingStake(transcoder, currentRound)).toString(), (await bondingManager.pendingFees(transcoder, currentRound)).toString())
-            console.log("last delegator stake and fees", (await bondingManager.pendingStake(delegator, currentRound)).toString(), (await bondingManager.pendingFees(delegator, currentRound)).toString())
         })
 
         it("calculates earnings after LIP-36", async () => {
@@ -324,6 +321,20 @@ contract("Earnings", accounts => {
         })
 
         it("claims earnings for rounds before and after LIP-36 combined", async () => {
+            await claimEarningsAndCheckStakes()
+        })
+    })
+
+    describe("earnings after LIP-36", async () => {
+        it("calculates earnings after LIP-36 for multiple rounds", async () => {
+            for (let i = 0; i < 10; i++) {
+                await roundsManager.mineBlocks(roundLength.toNumber())
+                await roundsManager.initializeRound()
+                await cumulativeEarningsAndCheck()
+            }
+        })
+
+        it("claims earnings after LIP-36", async () => {
             await claimEarningsAndCheckStakes()
         })
     })
