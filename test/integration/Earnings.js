@@ -4,6 +4,7 @@ const {constants} = require("../../utils/constants")
 const {contractId} = require("../../utils/helpers")
 import {createWinningTicket, getTicketHash} from "../helpers/ticket"
 import signMsg from "../helpers/signMsg"
+import math from "../helpers/math"
 
 const Controller = artifacts.require("Controller")
 const BondingManager = artifacts.require("BondingManager")
@@ -35,8 +36,6 @@ contract("Earnings", accounts => {
     const delegatorStake = 3000
 
     let roundLength
-
-    const acceptableDelta = constants.TOKEN_UNIT.div(new BN(1000)) // .001
 
     const NUM_ACTIVE_TRANSCODERS = 2
     const UNBONDING_PERIOD = 2
@@ -135,6 +134,8 @@ contract("Earnings", accounts => {
     }
 
     const oldEarningsAndCheck = async () => {
+        const acceptableDelta = constants.TOKEN_UNIT.div(new BN(1000)) // .001
+
         const transcoderStartStake = await getStake(transcoder)
         const delegatorStartStake = await getStake(delegator)
         const totalStartStake = transcoderStartStake.add(delegatorStartStake)
@@ -175,13 +176,18 @@ contract("Earnings", accounts => {
     }
 
     const cumulativeEarningsAndCheck = async () => {
+        const acceptableDelta = new BN(0)
+
         const calcRewardShare = (startStake, startRewardFactor, endRewardFactor) => {
-            return startStake.mul(endRewardFactor).div(startRewardFactor).sub(startStake)
+            return math.percOf(startStake, endRewardFactor, startRewardFactor).sub(startStake)
         }
 
         const calcFeeShare = (startStake, startFeeFactor, endFeeFactor, startRewardFactor) => {
-            const feeFactor = endFeeFactor.sub(startFeeFactor)
-            return startStake.mul(feeFactor).div(startRewardFactor)
+            return math.percOf(
+                startStake,
+                endFeeFactor.sub(startFeeFactor),
+                startRewardFactor
+            )
         }
 
         const transcoderDel = await bondingManager.getDelegator(transcoder)
@@ -314,9 +320,6 @@ contract("Earnings", accounts => {
             await controller.setContractInfo(contractId("BondingManagerTarget"), bondingTarget.address, web3.utils.asciiToHex("0x123"))
             bondingManager = await BondingManager.at(bondingProxy.address)
             await roundsManager.setLIPUpgradeRound(new BN(36), currentRound)
-
-            console.log("last transcoder stake and fees", (await bondingManager.pendingStake(transcoder, currentRound)).toString(), (await bondingManager.pendingFees(transcoder, currentRound)).toString())
-            console.log("last delegator stake and fees", (await bondingManager.pendingStake(delegator, currentRound)).toString(), (await bondingManager.pendingFees(delegator, currentRound)).toString())
         })
 
         it("calculates earnings after LIP-36", async () => {
@@ -324,6 +327,20 @@ contract("Earnings", accounts => {
         })
 
         it("claims earnings for rounds before and after LIP-36 combined", async () => {
+            await claimEarningsAndCheckStakes()
+        })
+    })
+
+    describe("earnings after LIP-36", async () => {
+        it("calculates earnings after LIP-36 for multiple rounds", async () => {
+            for (let i = 0; i < 10; i++) {
+                await roundsManager.mineBlocks(roundLength.toNumber())
+                await roundsManager.initializeRound()
+                await cumulativeEarningsAndCheck()
+            }
+        })
+
+        it("claims earnings after LIP-36", async () => {
             await claimEarningsAndCheckStakes()
         })
     })
