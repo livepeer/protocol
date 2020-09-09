@@ -34,7 +34,7 @@ contract RoundsManager is ManagerProxyTarget, IRoundsManager {
     mapping (uint256 => bytes32) internal _blockHashForRound;
 
     // LIP Upgrade Rounds
-    // These can be used as conditionals to ensure backwards compatibility or skip such backwards compatibility logic
+    // These can be used in conditionals to ensure backwards compatibility or skip such backwards compatibility logic
     // in case 'currentRound' > LIP-X upgrade round
     mapping (uint256 => uint256) public lipUpgradeRound; // mapping (LIP-number > round number)
 
