@@ -310,7 +310,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         onlyTicketBroker
     {
         // Silence unused param compiler warning
-        _round; 
+        _round;
 
         require(isRegisteredTranscoder(_transcoder), "transcoder must be registered");
 
@@ -1318,10 +1318,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             ) = pendingStakeAndFees(_delegator, _endRound);
 
             // Check whether the endEarningsPool is initialised
-            // If it is not initialised set it's cumulative earnings factors (fees and rewards)
-            // This serves two purposes:
-            // - Initialise the correct values for the current claimEarnings 'epoch' to calculate cumulative earnings
-            // - Initialise the correct startEarningsPool for the next claimEarnings 'epoch' to calculate cumulative earnings
+            // If it is not initialised set it's cumulative factors so that they can be used when a delegator
+            // next claims earnings as the start cumulative factors (see delegatorCumulativeStakeAndFees())
             Transcoder storage t = transcoders[del.delegateAddress];
             EarningsPool.Data storage endEarningsPool = t.earningsPoolPerRound[_endRound];
             if (endEarningsPool.cumulativeRewardFactor == 0) {
