@@ -1690,7 +1690,7 @@ contract("BondingManager", accounts => {
             )
         })
 
-        it("should update transcoder cumulativeFees based on cumulativeRewards = 0 if and the transcoder claimed through the current round", async () => {
+        it("should update transcoder cumulativeFees based on cumulativeRewards = 0 and if the transcoder claimed through the current round", async () => {
             // set current cumulativeRewards to 500
             await fixture.minter.setMockUint256(functionSig("createReward(uint256,uint256)"), 1000)
             await bondingManager.reward()
@@ -1741,6 +1741,53 @@ contract("BondingManager", accounts => {
             // set t.cumulativeFees to t.cumulativeFees + fees from fee cut and fees from staked rewards
             let tr = await bondingManager.getTranscoder(accounts[0])
             assert.equal(tr.cumulativeFees.toString(), "500", "should set transcoder's cumulativeFees to 1000")
+        })
+
+        it("should update transcoder lastFeeRound to current round", async () => {
+            // We are in currentRound + 1 already
+            const round = currentRound + 1
+
+            // Check when the _round param is the current round
+            await fixture.ticketBroker.execute(
+                bondingManager.address,
+                functionEncodedABI(
+                    "updateTranscoderWithFees(address,uint256,uint256)",
+                    ["address", "uint256", "uint256"],
+                    [transcoder, 1000, round]
+                )
+            )
+            assert.equal(
+                (await bondingManager.getTranscoder(transcoder)).lastFeeRound.toNumber(),
+                round
+            )
+
+            // Check when the _round param is < current round
+            await fixture.ticketBroker.execute(
+                bondingManager.address,
+                functionEncodedABI(
+                    "updateTranscoderWithFees(address,uint256,uint256)",
+                    ["address", "uint256", "uint256"],
+                    [transcoder, 1000, round - 1]
+                )
+            )
+            assert.equal(
+                (await bondingManager.getTranscoder(transcoder)).lastFeeRound.toNumber(),
+                round
+            )
+
+            // Check when the _round param is > current round
+            await fixture.ticketBroker.execute(
+                bondingManager.address,
+                functionEncodedABI(
+                    "updateTranscoderWithFees(address,uint256,uint256)",
+                    ["address", "uint256", "uint256"],
+                    [transcoder, 1000, round + 1]
+                )
+            )
+            assert.equal(
+                (await bondingManager.getTranscoder(transcoder)).lastFeeRound.toNumber(),
+                round
+            )
         })
     })
 

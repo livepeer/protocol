@@ -309,6 +309,9 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         whenSystemNotPaused
         onlyTicketBroker
     {
+        // Silence unused param compiler warning
+        _round; 
+
         require(isRegisteredTranscoder(_transcoder), "transcoder must be registered");
 
         uint256 currentRound = roundsManager().currentRound();
@@ -370,7 +373,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // the earnings claiming algorithm and instead that amount is accounted for in the transcoder's cumulativeFees field
         earningsPool.updateCumulativeFeeFactor(prevEarningsPool, delegatorsFees);
 
-        t.lastFeeRound = _round;
+        t.lastFeeRound = currentRound;
     }
 
     /**
