@@ -8,7 +8,6 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 /**
  * @title EarningsPool
  * @dev Manages reward and fee pools for delegators and transcoders
- * @dev v1 DEPRECATED
  */
 library EarningsPool {
     using SafeMath for uint256;
@@ -28,6 +27,11 @@ library EarningsPool {
         uint256 transcoderRewardPool;      // Transcoder rewards. If `hasTranscoderRewardFeePool` is false, this should always be 0
         uint256 transcoderFeePool;         // Transcoder fees. If `hasTranscoderRewardFeePool` is false, this should always be 0
         bool hasTranscoderRewardFeePool;   // Flag to indicate if the earnings pool has separate transcoder reward and fee pools
+
+        // LIP-36 (https://github.com/livepeer/LIPs/blob/master/LIPs/LIP-36.md) fields
+        // See EarningsPoolLIP36.sol
+        uint256 cumulativeRewardFactor; 
+        uint256 cumulativeFeeFactor; 
     }
 
     /**

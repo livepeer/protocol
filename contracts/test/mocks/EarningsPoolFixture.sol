@@ -1,11 +1,14 @@
 pragma solidity ^0.5.11;
 
 import "../../bonding/libraries/EarningsPool.sol";
+import "../../bonding/libraries/EarningsPoolLIP36.sol";
 
 
 contract EarningsPoolFixture {
     using EarningsPool for EarningsPool.Data;
+    using EarningsPoolLIP36 for EarningsPool.Data;
 
+    EarningsPool.Data prevPool;
     EarningsPool.Data pool;
 
     function setCommission(uint256 _rewardCut, uint256 _feeShare) public {
@@ -30,6 +33,19 @@ contract EarningsPoolFixture {
 
     function addToRewardPool(uint256 _rewards) public {
         pool.addToRewardPool(_rewards);
+    }
+
+    function updateCumulativeFeeFactor(uint256 _fees) public {
+        pool.updateCumulativeFeeFactor(prevPool, _fees);
+    }
+
+    function updateCumulativeRewardFactor(uint256 _rewards) public {
+        pool.updateCumulativeRewardFactor(prevPool, _rewards);
+    }
+
+    function setPrevPoolEarningsFactors(uint256 _cumulativeFeeFactor, uint256 _cumulativeRewardFactor) public {
+        prevPool.cumulativeFeeFactor = _cumulativeFeeFactor;
+        prevPool.cumulativeRewardFactor = _cumulativeRewardFactor;
     }
 
     function hasClaimableShares() public view returns (bool) {
@@ -80,5 +96,17 @@ contract EarningsPoolFixture {
 
     function getClaimableStake() public view returns (uint256) {
         return pool.claimableStake;
+    }
+
+    function getTotalStake() public view returns (uint256) {
+        return pool.totalStake;
+    }
+
+    function getCumulativeRewardFactor() public view returns (uint256) {
+        return pool.cumulativeRewardFactor;
+    }
+
+    function getCumulativeFeeFactor() public view returns (uint256) {
+        return pool.cumulativeFeeFactor;
     }
 }

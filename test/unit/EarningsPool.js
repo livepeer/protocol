@@ -3,4 +3,4 @@ import runSolidityTest from "./helpers/runSolidityTest"
 runSolidityTest("TestEarningsPool")
 runSolidityTest("TestEarningsPool2")
 runSolidityTest("TestEarningsPoolNoTranscoderRewardFeePool")
-runSolidityTest("TestEarningsPoolV2")
+runSolidityTest("TestEarningsPoolLIP36")

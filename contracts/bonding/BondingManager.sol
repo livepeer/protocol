@@ -4,7 +4,8 @@ import "../ManagerProxyTarget.sol";
 import "./IBondingManager.sol";
 import "../libraries/SortedDoublyLL.sol";
 import "../libraries/MathUtils.sol";
-import "./libraries/EarningsPoolV2.sol";
+import "./libraries/EarningsPool.sol";
+import "./libraries/EarningsPoolLIP36.sol";
 import "../token/ILivepeerToken.sol";
 import "../token/IMinter.sol";
 import "../rounds/IRoundsManager.sol";
@@ -20,6 +21,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     using SafeMath for uint256;
     using SortedDoublyLL for SortedDoublyLL.Data;
     using EarningsPool for EarningsPool.Data;
+    using EarningsPoolLIP36 for EarningsPool.Data;
 
     // Constants
     // Occurances are replaced at compile time
@@ -354,8 +356,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         uint256 transcoderCommissionFees = _fees.sub(delegatorsFees);
         uint256 transcoderRewardStakeFees = MathUtils.percOf(delegatorsFees, t.activeCumulativeRewards, totalStake);
         t.cumulativeFees = t.cumulativeFees.add(transcoderRewardStakeFees).add(transcoderCommissionFees);
-        // Add fees to fee pool
-        earningsPool.addToFeePool(prevEarningsPool, delegatorsFees);
+        // Update cumulative fee factor with new fees
+        earningsPool.updateCumulativeFeeFactor(prevEarningsPool, delegatorsFees);
 
         t.lastFeeRound = _round;
     }
@@ -1254,8 +1256,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         uint256 transcoderRewardStakeRewards = MathUtils.percOf(delegatorsRewards, t.activeCumulativeRewards, earningsPool.totalStake);
 
         t.cumulativeRewards = t.cumulativeRewards.add(transcoderRewardStakeRewards).add(transcoderCommissionRewards);
-        // Add rewards to reward pool
-        earningsPool.addToRewardPool(prevEarningsPool, delegatorsRewards);
+        // Update cumulative reward factor with new rewards
+        earningsPool.updateCumulativeRewardFactor(prevEarningsPool, delegatorsRewards);
         // Update transcoder's total stake with rewards
         increaseTotalStake(_transcoder, _rewards, _newPosPrev, _newPosNext);
     }
