@@ -4,6 +4,7 @@ import {contractId, functionSig, functionEncodedABI} from "../../utils/helpers"
 import {constants} from "../../utils/constants"
 import BN from "bn.js"
 import truffleAssert from "truffle-assertions"
+import {assert} from "chai"
 
 const BondingManager = artifacts.require("BondingManager")
 const LinkedList = artifacts.require("SortedDoublyLL")
@@ -1661,7 +1662,7 @@ contract("BondingManager", accounts => {
             )
         })
 
-        it("should set activeCumulativeRewards on transcoder if transcoder hasn't called reward", async () => {
+        it("should update earningsPool cumulativeFeeFactor and transcoder cumulativeFees when transcoder hasn't called reward for current round", async () => {
             // set current cumulativeRewards to 500
             await fixture.minter.setMockUint256(functionSig("createReward(uint256,uint256)"), 1000)
             await bondingManager.reward()
@@ -1680,9 +1681,38 @@ contract("BondingManager", accounts => {
                     [transcoder, 1000, currentRound + 2]
                 )
             )
-            tr = await bondingManager.getTranscoder(transcoder)
 
-            assert.equal(tr.activeCumulativeRewards.toString(), cumulativeRewards.toString(), "transcoder's activeCumulativeRewards should be set to cumulativeRewards")
+            const earningsPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder, currentRound + 2)
+            assert.equal(earningsPool.cumulativeFeeFactor.toString(), "375000", "wrong cumulativeFeeFactor")
+            assert.equal(
+                (await bondingManager.getTranscoder(transcoder)).cumulativeFees.toString(),
+                "625"
+            )
+        })
+
+        it("should update transcoder cumulativeFees based on cumulativeRewards = 0 if and the transcoder claimed through the current round", async () => {
+            // set current cumulativeRewards to 500
+            await fixture.minter.setMockUint256(functionSig("createReward(uint256,uint256)"), 1000)
+            await bondingManager.reward()
+
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 2)
+            await bondingManager.claimEarnings(currentRound + 2, {from: transcoder})
+
+            await fixture.ticketBroker.execute(
+                bondingManager.address,
+                functionEncodedABI(
+                    "updateTranscoderWithFees(address,uint256,uint256)",
+                    ["address", "uint256", "uint256"],
+                    [transcoder, 1000, currentRound + 2]
+                )
+            )
+
+            const earningsPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder, currentRound + 2)
+            assert.equal(earningsPool.cumulativeFeeFactor.toString(), "375000", "wrong cumulativeFeeFactor")
+            assert.equal(
+                (await bondingManager.getTranscoder(transcoder)).cumulativeFees.toString(),
+                "500"
+            )
         })
 
         it("should update earningsPool cumulativeFeeFactor", async () => {
