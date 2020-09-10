@@ -17,7 +17,8 @@ contract IMinter {
     function trustedWithdrawETH(address payable _to, uint256 _amount) external;
     function depositETH() external payable returns (bool);
     function setCurrentRewardTokens() external;
-
+    function currentMintableTokens() external view returns (uint256);
+    function currentMintedTokens() external view returns (uint256);
     // Public functions
     function getController() public view returns (IController);
 }
