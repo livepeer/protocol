@@ -33,6 +33,11 @@ contract RoundsManager is ManagerProxyTarget, IRoundsManager {
     // Mapping round number => block hash for the round
     mapping (uint256 => bytes32) internal _blockHashForRound;
 
+    // LIP Upgrade Rounds
+    // These can be used in conditionals to ensure backwards compatibility or skip such backwards compatibility logic
+    // in case 'currentRound' > LIP-X upgrade round
+    mapping (uint256 => uint256) public lipUpgradeRound; // mapping (LIP-number > round number)
+
     /**
      * @notice RoundsManager constructor. Only invokes constructor of base Manager contract with provided Controller address
      * @dev This constructor will not initialize any state variables besides `controller`. The following setter functions
@@ -99,6 +104,16 @@ contract RoundsManager is ManagerProxyTarget, IRoundsManager {
         minter().setCurrentRewardTokens();
 
         emit NewRound(currRound, roundBlockHash);
+    }
+
+    /**
+    * @notice setLIPUpgradeRound sets the round an LIP upgrade would become active.
+    * @param _lip the LIP number.
+    * @param _round (optional) the round in which the LIP becomes active
+    */
+    function setLIPUpgradeRound(uint256 _lip, uint256 _round) external onlyControllerOwner {
+        require(lipUpgradeRound[_lip] == 0, "LIP upgrade round already set");
+        lipUpgradeRound[_lip] = _round;
     }
 
     /**
