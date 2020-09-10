@@ -150,11 +150,10 @@ contract("TicketFrontRun", ([deployer, broadcaster, evilSybilAccount, evilNonAct
         assert.equal(info.sender.deposit.toString(), (deposit - reserveAlloc).toString())
         assert.equal(info.reserve.fundsRemaining.toString(), reserve.toString())
 
-        const honestTranscoderEarningsPool = await bondingManager.getTranscoderEarningsPoolForRound(honestTranscoder, currentRound)
-        assert.equal(honestTranscoderEarningsPool.transcoderFeePool.toString(), reserveAlloc.toString())
+        assert.equal((await bondingManager.pendingFees(honestTranscoder, currentRound)), reserveAlloc.toString())
     })
 
-    it("broadcaster tries to send a winning ticket to its own non-active transcoder", async () => {
+    it("broadcaster tries to send a winning ticket to its own non-active transcoder, results in division by zero", async () => {
         // Use the same recipientRand for both tickets for ease of testing
         const recipientRand = 5
         const currentRound = await roundsManager.currentRound()
@@ -172,23 +171,22 @@ contract("TicketFrontRun", ([deployer, broadcaster, evilSybilAccount, evilNonAct
         const secondTicket = await newWinningTicket(evilNonActiveTranscoder, broadcaster, deposit + reserve, recipientRand)
         const secondTicketSig = await signMsg(getTicketHash(secondTicket), broadcaster)
 
-        // Ticket redemption by evilNonActiveTranscoder confirms on-chain
-        await broker.redeemWinningTicket(
+        // Ticket redemption by evilNonActiveTranscoder fails because a non-active transcoder has no totalStake on it's earningsPool
+        // This results in division by zero when calculating earnings cumulatively (LIP-36)
+        await expectRevertWithReason(broker.redeemWinningTicket(
             secondTicket,
             secondTicketSig,
             recipientRand,
             {from: evilNonActiveTranscoder}
-        )
+        ), "SafeMath: division by zero")
 
         let info = await broker.getSenderInfo(broadcaster)
 
-        // evilNonActiveTranscoder's ticket should only be able to empty the broadcaster's deposit
-        assert.equal(info.sender.deposit.toString(), "0")
+        // evilNonActiveTranscoder's ticket should not be able to empty the broadcaster's deposit
+        assert.equal(info.sender.deposit.toString(), deposit.toString())
         assert.equal(info.reserve.fundsRemaining.toString(), reserve.toString())
 
-        const evilNonActiveTranscoderEarningsPool = await bondingManager.getTranscoderEarningsPoolForRound(evilNonActiveTranscoder, currentRound)
-        assert.equal(evilNonActiveTranscoderEarningsPool.transcoderFeePool.toString(), deposit.toString())
-
+        const honestTPendingFeesBefore = await bondingManager.pendingFees(honestTranscoder, currentRound)
         // Ticket redemption by honestTranscoder confirms on-chain
         await broker.redeemWinningTicket(
             firstTicket,
@@ -199,11 +197,8 @@ contract("TicketFrontRun", ([deployer, broadcaster, evilSybilAccount, evilNonAct
 
         info = await broker.getSenderInfo(broadcaster)
 
-        // honestTranscoder's ticket should still be fully covered by the allocation from the broadcaster's reserve
-        assert.equal(info.reserve.fundsRemaining.toString(), (reserve - reserveAlloc).toString())
-
-        const honestTranscoderEarningsPool = await bondingManager.getTranscoderEarningsPoolForRound(honestTranscoder, currentRound)
-        assert.equal(honestTranscoderEarningsPool.transcoderFeePool.toString(), reserveAlloc.toString())
+        const honestTPendingFeesAfter = await bondingManager.pendingFees(honestTranscoder, currentRound)
+        assert.equal(honestTPendingFeesAfter.sub(honestTPendingFeesBefore).toString(), reserveAlloc.toString())
     })
 
     it("broadcaster tries to send a winning ticket to its own active transcoder", async () => {
@@ -239,8 +234,7 @@ contract("TicketFrontRun", ([deployer, broadcaster, evilSybilAccount, evilNonAct
         assert.equal(info.sender.deposit.toString(), "0")
         assert.equal(info.reserve.fundsRemaining.toString(), (reserve - reserveAlloc).toString())
 
-        const evilActiveTranscoderEarningsPool = await bondingManager.getTranscoderEarningsPoolForRound(evilActiveTranscoder, currentRound)
-        assert.equal(evilActiveTranscoderEarningsPool.transcoderFeePool.toString(), (deposit + reserveAlloc).toString())
+        assert.equal((await bondingManager.pendingFees(evilActiveTranscoder, currentRound)).toString(), (deposit + reserveAlloc).toString())
 
         // Ticket redemption by honestTranscoder confirms on-chain
         await broker.redeemWinningTicket(
@@ -255,7 +249,6 @@ contract("TicketFrontRun", ([deployer, broadcaster, evilSybilAccount, evilNonAct
         // honestTranscoder's ticket should still still receive the full reserveAlloc amount from the broadcaster's reserve
         assert.equal(info.reserve.fundsRemaining.toString(), (reserve - (2 * reserveAlloc)).toString())
 
-        const honestTranscoderEarningsPool = await bondingManager.getTranscoderEarningsPoolForRound(honestTranscoder, currentRound)
-        assert.equal(honestTranscoderEarningsPool.transcoderFeePool.toString(), reserveAlloc.toString())
+        assert.equal((await bondingManager.pendingFees(honestTranscoder, currentRound)).toString(), reserveAlloc.toString())
     })
 })
