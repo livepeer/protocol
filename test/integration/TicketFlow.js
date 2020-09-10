@@ -92,9 +92,9 @@ contract("TicketFlow", accounts => {
         assert.equal(endDeposit, deposit.sub(new BN(faceValue)).toString())
 
         const round = await roundsManager.currentRound()
-        const earningsPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder, round)
 
-        assert.equal(earningsPool.transcoderFeePool.toString(), faceValue.toString())
+        // there are no delegators so pendingFees(transcoder, currentRound) will include all fees
+        assert.equal((await bondingManager.pendingFees(transcoder, round)).toString(), faceValue.toString())
     })
 
     it("broadcaster double spends by over spending with its deposit", async () => {
@@ -112,6 +112,10 @@ contract("TicketFlow", accounts => {
         )
         const recipientRand = 6
         const faceValue = new BN(startSenderInfo.sender.deposit).add(new BN(100)).toString()
+
+
+        // claim earnings to reset fee count for the next test
+        await bondingManager.claimEarnings(1000, {from: transcoder})
         const ticket = createWinningTicket(transcoder, broadcaster, recipientRand, faceValue, auxData)
         const senderSig = await signMsg(getTicketHash(ticket), broadcaster)
 
@@ -125,8 +129,8 @@ contract("TicketFlow", accounts => {
         assert.equal(reserveDiff.toString(), "100")
 
         const round = await roundsManager.currentRound()
-        const earningsPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder, round)
 
-        assert.equal(earningsPool.transcoderFeePool.toString(), ticket.faceValue.toString())
+        // substract the faceValue from the previous test
+        assert.equal((await bondingManager.pendingFees(transcoder, round)).sub(new BN(1000)).toString(), ticket.faceValue.toString())
     })
 })

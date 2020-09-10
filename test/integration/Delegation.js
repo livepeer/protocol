@@ -12,7 +12,6 @@ const {DelegatorStatus} = constants
 
 contract("Delegation", accounts => {
     const TOKEN_UNIT = (new BN(10)).pow(new BN(18))
-    const PERC_DIVISOR = 1000000
 
     let controller
     let bondingManager
@@ -408,6 +407,8 @@ contract("Delegation", accounts => {
     })
 
     it("delegator 1 partially unbonds, earns rewards for 1 round, and rebonds using an unbonding lock", async () => {
+        const acceptableDelta = new BN(1000)
+
         await roundsManager.mineBlocks(roundLength)
         await roundsManager.initializeRound()
 
@@ -429,11 +430,12 @@ contract("Delegation", accounts => {
         await bondingManager.reward({from: transcoder2})
 
         const rewardRound = await roundsManager.currentRound()
-        const rewardAmount = (await bondingManager.getTranscoderEarningsPoolForRound(transcoder2, rewardRound))[0]
-
+        const endRewardFactor = (await bondingManager.getTranscoderEarningsPoolForRound(transcoder2, rewardRound)).cumulativeRewardFactor
+        const bondedAmount = (await bondingManager.getTranscoderEarningsPoolForRound(transcoder2, rewardRound)).totalStake
+        const rewardAmount = bondedAmount.mul(endRewardFactor.div(new BN(1000000)))
         // Newly minted rewards added
         currTotalBonded = currTotalBonded.add(rewardAmount)
-        assert.equal((await bondingManager.nextRoundTotalActiveStake()).toString(), currTotalBonded.toString(), "wrong next total stake")
+        assert.isTrue((await bondingManager.nextRoundTotalActiveStake()).sub(currTotalBonded).abs().lte(acceptableDelta), "wrong next total stake")
 
         // Finish current round - delegator 1 has reward shares for this round
         await roundsManager.mineBlocks(roundLength)
@@ -447,11 +449,8 @@ contract("Delegation", accounts => {
 
         // Test state after rebond
         // Verify reward claiming logic
-        const transcoder2ActiveStake = (await bondingManager.getTranscoderEarningsPoolForRound(transcoder2, rewardRound)).totalStake
-        const delegatorProRataShare = startDelegator1BondedAmount.mul(new BN(PERC_DIVISOR)).div(transcoder2ActiveStake)
-        const rewardShare = rewardAmount.mul(delegatorProRataShare).div(new BN(PERC_DIVISOR))
         const dInfo = await bondingManager.getDelegator(delegator1)
-        assert.equal(dInfo[0].toString(), startDelegator1BondedAmount.add(rewardShare).add(new BN(500)).toString(), "wrong delegator bonded amount with claimed rewards and rebond amount")
+        assert.isTrue(dInfo[0].sub(startDelegator1BondedAmount.mul(endRewardFactor.div(new BN(1000000))).add(new BN(500))).abs().lte(acceptableDelta), "wrong delegator bonded amount with claimed rewards and rebond amount")
         assert.equal(dInfo[5], (await roundsManager.currentRound()).toNumber(), "wrong delegator last claim round after rebond")
 
         const tDInfo = await bondingManager.getDelegator(transcoder2)
@@ -461,7 +460,7 @@ contract("Delegation", accounts => {
 
         // Stake counted (+500) since transcoder is in pool
         currTotalBonded = currTotalBonded.add(new BN(500))
-        assert.equal((await bondingManager.nextRoundTotalActiveStake()).toString(), currTotalBonded.toString(), "wrong next total stake after rebond")
+        assert.isTrue((await bondingManager.nextRoundTotalActiveStake()).sub(currTotalBonded).abs().lte(acceptableDelta), "wrong next total stake after rebond")
 
         const lock = await bondingManager.getDelegatorUnbondingLock(delegator1, unbondingLockID)
         assert.equal(lock[0], 0, "wrong amount for unbonding lock - should be 0")

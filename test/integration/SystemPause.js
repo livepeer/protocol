@@ -73,9 +73,7 @@ contract("System Pause", accounts => {
         await roundsManager.mineBlocks(roundLength)
         await roundsManager.initializeRound()
 
-        const pauseRound = await roundsManager.currentRound()
         await bondingManager.reward({from: transcoder1})
-        const pauseRoundReward = (await bondingManager.getTranscoderEarningsPoolForRound(transcoder1, pauseRound))[0]
 
         await controller.pause()
         await roundsManager.mineBlocks(roundLength * 5)
@@ -83,23 +81,20 @@ contract("System Pause", accounts => {
         await roundsManager.initializeRound()
 
         const currentRound = await roundsManager.currentRound()
-        const t1RewardShare = pauseRoundReward.div(new BN(2))
-        const d1RewardShare = pauseRoundReward.div(new BN(4))
-        const d2RewardShare = pauseRoundReward.div(new BN(4))
 
-        const startT1Info = await bondingManager.getDelegator(transcoder1)
+        const t1Pending = await bondingManager.pendingStake(transcoder1, currentRound)
         await bondingManager.claimEarnings(currentRound, {from: transcoder1})
         const endT1Info = await bondingManager.getDelegator(transcoder1)
-        assert.equal(endT1Info[0].sub(startT1Info[0]).toString(), t1RewardShare.toString(), "wrong bonded amount for transcoder 1")
+        assert.equal(t1Pending.toString(), endT1Info.bondedAmount.toString(), "wrong bonded amount for transcoder 1")
 
-        const startD1Info = await bondingManager.getDelegator(delegator1)
+        const d1Pending = await bondingManager.pendingStake(delegator1, currentRound)
         await bondingManager.claimEarnings(currentRound, {from: delegator1})
         const endD1Info = await bondingManager.getDelegator(delegator1)
-        assert.equal(endD1Info[0].sub(startD1Info[0]).toString(), d1RewardShare.toString(), "wrong bonded amount for delegator 1")
+        assert.equal(d1Pending.toString(), endD1Info.bondedAmount.toString(), "wrong bonded amount for delegator 1")
 
-        const startD2Info = await bondingManager.getDelegator(delegator2)
+        const d2Pending = await bondingManager.pendingStake(delegator2, currentRound)
         await bondingManager.claimEarnings(currentRound, {from: delegator2})
         const endD2Info = await bondingManager.getDelegator(delegator2)
-        assert.equal(endD2Info[0].sub(startD2Info[0]).toString(), d2RewardShare.toString(), "wrong bonded amount for delegator 2")
+        assert.equal(d2Pending.toString(), endD2Info.bondedAmount.toString(), "wrong bonded amount for delegator 2")
     })
 })
