@@ -15,6 +15,7 @@ contract IRoundsManager {
 
     // External functions
     function initializeRound() external;
+    function lipUpgradeRound(uint256 _lip) external view returns (uint256);
 
     // Public functions
     function blockNum() public view returns (uint256);
