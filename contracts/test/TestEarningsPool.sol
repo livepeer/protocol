@@ -11,6 +11,7 @@ contract TestEarningsPool {
         fixture = new EarningsPoolFixture();
         fixture.setStake(1000);
         fixture.setCommission(500000, 500000);
+        fixture.setHasTranscoderRewardFeePool(true);
     }
 
     function test_setCommission() public {
@@ -22,9 +23,8 @@ contract TestEarningsPool {
 
     function test_setStake() public {
         fixture.setStake(5000);
-        (,,,,, uint256 totalStake, uint256 claimableStake,,) = fixture.getEarningsPool();
+        (,,,,, uint256 totalStake,,,) = fixture.getEarningsPool();
         Assert.equal(totalStake, 5000, "wrong totalStake");
-        Assert.equal(claimableStake, 5000, "wrong claimableStake");
     }
 
     function test_addToFeePool() public {
