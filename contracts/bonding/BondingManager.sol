@@ -304,19 +304,29 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         whenSystemNotPaused
         onlyTicketBroker
     {
+        // Silence unused param compiler warning
+        _round;
+
         require(isRegisteredTranscoder(_transcoder), "transcoder must be registered");
+
+        uint256 currentRound = roundsManager().currentRound();
 
         Transcoder storage t = transcoders[_transcoder];
 
-        EarningsPool.Data storage earningsPool = t.earningsPoolPerRound[_round];
+        EarningsPool.Data storage earningsPool = t.earningsPoolPerRound[currentRound];
 
         // if transcoder hasn't called 'reward()' for '_round' its 'transcoderFeeShare' and 'transcoderRewardCut'
         // on the 'EarningsPool' for '_round' would not be initialized and the fee distribution wouldn't happen as expected
-        if (_round > t.lastRewardRound) {
+        if (currentRound > t.lastRewardRound) {
             earningsPool.setCommission(
                 t.rewardCut,
                 t.feeShare
             );
+
+            uint256 lastUpdateRound = t.lastActiveStakeUpdateRound;
+            if (lastUpdateRound < currentRound) {
+                earningsPool.setStake(t.earningsPoolPerRound[lastUpdateRound].totalStake);
+            }
         }
 
         // Add fees to fee pool
@@ -967,14 +977,25 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      */
     function increaseTotalStake(address _delegate, uint256 _amount, address _newPosPrev, address _newPosNext) internal {
         if (isRegisteredTranscoder(_delegate)) {
-            uint256 newStake = transcoderTotalStake(_delegate).add(_amount);
-            uint256 nextRound = roundsManager().currentRound().add(1);
+            uint256 currStake = transcoderTotalStake(_delegate);
+            uint256 newStake = currStake.add(_amount);
+            uint256 currRound = roundsManager().currentRound();
+            uint256 nextRound = currRound.add(1);
 
             // If the transcoder is already in the active set update its stake and return
             if (transcoderPoolV2.contains(_delegate)) {
                 transcoderPoolV2.updateKey(_delegate, newStake, _newPosPrev, _newPosNext);
                 nextRoundTotalActiveStake = nextRoundTotalActiveStake.add(_amount);
                 Transcoder storage t = transcoders[_delegate];
+
+                // currStake (the transcoder's delegatedAmount field) will reflect the transcoder's stake from lastActiveStakeUpdateRound
+                // because it is updated every time lastActiveStakeUpdateRound is updated
+                // The current active total stake is set to currStake to ensure that the value can be used in updateTranscoderWithRewards()
+                // and updateTranscoderWithFees() when lastActiveStakeUpdateRound > currentRound
+                if (t.lastActiveStakeUpdateRound < currRound) {
+                    t.earningsPoolPerRound[currRound].setStake(currStake);
+                }
+
                 t.earningsPoolPerRound[nextRound].setStake(newStake);
                 t.lastActiveStakeUpdateRound = nextRound;
             } else {
@@ -994,12 +1015,23 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      */
     function decreaseTotalStake(address _delegate, uint256 _amount, address _newPosPrev, address _newPosNext) internal {
         if (transcoderPoolV2.contains(_delegate)) {
-            uint256 newStake = transcoderTotalStake(_delegate).sub(_amount);
-            uint256 nextRound = roundsManager().currentRound().add(1);
+            uint256 currStake = transcoderTotalStake(_delegate);
+            uint256 newStake = currStake.sub(_amount);
+            uint256 currRound = roundsManager().currentRound();
+            uint256 nextRound = currRound.add(1);
 
             transcoderPoolV2.updateKey(_delegate, newStake, _newPosPrev, _newPosNext);
             nextRoundTotalActiveStake = nextRoundTotalActiveStake.sub(_amount);
             Transcoder storage t = transcoders[_delegate];
+
+            // currStake (the transcoder's delegatedAmount field) will reflect the transcoder's stake from lastActiveStakeUpdateRound
+            // because it is updated every time lastActiveStakeUpdateRound is updated
+            // The current active total stake is set to currStake to ensure that the value can be used in updateTranscoderWithRewards()
+            // and updateTranscoderWithFees() when lastActiveStakeUpdateRound > currentRound
+            if (t.lastActiveStakeUpdateRound < currRound) {
+                t.earningsPoolPerRound[currRound].setStake(currStake);
+            }
+
             t.lastActiveStakeUpdateRound = nextRound;
             t.earningsPoolPerRound[nextRound].setStake(newStake);
         }
