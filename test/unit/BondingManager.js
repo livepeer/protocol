@@ -1788,12 +1788,16 @@ contract("BondingManager", accounts => {
                 functionEncodedABI(
                     "updateTranscoderWithFees(address,uint256,uint256)",
                     ["address", "uint256", "uint256"],
-                    [transcoder, 1000, currentRound + 1]
+                    [transcoder, 1000, currentRound + 2]
                 )
             )
-            const endPendingFees = await bondingManager.pendingFees(transcoder, currentRound + 1)
 
-            assert.isAbove(endPendingFees.toNumber(), startPendingFees.toNumber())
+            const earningsPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder, currentRound + 2)
+            assert.equal(earningsPool.cumulativeFeeFactor.toString(), "375000", "wrong cumulativeFeeFactor")
+            assert.equal(
+                (await bondingManager.getTranscoder(transcoder)).cumulativeFees.toString(),
+                "625"
+            )
         })
 
         it("should update transcoder's pendingFees when lastActiveStakeUpdateRound > currentRound when stake decreases before function call", async () => {
@@ -1812,12 +1816,9 @@ contract("BondingManager", accounts => {
                     [transcoder, 1000, currentRound + 2]
                 )
             )
-            const earningsPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder, currentRound + 2)
-            assert.equal(earningsPool.cumulativeFeeFactor.toString(), "375000", "wrong cumulativeFeeFactor")
-            assert.equal(
-                (await bondingManager.getTranscoder(transcoder)).cumulativeFees.toString(),
-                "625"
-            )
+            const endPendingFees = await bondingManager.pendingFees(transcoder, currentRound + 2)
+
+            assert.isAbove(endPendingFees.toNumber(), startPendingFees.toNumber())
         })
 
         it("should update transcoder cumulativeFees based on cumulativeRewards = 0 and if the transcoder claimed through the current round", async () => {
