@@ -114,41 +114,31 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
     // Check if sender is TicketBroker
     modifier onlyTicketBroker() {
-        require(
-            msg.sender == controller.getContract(keccak256("TicketBroker")),
-            "caller must be TicketBroker"
-        );
+        _onlyTicketBroker();
         _;
     }
 
     // Check if sender is RoundsManager
     modifier onlyRoundsManager() {
-        require(
-            msg.sender == controller.getContract(keccak256("RoundsManager")),
-            "caller must be RoundsManager"
-        );
+        _onlyRoundsManager();
         _;
     }
 
     // Check if sender is Verifier
     modifier onlyVerifier() {
-        require(msg.sender == controller.getContract(keccak256("Verifier")), "caller must be Verifier");
+        _onlyVerifier();
         _;
     }
 
     // Check if current round is initialized
     modifier currentRoundInitialized() {
-        require(roundsManager().currentRoundInitialized(), "current round is not initialized");
+        _currentRoundInitialized();
         _;
     }
 
     // Automatically claim earnings from lastClaimRound through the current round
     modifier autoClaimEarnings() {
-        uint256 currentRound = roundsManager().currentRound();
-        uint256 lastClaimRound = delegators[msg.sender].lastClaimRound;
-        if (lastClaimRound < currentRound) {
-            updateDelegatorWithEarnings(msg.sender, currentRound, lastClaimRound);
-        }
+        _autoClaimEarnings();
         _;
     }
 
@@ -1373,8 +1363,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     function updateDelegatorWithEarnings(address _delegator, uint256 _endRound, uint256 _lastClaimRound) internal {
         Delegator storage del = delegators[_delegator];
         uint256 startRound = _lastClaimRound.add(1);
-        uint256 currentBondedAmount = del.bondedAmount;
-        uint256 currentFees = del.fees;
+        uint256 currentBondedAmount;
+        uint256 currentFees;
 
         uint256 lip36Round = roundsManager().lipUpgradeRound(36);
 
@@ -1478,5 +1468,35 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      */
     function roundsManager() internal view returns (IRoundsManager) {
         return IRoundsManager(controller.getContract(keccak256("RoundsManager")));
+    }
+
+    function _onlyTicketBroker() internal {
+        require(
+            msg.sender == controller.getContract(keccak256("TicketBroker")),
+            "caller must be TicketBroker"
+        );
+    }
+
+    function _onlyRoundsManager() internal {
+        require(
+            msg.sender == controller.getContract(keccak256("RoundsManager")),
+            "caller must be RoundsManager"
+        );
+    }
+
+    function _onlyVerifier() internal {
+        require(msg.sender == controller.getContract(keccak256("Verifier")), "caller must be Verifier");
+    }
+
+    function  _currentRoundInitialized() internal {
+        require(roundsManager().currentRoundInitialized(), "current round is not initialized");
+    }
+
+    function _autoClaimEarnings() internal {
+        uint256 currentRound = roundsManager().currentRound();
+        uint256 lastClaimRound = delegators[msg.sender].lastClaimRound;
+        if (lastClaimRound < currentRound) {
+            updateDelegatorWithEarnings(msg.sender, currentRound, lastClaimRound);
+        }
     }
 }
