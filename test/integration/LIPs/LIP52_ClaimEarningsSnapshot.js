@@ -1,6 +1,8 @@
 import {contractId} from "../../../utils/helpers"
 import {constants} from "../../../utils/constants"
 const {MerkleTree} = require("../../../utils/merkleTree")
+const executeLIP36Upgrade = require("../../helpers/executeLIP36Upgrade")
+
 import {createWinningTicket, getTicketHash} from "../../helpers/ticket"
 import signMsg from "../../helpers/signMsg"
 
@@ -19,7 +21,6 @@ const MerkleSnapshot = artifacts.require("MerkleSnapshot")
 const BondingManagerPreLIP36 = artifacts.require("BondingManagerPreLIP36")
 const LinkedList = artifacts.require("SortedDoublyLL")
 const ManagerProxy = artifacts.require("ManagerProxy")
-
 
 contract("ClaimEarningsSnapshot", accounts => {
     let controller
@@ -70,36 +71,6 @@ contract("ClaimEarningsSnapshot", accounts => {
 
         await broker.redeemWinningTicket(ticket, senderSig, recipientRand, {from: transcoder})
     }
-
-    async function executeLIP36Upgrade() {
-        // See Deployment section of https://github.com/livepeer/LIPs/blob/master/LIPs/LIP-36.md
-
-        // Define LIP-36 round
-        const lip36Round = await roundsManager.currentRound()
-
-        // Deploy a new RoundsManager implementation contract
-        // Note: In this test, we use the same implementation contract as the one currently deployed because
-        // this repo does not contain the old implementation contract. In practice, the deployed implementation contract
-        // would be different than the new implementation contract and we would be using the RoundsManager instead of the AdjustableRoundsManager
-        const roundsManagerTarget = await AdjustableRoundsManager.new(controller.address)
-
-        // Deploy a new BondingManager implementation contract
-        const ll = await LinkedList.deployed()
-        BondingManager.link("SortedDoublyLL", ll.address)
-        const bondingManagerTarget = await BondingManager.new(controller.address)
-
-        // Register the new RoundsManager implementation contract
-        await controller.setContractInfo(contractId("RoundsManagerTarget"), roundsManagerTarget.address, web3.utils.asciiToHex("0x123"))
-
-        // Set LIP upgrade round
-        await roundsManager.setLIPUpgradeRound(new BN(36), lip36Round)
-
-        // Register the new BondingManager implementation contract
-        await controller.setContractInfo(contractId("BondingManagerTarget"), bondingManagerTarget.address, web3.utils.asciiToHex("0x123"))
-
-        bondingManager = await BondingManager.at(bondingProxy.address)
-    }
-
 
     before(async () => {
         controller = await Controller.deployed()
@@ -238,7 +209,7 @@ contract("ClaimEarningsSnapshot", accounts => {
         })
 
         it("succesfully calls claimSnapShotEarnings and unbond as arbitrary call using the 'data' field for each delegate", async () => {
-            await executeLIP36Upgrade()
+            bondingManager = await executeLIP36Upgrade(controller, roundsManager, bondingProxy.address)
 
             await roundsManager.mineBlocks(roundLength.toNumber() * 5)
             await roundsManager.initializeRound()
@@ -278,6 +249,297 @@ contract("ClaimEarningsSnapshot", accounts => {
                     && e.startRound == delegatorBefore.lastClaimRound.add(new BN(1)).toString()
                 )
             }
+        })
+    })
+})
+
+contract("Including cumulative earnings in the snapshot results in excessive earnings (bug)", accounts => {
+    let controller
+    let bondingManager
+    let roundsManager
+    let token
+    let snapshots
+    let bondingProxy
+
+    let roundLength
+
+    const transcoder = accounts[0]
+
+
+    const NUM_ACTIVE_TRANSCODERS = 10
+    const UNBONDING_PERIOD = 2
+    const MAX_EARNINGS_CLAIMS_ROUNDS = 20
+    const transferAmount = (new BN(100)).mul(constants.TOKEN_UNIT)
+
+    let leaf
+    let proof
+
+    before(async () => {
+        controller = await Controller.deployed()
+        await controller.unpause()
+
+        const ll = await LinkedList.new()
+        BondingManagerPreLIP36.link("SortedDoublyLL", ll.address)
+        const bondingTarget = await BondingManagerPreLIP36.new(controller.address)
+        await controller.setContractInfo(contractId("BondingManagerTarget"), bondingTarget.address, web3.utils.asciiToHex("0x123"))
+        bondingProxy = await ManagerProxy.new(controller.address, contractId("BondingManagerTarget"))
+        await controller.setContractInfo(contractId("BondingManager"), bondingProxy.address, web3.utils.asciiToHex("0x123"))
+        bondingManager = await BondingManagerPreLIP36.at(bondingProxy.address)
+
+        await bondingManager.setUnbondingPeriod(UNBONDING_PERIOD)
+        await bondingManager.setNumActiveTranscoders(NUM_ACTIVE_TRANSCODERS)
+        await bondingManager.setMaxEarningsClaimsRounds(MAX_EARNINGS_CLAIMS_ROUNDS)
+
+        const bondingManagerAddr = await controller.getContract(contractId("BondingManager"))
+        bondingManager = await BondingManager.at(bondingManagerAddr)
+
+        const roundsManagerAddr = await controller.getContract(contractId("RoundsManager"))
+        roundsManager = await AdjustableRoundsManager.at(roundsManagerAddr)
+
+        const tokenAddr = await controller.getContract(contractId("LivepeerToken"))
+        token = await LivepeerToken.at(tokenAddr)
+
+        // deploy MerkleSnapshot contract
+        snapshots = await MerkleSnapshot.new(controller.address)
+        await controller.setContractInfo(contractId("MerkleSnapshot"), snapshots.address, web3.utils.asciiToHex("0x123"))
+
+        roundLength = await roundsManager.roundLength.call()
+        await roundsManager.mineBlocks(roundLength.toNumber() * 1)
+        await roundsManager.initializeRound()
+
+        await token.approve(bondingManager.address, transferAmount)
+        await bondingManager.bond(transferAmount, transcoder)
+
+        let rewardCut = 50 * constants.PERC_MULTIPLIER
+        let feeShare = 50 * constants.PERC_MULTIPLIER
+        bondingManager.transcoder(rewardCut, feeShare)
+
+        await roundsManager.mineBlocks(roundLength.toNumber() * 1)
+        await roundsManager.setBlockHash(web3.utils.keccak256("foo"))
+        await roundsManager.initializeRound()
+    })
+
+    describe("set snapshot", () => {
+        let elements = [{address: transcoder}]
+        let tree
+        const id = bufferToHex(keccak256("LIP-52"))
+        before(async () => {
+            for (let i = 0; i < 10; i++) {
+                await bondingManager.reward()
+                await roundsManager.mineBlocks(roundLength.toNumber() * 1)
+                await roundsManager.setBlockHash(web3.utils.keccak256("foo"))
+                await roundsManager.initializeRound()
+            }
+
+            bondingManager = await executeLIP36Upgrade(controller, roundsManager, bondingProxy.address)
+
+            await bondingManager.reward()
+            await roundsManager.mineBlocks(roundLength.toNumber() * 1)
+            await roundsManager.setBlockHash(web3.utils.keccak256("foo"))
+            await roundsManager.initializeRound()
+
+            const currentRound = await roundsManager.currentRound()
+
+            const leaves = []
+            for (let el of elements) {
+                el["pendingStake"] = await bondingManager.pendingStake(el.address, currentRound)
+                el["pendingFees"] = await bondingManager.pendingFees(el.address, currentRound)
+                leaves.push(abi.rawEncode(["address", "uint256", "uint256"], [el.address, el.pendingStake, el.pendingFees]))
+            }
+
+            tree = new MerkleTree(leaves)
+        })
+
+
+        it("checks that transcoder is bonded", async () => {
+            assert.isTrue((await bondingManager.getDelegator(transcoder)).bondedAmount.cmp(transferAmount) == 0)
+        })
+
+
+        it("sets the snapshot root", async () => {
+            const root = tree.getHexRoot()
+            await snapshots.setSnapshot(
+                id,
+                root
+            )
+
+            assert.equal(
+                await snapshots.snapshot(id),
+                root
+            )
+        })
+
+        it("Succesfully verifies the merkle proofs for the transcoder", async () => {
+            for (let el of elements) {
+                leaf = abi.rawEncode(["address", "uint256", "uint256"], [el.address, el.pendingStake, el.pendingFees])
+                proof = tree.getHexProof(leaf)
+                assert.isTrue(await snapshots.verify(id, proof, keccak256(leaf)))
+            }
+        })
+    })
+
+    describe("Snapshot includes cumulative earnings", async () => {
+        before(async () => {
+            const lip36Round = await roundsManager.lipUpgradeRound(36)
+            await roundsManager.setLIPUpgradeRound(52, lip36Round)
+        })
+
+        it("there should be residual rewards (this is a bug)", async () => {
+            const currentRound = await roundsManager.currentRound()
+
+            const pendingStake = await bondingManager.pendingStake(transcoder, currentRound)
+            const data = bondingManager.contract.methods.unbond(pendingStake.toString()).encodeABI()
+            await bondingManager.claimSnapshotEarnings(pendingStake, new BN(0), proof, data)
+
+            const delegatorAfter = await bondingManager.getDelegator(transcoder)
+
+            assert.isTrue(delegatorAfter.lastClaimRound.cmp(currentRound) == 0, "last claim round not correct")
+            assert.isTrue(delegatorAfter.bondedAmount.toString() != "0", "bonded amount not greater than 0")
+        })
+    })
+})
+
+contract("Snapshot only existing out of pre-LIP36 earnings should yield correct results", accounts => {
+    let controller
+    let bondingManager
+    let roundsManager
+    let token
+    let snapshots
+    let bondingProxy
+
+    let roundLength
+
+    const transcoder = accounts[0]
+
+    const NUM_ACTIVE_TRANSCODERS = 10
+    const UNBONDING_PERIOD = 2
+    const MAX_EARNINGS_CLAIMS_ROUNDS = 20
+    const transferAmount = (new BN(100)).mul(constants.TOKEN_UNIT)
+
+    let leaf
+    let proof
+    let elements = [{address: transcoder}]
+    let tree
+
+    before(async () => {
+        controller = await Controller.deployed()
+        await controller.unpause()
+
+        const ll = await LinkedList.new()
+        BondingManagerPreLIP36.link("SortedDoublyLL", ll.address)
+        const bondingTarget = await BondingManagerPreLIP36.new(controller.address)
+        await controller.setContractInfo(contractId("BondingManagerTarget"), bondingTarget.address, web3.utils.asciiToHex("0x123"))
+        bondingProxy = await ManagerProxy.new(controller.address, contractId("BondingManagerTarget"))
+        await controller.setContractInfo(contractId("BondingManager"), bondingProxy.address, web3.utils.asciiToHex("0x123"))
+        bondingManager = await BondingManagerPreLIP36.at(bondingProxy.address)
+
+        await bondingManager.setUnbondingPeriod(UNBONDING_PERIOD)
+        await bondingManager.setNumActiveTranscoders(NUM_ACTIVE_TRANSCODERS)
+        await bondingManager.setMaxEarningsClaimsRounds(MAX_EARNINGS_CLAIMS_ROUNDS)
+
+        const bondingManagerAddr = await controller.getContract(contractId("BondingManager"))
+        bondingManager = await BondingManager.at(bondingManagerAddr)
+
+        const roundsManagerAddr = await controller.getContract(contractId("RoundsManager"))
+        roundsManager = await AdjustableRoundsManager.at(roundsManagerAddr)
+
+        const tokenAddr = await controller.getContract(contractId("LivepeerToken"))
+        token = await LivepeerToken.at(tokenAddr)
+
+        // deploy MerkleSnapshot contract
+        snapshots = await MerkleSnapshot.new(controller.address)
+        await controller.setContractInfo(contractId("MerkleSnapshot"), snapshots.address, web3.utils.asciiToHex("0x123"))
+
+        roundLength = await roundsManager.roundLength.call()
+        await roundsManager.mineBlocks(roundLength.toNumber() * 1)
+        await roundsManager.initializeRound()
+
+        await token.approve(bondingManager.address, transferAmount)
+        await bondingManager.bond(transferAmount, transcoder)
+
+        let rewardCut = 50 * constants.PERC_MULTIPLIER
+        let feeShare = 50 * constants.PERC_MULTIPLIER
+        bondingManager.transcoder(rewardCut, feeShare)
+
+        await roundsManager.mineBlocks(roundLength.toNumber() * 1)
+        await roundsManager.setBlockHash(web3.utils.keccak256("foo"))
+        await roundsManager.initializeRound()
+    })
+
+    describe("set snapshot", () => {
+        const id = bufferToHex(keccak256("LIP-52"))
+        before(async () => {
+            for (let i = 0; i < 10; i++) {
+                await bondingManager.reward()
+                await roundsManager.mineBlocks(roundLength.toNumber() * 1)
+                await roundsManager.setBlockHash(web3.utils.keccak256("foo"))
+                await roundsManager.initializeRound()
+            }
+
+            const snapshotRound = (await roundsManager.currentRound()).sub(new BN(1))
+
+            bondingManager = await executeLIP36Upgrade(controller, roundsManager, bondingProxy.address)
+
+            await bondingManager.reward()
+            await roundsManager.mineBlocks(roundLength.toNumber() * 1)
+            await roundsManager.setBlockHash(web3.utils.keccak256("foo"))
+            await roundsManager.initializeRound()
+
+            const leaves = []
+            for (let el of elements) {
+                el["pendingStake"] = await bondingManager.pendingStake(el.address, snapshotRound)
+                el["pendingFees"] = await bondingManager.pendingFees(el.address, snapshotRound)
+                leaves.push(abi.rawEncode(["address", "uint256", "uint256"], [el.address, el.pendingStake, el.pendingFees]))
+            }
+
+            tree = new MerkleTree(leaves)
+        })
+
+
+        it("checks that transcoder is bonded", async () => {
+            assert.isTrue((await bondingManager.getDelegator(transcoder)).bondedAmount.cmp(transferAmount) == 0)
+        })
+
+
+        it("sets the snapshot root", async () => {
+            const root = tree.getHexRoot()
+            await snapshots.setSnapshot(
+                id,
+                root
+            )
+
+            assert.equal(
+                await snapshots.snapshot(id),
+                root
+            )
+        })
+
+        it("Succesfully verifies the merkle proofs for the transcoder", async () => {
+            for (let el of elements) {
+                leaf = abi.rawEncode(["address", "uint256", "uint256"], [el.address, el.pendingStake, el.pendingFees])
+                proof = tree.getHexProof(leaf)
+                assert.isTrue(await snapshots.verify(id, proof, keccak256(leaf)))
+            }
+        })
+    })
+
+    describe("No cumulative snapshot earnings", async () => {
+        before(async () => {
+            const lip36Round = await roundsManager.lipUpgradeRound(36)
+            await roundsManager.setLIPUpgradeRound(52, lip36Round.sub(new BN(1)))
+        })
+
+        it("should claim all pending rewards", async () => {
+            const currentRound = await roundsManager.currentRound()
+
+            const pendingStake = await bondingManager.pendingStake(transcoder, currentRound)
+            const data = bondingManager.contract.methods.unbond(pendingStake.toString()).encodeABI()
+            await bondingManager.claimSnapshotEarnings(elements[0].pendingStake, new BN(0), proof, data)
+
+            const delegatorAfter = await bondingManager.getDelegator(transcoder)
+
+            assert.isTrue(delegatorAfter.lastClaimRound.cmp(currentRound) == 0, "last claim round not correct")
+            assert.isTrue(delegatorAfter.bondedAmount.toString() == "0", "bonded amount not 0")
         })
     })
 })

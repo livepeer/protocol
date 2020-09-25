@@ -2543,7 +2543,7 @@ contract("BondingManager", accounts => {
 
             await truffleAssert.reverts(
                 bondingManager.claimSnapshotEarnings(1500, 1000, [], []),
-                "delegator has already claimed earnings past the LIP-52 round"
+                "Already claimed for LIP-52"
             )
         })
 

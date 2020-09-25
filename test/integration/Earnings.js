@@ -2,12 +2,12 @@ import BN from "bn.js"
 
 const {constants} = require("../../utils/constants")
 const {contractId} = require("../../utils/helpers")
+const executeLIP36Upgrade = require("../helpers/executeLIP36Upgrade")
 import {createWinningTicket, getTicketHash} from "../helpers/ticket"
 import signMsg from "../helpers/signMsg"
 import math from "../helpers/math"
 
 const Controller = artifacts.require("Controller")
-const BondingManager = artifacts.require("BondingManager")
 const BondingManagerPreLIP36 = artifacts.require("BondingManagerPreLIP36")
 const AdjustableRoundsManager = artifacts.require("AdjustableRoundsManager")
 const LivepeerToken = artifacts.require("LivepeerToken")
@@ -44,35 +44,6 @@ contract("Earnings", accounts => {
     const PERC_DIVISOR = 1000000
 
     const faceValue = new BN(web3.utils.toWei("0.1", "ether")).toString() // 0.1 ETH
-
-    async function executeLIP36Upgrade() {
-        // See Deployment section of https://github.com/livepeer/LIPs/blob/master/LIPs/LIP-36.md
-
-        // Define LIP-36 round
-        const lip36Round = await roundsManager.currentRound()
-
-        // Deploy a new RoundsManager implementation contract
-        // Note: In this test, we use the same implementation contract as the one currently deployed because
-        // this repo does not contain the old implementation contract. In practice, the deployed implementation contract
-        // would be different than the new implementation contract and we would be using the RoundsManager instead of the AdjustableRoundsManager
-        const roundsManagerTarget = await AdjustableRoundsManager.new(controller.address)
-
-        // Deploy a new BondingManager implementation contract
-        const ll = await LinkedList.deployed()
-        BondingManager.link("SortedDoublyLL", ll.address)
-        const bondingManagerTarget = await BondingManager.new(controller.address)
-
-        // Register the new RoundsManager implementation contract
-        await controller.setContractInfo(contractId("RoundsManagerTarget"), roundsManagerTarget.address, web3.utils.asciiToHex("0x123"))
-
-        // Set LIP upgrade round
-        await roundsManager.setLIPUpgradeRound(new BN(36), lip36Round)
-
-        // Register the new BondingManager implementation contract
-        await controller.setContractInfo(contractId("BondingManagerTarget"), bondingManagerTarget.address, web3.utils.asciiToHex("0x123"))
-
-        bondingManager = await BondingManager.at(bondingProxy.address)
-    }
 
     async function redeemWinningTicket(transcoder, broadcaster, faceValue) {
         const block = await roundsManager.blockNum()
@@ -340,8 +311,7 @@ contract("Earnings", accounts => {
 
         it("calculates earnings and deploys LIP-36", async () => {
             await oldEarningsAndCheck()
-
-            await executeLIP36Upgrade()
+            bondingManager = await executeLIP36Upgrade(controller, roundsManager, bondingProxy.address)
         })
 
         it("calculates earnings after LIP-36", async () => {

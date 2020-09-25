@@ -464,7 +464,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
         uint256 lastClaimRound = del.lastClaimRound;
 
-        require(lastClaimRound <= lip52Round, "delegator has already claimed earnings past the LIP-52 round");
+        require(lastClaimRound < lip52Round, "Already claimed for LIP-52");
 
         bytes32 leaf = keccak256(abi.encode(msg.sender, _pendingStake, _pendingFees));
 
@@ -1363,8 +1363,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     function updateDelegatorWithEarnings(address _delegator, uint256 _endRound, uint256 _lastClaimRound) internal {
         Delegator storage del = delegators[_delegator];
         uint256 startRound = _lastClaimRound.add(1);
-        uint256 currentBondedAmount;
-        uint256 currentFees;
+        uint256 currentBondedAmount = del.bondedAmount;
+        uint256 currentFees = del.fees;
 
         uint256 lip36Round = roundsManager().lipUpgradeRound(36);
 
@@ -1470,25 +1470,25 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         return IRoundsManager(controller.getContract(keccak256("RoundsManager")));
     }
 
-    function _onlyTicketBroker() internal {
+    function _onlyTicketBroker() internal view {
         require(
             msg.sender == controller.getContract(keccak256("TicketBroker")),
             "caller must be TicketBroker"
         );
     }
 
-    function _onlyRoundsManager() internal {
+    function _onlyRoundsManager() internal view {
         require(
             msg.sender == controller.getContract(keccak256("RoundsManager")),
             "caller must be RoundsManager"
         );
     }
 
-    function _onlyVerifier() internal {
+    function _onlyVerifier() internal view {
         require(msg.sender == controller.getContract(keccak256("Verifier")), "caller must be Verifier");
     }
 
-    function  _currentRoundInitialized() internal {
+    function  _currentRoundInitialized() internal view {
         require(roundsManager().currentRoundInitialized(), "current round is not initialized");
     }
 
