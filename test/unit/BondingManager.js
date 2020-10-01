@@ -1771,7 +1771,7 @@ contract("BondingManager", accounts => {
 
             assert.isAbove(endPendingFees.toNumber(), startPendingFees.toNumber())
         })
-            
+
         it("should update earningsPool cumulativeFeeFactor and transcoder cumulativeFees when transcoder hasn't called reward for current round", async () => {
             // set current cumulativeRewards to 500
             await fixture.minter.setMockUint256(functionSig("createReward(uint256,uint256)"), 1000)
@@ -1852,7 +1852,7 @@ contract("BondingManager", accounts => {
             assert.isBelow((await bondingManager.getTranscoder(transcoder)).lastActiveStakeUpdateRound.toNumber(), currentRound + 2)
 
             const startPendingFees = await bondingManager.pendingFees(transcoder, currentRound + 2)
-            
+
             await fixture.ticketBroker.execute(
                 bondingManager.address,
                 functionEncodedABI(
