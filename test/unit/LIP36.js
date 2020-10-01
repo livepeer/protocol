@@ -143,6 +143,80 @@ contract("LIP36 transition", accounts => {
         })
     })
 
+    describe("pendingStake (reward call in LIP-36 round post-upgrade)", () => {
+        const transcoder = accounts[0]
+        const delegator = accounts[1]
+        const currentRound = 100
+
+        beforeEach(async () => {
+            await fixture.roundsManager.setMockBool(functionSig("currentRoundInitialized()"), true)
+            await fixture.roundsManager.setMockBool(functionSig("currentRoundLocked()"), false)
+
+            // Register transcoder
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound - 2)
+            await bondingManager.bond(1000, transcoder, {from: transcoder})
+            await bondingManager.transcoder(50 * PERC_MULTIPLIER, 25 * PERC_MULTIPLIER, {from: transcoder})
+
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound - 1)
+
+            // Delegate stake to transcoder
+            await bondingManager.bond(1000, transcoder, {from: delegator})
+
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
+
+            await fixture.minter.setMockUint256(functionSig("createReward(uint256,uint256)"), 1000)
+
+            // Deploy LIP-36
+            await fixture.deployAndRegister(BondingManager, "BondingManager", fixture.controller.address)
+            bondingManager = await BondingManager.at(proxy.address)
+            await fixture.roundsManager.setMockUint256(functionSig("lipUpgradeRound(uint256)"), currentRound)
+
+            // Call reward during the LIP-36 round post-upgrade
+            await bondingManager.reward({from: transcoder})
+        })
+
+        it("should return correct pending stake for LIP-36 round", async () => {
+            // Check for delegator
+            const dPendingRewards0 = 250
+            assert.equal(
+                (await bondingManager.pendingStake(delegator, currentRound)).toString(),
+                (1000 + dPendingRewards0).toString()
+            )
+
+            // Check for transcoder
+            const tPendingRewards = 250 + 500
+            assert.equal(
+                (await bondingManager.pendingStake(transcoder, currentRound)).toNumber(),
+                (1000 + tPendingRewards).toString()
+            )
+        })
+
+        it("should return correct pending stake for LIP-36 round + 1", async () => {
+            // Call reward during LIP-36 round + 1
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 1)
+            await bondingManager.reward({from: transcoder})
+
+            // Check for delegator
+            const dPendingRewards0 = 250
+            const dPendingRewards1 = Math.floor((500 * (1250 * PERC_DIVISOR / 3000)) / PERC_DIVISOR)
+
+            assert.equal(
+                (await bondingManager.pendingStake(delegator, currentRound + 1)).toString(),
+                (1000 + dPendingRewards0 + dPendingRewards1).toString()
+            )
+
+            // Check for transcoder
+            const cumulativeRewards = 500
+            const tPendingRewards0 = 250 + 500
+            const tPendingRewards1 = Math.floor((500 * (1750 * PERC_DIVISOR / 3000)) / PERC_DIVISOR)
+
+            assert.equal(
+                (await bondingManager.pendingStake(transcoder, currentRound + 1)).toString(),
+                (1000 + tPendingRewards0 + tPendingRewards1 + cumulativeRewards).toString()
+            )
+        })
+    })
+
     describe("pendingFees", () => {
         const transcoder = accounts[0]
         const delegator = accounts[1]
