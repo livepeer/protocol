@@ -4,13 +4,14 @@ const ContractDeployer = require("../utils/contractDeployer")
 const Controller = artifacts.require("Controller")
 const Minter = artifacts.require("Minter")
 const ServiceRegistry = artifacts.require("ServiceRegistry")
-const BondingManager = artifacts.require("BondingManager")
+const BondingManager = artifacts.require("BondingManager.sol")
 const RoundsManager = artifacts.require("RoundsManager")
 const AdjustableRoundsManager = artifacts.require("AdjustableRoundsManager")
 const TicketBroker = artifacts.require("TicketBroker")
 const LivepeerToken = artifacts.require("LivepeerToken")
 const LivepeerTokenFaucet = artifacts.require("LivepeerTokenFaucet")
 const ManagerProxy = artifacts.require("ManagerProxy")
+const MerkleSnapshot = artifacts.require("MerkleSnapshot")
 
 module.exports = function(deployer, network) {
     if (network === "unitTest") {
@@ -50,6 +51,8 @@ module.exports = function(deployer, network) {
         }
 
         await lpDeployer.deployProxyAndRegister(ServiceRegistry, "ServiceRegistry", controller.address)
+
+        await lpDeployer.deployAndRegister(MerkleSnapshot, "MerkleSnapshot", controller.address)
 
         deployer.logger.log("Initializing contracts...")
 
