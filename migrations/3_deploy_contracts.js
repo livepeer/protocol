@@ -11,6 +11,7 @@ const TicketBroker = artifacts.require("TicketBroker")
 const LivepeerToken = artifacts.require("LivepeerToken")
 const LivepeerTokenFaucet = artifacts.require("LivepeerTokenFaucet")
 const ManagerProxy = artifacts.require("ManagerProxy")
+const MerkleSnapshot = artifacts.require("MerkleSnapshot")
 
 module.exports = function(deployer, network) {
     if (network === "unitTest") {
@@ -50,6 +51,8 @@ module.exports = function(deployer, network) {
         }
 
         await lpDeployer.deployProxyAndRegister(ServiceRegistry, "ServiceRegistry", controller.address)
+
+        await lpDeployer.deployAndRegister(MerkleSnapshot, "MerkleSnapshot", controller.address)
 
         deployer.logger.log("Initializing contracts...")
 

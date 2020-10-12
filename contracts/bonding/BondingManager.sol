@@ -9,6 +9,7 @@ import "./libraries/EarningsPoolLIP36.sol";
 import "../token/ILivepeerToken.sol";
 import "../token/IMinter.sol";
 import "../rounds/IRoundsManager.sol";
+import "../snapshots/IMerkleSnapshot.sol";
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
@@ -113,41 +114,31 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
     // Check if sender is TicketBroker
     modifier onlyTicketBroker() {
-        require(
-            msg.sender == controller.getContract(keccak256("TicketBroker")),
-            "caller must be TicketBroker"
-        );
+        _onlyTicketBroker();
         _;
     }
 
     // Check if sender is RoundsManager
     modifier onlyRoundsManager() {
-        require(
-            msg.sender == controller.getContract(keccak256("RoundsManager")),
-            "caller must be RoundsManager"
-        );
+        _onlyRoundsManager();
         _;
     }
 
     // Check if sender is Verifier
     modifier onlyVerifier() {
-        require(msg.sender == controller.getContract(keccak256("Verifier")), "caller must be Verifier");
+        _onlyVerifier();
         _;
     }
 
     // Check if current round is initialized
     modifier currentRoundInitialized() {
-        require(roundsManager().currentRoundInitialized(), "current round is not initialized");
+        _currentRoundInitialized();
         _;
     }
 
     // Automatically claim earnings from lastClaimRound through the current round
     modifier autoClaimEarnings() {
-        uint256 currentRound = roundsManager().currentRound();
-        uint256 lastClaimRound = delegators[msg.sender].lastClaimRound;
-        if (lastClaimRound < currentRound) {
-            updateDelegatorWithEarnings(msg.sender, currentRound, lastClaimRound);
-        }
+        _autoClaimEarnings();
         _;
     }
 
@@ -447,6 +438,59 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         require(_endRound <= roundsManager().currentRound(), "end round must be before or equal to current round");
 
         updateDelegatorWithEarnings(msg.sender, _endRound, lastClaimRound);
+    }
+
+    /**
+     * @notice Claim earnings for a delegator based on the snapshot taken in LIP-52
+     * @dev https://github.com/livepeer/LIPs/blob/master/LIPs/LIP-52.md
+     * @param _pendingStake the amount of pending stake for the delegator (current stake + pending rewards)
+     * @param _pendingFees the amount of pending fees for the delegator (current fees + pending fees)
+     * @param _earningsProof array of keccak256 sibling hashes on the branch of the leaf for the delegator up to the root
+     * @param _data (optional) raw transaction data to be executed on behalf of msg.sender after claiming snapshot earnings
+     */
+    function claimSnapshotEarnings(
+        uint256 _pendingStake,
+        uint256 _pendingFees,
+        bytes32[] calldata _earningsProof,
+        bytes calldata _data
+    )
+        external
+        whenSystemNotPaused
+        currentRoundInitialized
+    {
+        Delegator storage del = delegators[msg.sender];
+
+        uint256 lip52Round = roundsManager().lipUpgradeRound(52);
+
+        uint256 lastClaimRound = del.lastClaimRound;
+
+        require(lastClaimRound < lip52Round, "Already claimed for LIP-52");
+
+        bytes32 leaf = keccak256(abi.encode(msg.sender, _pendingStake, _pendingFees));
+
+        require(
+            IMerkleSnapshot(controller.getContract(keccak256("MerkleSnapshot"))).verify(keccak256("LIP-52"), _earningsProof, leaf),
+            "Merkle proof is invalid"
+        );
+
+        emit EarningsClaimed(
+            del.delegateAddress,
+            msg.sender,
+            _pendingStake.sub(del.bondedAmount),
+            _pendingFees.sub(del.fees),
+            lastClaimRound.add(1),
+            lip52Round
+        );
+
+        del.lastClaimRound = lip52Round;
+        del.bondedAmount = _pendingStake;
+        del.fees = _pendingFees;
+
+        // allow for execution of subsequent claiming or staking operations
+        if (_data.length > 0) {
+            (bool success, bytes memory returnData) = address(this).delegatecall(_data);
+            require(success, string(returnData));
+        }
     }
 
     /**
@@ -1424,5 +1468,35 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      */
     function roundsManager() internal view returns (IRoundsManager) {
         return IRoundsManager(controller.getContract(keccak256("RoundsManager")));
+    }
+
+    function _onlyTicketBroker() internal view {
+        require(
+            msg.sender == controller.getContract(keccak256("TicketBroker")),
+            "caller must be TicketBroker"
+        );
+    }
+
+    function _onlyRoundsManager() internal view {
+        require(
+            msg.sender == controller.getContract(keccak256("RoundsManager")),
+            "caller must be RoundsManager"
+        );
+    }
+
+    function _onlyVerifier() internal view {
+        require(msg.sender == controller.getContract(keccak256("Verifier")), "caller must be Verifier");
+    }
+
+    function  _currentRoundInitialized() internal view {
+        require(roundsManager().currentRoundInitialized(), "current round is not initialized");
+    }
+
+    function _autoClaimEarnings() internal {
+        uint256 currentRound = roundsManager().currentRound();
+        uint256 lastClaimRound = delegators[msg.sender].lastClaimRound;
+        if (lastClaimRound < currentRound) {
+            updateDelegatorWithEarnings(msg.sender, currentRound, lastClaimRound);
+        }
     }
 }
