@@ -1,13 +1,12 @@
 pragma solidity ^0.5.11;
 
-import "./ManagerProxyTarget.sol";
-
-
+import "../ManagerProxyTarget.sol";
+import "./IServiceRegistry.sol";
 /**
  * @title ServiceRegistry
  * @notice Maintains a registry of service metadata associated with service provider addresses (transcoders/orchestrators)
  */
-contract ServiceRegistry is ManagerProxyTarget {
+contract ServiceRegistry is ManagerProxyTarget, IServiceRegistry {
     // Store service metadata
     struct Record {
         string serviceURI;   // Service URI endpoint that can be used to send off-chain requests
@@ -15,9 +14,6 @@ contract ServiceRegistry is ManagerProxyTarget {
 
     // Track records for addresses
     mapping (address => Record) private records;
-
-    // Event fired when a caller updates its service URI endpoint
-    event ServiceURIUpdate(address indexed addr, string serviceURI);
 
     /**
      * @notice ServiceRegistry constructor. Only invokes constructor of base Manager contract with provided Controller address
