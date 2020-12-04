@@ -55,8 +55,6 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         uint256 lastFeeRound;                                           // Latest round in which the transcoder received fees
     }
 
-    // The various states a transcoder can be in
-    enum TranscoderStatus { NotRegistered, Registered }
 
     // Represents a delegator's current state
     struct Delegator {

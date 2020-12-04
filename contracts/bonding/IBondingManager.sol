@@ -6,6 +6,9 @@ pragma solidity ^0.5.11;
  * TODO: switch to interface type
  */
 contract IBondingManager {
+    // The various states a transcoder can be in
+    enum TranscoderStatus { NotRegistered, Registered }
+    
     event TranscoderUpdate(address indexed transcoder, uint256 rewardCut, uint256 feeShare);
     event TranscoderActivated(address indexed transcoder, uint256 activationRound);
     event TranscoderDeactivated(address indexed transcoder, uint256 deactivationRound);
@@ -34,6 +37,47 @@ contract IBondingManager {
     function setCurrentRoundTotalActiveStake() external;
 
     // Public functions
+    function getTranscoder(
+        address _transcoder
+    )
+        public
+        view
+        returns (
+            uint256 lastRewardRound,
+            uint256 rewardCut,
+            uint256 feeShare,
+            uint256 lastActiveStakeUpdateRound,
+            uint256 activationRound,
+            uint256 deactivationRound,
+            uint256 activeCumulativeRewards,
+            uint256 cumulativeRewards,
+            uint256 cumulativeFees,
+            uint256 lastFeeRound
+        );
+    
+    function getTranscoderEarningsPoolForRound(
+        address _transcoder,
+        uint256 _round
+    )
+        public
+        view
+        returns (
+            uint256 rewardPool,
+            uint256 feePool,
+            uint256 totalStake,
+            uint256 claimableStake,
+            uint256 transcoderRewardCut,
+            uint256 transcoderFeeShare,
+            uint256 transcoderRewardPool,
+            uint256 transcoderFeePool,
+            bool hasTranscoderRewardFeePool,
+            uint256 cumulativeRewardFactor,
+            uint256 cumulativeFeeFactor
+        );
+    
+    function getFirstTranscoderInPool() public view returns (address);
+    function getNextTranscoderInPool(address _transcoder) public view returns (address);
+    function transcoderStatus(address _transcoder) public view returns (TranscoderStatus);
     function getTranscoderPoolSize() public view returns (uint256);
     function transcoderTotalStake(address _transcoder) public view returns (uint256);
     function isActiveTranscoder(address _transcoder) public view returns (bool);
