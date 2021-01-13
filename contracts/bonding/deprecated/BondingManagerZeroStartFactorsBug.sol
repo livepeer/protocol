@@ -1,15 +1,15 @@
 pragma solidity 0.5.11;
 
-import "../ManagerProxyTarget.sol";
-import "./IBondingManager.sol";
-import "../libraries/SortedDoublyLL.sol";
-import "../libraries/MathUtils.sol";
-import "./libraries/EarningsPool.sol";
-import "./libraries/EarningsPoolLIP36.sol";
-import "../token/ILivepeerToken.sol";
-import "../token/IMinter.sol";
-import "../rounds/IRoundsManager.sol";
-import "../snapshots/IMerkleSnapshot.sol";
+import "../../ManagerProxyTarget.sol";
+import "../IBondingManager.sol";
+import "../../libraries/SortedDoublyLL.sol";
+import "../../libraries/MathUtils.sol";
+import "../libraries/EarningsPool.sol";
+import "../libraries/EarningsPoolLIP36.sol";
+import "../../token/ILivepeerToken.sol";
+import "../../token/IMinter.sol";
+import "../../rounds/IRoundsManager.sol";
+import "../../snapshots/IMerkleSnapshot.sol";
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
@@ -18,7 +18,7 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
  * @title BondingManager
  * @notice Manages bonding, transcoder and rewards/fee accounting related operations of the Livepeer protocol
  */
-contract BondingManager is ManagerProxyTarget, IBondingManager {
+contract BondingManagerZeroStartFactorsBug is ManagerProxyTarget, IBondingManager {
     using SafeMath for uint256;
     using SortedDoublyLL for SortedDoublyLL.Data;
     using EarningsPool for EarningsPool.Data;
@@ -28,7 +28,6 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     // Occurances are replaced at compile time
     // and computed to a single value if possible by the optimizer
     uint256 constant MAX_FUTURE_ROUND = 2**256 - 1;
-    uint256 constant MAX_LOOKBACK_ROUNDS = 100;
 
     // Time between unbonding and possible withdrawl in rounds
     uint64 public unbondingPeriod;
@@ -602,15 +601,6 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             decreaseTotalStake(currentDelegate, del.bondedAmount, _oldDelegateNewPosPrev, _oldDelegateNewPosNext);
         }
 
-        Transcoder storage newDelegate = transcoders[_to];
-        EarningsPool.Data storage currPool = newDelegate.earningsPoolPerRound[currentRound];
-        if (currPool.cumulativeRewardFactor == 0) {
-            currPool.cumulativeRewardFactor = newDelegate.earningsPoolPerRound[newDelegate.lastRewardRound].cumulativeRewardFactor;
-        }
-        if (currPool.cumulativeFeeFactor == 0) {
-            currPool.cumulativeFeeFactor = newDelegate.earningsPoolPerRound[newDelegate.lastFeeRound].cumulativeFeeFactor;
-        }
-
         // cannot delegate to someone without having bonded stake
         require(delegationAmount > 0, "delegation amount must be greater than 0");
         // Update delegate
@@ -1096,27 +1086,6 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         EarningsPool.Data memory startPool;
         startPool.cumulativeRewardFactor = _transcoder.earningsPoolPerRound[_startRound].cumulativeRewardFactor;
         startPool.cumulativeFeeFactor = _transcoder.earningsPoolPerRound[_startRound].cumulativeFeeFactor;
-
-        // We can lookback for a cumulativeRewardFactor if the start cumulativeRewardFactor is 0
-        // Do not lookback if the latest cumulativeRewardFactor is 0 because that indicates that the factor was never > 0 for the transcoder in the past
-        bool lookbackCumulativeRewardFactor = _transcoder.earningsPoolPerRound[_transcoder.lastRewardRound].cumulativeRewardFactor > 0 && startPool.cumulativeRewardFactor == 0;
-        // We can lookback for a cumulativeFeeFactor if the start cumulativeFeeFactor is 0
-        // Do not lookback if the latest cumulativeFeeFactor is 0 because that indicates that the factor was never > 0 for the transcoder in the past
-        bool lookbackCumulativeFeeFactor = _transcoder.earningsPoolPerRound[_transcoder.lastFeeRound].cumulativeFeeFactor > 0 && startPool.cumulativeFeeFactor == 0;
-        // The lookback loop will only be needed for a few accounts delegated to transcoders before the update that ensures start factors are always initialized
-        // If we need a cumulativeRewardFactor OR cumulativeFeeFactor lookback up to min(MAX_LOOKBACK_ROUNDS, _startRound) # of rounds
-        for (uint256 lookback = 1; lookback <= MAX_LOOKBACK_ROUNDS && lookback <= _startRound && (lookbackCumulativeRewardFactor || lookbackCumulativeFeeFactor); lookback++) {
-            EarningsPool.Data storage pool = _transcoder.earningsPoolPerRound[_startRound.sub(lookback)];
-            // Short-circuit in the following conditionals by running the boolean check before the storage check
-            if (lookbackCumulativeRewardFactor && pool.cumulativeRewardFactor > 0) {
-                startPool.cumulativeRewardFactor = pool.cumulativeRewardFactor;
-                lookbackCumulativeRewardFactor = false;
-            }
-            if (lookbackCumulativeFeeFactor && pool.cumulativeFeeFactor > 0) {
-                startPool.cumulativeFeeFactor = pool.cumulativeFeeFactor;
-                lookbackCumulativeFeeFactor = false;
-            }
-        }
 
         if (startPool.cumulativeRewardFactor == 0) {
             startPool.cumulativeRewardFactor = baseRewardFactor;
