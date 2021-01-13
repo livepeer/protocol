@@ -954,7 +954,7 @@ contract("BondingManager", accounts => {
                 await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 1)
                 await bondingManager.bond(100, transcoder1, {from: delegator})
 
-                const ep1 =  await bondingManager.getTranscoderEarningsPoolForRound(transcoder1, currentRound + 1)
+                const ep1 = await bondingManager.getTranscoderEarningsPoolForRound(transcoder1, currentRound + 1)
 
                 assert.notEqual(ep0.cumulativeRewardFactor.toString(), "0")
                 assert.equal(ep0.cumulativeRewardFactor.toString(), ep1.cumulativeRewardFactor.toString())
@@ -976,11 +976,11 @@ contract("BondingManager", accounts => {
                 await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 1)
                 await bondingManager.bond(100, transcoder1, {from: delegator})
 
-                const ep1 =  await bondingManager.getTranscoderEarningsPoolForRound(transcoder1, currentRound + 1)
+                const ep1 = await bondingManager.getTranscoderEarningsPoolForRound(transcoder1, currentRound + 1)
 
                 assert.notEqual(ep0.cumulativeFeeFactor.toString(), "0")
                 assert.equal(ep0.cumulativeFeeFactor.toString(), ep1.cumulativeFeeFactor.toString())
-            })            
+            })
         })
     })
 

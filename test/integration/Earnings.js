@@ -6,7 +6,7 @@ const executeLIP36Upgrade = require("../helpers/executeLIP36Upgrade")
 import {createWinningTicket, getTicketHash} from "../helpers/ticket"
 import signMsg from "../helpers/signMsg"
 import math from "../helpers/math"
-import { assert } from "chai"
+import {assert} from "chai"
 import truffleAssert from "truffle-assertions"
 
 const Controller = artifacts.require("Controller")
@@ -367,7 +367,7 @@ contract("Earnings", accounts => {
 
             const startStake = await getStake(delegator)
             const startFees = await getFees(delegator)
-            
+
             await roundsManager.mineBlocks(roundLength.toNumber())
             await roundsManager.initializeRound()
 
@@ -400,7 +400,7 @@ contract("Earnings", accounts => {
         })
 
         it("calculates earnings after LIP-36 when a delegator bonds from unbonded to a transcoder that did not call reward in the current round", async () => {
-            // New delegator 
+            // New delegator
             const delegator4 = accounts[4]
             const amount = 5000
             await token.transfer(delegator4, 5000, {from: accounts[0]})
@@ -422,11 +422,11 @@ contract("Earnings", accounts => {
             await token.approve(bondingManager.address, amount, {from: delegator4})
             await bondingManager.bond(amount, transcoder, {from: delegator4})
 
-            // no reward call from transcoder in this round 
+            // no reward call from transcoder in this round
 
             const startStake = await getStake(delegator4)
             const startFees = await getFees(delegator4)
-            
+
             await roundsManager.mineBlocks(roundLength.toNumber())
             await roundsManager.initializeRound()
 
@@ -453,7 +453,7 @@ contract("Earnings", accounts => {
             assert.ok(await Promise.all([
                 bondingManager.withdrawStake(0, {from: transcoder}),
                 bondingManager.withdrawStake(0, {from: delegator4}),
-                bondingManager.withdrawFees({from: transcoder}),
+                bondingManager.withdrawFees({from: transcoder})
             ]))
 
             // delegator hasn't earned fees so should revert
