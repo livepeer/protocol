@@ -943,6 +943,45 @@ contract("BondingManager", accounts => {
                 })
             })
         })
+
+        describe("set delegate earnings pool factors if not initialized", () => {
+            it("sets cumulativeRewardFactor if value is zero", async () => {
+                await bondingManager.bond(100, transcoder0, {from: delegator})
+                await bondingManager.reward({from: transcoder1})
+
+                const ep0 = await bondingManager.getTranscoderEarningsPoolForRound(transcoder1, currentRound)
+
+                await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 1)
+                await bondingManager.bond(100, transcoder1, {from: delegator})
+
+                const ep1 =  await bondingManager.getTranscoderEarningsPoolForRound(transcoder1, currentRound + 1)
+
+                assert.notEqual(ep0.cumulativeRewardFactor.toString(), "0")
+                assert.equal(ep0.cumulativeRewardFactor.toString(), ep1.cumulativeRewardFactor.toString())
+            })
+
+            it("sets cumulativeFeeFactor if value is zero", async () => {
+                await bondingManager.bond(100, transcoder0, {from: delegator})
+                await fixture.ticketBroker.execute(
+                    bondingManager.address,
+                    functionEncodedABI(
+                        "updateTranscoderWithFees(address,uint256,uint256)",
+                        ["address", "uint256", "uint256"],
+                        [transcoder1, "1000000000000000000", currentRound]
+                    )
+                )
+
+                const ep0 = await bondingManager.getTranscoderEarningsPoolForRound(transcoder1, currentRound)
+
+                await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 1)
+                await bondingManager.bond(100, transcoder1, {from: delegator})
+
+                const ep1 =  await bondingManager.getTranscoderEarningsPoolForRound(transcoder1, currentRound + 1)
+
+                assert.notEqual(ep0.cumulativeFeeFactor.toString(), "0")
+                assert.equal(ep0.cumulativeFeeFactor.toString(), ep1.cumulativeFeeFactor.toString())
+            })            
+        })
     })
 
     describe("unbond", () => {

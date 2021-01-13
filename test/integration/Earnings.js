@@ -6,6 +6,8 @@ const executeLIP36Upgrade = require("../helpers/executeLIP36Upgrade")
 import {createWinningTicket, getTicketHash} from "../helpers/ticket"
 import signMsg from "../helpers/signMsg"
 import math from "../helpers/math"
+import { assert } from "chai"
+import truffleAssert from "truffle-assertions"
 
 const Controller = artifacts.require("Controller")
 const BondingManagerPreLIP36 = artifacts.require("BondingManagerPreLIP36")
@@ -28,6 +30,7 @@ contract("Earnings", accounts => {
     const transcoder = accounts[0]
     const broadcaster = accounts[1]
     const delegator = accounts[2]
+    const transcoder2 = accounts[3]
 
     const rewardCut = 50 * constants.PERC_MULTIPLIER // 50%
     const feeShare = 25 * constants.PERC_MULTIPLIER // 25%
@@ -334,6 +337,130 @@ contract("Earnings", accounts => {
 
         it("claims earnings after LIP-36", async () => {
             await claimEarningsAndCheckStakes()
+        })
+
+        it("calculates earnings after LIP-36 when a delegator moves stake to a transcoder that did not call reward in current round", async () => {
+            // Register and activate transcoder
+            // Ensure that transcoder2 earns rewards by giving it the same stake as transcoder
+            const amount = await getStake(transcoder)
+            await token.transfer(transcoder2, amount, {from: accounts[0]})
+            await token.approve(bondingManager.address, amount, {from: transcoder2})
+            await bondingManager.bond(amount, transcoder2, {from: transcoder2})
+            await bondingManager.transcoder(rewardCut, feeShare, {from: transcoder2})
+
+            await roundsManager.mineBlocks(roundLength.toNumber())
+            await roundsManager.initializeRound()
+
+            await bondingManager.reward({from: transcoder2})
+            await redeemWinningTicket(transcoder2, broadcaster, faceValue)
+
+            const cr = await roundsManager.currentRound()
+            const initialPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder2, cr)
+
+            await roundsManager.mineBlocks(roundLength.toNumber())
+            await roundsManager.initializeRound()
+
+            await bondingManager.bond(0, transcoder2, {from: delegator})
+
+            await bondingManager.reward({from: transcoder})
+            // No reward call from transcoder2
+
+            const startStake = await getStake(delegator)
+            const startFees = await getFees(delegator)
+            
+            await roundsManager.mineBlocks(roundLength.toNumber())
+            await roundsManager.initializeRound()
+
+            const endStake = await getStake(delegator)
+            const endFees = await getFees(delegator)
+
+            const t2Stake = await getStake(transcoder2)
+
+            const del = await bondingManager.getDelegator(delegator)
+            const lastClaimPool = await bondingManager.getTranscoderEarningsPoolForRound(del.delegateAddress, del.lastClaimRound)
+
+            assert.equal(startStake.toString(), endStake.toString(), "invalid stake")
+            assert.equal(startFees.toString(), endFees.toString(), "invalid fees")
+            assert.equal(lastClaimPool.cumulativeRewardFactor.toString(), initialPool.cumulativeRewardFactor.toString(), "invalid cumulative reward factor")
+            assert.equal(lastClaimPool.cumulativeFeeFactor.toString(), initialPool.cumulativeFeeFactor.toString(), "invalid cumulative fee factor")
+
+            // transcoder 2 should still be able to unbond and withdraw all funds
+            await bondingManager.unbond(t2Stake, {from: transcoder2})
+            await bondingManager.unbond(endStake, {from: delegator})
+
+            await roundsManager.mineBlocks(roundLength.toNumber() * UNBONDING_PERIOD)
+            await roundsManager.initializeRound()
+
+            assert.ok(await Promise.all([
+                bondingManager.withdrawStake(0, {from: transcoder2}),
+                bondingManager.withdrawStake(0, {from: delegator}),
+                bondingManager.withdrawFees({from: transcoder2}),
+                bondingManager.withdrawFees({from: delegator})
+            ]))
+        })
+
+        it("calculates earnings after LIP-36 when a delegator bonds from unbonded to a transcoder that did not call reward in the current round", async () => {
+            // New delegator 
+            const delegator4 = accounts[4]
+            const amount = 5000
+            await token.transfer(delegator4, 5000, {from: accounts[0]})
+
+            await roundsManager.mineBlocks(roundLength.toNumber())
+            await roundsManager.initializeRound()
+
+            // call reward for transcoder and get initial earnings pool
+            await bondingManager.reward({from: transcoder})
+            await redeemWinningTicket(transcoder, broadcaster, faceValue)
+
+            const cr = await roundsManager.currentRound()
+            const initialPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder, cr)
+
+            await roundsManager.mineBlocks(roundLength.toNumber())
+            await roundsManager.initializeRound()
+
+            // bond to transcoder
+            await token.approve(bondingManager.address, amount, {from: delegator4})
+            await bondingManager.bond(amount, transcoder, {from: delegator4})
+
+            // no reward call from transcoder in this round 
+
+            const startStake = await getStake(delegator4)
+            const startFees = await getFees(delegator4)
+            
+            await roundsManager.mineBlocks(roundLength.toNumber())
+            await roundsManager.initializeRound()
+
+            const endStake = await getStake(delegator4)
+            const endFees = await getFees(delegator4)
+
+            const tStake = await getStake(transcoder)
+
+            const del = await bondingManager.getDelegator(delegator4)
+            const lastClaimPool = await bondingManager.getTranscoderEarningsPoolForRound(del.delegateAddress, del.lastClaimRound)
+
+            assert.equal(startStake.toString(), endStake.toString(), "invalid stake")
+            assert.equal(startFees.toString(), endFees.toString(), "invalid fees")
+            assert.equal(lastClaimPool.cumulativeRewardFactor.toString(), initialPool.cumulativeRewardFactor.toString(), "invalid cumulative reward factor")
+            assert.equal(lastClaimPool.cumulativeFeeFactor.toString(), initialPool.cumulativeFeeFactor.toString(), "invalid cumulative fee factor")
+
+            // transcoder 2 should still be able to unbond and withdraw all funds
+            await bondingManager.unbond(tStake, {from: transcoder})
+            await bondingManager.unbond(endStake, {from: delegator4})
+
+            await roundsManager.mineBlocks(roundLength.toNumber() * UNBONDING_PERIOD)
+            await roundsManager.initializeRound()
+
+            assert.ok(await Promise.all([
+                bondingManager.withdrawStake(0, {from: transcoder}),
+                bondingManager.withdrawStake(0, {from: delegator4}),
+                bondingManager.withdrawFees({from: transcoder}),
+            ]))
+
+            // delegator hasn't earned fees so should revert
+            truffleAssert.reverts(
+                bondingManager.withdrawFees({from: delegator4}),
+                "no fees to withdraw"
+            )
         })
     })
 })

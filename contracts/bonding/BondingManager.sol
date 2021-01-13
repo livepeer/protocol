@@ -601,6 +601,15 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             decreaseTotalStake(currentDelegate, del.bondedAmount, _oldDelegateNewPosPrev, _oldDelegateNewPosNext);
         }
 
+        Transcoder storage newDelegate = transcoders[_to];
+        EarningsPool.Data storage currPool = newDelegate.earningsPoolPerRound[currentRound];
+        if (currPool.cumulativeRewardFactor == 0) {
+            currPool.cumulativeRewardFactor = newDelegate.earningsPoolPerRound[newDelegate.lastRewardRound].cumulativeRewardFactor;
+        }
+        if (currPool.cumulativeFeeFactor == 0) {
+            currPool.cumulativeFeeFactor = newDelegate.earningsPoolPerRound[newDelegate.lastFeeRound].cumulativeFeeFactor;
+        }
+
         // cannot delegate to someone without having bonded stake
         require(delegationAmount > 0, "delegation amount must be greater than 0");
         // Update delegate
