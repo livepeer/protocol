@@ -457,7 +457,7 @@ contract("Earnings", accounts => {
             ]))
 
             // delegator hasn't earned fees so should revert
-            truffleAssert.reverts(
+            await truffleAssert.reverts(
                 bondingManager.withdrawFees({from: delegator4}),
                 "no fees to withdraw"
             )
