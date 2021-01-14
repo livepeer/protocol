@@ -4,7 +4,9 @@ import {createWinningTicket, getTicketHash} from "../helpers/ticket"
 import signMsg from "../helpers/signMsg"
 import BN from "bn.js"
 import {assert} from "chai"
+import {utils} from "ethers"
 
+const Governor = artifacts.require("Governor")
 const Controller = artifacts.require("Controller")
 const BondingManager = artifacts.require("BondingManager")
 const BondingManagerZeroStartFactorsBug = artifacts.require("BondingManagerZeroStartFactorsBug")
@@ -14,13 +16,32 @@ const TicketBroker = artifacts.require("TicketBroker")
 const LinkedList = artifacts.require("SortedDoublyLL")
 const ManagerProxy = artifacts.require("ManagerProxy")
 
-const executeUpgrade = async (controller, bondingManagerProxyAddress) => {
+const executeUpgrade = async (controller, gov, bondingManagerProxyAddress) => {
     const ll = await LinkedList.deployed()
     BondingManager.link("SortedDoublyLL", ll.address)
     const bondingManagerTarget = await BondingManager.new(controller.address)
 
     // Register the new BondingManager implementation contract
-    await controller.setContractInfo(contractId("BondingManagerTarget"), bondingManagerTarget.address, web3.utils.asciiToHex("0x123"))
+    const pauseData = utils.hexlify(
+        utils.arrayify(controller.contract.methods.pause().encodeABI())
+    )
+    const setInfoData = utils.hexlify(
+        utils.arrayify(
+            controller.contract.methods.setContractInfo(contractId("BondingManagerTarget"), bondingManagerTarget.address, web3.utils.asciiToHex("0x123")).encodeABI()
+        )
+    )
+    const unpauseData = utils.hexlify(
+        utils.arrayify(controller.contract.methods.unpause().encodeABI())
+    )
+    const update = {
+        target: [controller.address, controller.address, controller.address],
+        value: ["0", "0", "0"],
+        data: [pauseData, setInfoData, unpauseData],
+        nonce: 0
+    }
+
+    await gov.stage(update, 0)
+    await gov.execute(update)
 
     return await BondingManager.at(bondingManagerProxyAddress)
 }
@@ -32,6 +53,7 @@ contract("ZeroStartFactorsBug", accounts => {
     let token
     let broker
     let bondingProxy
+    let governor
 
     let roundLength
 
@@ -84,6 +106,9 @@ contract("ZeroStartFactorsBug", accounts => {
         await bondingManager.setUnbondingPeriod(UNBONDING_PERIOD)
         await bondingManager.setNumActiveTranscoders(NUM_ACTIVE_TRANSCODERS)
         await bondingManager.setMaxEarningsClaimsRounds(MAX_EARNINGS_CLAIMS_ROUNDS)
+
+        governor = await Governor.new()
+        await controller.transferOwnership(governor.address)
 
         const bondingManagerAddr = await controller.getContract(contractId("BondingManager"))
         bondingManager = await BondingManager.at(bondingManagerAddr)
@@ -160,7 +185,7 @@ contract("ZeroStartFactorsBug", accounts => {
         await roundsManager.mineBlocks(roundLength.toNumber())
         await roundsManager.initializeRound()
 
-        bondingManager = await executeUpgrade(controller, bondingProxy.address)
+        bondingManager = await executeUpgrade(controller, governor, bondingProxy.address)
     })
 
     describe("lookback", () => {
