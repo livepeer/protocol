@@ -1423,10 +1423,16 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             Transcoder storage t = transcoders[del.delegateAddress];
             EarningsPool.Data storage endEarningsPool = t.earningsPoolPerRound[_endRound];
             if (endEarningsPool.cumulativeRewardFactor == 0) {
-                endEarningsPool.cumulativeRewardFactor = t.earningsPoolPerRound[t.lastRewardRound].cumulativeRewardFactor;
+                uint256 lastRewardRound = t.lastRewardRound;
+                if (lastRewardRound < _endRound) {
+                    endEarningsPool.cumulativeRewardFactor = t.earningsPoolPerRound[lastRewardRound].cumulativeRewardFactor;
+                }
             }
             if (endEarningsPool.cumulativeFeeFactor == 0) {
-                endEarningsPool.cumulativeFeeFactor = t.earningsPoolPerRound[t.lastFeeRound].cumulativeFeeFactor;
+                uint256 lastFeeRound = t.lastFeeRound;
+                if (lastFeeRound < _endRound) {
+                    endEarningsPool.cumulativeFeeFactor = t.earningsPoolPerRound[lastFeeRound].cumulativeFeeFactor;
+                }
             }
 
             if (del.delegateAddress == _delegator) {

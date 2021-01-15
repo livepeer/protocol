@@ -2361,6 +2361,62 @@ contract("BondingManager", accounts => {
             )
         })
 
+        it("updates transcoders cumulativeFeeFactor for _endRound EarningsPool if no fees for _endRound yet", async () => {
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 2)
+
+            await bondingManager.claimEarnings(currentRound + 2, {from: delegator1})
+
+            assert.equal(
+                (await bondingManager.getTranscoderEarningsPoolForRound(transcoder, currentRound + 2)).cumulativeFeeFactor.toString(),
+                (await bondingManager.getTranscoderEarningsPoolForRound(transcoder, currentRound + 1)).cumulativeFeeFactor
+            )
+        })
+
+        it("does not update transcoder cumulativeRewardFactor for _endRound EarningsPool if lastRewardRound is in the future", async () => {
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 3)
+
+            await bondingManager.reward({from: transcoder})
+
+            await bondingManager.claimEarnings(currentRound + 2, {from: delegator1})
+
+            const lastRewardRound = (await bondingManager.getTranscoder(transcoder)).lastRewardRound
+            assert.equal(lastRewardRound.toNumber(), currentRound + 3)
+            assert.notEqual(
+                (await bondingManager.getTranscoderEarningsPoolForRound(transcoder, lastRewardRound)).cumulativeRewardFactor.toString(),
+                "0"
+            )
+            assert.equal(
+                (await bondingManager.getTranscoderEarningsPoolForRound(transcoder, currentRound + 2)).cumulativeRewardFactor.toString(),
+                "0"
+            )
+        })
+
+        it("does not update transcoder cumulativeFeeFactor for _endRound EarningsPool if lastFeeRound is in the future", async () => {
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 3)
+
+            await fixture.ticketBroker.execute(
+                bondingManager.address,
+                functionEncodedABI(
+                    "updateTranscoderWithFees(address,uint256,uint256)",
+                    ["address", "uint256", "uint256"],
+                    [transcoder, 1000, currentRound + 3]
+                )
+            )
+
+            await bondingManager.claimEarnings(currentRound + 2, {from: delegator1})
+
+            const lastFeeRound = (await bondingManager.getTranscoder(transcoder)).lastFeeRound
+            assert.equal(lastFeeRound.toNumber(), currentRound + 3)
+            assert.notEqual(
+                (await bondingManager.getTranscoderEarningsPoolForRound(transcoder, lastFeeRound)).cumulativeFeeFactor.toString(),
+                "0"
+            )
+            assert.equal(
+                (await bondingManager.getTranscoderEarningsPoolForRound(transcoder, currentRound + 2)).cumulativeFeeFactor.toString(),
+                "0"
+            )
+        })
+
         it("fires an EarningsClaimed event", async () => {
             const expRewards = new BN(delegatorRewards * .3) // 30%
             const expFees = new BN(delegatorFees * .3) // 30%
