@@ -56,6 +56,7 @@ contract("ZeroStartFactorsBug", accounts => {
     let governor
 
     let roundLength
+    let lip36Round
 
     const transferAmount = (new BN(100)).mul(constants.TOKEN_UNIT)
     const deposit = (new BN(10)).mul(constants.TOKEN_UNIT)
@@ -65,6 +66,7 @@ contract("ZeroStartFactorsBug", accounts => {
     const NUM_ACTIVE_TRANSCODERS = 10
     const UNBONDING_PERIOD = 2
     const MAX_EARNINGS_CLAIMS_ROUNDS = 20
+    const MAX_LOOKBACK_ROUNDS = 100
 
     const transcoder1 = accounts[0]
     const transcoder2 = accounts[1]
@@ -74,13 +76,15 @@ contract("ZeroStartFactorsBug", accounts => {
     const delegator3 = accounts[5]
     const delegator4 = accounts[6]
     const delegator5 = accounts[7]
+    const delegator6 = accounts[8]
 
     const delegators = [
         delegator1,
         delegator2,
         delegator3,
         delegator4,
-        delegator5
+        delegator5,
+        delegator6
     ]
 
     // Address => round => pendingStake
@@ -120,9 +124,6 @@ contract("ZeroStartFactorsBug", accounts => {
         await bondingManager.setNumActiveTranscoders(NUM_ACTIVE_TRANSCODERS)
         await bondingManager.setMaxEarningsClaimsRounds(MAX_EARNINGS_CLAIMS_ROUNDS)
 
-        governor = await Governor.new()
-        await controller.transferOwnership(governor.address)
-
         const bondingManagerAddr = await controller.getContract(contractId("BondingManager"))
         bondingManager = await BondingManager.at(bondingManagerAddr)
 
@@ -147,6 +148,12 @@ contract("ZeroStartFactorsBug", accounts => {
             await bondingManager.transcoder(50 * constants.PERC_MULTIPLIER, 50 * constants.PERC_MULTIPLIER, {from: transcoder})
         }
 
+        const bond = async (delegator, transcoder) => {
+            await token.transfer(delegator, transferAmount, {from: accounts[0]})
+            await token.approve(bondingManager.address, transferAmount, {from: delegator})
+            await bondingManager.bond(transferAmount, transcoder, {from: delegator})
+        }
+
         await register(transcoder1)
         await register(transcoder2)
 
@@ -157,11 +164,25 @@ contract("ZeroStartFactorsBug", accounts => {
             {from: broadcaster, value: deposit.add(reserve)}
         )
 
-        await roundsManager.mineBlocks(roundLength.toNumber())
+        await roundsManager.mineBlocks(roundLength.toNumber() * 2)
         await roundsManager.setBlockHash(web3.utils.keccak256("foo"))
         await roundsManager.initializeRound()
 
-        // Set cumulativeRewardFactor for transcoder1 2
+        lip36Round = await roundsManager.currentRound()
+        await roundsManager.setLIPUpgradeRound(36, lip36Round)
+
+        governor = await Governor.new()
+        await controller.transferOwnership(governor.address)
+
+        await roundsManager.mineBlocks(roundLength.toNumber())
+        await roundsManager.initializeRound()
+
+        await bond(delegator6, transcoder1)
+
+        await roundsManager.mineBlocks(roundLength.toNumber())
+        await roundsManager.initializeRound()
+
+        // Set cumulativeRewardFactor for transcoder1
         await bondingManager.reward({from: transcoder1})
         // Set cumulativeFeeFactor for transcoder2
         await redeemWinningTicket(transcoder2, broadcaster, faceValue)
@@ -171,11 +192,6 @@ contract("ZeroStartFactorsBug", accounts => {
 
         // Bond from unbonded
         // Delegate to transcoders
-        const bond = async (delegator, transcoder) => {
-            await token.transfer(delegator, transferAmount, {from: accounts[0]})
-            await token.approve(bondingManager.address, transferAmount, {from: delegator})
-            await bondingManager.bond(transferAmount, transcoder, {from: delegator})
-        }
 
         await bond(delegator1, transcoder1)
         await bond(delegator2, transcoder2)
@@ -189,8 +205,10 @@ contract("ZeroStartFactorsBug", accounts => {
         await roundsManager.mineBlocks(roundLength.toNumber())
         await roundsManager.initializeRound()
 
-        const maxLookback = 100
-        await roundsManager.mineBlocks(roundLength.toNumber() * maxLookback)
+        // Trigger bug where cumulative factors for a round prior to the LIP-36 upgrade round are stored
+        await bondingManager.claimEarnings(lip36Round.toNumber() - 1, {from: transcoder1})
+
+        await roundsManager.mineBlocks(roundLength.toNumber() * MAX_LOOKBACK_ROUNDS)
         await roundsManager.initializeRound()
 
         await bond(delegator5, transcoder1)
@@ -250,6 +268,32 @@ contract("ZeroStartFactorsBug", accounts => {
             const gas1 = await bondingManager.pendingStake.estimateGas(delegator2, cr)
             const gas2 = await bondingManager.pendingStake.estimateGas(delegator4, cr)
             assert.isAbove(gas2, gas1)
+        })
+
+        it("does not lookback past LIP-36 upgrade round", async () => {
+            // Ensure that a cumulative factor is not stored for the delegator's lastClaimRound
+            const lcr = (await bondingManager.getDelegator(delegator6)).lastClaimRound
+            const lcrPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder1, lcr)
+            assert.ok(lcrPool.cumulativeRewardFactor.isZero())
+            // Ensure that a cumulative factor is stored for a round prior to the delegator's lastClaimRound and
+            // that is prior to the LIP-36 upgrade round
+            const pastPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder1, lip36Round.toNumber() - 1)
+            assert.notOk(pastPool.cumulativeRewardFactor.isZero())
+            // Less than MAX_LOOKBACK_ROUNDS between lastClaimRound and previous round with non-zero cumulative factor
+            assert.isBelow(lcr.toNumber() - lip36Round.toNumber() - 1, MAX_LOOKBACK_ROUNDS)
+            assert.isBelow(lip36Round.toNumber(), lcr.toNumber())
+
+            const cr = await roundsManager.currentRound()
+            // delegator6 should have greater stake than delegator1 because they are both
+            // delegated to transcoder1 and delegator6 delegated to transcoder1 before its reward call
+            // while delegator1 delegated to transcoder1 after its reward call
+            // transcoder1 triggered the bug allowing a cumulative factor to be stored for a round prior
+            // to the LIP-36 upgrade round, but as long as the lookback for delegator6 stops at the LIP-36 upgrade round
+            // the stake for delegator6 should be calculated correctly
+            const ps1 = await bondingManager.pendingStake(delegator6, cr)
+            const ps2 = await bondingManager.pendingStake(delegator1, cr)
+
+            assert.ok(new BN(ps1).gt(new BN(ps2)))
         })
 
         it("does not lookback past MAX_LOOKBACK_ROUNDS", async () => {

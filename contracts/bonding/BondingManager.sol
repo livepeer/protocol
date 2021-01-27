@@ -1130,8 +1130,15 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         bool lookbackCumulativeFeeFactor = _transcoder.earningsPoolPerRound[_transcoder.lastFeeRound].cumulativeFeeFactor > 0 && startPool.cumulativeFeeFactor == 0;
         // The lookback loop will only be needed for a few accounts delegated to transcoders before the update that ensures start factors are always initialized
         // If we need a cumulativeRewardFactor OR cumulativeFeeFactor lookback up to min(MAX_LOOKBACK_ROUNDS, _startRound) # of rounds
+        uint256 lip36Round = roundsManager().lipUpgradeRound(36);
         for (uint256 lookback = 1; lookback <= MAX_LOOKBACK_ROUNDS && lookback <= _startRound && (lookbackCumulativeRewardFactor || lookbackCumulativeFeeFactor); lookback++) {
-            EarningsPool.Data storage pool = _transcoder.earningsPoolPerRound[_startRound.sub(lookback)];
+            uint256 lookbackRound = _startRound.sub(lookback);
+            // Cannot lookback past the LIP-36 upgrade round
+            if (lookbackRound < lip36Round) {
+                break;
+            }
+
+            EarningsPool.Data storage pool = _transcoder.earningsPoolPerRound[lookbackRound];
             // Short-circuit in the following conditionals by running the boolean check before the storage check
             if (lookbackCumulativeRewardFactor && pool.cumulativeRewardFactor > 0) {
                 startPool.cumulativeRewardFactor = pool.cumulativeRewardFactor;
