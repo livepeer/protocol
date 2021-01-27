@@ -75,6 +75,19 @@ contract("ZeroStartFactorsBug", accounts => {
     const delegator4 = accounts[6]
     const delegator5 = accounts[7]
 
+    const delegators = [
+        delegator1,
+        delegator2,
+        delegator3,
+        delegator4,
+        delegator5
+    ]
+
+    // Address => round => pendingStake
+    const pendingStakeHistory = {}
+    // Address => round => pendingStake
+    const pendingFeesHistory = {}
+
     async function redeemWinningTicket(transcoder, broadcaster, faceValue) {
         const block = await roundsManager.blockNum()
         const creationRound = (await roundsManager.currentRound()).toString()
@@ -182,10 +195,20 @@ contract("ZeroStartFactorsBug", accounts => {
 
         await bond(delegator5, transcoder1)
 
+        bondingManager = await executeUpgrade(controller, governor, bondingProxy.address)
+
+        const cr = await roundsManager.currentRound()
+        // Store pendingStake and pendingFees here since we cannot call these
+        // functions for a previous round after the next round is initialized
+        for (const del of delegators) {
+            pendingStakeHistory[del] = {}
+            pendingFeesHistory[del] = {}
+            pendingStakeHistory[del][cr.toNumber()] = await bondingManager.pendingStake(del, cr)
+            pendingFeesHistory[del][cr.toNumber()] = await bondingManager.pendingFees(del, cr)
+        }
+
         await roundsManager.mineBlocks(roundLength.toNumber())
         await roundsManager.initializeRound()
-
-        bondingManager = await executeUpgrade(controller, governor, bondingProxy.address)
     })
 
     describe("lookback", () => {
@@ -193,13 +216,13 @@ contract("ZeroStartFactorsBug", accounts => {
             const cr = await roundsManager.currentRound()
 
             // 1 round
-            const ps1 = await bondingManager.pendingStake(delegator1, cr.toNumber() - 1)
+            const ps1 = pendingStakeHistory[delegator1][cr.toNumber() - 1]
             const ps2 = await bondingManager.pendingStake(delegator1, cr)
 
             assert.equal(ps1.toString(), ps2.toString())
 
             // 2 rounds
-            const ps3 = await bondingManager.pendingStake(delegator3, cr.toNumber() - 1)
+            const ps3 = pendingStakeHistory[delegator3][cr.toNumber() - 1]
             const ps4 = await bondingManager.pendingStake(delegator3, cr)
 
             assert.equal(ps3.toString(), ps4.toString())
@@ -213,13 +236,13 @@ contract("ZeroStartFactorsBug", accounts => {
             const cr = await roundsManager.currentRound()
 
             // 1 round
-            const pf1 = await bondingManager.pendingFees(delegator2, cr.toNumber() - 1)
+            const pf1 = pendingFeesHistory[delegator2][cr.toNumber() - 1]
             const pf2 = await bondingManager.pendingFees(delegator2, cr)
 
             assert.equal(pf1.toString(), pf2.toString())
 
             // 2 rounds
-            const pf3 = await bondingManager.pendingFees(delegator4, cr.toNumber() - 1)
+            const pf3 = pendingFeesHistory[delegator4][cr.toNumber() - 1]
             const pf4 = await bondingManager.pendingFees(delegator4, cr)
 
             assert.equal(pf3.toString(), pf4.toString())
@@ -233,7 +256,7 @@ contract("ZeroStartFactorsBug", accounts => {
             const cr = await roundsManager.currentRound()
 
             // > MAX_LOOKBACK_ROUNDS
-            const ps1 = await bondingManager.pendingStake(delegator5, cr.toNumber() - 1)
+            const ps1 = pendingStakeHistory[delegator5][cr.toNumber() - 1]
             const ps2 = await bondingManager.pendingStake(delegator5, cr)
 
             // This should not happen on mainnet because we never have to lookback further than MAX_LOOKBACK_ROUNDS

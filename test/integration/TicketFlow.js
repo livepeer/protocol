@@ -115,7 +115,8 @@ contract("TicketFlow", accounts => {
 
 
         // claim earnings to reset fee count for the next test
-        await bondingManager.claimEarnings(1000, {from: transcoder})
+        const round = await roundsManager.currentRound()
+        await bondingManager.claimEarnings(round, {from: transcoder})
         const ticket = createWinningTicket(transcoder, broadcaster, recipientRand, faceValue, auxData)
         const senderSig = await signMsg(getTicketHash(ticket), broadcaster)
 
@@ -127,8 +128,6 @@ contract("TicketFlow", accounts => {
 
         assert.equal(endSenderInfo.sender.deposit.toString(), "0")
         assert.equal(reserveDiff.toString(), "100")
-
-        const round = await roundsManager.currentRound()
 
         // substract the faceValue from the previous test
         assert.equal((await bondingManager.pendingFees(transcoder, round)).sub(new BN(1000)).toString(), ticket.faceValue.toString())

@@ -115,24 +115,12 @@ contract("Earnings", accounts => {
 
     const getStake = async addr => {
         const currentRound = await roundsManager.currentRound()
-        const d = await bondingManager.getDelegator(addr)
-
-        if (d.lastClaimRound.toNumber() < currentRound.toNumber()) {
-            return await bondingManager.pendingStake(addr, currentRound)
-        } else {
-            return d.bondedAmount
-        }
+        return await bondingManager.pendingStake(addr, currentRound)
     }
 
     const getFees = async addr => {
         const currentRound = await roundsManager.currentRound()
-        const d = await bondingManager.getDelegator(addr)
-
-        if (d.lastClaimRound.toNumber() < currentRound.toNumber()) {
-            return await bondingManager.pendingFees(addr, currentRound)
-        } else {
-            return d.fees
-        }
+        return await bondingManager.pendingFees(addr, currentRound)
     }
 
     const oldEarningsAndCheck = async () => {
@@ -201,9 +189,6 @@ contract("Earnings", accounts => {
 
         const lastClaimRoundTranscoder = transcoderDel.lastClaimRound
 
-        await bondingManager.reward({from: transcoder})
-        await redeemWinningTicket(transcoder, broadcaster, faceValue)
-
         const LIP36Round = await roundsManager.lipUpgradeRound(36)
         let LIP36EarningsPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder, LIP36Round)
         if (lastClaimRoundTranscoder.cmp(LIP36Round) <= 0) {
@@ -213,6 +198,11 @@ contract("Earnings", accounts => {
             transcoderStartFees = await bondingManager.pendingFees(transcoder, round)
             delegatorStartFees = await bondingManager.pendingFees(delegator, round)
         }
+
+        // pendingStake() and pendingFees() need to be called before reward/fee
+        // generation to get starting stake and fees
+        await bondingManager.reward({from: transcoder})
+        await redeemWinningTicket(transcoder, broadcaster, faceValue)
 
         const currentRound = await roundsManager.currentRound()
 

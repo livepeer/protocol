@@ -1723,11 +1723,13 @@ contract("BondingManager", accounts => {
             await bondingManager.unbond(1, {from: transcoder})
             assert.isAbove((await bondingManager.getTranscoder(transcoder)).lastActiveStakeUpdateRound.toNumber(), currentRound + 3)
 
+            // Since the unbond() above claims earnings before reward is called the following test
+            // also checks that the end pendingStake reflects the transcoder still taking its cut
             const startPendingStake = await bondingManager.pendingStake(transcoder, currentRound + 3)
             await bondingManager.reward({from: transcoder})
             const endPendingStake = await bondingManager.pendingStake(transcoder, currentRound + 3)
 
-            assert.equal(endPendingStake.toNumber(), startPendingStake.toNumber())
+            assert.isAbove(endPendingStake.toNumber(), startPendingStake.toNumber())
         })
 
         it("Should emit a Reward event", async () => {
@@ -1795,6 +1797,24 @@ contract("BondingManager", accounts => {
             // Make sure that lastActiveStakeUpdateRound > currentRound
             await bondingManager.bond(1000, transcoder, {from: nonTranscoder})
             assert.isAbove((await bondingManager.getTranscoder(transcoder)).lastActiveStakeUpdateRound.toNumber(), currentRound + 1)
+
+            const startPendingFees = await bondingManager.pendingFees(transcoder, currentRound + 1)
+
+            await fixture.ticketBroker.execute(
+                bondingManager.address,
+                functionEncodedABI(
+                    "updateTranscoderWithFees(address,uint256,uint256)",
+                    ["address", "uint256", "uint256"],
+                    [transcoder, 1000, currentRound + 1]
+                )
+            )
+            const endPendingFees = await bondingManager.pendingFees(transcoder, currentRound + 1)
+
+            assert.isAbove(endPendingFees.toNumber(), startPendingFees.toNumber())
+        })
+
+        it("should update transcoder's pendingFees when transcoder claims earnings before fees are generated", async () => {
+            await bondingManager.claimEarnings(currentRound + 1, {from: transcoder})
 
             const startPendingFees = await bondingManager.pendingFees(transcoder, currentRound + 1)
 
@@ -2341,7 +2361,17 @@ contract("BondingManager", accounts => {
         })
 
         it("should fail if provided endRound is in the future", async () => {
-            await expectRevertWithReason(bondingManager.claimEarnings(currentRound + 2, {from: delegator1}), "end round must be before or equal to current round")
+            await expectRevertWithReason(bondingManager.claimEarnings(currentRound + 2, {from: delegator1}), "end round must be equal to the current round or before the LIP-36 upgrade round")
+        })
+
+        it("should fail if provided endRound is in the past and equal to or after the LIP-36 upgrade round", async () => {
+            await fixture.roundsManager.setMockUint256(functionSig("lipUpgradeRound(uint256)"), currentRound + 5)
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 10)
+
+            // Revert when _endRound > LIP-36 upgrade round
+            await expectRevertWithReason(bondingManager.claimEarnings(currentRound + 6, {from: delegator1}), "end round must be equal to the current round or before the LIP-36 upgrade round")
+            // Revert when _endRound == LIP-36 upgrade round
+            await expectRevertWithReason(bondingManager.claimEarnings(currentRound + 5, {from: delegator1}), "end round must be equal to the current round or before the LIP-36 upgrade round")
         })
 
         it("updates caller's lastClaimRound", async () => {
@@ -2350,7 +2380,60 @@ contract("BondingManager", accounts => {
             assert.equal((await bondingManager.getDelegator(delegator1))[5], currentRound + 1, "should update caller's lastClaimRound to the current round")
         })
 
-        it("updates transcoders cumulativeRewardFactor for _endRound EarningsPool if reward is not called for _endRound yet", async () => {
+        it("does not update transcoders cumulativeRewardFactor for _endRound EarningsPool if reward is not called for _endRound yet when _endRound < LIP-36 upgrade round", async () => {
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 2)
+            await fixture.roundsManager.setMockUint256(functionSig("lipUpgradeRound(uint256)"), currentRound + 3)
+
+            await bondingManager.claimEarnings(currentRound + 2, {from: delegator1})
+
+            const lastRewardPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder, currentRound + 1)
+            assert.notOk(lastRewardPool.cumulativeRewardFactor.isZero())
+            assert.notEqual(
+                lastRewardPool.cumulativeRewardFactor.toString(),
+                (await bondingManager.getTranscoderEarningsPoolForRound(transcoder, currentRound + 2)).cumulativeRewardFactor.toString()
+            )
+        })
+
+        it("does not update transcoders cumulativeFeeFactor for _endRound EarningsPool if no fees for _endRound yet when _endRound < LIP-36 upgrade round", async () => {
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 2)
+            await fixture.roundsManager.setMockUint256(functionSig("lipUpgradeRound(uint256)"), currentRound + 3)
+
+            await bondingManager.claimEarnings(currentRound + 2, {from: delegator1})
+
+            const lastFeePool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder, currentRound + 1)
+            assert.notOk(lastFeePool.cumulativeFeeFactor.isZero())
+            assert.notEqual(
+                lastFeePool.cumulativeFeeFactor.toString(),
+                (await bondingManager.getTranscoderEarningsPoolForRound(transcoder, currentRound + 2)).cumulativeFeeFactor.toString()
+            )
+        })
+
+
+        it("updates transcoders cumulativeRewardFactor for _endRound EarningsPool if reward is not called for _endRound yet when _endRound == LIP-36 upgrade round", async () => {
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 2)
+            await fixture.roundsManager.setMockUint256(functionSig("lipUpgradeRound(uint256)"), currentRound + 2)
+
+            await bondingManager.claimEarnings(currentRound + 2, {from: delegator1})
+
+            assert.equal(
+                (await bondingManager.getTranscoderEarningsPoolForRound(transcoder, currentRound + 2)).cumulativeRewardFactor.toString(),
+                (await bondingManager.getTranscoderEarningsPoolForRound(transcoder, currentRound + 1)).cumulativeRewardFactor
+            )
+        })
+
+        it("updates transcoders cumulativeFeeFactor for _endRound EarningsPool if no fees for _endRound yet when _endRound == LIP-36 upgrade round", async () => {
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 2)
+            await fixture.roundsManager.setMockUint256(functionSig("lipUpgradeRound(uint256)"), currentRound + 2)
+
+            await bondingManager.claimEarnings(currentRound + 2, {from: delegator1})
+
+            assert.equal(
+                (await bondingManager.getTranscoderEarningsPoolForRound(transcoder, currentRound + 2)).cumulativeFeeFactor.toString(),
+                (await bondingManager.getTranscoderEarningsPoolForRound(transcoder, currentRound + 1)).cumulativeFeeFactor
+            )
+        })
+
+        it("updates transcoders cumulativeRewardFactor for _endRound EarningsPool if reward is not called for _endRound yet when _endRound > LIP-36 upgrade round", async () => {
             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 2)
 
             await bondingManager.claimEarnings(currentRound + 2, {from: delegator1})
@@ -2361,7 +2444,7 @@ contract("BondingManager", accounts => {
             )
         })
 
-        it("updates transcoders cumulativeFeeFactor for _endRound EarningsPool if no fees for _endRound yet", async () => {
+        it("updates transcoders cumulativeFeeFactor for _endRound EarningsPool if no fees for _endRound yet when _endRound LIP-36 upgrade round", async () => {
             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 2)
 
             await bondingManager.claimEarnings(currentRound + 2, {from: delegator1})
@@ -2376,6 +2459,8 @@ contract("BondingManager", accounts => {
             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 3)
 
             await bondingManager.reward({from: transcoder})
+
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 2)
 
             await bondingManager.claimEarnings(currentRound + 2, {from: delegator1})
 
@@ -2402,6 +2487,8 @@ contract("BondingManager", accounts => {
                     [transcoder, 1000, currentRound + 3]
                 )
             )
+
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 2)
 
             await bondingManager.claimEarnings(currentRound + 2, {from: delegator1})
 
@@ -2727,17 +2814,35 @@ contract("BondingManager", accounts => {
             await bondingManager.reward({from: transcoder})
         })
 
-        it("should return pending rewards for 1 round", async () => {
-            const pendingRewards0 = 250
+        it("should return pending rewards for 1 round when endRound < LIP-36 upgrade round", async () => {
+            await fixture.roundsManager.setMockUint256(functionSig("lipUpgradeRound(uint256)"), currentRound + 1)
 
-            assert.equal(
+            // Cannot actually calculate the correct pending rewards since the contract does not have pre LIP-36 state
+            // Instead just make sure that the returned value is different from the returned value when using endRound == currentRound
+            // to check that the currentRound is not being used under the hood
+            assert.notEqual(
                 (await bondingManager.pendingStake(delegator, currentRound)).toString(),
-                (1000 + pendingRewards0).toString(),
-                "should return sum of bondedAmount and pending rewards for 1 round"
+                (await bondingManager.pendingStake(delegator, currentRound + 1)).toString()
             )
         })
 
-        it("should return pending rewards for > 1 round", async () => {
+        it("should return pending rewards for all rounds since lastClaimRound when endRound < currentRound and endRound > LIP-36 upgrade round", async () => {
+            const pendingRewards0 = 250
+            const pendingRewards1 = Math.floor((500 * (1250 * PERC_DIVISOR / 3000)) / PERC_DIVISOR)
+
+            const ps = await bondingManager.pendingStake(delegator, currentRound)
+            assert.equal(
+                ps.toString(),
+                1000 + pendingRewards0 + pendingRewards1,
+                "should return sum of bondedAmount and pending rewards for 2 rounds"
+            )
+            assert.equal(
+                ps.toString(),
+                (await bondingManager.pendingStake(delegator, currentRound + 1)).toString()
+            )
+        })
+
+        it("should return pending rewards for all rounds since lastClaimRound when endRound == currentRound and endRound > LIP-36 upgrade round", async () => {
             const pendingRewards0 = 250
             const pendingRewards1 = Math.floor((500 * (1250 * PERC_DIVISOR / 3000)) / PERC_DIVISOR)
 
@@ -2745,6 +2850,24 @@ contract("BondingManager", accounts => {
                 (await bondingManager.pendingStake(delegator, currentRound + 1)).toString(),
                 1000 + pendingRewards0 + pendingRewards1,
                 "should return sum of bondedAmount and pending rewards for 2 rounds"
+            )
+        })
+
+        it("should return pending rewards for all rounds since lastClaimRound when endRound == LIP-36 upgrade round", async () => {
+            await fixture.roundsManager.setMockUint256(functionSig("lipUpgradeRound(uint256)"), currentRound)
+
+            const pendingRewards0 = 250
+            const pendingRewards1 = Math.floor((500 * (1250 * PERC_DIVISOR / 3000)) / PERC_DIVISOR)
+
+            const ps = await bondingManager.pendingStake(delegator, currentRound)
+            assert.equal(
+                ps.toString(),
+                1000 + pendingRewards0 + pendingRewards1,
+                "should return sum of bondedAmount and pending rewards for 2 rounds"
+            )
+            assert.equal(
+                ps.toString(),
+                (await bondingManager.pendingStake(delegator, currentRound + 1)).toString()
             )
         })
 
@@ -2828,12 +2951,12 @@ contract("BondingManager", accounts => {
         describe("delegator is a transcoder", () => {
             it("should return pending rewards as both a delegator and a transcoder", async () => {
                 let cumulativeRewards = (await bondingManager.getTranscoder(transcoder)).cumulativeRewards.toNumber()
-                const pendingRewards = 250 + cumulativeRewards
+                const pendingRewards = 250 + Math.floor((500 * (1250 * PERC_DIVISOR / 3000)) / PERC_DIVISOR) + cumulativeRewards
 
                 assert.equal(
                     (await bondingManager.pendingStake(transcoder, currentRound)).toNumber(),
                     1000 + pendingRewards,
-                    "should return sum of bondedAmount and pending rewards as both a delegator and transcoder for a round"
+                    "should return sum of bondedAmount and pending rewards as both a delegator and transcoder for 2 rounds"
                 )
             })
         })
@@ -2879,13 +3002,35 @@ contract("BondingManager", accounts => {
             await bondingManager.reward({from: transcoder})
         })
 
-        it("should return pending fees for 1 round", async () => {
-            const pendingFees0 = 125
+        it("should return pending fees for 1 round when endRound < LIP-36 upgrade round", async () => {
+            await fixture.roundsManager.setMockUint256(functionSig("lipUpgradeRound(uint256)"), currentRound + 2)
 
-            assert.equal((await bondingManager.pendingFees(delegator, currentRound + 1)).toString(), pendingFees0, "should return sum of collected fees and pending fees for 1 round")
+            // Cannot actually calculate the correct pending fees since the contract does not have pre LIP-36 state
+            // Instead just make sure that the returned value is different from the returned value when using endRound == currentRound
+            // to check that the currentRound is not being used under the hood
+            assert.notEqual(
+                (await bondingManager.pendingFees(delegator, currentRound + 1)).toString(),
+                (await bondingManager.pendingFees(delegator, currentRound + 2)).toString()
+            )
         })
 
-        it("should return pending fees for > 1 round", async () => {
+        it("should return pending fees for all rounds since lastClaimRound when endRound < currentRound and endRound > LIP-36 upgrade round", async () => {
+            const pendingFees0 = 125
+            const pendingFees1 = Math.floor((250 * (1250 * PERC_DIVISOR / 3000)) / PERC_DIVISOR)
+
+            const pf = await bondingManager.pendingFees(delegator, currentRound + 1)
+            assert.equal(
+                pf.toString(),
+                pendingFees0 + pendingFees1,
+                "should return sum of collected fees and pending fees for 2 rounds"
+            )
+            assert.equal(
+                pf.toString(),
+                (await bondingManager.pendingFees(delegator, currentRound + 2)).toString()
+            )
+        })
+
+        it("should return pending fees for all rounds since lastClaimRound when endRound == currentRound and endRound > LIP-36 upgrade round", async () => {
             const pendingFees0 = 125
             const pendingFees1 = Math.floor((250 * (1250 * PERC_DIVISOR / 3000)) / PERC_DIVISOR)
 
@@ -2893,6 +3038,23 @@ contract("BondingManager", accounts => {
                 (await bondingManager.pendingFees(delegator, currentRound + 2)).toNumber(),
                 pendingFees0 + pendingFees1,
                 "should return sum of collected fees and pending fees for 2 rounds"
+            )
+        })
+
+        it("should return pending fees for all rounds since lastClaimRound when endRound == LIP-36 upgrade round", async () => {
+            await fixture.roundsManager.setMockUint256(functionSig("lipUpgradeRound(uint256)"), currentRound + 1)
+
+            const pendingFees0 = 125
+            const pendingFees1 = Math.floor((250 * (1250 * PERC_DIVISOR / 3000)) / PERC_DIVISOR)
+
+            const pf = await bondingManager.pendingFees(delegator, currentRound + 1)
+            assert.equal(
+                pf.toString(),
+                pendingFees0 + pendingFees1
+            )
+            assert.equal(
+                pf.toString(),
+                (await bondingManager.pendingFees(delegator, currentRound + 2)).toString()
             )
         })
 
@@ -3086,12 +3248,12 @@ contract("BondingManager", accounts => {
             it("should return pending fees as both a delegator and a transcoder", async () => {
                 let cumulativeFees = (await bondingManager.getTranscoder(transcoder)).cumulativeFees.toNumber()
 
-                const pendingFees = 125 + cumulativeFees
+                const pendingFees = 125 + Math.floor((250 * (1250 * PERC_DIVISOR / 3000)) / PERC_DIVISOR) + cumulativeFees
 
                 assert.equal(
                     (await bondingManager.pendingFees(transcoder, currentRound + 1)).toNumber(),
                     pendingFees,
-                    "should return sum of collected fees and pending fees as both a delegator and transcoder for a round"
+                    "should return sum of collected fees and pending fees as both a delegator and transcoder for 2 rounds"
                 )
             })
         })

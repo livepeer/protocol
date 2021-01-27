@@ -459,7 +459,7 @@ contract("Snapshot only existing out of pre-LIP36 earnings should yield correct 
 
         let rewardCut = 50 * constants.PERC_MULTIPLIER
         let feeShare = 50 * constants.PERC_MULTIPLIER
-        bondingManager.transcoder(rewardCut, feeShare)
+        await bondingManager.transcoder(rewardCut, feeShare)
 
         await roundsManager.mineBlocks(roundLength.toNumber() * 1)
         await roundsManager.setBlockHash(web3.utils.keccak256("foo"))
