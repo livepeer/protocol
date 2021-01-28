@@ -1,7 +1,7 @@
 import Fixture from "./helpers/Fixture"
 
 import truffleAssert from "truffle-assertions"
-import {utils, constants} from "ethers"
+import {utils, BigNumber, constants} from "ethers"
 import {BN} from "ethereumjs-util"
 
 const Governor = artifacts.require("Governor")
@@ -28,7 +28,7 @@ contract("Governor", accounts => {
 
 
     const setUint256Tx = async (i, sender) => {
-        return utils.hexlify(utils.arrayify(setUint256.contract.methods.setUint256(utils.bigNumberify(i)).encodeABI()))
+        return utils.hexlify(utils.arrayify(setUint256.contract.methods.setUint256(BigNumber.from(i)).encodeABI()))
     }
 
     const getUpdateHash = update => {

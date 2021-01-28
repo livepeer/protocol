@@ -11,3 +11,5 @@ scTopics
 coverage.json
 .coverage_artifacts
 .coverage_contracts
+artifacts
+cache
