@@ -74,7 +74,7 @@ async function main() {
     const controller = await ethers.getContractAt("Controller", controllerAddr)
 
     const contractID = utils.solidityKeccak256(["string"], ["BondingManagerTarget"])
-    const gitCommitHash = "0x986f264e4c80d1530fe322ad61b9195aa840d944" // Dummy value
+    const gitCommitHash = "0x522ef6cf6eb3c3b411a4c16517ad78ebe8a08032"
     const setInfoData = utils.hexlify(
         utils.arrayify(
             controller.interface.encodeFunctionData(
