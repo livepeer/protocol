@@ -1,6 +1,7 @@
 import {contractId} from "../../utils/helpers"
 import {constants} from "../../utils/constants"
 import BN from "bn.js"
+import math from "../helpers/math"
 
 const Controller = artifacts.require("Controller")
 const BondingManager = artifacts.require("BondingManager")
@@ -86,7 +87,7 @@ contract("Rewards", accounts => {
     it("correctly calculates reward shares for delegators and transcoders", async () => {
         const callRewardAndCheckStakes = async () => {
             const calcRewardShare = (startStake, startRewardFactor, endRewardFactor) => {
-                return startStake.mul(endRewardFactor.mul(new BN(constants.PERC_DIVISOR)).div(startRewardFactor)).div(new BN(constants.PERC_DIVISOR)).sub(startStake)
+                return math.precise.percOf(startStake, endRewardFactor, startRewardFactor).sub(startStake)
             }
             const acceptableDelta = constants.TOKEN_UNIT.div(new BN(1000)) // .001
 
@@ -101,7 +102,7 @@ contract("Rewards", accounts => {
 
             const lastClaimRoundT1 = (await bondingManager.getDelegator(transcoder1)).lastClaimRound
             let startRewardFactor = (await bondingManager.getTranscoderEarningsPoolForRound(transcoder1, lastClaimRoundT1)).cumulativeRewardFactor
-            startRewardFactor = startRewardFactor.toString() != "0" ? startRewardFactor : new BN(1000000)
+            startRewardFactor = startRewardFactor.toString() != "0" ? startRewardFactor : constants.PERC_DIVISOR_PRECISE
             const endRewardFactor = (await bondingManager.getTranscoderEarningsPoolForRound(transcoder1, currentRound)).cumulativeRewardFactor
             const transcoderRewards = (await bondingManager.getTranscoder(transcoder1)).cumulativeRewards
 

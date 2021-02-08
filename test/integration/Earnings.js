@@ -44,8 +44,6 @@ contract("Earnings", accounts => {
     const UNBONDING_PERIOD = 2
     const MAX_EARNINGS_CLAIMS_ROUNDS = 20
 
-    const PERC_DIVISOR = 1000000
-
     const faceValue = new BN(web3.utils.toWei("0.1", "ether")).toString() // 0.1 ETH
 
     async function redeemWinningTicket(transcoder, broadcaster, faceValue) {
@@ -169,11 +167,11 @@ contract("Earnings", accounts => {
         const acceptableDelta = new BN(0)
 
         const calcRewardShare = (startStake, startRewardFactor, endRewardFactor) => {
-            return math.percOf(startStake, endRewardFactor, startRewardFactor).sub(startStake)
+            return math.precise.percOf(startStake, endRewardFactor, startRewardFactor).sub(startStake)
         }
 
         const calcFeeShare = (startStake, startFeeFactor, endFeeFactor, startRewardFactor) => {
-            return math.percOf(
+            return math.precise.percOf(
                 startStake,
                 endFeeFactor.sub(startFeeFactor),
                 startRewardFactor
@@ -209,14 +207,14 @@ contract("Earnings", accounts => {
         const transC = await bondingManager.getTranscoder(transcoder)
         const startEarningsPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder, lastClaimRoundTranscoder)
         let startRewardFactor = startEarningsPool.cumulativeRewardFactor
-        startRewardFactor = startRewardFactor.gt(new BN(0)) ? startRewardFactor : new BN(PERC_DIVISOR)
+        startRewardFactor = startRewardFactor.gt(new BN(0)) ? startRewardFactor : constants.PERC_DIVISOR_PRECISE
 
         const startFeeFactor = startEarningsPool.cumulativeFeeFactor
         const endEarningsPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder, currentRound)
         let endRewardFactor = endEarningsPool.cumulativeRewardFactor
         if (endRewardFactor.eq(new BN(0))) {
             let lastRewFactor = await bondingManager.getTranscoderEarningsPoolForRound(transcoder, transC.lastRewardRound)
-            lastRewFactor = lastRewFactor.gt(new BN(0)) ? lastRewFactor : new BN(PERC_DIVISOR)
+            lastRewFactor = lastRewFactor.gt(new BN(0)) ? lastRewFactor : constants.PERC_DIVISOR_PRECISE
             endRewardFactor = lastRewFactor
         }
 

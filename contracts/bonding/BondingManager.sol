@@ -4,6 +4,7 @@ import "../ManagerProxyTarget.sol";
 import "./IBondingManager.sol";
 import "../libraries/SortedDoublyLL.sol";
 import "../libraries/MathUtils.sol";
+import "../libraries/PreciseMathUtils.sol";
 import "./libraries/EarningsPool.sol";
 import "./libraries/EarningsPoolLIP36.sol";
 import "../token/ILivepeerToken.sol";
@@ -29,6 +30,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     // and computed to a single value if possible by the optimizer
     uint256 constant MAX_FUTURE_ROUND = 2**256 - 1;
     uint256 constant MAX_LOOKBACK_ROUNDS = 100;
+    // PreciseMathUtils.percPoints(1, 1) / MathUtils.percPoints(1, 1) => (10 ** 27) / 1000000
+    uint256 constant RESCALE_FACTOR = 10 ** 21;
 
     // Time between unbonding and possible withdrawl in rounds
     uint64 public unbondingPeriod;
@@ -345,21 +348,28 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             // retroactively calculate what its cumulativeRewardFactor would have been for 'currentRound - 1' (cfr. previous lastRewardRound for transcoder)
             // based on rewards for currentRound
             IMinter mtr = minter();
-            uint256 rewards = MathUtils.percOf(mtr.currentMintableTokens().add(mtr.currentMintedTokens()), totalStake, currentRoundTotalActiveStake);
+            uint256 rewards = PreciseMathUtils.percOf(mtr.currentMintableTokens().add(mtr.currentMintedTokens()), totalStake, currentRoundTotalActiveStake);
             uint256 transcoderCommissionRewards = MathUtils.percOf(rewards, earningsPool.transcoderRewardCut);
             uint256 delegatorsRewards = rewards.sub(transcoderCommissionRewards);
 
-            prevEarningsPool.cumulativeRewardFactor = MathUtils.percOf(
+            prevEarningsPool.cumulativeRewardFactor = PreciseMathUtils.percOf(
                 earningsPool.cumulativeRewardFactor,
                 totalStake,
                 delegatorsRewards.add(totalStake)
             );
         }
 
+        // If the previous cumulativeRewardFactor is 0 and the current round is before the LIP-71 round, set the default value to
+        // MathUtils.percPoints(1, 1) because we only set the default value to PreciseMathUtils.percPoints(1, 1) when storing for
+        // the LIP-71 round and onwards (see updateCumulativeFeeFactor() in EarningsPoolLIP36.sol)
+        if (prevEarningsPool.cumulativeRewardFactor == 0 && currentRound < roundsManager().lipUpgradeRound(71)) {
+            prevEarningsPool.cumulativeRewardFactor = MathUtils.percPoints(1, 1);
+        }
+
         uint256 delegatorsFees = MathUtils.percOf(_fees, earningsPool.transcoderFeeShare);
         uint256 transcoderCommissionFees = _fees.sub(delegatorsFees);
         // Calculate the fees earned by the transcoder's earned rewards
-        uint256 transcoderRewardStakeFees = MathUtils.percOf(delegatorsFees, activeCumulativeRewards, totalStake);
+        uint256 transcoderRewardStakeFees = PreciseMathUtils.percOf(delegatorsFees, activeCumulativeRewards, totalStake);
         // Track fees earned by the transcoder based on its earned rewards and feeShare
         t.cumulativeFees = t.cumulativeFees.add(transcoderRewardStakeFees).add(transcoderCommissionFees);
         // Update cumulative fee factor with new fees
@@ -1071,25 +1081,46 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     }
 
     /**
+     * @notice Return an EarningsPool.Data struct with cumulative factors for a given round that are rescaled if needed
+     * @param _transcoder Storage pointer to a transcoder struct
+     * @param _round The round to fetch the cumulative factors for
+     */
+    function cumulativeFactorsPool(Transcoder storage _transcoder, uint256 _round) internal view returns (EarningsPool.Data memory pool) {
+        pool.cumulativeRewardFactor = _transcoder.earningsPoolPerRound[_round].cumulativeRewardFactor;
+        pool.cumulativeFeeFactor = _transcoder.earningsPoolPerRound[_round].cumulativeFeeFactor;
+
+        uint256 lip71Round = roundsManager().lipUpgradeRound(71);
+        // If we are at or after the LIP-71 round then all cumulative factor values should be scaled using PreciseMathUtils.percPoints(1, 1)
+        // If a cumulative factor was stored before the LIP-71 round it will still be scaled using MathUtils.percPoints(1, 1)
+        // So, once we are at or after the LIP-71 round, if we read a cumulative factor for a round before the LIP-71 round, we rescale
+        // the value by RESCALE_FACTOR so that the end value is scaled by PreciseMathUtils.percPoints(1, 1)
+        if (roundsManager().currentRound() >= lip71Round && _round < lip71Round) {
+            pool.cumulativeRewardFactor = pool.cumulativeRewardFactor.mul(RESCALE_FACTOR);
+            pool.cumulativeFeeFactor = pool.cumulativeFeeFactor.mul(RESCALE_FACTOR);
+        }
+
+        return pool;
+    }
+
+    /**
      * @notice Return an EarningsPool.Data struct with the latest cumulative factors for a given round
      * @param _transcoder Storage pointer to a transcoder struct
      * @param _round The round to fetch the latest cumulative factors for
      * @return pool An EarningsPool.Data populated with the latest cumulative factors for _round
      */
     function latestCumulativeFactorsPool(Transcoder storage _transcoder, uint256 _round) internal view returns (EarningsPool.Data memory pool) {
-        pool.cumulativeRewardFactor = _transcoder.earningsPoolPerRound[_round].cumulativeRewardFactor;
-        pool.cumulativeFeeFactor = _transcoder.earningsPoolPerRound[_round].cumulativeFeeFactor;
+        pool = cumulativeFactorsPool(_transcoder, _round);
 
         uint256 lastRewardRound = _transcoder.lastRewardRound;
         // Only use the cumulativeRewardFactor for lastRewardRound if lastRewardRound is before _round
         if (pool.cumulativeRewardFactor == 0 && lastRewardRound < _round) {
-            pool.cumulativeRewardFactor = _transcoder.earningsPoolPerRound[lastRewardRound].cumulativeRewardFactor;
+            pool.cumulativeRewardFactor = cumulativeFactorsPool(_transcoder, lastRewardRound).cumulativeRewardFactor;
         }
 
         uint256 lastFeeRound = _transcoder.lastFeeRound;
         // Only use the cumulativeFeeFactor for lastFeeRound if lastFeeRound is before _round
         if (pool.cumulativeFeeFactor == 0 && lastFeeRound < _round) {
-            pool.cumulativeFeeFactor = _transcoder.earningsPoolPerRound[lastFeeRound].cumulativeFeeFactor;
+            pool.cumulativeFeeFactor = cumulativeFactorsPool(_transcoder, lastFeeRound).cumulativeFeeFactor;
         }
 
         return pool;
@@ -1115,12 +1146,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         view
         returns (uint256 cStake, uint256 cFees)
     {
-        uint256 baseRewardFactor = MathUtils.percPoints(1, 1);
-
         // Fetch start cumulative factors
-        EarningsPool.Data memory startPool;
-        startPool.cumulativeRewardFactor = _transcoder.earningsPoolPerRound[_startRound].cumulativeRewardFactor;
-        startPool.cumulativeFeeFactor = _transcoder.earningsPoolPerRound[_startRound].cumulativeFeeFactor;
+        EarningsPool.Data memory startPool = cumulativeFactorsPool(_transcoder, _startRound);
 
         // We can lookback for a cumulativeRewardFactor if the start cumulativeRewardFactor is 0
         // Do not lookback if the latest cumulativeRewardFactor is 0 because that indicates that the factor was never > 0 for the transcoder in the past
@@ -1141,35 +1168,43 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             EarningsPool.Data storage pool = _transcoder.earningsPoolPerRound[lookbackRound];
             // Short-circuit in the following conditionals by running the boolean check before the storage check
             if (lookbackCumulativeRewardFactor && pool.cumulativeRewardFactor > 0) {
-                startPool.cumulativeRewardFactor = pool.cumulativeRewardFactor;
+                startPool.cumulativeRewardFactor = cumulativeFactorsPool(_transcoder, lookbackRound).cumulativeRewardFactor;
                 lookbackCumulativeRewardFactor = false;
             }
             if (lookbackCumulativeFeeFactor && pool.cumulativeFeeFactor > 0) {
-                startPool.cumulativeFeeFactor = pool.cumulativeFeeFactor;
+                startPool.cumulativeFeeFactor = cumulativeFactorsPool(_transcoder, lookbackRound).cumulativeFeeFactor;
                 lookbackCumulativeFeeFactor = false;
             }
         }
 
+        // If the start cumulativeRewardFactor is 0 and we are before the LIP-71 round, set the default value to
+        // MathUtils.percPoints(1, 1) because we only set the default value to PreciseMathUtils.percPoints(1, 1) from LIP-71 round
+        // and onward
         if (startPool.cumulativeRewardFactor == 0) {
-            startPool.cumulativeRewardFactor = baseRewardFactor;
+            startPool.cumulativeRewardFactor = roundsManager().currentRound() < roundsManager().lipUpgradeRound(71) ?
+                MathUtils.percPoints(1, 1) : PreciseMathUtils.percPoints(1, 1);
         }
 
         // Fetch end cumulative factors
         EarningsPool.Data memory endPool = latestCumulativeFactorsPool(_transcoder, _endRound);
 
+        // If the end cumulativeRewardFactor is 0 and we are before the LIP-71 round, set the default value to
+        // MathUtils.percPoints(1, 1) because we only set the default value to PreciseMathUtils.percPoints(1, 1) from LIP-71 round
+        // and onward
         if (endPool.cumulativeRewardFactor == 0) {
-            endPool.cumulativeRewardFactor = baseRewardFactor;
+            endPool.cumulativeRewardFactor = roundsManager().currentRound() < roundsManager().lipUpgradeRound(71) ?
+                MathUtils.percPoints(1, 1) : PreciseMathUtils.percPoints(1, 1);
         }
 
         cFees = _fees.add(
-            MathUtils.percOf(
+            PreciseMathUtils.percOf(
                 _stake,
                 endPool.cumulativeFeeFactor.sub(startPool.cumulativeFeeFactor),
                 startPool.cumulativeRewardFactor
             )
         );
 
-        cStake = MathUtils.percOf(
+        cStake = PreciseMathUtils.percOf(
             _stake,
             endPool.cumulativeRewardFactor,
             startPool.cumulativeRewardFactor
@@ -1403,14 +1438,21 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     {
         Transcoder storage t = transcoders[_transcoder];
         EarningsPool.Data storage earningsPool = t.earningsPoolPerRound[_round];
-        EarningsPool.Data storage prevEarningsPool = t.earningsPoolPerRound[t.lastRewardRound];
+        EarningsPool.Data memory prevEarningsPool = cumulativeFactorsPool(t, t.lastRewardRound);
+
+        // If the previous cumulativeRewardFactor is 0 and we are before the LIP-71 round, set the default value to
+        // MathUtils.percPoints(1, 1) because we only set the default value to PreciseMathUtils.percPoints(1, 1) when storing for
+        // the LIP-71 round and onwards (see updateCumulativeRewardFactor() in EarningsPoolLIP36.sol)
+        if (prevEarningsPool.cumulativeRewardFactor == 0 && _round < roundsManager().lipUpgradeRound(71)) {
+            prevEarningsPool.cumulativeRewardFactor = MathUtils.percPoints(1, 1);
+        }
 
         t.activeCumulativeRewards = t.cumulativeRewards;
 
         uint256 transcoderCommissionRewards = MathUtils.percOf(_rewards, earningsPool.transcoderRewardCut);
         uint256 delegatorsRewards = _rewards.sub(transcoderCommissionRewards);
         // Calculate the rewards earned by the transcoder's earned rewards
-        uint256 transcoderRewardStakeRewards = MathUtils.percOf(delegatorsRewards, t.activeCumulativeRewards, earningsPool.totalStake);
+        uint256 transcoderRewardStakeRewards = PreciseMathUtils.percOf(delegatorsRewards, t.activeCumulativeRewards, earningsPool.totalStake);
         // Track rewards earned by the transcoder based on its earned rewards and rewardCut
         t.cumulativeRewards = t.cumulativeRewards.add(transcoderRewardStakeRewards).add(transcoderCommissionRewards);
         // Update cumulative reward factor with new rewards
@@ -1466,13 +1508,13 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
                 if (endEarningsPool.cumulativeRewardFactor == 0) {
                     uint256 lastRewardRound = t.lastRewardRound;
                     if (lastRewardRound < _endRound) {
-                        endEarningsPool.cumulativeRewardFactor = t.earningsPoolPerRound[lastRewardRound].cumulativeRewardFactor;
+                        endEarningsPool.cumulativeRewardFactor = cumulativeFactorsPool(t, lastRewardRound).cumulativeRewardFactor;
                     }
                 }
                 if (endEarningsPool.cumulativeFeeFactor == 0) {
                     uint256 lastFeeRound = t.lastFeeRound;
                     if (lastFeeRound < _endRound) {
-                        endEarningsPool.cumulativeFeeFactor = t.earningsPoolPerRound[lastFeeRound].cumulativeFeeFactor;
+                        endEarningsPool.cumulativeFeeFactor = cumulativeFactorsPool(t, lastFeeRound).cumulativeFeeFactor;
                     }
                 }
 
