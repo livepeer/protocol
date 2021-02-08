@@ -432,7 +432,7 @@ contract("Delegation", accounts => {
         const rewardRound = await roundsManager.currentRound()
         const endRewardFactor = (await bondingManager.getTranscoderEarningsPoolForRound(transcoder2, rewardRound)).cumulativeRewardFactor
         const bondedAmount = (await bondingManager.getTranscoderEarningsPoolForRound(transcoder2, rewardRound)).totalStake
-        const rewardAmount = bondedAmount.mul(endRewardFactor.div(new BN(1000000)))
+        const rewardAmount = bondedAmount.mul(endRewardFactor.div(constants.PERC_DIVISOR_PRECISE))
         // Newly minted rewards added
         currTotalBonded = currTotalBonded.add(rewardAmount)
         assert.isTrue((await bondingManager.nextRoundTotalActiveStake()).sub(currTotalBonded).abs().lte(acceptableDelta), "wrong next total stake")
@@ -450,7 +450,7 @@ contract("Delegation", accounts => {
         // Test state after rebond
         // Verify reward claiming logic
         const dInfo = await bondingManager.getDelegator(delegator1)
-        assert.isTrue(dInfo[0].sub(startDelegator1BondedAmount.mul(endRewardFactor.div(new BN(1000000))).add(new BN(500))).abs().lte(acceptableDelta), "wrong delegator bonded amount with claimed rewards and rebond amount")
+        assert.isTrue(dInfo[0].sub(startDelegator1BondedAmount.mul(endRewardFactor.div(constants.PERC_DIVISOR_PRECISE)).add(new BN(500))).abs().lte(acceptableDelta), "wrong delegator bonded amount with claimed rewards and rebond amount")
         assert.equal(dInfo[5], (await roundsManager.currentRound()).toNumber(), "wrong delegator last claim round after rebond")
 
         const tDInfo = await bondingManager.getDelegator(transcoder2)

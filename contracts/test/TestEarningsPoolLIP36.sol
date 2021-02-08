@@ -2,7 +2,7 @@ pragma solidity ^0.5.11;
 
 import "./mocks/EarningsPoolFixture.sol";
 import "./helpers/truffle/Assert.sol";
-import "../libraries/MathUtils.sol";
+import "../libraries/PreciseMathUtils.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
 
@@ -24,12 +24,12 @@ contract TestEarningsPoolLIP36 {
         // prevEarningsPool.cumulativeFeeFactor == 0 
         // prevEarningsPool.cumulativeRewardFactor == 0 
         fixture.updateCumulativeFeeFactor(fees);
-        uint256 expFeeFactor = MathUtils.percPoints(fees, fixture.getTotalStake());
+        uint256 expFeeFactor = PreciseMathUtils.percPoints(fees, fixture.getTotalStake());
         Assert.equal(fixture.getCumulativeFeeFactor(), expFeeFactor, "should set cumulativeFeeFactor");
         
         // earningsPool.cumulativeFeeFactor != 0 
         fixture.updateCumulativeFeeFactor(fees);
-        expFeeFactor = expFeeFactor.add(MathUtils.percPoints(fees, fixture.getTotalStake()));
+        expFeeFactor = expFeeFactor.add(PreciseMathUtils.percPoints(fees, fixture.getTotalStake()));
         Assert.equal(fixture.getCumulativeFeeFactor(), expFeeFactor, "should update cumulativeFeeFactor");
     }
 
@@ -44,25 +44,25 @@ contract TestEarningsPoolLIP36 {
 
         // earningsPool.cumulativeFeeFactor == 0
         fixture.updateCumulativeFeeFactor(fees);
-        uint256 expFeeFactor = prevFeeFactor.add(MathUtils.percOf(prevRewFactor, fees, fixture.getTotalStake()));
+        uint256 expFeeFactor = prevFeeFactor.add(PreciseMathUtils.percOf(prevRewFactor, fees, fixture.getTotalStake()));
         Assert.equal(fixture.getCumulativeFeeFactor(), expFeeFactor, "should update cumulativeFeeFactor");
 
         // earningsPool.cumulativeFeeFactor != 0 
         fixture.updateCumulativeFeeFactor(fees);
-        expFeeFactor = expFeeFactor.add(MathUtils.percOf(prevRewFactor, fees, fixture.getTotalStake()));
+        expFeeFactor = expFeeFactor.add(PreciseMathUtils.percOf(prevRewFactor, fees, fixture.getTotalStake()));
     }
 
     function test_updateCumulativeRewardFactor() public {
         uint256 rewards = 1000;
 
         // prevEarningsPool.cumulativeRewardFactor == 0
-        uint256 expRewardFactor = MathUtils.percPoints(1,1).add(MathUtils.percOf(MathUtils.percPoints(1,1), rewards, fixture.getTotalStake()));
+        uint256 expRewardFactor = PreciseMathUtils.percPoints(1,1).add(PreciseMathUtils.percOf(PreciseMathUtils.percPoints(1,1), rewards, fixture.getTotalStake()));
         fixture.updateCumulativeRewardFactor(1000);
         Assert.equal(expRewardFactor, fixture.getCumulativeRewardFactor(), "incorrect cumulative reward factor");
    
         // prevEarningsPool.cumulativeRewardFactor != 0
         fixture.setPrevPoolEarningsFactors(0, expRewardFactor);
-        expRewardFactor = expRewardFactor.add(MathUtils.percOf(expRewardFactor, rewards, fixture.getTotalStake()));
+        expRewardFactor = expRewardFactor.add(PreciseMathUtils.percOf(expRewardFactor, rewards, fixture.getTotalStake()));
         fixture.updateCumulativeRewardFactor(1000);
         Assert.equal(expRewardFactor, fixture.getCumulativeRewardFactor(), "incorrect cumulative reward factor");
     }
