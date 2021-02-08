@@ -10,25 +10,25 @@ contract Manager is IManager {
 
     // Check if sender is controller
     modifier onlyController() {
-        require(msg.sender == address(controller), "caller must be Controller");
+        _onlyController();
         _;
     }
 
     // Check if sender is controller owner
     modifier onlyControllerOwner() {
-        require(msg.sender == controller.owner(), "caller must be Controller owner");
+        _onlyControllerOwner();
         _;
     }
 
     // Check if controller is not paused
     modifier whenSystemNotPaused() {
-        require(!controller.paused(), "system is paused");
+        _whenSystemNotPaused();
         _;
     }
 
     // Check if controller is paused
     modifier whenSystemPaused() {
-        require(controller.paused(), "system is not paused");
+        _whenSystemPaused();
         _;
     }
 
@@ -44,5 +44,21 @@ contract Manager is IManager {
         controller = IController(_controller);
 
         emit SetController(_controller);
+    }
+
+    function _onlyController() internal view {
+        require(msg.sender == address(controller), "caller must be Controller");
+    }
+
+    function _onlyControllerOwner() internal view {
+        require(msg.sender == controller.owner(), "caller must be Controller owner");
+    }
+
+    function _whenSystemNotPaused() internal view {
+        require(!controller.paused(), "system is paused");
+    }
+
+    function _whenSystemPaused() internal view {
+        require(controller.paused(), "system is not paused");
     }
 }
