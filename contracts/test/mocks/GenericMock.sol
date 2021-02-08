@@ -13,6 +13,7 @@ contract GenericMock {
         address addressValue;
         MockValueType valueType;
         bool set;
+        mapping (bytes32 => uint256) uint256Values;
     }
 
     enum MockValueType { Uint256, Bytes32, Bool, Address }
@@ -27,12 +28,20 @@ contract GenericMock {
         bytes4 func;
         assembly { func := calldataload(0) }
 
+        bytes32 dataHash = keccak256(abi.encodePacked(msg.data));
+
         if (!mockValues[func].set) {
             // If mock value not set, default to return a bool with value false
             mLoadAndReturn(false);
         } else {
             if (mockValues[func].valueType == MockValueType.Uint256) {
-                mLoadAndReturn(mockValues[func].uint256Value);
+                uint256 value = mockValues[func].uint256Values[dataHash];
+                // TODO: Make sure we don't go into this code block if the value set
+                // for dataHash should actually be 0
+                if (value == 0) {
+                    value = mockValues[func].uint256Value;
+                }
+                mLoadAndReturn(value);
             } else if (mockValues[func].valueType == MockValueType.Bytes32) {
                 mLoadAndReturn(mockValues[func].bytes32Value);
             } else if (mockValues[func].valueType == MockValueType.Bool) {
@@ -62,6 +71,18 @@ contract GenericMock {
     function setMockUint256(bytes4 _func, uint256 _value) external returns (bool) {
         mockValues[_func].valueType = MockValueType.Uint256;
         mockValues[_func].uint256Value = _value;
+        mockValues[_func].set = true;
+    }
+
+    /**
+     * @dev Set a mockuint256 value for a function with specific params passed
+     * @param _func Function selector (bytes4(keccak256(FUNCTION_SIGNATURE)))
+     * @param _dataHash keccak256 hash of tx data i.e. keccak256(msg.data)
+     * @param _value Mock uint256 value
+     */
+    function setMockUint256WithParam(bytes4 _func, bytes32 _dataHash, uint256 _value) external returns (bool) {
+        mockValues[_func].valueType = MockValueType.Uint256;
+        mockValues[_func].uint256Values[_dataHash] = _value;
         mockValues[_func].set = true;
     }
 
