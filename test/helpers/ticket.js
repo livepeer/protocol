@@ -1,3 +1,8 @@
+// TODO: Eventually avoid conditionally loading from hardhat
+let web3
+if (web3 === undefined) {
+    web3 = require("hardhat").web3
+}
 import {constants} from "../../utils/constants"
 
 const DUMMY_TICKET_CREATION_ROUND = 10
