@@ -94,7 +94,7 @@ async function main() {
     )
 
     const contractID = utils.solidityKeccak256(["string"], ["BondingManagerTarget"])
-    const gitCommitHash = "0x522ef6cf6eb3c3b411a4c16517ad78ebe8a08032" // TODO: Update
+    const gitCommitHash = "0x40eb67080550bacd6f0a2f8590beb0db463bff29"
     const setInfoData = utils.hexlify(
         utils.arrayify(
             controller.interface.encodeFunctionData(
