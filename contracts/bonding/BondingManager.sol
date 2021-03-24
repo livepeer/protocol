@@ -9,6 +9,7 @@ import "./libraries/EarningsPool.sol";
 import "./libraries/EarningsPoolLIP36.sol";
 import "../token/ILivepeerToken.sol";
 import "../token/IMinter.sol";
+import "../token/IInflationManager.sol";
 import "../rounds/IRoundsManager.sol";
 import "../snapshots/IMerkleSnapshot.sol";
 
@@ -347,8 +348,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             // if transcoder called reward for 'currentRound' but not for 'currentRound - 1' (missed reward call)
             // retroactively calculate what its cumulativeRewardFactor would have been for 'currentRound - 1' (cfr. previous lastRewardRound for transcoder)
             // based on rewards for currentRound
-            IMinter mtr = minter();
-            uint256 rewards = PreciseMathUtils.percOf(mtr.currentMintableTokens().add(mtr.currentMintedTokens()), totalStake, currentRoundTotalActiveStake);
+            IInflationManager inflationMgr = inflationManager();
+            uint256 rewards = PreciseMathUtils.percOf(inflationMgr.currentMintableTokens().add(inflationMgr.currentMintedTokens()), totalStake, currentRoundTotalActiveStake);
             uint256 transcoderCommissionRewards = MathUtils.percOf(rewards, earningsPool.transcoderRewardCut);
             uint256 delegatorsRewards = rewards.sub(transcoderCommissionRewards);
 
@@ -788,7 +789,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
         // Create reward based on active transcoder's stake relative to the total active stake
         // rewardTokens = (current mintable tokens for the round * active transcoder stake) / total active stake
-        uint256 rewardTokens = minter().createReward(earningsPool.totalStake, currentRoundTotalActiveStake);
+        uint256 rewardTokens = inflationManager().createReward(earningsPool.totalStake, currentRoundTotalActiveStake);
 
         updateTranscoderWithRewards(msg.sender, rewardTokens, currentRound, _newPosPrev, _newPosNext);
 
@@ -1589,6 +1590,14 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      */
     function roundsManager() internal view returns (IRoundsManager) {
         return IRoundsManager(controller.getContract(keccak256("RoundsManager")));
+    }
+
+    /**
+     * @dev Return the InflationManager interface
+     * @return InflationManager contract registered with Controller
+    */
+    function inflationManager() internal view returns (IInflationManager) {
+        return IInflationManager(controller.getContract(keccak256("InflationManager")));
     }
 
     function _onlyTicketBroker() internal view {

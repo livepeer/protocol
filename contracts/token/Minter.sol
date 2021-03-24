@@ -59,49 +59,16 @@ contract Minter is Manager, IMinter {
         _;
     }
 
+    // Checks if the caller is the currently registered InflationManager
+    modifier onlyInflationManager() {
+        require(msg.sender == controller.getContract(keccak256("InflationManager")), "msg.sender not InflationManager");
+        _;
+    }
+
     /**
      * @notice Minter constructor
-     * @param _inflation Base inflation rate as a percentage of current total token supply
-     * @param _inflationChange Change in inflation rate each round (increase or decrease) if target bonding rate is not achieved
-     * @param _targetBondingRate Target bonding rate as a percentage of total bonded tokens / total token supply
      */
-    constructor(address _controller, uint256 _inflation, uint256 _inflationChange, uint256 _targetBondingRate) public Manager(_controller) {
-        // Inflation must be valid percentage
-        require(MathUtils.validPerc(_inflation), "_inflation is invalid percentage");
-        // Inflation change must be valid percentage
-        require(MathUtils.validPerc(_inflationChange), "_inflationChange is invalid percentage");
-        // Target bonding rate must be valid percentage
-        require(MathUtils.validPerc(_targetBondingRate), "_targetBondingRate is invalid percentage");
-
-        inflation = _inflation;
-        inflationChange = _inflationChange;
-        targetBondingRate = _targetBondingRate;
-    }
-
-    /**
-     * @notice Set targetBondingRate. Only callable by Controller owner
-     * @param _targetBondingRate Target bonding rate as a percentage of total bonded tokens / total token supply
-     */
-    function setTargetBondingRate(uint256 _targetBondingRate) external onlyControllerOwner {
-        // Must be valid percentage
-        require(MathUtils.validPerc(_targetBondingRate), "_targetBondingRate is invalid percentage");
-
-        targetBondingRate = _targetBondingRate;
-
-        emit ParameterUpdate("targetBondingRate");
-    }
-
-    /**
-     * @notice Set inflationChange. Only callable by Controller owner
-     * @param _inflationChange Inflation change as a percentage of total token supply
-     */
-    function setInflationChange(uint256 _inflationChange) external onlyControllerOwner {
-        // Must be valid percentage
-        require(MathUtils.validPerc(_inflationChange), "_inflationChange is invalid percentage");
-
-        inflationChange = _inflationChange;
-
-        emit ParameterUpdate("inflationChange");
+    constructor(address _controller) public Manager(_controller) {
     }
 
     /**
@@ -115,7 +82,7 @@ contract Minter is Manager, IMinter {
         // Check for null address
         require(address(_newMinter) != address(0), "new Minter cannot be null address");
 
-        IController newMinterController = _newMinter.getController();
+        IController newMinterController = _newMinter.controller();
         // New Minter must have same Controller as current Minter
         require(newMinterController == controller, "new Minter Controller must be current Controller");
         // New Minter's Controller must have the current Minter registered
@@ -130,22 +97,12 @@ contract Minter is Manager, IMinter {
     }
 
     /**
-     * @notice Create reward based on a fractional portion of the mintable tokens for the current round
-     * @param _fracNum Numerator of fraction (active transcoder's stake)
-     * @param _fracDenom Denominator of fraction (total active stake)
-     */
-    function createReward(uint256 _fracNum, uint256 _fracDenom) external onlyBondingManager whenSystemNotPaused returns (uint256) {
-        // Compute and mint fraction of mintable tokens to include in reward
-        uint256 mintAmount = MathUtils.percOf(currentMintableTokens, _fracNum, _fracDenom);
-        // Update amount of minted tokens for round
-        currentMintedTokens = currentMintedTokens.add(mintAmount);
-        // Minted tokens must not exceed mintable tokens
-        require(currentMintedTokens <= currentMintableTokens, "minted tokens cannot exceed mintable tokens");
-        // Mint new tokens
-        livepeerToken().mint(address(this), mintAmount);
-
-        // Reward = minted tokens
-        return mintAmount;
+     * @notice Mint tokens based on the mint amount calculated by the InflationManager
+     * @param _mintAmount amount of tokens to mint
+     * @dev Only callable by the InflationManager when the system is not paused
+    */
+    function mintTokens(uint256 _mintAmount) external onlyInflationManager whenSystemNotPaused {
+        livepeerToken().mint(address(this), _mintAmount);
     }
 
     /**
@@ -182,48 +139,10 @@ contract Minter is Manager, IMinter {
     }
 
     /**
-     * @notice Set inflation and mintable tokens for the round. Only callable by the RoundsManager
-     */
-    function setCurrentRewardTokens() external onlyRoundsManager whenSystemNotPaused {
-        setInflation();
-
-        // Set mintable tokens based upon current inflation and current total token supply
-        currentMintableTokens = MathUtils.percOf(livepeerToken().totalSupply(), inflation);
-        currentMintedTokens = 0;
-
-        emit SetCurrentRewardTokens(currentMintableTokens, inflation);
-    }
-
-    /**
      * @dev Returns Controller interface
      */
     function getController() public view returns (IController) {
         return controller;
-    }
-
-    /**
-     * @dev Set inflation based upon the current bonding rate and target bonding rate
-     */
-    function setInflation() internal {
-        uint256 currentBondingRate = 0;
-        uint256 totalSupply = livepeerToken().totalSupply();
-
-        if (totalSupply > 0) {
-            uint256 totalBonded = bondingManager().getTotalBonded();
-            currentBondingRate = MathUtils.percPoints(totalBonded, totalSupply);
-        }
-
-        if (currentBondingRate < targetBondingRate) {
-            // Bonding rate is below the target - increase inflation
-            inflation = inflation.add(inflationChange);
-        } else if (currentBondingRate > targetBondingRate) {
-            // Bonding rate is above the target - decrease inflation
-            if (inflationChange > inflation) {
-                inflation = 0;
-            } else {
-                inflation = inflation.sub(inflationChange);
-            }
-        }
     }
 
     /**
