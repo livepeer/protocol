@@ -29,6 +29,8 @@ contract InflationManager is Manager, IInflationManager {
     uint256 public currentMintableTokens;
     // Current number of minted tokens for the previous reward epoch, resets when a new reward epoch starts.
     uint256 public currentMintedTokens;
+    // Reward tokens mintable per round for current reward epoch
+    uint256 public nextMintableTokens;
 
     // Checks if caller is BondingManager
     modifier onlyBondingManager() {
@@ -126,13 +128,24 @@ contract InflationManager is Manager, IInflationManager {
     /**
      * @notice Set inflation and mintable tokens for the round. Only callable by the RoundsManager
      */
-    function setCurrentRewardTokens() external onlyRoundsManager whenSystemNotPaused {
+    function setCurrentRewardTokens(bool _newRewardEpoch) external onlyRoundsManager whenSystemNotPaused {
         setInflation();
 
         // Set mintable tokens based upon current inflation and current total token supply
-        currentMintableTokens = MathUtils.percOf(livepeerToken().totalSupply(), inflation);
-        currentMintedTokens = 0;
+        uint256 mintableForRound = MathUtils.percOf(livepeerToken().totalSupply(), inflation);
 
+        // If a new reward epoch starts
+        // 1. Set currentMintableTokens to nextMintableTokens
+        // 2. Reset nextMintableTokens
+        // 3. Reset currentMintedtokens
+        // 4. Add current mintable tokens for the round to nextMintableTokens
+        if (_newRewardEpoch) {
+            currentMintableTokens = nextMintableTokens;
+            nextMintableTokens = 0;
+            currentMintedTokens = 0;
+        }
+
+        nextMintableTokens = SafeMath.add(nextMintableTokens, mintableForRound);
         emit SetCurrentRewardTokens(currentMintableTokens, inflation);
     }
 
