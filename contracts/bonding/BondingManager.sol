@@ -622,10 +622,10 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         Transcoder storage newDelegate = transcoders[_to];
         EarningsPool.Data storage currPool = newDelegate.earningsPoolPerRound[currentRound];
         if (currPool.cumulativeRewardFactor == 0) {
-            currPool.cumulativeRewardFactor = newDelegate.earningsPoolPerRound[newDelegate.lastRewardRound].cumulativeRewardFactor;
+            currPool.cumulativeRewardFactor = cumulativeFactorsPool(newDelegate, newDelegate.lastRewardRound).cumulativeRewardFactor;
         }
         if (currPool.cumulativeFeeFactor == 0) {
-            currPool.cumulativeFeeFactor = newDelegate.earningsPoolPerRound[newDelegate.lastFeeRound].cumulativeFeeFactor;
+            currPool.cumulativeFeeFactor = cumulativeFactorsPool(newDelegate, newDelegate.lastFeeRound).cumulativeFeeFactor;
         }
 
         // cannot delegate to someone without having bonded stake
