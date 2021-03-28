@@ -32,6 +32,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     uint256 constant MAX_LOOKBACK_ROUNDS = 100;
     // PreciseMathUtils.percPoints(1, 1) / MathUtils.percPoints(1, 1) => (10 ** 27) / 1000000
     uint256 constant RESCALE_FACTOR = 10 ** 21;
+    // Address for LIP-77 execution
+    address constant LIP_77_ADDRESS = 0xB47D8F87c0113827d44Ad0Bc32D53823C477a89d;
 
     // Time between unbonding and possible withdrawl in rounds
     uint64 public unbondingPeriod;
@@ -116,6 +118,9 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     // in the pool are locked into the active set for round N + 1
     SortedDoublyLL.Data private transcoderPoolV2;
 
+    // Flag for whether LIP-77 has been executed
+    bool private lip77Executed;
+
     // Check if sender is TicketBroker
     modifier onlyTicketBroker() {
         _onlyTicketBroker();
@@ -185,6 +190,22 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         maxEarningsClaimsRounds = _maxEarningsClaimsRounds;
 
         emit ParameterUpdate("maxEarningsClaimsRounds");
+    }
+
+    /**
+     * @notice Execute LIP-77. Can only be called once by Controller owner
+     * @param _bondedAmount The bonded amount for the LIP-77 address
+     */
+    function executeLIP77(uint256 _bondedAmount) external onlyControllerOwner {
+        require(!lip77Executed, "LIP-77 already executed");
+
+        lip77Executed = true;
+
+        delegators[LIP_77_ADDRESS].bondedAmount = _bondedAmount;
+
+        address delegate = delegators[LIP_77_ADDRESS].delegateAddress;
+
+        emit Bond(delegate, delegate, LIP_77_ADDRESS, 0, _bondedAmount);
     }
 
     /**
