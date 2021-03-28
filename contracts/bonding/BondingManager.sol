@@ -1094,9 +1094,27 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // If a cumulative factor was stored before the LIP-71 round it will still be scaled using MathUtils.percPoints(1, 1)
         // So, once we are at or after the LIP-71 round, if we read a cumulative factor for a round before the LIP-71 round, we rescale
         // the value by RESCALE_FACTOR so that the end value is scaled by PreciseMathUtils.percPoints(1, 1)
-        if (roundsManager().currentRound() >= lip71Round && _round < lip71Round) {
-            pool.cumulativeRewardFactor = pool.cumulativeRewardFactor.mul(RESCALE_FACTOR);
-            pool.cumulativeFeeFactor = pool.cumulativeFeeFactor.mul(RESCALE_FACTOR);
+        if (roundsManager().currentRound() >= lip71Round) {
+            if (_round < lip71Round) {
+                pool.cumulativeRewardFactor = pool.cumulativeRewardFactor.mul(RESCALE_FACTOR);
+                pool.cumulativeFeeFactor = pool.cumulativeFeeFactor.mul(RESCALE_FACTOR);
+            } else {
+                // There was a bug in bondWithHint() that allowed cumulative factors to be stored after LIP-71 round to still be scaled using MathUtils.percPoints(1, 1)
+                // If we read a cumulativeRewardFactor for a round after the LIP-71 round and it is less than PreciseMathUtils.percPoints(1, 1), it was
+                // affected by this bug so we rescale it by RESCALE_FACTOR
+                if (pool.cumulativeRewardFactor < PreciseMathUtils.percPoints(1, 1)) {
+                    pool.cumulativeRewardFactor = pool.cumulativeRewardFactor.mul(RESCALE_FACTOR);
+                }
+                // If cumulativeFeeFactor was previously rescaled, then its minimum value non-zero value is RESCALE_FACTOR
+                // If prior to rescaling:
+                // - cumulativeFeeFactor = 0, then after rescaling it would be 0
+                // - cumulativeFeeFactor >= 1, then after rescaling it would be >= RESCALE_FACTOR
+                // So, if we read a cumulativeFeeFactor for a round after the LIP-71 round and it is less than RESCALE_FACTOR its value is either 0, in which case
+                // it is still safe to rescale, or > 0, in which case it needs to be rescaled
+                if (pool.cumulativeFeeFactor < RESCALE_FACTOR) {
+                    pool.cumulativeFeeFactor = pool.cumulativeFeeFactor.mul(RESCALE_FACTOR);
+                }
+            }
         }
 
         return pool;
