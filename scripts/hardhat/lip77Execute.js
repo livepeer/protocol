@@ -101,7 +101,7 @@ async function main() {
     }
     if (
         events[0].args.newDelegate != transcoder ||
-        events[0].args.newDelegate != transcoder ||
+        events[0].args.oldDelegate != transcoder ||
         events[0].args.delegator != delegator || 
         !events[0].args.additionalAmount.isZero() ||
         !events[0].args.bondedAmount.eq(BigNumber.from(lip77BondedAmount))
@@ -114,10 +114,14 @@ async function main() {
         throw new Error(`Delegator ${delegator} bondedAmount != LIP-77 bondedAmount`)
     }
 
+    console.log(`Delegator ${delegator} bondedAmount: ${del.bondedAmount.toString()}`)
+
     const stake = await bondingManager.pendingStake(delegator, 2105)
     if (!stake.eq(BigNumber.from(lip77BondedAmount))) {
         throw new Error(`Delegator ${delegator} pendingStake != LIP-77 bondedAmount`)
     }
+
+    console.log(`Delegator ${delegator} pendingStake: ${stake.toString()}`)
 
     let invalidUpdateErr
     try {
@@ -142,7 +146,7 @@ async function main() {
 
     let callerErr
     try {
-        const bondingManagerBadCaller = await ethers.getContractAt("BondingManager", govAddr, signer)
+        const bondingManagerBadCaller = await ethers.getContractAt("BondingManager", bondingManagerAddr, signer)
         await bondingManagerBadCaller.executeLIP77(1234)
     } catch (err) {
         callerErr = err
