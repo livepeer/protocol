@@ -139,6 +139,20 @@ async function main() {
     }
 
     console.log(`Got expected invalid update error: ${invalidUpdateErr}`)
+
+    let callerErr
+    try {
+        const bondingManagerBadCaller = await ethers.getContractAt("BondingManager", govAddr, signer)
+        await bondingManagerBadCaller.executeLIP77(1234)
+    } catch (err) {
+        callerErr = err
+    }
+
+    if (!callerErr) {
+        throw new Error("Expected error for bad caller with executeLIP77")
+    }
+
+    console.log(`Got expected bad caller error: ${callerErr}`)
 }
 
 main()
