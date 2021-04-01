@@ -1126,14 +1126,29 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
                 if (pool.cumulativeRewardFactor < PreciseMathUtils.percPoints(1, 1)) {
                     pool.cumulativeRewardFactor = pool.cumulativeRewardFactor.mul(RESCALE_FACTOR);
                 }
-                // If cumulativeFeeFactor was previously rescaled, then its minimum value non-zero value is RESCALE_FACTOR
-                // If prior to rescaling:
-                // - cumulativeFeeFactor = 0, then after rescaling it would be 0
-                // - cumulativeFeeFactor >= 1, then after rescaling it would be >= RESCALE_FACTOR
-                // So, if we read a cumulativeFeeFactor for a round after the LIP-71 round and it is less than RESCALE_FACTOR its value is either 0, in which case
-                // it is still safe to rescale, or > 0, in which case it needs to be rescaled
-                if (pool.cumulativeFeeFactor < RESCALE_FACTOR) {
-                    pool.cumulativeFeeFactor = pool.cumulativeFeeFactor.mul(RESCALE_FACTOR);
+
+                if (_round <= roundsManager().lipUpgradeRound(78)) {
+                    if (
+                        // As of the LIP-78 round, the only post LIP-71 round CFF values that are below MathUtils.percPoints(1, 1)
+                        // are CFF values that were copied from pre LIP-71 round without multiplying by RESCALE_FACTOR due to a bug.
+                        pool.cumulativeFeeFactor < MathUtils.percPoints(1, 1)
+                    ) {
+
+                        // At this point, we know that the CFF was copied from pre LIP-71 round without multiplying by RESCALE_FACTOR due to a bug.
+                        // Correct this by multiplying by RESCALE_FACTOR.
+                        pool.cumulativeFeeFactor = pool.cumulativeFeeFactor.mul(RESCALE_FACTOR);
+
+                    } else if (
+                        // As of the LIP-78 round, the only CFF values > 10 ** 32 are ones that were corrupted due to a bug
+                        // that caused CFF values to be multiplied by RESCALE_FACTOR unnecessarily.
+                        pool.cumulativeFeeFactor > 10 ** 32
+                    ) {
+
+                        // At this point, we know that the CFF was multiplied by RESCALE_FACTOR unnecessarily.
+                        // Correct this by dividing by RESCALE_FACTOR.
+                        pool.cumulativeFeeFactor = pool.cumulativeFeeFactor.div(RESCALE_FACTOR);
+
+                    }
                 }
             }
         }
