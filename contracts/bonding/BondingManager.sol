@@ -34,6 +34,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     uint256 constant RESCALE_FACTOR = 10 ** 21;
     // Address for LIP-77 execution
     address constant LIP_77_ADDRESS = 0xB47D8F87c0113827d44Ad0Bc32D53823C477a89d;
+    // Maximum CFF used to check whether to down scale CFF values prior to the LIP-78 round
+    uint256 constant LIP_78_MAX_CFF = 10 ** 32;
 
     // Time between unbonding and possible withdrawl in rounds
     uint64 public unbondingPeriod;
@@ -1141,7 +1143,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
                     } else if (
                         // As of the LIP-78 round, the only CFF values > 10 ** 32 are ones that were corrupted due to a bug
                         // that caused CFF values to be multiplied by RESCALE_FACTOR unnecessarily.
-                        pool.cumulativeFeeFactor > 10 ** 32
+                        pool.cumulativeFeeFactor > LIP_78_MAX_CFF
                     ) {
 
                         // At this point, we know that the CFF was multiplied by RESCALE_FACTOR unnecessarily.
