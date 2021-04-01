@@ -40,7 +40,8 @@ async function main() {
         "0xe1c879f065682a0d35966596a72d5681a56118a5",
         "0xeb0fb162ede9607e51a34f76414b89945d697c0b",
         "0xf105ddc949e93bee98e328ab40a01d98eef05168",
-        "0x5b20f87280d931b3921b658a7260d1c8e363f7ee" 
+        "0x5b20f87280d931b3921b658a7260d1c8e363f7ee",
+        "0x92e4709784914edbe7c75da707f934fc51407a28"
     ]
 
     const transcoders = [

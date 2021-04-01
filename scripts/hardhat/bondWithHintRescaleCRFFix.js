@@ -27,8 +27,11 @@ async function main() {
     const controllerAddr = "0xf96d54e490317c557a967abfa5d6e33006be69b3"
     const bondingManagerAddr = "0x511bc4556d823ae99630ae8de28b9b80df90ea2e"
     const sortedDoublyLLAddr = "0x1a0b2ca69ca2c7f96e2529faa6d63f881655d81a"
+    const roundsManagerAddr = "0x3984fc4ceeef1739135476f625d36d6c35c40dc3"
 
     const delegator = "0xb47d8f87c0113827d44ad0bc32d53823c477a89d"
+
+    const lip78Round = 2109
 
     // Deploy new BondingManager target implementation
     const BondingManager = await ethers.getContractFactory("BondingManager", {
@@ -53,6 +56,16 @@ async function main() {
     const multisigSigner = await ethers.provider.getSigner(multisigAddr)
     const gov = await ethers.getContractAt("Governor", govAddr, multisigSigner)
     const controller = await ethers.getContractAt("Controller", controllerAddr)
+    const roundsManager = await ethers.getContractAt("RoundsManager", roundsManagerAddr)
+
+    const setLIPUpgradeRoundData = utils.hexlify(
+        utils.arrayify(
+            roundsManager.interface.encodeFunctionData(
+                "setLIPUpgradeRound(uint256,uint256)",
+                [78, lip78Round]
+            )
+        )
+    )
 
     const contractID = utils.solidityKeccak256(["string"], ["BondingManagerTarget"])
     const gitCommitHash = "0x522ef6cf6eb3c3b411a4c16517ad78ebe8a08032" // Placeholder
@@ -65,9 +78,9 @@ async function main() {
         )
     )
     const update = {
-        target: [controllerAddr],
-        value: ["0"],
-        data: [setInfoData],
+        target: [roundsManagerAddr, controllerAddr],
+        value: ["0", "0"],
+        data: [setLIPUpgradeRoundData, setInfoData],
         nonce: 0
     }
 
