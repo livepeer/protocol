@@ -32,6 +32,10 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     uint256 constant MAX_LOOKBACK_ROUNDS = 100;
     // PreciseMathUtils.percPoints(1, 1) / MathUtils.percPoints(1, 1) => (10 ** 27) / 1000000
     uint256 constant RESCALE_FACTOR = 10 ** 21;
+    // Address for LIP-77 execution
+    address constant LIP_77_ADDRESS = 0xB47D8F87c0113827d44Ad0Bc32D53823C477a89d;
+    // Maximum CFF used to check whether to down scale CFF values prior to the LIP-78 round
+    uint256 constant LIP_78_MAX_CFF = 10 ** 32;
 
     // Time between unbonding and possible withdrawl in rounds
     uint64 public unbondingPeriod;
@@ -116,6 +120,9 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     // in the pool are locked into the active set for round N + 1
     SortedDoublyLL.Data private transcoderPoolV2;
 
+    // Flag for whether LIP-77 has been executed
+    bool private lip77Executed;
+
     // Check if sender is TicketBroker
     modifier onlyTicketBroker() {
         _onlyTicketBroker();
@@ -185,6 +192,22 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         maxEarningsClaimsRounds = _maxEarningsClaimsRounds;
 
         emit ParameterUpdate("maxEarningsClaimsRounds");
+    }
+
+    /**
+     * @notice Execute LIP-77. Can only be called once by Controller owner
+     * @param _bondedAmount The bonded amount for the LIP-77 address
+     */
+    function executeLIP77(uint256 _bondedAmount) external onlyControllerOwner {
+        require(!lip77Executed, "LIP-77 already executed");
+
+        lip77Executed = true;
+
+        delegators[LIP_77_ADDRESS].bondedAmount = _bondedAmount;
+
+        address delegate = delegators[LIP_77_ADDRESS].delegateAddress;
+
+        emit Bond(delegate, delegate, LIP_77_ADDRESS, 0, _bondedAmount);
     }
 
     /**
@@ -622,10 +645,10 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         Transcoder storage newDelegate = transcoders[_to];
         EarningsPool.Data storage currPool = newDelegate.earningsPoolPerRound[currentRound];
         if (currPool.cumulativeRewardFactor == 0) {
-            currPool.cumulativeRewardFactor = newDelegate.earningsPoolPerRound[newDelegate.lastRewardRound].cumulativeRewardFactor;
+            currPool.cumulativeRewardFactor = cumulativeFactorsPool(newDelegate, newDelegate.lastRewardRound).cumulativeRewardFactor;
         }
         if (currPool.cumulativeFeeFactor == 0) {
-            currPool.cumulativeFeeFactor = newDelegate.earningsPoolPerRound[newDelegate.lastFeeRound].cumulativeFeeFactor;
+            currPool.cumulativeFeeFactor = cumulativeFactorsPool(newDelegate, newDelegate.lastFeeRound).cumulativeFeeFactor;
         }
 
         // cannot delegate to someone without having bonded stake
@@ -1094,9 +1117,42 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // If a cumulative factor was stored before the LIP-71 round it will still be scaled using MathUtils.percPoints(1, 1)
         // So, once we are at or after the LIP-71 round, if we read a cumulative factor for a round before the LIP-71 round, we rescale
         // the value by RESCALE_FACTOR so that the end value is scaled by PreciseMathUtils.percPoints(1, 1)
-        if (roundsManager().currentRound() >= lip71Round && _round < lip71Round) {
-            pool.cumulativeRewardFactor = pool.cumulativeRewardFactor.mul(RESCALE_FACTOR);
-            pool.cumulativeFeeFactor = pool.cumulativeFeeFactor.mul(RESCALE_FACTOR);
+        if (roundsManager().currentRound() >= lip71Round) {
+            if (_round < lip71Round) {
+                pool.cumulativeRewardFactor = pool.cumulativeRewardFactor.mul(RESCALE_FACTOR);
+                pool.cumulativeFeeFactor = pool.cumulativeFeeFactor.mul(RESCALE_FACTOR);
+            } else {
+                // There was a bug in bondWithHint() that allowed cumulative factors to be stored after LIP-71 round to still be scaled using MathUtils.percPoints(1, 1)
+                // If we read a cumulativeRewardFactor for a round after the LIP-71 round and it is less than PreciseMathUtils.percPoints(1, 1), it was
+                // affected by this bug so we rescale it by RESCALE_FACTOR
+                if (pool.cumulativeRewardFactor < PreciseMathUtils.percPoints(1, 1)) {
+                    pool.cumulativeRewardFactor = pool.cumulativeRewardFactor.mul(RESCALE_FACTOR);
+                }
+
+                if (_round <= roundsManager().lipUpgradeRound(78)) {
+                    if (
+                        // As of the LIP-78 round, the only post LIP-71 round CFF values that are below MathUtils.percPoints(1, 1)
+                        // are CFF values that were copied from pre LIP-71 round without multiplying by RESCALE_FACTOR due to a bug.
+                        pool.cumulativeFeeFactor < MathUtils.percPoints(1, 1)
+                    ) {
+
+                        // At this point, we know that the CFF was copied from pre LIP-71 round without multiplying by RESCALE_FACTOR due to a bug.
+                        // Correct this by multiplying by RESCALE_FACTOR.
+                        pool.cumulativeFeeFactor = pool.cumulativeFeeFactor.mul(RESCALE_FACTOR);
+
+                    } else if (
+                        // As of the LIP-78 round, the only CFF values > 10 ** 32 are ones that were corrupted due to a bug
+                        // that caused CFF values to be multiplied by RESCALE_FACTOR unnecessarily.
+                        pool.cumulativeFeeFactor > LIP_78_MAX_CFF
+                    ) {
+
+                        // At this point, we know that the CFF was multiplied by RESCALE_FACTOR unnecessarily.
+                        // Correct this by dividing by RESCALE_FACTOR.
+                        pool.cumulativeFeeFactor = pool.cumulativeFeeFactor.div(RESCALE_FACTOR);
+
+                    }
+                }
+            }
         }
 
         return pool;
