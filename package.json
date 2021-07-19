@@ -28,7 +28,9 @@
     "docker:run:lint": "docker run --rm --entrypoint=npm livepeer/protocol:latest run lint",
     "docker:run:test:coverage": "docker run -e COVERALLS_REPO_TOKEN=$COVERALLS_REPO_TOKEN --rm --entrypoint=npm livepeer/protocol:latest run test:coverage:coveralls",
     "docker:run:test:unit": "docker run --rm --entrypoint=npm livepeer/protocol:latest run test:unit",
-    "docker:run:test:integration": "docker run --rm --entrypoint=npm livepeer/protocol:latest run test:integration"
+    "docker:run:test:integration": "docker run --rm --entrypoint=npm livepeer/protocol:latest run test:integration",
+    "compile:hardhat": "hardhat compile",
+    "tsc": "tsc"
   },
   "repository": {
     "type": "git",
