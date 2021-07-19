@@ -13,3 +13,5 @@ coverage.json
 .coverage_contracts
 artifacts
 cache
+dist/
+typechain/
