@@ -4,6 +4,9 @@ import "@nomiclabs/hardhat-waffle";
 import "babel-register";
 import "babel-polyfill";
 import "@typechain/hardhat";
+import "hardhat-gas-reporter";
+import "solidity-coverage";
+import "@nomiclabs/hardhat-etherscan";
 
 /**
  * @type import('hardhat/config').HardhatUserConfig
@@ -22,5 +25,11 @@ export default {
     hardhat: {
       blockGasLimit: 12000000,
     },
+  },
+  gasReporter: {
+    enabled: true,
+  },
+  etherscan: {
+    apiKey: process.env.ETHERSCAN_API_KEY,
   },
 };
