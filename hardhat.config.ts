@@ -7,11 +7,9 @@ import "@typechain/hardhat";
 import "hardhat-gas-reporter";
 import "solidity-coverage";
 import "@nomiclabs/hardhat-etherscan";
+import { HardhatUserConfig } from "hardhat/types/config";
 
-/**
- * @type import('hardhat/config').HardhatUserConfig
- */
-export default {
+const config: HardhatUserConfig = {
   solidity: {
     version: "0.5.11",
     settings: {
@@ -33,3 +31,5 @@ export default {
     apiKey: process.env.ETHERSCAN_API_KEY,
   },
 };
+
+export default config;
