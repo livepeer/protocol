@@ -1,5 +1,5 @@
 // TODO: Eventually avoid conditionally loading from hardhat
-let web3
+// using global web3 variable injected by truffle
 if (web3 === undefined) {
     web3 = require("hardhat").web3
 }

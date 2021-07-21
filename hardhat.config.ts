@@ -1,8 +1,5 @@
 import "@nomiclabs/hardhat-ethers";
 import "@nomiclabs/hardhat-web3";
-import "@nomiclabs/hardhat-waffle";
-import "babel-register";
-import "babel-polyfill";
 import "@typechain/hardhat";
 import "hardhat-gas-reporter";
 import "solidity-coverage";
