@@ -4,7 +4,7 @@ import expectThrow from "../helpers/expectThrow"
 const LivepeerTokenFaucet = artifacts.require("LivepeerTokenFaucet")
 const LivepeerToken = artifacts.require("LivepeerToken")
 
-contract("LivepeerTokenFaucet", accounts => {
+describe("LivepeerTokenFaucet", accounts => {
     const faucetAmount = 10000000000000
     const requestAmount = 100
     const requestWait = 2

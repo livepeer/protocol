@@ -1,8 +1,7 @@
 import BN from "bn.js"
-
-const {constants} = require("../../utils/constants")
-const {contractId} = require("../../utils/helpers")
-const executeLIP36Upgrade = require("../helpers/executeLIP36Upgrade")
+import {constants} from "../../utils/constants"
+import {contractId} from "../../utils/helpers"
+import executeLIP36Upgrade from "../helpers/executeLIP36Upgrade"
 import {createWinningTicket, getTicketHash} from "../helpers/ticket"
 import signMsg from "../helpers/signMsg"
 import math from "../helpers/math"
@@ -19,7 +18,7 @@ const LinkedList = artifacts.require("SortedDoublyLL")
 
 const ManagerProxy = artifacts.require("ManagerProxy")
 
-contract("Earnings", accounts => {
+describe("Earnings", accounts => {
     let controller
     let bondingManager
     let bondingProxy

@@ -8,7 +8,7 @@ const BondingManager = artifacts.require("BondingManager")
 const AdjustableRoundsManager = artifacts.require("AdjustableRoundsManager")
 const LivepeerToken = artifacts.require("LivepeerToken")
 
-contract("PoolUpdatesWithHints", accounts => {
+describe("PoolUpdatesWithHints", accounts => {
     let rpc
     let snapshotId
 

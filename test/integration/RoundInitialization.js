@@ -6,7 +6,7 @@ const BondingManager = artifacts.require("BondingManager")
 const AdjustableRoundsManager = artifacts.require("AdjustableRoundsManager")
 const LivepeerToken = artifacts.require("LivepeerToken")
 
-contract("RoundInitialization", accounts => {
+describe("RoundInitialization", accounts => {
     const TOKEN_UNIT = 10 ** 18
 
     let controller

@@ -1,5 +1,5 @@
-const BN = require("bn.js")
-const {constants} = require("../../utils/constants")
+import BN from "bn.js"
+import {constants} from "../../utils/constants"
 
 // Returns a / b scaled by PERC_DIVISOR
 // See percPoints() in contracts/libraries/MathUtils.sol

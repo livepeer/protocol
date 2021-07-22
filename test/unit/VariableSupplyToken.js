@@ -2,7 +2,7 @@ import expectThrow from "../helpers/expectThrow"
 
 const VariableSupplyToken = artifacts.require("VariableSupplyToken")
 
-contract("VariableSupplyToken", accounts => {
+describe("VariableSupplyToken", accounts => {
     let token
 
     before(async () => {

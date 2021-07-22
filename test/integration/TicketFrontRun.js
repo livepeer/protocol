@@ -12,7 +12,7 @@ const BondingManager = artifacts.require("BondingManager")
 const AdjustableRoundsManager = artifacts.require("AdjustableRoundsManager")
 const LivepeerToken = artifacts.require("LivepeerToken")
 
-contract("TicketFrontRun", ([deployer, broadcaster, evilSybilAccount, evilNonActiveTranscoder, evilActiveTranscoder, ...otherAccounts]) => {
+describe("TicketFrontRun", ([deployer, broadcaster, evilSybilAccount, evilNonActiveTranscoder, evilActiveTranscoder, ...otherAccounts]) => {
     let honestTranscoder = otherAccounts[0]
 
     let rpc

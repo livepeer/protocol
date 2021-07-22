@@ -8,7 +8,7 @@ import {contractId, functionSig, functionEncodedABI} from "../../utils/helpers"
 const GenericMock = artifacts.require("GenericMock")
 const Minter = artifacts.require("Minter")
 
-contract("Minter", accounts => {
+describe("Minter", accounts => {
     let fixture
     let minter
 

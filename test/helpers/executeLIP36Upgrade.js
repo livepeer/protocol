@@ -2,7 +2,7 @@ const BondingManager = artifacts.require("BondingManager")
 const LinkedList = artifacts.require("SortedDoublyLL")
 const AdjustableRoundsManager = artifacts.require("AdjustableRoundsManager")
 
-const {contractId} = require("../../utils/helpers")
+import {contractId} from "../../utils/helpers"
 import BN from "bn.js"
 
 module.exports = async function(controller, roundsManager, bondingManagerProxyAddress) {

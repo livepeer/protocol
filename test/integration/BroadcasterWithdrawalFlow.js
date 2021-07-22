@@ -9,7 +9,7 @@ const Minter = artifacts.require("Minter")
 const AdjustableRoundsManager = artifacts.require("AdjustableRoundsManager")
 const LivepeerToken = artifacts.require("LivepeerToken")
 
-contract("BroadcasterWithdrawalFlow", accounts => {
+describe("BroadcasterWithdrawalFlow", accounts => {
     const broadcaster = accounts[0]
 
     let broker

@@ -6,7 +6,7 @@ import truffleAssert from "truffle-assertions"
 const Refunder = artifacts.require("Refunder")
 const AlphaJobsManagerMock = artifacts.require("AlphaJobsManagerMock")
 
-contract("Refunder", accounts => {
+describe("Refunder", accounts => {
     let fixture
 
     let refunder

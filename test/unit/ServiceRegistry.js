@@ -3,7 +3,7 @@ import truffleAssert from "truffle-assertions"
 
 const ServiceRegistry = artifacts.require("ServiceRegistry")
 
-contract("ServiceRegistry", accounts => {
+describe("ServiceRegistry", accounts => {
     describe("constructor", () => {
         it("invokes base Manager contract constructor", async () => {
             // Use dummy Controller

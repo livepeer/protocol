@@ -8,7 +8,7 @@ const BondingManagerPreLIP36 = artifacts.require("BondingManagerPreLIP36")
 const BondingManager = artifacts.require("BondingManager")
 const LinkedList = artifacts.require("SortedDoublyLL")
 
-contract("LIP36 transition", accounts => {
+describe("LIP36 transition", accounts => {
     let fixture
     let proxy
     let bondingManager

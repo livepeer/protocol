@@ -5,7 +5,7 @@ import expectRevertWithReason from "../helpers/expectFail"
 
 const Poll = artifacts.require("Poll")
 
-contract("Poll", accounts => {
+describe("Poll", accounts => {
     let fixture
     let poll
     let startBlock

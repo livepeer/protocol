@@ -7,7 +7,7 @@ const BondingManager = artifacts.require("BondingManager")
 const AdjustableRoundsManager = artifacts.require("AdjustableRoundsManager")
 const LivepeerToken = artifacts.require("LivepeerToken")
 
-contract("System Pause", accounts => {
+describe("System Pause", accounts => {
     let controller
     let bondingManager
     let roundsManager

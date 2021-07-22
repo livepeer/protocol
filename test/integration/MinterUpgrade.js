@@ -9,7 +9,7 @@ const AdjustableRoundsManager = artifacts.require("AdjustableRoundsManager")
 const LivepeerToken = artifacts.require("LivepeerToken")
 const TicketBroker = artifacts.require("TicketBroker")
 
-contract("MinterUpgrade", accounts => {
+describe("MinterUpgrade", accounts => {
     const NEW_INFLATION_CHANGE = new BN(1)
 
     const transcoder1 = accounts[1]
