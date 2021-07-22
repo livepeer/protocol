@@ -1,6 +1,6 @@
 const util = require("util")
 const exec = util.promisify(require("child_process").exec)
-const {contractId} = require("./helpers")
+const {contractId} = require("./helpers.ts")
 
 class ContractDeployer {
     constructor(truffleDeployer, controllerArtifact, managerProxyArtifact) {
