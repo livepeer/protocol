@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "allowJs": true,
     "target": "es5",
     "module": "commonjs",
     "strict": true,
@@ -7,6 +8,6 @@
     "outDir": "dist",
     "resolveJsonModule": true
   },
-  "include": ["./scripts", "./test", "./deploy", "./utils", "index.d.ts"],
+  "include": ["./scripts", "./test", "./deploy", "./utils"],
   "files": ["./hardhat.config.ts"]
 }
