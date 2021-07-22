@@ -4,6 +4,11 @@ import "@typechain/hardhat";
 import "hardhat-gas-reporter";
 import "solidity-coverage";
 import "@nomiclabs/hardhat-etherscan";
+
+// deployment plugins
+import 'hardhat-deploy';
+import 'hardhat-deploy-ethers';
+
 import { HardhatUserConfig } from "hardhat/types/config";
 
 const config: HardhatUserConfig = {
@@ -15,6 +20,9 @@ const config: HardhatUserConfig = {
         runs: 200,
       },
     },
+  },
+  namedAccounts: {
+    deployer: 0,
   },
   networks: {
     hardhat: {
