@@ -11,7 +11,7 @@ const QUORUM = 333300
 const QUOTA = 500000
 const POLL_PERIOD = 10 * 5760
 
-contract("PollCreator", accounts => {
+describe("PollCreator", accounts => {
     let fixture
     let token
     let pollCreator

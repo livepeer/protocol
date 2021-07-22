@@ -1,6 +1,6 @@
-import util from 'util'
-import {exec} from 'child_process'
-const execute = util.promisify(exec)
+import util from "util"
+import childProcess from "child_process"
+const exec = util.promisify(childProcess.exec)
 
 import { ethers } from 'hardhat'
 import {DeployOptions, DeployResult, DeploymentsExtension} from 'hardhat-deploy/types'
@@ -26,7 +26,7 @@ export default class ContractDeployer {
     }
 
     private async getGitHeadCommitHash(): Promise<string> {
-        const {stdout, stderr} = await execute("git rev-parse HEAD")
+        const {stdout, stderr} = await exec("git rev-parse HEAD")
         if (stderr) {throw new Error(stderr)}
         return `0x${stdout?.trim()}`
     }

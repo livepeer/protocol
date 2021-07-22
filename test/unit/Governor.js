@@ -7,7 +7,7 @@ import {BN} from "ethereumjs-util"
 const Governor = artifacts.require("Governor")
 const SetUint256 = artifacts.require("SetUint256")
 
-contract("Governor", accounts => {
+describe("Governor", accounts => {
     let fixture
     let governor
     let setUint256

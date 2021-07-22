@@ -1,13 +1,9 @@
 import {contractId} from "../../utils/helpers"
 import {constants} from "../../utils/constants"
 import RPC from "../../utils/rpc"
+import {web3} from "hardhat"
 
-const Controller = artifacts.require("Controller")
-const BondingManager = artifacts.require("BondingManager")
-const AdjustableRoundsManager = artifacts.require("AdjustableRoundsManager")
-const LivepeerToken = artifacts.require("LivepeerToken")
-
-contract("transcoder pool size gas report", accounts => {
+describe("transcoder pool size gas report", async () => {
     let rpc
 
     let controller
@@ -16,6 +12,8 @@ contract("transcoder pool size gas report", accounts => {
     let token
 
     let roundLength
+
+    let accounts = await web3.eth.getAccounts()
 
     // Creates a full pool using the addresses in `accs`
     // Upon creation, the pool ordering (ascending from last position) is:

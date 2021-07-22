@@ -10,7 +10,7 @@ const LivepeerToken = artifacts.require("LivepeerToken")
 
 const {DelegatorStatus} = constants
 
-contract("Delegation", accounts => {
+describe("Delegation", accounts => {
     const TOKEN_UNIT = (new BN(10)).pow(new BN(18))
 
     let controller

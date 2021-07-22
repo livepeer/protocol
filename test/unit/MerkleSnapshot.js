@@ -1,13 +1,12 @@
 const truffleAssert = require("truffle-assertions")
-const {keccak256, bufferToHex} = require("ethereumjs-util")
-
-const {MerkleTree} = require("../../utils/merkleTree")
+import {keccak256, bufferToHex} from "ethereumjs-util"
+import MerkleTree from "../../utils/merkleTree"
 import {assert} from "chai"
 import Fixture from "./helpers/Fixture"
 
 const MerkleSnapshot = artifacts.require("MerkleSnapshot")
 
-contract("MerkleSnapshot", accounts => {
+describe("MerkleSnapshot", accounts => {
     let fixture
     let merkleSnapshot
 

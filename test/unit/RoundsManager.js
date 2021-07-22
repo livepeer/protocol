@@ -6,7 +6,7 @@ import truffleAssert from "truffle-assertions"
 
 const RoundsManager = artifacts.require("RoundsManager")
 
-contract("RoundsManager", accounts => {
+describe("RoundsManager", accounts => {
     let fixture
     let roundsManager
 

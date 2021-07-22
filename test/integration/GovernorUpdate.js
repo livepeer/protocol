@@ -9,7 +9,7 @@ const BondingManager = artifacts.require("BondingManager")
 const Governor = artifacts.require("Governor")
 const Minter = artifacts.require("Minter")
 
-contract("Governor update", accounts => {
+describe("Governor update", accounts => {
     let controller
     let bondingManager
     let governor

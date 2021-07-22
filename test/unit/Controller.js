@@ -5,7 +5,7 @@ import expectThrow from "../helpers/expectThrow"
 const Manager = artifacts.require("Manager")
 const Controller = artifacts.require("Controller")
 
-contract("Controller", accounts => {
+describe("Controller", accounts => {
     describe("constructor", () => {
         it("should create contract", async () => {
             const controller = await Controller.new()

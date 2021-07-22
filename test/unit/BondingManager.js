@@ -6,15 +6,9 @@ import math from "../helpers/math"
 import BN from "bn.js"
 import truffleAssert from "truffle-assertions"
 import {assert} from "chai"
-import {ethers} from "ethers"
-
-const BondingManager = artifacts.require("BondingManager")
-const LinkedList = artifacts.require("SortedDoublyLL")
-const RoundsManager = artifacts.require("RoundsManager")
-
+import {ethers, web3} from "hardhat"
 const {DelegatorStatus, TranscoderStatus} = constants
-
-contract("BondingManager", accounts => {
+describe("BondingManager", () => {
     let fixture
     let bondingManager
 
@@ -24,6 +18,12 @@ contract("BondingManager", accounts => {
 
     const PERC_DIVISOR = 1000000
     const PERC_MULTIPLIER = PERC_DIVISOR / 100
+
+    let accounts
+
+    before(async function() {
+        accounts = await web3.eth.getAccounts()
+    })
 
     before(async () => {
         fixture = new Fixture(web3)
@@ -303,7 +303,7 @@ contract("BondingManager", accounts => {
         })
     })
 
-    describe("bond", () => {
+    describe("bond", async () => {
         const transcoder0 = accounts[0]
         const transcoder1 = accounts[1]
         const transcoder2 = accounts[2]

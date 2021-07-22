@@ -1,13 +1,13 @@
 import {contractId} from "../../../utils/helpers"
 import {constants} from "../../../utils/constants"
-const {MerkleTree} = require("../../../utils/merkleTree")
-const executeLIP36Upgrade = require("../../helpers/executeLIP36Upgrade")
+import MerkleTree from "../../../utils/merkleTree"
+import executeLIP36Upgrade from "../../helpers/executeLIP36Upgrade"
 
 import {createWinningTicket, getTicketHash} from "../../helpers/ticket"
 import signMsg from "../../helpers/signMsg"
 
-const {keccak256, bufferToHex} = require("ethereumjs-util")
-let abi = require("ethereumjs-abi")
+import {keccak256, bufferToHex} from "ethereumjs-util"
+import abi from "ethereumjs-abi"
 import BN from "bn.js"
 import truffleAssert from "truffle-assertions"
 import {assert} from "chai"
@@ -22,7 +22,7 @@ const BondingManagerPreLIP36 = artifacts.require("BondingManagerPreLIP36")
 const LinkedList = artifacts.require("SortedDoublyLL")
 const ManagerProxy = artifacts.require("ManagerProxy")
 
-contract("ClaimEarningsSnapshot", accounts => {
+describe("ClaimEarningsSnapshot", accounts => {
     let controller
     let bondingManager
     let roundsManager
@@ -253,7 +253,7 @@ contract("ClaimEarningsSnapshot", accounts => {
     })
 })
 
-contract("Including cumulative earnings in the snapshot results in excessive earnings (bug)", accounts => {
+describe("Including cumulative earnings in the snapshot results in excessive earnings (bug)", accounts => {
     let controller
     let bondingManager
     let roundsManager
@@ -399,7 +399,7 @@ contract("Including cumulative earnings in the snapshot results in excessive ear
     })
 })
 
-contract("Snapshot only existing out of pre-LIP36 earnings should yield correct results", accounts => {
+describe("Snapshot only existing out of pre-LIP36 earnings should yield correct results", accounts => {
     let controller
     let bondingManager
     let roundsManager

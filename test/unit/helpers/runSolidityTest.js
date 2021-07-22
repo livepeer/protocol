@@ -1,6 +1,6 @@
 // Taken from https://github.com/aragon/aragonOS/blob/ae3b1bde5da14fd5f696d04111d7c5cf57ad7dd1/test/helpers/runSolidityTest.js
-const abi = require("ethereumjs-abi")
-const {eventSig} = require("../../../utils/helpers")
+import abi from "ethereumjs-abi"
+import {eventSig} from "../../../utils/helpers"
 
 const HOOKS_MAP = {
     beforeAll: "before",
@@ -64,7 +64,7 @@ const linkLib = async (contract, libName) => {
 */
 function runSolidityTest(c, libs, mochaContext) {
     const artifact = artifacts.require(c)
-    contract(c, () => {
+    describe(c, () => {
         let deployed
 
         before(async () => {

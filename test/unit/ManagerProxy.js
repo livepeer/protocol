@@ -1,7 +1,7 @@
 import Fixture from "./helpers/Fixture"
 import expectThrow from "../helpers/expectThrow"
 import {contractId} from "../../utils/helpers"
-const {toBuffer, bufferToHex} = require("ethereumjs-util")
+import {toBuffer, bufferToHex} from "ethereumjs-util"
 import ethAbi from "ethereumjs-abi"
 
 const ManagerProxy = artifacts.require("ManagerProxy")
@@ -9,7 +9,7 @@ const ManagerProxyTargetMockV1 = artifacts.require("ManagerProxyTargetMockV1")
 const ManagerProxyTargetMockV2 = artifacts.require("ManagerProxyTargetMockV2")
 const ManagerProxyTargetMockV3 = artifacts.require("ManagerProxyTargetMockV3")
 
-contract("ManagerProxy", accounts => {
+describe("ManagerProxy", accounts => {
     let fixture
     let managerProxy
 

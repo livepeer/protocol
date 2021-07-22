@@ -8,13 +8,7 @@ import {
 } from "../helpers/ticket"
 import signMsg from "../helpers/signMsg"
 
-const Controller = artifacts.require("Controller")
-const BondingManager = artifacts.require("BondingManager")
-const AdjustableRoundsManager = artifacts.require("AdjustableRoundsManager")
-const LivepeerToken = artifacts.require("LivepeerToken")
-const TicketBroker = artifacts.require("TicketBroker")
-
-contract("redeem ticket gas report", accounts => {
+describe("redeem ticket gas report", async () => {
     let rpc
     let snapshotId
 
@@ -26,6 +20,8 @@ contract("redeem ticket gas report", accounts => {
     let ticketAuxData
 
     const deposit = 1000
+
+    let accounts = await web3.eth.getAccounts();
 
     before(async () => {
         rpc = new RPC(web3)

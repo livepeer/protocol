@@ -11,7 +11,7 @@ const Minter = artifacts.require("Minter")
 const AdjustableRoundsManager = artifacts.require("AdjustableRoundsManager")
 const LivepeerToken = artifacts.require("LivepeerToken")
 
-contract("TicketFlow", accounts => {
+describe("TicketFlow", accounts => {
     const transcoder = accounts[0]
     const broadcaster = accounts[1]
 

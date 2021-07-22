@@ -46,7 +46,7 @@ const executeUpgrade = async (controller, gov, bondingManagerProxyAddress) => {
     return await BondingManager.at(bondingManagerProxyAddress)
 }
 
-contract("ZeroStartFactorsBug", accounts => {
+describe("ZeroStartFactorsBug", accounts => {
     let controller
     let bondingManager
     let roundsManager

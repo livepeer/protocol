@@ -17,7 +17,7 @@ import {constants} from "../../utils/constants"
 
 const TicketBroker = artifacts.require("TicketBroker")
 
-contract("TicketBroker", accounts => {
+describe("TicketBroker", accounts => {
     let broker
     let fixture
 

@@ -1,4 +1,4 @@
-const {keccak256, bufferToHex} = require("ethereumjs-util")
+import {keccak256, bufferToHex} from "ethereumjs-util"
 import ethAbi from "ethereumjs-abi"
 
 export function contractId(name) {

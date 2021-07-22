@@ -6,7 +6,6 @@ import { Controller, BondingManager, RoundsManager, TicketBroker } from '../type
 
 import ContractDeployer from './deployer'
 import config from './migrations.config'
-import { Contract } from '@ethersproject/contracts'
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const { deployments, getNamedAccounts } = hre // Get the deployments and getNamedAccounts which are provided by hardhat-deploy
