@@ -30,13 +30,13 @@ export default class Fixture {
         this.merkleSnapshot = await this.deployAndRegister(GenericMock, "MerkleSnapshot")
         // Register TicketBroker with JobsManager contract ID because in a production system the Minter likely will not be upgraded to be
         // aware of the TicketBroker contract ID and it will only be aware of the JobsManager contract ID
-        await this.register("JobsManager", this.ticketBroker.address)
+        await this.register("JobsManager", this.ticketBroker.options.address)
         this.verifier = await this.deployAndRegister(GenericMock, "Verifier")
     }
 
     async register(name, addr) {
         // Use dummy Git commit hash
-        const commitHash = web3.utils.asciiToHex("0x123")
+        const commitHash = ethers.utils.toUtf8Bytes("01234567890123456789")
         await this.controller.setContractInfo(contractId(name), addr, commitHash)
     }
 
