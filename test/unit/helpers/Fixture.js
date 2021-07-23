@@ -5,6 +5,7 @@ import {ethers, web3} from "hardhat"
 export default class Fixture {
     constructor(web3) {
         this.rpc = new RPC(web3)
+        this.commitHash = "0x3031323334353637383930313233343536373839"
     }
 
     async deploy() {
@@ -36,12 +37,12 @@ export default class Fixture {
 
     async register(name, addr) {
         // Use dummy Git commit hash
-        const commitHash = ethers.utils.toUtf8Bytes("01234567890123456789")
-        await this.controller.setContractInfo(contractId(name), addr, commitHash)
+        await this.controller.setContractInfo(contractId(name), addr, this.commitHash)
     }
 
     async deployAndRegister(contractFactory, name, ...args) {
         const contract = await contractFactory.deploy(...args)
+        await contract.deployed()
         await this.register(name, contract.address)
         return contract
     }
