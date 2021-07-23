@@ -30,7 +30,7 @@ export default class Fixture {
         this.merkleSnapshot = await this.deployAndRegister(GenericMock, "MerkleSnapshot")
         // Register TicketBroker with JobsManager contract ID because in a production system the Minter likely will not be upgraded to be
         // aware of the TicketBroker contract ID and it will only be aware of the JobsManager contract ID
-        await this.register("JobsManager", this.ticketBroker.options.address)
+        await this.register("JobsManager", this.ticketBroker.address)
         this.verifier = await this.deployAndRegister(GenericMock, "Verifier")
     }
 
