@@ -59,7 +59,6 @@ describe("BondingManager", () => {
 
     describe("setController", () => {
         it("should fail if caller is not Controller", async () => {
-            console.log(accounts)
             await expect(bondingManager.setController(accounts[0])).to.be.revertedWith("caller must be Controller")
         })
 
