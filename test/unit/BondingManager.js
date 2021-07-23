@@ -44,7 +44,7 @@ describe("BondingManager", () => {
         })
         bondingManager = await fixture.deployAndRegister(bondingManagerFac, "BondingManager", fixture.controller.address)
 
-        await bondingManager.methods.setUnbondingPeriod(UNBONDING_PERIOD)
+        await bondingManager.setUnbondingPeriod(UNBONDING_PERIOD)
         await bondingManager.setNumActiveTranscoders(NUM_ACTIVE_TRANSCODERS)
         await bondingManager.setMaxEarningsClaimsRounds(MAX_EARNINGS_CLAIMS_ROUNDS)
     })
