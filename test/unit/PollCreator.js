@@ -1,11 +1,11 @@
-import truffleAssert from "truffle-assertions"
-
 import Fixture from "./helpers/Fixture"
-import expectRevertWithReason from "../helpers/expectFail"
 import {functionSig} from "../../utils/helpers"
+import {web3, ethers} from "hardhat"
 
-const PollCreator = artifacts.require("PollCreator")
-const GenericMock = artifacts.require("GenericMock")
+import chai, {expect, assert} from "chai"
+import {solidity} from "ethereum-waffle"
+chai.use(solidity)
+
 
 const QUORUM = 333300
 const QUOTA = 500000
@@ -18,7 +18,7 @@ describe("PollCreator", accounts => {
 
     before(async () => {
         fixture = new Fixture(web3)
-        token = await GenericMock.new()
+        token = await (await ethers.getContractFactory("GenericMock")).deploy()
     })
 
     beforeEach(async () => {
@@ -31,7 +31,7 @@ describe("PollCreator", accounts => {
 
     describe("constructor", () => {
         before(async () => {
-            pollCreator = await PollCreator.new(token.address)
+            pollCreator = await (await ethers.getContractFactory("PollCreator")).deploy(token.address)
         })
 
         it("initialize state: token", async () => {
@@ -43,11 +43,11 @@ describe("PollCreator", accounts => {
         const hash = "0x1230000000000000000000000000000000000000"
 
         before(async () => {
-            pollCreator = await PollCreator.new(token.address)
+            pollCreator = await (await ethers.getContractFactory("PollCreator")).deploy(token.address)
         })
 
         it("revert when not enough tokens approved", async () => {
-            await expectRevertWithReason(pollCreator.createPoll(hash), "LivepeerToken transferFrom failed")
+            await expect(pollCreator.createPoll(hash)).to.be.revertedWith("LivepeerToken transferFrom failed")
         })
 
         it("creates a poll", async () => {
@@ -55,15 +55,9 @@ describe("PollCreator", accounts => {
             let start = await fixture.rpc.getBlockNumberAsync()
             let end = start + POLL_PERIOD + 1 // + 1 because createPoll tx will mine a new block
             let tx = await pollCreator.createPoll(hash)
-            truffleAssert.eventEmitted(
-                tx,
-                "PollCreated",
-                e => e.proposal == hash
-                && e.endBlock.toNumber() == end
-                && e.quorum.toNumber() == QUORUM
-                && e.quota.toNumber() == QUOTA
-                ,
-                "PollCreated event not emitted correctly"
+            const receipt = await tx.wait()
+            expect(tx).to.emit(pollCreator, "PollCreated").withArgs(
+                receipt.events[0].args[0], hash, end, QUORUM, QUOTA
             )
         })
     })
