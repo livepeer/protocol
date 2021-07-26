@@ -1,6 +1,6 @@
 import RPC from "../../../utils/rpc"
 import {contractId} from "../../../utils/helpers"
-import {ethers, web3} from "hardhat"
+import {ethers} from "hardhat"
 
 export default class Fixture {
     constructor(web3) {
