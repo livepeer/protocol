@@ -3578,232 +3578,294 @@ describe("BondingManager", () => {
     //     })
     // })
 
-    // describe("setCurrentRoundTotalActiveStake", () => {
-    //     const transcoder = accounts[0]
+    describe("setCurrentRoundTotalActiveStake", () => {
+        let transcoder;
 
-    //     beforeEach(async () => {
-    //         await fixture.roundsManager.setMockBool(functionSig("currentRoundInitialized()"), true)
-    //         await fixture.roundsManager.setMockBool(functionSig("currentRoundLocked()"), false)
+        beforeEach(async () => {
+            transcoder = accounts[0];
 
-    //         await bondingManager.bond(1000, transcoder, {from: transcoder})
-    //         await bondingManager.transcoder(5, 10, {from: transcoder})
-    //     })
+            await fixture.roundsManager.setMockBool(functionSig("currentRoundInitialized()"), true);
+            await fixture.roundsManager.setMockBool(functionSig("currentRoundLocked()"), false);
 
-    //     it("fails if caller is not RoundsManager", async () => {
-    //         await expectRevertWithReason(bondingManager.setCurrentRoundTotalActiveStake(), "caller must be RoundsManager")
-    //     })
+            await bondingManager.connect(transcoder).bond(1000, transcoder.address);
+            await bondingManager.connect(transcoder).transcoder(5, 10);
+        });
 
-    //     it("sets currentRoundTotalActiveStake equal to nextRoundTotalActiveStake", async () => {
-    //         await fixture.roundsManager.execute(bondingManager.address, functionSig("setCurrentRoundTotalActiveStake()"))
-    //         assert.equal(await bondingManager.currentRoundTotalActiveStake(), 1000)
-    //     })
-    // })
+        it("fails if caller is not RoundsManager", async () => {
+            await expect(bondingManager.setCurrentRoundTotalActiveStake()).to.be.revertedWith("caller must be RoundsManager");
+        });
 
-    // describe("transcoderStatus", () => {
-    //     const transcoder = accounts[0]
+        it("sets currentRoundTotalActiveStake equal to nextRoundTotalActiveStake", async () => {
+            await fixture.roundsManager.execute(bondingManager.address, functionSig("setCurrentRoundTotalActiveStake()"));
+            assert.equal(await bondingManager.currentRoundTotalActiveStake(), 1000);
+        });
+    });
 
-    //     beforeEach(async () => {
-    //         await fixture.roundsManager.setMockBool(functionSig("currentRoundInitialized()"), true)
-    //         await bondingManager.bond(1000, transcoder, {from: transcoder})
-    //     })
+    describe("transcoderStatus", () => {
+        let transcoder;
 
-    //     describe("caller is not bonded to self", () => {
-    //         it("returns NotRegistered", async () => {
-    //             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), 1)
-    //             await bondingManager.unbond(1000, {from: transcoder})
+        beforeEach(async () => {
+            transcoder = accounts[0];
 
-    //             assert.equal(await bondingManager.transcoderStatus(transcoder), TranscoderStatus.NotRegistered, "should return NotRegistered")
-    //         })
-    //     })
+            await fixture.roundsManager.setMockBool(functionSig("currentRoundInitialized()"), true);
+            await bondingManager.connect(transcoder).bond(1000, transcoder.address);
+        });
 
-    //     describe("caller is bonded to self", () => {
-    //         it("returns Registered", async () => {
-    //             assert.equal(await bondingManager.transcoderStatus(transcoder), TranscoderStatus.Registered, "should return Registered")
-    //         })
-    //     })
-    // })
+        describe("caller is not bonded to self", () => {
+            it("returns NotRegistered", async () => {
+                await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), 1);
+                await bondingManager.connect(transcoder).unbond(1000);
 
-    // describe("isActiveTranscoder", () => {
-    //     const transcoder = accounts[0]
-    //     const currentRound = 100
+                assert.equal(
+                    await bondingManager.transcoderStatus(transcoder.address),
+                    TranscoderStatus.NotRegistered,
+                    "should return NotRegistered"
+                );
+            });
+        });
 
-    //     beforeEach(async () => {
-    //         await fixture.roundsManager.setMockBool(functionSig("currentRoundInitialized()"), true)
-    //         await fixture.roundsManager.setMockBool(functionSig("currentRoundLocked()"), false)
-    //         await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound - 1)
+        describe("caller is bonded to self", () => {
+            it("returns Registered", async () => {
+                assert.equal(
+                    await bondingManager.transcoderStatus(transcoder.address),
+                    TranscoderStatus.Registered,
+                    "should return Registered"
+                );
+            });
+        });
+    });
 
-    //         await bondingManager.bond(1000, transcoder, {from: transcoder})
-    //         await bondingManager.transcoder(5, 10, {from: transcoder})
+    describe("isActiveTranscoder", () => {
+        let transcoder;
 
-    //         await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
-    //         await fixture.roundsManager.execute(bondingManager.address, functionSig("setCurrentRoundTotalActiveStake()"))
-    //     })
+        const currentRound = 100;
 
-    //     describe("caller is not in transcoder pool", () => {
-    //         it("returns false", async () => {
-    //             await bondingManager.unbond(1000, {from: transcoder})
-    //             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 1)
-    //             assert.isFalse(await bondingManager.isActiveTranscoder(transcoder), "should return NotRegistered for caller not in transcoder pool")
-    //         })
-    //     })
+        beforeEach(async () => {
+            transcoder = accounts[0];
 
-    //     describe("caller is in transcoder pool", () => {
-    //         it("returns true", async () => {
-    //             assert.isTrue(await bondingManager.isActiveTranscoder(transcoder), "should return Registered for caller in transcoder pool")
-    //         })
-    //     })
-    // })
+            await fixture.roundsManager.setMockBool(functionSig("currentRoundInitialized()"), true);
+            await fixture.roundsManager.setMockBool(functionSig("currentRoundLocked()"), false);
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound - 1);
 
-    // describe("delegatorStatus", () => {
-    //     const delegator0 = accounts[0]
-    //     const transcoder = accounts[1]
-    //     const currentRound = 100
+            await bondingManager.connect(transcoder).bond(1000, transcoder.address);
+            await bondingManager.connect(transcoder).transcoder(5, 10);
 
-    //     beforeEach(async () => {
-    //         await fixture.roundsManager.setMockBool(functionSig("currentRoundInitialized()"), true)
-    //         await fixture.roundsManager.setMockBool(functionSig("currentRoundLocked()"), false)
-    //         await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
-    //     })
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound);
+            await fixture.roundsManager.execute(bondingManager.address, functionSig("setCurrentRoundTotalActiveStake()"));
+        });
 
-    //     describe("caller has zero bonded amount", () => {
-    //         it("returns Unbonded", async () => {
-    //             assert.equal(await bondingManager.delegatorStatus(delegator0), DelegatorStatus.Unbonded, "should return Unbonded for delegator with zero bonded amount")
-    //         })
-    //     })
+        describe("caller is not in transcoder pool", () => {
+            it("returns false", async () => {
+                await bondingManager.connect(transcoder).unbond(1000);
+                await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 1);
+                assert.isFalse(
+                    await bondingManager.isActiveTranscoder(transcoder.address),
+                    "should return NotRegistered for caller not in transcoder pool"
+                );
+            });
+        });
 
-    //     describe("caller has a startRound", () => {
-    //         beforeEach(async () => {
-    //             await bondingManager.bond(1000, transcoder, {from: delegator0})
-    //         })
+        describe("caller is in transcoder pool", () => {
+            it("returns true", async () => {
+                assert.isTrue(
+                    await bondingManager.isActiveTranscoder(transcoder.address),
+                    "should return Registered for caller in transcoder pool"
+                );
+            });
+        });
+    });
 
-    //         describe("startRound is now", () => {
-    //             it("returns Bonded", async () => {
-    //                 const startRound = (await bondingManager.getDelegator(delegator0))[4]
-    //                 await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), startRound)
+    describe("delegatorStatus", () => {
+        let delegator0;
+        let transcoder;
+        const currentRound = 100;
 
-    //                 assert.equal(await bondingManager.delegatorStatus(delegator0), DelegatorStatus.Bonded, "should return Bonded for delegator with startRound now")
-    //             })
-    //         })
+        beforeEach(async () => {
+            delegator0 = accounts[0];
+            transcoder = accounts[1];
 
-    //         describe("startRound is in the past", () => {
-    //             it("returns Bonded", async () => {
-    //                 const startRound = (await bondingManager.getDelegator(delegator0))[4]
-    //                 await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), startRound.toNumber() + 1)
+            await fixture.roundsManager.setMockBool(functionSig("currentRoundInitialized()"), true);
+            await fixture.roundsManager.setMockBool(functionSig("currentRoundLocked()"), false);
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound);
+        });
 
-    //                 assert.equal(await bondingManager.delegatorStatus(delegator0), DelegatorStatus.Bonded, "should return Bodned for delegator with startRound in past")
-    //             })
-    //         })
+        describe("caller has zero bonded amount", () => {
+            it("returns Unbonded", async () => {
+                assert.equal(
+                    await bondingManager.delegatorStatus(delegator0.address),
+                    DelegatorStatus.Unbonded,
+                    "should return Unbonded for delegator with zero bonded amount"
+                );
+            });
+        });
 
-    //         describe("startRound is in the future", () => {
-    //             it("returns Pending", async () => {
-    //                 assert.equal(await bondingManager.delegatorStatus(delegator0), DelegatorStatus.Pending, "should return Pending for delegator with startRound in future")
-    //             })
-    //         })
-    //     })
-    // })
+        describe("caller has a startRound", () => {
+            beforeEach(async () => {
+                await bondingManager.connect(delegator0).bond(1000, transcoder.address);
+            });
 
-    // describe("isRegisteredTranscoder", () => {
-    //     const transcoder = accounts[0]
-    //     const currentRound = 100
+            describe("startRound is now", () => {
+                it("returns Bonded", async () => {
+                    const startRound = (await bondingManager.getDelegator(delegator0.address))[4];
+                    await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), startRound);
 
-    //     beforeEach(async () => {
-    //         await fixture.roundsManager.setMockBool(functionSig("currentRoundInitialized()"), true)
-    //         await fixture.roundsManager.setMockBool(functionSig("currentRoundLocked()"), false)
-    //         await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound - 1)
+                    assert.equal(
+                        await bondingManager.delegatorStatus(delegator0.address),
+                        DelegatorStatus.Bonded,
+                        "should return Bonded for delegator with startRound now"
+                    );
+                });
+            });
 
-    //         await bondingManager.bond(1000, transcoder, {from: transcoder})
-    //         await bondingManager.transcoder(5, 10, {from: transcoder})
-    //         await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 1)
-    //     })
+            describe("startRound is in the past", () => {
+                it("returns Bonded", async () => {
+                    const startRound = (await bondingManager.getDelegator(delegator0.address))[4];
+                    await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), startRound.toNumber() + 1);
 
-    //     describe("address is registered transcoder", () => {
-    //         it("should return true", async () => {
-    //             assert.isOk(await bondingManager.isRegisteredTranscoder(transcoder), "should return true for registered transcoder")
-    //         })
-    //     })
+                    assert.equal(
+                        await bondingManager.delegatorStatus(delegator0.address),
+                        DelegatorStatus.Bonded,
+                        "should return Bodned for delegator with startRound in past"
+                    );
+                });
+            });
 
-    //     describe("address is not registered transcoder", () => {
-    //         it("should return false", async () => {
-    //             assert.isNotOk(await bondingManager.isRegisteredTranscoder(accounts[2]), "should return false for address that is not registered transcoder")
-    //         })
-    //     })
-    // })
+            describe("startRound is in the future", () => {
+                it("returns Pending", async () => {
+                    assert.equal(
+                        await bondingManager.delegatorStatus(delegator0.address),
+                        DelegatorStatus.Pending,
+                        "should return Pending for delegator with startRound in future"
+                    );
+                });
+            });
+        });
+    });
 
-    // describe("isValidUnbondingLock", () => {
-    //     const delegator = accounts[0]
-    //     const unbondingLockID = 0
-    //     const currentRound = 100
+    describe("isRegisteredTranscoder", () => {
+        let transcoder;
 
-    //     beforeEach(async () => {
-    //         await fixture.roundsManager.setMockBool(functionSig("currentRoundInitialized()"), true)
-    //         await fixture.roundsManager.setMockBool(functionSig("currentRoundLocked()"), false)
-    //         await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
+        const currentRound = 100;
 
-    //         await bondingManager.bond(1000, delegator, {from: delegator})
+        beforeEach(async () => {
+            transcoder = accounts[0];
 
-    //         await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 1)
-    //     })
+            await fixture.roundsManager.setMockBool(functionSig("currentRoundInitialized()"), true);
+            await fixture.roundsManager.setMockBool(functionSig("currentRoundLocked()"), false);
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound - 1);
 
-    //     describe("unbonding lock's withdrawRound > 0", () => {
-    //         it("should return true", async () => {
-    //             await bondingManager.unbond(500, {from: delegator})
+            await bondingManager.connect(transcoder).bond(1000, transcoder.address);
+            await bondingManager.connect(transcoder).transcoder(5, 10);
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 1);
+        });
 
-    //             assert.isOk(await bondingManager.isValidUnbondingLock(delegator, unbondingLockID), "should return true for lock with withdrawRound > 0")
-    //         })
-    //     })
+        describe("address is registered transcoder", () => {
+            it("should return true", async () => {
+                assert.isOk(
+                    await bondingManager.isRegisteredTranscoder(transcoder.address),
+                    "should return true for registered transcoder"
+                );
+            });
+        });
 
-    //     describe("unbonding lock's withdrawRound = 0", () => {
-    //         it("should return false", async () => {
-    //             assert.isNotOk(await bondingManager.isValidUnbondingLock(delegator, unbondingLockID), "should return false for lock with withdrawRound = 0")
-    //         })
-    //     })
-    // })
+        describe("address is not registered transcoder", () => {
+            it("should return false", async () => {
+                assert.isNotOk(
+                    await bondingManager.isRegisteredTranscoder(accounts[2].address),
+                    "should return false for address that is not registered transcoder"
+                );
+            });
+        });
+    });
 
-    // describe("getTotalBonded", () => {
-    //     const transcoder0 = accounts[0]
-    //     const transcoder1 = accounts[1]
-    //     const delegator0 = accounts[2]
-    //     const delegator1 = accounts[3]
+    describe("isValidUnbondingLock", () => {
+        let delegator;
+        let unbondingLockID = 0;
+        let currentRound = 100;
 
-    //     const currentRound = 100
+        beforeEach(async () => {
+            delegator = accounts[0];
 
-    //     beforeEach(async () => {
-    //         await fixture.roundsManager.setMockBool(functionSig("currentRoundInitialized()"), true)
-    //         await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
-    //         await bondingManager.bond(1000, transcoder0, {from: transcoder0})
-    //         await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 1)
-    //         await fixture.roundsManager.execute(bondingManager.address, functionSig("setCurrentRoundTotalActiveStake()"))
-    //     })
+            await fixture.roundsManager.setMockBool(functionSig("currentRoundInitialized()"), true);
+            await fixture.roundsManager.setMockBool(functionSig("currentRoundLocked()"), false);
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound);
 
-    //     it("returns the total active stake for the current round", async () => {
-    //         // Check that getTotalBonded() reflects active stake of transcoder0
-    //         assert.equal(await bondingManager.getTotalBonded(), 1000)
-    //     })
+            await bondingManager.connect(delegator).bond(1000, delegator.address);
 
-    //     it("returns the same value when called multiple times in the same round", async () => {
-    //         await bondingManager.bond(2000, transcoder1, {from: transcoder1})
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 1);
+        });
 
-    //         // Check that getTotalBonded() does not reflect active stake of transcoder1 because
-    //         // the next round has not been initialized
-    //         assert.equal(await bondingManager.getTotalBonded(), 1000)
+        describe("unbonding lock's withdrawRound > 0", () => {
+            it("should return true", async () => {
+                await bondingManager.connect(delegator).unbond(500);
 
-    //         await bondingManager.bond(500, transcoder0, {from: delegator0})
+                assert.isOk(
+                    await bondingManager.isValidUnbondingLock(delegator.address, unbondingLockID),
+                    "should return true for lock with withdrawRound > 0"
+                );
+            });
+        });
 
-    //         // Check that getTotalBonded() does not reflect new stake delegated to transcoder0 because
-    //         // the next round has not been initialized
-    //         assert.equal(await bondingManager.getTotalBonded(), 1000)
-    //     })
+        describe("unbonding lock's withdrawRound = 0", () => {
+            it("should return false", async () => {
+                assert.isNotOk(
+                    await bondingManager.isValidUnbondingLock(delegator.address, unbondingLockID),
+                    "should return false for lock with withdrawRound = 0"
+                );
+            });
+        });
+    });
 
-    //     it("returns updated total active stake for a round after it is initialized", async () => {
-    //         await bondingManager.bond(2000, transcoder1, {from: transcoder1})
-    //         await bondingManager.bond(500, transcoder0, {from: delegator0})
-    //         await bondingManager.bond(700, transcoder1, {from: delegator1})
-    //         await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 2)
-    //         await fixture.roundsManager.execute(bondingManager.address, functionSig("setCurrentRoundTotalActiveStake()"))
+    describe("getTotalBonded", () => {
+        let transcoder0;
+        let transcoder1;
+        let delegator0;
+        let delegator1;
+        let currentRound;
 
-    //         // Check that getTotalBonded() includes active stake of transcoder1 (includes new stake delegated from delegator1)
-    //         // and new stake delegated to transcoder0 by delegator0
-    //         assert.equal(await bondingManager.getTotalBonded(), 4200)
-    //     })
-    // })
+        beforeEach(async () => {
+            transcoder0 = accounts[0];
+            transcoder1 = accounts[1];
+            delegator0 = accounts[2];
+            delegator1 = accounts[3];
+            currentRound = 100;
+
+            await fixture.roundsManager.setMockBool(functionSig("currentRoundInitialized()"), true);
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound);
+            await bondingManager.connect(transcoder0).bond(1000, transcoder0.address);
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 1);
+            await fixture.roundsManager.execute(bondingManager.address, functionSig("setCurrentRoundTotalActiveStake()"));
+        });
+
+        it("returns the total active stake for the current round", async () => {
+            // Check that getTotalBonded() reflects active stake of transcoder0
+            assert.equal(await bondingManager.getTotalBonded(), 1000);
+        });
+
+        it("returns the same value when called multiple times in the same round", async () => {
+            await bondingManager.connect(transcoder1).bond(2000, transcoder1.address);
+
+            // Check that getTotalBonded() does not reflect active stake of transcoder1 because
+            // the next round has not been initialized
+            assert.equal(await bondingManager.getTotalBonded(), 1000);
+
+            await bondingManager.connect(delegator0).bond(500, transcoder0.address);
+
+            // Check that getTotalBonded() does not reflect new stake delegated to transcoder0 because
+            // the next round has not been initialized
+            assert.equal(await bondingManager.getTotalBonded(), 1000);
+        });
+
+        it("returns updated total active stake for a round after it is initialized", async () => {
+            await bondingManager.connect(transcoder1).bond(2000, transcoder1.address);
+            await bondingManager.connect(delegator0).bond(500, transcoder0.address);
+            await bondingManager.connect(delegator1).bond(700, transcoder1.address);
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 2);
+            await fixture.roundsManager.execute(bondingManager.address, functionSig("setCurrentRoundTotalActiveStake()"));
+
+            // Check that getTotalBonded() includes active stake of transcoder1 (includes new stake delegated from delegator1)
+            // and new stake delegated to transcoder0 by delegator0
+            assert.equal(await bondingManager.getTotalBonded(), 4200);
+        });
+    });
 });
