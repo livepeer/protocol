@@ -2,7 +2,7 @@ import Fixture from "./helpers/Fixture";
 // import expectRevertWithReason from "../helpers/expectFail";
 import { contractId, functionSig, functionEncodedABI } from "../../utils/helpers";
 import { constants } from "../../utils/constants";
-// import math from "../helpers/math";
+import math from "../helpers/math";
 import BN from "bn.js";
 // import truffleAssert from "truffle-assertions";
 import { assert } from "chai";
@@ -1621,769 +1621,793 @@ describe("BondingManager", () => {
         });
     });
 
-    // describe("reward", () => {
-    //     const transcoder = accounts[0]
-    //     const nonTranscoder = accounts[1]
-    //     const currentRound = 100
-
-    //     beforeEach(async () => {
-    //         await fixture.roundsManager.setMockBool(functionSig("currentRoundInitialized()"), true)
-    //         await fixture.roundsManager.setMockBool(functionSig("currentRoundLocked()"), false)
-    //         await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
-
-    //         await bondingManager.bond(1000, transcoder, {from: transcoder})
-    //         await bondingManager.transcoder(50 * PERC_MULTIPLIER, 10, {from: transcoder})
-
-    //         await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 1)
-    //         await fixture.minter.setMockUint256(functionSig("createReward(uint256,uint256)"), 1000)
-    //     })
-
-    //     it("should fail if system is paused", async () => {
-    //         await fixture.controller.pause()
-
-    //         await expectRevertWithReason(bondingManager.reward({from: transcoder}), "system is paused")
-    //     })
-
-    //     it("should fail if current round is not initialized", async () => {
-    //         await fixture.roundsManager.setMockBool(functionSig("currentRoundInitialized()"), false)
-
-    //         await expectRevertWithReason(bondingManager.reward({from: transcoder}), "current round is not initialized")
-    //     })
-
-    //     it("should fail if caller is not an active transcoder for the current round", async () => {
-    //         await expectRevertWithReason(bondingManager.reward({from: nonTranscoder}), "caller must be an active transcoder")
-    //     })
-
-    //     it("should fail if caller already called reward during the current round", async () => {
-    //         await bondingManager.reward({from: transcoder})
-    //         // This should fail because transcoder already called reward during the current round
-    //         await expectRevertWithReason(bondingManager.reward({from: transcoder}), "caller has already called reward for the current round")
-    //     })
-
-    //     it("should update caller with rewards", async () => {
-    //         const startDelegatedAmount = (await bondingManager.getDelegator(transcoder))[3]
-    //         const startTotalStake = await bondingManager.transcoderTotalStake(transcoder)
-    //         const startNextTotalStake = await bondingManager.nextRoundTotalActiveStake()
-    //         await bondingManager.reward({from: transcoder})
-    //         const endDelegatedAmount = (await bondingManager.getDelegator(transcoder))[3]
-    //         const endTotalStake = await bondingManager.transcoderTotalStake(transcoder)
-    //         const endNextTotalStake = await bondingManager.nextRoundTotalActiveStake()
-
-    //         const earningsPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder, currentRound + 1)
-    //         const expRewardFactor = constants.PERC_DIVISOR_PRECISE.add(math.precise.percPoints(new BN(500), new BN(1000)))
-    //         assert.equal(earningsPool.cumulativeRewardFactor.toString(), expRewardFactor.toString(), "should update cumulativeRewardFactor in earningsPool")
-
-    //         assert.equal(endDelegatedAmount.sub(startDelegatedAmount), 1000, "should update delegatedAmount with new rewards")
-    //         assert.equal(endTotalStake.sub(startTotalStake), 1000, "should update transcoder's total stake in the pool with new rewards")
-    //         assert.equal(endNextTotalStake.sub(startNextTotalStake), 1000, "should update next total stake with new rewards")
-    //     })
-
-    //     it("should update caller with rewards if lastActiveStakeUpdateRound < currentRound", async () => {
-    //         await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 3)
-    //         const startDelegatedAmount = (await bondingManager.getDelegator(transcoder))[3]
-    //         const startTotalStake = await bondingManager.transcoderTotalStake(transcoder)
-    //         const startNextTotalStake = await bondingManager.nextRoundTotalActiveStake()
-    //         await bondingManager.reward({from: transcoder})
-    //         const endDelegatedAmount = (await bondingManager.getDelegator(transcoder))[3]
-    //         const endTotalStake = await bondingManager.transcoderTotalStake(transcoder)
-    //         const endNextTotalStake = await bondingManager.nextRoundTotalActiveStake()
-
-    //         const earningsPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder, currentRound + 3)
-    //         const expRewardFactor = constants.PERC_DIVISOR_PRECISE.add(math.precise.percPoints(new BN(500), new BN(1000)))
-    //         assert.equal(earningsPool.cumulativeRewardFactor.toString(), expRewardFactor.toString(), "should update cumulativeRewardFactor in earningsPool")
-
-    //         assert.equal(endDelegatedAmount.sub(startDelegatedAmount), 1000, "should update delegatedAmount with new rewards")
-    //         assert.equal(endTotalStake.sub(startTotalStake), 1000, "should update transcoder's total stake in the pool with new rewards")
-    //         assert.equal(endNextTotalStake.sub(startNextTotalStake), 1000, "should update next total stake with new rewards")
-    //     })
-
-    //     it("should update caller's pendingStake if lastActiveStakeUpdateRound > currentRound when stake increases before reward call", async () => {
-    //         await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 3)
-    //         // Make sure that lastActiveStakeUpdateRound > currentRound
-    //         await bondingManager.bond(1000, transcoder, {from: nonTranscoder})
-    //         assert.isAbove((await bondingManager.getTranscoder(transcoder)).lastActiveStakeUpdateRound.toNumber(), currentRound + 3)
-
-    //         const startPendingStake = await bondingManager.pendingStake(transcoder, currentRound + 3)
-    //         await bondingManager.reward({from: transcoder})
-    //         const endPendingStake = await bondingManager.pendingStake(transcoder, currentRound + 3)
-
-    //         assert.isAbove(endPendingStake.toNumber(), startPendingStake.toNumber())
-    //     })
-
-    //     it("should update caller's pendingStake if lastActiveStakeUpdateRound > currentRound when stake decreases before reward call", async () => {
-    //         await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 3)
-    //         // Make sure that lastActiveStakeUpdateRound > currentRound
-    //         await bondingManager.unbond(1, {from: transcoder})
-    //         assert.isAbove((await bondingManager.getTranscoder(transcoder)).lastActiveStakeUpdateRound.toNumber(), currentRound + 3)
-
-    //         // Since the unbond() above claims earnings before reward is called the following test
-    //         // also checks that the end pendingStake reflects the transcoder still taking its cut
-    //         const startPendingStake = await bondingManager.pendingStake(transcoder, currentRound + 3)
-    //         await bondingManager.reward({from: transcoder})
-    //         const endPendingStake = await bondingManager.pendingStake(transcoder, currentRound + 3)
-
-    //         assert.isAbove(endPendingStake.toNumber(), startPendingStake.toNumber())
-    //     })
-
-    //     it("Should emit a Reward event", async () => {
-    //         const txRes = await bondingManager.reward({from: transcoder})
-    //         truffleAssert.eventEmitted(
-    //             txRes,
-    //             "Reward",
-    //             e => e.transcoder == transcoder && e.amount == 1000,
-    //             "Reward event not emitted correctly"
-    //         )
-    //     })
-
-    //     describe("previous cumulative factors rescaling", () => {
-    //         it("should rescale previous cumulativeRewardFactor stored before LIP-71 round", async () => {
-    //             await fixture.roundsManager.setMockUint256(functionSig("lipUpgradeRound(uint256)"), currentRound + 2)
-    //             await bondingManager.reward({from: transcoder})
-    //             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 2)
-    //             await bondingManager.reward({from: transcoder})
-
-    //             const prevPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder, currentRound + 1)
-    //             const pool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder, currentRound + 2)
-
-    //             // Since we cannot store cumulativeRewardFactor values using the old PERC_DIVISOR value we just check
-    //             // that rescaling occurs
-    //             const rescaleFactor = constants.PERC_DIVISOR_PRECISE.div(new BN(constants.PERC_DIVISOR))
-    //             assert.ok(new BN(prevPool.cumulativeRewardFactor).mul(rescaleFactor).lt(new BN(pool.cumulativeRewardFactor)))
-    //         })
-
-    //         it("should not rescale previous cumulativeRewardFactor stored LIP-71 round and onwards", async () => {
-    //             await fixture.roundsManager.setMockUint256(functionSig("lipUpgradeRound(uint256)"), currentRound + 1)
-    //             await bondingManager.reward({from: transcoder})
-    //             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 2)
-    //             await bondingManager.reward({from: transcoder})
-
-    //             const prevPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder, currentRound + 1)
-    //             const pool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder, currentRound + 2)
-
-    //             // Since we cannot store cumulativeRewardFactor values using the old PERC_DIVISOR value we just check
-    //             // that rescaling did not occur
-    //             const rescaleFactor = constants.PERC_DIVISOR_PRECISE.div(new BN(constants.PERC_DIVISOR))
-    //             assert.ok(new BN(prevPool.cumulativeRewardFactor).mul(rescaleFactor).gt(new BN(pool.cumulativeRewardFactor)))
-    //         })
-    //     })
-    // })
-
-    // describe("updateTranscoderWithFees", () => {
-    //     const transcoder = accounts[0]
-    //     const nonTranscoder = accounts[1]
-    //     const currentRound = 100
-
-    //     beforeEach(async () => {
-    //         await fixture.roundsManager.setMockBool(functionSig("currentRoundInitialized()"), true)
-    //         await fixture.roundsManager.setMockBool(functionSig("currentRoundLocked()"), false)
-    //         await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
-
-    //         await bondingManager.bond(1000, transcoder, {from: transcoder})
-    //         await bondingManager.transcoder(50 * PERC_MULTIPLIER, 50 * PERC_MULTIPLIER, {from: transcoder})
-
-    //         await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 1)
-    //     })
-
-    //     it("should fail if system is paused", async () => {
-    //         await fixture.controller.pause()
-
-    //         await expectRevertWithReason(
-    //             fixture.ticketBroker.execute(
-    //                 bondingManager.address,
-    //                 functionEncodedABI(
-    //                     "updateTranscoderWithFees(address,uint256,uint256)",
-    //                     ["address", "uint256", "uint256"],
-    //                     [transcoder, 1000, currentRound + 1]
-    //                 )
-    //             ),
-    //             "system is paused"
-    //         )
-    //     })
-
-    //     it("should fail if caller is not TicketBroker", async () => {
-    //         await expectRevertWithReason(bondingManager.updateTranscoderWithFees(transcoder, 1000, currentRound + 1), "caller must be TicketBroker")
-    //     })
-
-    //     it("should fail if transcoder is not registered", async () => {
-    //         await expectRevertWithReason(
-    //             fixture.ticketBroker.execute(
-    //                 bondingManager.address,
-    //                 functionEncodedABI(
-    //                     "updateTranscoderWithFees(address,uint256,uint256)",
-    //                     ["address", "uint256", "uint256"],
-    //                     [nonTranscoder, 1000, currentRound + 1]
-    //                 )
-    //             ),
-    //             "transcoder must be registered"
-    //         )
-    //     })
-
-    //     it("should update transcoder's pendingFees when lastActiveStakeUpdateRound > currentRound when stake increases before function call", async () => {
-    //         // Make sure that lastActiveStakeUpdateRound > currentRound
-    //         await bondingManager.bond(1000, transcoder, {from: nonTranscoder})
-    //         assert.isAbove((await bondingManager.getTranscoder(transcoder)).lastActiveStakeUpdateRound.toNumber(), currentRound + 1)
-
-    //         const startPendingFees = await bondingManager.pendingFees(transcoder, currentRound + 1)
-
-    //         await fixture.ticketBroker.execute(
-    //             bondingManager.address,
-    //             functionEncodedABI(
-    //                 "updateTranscoderWithFees(address,uint256,uint256)",
-    //                 ["address", "uint256", "uint256"],
-    //                 [transcoder, 1000, currentRound + 1]
-    //             )
-    //         )
-    //         const endPendingFees = await bondingManager.pendingFees(transcoder, currentRound + 1)
-
-    //         assert.isAbove(endPendingFees.toNumber(), startPendingFees.toNumber())
-    //     })
-
-    //     it("should update transcoder's pendingFees when transcoder claims earnings before fees are generated", async () => {
-    //         await bondingManager.claimEarnings(currentRound + 1, {from: transcoder})
-
-    //         const startPendingFees = await bondingManager.pendingFees(transcoder, currentRound + 1)
-
-    //         await fixture.ticketBroker.execute(
-    //             bondingManager.address,
-    //             functionEncodedABI(
-    //                 "updateTranscoderWithFees(address,uint256,uint256)",
-    //                 ["address", "uint256", "uint256"],
-    //                 [transcoder, 1000, currentRound + 1]
-    //             )
-    //         )
-    //         const endPendingFees = await bondingManager.pendingFees(transcoder, currentRound + 1)
-
-    //         assert.isAbove(endPendingFees.toNumber(), startPendingFees.toNumber())
-    //     })
-
-    //     it("should update earningsPool cumulativeFeeFactor and transcoder cumulativeFees when transcoder hasn't called reward for current round", async () => {
-    //         // set current cumulativeRewards to 500
-    //         await fixture.minter.setMockUint256(functionSig("createReward(uint256,uint256)"), 1000)
-    //         await bondingManager.reward()
-
-    //         await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 2)
-
-    //         let tr = await bondingManager.getTranscoder(transcoder)
-    //         let cumulativeRewards = tr.cumulativeRewards
-    //         assert.equal(cumulativeRewards.toString(), "500")
-
-    //         await fixture.ticketBroker.execute(
-    //             bondingManager.address,
-    //             functionEncodedABI(
-    //                 "updateTranscoderWithFees(address,uint256,uint256)",
-    //                 ["address", "uint256", "uint256"],
-    //                 [transcoder, 1000, currentRound + 2]
-    //             )
-    //         )
-
-    //         const earningsPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder, currentRound + 2)
-    //         assert.equal(earningsPool.cumulativeFeeFactor.toString(), "375000000000000000000000000", "wrong cumulativeFeeFactor")
-    //         assert.equal(
-    //             (await bondingManager.getTranscoder(transcoder)).cumulativeFees.toString(),
-    //             "625"
-    //         )
-    //     })
-
-    //     it("should update transcoder's pendingFees when lastActiveStakeUpdateRound > currentRound when stake decreases before function call", async () => {
-    //         // Make sure that lastActiveStakeUpdateRound > currentRound
-    //         await bondingManager.bond(1000, transcoder, {from: nonTranscoder})
-    //         await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 2)
-    //         await bondingManager.unbond(1, {from: nonTranscoder})
-    //         assert.isAbove((await bondingManager.getTranscoder(transcoder)).lastActiveStakeUpdateRound.toNumber(), currentRound + 2)
-
-    //         const startPendingFees = await bondingManager.pendingFees(transcoder, currentRound + 2)
-    //         await fixture.ticketBroker.execute(
-    //             bondingManager.address,
-    //             functionEncodedABI(
-    //                 "updateTranscoderWithFees(address,uint256,uint256)",
-    //                 ["address", "uint256", "uint256"],
-    //                 [transcoder, 1000, currentRound + 2]
-    //             )
-    //         )
-    //         const endPendingFees = await bondingManager.pendingFees(transcoder, currentRound + 2)
-
-    //         assert.isAbove(endPendingFees.toNumber(), startPendingFees.toNumber())
-    //     })
-
-    //     it("should update transcoder cumulativeFees based on cumulativeRewards = 0 and if the transcoder claimed through the current round", async () => {
-    //         // set current cumulativeRewards to 500
-    //         await fixture.minter.setMockUint256(functionSig("createReward(uint256,uint256)"), 1000)
-    //         await bondingManager.reward()
-
-    //         await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 2)
-    //         await bondingManager.claimEarnings(currentRound + 2, {from: transcoder})
-
-    //         await fixture.ticketBroker.execute(
-    //             bondingManager.address,
-    //             functionEncodedABI(
-    //                 "updateTranscoderWithFees(address,uint256,uint256)",
-    //                 ["address", "uint256", "uint256"],
-    //                 [transcoder, 1000, currentRound + 2]
-    //             )
-    //         )
-    //         const earningsPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder, currentRound + 2)
-    //         assert.equal(earningsPool.cumulativeFeeFactor.toString(), "375000000000000000000000000", "wrong cumulativeFeeFactor")
-    //         assert.equal(
-    //             (await bondingManager.getTranscoder(transcoder)).cumulativeFees.toString(),
-    //             "500"
-    //         )
-    //     })
-
-    //     it("should update transcoder's pendingFees when lastActiveStakeUpdateRound < currentRound", async () => {
-    //         // Transcoder's active stake is set for currentRound + 1
-    //         // Transcoder's active is not yet set for currentRound + 2
-    //         await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 2)
-    //         assert.isBelow((await bondingManager.getTranscoder(transcoder)).lastActiveStakeUpdateRound.toNumber(), currentRound + 2)
-
-    //         const startPendingFees = await bondingManager.pendingFees(transcoder, currentRound + 2)
-
-    //         await fixture.ticketBroker.execute(
-    //             bondingManager.address,
-    //             functionEncodedABI(
-    //                 "updateTranscoderWithFees(address,uint256,uint256)",
-    //                 ["address", "uint256", "uint256"],
-    //                 [transcoder, 1000, currentRound + 2]
-    //             )
-    //         )
-    //         const endPendingFees = await bondingManager.pendingFees(transcoder, currentRound + 2)
-
-    //         assert.isAbove(endPendingFees.toNumber(), startPendingFees.toNumber())
-    //     })
-
-    //     it("should update earningsPool cumulativeFeeFactor", async () => {
-    //         await fixture.ticketBroker.execute(
-    //             bondingManager.address,
-    //             functionEncodedABI(
-    //                 "updateTranscoderWithFees(address,uint256,uint256)",
-    //                 ["address", "uint256", "uint256"],
-    //                 [transcoder, 1000, currentRound + 1]
-    //             )
-    //         )
-
-    //         const earningsPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder, currentRound + 1)
-    //         assert.equal(earningsPool.cumulativeFeeFactor.toString(), "500000000000000000000000000", "wrong cumulativeFeeFactor")
-    //     })
-
-    //     it("should update transcoder with fees", async () => {
-    //         await fixture.ticketBroker.execute(
-    //             bondingManager.address,
-    //             functionEncodedABI(
-    //                 "updateTranscoderWithFees(address,uint256,uint256)",
-    //                 ["address", "uint256", "uint256"],
-    //                 [transcoder, 1000, currentRound + 1]
-    //             )
-    //         )
-
-    //         // set t.cumulativeFees to t.cumulativeFees + fees from fee cut and fees from staked rewards
-    //         let tr = await bondingManager.getTranscoder(accounts[0])
-    //         assert.equal(tr.cumulativeFees.toString(), "500", "should set transcoder's cumulativeFees to 1000")
-    //     })
-
-    //     it("should update transcoder lastFeeRound to current round", async () => {
-    //         // We are in currentRound + 1 already
-    //         const round = currentRound + 1
-
-    //         // Check when the _round param is the current round
-    //         await fixture.ticketBroker.execute(
-    //             bondingManager.address,
-    //             functionEncodedABI(
-    //                 "updateTranscoderWithFees(address,uint256,uint256)",
-    //                 ["address", "uint256", "uint256"],
-    //                 [transcoder, 1000, round]
-    //             )
-    //         )
-    //         assert.equal(
-    //             (await bondingManager.getTranscoder(transcoder)).lastFeeRound.toNumber(),
-    //             round
-    //         )
-
-    //         // Check when the _round param is < current round
-    //         await fixture.ticketBroker.execute(
-    //             bondingManager.address,
-    //             functionEncodedABI(
-    //                 "updateTranscoderWithFees(address,uint256,uint256)",
-    //                 ["address", "uint256", "uint256"],
-    //                 [transcoder, 1000, round - 1]
-    //             )
-    //         )
-    //         assert.equal(
-    //             (await bondingManager.getTranscoder(transcoder)).lastFeeRound.toNumber(),
-    //             round
-    //         )
-
-    //         // Check when the _round param is > current round
-    //         await fixture.ticketBroker.execute(
-    //             bondingManager.address,
-    //             functionEncodedABI(
-    //                 "updateTranscoderWithFees(address,uint256,uint256)",
-    //                 ["address", "uint256", "uint256"],
-    //                 [transcoder, 1000, round + 1]
-    //             )
-    //         )
-    //         assert.equal(
-    //             (await bondingManager.getTranscoder(transcoder)).lastFeeRound.toNumber(),
-    //             round
-    //         )
-    //     })
-
-    //     describe("previous cumulative factors rescaling", () => {
-    //         it("should rescale previous cumulativeRewardFactor and cumulativeFeeFactor if stored before LIP-71 round", async () => {
-    //             await fixture.roundsManager.setMockUint256(functionSig("lipUpgradeRound(uint256)"), currentRound + 2)
-    //             await fixture.ticketBroker.execute(
-    //                 bondingManager.address,
-    //                 functionEncodedABI(
-    //                     "updateTranscoderWithFees(address,uint256,uint256)",
-    //                     ["address", "uint256", "uint256"],
-    //                     [transcoder, 1000, currentRound + 1]
-    //                 )
-    //             )
-    //             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 2)
-    //             await fixture.ticketBroker.execute(
-    //                 bondingManager.address,
-    //                 functionEncodedABI(
-    //                     "updateTranscoderWithFees(address,uint256,uint256)",
-    //                     ["address", "uint256", "uint256"],
-    //                     [transcoder, 1000, currentRound + 2]
-    //                 )
-    //             )
-
-    //             const prevPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder, currentRound + 1)
-    //             const pool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder, currentRound + 2)
-
-    //             // Since we cannot store cumulative factor values using the old PERC_DIVISOR value we just check
-    //             // that rescaling occured
-    //             const rescaleFactor = constants.PERC_DIVISOR_PRECISE.div(new BN(constants.PERC_DIVISOR))
-    //             assert.ok(new BN(prevPool.cumulativeFeeFactor).mul(rescaleFactor).lt(new BN(pool.cumulativeFeeFactor)))
-    //         })
-
-    //         it("should not rescale previous cumulativeRewardFactor and cumulativeFeeFactor if stored in LIP-71 round and onwards", async () => {
-    //             await fixture.roundsManager.setMockUint256(functionSig("lipUpgradeRound(uint256)"), currentRound + 1)
-    //             await fixture.ticketBroker.execute(
-    //                 bondingManager.address,
-    //                 functionEncodedABI(
-    //                     "updateTranscoderWithFees(address,uint256,uint256)",
-    //                     ["address", "uint256", "uint256"],
-    //                     [transcoder, 1000, currentRound + 1]
-    //                 )
-    //             )
-    //             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 2)
-    //             await fixture.ticketBroker.execute(
-    //                 bondingManager.address,
-    //                 functionEncodedABI(
-    //                     "updateTranscoderWithFees(address,uint256,uint256)",
-    //                     ["address", "uint256", "uint256"],
-    //                     [transcoder, 1000, currentRound + 2]
-    //                 )
-    //             )
-
-    //             const prevPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder, currentRound + 1)
-    //             const pool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder, currentRound + 2)
-
-    //             // Since we cannot store cumulative factor values using the old PERC_DIVISOR value we just check
-    //             // that rescaling did not occur
-    //             const rescaleFactor = constants.PERC_DIVISOR_PRECISE.div(new BN(constants.PERC_DIVISOR))
-    //             assert.ok(new BN(prevPool.cumulativeFeeFactor).mul(rescaleFactor).gt(new BN(pool.cumulativeFeeFactor)))
-    //         })
-    //     })
-    // })
-
-    // describe("slashTranscoder", () => {
-    //     const transcoder = accounts[0]
-    //     const transcoder1 = accounts[1]
-    //     const finder = accounts[2]
-    //     const nonTranscoder = accounts[3]
-    //     const currentRound = 100
-
-    //     beforeEach(async () => {
-    //         await fixture.roundsManager.setMockBool(functionSig("currentRoundInitialized()"), true)
-    //         await fixture.roundsManager.setMockBool(functionSig("currentRoundLocked()"), false)
-    //         await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
-
-    //         await bondingManager.bond(1000, transcoder, {from: transcoder})
-    //         await bondingManager.transcoder(5, 10, {from: transcoder})
-
-    //         await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 1)
-    //         await fixture.roundsManager.execute(bondingManager.address, functionSig("setCurrentRoundTotalActiveStake()"))
-    //     })
-
-    //     it("should fail if system is paused", async () => {
-    //         await fixture.controller.pause()
-
-    //         await expectRevertWithReason(
-    //             fixture.verifier.execute(
-    //                 bondingManager.address,
-    //                 functionEncodedABI(
-    //                     "slashTranscoder(address,address,uint256,uint256)",
-    //                     ["address", "uint256", "uint256", "uint256"],
-    //                     [transcoder, constants.NULL_ADDRESS, PERC_DIVISOR / 2, PERC_DIVISOR / 2]
-    //                 )
-    //             ),
-    //             "system is paused"
-    //         )
-    //     })
-
-    //     it("should fail if caller is not Verifier", async () => {
-    //         await expectRevertWithReason(bondingManager.slashTranscoder(transcoder, constants.NULL_ADDRESS, PERC_DIVISOR / 2, PERC_DIVISOR / 2), "caller must be Verifier")
-    //     })
-
-    //     it("decreases transcoder's bondedAmount", async () => {
-    //         const startBondedAmount = (await bondingManager.getDelegator(transcoder))[0].toNumber()
-    //         await fixture.verifier.execute(
-    //             bondingManager.address,
-    //             functionEncodedABI(
-    //                 "slashTranscoder(address,address,uint256,uint256)",
-    //                 ["address", "uint256", "uint256", "uint256"],
-    //                 [transcoder, constants.NULL_ADDRESS, PERC_DIVISOR / 2, 0]
-    //             )
-    //         )
-    //         const endBondedAmount = (await bondingManager.getDelegator(transcoder))[0]
-
-    //         assert.equal(endBondedAmount, startBondedAmount / 2, "should decrease transcoder's bondedAmount by slashAmount")
-    //     })
-
-    //     describe("transcoder is bonded", () => {
-    //         it("updates delegated amount and next total stake tokens", async () => {
-    //             const startNextTotalStake = await bondingManager.nextRoundTotalActiveStake()
-    //             await fixture.verifier.execute(
-    //                 bondingManager.address,
-    //                 functionEncodedABI(
-    //                     "slashTranscoder(address,address,uint256,uint256)",
-    //                     ["address", "uint256", "uint256", "uint256"],
-    //                     [transcoder, constants.NULL_ADDRESS, PERC_DIVISOR / 2, 0]
-    //                 )
-    //             )
-    //             const endNextTotalStake = await bondingManager.nextRoundTotalActiveStake()
-
-    //             assert.equal((await bondingManager.getDelegator(transcoder))[3], 500, "should decrease delegatedAmount for transcoder by slash amount")
-    //             assert.equal(startNextTotalStake.sub(endNextTotalStake), 1000, "should decrease next total stake tokens by transcoder's delegated stake")
-    //         })
-    //     })
-
-    //     describe("transcoder has an unbonding lock", () => {
-    //         beforeEach(async () => {
-    //             await bondingManager.unbond(500, {from: transcoder})
-    //         })
-
-    //         it("still decreases transcoder's bondedAmount", async () => {
-    //             const startBondedAmount = (await bondingManager.getDelegator(transcoder))[0].toNumber()
-    //             await fixture.verifier.execute(
-    //                 bondingManager.address,
-    //                 functionEncodedABI(
-    //                     "slashTranscoder(address,address,uint256,uint256)",
-    //                     ["address", "uint256", "uint256", "uint256"],
-    //                     [transcoder, constants.NULL_ADDRESS, PERC_DIVISOR / 2, 0]
-    //                 )
-    //             )
-    //             const endBondedAmount = (await bondingManager.getDelegator(transcoder))[0]
-
-    //             assert.equal(endBondedAmount, startBondedAmount / 2, "should decrease transcoder's bondedAmount by slashAmount")
-    //         })
-    //     })
-
-    //     describe("transcoder is active", () => {
-    //         it("transcoder remains active until the next round", async () => {
-    //             await fixture.verifier.execute(
-    //                 bondingManager.address,
-    //                 functionEncodedABI(
-    //                     "slashTranscoder(address,address,uint256,uint256)",
-    //                     ["address", "uint256", "uint256", "uint256"],
-    //                     [transcoder, constants.NULL_ADDRESS, PERC_DIVISOR / 2, 0]
-    //                 )
-    //             )
-    //             assert.isOk(await bondingManager.isActiveTranscoder(transcoder), "should set active transcoder as inactive for the round")
-    //         })
-
-    //         it("deducts the transcoder's stake from the total for the next round", async () => {
-    //             const startTotalActiveStake = await bondingManager.nextRoundTotalActiveStake()
-    //             await fixture.verifier.execute(
-    //                 bondingManager.address,
-    //                 functionEncodedABI(
-    //                     "slashTranscoder(address,address,uint256,uint256)",
-    //                     ["address", "uint256", "uint256", "uint256"],
-    //                     [transcoder, constants.NULL_ADDRESS, PERC_DIVISOR / 2, 0]
-    //                 )
-    //             )
-    //             const endTotalActiveStake = await bondingManager.nextRoundTotalActiveStake()
-    //             assert.equal(startTotalActiveStake.sub(endTotalActiveStake).toNumber(), 1000, "should decrease total active stake by total stake of transcoder")
-    //         })
-
-    //         it("sets the transcoder's deactivation round to next round", async () => {
-    //             await fixture.verifier.execute(
-    //                 bondingManager.address,
-    //                 functionEncodedABI(
-    //                     "slashTranscoder(address,address,uint256,uint256)",
-    //                     ["address", "uint256", "uint256", "uint256"],
-    //                     [transcoder, constants.NULL_ADDRESS, PERC_DIVISOR / 2, 0]
-    //                 )
-    //             )
-    //             assert.equal((await bondingManager.getTranscoder(transcoder)).deactivationRound, currentRound + 2)
-    //         })
-
-    //         it("fires a TranscoderDeactivated event", async () => {
-    //             const txRes = await fixture.verifier.execute(
-    //                 bondingManager.address,
-    //                 functionEncodedABI(
-    //                     "slashTranscoder(address,address,uint256,uint256)",
-    //                     ["address", "uint256", "uint256", "uint256"],
-    //                     [transcoder, constants.NULL_ADDRESS, PERC_DIVISOR / 2, 0]
-    //                 )
-    //             )
-    //             truffleAssert.eventEmitted(
-    //                 await truffleAssert.createTransactionResult(bondingManager, txRes.tx),
-    //                 "TranscoderDeactivated",
-    //                 e => e.transcoder == transcoder && e.deactivationRound == currentRound + 2,
-    //                 "TranscoderDeactivated event not emitted correctly"
-    //             )
-    //         })
-    //     })
-
-    //     describe("transcoder is not active but is in pool", () => {
-    //         beforeEach(async () => {
-    //             await bondingManager.bond(2000, transcoder1, {from: transcoder1})
-    //             await bondingManager.transcoder(5, 10, {from: transcoder1})
-    //         })
-
-    //         it("still decreases transcoder's bondedAmount", async () => {
-    //             const startBondedAmount = (await bondingManager.getDelegator(transcoder1))[0]
-    //             await fixture.verifier.execute(
-    //                 bondingManager.address,
-    //                 functionEncodedABI(
-    //                     "slashTranscoder(address,address,uint256,uint256)",
-    //                     ["address", "uint256", "uint256", "uint256"],
-    //                     [transcoder1, constants.NULL_ADDRESS, PERC_DIVISOR / 2, 0]
-    //                 )
-    //             )
-    //             const endBondedAmount = (await bondingManager.getDelegator(transcoder1))[0]
-
-    //             assert.equal(endBondedAmount, startBondedAmount.div(new BN(2)).toNumber(), "should decrease transcoder's bondedAmount by slashAmount")
-    //         })
-
-    //         it("decreases the total active stake for the next round", async () => {
-    //             const startTotalActiveStake = await bondingManager.nextRoundTotalActiveStake()
-    //             await fixture.verifier.execute(
-    //                 bondingManager.address,
-    //                 functionEncodedABI(
-    //                     "slashTranscoder(address,address,uint256,uint256)",
-    //                     ["address", "uint256", "uint256", "uint256"],
-    //                     [transcoder1, constants.NULL_ADDRESS, PERC_DIVISOR / 2, 0]
-    //                 )
-    //             )
-    //             const endTotalActiveStake = await bondingManager.nextRoundTotalActiveStake()
-    //             assert.equal(startTotalActiveStake.sub(endTotalActiveStake).toNumber(), 2000, "should decrease total active stake by total stake of transcoder")
-    //         })
-    //     })
-
-    //     describe("transcoder is registered but not in pool", () => {
-    //         beforeEach(async () => {
-    //             await bondingManager.bond(2000, transcoder1, {from: transcoder1})
-    //             await bondingManager.bond(100, nonTranscoder, {from: nonTranscoder})
-    //         })
-    //         it("still decreases transcoder's bondedAmount", async () => {
-    //             const startBondedAmount = (await bondingManager.getDelegator(nonTranscoder))[0]
-    //             await fixture.verifier.execute(
-    //                 bondingManager.address,
-    //                 functionEncodedABI(
-    //                     "slashTranscoder(address,address,uint256,uint256)",
-    //                     ["address", "uint256", "uint256", "uint256"],
-    //                     [nonTranscoder, constants.NULL_ADDRESS, PERC_DIVISOR / 2, 0]
-    //                 )
-    //             )
-    //             const endBondedAmount = (await bondingManager.getDelegator(nonTranscoder))[0]
-
-    //             assert.equal(endBondedAmount, startBondedAmount.div(new BN(2)).toNumber(), "should decrease transcoder's bondedAmount by slashAmount")
-    //         })
-
-    //         it("doesn't change the total for the next round", async () => {
-    //             const startTotalActiveStake = await bondingManager.nextRoundTotalActiveStake()
-    //             await fixture.verifier.execute(
-    //                 bondingManager.address,
-    //                 functionEncodedABI(
-    //                     "slashTranscoder(address,address,uint256,uint256)",
-    //                     ["address", "uint256", "uint256", "uint256"],
-    //                     [nonTranscoder, constants.NULL_ADDRESS, PERC_DIVISOR / 2, 0]
-    //                 )
-    //             )
-    //             const endTotalActiveStake = await bondingManager.nextRoundTotalActiveStake()
-    //             assert.equal(startTotalActiveStake.sub(endTotalActiveStake).toNumber(), 0, "should decrease total active stake by total stake of transcoder")
-    //         })
-    //     })
-
-    //     describe("invoked with a finder", () => {
-    //         it("slashes transcoder and rewards finder", async () => {
-    //             const txRes = await fixture.verifier.execute(
-    //                 bondingManager.address,
-    //                 functionEncodedABI(
-    //                     "slashTranscoder(address,address,uint256,uint256)",
-    //                     ["address", "uint256", "uint256", "uint256"],
-    //                     [transcoder, finder, PERC_DIVISOR / 2, PERC_DIVISOR / 2]
-    //                 )
-    //             )
-
-    //             truffleAssert.eventEmitted(
-    //                 await truffleAssert.createTransactionResult(bondingManager, txRes.tx),
-    //                 "TranscoderSlashed",
-    //                 e => e.transcoder == transcoder &&
-    //                     e.finder == finder &&
-    //                     e.penalty == 500 &&
-    //                     e.finderReward == 250,
-    //                 "TranscoderSlashed event not emitted correctly"
-    //             )
-    //         })
-    //     })
-
-    //     describe("invoked without a finder", () => {
-    //         it("slashes transcoder", async () => {
-    //             const txRes = await fixture.verifier.execute(
-    //                 bondingManager.address,
-    //                 functionEncodedABI(
-    //                     "slashTranscoder(address,address,uint256,uint256)",
-    //                     ["address", "uint256", "uint256", "uint256"],
-    //                     [transcoder, constants.NULL_ADDRESS, PERC_DIVISOR / 2, 0]
-    //                 )
-    //             )
-
-    //             truffleAssert.eventEmitted(
-    //                 await truffleAssert.createTransactionResult(bondingManager, txRes.tx),
-    //                 "TranscoderSlashed",
-    //                 e => e.transcoder == transcoder &&
-    //                     e.finder == constants.NULL_ADDRESS &&
-    //                     e.penalty == 500 &&
-    //                     e.finderReward == 0,
-    //                 "TranscoderSlashed event not emitted correctly"
-    //             )
-    //         })
-    //     })
-
-    //     describe("transcoder no longer has a bonded amount", () => {
-    //         beforeEach(async () => {
-    //             await bondingManager.unbond(1000, {from: transcoder})
-    //             const unbondingPeriod = await bondingManager.unbondingPeriod.call()
-    //             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 1 + unbondingPeriod.toNumber())
-    //             await bondingManager.withdrawStake(0, {from: transcoder})
-    //         })
-
-    //         it("fires a TranscoderSlashed event, but transcoder is not penalized because it does not have a bonded amount", async () => {
-    //             const txRes = await fixture.verifier.execute(
-    //                 bondingManager.address,
-    //                 functionEncodedABI(
-    //                     "slashTranscoder(address,address,uint256,uint256)",
-    //                     ["address", "uint256", "uint256", "uint256"],
-    //                     [transcoder, constants.NULL_ADDRESS, PERC_DIVISOR / 2, 0]
-    //                 )
-    //             )
-
-    //             truffleAssert.eventEmitted(
-    //                 await truffleAssert.createTransactionResult(bondingManager, txRes.tx),
-    //                 "TranscoderSlashed",
-    //                 e => e.transcoder == transcoder &&
-    //                     e.finder == constants.NULL_ADDRESS &&
-    //                     e.penalty == 0 &&
-    //                     e.finderReward == 0,
-    //                 "TranscoderSlashed event not emitted correctly"
-    //             )
-    //         })
-    //     })
-    // })
+    describe("reward", () => {
+        let transcoder;
+        let nonTranscoder;
+        let currentRound;
+
+        beforeEach(async () => {
+            transcoder = accounts[0];
+            nonTranscoder = accounts[1];
+            currentRound = 100;
+
+            await fixture.roundsManager.setMockBool(functionSig("currentRoundInitialized()"), true);
+            await fixture.roundsManager.setMockBool(functionSig("currentRoundLocked()"), false);
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound);
+
+            await bondingManager.connect(transcoder).bond(1000, transcoder.address);
+            await bondingManager.connect(transcoder).transcoder(50 * PERC_MULTIPLIER, 10);
+
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 1);
+            await fixture.minter.setMockUint256(functionSig("createReward(uint256,uint256)"), 1000);
+        });
+
+        it("should fail if system is paused", async () => {
+            await fixture.controller.pause();
+
+            await expect(bondingManager.connect(transcoder).reward()).to.be.revertedWith("system is paused");
+        });
+
+        it("should fail if current round is not initialized", async () => {
+            await fixture.roundsManager.setMockBool(functionSig("currentRoundInitialized()"), false);
+
+            await expect(bondingManager.connect(transcoder).reward()).to.be.revertedWith("current round is not initialized");
+        });
+
+        it("should fail if caller is not an active transcoder for the current round", async () => {
+            await expect(bondingManager.connect(nonTranscoder).reward()).to.be.revertedWith("caller must be an active transcoder");
+        });
+
+        it("should fail if caller already called reward during the current round", async () => {
+            await bondingManager.connect(transcoder).reward();
+            // This should fail because transcoder already called reward during the current round
+            await expect(bondingManager.connect(transcoder).reward()).to.be.revertedWith(
+                "caller has already called reward for the current round"
+            );
+        });
+
+        it("should update caller with rewards", async () => {
+            const startDelegatedAmount = (await bondingManager.getDelegator(transcoder.address))[3];
+            const startTotalStake = await bondingManager.transcoderTotalStake(transcoder.address);
+            const startNextTotalStake = await bondingManager.nextRoundTotalActiveStake();
+            await bondingManager.connect(transcoder).reward();
+            const endDelegatedAmount = (await bondingManager.getDelegator(transcoder.address))[3];
+            const endTotalStake = await bondingManager.transcoderTotalStake(transcoder.address);
+            const endNextTotalStake = await bondingManager.nextRoundTotalActiveStake();
+
+            const earningsPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder.address, currentRound + 1);
+            const expRewardFactor = constants.PERC_DIVISOR_PRECISE.add(math.precise.percPoints(new BN(500), new BN(1000)));
+            assert.equal(
+                earningsPool.cumulativeRewardFactor.toString(),
+                expRewardFactor.toString(),
+                "should update cumulativeRewardFactor in earningsPool"
+            );
+
+            assert.equal(endDelegatedAmount.sub(startDelegatedAmount), 1000, "should update delegatedAmount with new rewards");
+            assert.equal(endTotalStake.sub(startTotalStake), 1000, "should update transcoder's total stake in the pool with new rewards");
+            assert.equal(endNextTotalStake.sub(startNextTotalStake), 1000, "should update next total stake with new rewards");
+        });
+
+        it("should update caller with rewards if lastActiveStakeUpdateRound < currentRound", async () => {
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 3);
+            const startDelegatedAmount = (await bondingManager.getDelegator(transcoder.address))[3];
+            const startTotalStake = await bondingManager.transcoderTotalStake(transcoder.address);
+            const startNextTotalStake = await bondingManager.nextRoundTotalActiveStake();
+            await bondingManager.connect(transcoder).reward();
+            const endDelegatedAmount = (await bondingManager.getDelegator(transcoder.address))[3];
+            const endTotalStake = await bondingManager.transcoderTotalStake(transcoder.address);
+            const endNextTotalStake = await bondingManager.nextRoundTotalActiveStake();
+
+            const earningsPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder.address, currentRound + 3);
+            const expRewardFactor = constants.PERC_DIVISOR_PRECISE.add(math.precise.percPoints(new BN(500), new BN(1000)));
+            assert.equal(
+                earningsPool.cumulativeRewardFactor.toString(),
+                expRewardFactor.toString(),
+                "should update cumulativeRewardFactor in earningsPool"
+            );
+
+            assert.equal(endDelegatedAmount.sub(startDelegatedAmount), 1000, "should update delegatedAmount with new rewards");
+            assert.equal(endTotalStake.sub(startTotalStake), 1000, "should update transcoder's total stake in the pool with new rewards");
+            assert.equal(endNextTotalStake.sub(startNextTotalStake), 1000, "should update next total stake with new rewards");
+        });
+
+        it("should update caller's pendingStake if lastActiveStakeUpdateRound > currentRound when stake increases before reward call", async () => {
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 3);
+            // Make sure that lastActiveStakeUpdateRound > currentRound
+            await bondingManager.connect(nonTranscoder).bond(1000, transcoder.address);
+            assert.isAbove(
+                (await bondingManager.getTranscoder(transcoder.address)).lastActiveStakeUpdateRound.toNumber(),
+                currentRound + 3
+            );
+
+            const startPendingStake = await bondingManager.pendingStake(transcoder.address, currentRound + 3);
+            await bondingManager.connect(transcoder).reward();
+            const endPendingStake = await bondingManager.pendingStake(transcoder.address, currentRound + 3);
+
+            assert.isAbove(endPendingStake.toNumber(), startPendingStake.toNumber());
+        });
+
+        it("should update caller's pendingStake if lastActiveStakeUpdateRound > currentRound when stake decreases before reward call", async () => {
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 3);
+            // Make sure that lastActiveStakeUpdateRound > currentRound
+            await bondingManager.connect(transcoder).unbond(1);
+            assert.isAbove(
+                (await bondingManager.getTranscoder(transcoder.address)).lastActiveStakeUpdateRound.toNumber(),
+                currentRound + 3
+            );
+
+            // Since the unbond() above claims earnings before reward is called the following test
+            // also checks that the end pendingStake reflects the transcoder still taking its cut
+            const startPendingStake = await bondingManager.pendingStake(transcoder.address, currentRound + 3);
+            await bondingManager.connect(transcoder).reward();
+            const endPendingStake = await bondingManager.pendingStake(transcoder.address, currentRound + 3);
+
+            assert.isAbove(endPendingStake.toNumber(), startPendingStake.toNumber());
+        });
+
+        it("Should emit a Reward event", async () => {
+            const txRes = await bondingManager.connect(transcoder).reward();
+            expect(txRes).to.emit(bondingManager, "Reward").withArgs(transcoder.address, 1000);
+        });
+
+        describe("previous cumulative factors rescaling", () => {
+            it("should rescale previous cumulativeRewardFactor stored before LIP-71 round", async () => {
+                await fixture.roundsManager.setMockUint256(functionSig("lipUpgradeRound(uint256)"), currentRound + 2);
+                await bondingManager.connect(transcoder).reward();
+                await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 2);
+                await bondingManager.connect(transcoder).reward();
+
+                const prevPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder.address, currentRound + 1);
+                const pool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder.address, currentRound + 2);
+
+                // Since we cannot store cumulativeRewardFactor values using the old PERC_DIVISOR value we just check
+                // that rescaling occurs
+                const rescaleFactor = constants.PERC_DIVISOR_PRECISE.div(new BN(constants.PERC_DIVISOR.toString()));
+                assert.ok(
+                    new BN(prevPool.cumulativeRewardFactor.toString()).mul(rescaleFactor).lt(new BN(pool.cumulativeRewardFactor.toString()))
+                );
+            });
+
+            it("should not rescale previous cumulativeRewardFactor stored LIP-71 round and onwards", async () => {
+                await fixture.roundsManager.setMockUint256(functionSig("lipUpgradeRound(uint256)"), currentRound + 1);
+                await bondingManager.connect(transcoder).reward();
+                await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 2);
+                await bondingManager.connect(transcoder).reward();
+
+                const prevPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder.address, currentRound + 1);
+                const pool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder.address, currentRound + 2);
+
+                // Since we cannot store cumulativeRewardFactor values using the old PERC_DIVISOR value we just check
+                // that rescaling did not occur
+                const rescaleFactor = constants.PERC_DIVISOR_PRECISE.div(new BN(constants.PERC_DIVISOR.toString()));
+                assert.ok(
+                    new BN(prevPool.cumulativeRewardFactor.toString()).mul(rescaleFactor).gt(new BN(pool.cumulativeRewardFactor.toString()))
+                );
+            });
+        });
+    });
+
+    describe("updateTranscoderWithFees", () => {
+        let transcoder;
+        let nonTranscoder;
+        let currentRound;
+
+        beforeEach(async () => {
+            transcoder = accounts[0];
+            nonTranscoder = accounts[1];
+            currentRound = 100;
+
+            await fixture.roundsManager.setMockBool(functionSig("currentRoundInitialized()"), true);
+            await fixture.roundsManager.setMockBool(functionSig("currentRoundLocked()"), false);
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound);
+
+            await bondingManager.connect(transcoder).bond(1000, transcoder.address);
+            await bondingManager.connect(transcoder).transcoder(50 * PERC_MULTIPLIER, 50 * PERC_MULTIPLIER);
+
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 1);
+        });
+
+        it("should fail if system is paused", async () => {
+            await fixture.controller.pause();
+
+            await expect(
+                fixture.ticketBroker.execute(
+                    bondingManager.address,
+                    functionEncodedABI(
+                        "updateTranscoderWithFees(address,uint256,uint256)",
+                        ["address", "uint256", "uint256"],
+                        [transcoder.address, 1000, currentRound + 1]
+                    )
+                )
+            ).to.be.revertedWith("system is paused");
+        });
+
+        it("should fail if caller is not TicketBroker", async () => {
+            await expect(bondingManager.updateTranscoderWithFees(transcoder.address, 1000, currentRound + 1)).to.be.revertedWith(
+                "caller must be TicketBroker"
+            );
+        });
+
+        it("should fail if transcoder is not registered", async () => {
+            await expect(
+                fixture.ticketBroker.execute(
+                    bondingManager.address,
+                    functionEncodedABI(
+                        "updateTranscoderWithFees(address,uint256,uint256)",
+                        ["address", "uint256", "uint256"],
+                        [nonTranscoder.address, 1000, currentRound + 1]
+                    )
+                )
+            ).to.be.revertedWith("transcoder must be registered");
+        });
+
+        it("should update transcoder's pendingFees when lastActiveStakeUpdateRound > currentRound when stake increases before function call", async () => {
+            // Make sure that lastActiveStakeUpdateRound > currentRound
+            await bondingManager.connect(nonTranscoder).bond(1000, transcoder.address);
+            assert.isAbove(
+                (await bondingManager.getTranscoder(transcoder.address)).lastActiveStakeUpdateRound.toNumber(),
+                currentRound + 1
+            );
+
+            const startPendingFees = await bondingManager.pendingFees(transcoder.address, currentRound + 1);
+
+            await fixture.ticketBroker.execute(
+                bondingManager.address,
+                functionEncodedABI(
+                    "updateTranscoderWithFees(address,uint256,uint256)",
+                    ["address", "uint256", "uint256"],
+                    [transcoder.address, 1000, currentRound + 1]
+                )
+            );
+            const endPendingFees = await bondingManager.pendingFees(transcoder.address, currentRound + 1);
+
+            assert.isAbove(endPendingFees.toNumber(), startPendingFees.toNumber());
+        });
+
+        it("should update transcoder's pendingFees when transcoder claims earnings before fees are generated", async () => {
+            await bondingManager.connect(transcoder).claimEarnings(currentRound + 1);
+
+            const startPendingFees = await bondingManager.pendingFees(transcoder.address, currentRound + 1);
+
+            await fixture.ticketBroker.execute(
+                bondingManager.address,
+                functionEncodedABI(
+                    "updateTranscoderWithFees(address,uint256,uint256)",
+                    ["address", "uint256", "uint256"],
+                    [transcoder.address, 1000, currentRound + 1]
+                )
+            );
+            const endPendingFees = await bondingManager.pendingFees(transcoder.address, currentRound + 1);
+
+            assert.isAbove(endPendingFees.toNumber(), startPendingFees.toNumber());
+        });
+
+        it("should update earningsPool cumulativeFeeFactor and transcoder cumulativeFees when transcoder hasn't called reward for current round", async () => {
+            // set current cumulativeRewards to 500
+            await fixture.minter.setMockUint256(functionSig("createReward(uint256,uint256)"), 1000);
+            await bondingManager.reward();
+
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 2);
+
+            let tr = await bondingManager.getTranscoder(transcoder.address);
+            let cumulativeRewards = tr.cumulativeRewards;
+            assert.equal(cumulativeRewards.toString(), "500");
+
+            await fixture.ticketBroker.execute(
+                bondingManager.address,
+                functionEncodedABI(
+                    "updateTranscoderWithFees(address,uint256,uint256)",
+                    ["address", "uint256", "uint256"],
+                    [transcoder.address, 1000, currentRound + 2]
+                )
+            );
+
+            const earningsPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder.address, currentRound + 2);
+            assert.equal(earningsPool.cumulativeFeeFactor.toString(), "375000000000000000000000000", "wrong cumulativeFeeFactor");
+            assert.equal((await bondingManager.getTranscoder(transcoder.address)).cumulativeFees.toString(), "625");
+        });
+
+        it("should update transcoder's pendingFees when lastActiveStakeUpdateRound > currentRound when stake decreases before function call", async () => {
+            // Make sure that lastActiveStakeUpdateRound > currentRound
+            await bondingManager.connect(nonTranscoder).bond(1000, transcoder.address);
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 2);
+            await bondingManager.connect(nonTranscoder).unbond(1);
+            assert.isAbove(
+                (await bondingManager.getTranscoder(transcoder.address)).lastActiveStakeUpdateRound.toNumber(),
+                currentRound + 2
+            );
+
+            const startPendingFees = await bondingManager.pendingFees(transcoder.address, currentRound + 2);
+            await fixture.ticketBroker.execute(
+                bondingManager.address,
+                functionEncodedABI(
+                    "updateTranscoderWithFees(address,uint256,uint256)",
+                    ["address", "uint256", "uint256"],
+                    [transcoder.address, 1000, currentRound + 2]
+                )
+            );
+            const endPendingFees = await bondingManager.pendingFees(transcoder.address, currentRound + 2);
+
+            assert.isAbove(endPendingFees.toNumber(), startPendingFees.toNumber());
+        });
+
+        it("should update transcoder cumulativeFees based on cumulativeRewards = 0 and if the transcoder claimed through the current round", async () => {
+            // set current cumulativeRewards to 500
+            await fixture.minter.setMockUint256(functionSig("createReward(uint256,uint256)"), 1000);
+            await bondingManager.reward();
+
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 2);
+            await bondingManager.connect(transcoder).claimEarnings(currentRound + 2);
+
+            await fixture.ticketBroker.execute(
+                bondingManager.address,
+                functionEncodedABI(
+                    "updateTranscoderWithFees(address,uint256,uint256)",
+                    ["address", "uint256", "uint256"],
+                    [transcoder.address, 1000, currentRound + 2]
+                )
+            );
+            const earningsPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder.address, currentRound + 2);
+            assert.equal(earningsPool.cumulativeFeeFactor.toString(), "375000000000000000000000000", "wrong cumulativeFeeFactor");
+            assert.equal((await bondingManager.getTranscoder(transcoder.address)).cumulativeFees.toString(), "500");
+        });
+
+        it("should update transcoder's pendingFees when lastActiveStakeUpdateRound < currentRound", async () => {
+            // Transcoder's active stake is set for currentRound + 1
+            // Transcoder's active is not yet set for currentRound + 2
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 2);
+            assert.isBelow(
+                (await bondingManager.getTranscoder(transcoder.address)).lastActiveStakeUpdateRound.toNumber(),
+                currentRound + 2
+            );
+
+            const startPendingFees = await bondingManager.pendingFees(transcoder.address, currentRound + 2);
+
+            await fixture.ticketBroker.execute(
+                bondingManager.address,
+                functionEncodedABI(
+                    "updateTranscoderWithFees(address,uint256,uint256)",
+                    ["address", "uint256", "uint256"],
+                    [transcoder.address, 1000, currentRound + 2]
+                )
+            );
+            const endPendingFees = await bondingManager.pendingFees(transcoder.address, currentRound + 2);
+
+            assert.isAbove(endPendingFees.toNumber(), startPendingFees.toNumber());
+        });
+
+        it("should update earningsPool cumulativeFeeFactor", async () => {
+            await fixture.ticketBroker.execute(
+                bondingManager.address,
+                functionEncodedABI(
+                    "updateTranscoderWithFees(address,uint256,uint256)",
+                    ["address", "uint256", "uint256"],
+                    [transcoder.address, 1000, currentRound + 1]
+                )
+            );
+
+            const earningsPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder.address, currentRound + 1);
+            assert.equal(earningsPool.cumulativeFeeFactor.toString(), "500000000000000000000000000", "wrong cumulativeFeeFactor");
+        });
+
+        it("should update transcoder with fees", async () => {
+            await fixture.ticketBroker.execute(
+                bondingManager.address,
+                functionEncodedABI(
+                    "updateTranscoderWithFees(address,uint256,uint256)",
+                    ["address", "uint256", "uint256"],
+                    [transcoder.address, 1000, currentRound + 1]
+                )
+            );
+
+            // set t.cumulativeFees to t.cumulativeFees + fees from fee cut and fees from staked rewards
+            let tr = await bondingManager.getTranscoder(accounts[0].address);
+            assert.equal(tr.cumulativeFees.toString(), "500", "should set transcoder's cumulativeFees to 1000");
+        });
+
+        it("should update transcoder lastFeeRound to current round", async () => {
+            // We are in currentRound + 1 already
+            const round = currentRound + 1;
+
+            // Check when the _round param is the current round
+            await fixture.ticketBroker.execute(
+                bondingManager.address,
+                functionEncodedABI(
+                    "updateTranscoderWithFees(address,uint256,uint256)",
+                    ["address", "uint256", "uint256"],
+                    [transcoder.address, 1000, round]
+                )
+            );
+            assert.equal((await bondingManager.getTranscoder(transcoder.address)).lastFeeRound.toNumber(), round);
+
+            // Check when the _round param is < current round
+            await fixture.ticketBroker.execute(
+                bondingManager.address,
+                functionEncodedABI(
+                    "updateTranscoderWithFees(address,uint256,uint256)",
+                    ["address", "uint256", "uint256"],
+                    [transcoder.address, 1000, round - 1]
+                )
+            );
+            assert.equal((await bondingManager.getTranscoder(transcoder.address)).lastFeeRound.toNumber(), round);
+
+            // Check when the _round param is > current round
+            await fixture.ticketBroker.execute(
+                bondingManager.address,
+                functionEncodedABI(
+                    "updateTranscoderWithFees(address,uint256,uint256)",
+                    ["address", "uint256", "uint256"],
+                    [transcoder.address, 1000, round + 1]
+                )
+            );
+            assert.equal((await bondingManager.getTranscoder(transcoder.address)).lastFeeRound.toNumber(), round);
+        });
+
+        describe("previous cumulative factors rescaling", () => {
+            it("should rescale previous cumulativeRewardFactor and cumulativeFeeFactor if stored before LIP-71 round", async () => {
+                await fixture.roundsManager.setMockUint256(functionSig("lipUpgradeRound(uint256)"), currentRound + 2);
+                await fixture.ticketBroker.execute(
+                    bondingManager.address,
+                    functionEncodedABI(
+                        "updateTranscoderWithFees(address,uint256,uint256)",
+                        ["address", "uint256", "uint256"],
+                        [transcoder.address, 1000, currentRound + 1]
+                    )
+                );
+                await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 2);
+                await fixture.ticketBroker.execute(
+                    bondingManager.address,
+                    functionEncodedABI(
+                        "updateTranscoderWithFees(address,uint256,uint256)",
+                        ["address", "uint256", "uint256"],
+                        [transcoder.address, 1000, currentRound + 2]
+                    )
+                );
+
+                const prevPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder.address, currentRound + 1);
+                const pool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder.address, currentRound + 2);
+
+                // Since we cannot store cumulative factor values using the old PERC_DIVISOR value we just check
+                // that rescaling occured
+                const rescaleFactor = constants.PERC_DIVISOR_PRECISE.div(new BN(constants.PERC_DIVISOR.toString()));
+                assert.ok(
+                    new BN(prevPool.cumulativeFeeFactor.toString()).mul(rescaleFactor).lt(new BN(pool.cumulativeFeeFactor.toString()))
+                );
+            });
+
+            it("should not rescale previous cumulativeRewardFactor and cumulativeFeeFactor if stored in LIP-71 round and onwards", async () => {
+                await fixture.roundsManager.setMockUint256(functionSig("lipUpgradeRound(uint256)"), currentRound + 1);
+                await fixture.ticketBroker.execute(
+                    bondingManager.address,
+                    functionEncodedABI(
+                        "updateTranscoderWithFees(address,uint256,uint256)",
+                        ["address", "uint256", "uint256"],
+                        [transcoder.address, 1000, currentRound + 1]
+                    )
+                );
+                await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 2);
+                await fixture.ticketBroker.execute(
+                    bondingManager.address,
+                    functionEncodedABI(
+                        "updateTranscoderWithFees(address,uint256,uint256)",
+                        ["address", "uint256", "uint256"],
+                        [transcoder.address, 1000, currentRound + 2]
+                    )
+                );
+
+                const prevPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder.address, currentRound + 1);
+                const pool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder.address, currentRound + 2);
+
+                // Since we cannot store cumulative factor values using the old PERC_DIVISOR value we just check
+                // that rescaling did not occur
+                const rescaleFactor = constants.PERC_DIVISOR_PRECISE.div(new BN(constants.PERC_DIVISOR.toString()));
+                assert.ok(
+                    new BN(prevPool.cumulativeFeeFactor.toString()).mul(rescaleFactor).gt(new BN(pool.cumulativeFeeFactor.toString()))
+                );
+            });
+        });
+    });
+
+    describe("slashTranscoder", () => {
+        let transcoder;
+        let transcoder1;
+        let finder;
+        let nonTranscoder;
+        let currentRound;
+
+        beforeEach(async () => {
+            transcoder = accounts[0];
+            transcoder1 = accounts[1];
+            finder = accounts[2];
+            nonTranscoder = accounts[3];
+            currentRound = 100;
+
+            await fixture.roundsManager.setMockBool(functionSig("currentRoundInitialized()"), true);
+            await fixture.roundsManager.setMockBool(functionSig("currentRoundLocked()"), false);
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound);
+
+            await bondingManager.connect(transcoder).bond(1000, transcoder.address);
+            await bondingManager.connect(transcoder).transcoder(5, 10);
+
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 1);
+            await fixture.roundsManager.execute(bondingManager.address, functionSig("setCurrentRoundTotalActiveStake()"));
+        });
+
+        it("should fail if system is paused", async () => {
+            await fixture.controller.pause();
+
+            await expect(
+                fixture.verifier.execute(
+                    bondingManager.address,
+                    functionEncodedABI(
+                        "slashTranscoder(address,address,uint256,uint256)",
+                        ["address", "uint256", "uint256", "uint256"],
+                        [transcoder.address, constants.NULL_ADDRESS, PERC_DIVISOR / 2, PERC_DIVISOR / 2]
+                    )
+                )
+            ).to.be.revertedWith("system is paused");
+        });
+
+        it("should fail if caller is not Verifier", async () => {
+            await expect(
+                bondingManager.slashTranscoder(transcoder.address, constants.NULL_ADDRESS, PERC_DIVISOR / 2, PERC_DIVISOR / 2)
+            ).to.be.revertedWith("caller must be Verifier");
+        });
+
+        it("decreases transcoder's bondedAmount", async () => {
+            const startBondedAmount = (await bondingManager.getDelegator(transcoder.address))[0].toNumber();
+            await fixture.verifier.execute(
+                bondingManager.address,
+                functionEncodedABI(
+                    "slashTranscoder(address,address,uint256,uint256)",
+                    ["address", "uint256", "uint256", "uint256"],
+                    [transcoder.address, constants.NULL_ADDRESS, PERC_DIVISOR / 2, 0]
+                )
+            );
+            const endBondedAmount = (await bondingManager.getDelegator(transcoder.address))[0];
+
+            assert.equal(endBondedAmount, startBondedAmount / 2, "should decrease transcoder's bondedAmount by slashAmount");
+        });
+
+        describe("transcoder is bonded", () => {
+            it("updates delegated amount and next total stake tokens", async () => {
+                const startNextTotalStake = await bondingManager.nextRoundTotalActiveStake();
+                await fixture.verifier.execute(
+                    bondingManager.address,
+                    functionEncodedABI(
+                        "slashTranscoder(address,address,uint256,uint256)",
+                        ["address", "uint256", "uint256", "uint256"],
+                        [transcoder.address, constants.NULL_ADDRESS, PERC_DIVISOR / 2, 0]
+                    )
+                );
+                const endNextTotalStake = await bondingManager.nextRoundTotalActiveStake();
+
+                assert.equal(
+                    (await bondingManager.getDelegator(transcoder.address))[3],
+                    500,
+                    "should decrease delegatedAmount for transcoder by slash amount"
+                );
+                assert.equal(
+                    startNextTotalStake.sub(endNextTotalStake),
+                    1000,
+                    "should decrease next total stake tokens by transcoder's delegated stake"
+                );
+            });
+        });
+
+        describe("transcoder has an unbonding lock", () => {
+            beforeEach(async () => {
+                await bondingManager.connect(transcoder).unbond(500);
+            });
+
+            it("still decreases transcoder's bondedAmount", async () => {
+                const startBondedAmount = (await bondingManager.getDelegator(transcoder.address))[0].toNumber();
+                await fixture.verifier.execute(
+                    bondingManager.address,
+                    functionEncodedABI(
+                        "slashTranscoder(address,address,uint256,uint256)",
+                        ["address", "uint256", "uint256", "uint256"],
+                        [transcoder.address, constants.NULL_ADDRESS, PERC_DIVISOR / 2, 0]
+                    )
+                );
+                const endBondedAmount = (await bondingManager.getDelegator(transcoder.address))[0];
+
+                assert.equal(endBondedAmount, startBondedAmount / 2, "should decrease transcoder's bondedAmount by slashAmount");
+            });
+        });
+
+        describe("transcoder is active", () => {
+            it("transcoder remains active until the next round", async () => {
+                await fixture.verifier.execute(
+                    bondingManager.address,
+                    functionEncodedABI(
+                        "slashTranscoder(address,address,uint256,uint256)",
+                        ["address", "uint256", "uint256", "uint256"],
+                        [transcoder.address, constants.NULL_ADDRESS, PERC_DIVISOR / 2, 0]
+                    )
+                );
+                assert.isOk(
+                    await bondingManager.isActiveTranscoder(transcoder.address),
+                    "should set active transcoder as inactive for the round"
+                );
+            });
+
+            it("deducts the transcoder's stake from the total for the next round", async () => {
+                const startTotalActiveStake = await bondingManager.nextRoundTotalActiveStake();
+                await fixture.verifier.execute(
+                    bondingManager.address,
+                    functionEncodedABI(
+                        "slashTranscoder(address,address,uint256,uint256)",
+                        ["address", "uint256", "uint256", "uint256"],
+                        [transcoder.address, constants.NULL_ADDRESS, PERC_DIVISOR / 2, 0]
+                    )
+                );
+                const endTotalActiveStake = await bondingManager.nextRoundTotalActiveStake();
+                assert.equal(
+                    startTotalActiveStake.sub(endTotalActiveStake).toNumber(),
+                    1000,
+                    "should decrease total active stake by total stake of transcoder"
+                );
+            });
+
+            it("sets the transcoder's deactivation round to next round", async () => {
+                await fixture.verifier.execute(
+                    bondingManager.address,
+                    functionEncodedABI(
+                        "slashTranscoder(address,address,uint256,uint256)",
+                        ["address", "uint256", "uint256", "uint256"],
+                        [transcoder.address, constants.NULL_ADDRESS, PERC_DIVISOR / 2, 0]
+                    )
+                );
+                assert.equal((await bondingManager.getTranscoder(transcoder.address)).deactivationRound, currentRound + 2);
+            });
+
+            it("fires a TranscoderDeactivated event", async () => {
+                const txRes = await fixture.verifier.execute(
+                    bondingManager.address,
+                    functionEncodedABI(
+                        "slashTranscoder(address,address,uint256,uint256)",
+                        ["address", "uint256", "uint256", "uint256"],
+                        [transcoder.address, constants.NULL_ADDRESS, PERC_DIVISOR / 2, 0]
+                    )
+                );
+                expect(txRes)
+                    .to.emit(bondingManager, "TranscoderDeactivated")
+                    .withArgs(transcoder.address, currentRound + 2);
+            });
+        });
+
+        describe("transcoder is not active but is in pool", () => {
+            beforeEach(async () => {
+                await bondingManager.connect(transcoder1).bond(2000, transcoder1.address);
+                await bondingManager.connect(transcoder1).transcoder(5, 10);
+            });
+
+            it("still decreases transcoder's bondedAmount", async () => {
+                const startBondedAmount = (await bondingManager.getDelegator(transcoder1.address))[0];
+                await fixture.verifier.execute(
+                    bondingManager.address,
+                    functionEncodedABI(
+                        "slashTranscoder(address,address,uint256,uint256)",
+                        ["address", "uint256", "uint256", "uint256"],
+                        [transcoder1.address, constants.NULL_ADDRESS, PERC_DIVISOR / 2, 0]
+                    )
+                );
+                const endBondedAmount = (await bondingManager.getDelegator(transcoder1.address))[0];
+
+                assert.equal(endBondedAmount, startBondedAmount / 2, "should decrease transcoder's bondedAmount by slashAmount");
+            });
+
+            it("decreases the total active stake for the next round", async () => {
+                const startTotalActiveStake = await bondingManager.nextRoundTotalActiveStake();
+                await fixture.verifier.execute(
+                    bondingManager.address,
+                    functionEncodedABI(
+                        "slashTranscoder(address,address,uint256,uint256)",
+                        ["address", "uint256", "uint256", "uint256"],
+                        [transcoder1.address, constants.NULL_ADDRESS, PERC_DIVISOR / 2, 0]
+                    )
+                );
+                const endTotalActiveStake = await bondingManager.nextRoundTotalActiveStake();
+                assert.equal(
+                    startTotalActiveStake.sub(endTotalActiveStake).toNumber(),
+                    2000,
+                    "should decrease total active stake by total stake of transcoder"
+                );
+            });
+        });
+
+        describe("transcoder is registered but not in pool", () => {
+            beforeEach(async () => {
+                await bondingManager.connect(transcoder1).bond(2000, transcoder1.address);
+                await bondingManager.connect(nonTranscoder).bond(100, nonTranscoder.address);
+            });
+            it("still decreases transcoder's bondedAmount", async () => {
+                const startBondedAmount = (await bondingManager.getDelegator(nonTranscoder.address))[0];
+                await fixture.verifier.execute(
+                    bondingManager.address,
+                    functionEncodedABI(
+                        "slashTranscoder(address,address,uint256,uint256)",
+                        ["address", "uint256", "uint256", "uint256"],
+                        [nonTranscoder.address, constants.NULL_ADDRESS, PERC_DIVISOR / 2, 0]
+                    )
+                );
+                const endBondedAmount = (await bondingManager.getDelegator(nonTranscoder.address))[0];
+
+                assert.equal(endBondedAmount, startBondedAmount / 2, "should decrease transcoder's bondedAmount by slashAmount");
+            });
+
+            it("doesn't change the total for the next round", async () => {
+                const startTotalActiveStake = await bondingManager.nextRoundTotalActiveStake();
+                await fixture.verifier.execute(
+                    bondingManager.address,
+                    functionEncodedABI(
+                        "slashTranscoder(address,address,uint256,uint256)",
+                        ["address", "uint256", "uint256", "uint256"],
+                        [nonTranscoder.address, constants.NULL_ADDRESS, PERC_DIVISOR / 2, 0]
+                    )
+                );
+                const endTotalActiveStake = await bondingManager.nextRoundTotalActiveStake();
+                assert.equal(
+                    startTotalActiveStake.sub(endTotalActiveStake).toNumber(),
+                    0,
+                    "should decrease total active stake by total stake of transcoder"
+                );
+            });
+        });
+
+        describe("invoked with a finder", () => {
+            it("slashes transcoder and rewards finder", async () => {
+                const txRes = await fixture.verifier.execute(
+                    bondingManager.address,
+                    functionEncodedABI(
+                        "slashTranscoder(address,address,uint256,uint256)",
+                        ["address", "uint256", "uint256", "uint256"],
+                        [transcoder.address, finder.address, PERC_DIVISOR / 2, PERC_DIVISOR / 2]
+                    )
+                );
+
+                expect(txRes).to.emit(bondingManager, "TranscoderSlashed").withArgs(transcoder.address, finder.address, 500, 250);
+            });
+        });
+
+        describe("invoked without a finder", () => {
+            it("slashes transcoder", async () => {
+                const txRes = await fixture.verifier.execute(
+                    bondingManager.address,
+                    functionEncodedABI(
+                        "slashTranscoder(address,address,uint256,uint256)",
+                        ["address", "uint256", "uint256", "uint256"],
+                        [transcoder.address, constants.NULL_ADDRESS, PERC_DIVISOR / 2, 0]
+                    )
+                );
+
+                expect(txRes).to.emit(bondingManager, "TranscoderSlashed").withArgs(transcoder.address, constants.NULL_ADDRESS, 500, 0);
+            });
+        });
+
+        describe("transcoder no longer has a bonded amount", () => {
+            beforeEach(async () => {
+                await bondingManager.connect(transcoder).unbond(1000);
+                const unbondingPeriod = await bondingManager.unbondingPeriod.call();
+                await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 1 + unbondingPeriod.toNumber());
+                await bondingManager.connect(transcoder).withdrawStake(0);
+            });
+
+            it("fires a TranscoderSlashed event, but transcoder is not penalized because it does not have a bonded amount", async () => {
+                const txRes = await fixture.verifier.execute(
+                    bondingManager.address,
+                    functionEncodedABI(
+                        "slashTranscoder(address,address,uint256,uint256)",
+                        ["address", "uint256", "uint256", "uint256"],
+                        [transcoder.address, constants.NULL_ADDRESS, PERC_DIVISOR / 2, 0]
+                    )
+                );
+
+                expect(txRes).to.emit(bondingManager, "TranscoderSlashed").withArgs(transcoder.address, constants.NULL_ADDRESS, 0, 0);
+            });
+        });
+    });
 
     // describe("claimEarnings", () => {
     //     const transcoder = accounts[0]
