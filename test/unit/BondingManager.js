@@ -2705,24 +2705,11 @@ describe("BondingManager", () => {
                 .withArgs(
                     transcoder.address,
                     delegator1.address,
-                    acceptableDelta,
+                    expFees,
                     expRewards.toString(),
                     (currentRound + 1).toString(),
                     (currentRound + 1).toString()
                 );
-
-            // truffleAssert.eventEmitted(
-            //     txResult,
-            //     "EarningsClaimed",
-            //     (e) =>
-            //         e.delegate === transcoder &&
-            //         e.delegator == delegator1 &&
-            //         e.fees - expFees <= acceptableDelta &&
-            //         e.rewards == expRewards.toString() &&
-            //         e.startRound == (currentRound + 1).toString() &&
-            //         e.endRound == (currentRound + 1).toString(),
-            //     "EarningsClaimed event not emitted correctly"
-            // );
         });
 
         describe("caller has a delegate", () => {
