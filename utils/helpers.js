@@ -1,8 +1,8 @@
 import {keccak256, bufferToHex} from "ethereumjs-util"
 import ethAbi from "ethereumjs-abi"
-
+import {ethers} from "hardhat"
 export function contractId(name) {
-    return bufferToHex(ethAbi.soliditySHA3(["string"], [name]))
+    return ethers.utils.solidityKeccak256(["string"], [name])
 }
 
 export function functionSig(name) {
