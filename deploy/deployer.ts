@@ -32,7 +32,7 @@ export default class ContractDeployer {
     }
 
     private contractId(name: string) {
-        return ethers.utils.soliditySha256(["string"], [name])
+        return ethers.utils.solidityKeccak256(["string"], [name])
     }
 
     private async register(name: string, address: string) {
@@ -60,7 +60,6 @@ export default class ContractDeployer {
 
     async deployAndRegister(config: {contract: string, name: string, proxy?: boolean, args: Array<any>, libraries?: Libraries | undefined}): Promise<DeployResult> {
         const {contract, name, proxy, args, libraries } = config
-
         const targetName = `${name}Target`
 
         const gitHash = await this.getGitHeadCommitHash()
@@ -72,11 +71,12 @@ export default class ContractDeployer {
             libraries: libraries
         })
 
-        if (!proxy) {
-            await this.controller?.setContractInfo(this.contractId(name), target.address, gitHash)
-            return target
-        } else {
+        if (proxy) {
             await this.controller?.setContractInfo(this.contractId(targetName), target.address, gitHash)
+        } else {
+            await this.controller?.setContractInfo(this.contractId(name), target.address, gitHash)
+            await deployments.save(name, target)
+            return target
         }
 
         // proxy == true, proceed with proxy deployment and registration
@@ -87,6 +87,9 @@ export default class ContractDeployer {
         })
 
         await this.controller?.setContractInfo(this.contractId(name), managerProxy.address, gitHash)
+        await deployments.save(`${contract}Target`, target)
+        await deployments.save(`${contract}Proxy`, managerProxy)
+        await deployments.save(contract, managerProxy)
 
         return managerProxy
     }
