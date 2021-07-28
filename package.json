@@ -71,7 +71,7 @@
     "ethers": "^5.4.1",
     "ethlint": "^1.2.5",
     "ganache-cli": "github:livepeer/ganache-cli#ba0163595a9bdf642f5f8303b9f5d38146758bea",
-    "hardhat": "^2.0.8",
+    "hardhat": "^2.5.0",
     "hardhat-deploy": "^0.8.11",
     "hardhat-deploy-ethers": "^0.3.0-beta.10",
     "hardhat-gas-reporter": "^1.0.4",
