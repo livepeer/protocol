@@ -1,14 +1,16 @@
 {
+  "arrowParens": "avoid",
+  "bracketSpacing": true,
+  "endOfLine": "auto",
+  "printWidth": 120,
+  "singleQuote": false,
+  "tabWidth": 2,
+  "trailingComma": "all",
   "overrides": [
     {
-      "files": ["*.sol", "*.ts", "*.js"],
+      "files": "*.sol",
       "options": {
-        "printWidth": 140,
-        "tabWidth": 4,
-        "useTabs": false,
-        "singleQuote": false,
-        "bracketSpacing": true,
-        "explicitTypes": "always"
+        "tabWidth": 4
       }
     }
   ]
