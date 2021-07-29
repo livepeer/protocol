@@ -6,13 +6,13 @@ import "solidity-coverage";
 import "@nomiclabs/hardhat-etherscan";
 
 // deployment plugins
-import 'hardhat-deploy';
-import 'hardhat-deploy-ethers';
+import "hardhat-deploy";
+import "hardhat-deploy-ethers";
 
 import { HardhatUserConfig } from "hardhat/types/config";
 
-const PRIVATE_KEY = process.env.PRIVATE_KEY
-const INFURA_KEY = process.env.INFURA_KEY
+const PRIVATE_KEY = process.env.PRIVATE_KEY;
+const INFURA_KEY = process.env.INFURA_KEY;
 
 const config: HardhatUserConfig = {
   solidity: {
@@ -33,10 +33,13 @@ const config: HardhatUserConfig = {
       gas: 12000000,
       allowUnlimitedContractSize: true,
       blockGasLimit: 12000000,
+      accounts: {
+        count: 250,
+      },
     },
     mainnet: {
       url: `https://mainnet.infura.io/v3/${INFURA_KEY}`,
-      accounts: PRIVATE_KEY ? [`0x${PRIVATE_KEY}`] : undefined
+      accounts: PRIVATE_KEY ? [`0x${PRIVATE_KEY}`] : undefined,
     },
     rinkeby: {
       url: `https://rinkeby.infura.io/v3/${INFURA_KEY}`,
@@ -44,15 +47,15 @@ const config: HardhatUserConfig = {
       blockGasLimit: 12000000,
     },
     localhost: {
-      url: "http://127.0.0.1:8545"
-    }
+      url: "http://127.0.0.1:8545",
+    },
   },
   gasReporter: {
-    enabled: (process.env.REPORT_GAS) ? true : false
+    enabled: process.env.REPORT_GAS ? true : false,
   },
   etherscan: {
     apiKey: process.env.ETHERSCAN_API_KEY,
-  },
+  }
 };
 
 export default config;

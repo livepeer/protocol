@@ -35,7 +35,7 @@ export default class ContractDeployer {
         return ethers.utils.solidityKeccak256(["string"], [name])
     }
 
-    private async register(name: string, address: string) {
+    async register(name: string, address: string) {
         const gitHash = await this.getGitHeadCommitHash()
         await this.controller?.setContractInfo(
             this.contractId(name),
