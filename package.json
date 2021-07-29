@@ -9,7 +9,7 @@
   "scripts": {
     "prepare": "husky install",
     "deploy": "npx hardhat deploy",
-    "lint": "npm run eslint && npm run prettier && npm run solhint",
+    "lint": "npm run eslint && npm run solhint",
     "eslint:fix": "eslint util/** test/** --fix",
     "eslint": "eslint util/** test/**",
     "solhint": "npx solhint 'contracts/**/*.sol'",
