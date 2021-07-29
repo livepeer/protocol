@@ -8,7 +8,7 @@
   },
   "scripts": {
     "deploy": "npx hardhat deploy",
-    "lint": "npm run eslint && npm run solhint",
+    "lint": "npm run eslint && npm run prettier && npm run solhint",
     "eslint:fix": "eslint util/** test/** --fix",
     "eslint": "eslint util/** test/**",
     "solhint": "npx solhint 'contracts/**/*.sol'",
@@ -78,6 +78,7 @@
     "hardhat-deploy": "^0.8.11",
     "hardhat-deploy-ethers": "^0.3.0-beta.10",
     "hardhat-gas-reporter": "^1.0.4",
+    "husky": "^7.0.1",
     "mkdirp": "^0.5.1",
     "mocha": "^9.0.2",
     "mocha-lcov-reporter": "^1.3.0",
