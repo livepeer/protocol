@@ -1,11 +1,12 @@
 import { HardhatRuntimeEnvironment } from 'hardhat/types'
 import { DeployFunction } from 'hardhat-deploy/types'
-import { ethers } from 'hardhat'
+import { ethers, network } from 'hardhat'
 
-import { Controller, BondingManager, RoundsManager, TicketBroker } from '../typechain'
+import { Controller, BondingManager, RoundsManager, TicketBroker, LivepeerToken } from '../typechain'
 
 import ContractDeployer from './deployer'
 import config from './migrations.config'
+import genesis from './genesis.config'
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     const { deployments, getNamedAccounts } = hre // Get the deployments and getNamedAccounts which are provided by hardhat-deploy
@@ -90,22 +91,39 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     // Set BondingManager parameters
     const BondingManager: BondingManager = (await ethers.getContractAt("BondingManager", bondingManager.address)) as BondingManager
 
-    console.log("** Setting BondingManager parameters **")
     await BondingManager.setUnbondingPeriod(config.bondingManager.unbondingPeriod)
     await BondingManager.setNumActiveTranscoders(config.bondingManager.numActiveTranscoders)
     await BondingManager.setMaxEarningsClaimsRounds(config.bondingManager.maxEarningsClaimsRounds)
 
     // Set RoundsManager parameters
-    console.log("** Setting RoundsManager parameters **")
     const RoundsManager: RoundsManager = (await ethers.getContractAt("RoundsManager", roundsManager.address)) as RoundsManager
     await RoundsManager.setRoundLength(config.roundsManager.roundLength)
     await RoundsManager.setRoundLockAmount(config.roundsManager.roundLockAmount)
 
     // Set TicketBroker parameters
-    console.log("** Setting TicketBroker parameters **")
     const Broker: TicketBroker = (await ethers.getContractAt("TicketBroker", ticketBroker.address)) as TicketBroker
     await Broker.setUnlockPeriod(config.broker.unlockPeriod)
     await Broker.setTicketValidityPeriod(config.broker.ticketValidityPeriod)
+
+    const Token: LivepeerToken = (await ethers.getContractAt("LivepeerToken", livepeerToken.address)) as LivepeerToken
+    if (hre.network.name !== "mainnet") {
+        const faucet = await contractDeployer.deployAndRegister({
+            contract: "LivepeerTokenFaucet",
+            name: "LivepeerTokenFaucet",
+            args: [livepeerToken.address, config.faucet.requestAmount, config.faucet.requestWait]
+        })
+        // If not in production, send the crowd supply to the faucet and the company supply to the deployment account
+
+        await Token.mint(faucet.address, genesis.crowdSupply)
+
+        await Token.mint(deployer, genesis.companySupply)   
+    } else {
+        Controller.transferOwnership(genesis.governanceMultisig)
+        const newOwner = await Controller.owner()
+        console.log(`Controller at ${Controller.address} is now owned by ${newOwner}`)
+    }
+
+    await Token.transferOwnership(minter.address)
 }
 
 func.tags = ["Contracts"]
