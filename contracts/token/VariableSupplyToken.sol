@@ -2,7 +2,6 @@ pragma solidity ^0.5.11;
 
 import "../zeppelin/MintableToken.sol";
 
-
 contract VariableSupplyToken is MintableToken {
     event Burn(address indexed burner, uint256 value);
 

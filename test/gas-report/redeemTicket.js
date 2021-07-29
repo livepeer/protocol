@@ -21,7 +21,7 @@ describe("redeem ticket gas report", async () => {
 
     const deposit = 1000
 
-    let accounts = await web3.eth.getAccounts();
+    let accounts = await web3.eth.getAccounts()
 
     before(async () => {
         rpc = new RPC(web3)

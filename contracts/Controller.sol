@@ -5,16 +5,15 @@ import "./IManager.sol";
 
 import "./zeppelin/Pausable.sol";
 
-
 contract Controller is Pausable, IController {
     // Track information about a registered contract
     struct ContractInfo {
-        address contractAddress;                 // Address of contract
-        bytes20 gitCommitHash;                   // SHA1 hash of head Git commit during registration of this contract
+        address contractAddress; // Address of contract
+        bytes20 gitCommitHash; // SHA1 hash of head Git commit during registration of this contract
     }
 
     // Track contract ids and contract info
-    mapping (bytes32 => ContractInfo) private registry;
+    mapping(bytes32 => ContractInfo) private registry;
 
     constructor() public {
         // Start system as paused
@@ -26,7 +25,11 @@ contract Controller is Pausable, IController {
      * @param _id Contract id (keccak256 hash of contract name)
      * @param _contractAddress Contract address
      */
-    function setContractInfo(bytes32 _id, address _contractAddress, bytes20 _gitCommitHash) external onlyOwner {
+    function setContractInfo(
+        bytes32 _id,
+        address _contractAddress,
+        bytes20 _gitCommitHash
+    ) external onlyOwner {
         registry[_id].contractAddress = _contractAddress;
         registry[_id].gitCommitHash = _gitCommitHash;
 

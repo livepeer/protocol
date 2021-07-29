@@ -2,7 +2,6 @@ pragma solidity ^0.5.11;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
-
 library MathUtils {
     using SafeMath for uint256;
 
@@ -23,7 +22,11 @@ library MathUtils {
      * @param _fracNum Numerator of fraction representing the percentage
      * @param _fracDenom Denominator of fraction representing the percentage
      */
-    function percOf(uint256 _amount, uint256 _fracNum, uint256 _fracDenom) internal pure returns (uint256) {
+    function percOf(
+        uint256 _amount,
+        uint256 _fracNum,
+        uint256 _fracDenom
+    ) internal pure returns (uint256) {
         return _amount.mul(percPoints(_fracNum, _fracDenom)).div(PERC_DIVISOR);
     }
 

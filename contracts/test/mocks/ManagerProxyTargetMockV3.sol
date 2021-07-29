@@ -2,7 +2,6 @@ pragma solidity ^0.5.11;
 
 import "../../ManagerProxyTarget.sol";
 
-
 contract ManagerProxyTargetMockV3 is ManagerProxyTarget {
     uint256 public initValue;
     uint8 public uint8Value;
@@ -10,7 +9,7 @@ contract ManagerProxyTargetMockV3 is ManagerProxyTarget {
     uint256 public uint256Value;
     bytes32 public bytes32Value;
     address public addressValue;
-    mapping (uint256 => uint256) public kvMap;
+    mapping(uint256 => uint256) public kvMap;
 
     constructor(address _controller) public Manager(_controller) {}
 

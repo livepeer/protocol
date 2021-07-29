@@ -2,7 +2,6 @@ pragma solidity ^0.5.11;
 
 import "../../ManagerProxyTarget.sol";
 
-
 contract ManagerProxyTargetMockV1 is ManagerProxyTarget {
     uint256 public initValue;
     uint8 public uint8Value;
@@ -46,13 +45,25 @@ contract ManagerProxyTargetMockV1 is ManagerProxyTarget {
         bytesValue = _value;
     }
 
-    function setTuple(uint256 _value1, uint256 _value2, bytes32 _value3) external {
+    function setTuple(
+        uint256 _value1,
+        uint256 _value2,
+        bytes32 _value3
+    ) external {
         tupleValue1 = _value1;
         tupleValue2 = _value2;
         tupleValue3 = _value3;
     }
 
-    function getTuple() external view returns (uint256, uint256, bytes32) {
+    function getTuple()
+        external
+        view
+        returns (
+            uint256,
+            uint256,
+            bytes32
+        )
+    {
         return (tupleValue1, tupleValue2, tupleValue3);
     }
 }

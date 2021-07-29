@@ -1,7 +1,6 @@
-pragma solidity >= 0.4.15 < 0.6.0;
+pragma solidity >=0.4.15 <0.6.0;
 
 library AssertBool {
-
     /*
         Event: TestEvent
 
@@ -68,12 +67,14 @@ library AssertBool {
         Returns:
             result (bool) - The result.
     */
-    function equal(bool a, bool b, string memory message) public returns (bool result) {
+    function equal(
+        bool a,
+        bool b,
+        string memory message
+    ) public returns (bool result) {
         result = (a == b);
-        if (result)
-            _report(result, message);
-        else
-            _report(result, _appendTagged(_tag(a, "Tested"), _tag(b, "Against"), message));
+        if (result) _report(result, message);
+        else _report(result, _appendTagged(_tag(a, "Tested"), _tag(b, "Against"), message));
     }
 
     /*
@@ -91,17 +92,19 @@ library AssertBool {
         Returns:
             result (bool) - The result.
     */
-    function notEqual(bool a, bool b, string memory message) public returns (bool result) {
+    function notEqual(
+        bool a,
+        bool b,
+        string memory message
+    ) public returns (bool result) {
         result = (a != b);
-        if (result)
-            _report(result, message);
-        else
-            _report(result, _appendTagged(_tag(a, "Tested"), _tag(b, "Against"), message));
+        if (result) _report(result, message);
+        else _report(result, _appendTagged(_tag(a, "Tested"), _tag(b, "Against"), message));
     }
 
     /******************************** internal ********************************/
 
-        /*
+    /*
             Function: _report
 
             Internal function for triggering <TestEvent>.
@@ -111,10 +114,8 @@ library AssertBool {
                 message (string) - The message that is sent if the assertion fails.
         */
     function _report(bool result, string memory message) internal {
-        if(result)
-            emit TestEvent(true, "");
-        else
-            emit TestEvent(false, message);
+        if (result) emit TestEvent(true, "");
+        else emit TestEvent(false, message);
     }
 
     /*
@@ -132,19 +133,18 @@ library AssertBool {
         bytes memory b;
         if (val) {
             b = new bytes(4);
-            b[0] = 't';
-            b[1] = 'r';
-            b[2] = 'u';
-            b[3] = 'e';
+            b[0] = "t";
+            b[1] = "r";
+            b[2] = "u";
+            b[3] = "e";
             return string(b);
-        }
-        else {
+        } else {
             b = new bytes(5);
-            b[0] = 'f';
-            b[1] = 'a';
-            b[2] = 'l';
-            b[3] = 's';
-            b[4] = 'e';
+            b[0] = "f";
+            b[1] = "a";
+            b[2] = "l";
+            b[3] = "s";
+            b[4] = "e";
             return string(b);
         }
     }
@@ -174,24 +174,21 @@ library AssertBool {
             result (string) - "tag: value"
     */
     function _tag(string memory value, string memory tag) internal pure returns (string memory) {
-
         bytes memory valueB = bytes(value);
         bytes memory tagB = bytes(tag);
 
-        uint vl = valueB.length;
-        uint tl = tagB.length;
+        uint256 vl = valueB.length;
+        uint256 tl = tagB.length;
 
         bytes memory newB = new bytes(vl + tl + 2);
 
-        uint i;
-        uint j;
+        uint256 i;
+        uint256 j;
 
-        for (i = 0; i < tl; i++)
-            newB[j++] = tagB[i];
-        newB[j++] = ':';
-        newB[j++] = ' ';
-        for (i = 0; i < vl; i++)
-            newB[j++] = valueB[i];
+        for (i = 0; i < tl; i++) newB[j++] = tagB[i];
+        newB[j++] = ":";
+        newB[j++] = " ";
+        for (i = 0; i < vl; i++) newB[j++] = valueB[i];
 
         return string(newB);
     }
@@ -226,34 +223,33 @@ library AssertBool {
         Returns:
             result (string) - "str (tagged0, tagged1)"
     */
-    function _appendTagged(string memory tagged0, string memory tagged1, string memory str) internal pure returns (string memory) {
-
+    function _appendTagged(
+        string memory tagged0,
+        string memory tagged1,
+        string memory str
+    ) internal pure returns (string memory) {
         bytes memory tagged0B = bytes(tagged0);
         bytes memory tagged1B = bytes(tagged1);
         bytes memory strB = bytes(str);
 
-        uint sl = strB.length;
-        uint t0l = tagged0B.length;
-        uint t1l = tagged1B.length;
+        uint256 sl = strB.length;
+        uint256 t0l = tagged0B.length;
+        uint256 t1l = tagged1B.length;
 
         bytes memory newB = new bytes(sl + t0l + t1l + 5);
 
-        uint i;
-        uint j;
+        uint256 i;
+        uint256 j;
 
-        for (i = 0; i < sl; i++)
-            newB[j++] = strB[i];
-        newB[j++] = ' ';
-        newB[j++] = '(';
-        for (i = 0; i < t0l; i++)
-            newB[j++] = tagged0B[i];
-        newB[j++] = ',';
-        newB[j++] = ' ';
-        for (i = 0; i < t1l; i++)
-            newB[j++] = tagged1B[i];
-        newB[j++] = ')';
+        for (i = 0; i < sl; i++) newB[j++] = strB[i];
+        newB[j++] = " ";
+        newB[j++] = "(";
+        for (i = 0; i < t0l; i++) newB[j++] = tagged0B[i];
+        newB[j++] = ",";
+        newB[j++] = " ";
+        for (i = 0; i < t1l; i++) newB[j++] = tagged1B[i];
+        newB[j++] = ")";
 
         return string(newB);
     }
-
 }

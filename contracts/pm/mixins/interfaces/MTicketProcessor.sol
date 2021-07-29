@@ -1,6 +1,5 @@
 pragma solidity ^0.5.11;
 
-
 contract MTicketProcessor {
     /**
      * @dev Process sent funds.
@@ -20,7 +19,11 @@ contract MTicketProcessor {
      * @param _amount Amount of funds for the winning ticket
      * @param _auxData Auxilary data for the winning ticket
      */
-    function winningTicketTransfer(address _recipient, uint256 _amount, bytes memory _auxData) internal;
+    function winningTicketTransfer(
+        address _recipient,
+        uint256 _amount,
+        bytes memory _auxData
+    ) internal;
 
     /**
      * @dev Validates a ticket's auxilary data (succeeds or reverts)
