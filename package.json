@@ -20,7 +20,7 @@
     "test:coverage": "SOLIDITY_COVERAGE=true npx hardhat test",
     "test:coverage:coveralls": "npm run test:coverage && cat coverage/lcov.info | coveralls",
     "test": "npx hardhat test",
-    "test:unit": "npx hardhat test test/unit/**",
+    "test:unit": "npx hardhat test test/unit/*.*",
     "test:integration": "npx hardhat test test/integration/**",
     "test:describe": "npx hardhat test -- -g $1",
     "test:gas": "REPORT_GAS=true npx hardhat test test/gas-report/* -- -r",
