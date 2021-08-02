@@ -1,6 +1,4 @@
-import BN from "bn.js"
-import {constants} from "../utils/constants"
-import {BigNumber, ethers, utils} from "ethers"
+import {BigNumber, utils} from "ethers"
 export default {
     initialSupply: utils.parseEther("10000000"),
     crowdSupply: utils.parseEther("6343700"),

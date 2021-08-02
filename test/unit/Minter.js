@@ -1,10 +1,9 @@
 import Fixture from "./helpers/Fixture"
-import BN from "bn.js"
 import {constants} from "../../utils/constants"
 import {contractId, functionSig, functionEncodedABI} from "../../utils/helpers"
 
 import {web3, ethers} from "hardhat"
-
+const BigNumber = ethers.BigNumber
 import chai, {expect, assert} from "chai"
 import {solidity} from "ethereum-waffle"
 chai.use(solidity)
@@ -224,11 +223,11 @@ describe("Minter", accounts => {
             // Instead we compute the output of createReward as: (mintedTokens * ((fracNum * PERC_DIVISOR) / fracDenom)) / PERC_DIVISOR
             // fracNum * PERC_DIVISOR has less of a chance of overflowing since PERC_DIVISOR is bounded in magnitude
 
-            const bigAmount = new BN("10000000000000000000000000000000000000000000000")
+            const bigAmount = BigNumber.from("10000000000000000000000000000000000000000000000")
             // Set up reward call via BondingManager
             await fixture.bondingManager.execute(minter.address, functionEncodedABI("createReward(uint256,uint256)", ["uint256", "uint256"], [bigAmount.toString(), bigAmount.toString()]))
             const currentMintableTokens = await minter.currentMintableTokens()
-            const expCurrentMintedTokens = new BN(currentMintableTokens.toString()).mul(bigAmount.mul(new BN(PERC_DIVISOR)).div(bigAmount)).div(new BN(PERC_DIVISOR)).toNumber()
+            const expCurrentMintedTokens = BigNumber.from(currentMintableTokens.toString()).mul(bigAmount.mul(BigNumber.from(PERC_DIVISOR)).div(bigAmount)).div(BigNumber.from(PERC_DIVISOR)).toNumber()
 
             const currentMintedTokens = await minter.currentMintedTokens()
             assert.equal(currentMintedTokens, expCurrentMintedTokens, "wrong currentMintedTokens")
@@ -346,9 +345,9 @@ describe("Minter", accounts => {
 
         it("should transfer ETH to receiving address when caller is BondingManager", async () => {
             await fixture.ticketBroker.connect(signers[1]).execute(minter.address, functionSig("depositETH()"), {value: 100})
-            const startBalance = new BN(await web3.eth.getBalance(signers[1].address))
+            const startBalance = BigNumber.from(await web3.eth.getBalance(signers[1].address))
             await fixture.bondingManager.execute(minter.address, functionEncodedABI("trustedWithdrawETH(address,uint256)", ["address", "uint256"], [signers[1].address, 100]))
-            const endBalance = new BN(await web3.eth.getBalance(signers[1].address))
+            const endBalance = BigNumber.from(await web3.eth.getBalance(signers[1].address))
 
             assert.equal(await web3.eth.getBalance(minter.address), 0, "wrong minter balance")
             // In practice, this check would not work because it does not factor in the transaction cost that would be incurred by the withdrawing caller
@@ -358,9 +357,9 @@ describe("Minter", accounts => {
 
         it("should transfer ETH to receiving address when caller is JobsManager", async () => {
             await fixture.ticketBroker.connect(signers[1]).execute(minter.address, functionSig("depositETH()"), {value: 100})
-            const startBalance = new BN(await web3.eth.getBalance(signers[1].address))
+            const startBalance = BigNumber.from(await web3.eth.getBalance(signers[1].address))
             await fixture.ticketBroker.execute(minter.address, functionEncodedABI("trustedWithdrawETH(address,uint256)", ["address", "uint256"], [signers[1].address, 100]))
-            const endBalance = new BN(await web3.eth.getBalance(signers[1].address))
+            const endBalance = BigNumber.from(await web3.eth.getBalance(signers[1].address))
 
             assert.equal(await web3.eth.getBalance(minter.address), 0, "wrong minter balance")
             // In practice, this check would not work because it does not factor in the transaction cost that would be incurred by the withdrawing caller
@@ -491,11 +490,11 @@ describe("Minter", accounts => {
         })
 
         it("should set currentMintableTokens and inflation correctly for different inflationChange values", async () => {
-            const totalSupply = new BN("21645383016495782629665363")
+            const totalSupply = BigNumber.from("21645383016495782629665363")
             const inflation = .0455 * PERC_MULTIPLIER
             const targetBondingRate = 50 * PERC_MULTIPLIER
             const currentBondingRate = 51 * PERC_MULTIPLIER
-            const totalBonded = totalSupply.mul(new BN(currentBondingRate)).div(new BN(PERC_DIVISOR))
+            const totalBonded = totalSupply.mul(BigNumber.from(currentBondingRate)).div(BigNumber.from(PERC_DIVISOR))
 
             await fixture.token.setMockUint256(functionSig("totalSupply()"), totalSupply.toString())
             // Set total bonded tokens - we are above the target bonding rate so inflation decreases

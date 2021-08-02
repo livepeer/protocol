@@ -1,4 +1,4 @@
-import { ethers } from "hardhat"
+import {ethers} from "hardhat"
 
 export default {
     bondingManager: {
