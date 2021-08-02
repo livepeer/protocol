@@ -45,7 +45,7 @@ jobs:
                 command: npm run compile
             - run: 
                 name: Run tests with coverage reporting
-                command: npm run test:coverage:coveralls
+                command: npm run test:coverage
                 no_output_timeout: 20m
 
 workflows:
