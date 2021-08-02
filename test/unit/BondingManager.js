@@ -2,10 +2,9 @@ import Fixture from "./helpers/Fixture"
 import {contractId, functionSig, functionEncodedABI} from "../../utils/helpers"
 import {constants} from "../../utils/constants"
 import math from "../helpers/math"
-import BN from "bn.js"
 import {assert} from "chai"
 import {ethers, web3} from "hardhat"
-
+const BigNumber = ethers.BigNumber
 import chai from "chai"
 import {solidity} from "ethereum-waffle"
 
@@ -1805,7 +1804,7 @@ describe("BondingManager", () => {
             const endNextTotalStake = await bondingManager.nextRoundTotalActiveStake()
 
             const earningsPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder.address, currentRound + 1)
-            const expRewardFactor = constants.PERC_DIVISOR_PRECISE.add(math.precise.percPoints(new BN(500), new BN(1000)))
+            const expRewardFactor = constants.PERC_DIVISOR_PRECISE.add(math.precise.percPoints(BigNumber.from(500), BigNumber.from(1000)))
             assert.equal(
                 earningsPool.cumulativeRewardFactor.toString(),
                 expRewardFactor.toString(),
@@ -1836,7 +1835,7 @@ describe("BondingManager", () => {
             const endNextTotalStake = await bondingManager.nextRoundTotalActiveStake()
 
             const earningsPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder.address, currentRound + 3)
-            const expRewardFactor = constants.PERC_DIVISOR_PRECISE.add(math.precise.percPoints(new BN(500), new BN(1000)))
+            const expRewardFactor = constants.PERC_DIVISOR_PRECISE.add(math.precise.percPoints(BigNumber.from(500), BigNumber.from(1000)))
             assert.equal(
                 earningsPool.cumulativeRewardFactor.toString(),
                 expRewardFactor.toString(),
@@ -1907,11 +1906,11 @@ describe("BondingManager", () => {
 
                 // Since we cannot store cumulativeRewardFactor values using the old PERC_DIVISOR value we just check
                 // that rescaling occurs
-                const rescaleFactor = constants.PERC_DIVISOR_PRECISE.div(new BN(constants.PERC_DIVISOR.toString()))
+                const rescaleFactor = constants.PERC_DIVISOR_PRECISE.div(constants.PERC_DIVISOR.toString())
                 assert.ok(
-                    new BN(prevPool.cumulativeRewardFactor.toString())
+                    prevPool.cumulativeRewardFactor
                         .mul(rescaleFactor)
-                        .lt(new BN(pool.cumulativeRewardFactor.toString())),
+                        .lt(pool.cumulativeRewardFactor),
                 )
             })
 
@@ -1926,11 +1925,11 @@ describe("BondingManager", () => {
 
                 // Since we cannot store cumulativeRewardFactor values using the old PERC_DIVISOR value we just check
                 // that rescaling did not occur
-                const rescaleFactor = constants.PERC_DIVISOR_PRECISE.div(new BN(constants.PERC_DIVISOR.toString()))
+                const rescaleFactor = constants.PERC_DIVISOR_PRECISE.div(constants.PERC_DIVISOR.toString())
                 assert.ok(
-                    new BN(prevPool.cumulativeRewardFactor.toString())
+                    prevPool.cumulativeRewardFactor
                         .mul(rescaleFactor)
-                        .gt(new BN(pool.cumulativeRewardFactor.toString())),
+                        .gt(pool.cumulativeRewardFactor),
                 )
             })
         })
@@ -2230,11 +2229,11 @@ describe("BondingManager", () => {
 
                 // Since we cannot store cumulative factor values using the old PERC_DIVISOR value we just check
                 // that rescaling occured
-                const rescaleFactor = constants.PERC_DIVISOR_PRECISE.div(new BN(constants.PERC_DIVISOR.toString()))
+                const rescaleFactor = constants.PERC_DIVISOR_PRECISE.div(constants.PERC_DIVISOR)
                 assert.ok(
-                    new BN(prevPool.cumulativeFeeFactor.toString())
+                    BigNumber.from(prevPool.cumulativeFeeFactor.toString())
                         .mul(rescaleFactor)
-                        .lt(new BN(pool.cumulativeFeeFactor.toString())),
+                        .lt(BigNumber.from(pool.cumulativeFeeFactor.toString())),
                 )
             })
 
@@ -2263,11 +2262,11 @@ describe("BondingManager", () => {
 
                 // Since we cannot store cumulative factor values using the old PERC_DIVISOR value we just check
                 // that rescaling did not occur
-                const rescaleFactor = constants.PERC_DIVISOR_PRECISE.div(new BN(constants.PERC_DIVISOR.toString()))
+                const rescaleFactor = constants.PERC_DIVISOR_PRECISE.div(constants.PERC_DIVISOR)
                 assert.ok(
-                    new BN(prevPool.cumulativeFeeFactor.toString())
+                    prevPool.cumulativeFeeFactor
                         .mul(rescaleFactor)
-                        .gt(new BN(pool.cumulativeFeeFactor.toString())),
+                        .gt(pool.cumulativeFeeFactor),
                 )
             })
         })
@@ -2813,11 +2812,11 @@ describe("BondingManager", () => {
 
             // Since we cannot store cumulativeRewardFactor values using the old PERC_DIVISOR value we just check
             // that rescaling occurred
-            const rescaleFactor = constants.PERC_DIVISOR_PRECISE.div(new BN(constants.PERC_DIVISOR))
+            const rescaleFactor = constants.PERC_DIVISOR_PRECISE.div(constants.PERC_DIVISOR)
             assert.ok(
-                new BN(lrrPool.cumulativeRewardFactor.toString())
+                lrrPool.cumulativeRewardFactor
                     .mul(rescaleFactor)
-                    .eq(new BN(pool.cumulativeRewardFactor.toString())),
+                    .eq(pool.cumulativeRewardFactor),
             )
         })
 
@@ -2832,11 +2831,11 @@ describe("BondingManager", () => {
 
             // Since we cannot store cumulativeFeeFactor values using the old PERC_DIVISOR value we just check
             // that rescaling occurred
-            const rescaleFactor = constants.PERC_DIVISOR_PRECISE.div(new BN(constants.PERC_DIVISOR))
+            const rescaleFactor = constants.PERC_DIVISOR_PRECISE.div(constants.PERC_DIVISOR)
             assert.ok(
-                new BN(lrrPool.cumulativeFeeFactor.toString())
+                lrrPool.cumulativeFeeFactor
                     .mul(rescaleFactor)
-                    .eq(new BN(pool.cumulativeFeeFactor.toString())),
+                    .eq(pool.cumulativeFeeFactor),
             )
         })
 
@@ -2898,8 +2897,8 @@ describe("BondingManager", () => {
         })
 
         it("fires an EarningsClaimed event", async () => {
-            const expRewards = new BN(delegatorRewards * 0.3) // 30%
-            const expFees = new BN(delegatorFees * 0.3) // 30%
+            const expRewards = BigNumber.from(delegatorRewards * 0.3) // 30%
+            const expFees = BigNumber.from(delegatorFees * 0.3) // 30%
             const acceptableDelta = 5
             const fromBlock = await ethers.provider.getBlockNumber()
             await bondingManager.connect(delegator1).claimEarnings(currentRound + 1)
@@ -2929,8 +2928,8 @@ describe("BondingManager", () => {
             })
 
             it("should claim earnings for 1 round", async () => {
-                const expRewards = new BN(delegatorRewards * 0.3) // 30%
-                const expFees = new BN(delegatorFees * 0.3) // 30%
+                const expRewards = BigNumber.from(delegatorRewards * 0.3) // 30%
+                const expFees = BigNumber.from(delegatorFees * 0.3) // 30%
                 const acceptableDelta = 5
 
                 const startDInfo1 = await bondingManager.getDelegator(delegator1.address)
@@ -2976,8 +2975,8 @@ describe("BondingManager", () => {
                 // Total = 11000
                 const expRewardsSecondRound = Math.floor(delegatorRewards * 0.286) // 28.6%
                 const expFeesSecondRound = Math.floor(delegatorFees * 0.286) // 28.6%
-                const expRewards = new BN(expRewardsFirstRound + expRewardsSecondRound)
-                const expFees = new BN(expFeesFirstRound + expFeesSecondRound)
+                const expRewards = BigNumber.from(expRewardsFirstRound + expRewardsSecondRound)
+                const expFees = BigNumber.from(expFeesFirstRound + expFeesSecondRound)
                 const acceptableDelta = 5
 
                 await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 2)
@@ -3027,9 +3026,9 @@ describe("BondingManager", () => {
             describe("caller is a transcoder", () => {
                 it("should claim earnings as both a delegator and a transcoder", async () => {
                     const expDelegatorRewards = delegatorRewards * 0.1 // 10%
-                    const expRewards = new BN(expDelegatorRewards + transcoderRewards)
+                    const expRewards = BigNumber.from(expDelegatorRewards + transcoderRewards)
                     const expDelegatorFees = delegatorFees * 0.1
-                    const expFees = new BN(expDelegatorFees + transcoderFees)
+                    const expFees = BigNumber.from(expDelegatorFees + transcoderFees)
                     const acceptableDelta = 5
 
                     const startDInfo = await bondingManager.getDelegator(transcoder.address)
@@ -3044,9 +3043,9 @@ describe("BondingManager", () => {
 
                 it("should claim earnings as both a delegator and a transcoder regardless of when other delegators claim", async () => {
                     const expDelegatorRewards = delegatorRewards * 0.1 // 10%
-                    const expRewards = new BN(expDelegatorRewards + transcoderRewards)
+                    const expRewards = BigNumber.from(expDelegatorRewards + transcoderRewards)
                     const expDelegatorFees = delegatorFees * 0.1
-                    const expFees = new BN(expDelegatorFees + transcoderFees)
+                    const expFees = BigNumber.from(expDelegatorFees + transcoderFees)
                     const acceptableDelta = 5
 
                     await bondingManager.connect(delegator1).claimEarnings(currentRound + 1)

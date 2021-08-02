@@ -18,7 +18,7 @@
     "clean": "rm -rf build/contracts",
     "compile": "npx hardhat compile",
     "test:coverage": "SOLIDITY_COVERAGE=true npx hardhat test",
-    "test:coverage:coveralls": "npx hardhat test:coverage && cat coverage/lcov.info | coveralls",
+    "test:coverage:coveralls": "npm run test:coverage && cat coverage/lcov.info | coveralls",
     "test": "npx hardhat test",
     "test:unit": "npx hardhat test test/unit/**",
     "test:integration": "npx hardhat test test/integration/**",

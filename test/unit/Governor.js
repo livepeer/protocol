@@ -110,7 +110,7 @@ describe("Governor", () => {
             )
 
             assert.equal(await governor.owner(), signers[1].address)
-            expect(tx).to.emit(governor, "OwernshipTransferred").withArgs(signers[0].address, signers[1].address)
+            expect(tx).to.emit(governor, "OwnershipTransferred").withArgs(signers[0].address, signers[1].address)
         })
     })
 
