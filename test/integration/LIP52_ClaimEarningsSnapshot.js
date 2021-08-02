@@ -1,28 +1,21 @@
-import {contractId} from "../../../utils/helpers"
-import {constants} from "../../../utils/constants"
-import MerkleTree from "../../../utils/merkleTree"
-import executeLIP36Upgrade from "../../helpers/executeLIP36Upgrade"
+import {contractId} from "../../utils/helpers"
+import {constants} from "../../utils/constants"
+import MerkleTree from "../../utils/merkleTree"
+import executeLIP36Upgrade from "../helpers/executeLIP36Upgrade"
 
-import {createWinningTicket, getTicketHash} from "../../helpers/ticket"
-import signMsg from "../../helpers/signMsg"
+import {createWinningTicket, getTicketHash} from "../helpers/ticket"
+import signMsg from "../helpers/signMsg"
 
 import {keccak256, bufferToHex} from "ethereumjs-util"
 import abi from "ethereumjs-abi"
-import BN from "bn.js"
-import truffleAssert from "truffle-assertions"
-import {assert} from "chai"
 
-const Controller = artifacts.require("Controller")
-const BondingManager = artifacts.require("BondingManager")
-const AdjustableRoundsManager = artifacts.require("AdjustableRoundsManager")
-const LivepeerToken = artifacts.require("LivepeerToken")
-const TicketBroker = artifacts.require("TicketBroker")
-const MerkleSnapshot = artifacts.require("MerkleSnapshot")
-const BondingManagerPreLIP36 = artifacts.require("BondingManagerPreLIP36")
-const LinkedList = artifacts.require("SortedDoublyLL")
-const ManagerProxy = artifacts.require("ManagerProxy")
+import {deployments, ethers} from "hardhat"
 
-describe("ClaimEarningsSnapshot", accounts => {
+import chai, {assert, expect} from "chai"
+import {solidity} from "ethereum-waffle"
+chai.use(solidity)
+
+describe("ClaimEarningsSnapshot", () => {
     let controller
     let bondingManager
     let roundsManager
@@ -31,31 +24,33 @@ describe("ClaimEarningsSnapshot", accounts => {
     let snapshots
     let bondingProxy
 
+    let signers
+
     let roundLength
-    const transferAmount = (new BN(100)).mul(constants.TOKEN_UNIT)
-    const deposit = (new BN(10)).mul(constants.TOKEN_UNIT)
-    const reserve = constants.TOKEN_UNIT
-    const faceValue = constants.TOKEN_UNIT.div(new BN(10))
+    const transferAmount = ethers.utils.parseEther("100")
+    const deposit = ethers.utils.parseEther("10")
+    const reserve = ethers.utils.parseEther("1")
+    const faceValue = ethers.utils.parseEther("0.1")
 
     const NUM_ACTIVE_TRANSCODERS = 10
     const UNBONDING_PERIOD = 2
     const MAX_EARNINGS_CLAIMS_ROUNDS = 20
 
-    const transcoder1 = accounts[0]
-    const transcoder2 = accounts[1]
-    const transcoder3 = accounts[3]
+    let transcoder1
+    let transcoder2
+    let transcoder3
 
-    const delegate1 = accounts[4]
-    const delegate2 = accounts[5]
-    const delegate3 = accounts[6]
-    const delegate4 = accounts[7]
-    const delegate5 = accounts[8]
-    const delegate6 = accounts[9]
+    let delegate1
+    let delegate2
+    let delegate3
+    let delegate4
+    let delegate5
+    let delegate6
 
-    const broadcaster = accounts[10]
+    let broadcaster
 
-    const transcoders = [transcoder1, transcoder2, transcoder3]
-    const delegates = [delegate1, delegate2, delegate3, delegate4, delegate5, delegate6]
+    let transcoders = []
+    let delegates = []
 
     async function redeemWinningTicket(transcoder, broadcaster, faceValue) {
         const block = await roundsManager.blockNum()
@@ -66,73 +61,86 @@ describe("ClaimEarningsSnapshot", accounts => {
             [creationRound, creationRoundBlockHash]
         )
         const recipientRand = 5
-        const ticket = createWinningTicket(transcoder, broadcaster, recipientRand, faceValue.toString(), auxData)
-        const senderSig = await signMsg(getTicketHash(ticket), broadcaster)
+        const ticket = createWinningTicket(transcoder.address, broadcaster.address, recipientRand, faceValue.toString(), auxData)
+        const senderSig = await signMsg(getTicketHash(ticket), broadcaster.address)
 
-        await broker.redeemWinningTicket(ticket, senderSig, recipientRand, {from: transcoder})
+        await broker.connect(transcoder).redeemWinningTicket(ticket, senderSig, recipientRand)
     }
 
     before(async () => {
-        controller = await Controller.deployed()
+        signers = await ethers.getSigners()
+        transcoder1 = signers[0]
+        transcoder2 = signers[1]
+        transcoder3 = signers[2]
+        delegate1 = signers[3]
+        delegate2 = signers[4]
+        delegate3 = signers[5]
+        delegate4 = signers[6]
+        delegate5 = signers[7]
+        delegate6 = signers[8]
+        broadcaster = signers[9]
+        transcoders = [transcoder1, transcoder2, transcoder3]
+        delegates = [delegate1, delegate2, delegate3, delegate4, delegate5, delegate6]
+
+        const fixture = await deployments.fixture(["Contracts"])
+        controller = await ethers.getContractAt("Controller", fixture.Controller.address)
         await controller.unpause()
 
-        const ll = await LinkedList.new()
-        BondingManagerPreLIP36.link("SortedDoublyLL", ll.address)
-        const bondingTarget = await BondingManagerPreLIP36.new(controller.address)
-        await controller.setContractInfo(contractId("BondingManagerTarget"), bondingTarget.address, web3.utils.asciiToHex("0x123"))
-        bondingProxy = await ManagerProxy.new(controller.address, contractId("BondingManagerTarget"))
-        await controller.setContractInfo(contractId("BondingManager"), bondingProxy.address, web3.utils.asciiToHex("0x123"))
-        bondingManager = await BondingManagerPreLIP36.at(bondingProxy.address)
+        const bondingTarget = await (await ethers.getContractFactory("BondingManagerPreLIP36", {
+            libraries: {
+                SortedDoublyLL: fixture.SortedDoublyLL.address
+            }
+        })).deploy(controller.address)
+        await controller.setContractInfo(contractId("BondingManagerTarget"), bondingTarget.address, "0x3031323334353637383930313233343536373839")
+        bondingProxy = await (await ethers.getContractFactory("ManagerProxy")).deploy(controller.address, contractId("BondingManagerTarget"))
+        await controller.setContractInfo(contractId("BondingManager"), bondingProxy.address, "0x3031323334353637383930313233343536373839")
+        bondingManager = await ethers.getContractAt("BondingManagerPreLIP36", bondingProxy.address)
 
         await bondingManager.setUnbondingPeriod(UNBONDING_PERIOD)
         await bondingManager.setNumActiveTranscoders(NUM_ACTIVE_TRANSCODERS)
         await bondingManager.setMaxEarningsClaimsRounds(MAX_EARNINGS_CLAIMS_ROUNDS)
 
-        const bondingManagerAddr = await controller.getContract(contractId("BondingManager"))
-        bondingManager = await BondingManager.at(bondingManagerAddr)
+        bondingManager = await ethers.getContractAt("BondingManager", bondingProxy.address)
 
-        const roundsManagerAddr = await controller.getContract(contractId("RoundsManager"))
-        roundsManager = await AdjustableRoundsManager.at(roundsManagerAddr)
+        roundsManager = await ethers.getContractAt("AdjustableRoundsManager", fixture.AdjustableRoundsManager.address)
 
-        const tokenAddr = await controller.getContract(contractId("LivepeerToken"))
-        token = await LivepeerToken.at(tokenAddr)
+        token = await ethers.getContractAt("LivepeerToken", fixture.LivepeerToken.address)
 
-        const brokerAddr = await controller.getContract(contractId("JobsManager"))
-        broker = await TicketBroker.at(brokerAddr)
+        broker = await ethers.getContractAt("TicketBroker", fixture.TicketBroker.address)
 
         // deploy MerkleSnapshot contract
-        snapshots = await MerkleSnapshot.new(controller.address)
-        await controller.setContractInfo(contractId("MerkleSnapshot"), snapshots.address, web3.utils.asciiToHex("0x123"))
+        snapshots = await (await ethers.getContractFactory("MerkleSnapshot")).deploy(controller.address)
+        await controller.setContractInfo(contractId("MerkleSnapshot"), snapshots.address, "0x3031323334353637383930313233343536373839")
 
         // transcoder start stake = 100 LPT
-        await Promise.all(transcoders.map(t => token.transfer(t, transferAmount, {from: accounts[0]})))
+        await Promise.all(transcoders.map(t => token.transfer(t.address, transferAmount)))
         // delegate start stake = 50 LPT
-        await Promise.all(delegates.map(d => token.transfer(d, transferAmount.div(new BN(2)), {from: accounts[0]})))
+        await Promise.all(delegates.map(d => token.transfer(d.address, transferAmount.div(2))))
 
-        roundLength = await roundsManager.roundLength.call()
+        roundLength = await roundsManager.roundLength()
         await roundsManager.mineBlocks(roundLength.toNumber() * 1)
         await roundsManager.initializeRound()
 
         // approve LPT for bonding
-        await Promise.all(transcoders.map(t => token.approve(bondingManager.address, transferAmount, {from: t})))
-        await Promise.all(delegates.map(d => token.approve(bondingManager.address, transferAmount.div(new BN(2)), {from: d})))
+        await Promise.all(transcoders.map(t => token.connect(t).approve(bondingManager.address, transferAmount)))
+        await Promise.all(delegates.map(d => token.connect(d).approve(bondingManager.address, transferAmount.div(2))))
 
         // bond and register transcoders
-        await Promise.all(transcoders.map(t => bondingManager.bond(transferAmount, t, {from: t})))
+        await Promise.all(transcoders.map(t => bondingManager.connect(t).bond(transferAmount, t.address)))
         await Promise.all(transcoders.map(t => {
             let rewardCut = Math.floor(Math.random() * 100) * constants.PERC_MULTIPLIER
             let feeShare = Math.floor(Math.random() * 100) * constants.PERC_MULTIPLIER
-            bondingManager.transcoder(rewardCut, feeShare, {from: t})
+            bondingManager.connect(t).transcoder(rewardCut, feeShare)
         }))
 
         // delegate to transcoders
-        await Promise.all(delegates.map((d, i) => bondingManager.bond(transferAmount.div(new BN(2)), transcoders[i % transcoders.length], {from: d})))
+        await Promise.all(delegates.map((d, i) => bondingManager.connect(d).bond(transferAmount.div(2), transcoders[i % transcoders.length].address)))
 
         // Deposit funds for broadcaster
-        await broker.fundDepositAndReserve(
+        await broker.connect(broadcaster).fundDepositAndReserve(
             deposit,
             reserve,
-            {from: broadcaster, value: deposit.add(reserve)}
+            {value: deposit.add(reserve)}
         )
 
         // init new round
@@ -143,13 +151,13 @@ describe("ClaimEarningsSnapshot", accounts => {
 
     describe("Initial stakes", () => {
         it("checks that transcoders are bonded", async () => {
-            let dels = await Promise.all(transcoders.map(t => bondingManager.getDelegator(t)))
-            dels.forEach(d => assert.isTrue(d.bondedAmount.cmp(transferAmount) == 0))
+            let dels = await Promise.all(transcoders.map(t => bondingManager.getDelegator(t.address)))
+            dels.forEach(d => assert.isTrue(d.bondedAmount.eq(transferAmount)))
         })
 
         it("checks that delegators are bonded", async () => {
-            let dels = await Promise.all(delegates.map(d => bondingManager.getDelegator(d)))
-            dels.forEach(d => assert.isTrue(d.bondedAmount.cmp(transferAmount.div(new BN(2))) == 0))
+            let dels = await Promise.all(delegates.map(d => bondingManager.getDelegator(d.address)))
+            dels.forEach(d => assert.isTrue(d.bondedAmount.eq(transferAmount.div(2))))
         })
     })
 
@@ -159,7 +167,7 @@ describe("ClaimEarningsSnapshot", accounts => {
         const id = bufferToHex(keccak256("LIP-52"))
         before(async () => {
             for (let i = 0; i < 10; i++) {
-                await Promise.all(transcoders.map(t => bondingManager.reward({from: t})))
+                await Promise.all(transcoders.map(t => bondingManager.connect(t).reward()))
                 await Promise.all(transcoders.map(t => redeemWinningTicket(t, broadcaster, faceValue)))
                 await roundsManager.mineBlocks(roundLength.toNumber() * 5)
                 await roundsManager.setBlockHash(web3.utils.keccak256("foo"))
@@ -171,17 +179,17 @@ describe("ClaimEarningsSnapshot", accounts => {
             await roundsManager.setLIPUpgradeRound(52, currentRound)
 
             transcoders.forEach(t => {
-                elements.push({address: t})
+                elements.push({address: t.address})
             })
             delegates.forEach(d => {
-                elements.push({address: d})
+                elements.push({address: d.address})
             })
 
             const leaves = []
             for (let el of elements) {
                 el["pendingStake"] = await bondingManager.pendingStake(el.address, currentRound)
                 el["pendingFees"] = await bondingManager.pendingFees(el.address, currentRound)
-                leaves.push(abi.rawEncode(["address", "uint256", "uint256"], [el.address, el.pendingStake, el.pendingFees]))
+                leaves.push(abi.rawEncode(["address", "uint256", "uint256"], [el.address, el.pendingStake.toString(), el.pendingFees.toString()]))
             }
 
             tree = new MerkleTree(leaves)
@@ -202,7 +210,7 @@ describe("ClaimEarningsSnapshot", accounts => {
 
         it("Succesfully verifies the merkle proofs for each delegate", async () => {
             for (let el of elements) {
-                const leaf = abi.rawEncode(["address", "uint256", "uint256"], [el.address, el.pendingStake, el.pendingFees])
+                const leaf = abi.rawEncode(["address", "uint256", "uint256"], [el.address, el.pendingStake.toString(), el.pendingFees.toString()])
                 const proof = tree.getHexProof(leaf)
                 assert.isTrue(await snapshots.verify(id, proof, keccak256(leaf)))
             }
@@ -226,89 +234,82 @@ describe("ClaimEarningsSnapshot", accounts => {
                 assert.equal(pendingFeesBefore.toString(), el.pendingFees.toString())
 
                 // unbond for initial bonding amount after claiming snapshot earnings
-                const data = bondingManager.contract.methods.unbond(delegatorBefore.bondedAmount.toString()).encodeABI()
-                const leaf = abi.rawEncode(["address", "uint256", "uint256"], [el.address, el.pendingStake, el.pendingFees])
+                const data = bondingManager.interface.encodeFunctionData("unbond", [delegatorBefore.bondedAmount])
+                const leaf = abi.rawEncode(["address", "uint256", "uint256"], [el.address, el.pendingStake.toString(), el.pendingFees.toString()])
                 const proof = tree.getHexProof(leaf)
-                const tx = await bondingManager.claimSnapshotEarnings(el.pendingStake, el.pendingFees, proof, data, {from: el.address})
+                const tx = await bondingManager.connect(await ethers.getSigner(el.address)).claimSnapshotEarnings(el.pendingStake, el.pendingFees, proof, data)
 
                 const delegatorAfter = await bondingManager.getDelegator(el.address)
 
-                assert.isTrue(delegatorAfter.lastClaimRound.cmp(currentRound) == 0, "last claim round not correct")
-                assert.isTrue(pendingStakeBefore.sub(delegatorBefore.bondedAmount).cmp(delegatorAfter.bondedAmount) == 0, "bonded amount not updated after claiming")
-                assert.isTrue(pendingFeesBefore.cmp(delegatorAfter.fees) == 0, "fees not correctly updated after claiming")
+                assert.isTrue(delegatorAfter.lastClaimRound.eq(currentRound), "last claim round not correct")
+                assert.isTrue(pendingStakeBefore.sub(delegatorBefore.bondedAmount).eq(delegatorAfter.bondedAmount), "bonded amount not updated after claiming")
+                assert.isTrue(pendingFeesBefore.eq(delegatorAfter.fees), "fees not correctly updated after claiming")
 
-                // check emitted event
-                truffleAssert.eventEmitted(
-                    tx,
-                    "EarningsClaimed",
-                    e => e.delegate == delegatorBefore.delegateAddress
-                    && e.delegator == el.address
-                    && e.rewards == delegatorAfter.bondedAmount.toString() // bondedAFter + bondedBefore (unbonded after  call) - bondedbefore = bondedAfter
-                    && e.fees == delegatorAfter.fees.sub(delegatorBefore.fees).toString()
-                    && e.endRound == endRound.toString()
-                    && e.startRound == delegatorBefore.lastClaimRound.add(new BN(1)).toString()
+                expect(tx).to.emit(bondingManager, "EarningsClaimed").withArgs(
+                    delegatorBefore.delegateAddress, el.address, delegatorAfter.bondedAmount, delegatorAfter.fees.sub(delegatorBefore.fees), delegatorBefore.lastClaimRound.add(1), endRound
                 )
             }
         })
     })
 })
 
-describe("Including cumulative earnings in the snapshot results in excessive earnings (bug)", accounts => {
+describe("Including cumulative earnings in the snapshot results in excessive earnings (bug)", () => {
     let controller
     let bondingManager
     let roundsManager
     let token
     let snapshots
     let bondingProxy
-
     let roundLength
 
-    const transcoder = accounts[0]
-
+    let transcoder
+    let signers
 
     const NUM_ACTIVE_TRANSCODERS = 10
     const UNBONDING_PERIOD = 2
     const MAX_EARNINGS_CLAIMS_ROUNDS = 20
-    const transferAmount = (new BN(100)).mul(constants.TOKEN_UNIT)
+    const transferAmount = ethers.utils.parseEther("100")
 
     let leaf
     let proof
 
     before(async () => {
-        controller = await Controller.deployed()
+        signers = await ethers.getSigners()
+        transcoder = signers[0]
+        const fixture = await deployments.fixture(["Contracts"])
+        controller = await ethers.getContractAt("Controller", fixture.Controller.address)
         await controller.unpause()
 
-        const ll = await LinkedList.new()
-        BondingManagerPreLIP36.link("SortedDoublyLL", ll.address)
-        const bondingTarget = await BondingManagerPreLIP36.new(controller.address)
-        await controller.setContractInfo(contractId("BondingManagerTarget"), bondingTarget.address, web3.utils.asciiToHex("0x123"))
-        bondingProxy = await ManagerProxy.new(controller.address, contractId("BondingManagerTarget"))
-        await controller.setContractInfo(contractId("BondingManager"), bondingProxy.address, web3.utils.asciiToHex("0x123"))
-        bondingManager = await BondingManagerPreLIP36.at(bondingProxy.address)
+        const bondingTarget = await (await ethers.getContractFactory("BondingManagerPreLIP36", {
+            libraries: {
+                SortedDoublyLL: fixture.SortedDoublyLL.address
+            }
+        })).deploy(controller.address)
+        await controller.setContractInfo(contractId("BondingManagerTarget"), bondingTarget.address, "0x3031323334353637383930313233343536373839")
+        bondingProxy = await (await ethers.getContractFactory("ManagerProxy")).deploy(controller.address, contractId("BondingManagerTarget"))
+        await controller.setContractInfo(contractId("BondingManager"), bondingProxy.address, "0x3031323334353637383930313233343536373839")
+        bondingManager = await ethers.getContractAt("BondingManagerPreLIP36", bondingProxy.address)
 
         await bondingManager.setUnbondingPeriod(UNBONDING_PERIOD)
         await bondingManager.setNumActiveTranscoders(NUM_ACTIVE_TRANSCODERS)
         await bondingManager.setMaxEarningsClaimsRounds(MAX_EARNINGS_CLAIMS_ROUNDS)
 
-        const bondingManagerAddr = await controller.getContract(contractId("BondingManager"))
-        bondingManager = await BondingManager.at(bondingManagerAddr)
+        bondingManager = await ethers.getContractAt("BondingManager", bondingProxy.address)
 
-        const roundsManagerAddr = await controller.getContract(contractId("RoundsManager"))
-        roundsManager = await AdjustableRoundsManager.at(roundsManagerAddr)
+        roundsManager = await ethers.getContractAt("AdjustableRoundsManager", fixture.AdjustableRoundsManager.address)
 
-        const tokenAddr = await controller.getContract(contractId("LivepeerToken"))
-        token = await LivepeerToken.at(tokenAddr)
+        token = await ethers.getContractAt("LivepeerToken", fixture.LivepeerToken.address)
 
         // deploy MerkleSnapshot contract
-        snapshots = await MerkleSnapshot.new(controller.address)
-        await controller.setContractInfo(contractId("MerkleSnapshot"), snapshots.address, web3.utils.asciiToHex("0x123"))
+        snapshots = await (await ethers.getContractFactory("MerkleSnapshot")).deploy(controller.address)
+        await controller.setContractInfo(contractId("MerkleSnapshot"), snapshots.address, "0x3031323334353637383930313233343536373839")
 
-        roundLength = await roundsManager.roundLength.call()
+        roundLength = await roundsManager.roundLength()
         await roundsManager.mineBlocks(roundLength.toNumber() * 1)
         await roundsManager.initializeRound()
 
         await token.approve(bondingManager.address, transferAmount)
-        await bondingManager.bond(transferAmount, transcoder)
+        await bondingManager.bond(transferAmount, transcoder.address)
 
         let rewardCut = 50 * constants.PERC_MULTIPLIER
         let feeShare = 50 * constants.PERC_MULTIPLIER
@@ -320,10 +321,11 @@ describe("Including cumulative earnings in the snapshot results in excessive ear
     })
 
     describe("set snapshot", () => {
-        let elements = [{address: transcoder}]
+        let elements = []
         let tree
         const id = bufferToHex(keccak256("LIP-52"))
         before(async () => {
+            elements = [{address: transcoder.address}]
             for (let i = 0; i < 10; i++) {
                 await bondingManager.reward()
                 await roundsManager.mineBlocks(roundLength.toNumber() * 1)
@@ -344,7 +346,7 @@ describe("Including cumulative earnings in the snapshot results in excessive ear
             for (let el of elements) {
                 el["pendingStake"] = await bondingManager.pendingStake(el.address, currentRound)
                 el["pendingFees"] = await bondingManager.pendingFees(el.address, currentRound)
-                leaves.push(abi.rawEncode(["address", "uint256", "uint256"], [el.address, el.pendingStake, el.pendingFees]))
+                leaves.push(abi.rawEncode(["address", "uint256", "uint256"], [el.address, el.pendingStake.toString(), el.pendingFees.toString()]))
             }
 
             tree = new MerkleTree(leaves)
@@ -352,7 +354,7 @@ describe("Including cumulative earnings in the snapshot results in excessive ear
 
 
         it("checks that transcoder is bonded", async () => {
-            assert.isTrue((await bondingManager.getDelegator(transcoder)).bondedAmount.cmp(transferAmount) == 0)
+            assert.isTrue((await bondingManager.getDelegator(transcoder.address)).bondedAmount.eq(transferAmount))
         })
 
 
@@ -371,7 +373,7 @@ describe("Including cumulative earnings in the snapshot results in excessive ear
 
         it("Succesfully verifies the merkle proofs for the transcoder", async () => {
             for (let el of elements) {
-                leaf = abi.rawEncode(["address", "uint256", "uint256"], [el.address, el.pendingStake, el.pendingFees])
+                leaf = abi.rawEncode(["address", "uint256", "uint256"], [el.address, el.pendingStake.toString(), el.pendingFees.toString()])
                 proof = tree.getHexProof(leaf)
                 assert.isTrue(await snapshots.verify(id, proof, keccak256(leaf)))
             }
@@ -387,13 +389,13 @@ describe("Including cumulative earnings in the snapshot results in excessive ear
         it("there should be residual rewards (this is a bug)", async () => {
             const currentRound = await roundsManager.currentRound()
 
-            const pendingStake = await bondingManager.pendingStake(transcoder, currentRound)
-            const data = bondingManager.contract.methods.unbond(pendingStake.toString()).encodeABI()
-            await bondingManager.claimSnapshotEarnings(pendingStake, new BN(0), proof, data)
+            const pendingStake = await bondingManager.pendingStake(transcoder.address, currentRound)
+            const data = bondingManager.interface.encodeFunctionData("unbond", [pendingStake])
+            await bondingManager.claimSnapshotEarnings(pendingStake, 0, proof, data)
 
-            const delegatorAfter = await bondingManager.getDelegator(transcoder)
+            const delegatorAfter = await bondingManager.getDelegator(transcoder.address)
 
-            assert.isTrue(delegatorAfter.lastClaimRound.cmp(currentRound) == 0, "last claim round not correct")
+            assert.isTrue(delegatorAfter.lastClaimRound.eq(currentRound), "last claim round not correct")
             assert.isTrue(delegatorAfter.bondedAmount.toString() != "0", "bonded amount not greater than 0")
         })
     })
@@ -409,57 +411,60 @@ describe("Snapshot only existing out of pre-LIP36 earnings should yield correct 
 
     let roundLength
 
-    const transcoder = accounts[0]
+    let transcoder
+    let signers
 
     const NUM_ACTIVE_TRANSCODERS = 10
     const UNBONDING_PERIOD = 2
     const MAX_EARNINGS_CLAIMS_ROUNDS = 20
-    const transferAmount = (new BN(100)).mul(constants.TOKEN_UNIT)
+    const transferAmount = ethers.utils.parseEther("100")
 
+    let elements
     let leaf
     let proof
-    let elements = [{address: transcoder}]
     let tree
 
     before(async () => {
-        controller = await Controller.deployed()
+        signers = await ethers.getSigners()
+        transcoder = signers[0]
+        const fixture = await deployments.fixture(["Contracts"])
+        controller = await ethers.getContractAt("Controller", fixture.Controller.address)
         await controller.unpause()
 
-        const ll = await LinkedList.new()
-        BondingManagerPreLIP36.link("SortedDoublyLL", ll.address)
-        const bondingTarget = await BondingManagerPreLIP36.new(controller.address)
-        await controller.setContractInfo(contractId("BondingManagerTarget"), bondingTarget.address, web3.utils.asciiToHex("0x123"))
-        bondingProxy = await ManagerProxy.new(controller.address, contractId("BondingManagerTarget"))
-        await controller.setContractInfo(contractId("BondingManager"), bondingProxy.address, web3.utils.asciiToHex("0x123"))
-        bondingManager = await BondingManagerPreLIP36.at(bondingProxy.address)
+        const bondingTarget = await (await ethers.getContractFactory("BondingManagerPreLIP36", {
+            libraries: {
+                SortedDoublyLL: fixture.SortedDoublyLL.address
+            }
+        })).deploy(controller.address)
+        await controller.setContractInfo(contractId("BondingManagerTarget"), bondingTarget.address, "0x3031323334353637383930313233343536373839")
+        bondingProxy = await (await ethers.getContractFactory("ManagerProxy")).deploy(controller.address, contractId("BondingManagerTarget"))
+        await controller.setContractInfo(contractId("BondingManager"), bondingProxy.address, "0x3031323334353637383930313233343536373839")
+        bondingManager = await ethers.getContractAt("BondingManagerPreLIP36", bondingProxy.address)
 
         await bondingManager.setUnbondingPeriod(UNBONDING_PERIOD)
         await bondingManager.setNumActiveTranscoders(NUM_ACTIVE_TRANSCODERS)
         await bondingManager.setMaxEarningsClaimsRounds(MAX_EARNINGS_CLAIMS_ROUNDS)
 
-        const bondingManagerAddr = await controller.getContract(contractId("BondingManager"))
-        bondingManager = await BondingManager.at(bondingManagerAddr)
+        bondingManager = await ethers.getContractAt("BondingManager", bondingProxy.address)
 
-        const roundsManagerAddr = await controller.getContract(contractId("RoundsManager"))
-        roundsManager = await AdjustableRoundsManager.at(roundsManagerAddr)
+        roundsManager = await ethers.getContractAt("AdjustableRoundsManager", fixture.AdjustableRoundsManager.address)
 
-        const tokenAddr = await controller.getContract(contractId("LivepeerToken"))
-        token = await LivepeerToken.at(tokenAddr)
+        token = await ethers.getContractAt("LivepeerToken", fixture.LivepeerToken.address)
 
         // deploy MerkleSnapshot contract
-        snapshots = await MerkleSnapshot.new(controller.address)
-        await controller.setContractInfo(contractId("MerkleSnapshot"), snapshots.address, web3.utils.asciiToHex("0x123"))
+        snapshots = await (await ethers.getContractFactory("MerkleSnapshot")).deploy(controller.address)
+        await controller.setContractInfo(contractId("MerkleSnapshot"), snapshots.address, "0x3031323334353637383930313233343536373839")
 
-        roundLength = await roundsManager.roundLength.call()
+        roundLength = await roundsManager.roundLength()
         await roundsManager.mineBlocks(roundLength.toNumber() * 1)
         await roundsManager.initializeRound()
 
         await token.approve(bondingManager.address, transferAmount)
-        await bondingManager.bond(transferAmount, transcoder)
+        await bondingManager.bond(transferAmount, transcoder.address)
 
         let rewardCut = 50 * constants.PERC_MULTIPLIER
         let feeShare = 50 * constants.PERC_MULTIPLIER
-        await bondingManager.transcoder(rewardCut, feeShare)
+        bondingManager.transcoder(rewardCut, feeShare)
 
         await roundsManager.mineBlocks(roundLength.toNumber() * 1)
         await roundsManager.setBlockHash(web3.utils.keccak256("foo"))
@@ -468,7 +473,9 @@ describe("Snapshot only existing out of pre-LIP36 earnings should yield correct 
 
     describe("set snapshot", () => {
         const id = bufferToHex(keccak256("LIP-52"))
+
         before(async () => {
+            elements = [{address: transcoder.address}]
             for (let i = 0; i < 10; i++) {
                 await bondingManager.reward()
                 await roundsManager.mineBlocks(roundLength.toNumber() * 1)
@@ -476,7 +483,7 @@ describe("Snapshot only existing out of pre-LIP36 earnings should yield correct 
                 await roundsManager.initializeRound()
             }
 
-            const snapshotRound = (await roundsManager.currentRound()).sub(new BN(1))
+            const snapshotRound = (await roundsManager.currentRound()).sub(1)
 
             bondingManager = await executeLIP36Upgrade(controller, roundsManager, bondingProxy.address)
 
@@ -489,7 +496,7 @@ describe("Snapshot only existing out of pre-LIP36 earnings should yield correct 
             for (let el of elements) {
                 el["pendingStake"] = await bondingManager.pendingStake(el.address, snapshotRound)
                 el["pendingFees"] = await bondingManager.pendingFees(el.address, snapshotRound)
-                leaves.push(abi.rawEncode(["address", "uint256", "uint256"], [el.address, el.pendingStake, el.pendingFees]))
+                leaves.push(abi.rawEncode(["address", "uint256", "uint256"], [el.address, el.pendingStake.toString(), el.pendingFees.toString()]))
             }
 
             tree = new MerkleTree(leaves)
@@ -497,7 +504,7 @@ describe("Snapshot only existing out of pre-LIP36 earnings should yield correct 
 
 
         it("checks that transcoder is bonded", async () => {
-            assert.isTrue((await bondingManager.getDelegator(transcoder)).bondedAmount.cmp(transferAmount) == 0)
+            assert.isTrue((await bondingManager.getDelegator(transcoder.address)).bondedAmount.eq(transferAmount))
         })
 
 
@@ -516,7 +523,7 @@ describe("Snapshot only existing out of pre-LIP36 earnings should yield correct 
 
         it("Succesfully verifies the merkle proofs for the transcoder", async () => {
             for (let el of elements) {
-                leaf = abi.rawEncode(["address", "uint256", "uint256"], [el.address, el.pendingStake, el.pendingFees])
+                leaf = abi.rawEncode(["address", "uint256", "uint256"], [el.address, el.pendingStake.toString(), el.pendingFees.toString()])
                 proof = tree.getHexProof(leaf)
                 assert.isTrue(await snapshots.verify(id, proof, keccak256(leaf)))
             }
@@ -526,19 +533,20 @@ describe("Snapshot only existing out of pre-LIP36 earnings should yield correct 
     describe("No cumulative snapshot earnings", async () => {
         before(async () => {
             const lip36Round = await roundsManager.lipUpgradeRound(36)
-            await roundsManager.setLIPUpgradeRound(52, lip36Round.sub(new BN(1)))
+            await roundsManager.setLIPUpgradeRound(52, lip36Round.sub(1))
         })
 
         it("should claim all pending rewards", async () => {
             const currentRound = await roundsManager.currentRound()
 
-            const pendingStake = await bondingManager.pendingStake(transcoder, currentRound)
-            const data = bondingManager.contract.methods.unbond(pendingStake.toString()).encodeABI()
-            await bondingManager.claimSnapshotEarnings(elements[0].pendingStake, new BN(0), proof, data)
+            const pendingStake = await bondingManager.pendingStake(transcoder.address, currentRound)
+            bondingManager.interface.encodeFunctionData("unbond", [pendingStake])
+            const data = bondingManager.interface.encodeFunctionData("unbond", [pendingStake])
+            await bondingManager.claimSnapshotEarnings(elements[0].pendingStake, 0, proof, data)
 
-            const delegatorAfter = await bondingManager.getDelegator(transcoder)
+            const delegatorAfter = await bondingManager.getDelegator(transcoder.address)
 
-            assert.isTrue(delegatorAfter.lastClaimRound.cmp(currentRound) == 0, "last claim round not correct")
+            assert.isTrue(delegatorAfter.lastClaimRound.eq(currentRound), "last claim round not correct")
             assert.isTrue(delegatorAfter.bondedAmount.toString() == "0", "bonded amount not 0")
         })
     })

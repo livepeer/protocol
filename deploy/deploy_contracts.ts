@@ -35,10 +35,14 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     // ticket broker
     const ticketBroker = await contractDeployer.deployAndRegister({
         contract: "TicketBroker",
-        name: "JobsManager",
+        name: "TicketBroker",
         proxy: true,
         args: [Controller.address]
     })
+
+    // Register TicketBroker with JobsManager contract ID because in a production system the Minter likely will not be upgraded to be
+    // aware of the TicketBroker contract ID and it will only be aware of the JobsManager contract ID
+    await contractDeployer.register("JobsManager", ticketBroker.address)
 
     // bonding manager
     const sortedDoublyLL = await deploy("SortedDoublyLL", {
