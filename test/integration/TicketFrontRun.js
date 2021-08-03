@@ -4,7 +4,7 @@ import signMsg from "../helpers/signMsg"
 
 import chai, {assert, expect} from "chai"
 import {solidity} from "ethereum-waffle"
-import {deployments, ethers, web3} from "hardhat"
+import {deployments, ethers} from "hardhat"
 
 chai.use(solidity)
 
@@ -31,7 +31,7 @@ describe("TicketFrontRun", () => {
         const block = await roundsManager.blockNum()
         const creationRound = (await roundsManager.currentRound()).toString()
         const creationRoundBlockHash = await roundsManager.blockHash(block)
-        const auxData = web3.eth.abi.encodeParameters(["uint256", "bytes32"], [creationRound, creationRoundBlockHash])
+        const auxData = ethers.utils.solidityPack(["uint256", "bytes32"], [creationRound, creationRoundBlockHash])
 
         return createWinningTicket(recipient, sender, recipientRand, faceValue, auxData)
     }
