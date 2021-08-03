@@ -1,4 +1,3 @@
-import BN from "bn.js"
 import calcTxCost from "../helpers/calcTxCost"
 import {
     DUMMY_TICKET_CREATION_ROUND,
@@ -14,6 +13,7 @@ import {functionSig} from "../../utils/helpers"
 import {constants} from "../../utils/constants"
 
 import {web3, ethers} from "hardhat"
+const BigNumber = ethers.BigNumber
 
 import chai, {expect, assert} from "chai"
 import {solidity} from "ethereum-waffle"
@@ -114,11 +114,11 @@ describe("TicketBroker", () => {
         })
 
         it("reduces the sender's ETH balance", async () => {
-            const startBalance = new BN(await web3.eth.getBalance(sender))
+            const startBalance = BigNumber.from(await web3.eth.getBalance(sender))
 
             const txResult = await broker.fundDeposit({value: 1000})
 
-            const endBalance = new BN(await web3.eth.getBalance(sender))
+            const endBalance = BigNumber.from(await web3.eth.getBalance(sender))
             const txCost = await calcTxCost(txResult)
             assert.equal(startBalance.sub(endBalance).sub(txCost).toString(), "1000")
         })
@@ -203,11 +203,11 @@ describe("TicketBroker", () => {
         })
 
         it("reduces the sender's ETH balance", async () => {
-            const startBalance = new BN(await web3.eth.getBalance(sender))
+            const startBalance = BigNumber.from(await web3.eth.getBalance(sender))
 
             const txRes = await broker.fundReserve({value: 1000})
 
-            const endBalance = new BN(await web3.eth.getBalance(sender))
+            const endBalance = BigNumber.from(await web3.eth.getBalance(sender))
             const txCost = await calcTxCost(txRes)
 
             assert.equal(startBalance.sub(endBalance).sub(txCost).toString(), "1000")
@@ -367,7 +367,7 @@ describe("TicketBroker", () => {
         it("grows the Minter's ETH balance by sum of deposit and reserve amounts", async () => {
             const deposit = 500
             const reserve = 1000
-            const startMinterBalance = new BN(await web3.eth.getBalance(fixture.minter.address))
+            const startMinterBalance = BigNumber.from(await web3.eth.getBalance(fixture.minter.address))
 
             await broker.fundDepositAndReserve(
                 deposit,
@@ -375,7 +375,7 @@ describe("TicketBroker", () => {
                 {value: deposit + reserve}
             )
 
-            const endMinterBalance = new BN(await web3.eth.getBalance(fixture.minter.address))
+            const endMinterBalance = BigNumber.from(await web3.eth.getBalance(fixture.minter.address))
 
             assert.equal(endMinterBalance.sub(startMinterBalance).toString(), (deposit + reserve).toString())
         })
@@ -383,7 +383,7 @@ describe("TicketBroker", () => {
         it("reduces the sender's ETH balance by sum of deposit and reserve amounts", async () => {
             const deposit = 500
             const reserve = 1000
-            const startSenderBalance = new BN(await web3.eth.getBalance(sender))
+            const startSenderBalance = BigNumber.from(await web3.eth.getBalance(sender))
 
             const txResult = await broker.fundDepositAndReserve(
                 deposit,
@@ -391,7 +391,7 @@ describe("TicketBroker", () => {
                 {value: deposit + reserve}
             )
 
-            const endSenderBalance = new BN(await web3.eth.getBalance(sender))
+            const endSenderBalance = BigNumber.from(await web3.eth.getBalance(sender))
             const txCost = await calcTxCost(txResult)
 
             assert.equal(startSenderBalance.sub(endSenderBalance).sub(txCost).toString(), (deposit + reserve).toString())

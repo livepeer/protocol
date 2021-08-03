@@ -146,8 +146,8 @@ describe("TicketFrontRun", () => {
         // honestTranscoder's ticket should be fully covered by the the broadcaster's deposit
         expect(info.sender.deposit).to.equal(deposit - reserveAlloc)
         expect(info.reserve.fundsRemaining).to.equal(reserve)
-
-        expect(await bondingManager.pendingFees(honestTranscoder.address, currentRound)).to.equal(reserveAlloc)
+        const pendingFees = await bondingManager.pendingFees(honestTranscoder.address, currentRound)
+        expect(pendingFees).to.equal(reserveAlloc)
     })
 
     it("broadcaster tries to send a winning ticket to its own non-active transcoder, results in division by zero", async () => {
