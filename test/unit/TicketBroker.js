@@ -1658,10 +1658,10 @@ describe("TicketBroker", () => {
             await fixture.bondingManager.setMockBool(functionSig("isActiveTranscoder(address)"), true)
             await broker.fundReserve({value: 1000})
 
-            let recipientRand = 5
+            const recipientRand = 5
             const faceValue = 100
-            let ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
-            let senderSig = await signMsg(getTicketHash(ticket), sender)
+            const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
+            const senderSig = await signMsg(getTicketHash(ticket), sender)
 
             // Claim winning ticket - will freeze reserve (deposit = 0)
             await broker.connect(signers[1]).redeemWinningTicket(ticket, senderSig, recipientRand)

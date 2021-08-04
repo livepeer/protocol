@@ -91,7 +91,7 @@ describe("Rewards", () => {
                     .percOf(
                         startStake,
                         endRewardFactor,
-                        startRewardFactor.toString(),
+                        startRewardFactor.toString()
                     )
                     .sub(startStake)
             }

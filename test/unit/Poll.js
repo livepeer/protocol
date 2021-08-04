@@ -56,7 +56,7 @@ describe("Poll", () => {
 
         it("destroy the contract when poll has ended", async () => {
             await fixture.rpc.waitUntilBlock(endBlock + 1)
-            let tx = await poll.destroy()
+            const tx = await poll.destroy()
             assert.equal(await web3.eth.getCode(poll.address), "0x")
             assert.equal((await tx.wait()).status, 1)
         })

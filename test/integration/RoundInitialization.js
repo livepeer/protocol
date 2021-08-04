@@ -22,7 +22,7 @@ describe("RoundInitialization", () => {
     }
 
     const registerTranscodersAndInitializeRound = async (amount, transcoders, bondingManager, token, roundsManager) => {
-        for (let tr of transcoders) {
+        for (const tr of transcoders) {
             await token.transfer(tr.address, amount)
             await token.connect(tr).approve(bondingManager.address, amount)
             await bondingManager.connect(tr).bond(amount, tr.address)
@@ -54,7 +54,7 @@ describe("RoundInitialization", () => {
 
         expect(await bondingManager.currentRoundTotalActiveStake()).to.equal(
             bondAmount.mul(10),
-            "wrong total active stake",
+            "wrong total active stake"
         )
     })
 
@@ -66,7 +66,7 @@ describe("RoundInitialization", () => {
 
         expect(await bondingManager.currentRoundTotalActiveStake()).to.equal(
             bondAmount.mul(15),
-            "wrong total active stake",
+            "wrong total active stake"
         )
     })
 
@@ -80,7 +80,7 @@ describe("RoundInitialization", () => {
 
         expect(await bondingManager.currentRoundTotalActiveStake()).to.equal(
             bondAmount.mul(20),
-            "wrong total active stake",
+            "wrong total active stake"
         )
     })
 
@@ -95,7 +95,7 @@ describe("RoundInitialization", () => {
 
         expect(await bondingManager.currentRoundTotalActiveStake()).to.equal(
             bondAmount.mul(30),
-            "wrong total active stake",
+            "wrong total active stake"
         )
     })
 
@@ -108,7 +108,7 @@ describe("RoundInitialization", () => {
 
         expect(await bondingManager.currentRoundTotalActiveStake()).to.equal(
             bondAmount.mul(40),
-            "wrong total active stake",
+            "wrong total active stake"
         )
     })
 })

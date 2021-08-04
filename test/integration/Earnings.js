@@ -187,9 +187,9 @@ describe("Earnings", accounts => {
         const lastClaimRoundTranscoder = transcoderDel.lastClaimRound
 
         const LIP36Round = await roundsManager.lipUpgradeRound(36)
-        let LIP36EarningsPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder.address, LIP36Round)
+        const LIP36EarningsPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder.address, LIP36Round)
         if (lastClaimRoundTranscoder.lte(LIP36Round)) {
-            let round = LIP36EarningsPool.hasTranscoderRewardFeePool ? LIP36Round : LIP36Round.sub(1)
+            const round = LIP36EarningsPool.hasTranscoderRewardFeePool ? LIP36Round : LIP36Round.sub(1)
             transcoderStartStake = await bondingManager.pendingStake(transcoder.address, round)
             delegatorStartStake = await bondingManager.pendingStake(delegator.address, round)
             transcoderStartFees = await bondingManager.pendingFees(transcoder.address, round)

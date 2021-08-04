@@ -1,18 +1,18 @@
-import { HardhatRuntimeEnvironment } from 'hardhat/types'
-import { DeployFunction } from 'hardhat-deploy/types'
-import { ethers, network } from 'hardhat'
+import {HardhatRuntimeEnvironment} from "hardhat/types"
+import {DeployFunction} from "hardhat-deploy/types"
+import {ethers} from "hardhat"
 
-import { Controller, BondingManager, RoundsManager, TicketBroker, LivepeerToken } from '../typechain'
+import {Controller, BondingManager, RoundsManager, TicketBroker, LivepeerToken} from "../typechain"
 
-import ContractDeployer from './deployer'
-import config from './migrations.config'
-import genesis from './genesis.config'
+import ContractDeployer from "./deployer"
+import config from "./migrations.config"
+import genesis from "./genesis.config"
 
-const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-    const { deployments, getNamedAccounts } = hre // Get the deployments and getNamedAccounts which are provided by hardhat-deploy
-    const { deploy } = deployments // the deployments object itself contains the deploy function
-  
-    const { deployer } = await getNamedAccounts() // Fetch named accounts from hardhat.config.ts
+const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
+    const {deployments, getNamedAccounts} = hre // Get the deployments and getNamedAccounts which are provided by hardhat-deploy
+    const {deploy} = deployments // the deployments object itself contains the deploy function
+
+    const {deployer} = await getNamedAccounts() // Fetch named accounts from hardhat.config.ts
 
     const contractDeployer = new ContractDeployer(
         deploy, deployer, deployments
@@ -25,7 +25,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         name: "LivepeerToken",
         args: []
     })
-    
+
     const minter = await contractDeployer.deployAndRegister({
         contract: "Minter",
         name: "Minter",
@@ -46,7 +46,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
     // bonding manager
     const sortedDoublyLL = await deploy("SortedDoublyLL", {
-        from: deployer, 
+        from: deployer,
         log: true
     })
 
@@ -59,10 +59,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         },
         args: [Controller.address]
     })
-   
+
     // rounds manager
     let roundsManager
-    if (hre.network.name !== 'mainnet') {
+    if (hre.network.name !== "mainnet") {
         roundsManager = await contractDeployer.deployAndRegister({
             contract: "AdjustableRoundsManager",
             name: "RoundsManager",
@@ -78,20 +78,20 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
         })
     }
 
-    // service registry 
-    const serviceRegistry = await contractDeployer.deployAndRegister({
+    // service registry
+    await contractDeployer.deployAndRegister({
         contract: "ServiceRegistry",
         name: "ServiceRegistry",
-        args: [Controller.address],
+        args: [Controller.address]
     })
-   
+
     // merkle snapshot
-    const merkleSnapshot = await contractDeployer.deployAndRegister({
+    await contractDeployer.deployAndRegister({
         contract: "MerkleSnapshot",
         name: "MerkleSnapshot",
         args: [Controller.address]
     })
- 
+
     // Set BondingManager parameters
     const BondingManager: BondingManager = (await ethers.getContractAt("BondingManager", bondingManager.address)) as BondingManager
 
@@ -120,7 +120,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
         await Token.mint(faucet.address, genesis.crowdSupply)
 
-        await Token.mint(deployer, genesis.companySupply)   
+        await Token.mint(deployer, genesis.companySupply)
     } else {
         Controller.transferOwnership(genesis.governanceMultisig)
         const newOwner = await Controller.owner()
@@ -131,4 +131,4 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 }
 
 func.tags = ["Contracts"]
-export default func 
+export default func

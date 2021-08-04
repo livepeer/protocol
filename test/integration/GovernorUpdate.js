@@ -64,7 +64,7 @@ describe("Governor update", () => {
             }
             await governor.stage(update, 0)
 
-            let tx = await governor.execute(update)
+            const tx = await governor.execute(update)
             assert.equal((await bondingManager.getTranscoderPoolMaxSize()).toNumber(), 30)
 
             expect(tx).to.emit(governor, "UpdateExecuted").withArgs([...update])

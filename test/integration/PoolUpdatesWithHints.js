@@ -27,7 +27,7 @@ describe("PoolUpdatesWithHints", () => {
     const createFullPool = async accs => {
         let prevAcc = {address: ethers.constants.AddressZero}
         let stake = accs.length
-        for (let acc of accs) {
+        for (const acc of accs) {
             await selfBond(acc, stake, prevAcc, ethers.constants.AddressZero)
             prevAcc = acc
             stake--
@@ -60,7 +60,7 @@ describe("PoolUpdatesWithHints", () => {
     }
 
     const transcoderPool = async () => {
-        let pool = []
+        const pool = []
         let tr = await bondingManager.getFirstTranscoderInPool()
 
         while (tr != ethers.constants.AddressZero) {
@@ -114,11 +114,11 @@ describe("PoolUpdatesWithHints", () => {
         // All transcoders call reward() except for the last one
         const size = transcoders.length - 1
         const rewardTranscoders = transcoders.slice(0, size - 1)
-        for (let tr of rewardTranscoders) {
+        for (const tr of rewardTranscoders) {
             await bondingManager.connect(tr).reward()
         }
 
-        let testSnapshotId = await rpc.snapshot()
+        const testSnapshotId = await rpc.snapshot()
 
         // Get gas cost of reward()
         const txResNoHint = await (await bondingManager.connect(transcoders[size - 1]).reward()).wait()
@@ -148,7 +148,7 @@ describe("PoolUpdatesWithHints", () => {
         // After this tx, the new transcoder should have enough stake to join pool
         await bondingManager.connect(transcoders[size - 1]).unbond(1)
         const dr = (await roundsManager.currentRound()).add(1)
-        let testSnapshotId = await rpc.snapshot()
+        const testSnapshotId = await rpc.snapshot()
 
 
         // Pool ordering (descending)
@@ -177,7 +177,7 @@ describe("PoolUpdatesWithHints", () => {
         const size = transcoders.length
         await approve(delegator, 1)
 
-        let testSnapshotId = await rpc.snapshot()
+        const testSnapshotId = await rpc.snapshot()
 
         // Pool ordering (descending)
         // (transcoders[size - 4], 4) -> (transcoders[size - 3], 3) -> (transcoders[size - 2], 2) -> (transcoders[size - 1], 1)
@@ -196,7 +196,7 @@ describe("PoolUpdatesWithHints", () => {
             ethers.constants.AddressZero,
             ethers.constants.AddressZero,
             transcoders[size - 4].address,
-            transcoders[size - 3].address,
+            transcoders[size - 3].address
         )).wait()
         // transcoders[size - 2] should have moved up one position
         assert.equal(await transcoderAtPoolPos(size - 3), transcoders[size - 2].address)
@@ -210,7 +210,7 @@ describe("PoolUpdatesWithHints", () => {
         await approve(delegator, 1)
         await bondingManager.connect(delegator).bond(1, transcoders[size - 2].address)
 
-        let testSnapshotId = await rpc.snapshot()
+        const testSnapshotId = await rpc.snapshot()
 
         // Pool ordering (descending)
         // Before:
@@ -245,7 +245,7 @@ describe("PoolUpdatesWithHints", () => {
     it("transcoder partially unbonds and rebonds", async () => {
         const size = transcoders.length
 
-        let testSnapshotId = await rpc.snapshot()
+        const testSnapshotId = await rpc.snapshot()
 
         // Pool ordering (descending)
         // Before:
@@ -275,7 +275,7 @@ describe("PoolUpdatesWithHints", () => {
         const size = transcoders.length
         await bondingManager.connect(transcoders[size - 4]).unbond(4)
 
-        let testSnapshotId = await rpc.snapshot()
+        const testSnapshotId = await rpc.snapshot()
 
         // Pool ordering (descending)
         // Before:

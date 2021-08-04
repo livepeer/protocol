@@ -128,8 +128,8 @@ describe("ClaimEarningsSnapshot", () => {
         // bond and register transcoders
         await Promise.all(transcoders.map(t => bondingManager.connect(t).bond(transferAmount, t.address)))
         await Promise.all(transcoders.map(t => {
-            let rewardCut = Math.floor(Math.random() * 100) * constants.PERC_MULTIPLIER
-            let feeShare = Math.floor(Math.random() * 100) * constants.PERC_MULTIPLIER
+            const rewardCut = Math.floor(Math.random() * 100) * constants.PERC_MULTIPLIER
+            const feeShare = Math.floor(Math.random() * 100) * constants.PERC_MULTIPLIER
             bondingManager.connect(t).transcoder(rewardCut, feeShare)
         }))
 
@@ -151,18 +151,18 @@ describe("ClaimEarningsSnapshot", () => {
 
     describe("Initial stakes", () => {
         it("checks that transcoders are bonded", async () => {
-            let dels = await Promise.all(transcoders.map(t => bondingManager.getDelegator(t.address)))
+            const dels = await Promise.all(transcoders.map(t => bondingManager.getDelegator(t.address)))
             dels.forEach(d => assert.isTrue(d.bondedAmount.eq(transferAmount)))
         })
 
         it("checks that delegators are bonded", async () => {
-            let dels = await Promise.all(delegates.map(d => bondingManager.getDelegator(d.address)))
+            const dels = await Promise.all(delegates.map(d => bondingManager.getDelegator(d.address)))
             dels.forEach(d => assert.isTrue(d.bondedAmount.eq(transferAmount.div(2))))
         })
     })
 
     describe("ClaimSnapshotEarnings", () => {
-        let elements = []
+        const elements = []
         let tree
         const id = bufferToHex(keccak256("LIP-52"))
         before(async () => {
@@ -186,7 +186,7 @@ describe("ClaimEarningsSnapshot", () => {
             })
 
             const leaves = []
-            for (let el of elements) {
+            for (const el of elements) {
                 el["pendingStake"] = await bondingManager.pendingStake(el.address, currentRound)
                 el["pendingFees"] = await bondingManager.pendingFees(el.address, currentRound)
                 leaves.push(abi.rawEncode(["address", "uint256", "uint256"], [el.address, el.pendingStake.toString(), el.pendingFees.toString()]))
@@ -209,7 +209,7 @@ describe("ClaimEarningsSnapshot", () => {
         })
 
         it("Succesfully verifies the merkle proofs for each delegate", async () => {
-            for (let el of elements) {
+            for (const el of elements) {
                 const leaf = abi.rawEncode(["address", "uint256", "uint256"], [el.address, el.pendingStake.toString(), el.pendingFees.toString()])
                 const proof = tree.getHexProof(leaf)
                 assert.isTrue(await snapshots.verify(id, proof, keccak256(leaf)))
@@ -225,7 +225,7 @@ describe("ClaimEarningsSnapshot", () => {
             const endRound = await roundsManager.lipUpgradeRound(52)
             const currentRound = await roundsManager.currentRound()
 
-            for (let el of elements) {
+            for (const el of elements) {
                 const delegatorBefore = await bondingManager.getDelegator(el.address)
                 const pendingStakeBefore = await bondingManager.pendingStake(el.address, currentRound)
                 const pendingFeesBefore = await bondingManager.pendingFees(el.address, currentRound)
@@ -311,8 +311,8 @@ describe("Including cumulative earnings in the snapshot results in excessive ear
         await token.approve(bondingManager.address, transferAmount)
         await bondingManager.bond(transferAmount, transcoder.address)
 
-        let rewardCut = 50 * constants.PERC_MULTIPLIER
-        let feeShare = 50 * constants.PERC_MULTIPLIER
+        const rewardCut = 50 * constants.PERC_MULTIPLIER
+        const feeShare = 50 * constants.PERC_MULTIPLIER
         bondingManager.transcoder(rewardCut, feeShare)
 
         await roundsManager.mineBlocks(roundLength.toNumber() * 1)
@@ -343,7 +343,7 @@ describe("Including cumulative earnings in the snapshot results in excessive ear
             const currentRound = await roundsManager.currentRound()
 
             const leaves = []
-            for (let el of elements) {
+            for (const el of elements) {
                 el["pendingStake"] = await bondingManager.pendingStake(el.address, currentRound)
                 el["pendingFees"] = await bondingManager.pendingFees(el.address, currentRound)
                 leaves.push(abi.rawEncode(["address", "uint256", "uint256"], [el.address, el.pendingStake.toString(), el.pendingFees.toString()]))
@@ -372,7 +372,7 @@ describe("Including cumulative earnings in the snapshot results in excessive ear
         })
 
         it("Succesfully verifies the merkle proofs for the transcoder", async () => {
-            for (let el of elements) {
+            for (const el of elements) {
                 leaf = abi.rawEncode(["address", "uint256", "uint256"], [el.address, el.pendingStake.toString(), el.pendingFees.toString()])
                 proof = tree.getHexProof(leaf)
                 assert.isTrue(await snapshots.verify(id, proof, keccak256(leaf)))
@@ -462,8 +462,8 @@ describe("Snapshot only existing out of pre-LIP36 earnings should yield correct 
         await token.approve(bondingManager.address, transferAmount)
         await bondingManager.bond(transferAmount, transcoder.address)
 
-        let rewardCut = 50 * constants.PERC_MULTIPLIER
-        let feeShare = 50 * constants.PERC_MULTIPLIER
+        const rewardCut = 50 * constants.PERC_MULTIPLIER
+        const feeShare = 50 * constants.PERC_MULTIPLIER
         bondingManager.transcoder(rewardCut, feeShare)
 
         await roundsManager.mineBlocks(roundLength.toNumber() * 1)
@@ -493,7 +493,7 @@ describe("Snapshot only existing out of pre-LIP36 earnings should yield correct 
             await roundsManager.initializeRound()
 
             const leaves = []
-            for (let el of elements) {
+            for (const el of elements) {
                 el["pendingStake"] = await bondingManager.pendingStake(el.address, snapshotRound)
                 el["pendingFees"] = await bondingManager.pendingFees(el.address, snapshotRound)
                 leaves.push(abi.rawEncode(["address", "uint256", "uint256"], [el.address, el.pendingStake.toString(), el.pendingFees.toString()]))
@@ -522,7 +522,7 @@ describe("Snapshot only existing out of pre-LIP36 earnings should yield correct 
         })
 
         it("Succesfully verifies the merkle proofs for the transcoder", async () => {
-            for (let el of elements) {
+            for (const el of elements) {
                 leaf = abi.rawEncode(["address", "uint256", "uint256"], [el.address, el.pendingStake.toString(), el.pendingFees.toString()])
                 proof = tree.getHexProof(leaf)
                 assert.isTrue(await snapshots.verify(id, proof, keccak256(leaf)))

@@ -68,7 +68,7 @@ describe("TicketFrontRun", () => {
         // For this test, we want 1 evil active transcoder and 1 evil non-active transcoder
         // First we'll fill up the active set and leave one slot for the evil active transcoder
         const otherTranscoders = otherAccounts.slice(0, maxActive - 1)
-        for (let tr of otherTranscoders) {
+        for (const tr of otherTranscoders) {
             await registerTranscoder(tr)
         }
 
@@ -103,7 +103,7 @@ describe("TicketFrontRun", () => {
             honestTranscoder.address,
             broadcaster.address,
             reserveAlloc,
-            recipientRand,
+            recipientRand
         )
         const firstTicketSig = await signMsg(getTicketHash(firstTicket), broadcaster.address)
 
@@ -115,13 +115,13 @@ describe("TicketFrontRun", () => {
             evilSybilAccount.address,
             broadcaster.address,
             deposit + reserve,
-            recipientRand,
+            recipientRand
         )
         const secondTicketSig = await signMsg(getTicketHash(secondTicket), broadcaster.address)
 
         // Ticket redemption by evilSybilAccount fails because it is not a registered transcoder
         await expect(
-            broker.connect(evilSybilAccount).redeemWinningTicket(secondTicket, secondTicketSig, recipientRand),
+            broker.connect(evilSybilAccount).redeemWinningTicket(secondTicket, secondTicketSig, recipientRand)
         ).to.be.revertedWith("transcoder must be registered")
 
         // Ticket redemption by honestTranscoder confirms on-chain
@@ -149,7 +149,7 @@ describe("TicketFrontRun", () => {
             honestTranscoder.address,
             broadcaster.address,
             reserveAlloc,
-            recipientRand,
+            recipientRand
         )
         const firstTicketSig = await signMsg(getTicketHash(firstTicket), broadcaster.address)
 
@@ -161,14 +161,14 @@ describe("TicketFrontRun", () => {
             evilNonActiveTranscoder.address,
             broadcaster.address,
             deposit + reserve,
-            recipientRand,
+            recipientRand
         )
         const secondTicketSig = await signMsg(getTicketHash(secondTicket), broadcaster.address)
 
         // Ticket redemption by evilNonActiveTranscoder fails because a non-active transcoder has no totalStake on it's earningsPool
         // This results in division by zero when calculating earnings cumulatively (LIP-36)
         await expect(
-            broker.connect(evilNonActiveTranscoder).redeemWinningTicket(secondTicket, secondTicketSig, recipientRand),
+            broker.connect(evilNonActiveTranscoder).redeemWinningTicket(secondTicket, secondTicketSig, recipientRand)
         ).to.be.revertedWith("SafeMath: division by zero")
 
         let info = await broker.getSenderInfo(broadcaster.address)
@@ -199,7 +199,7 @@ describe("TicketFrontRun", () => {
             honestTranscoder.address,
             broadcaster.address,
             reserveAlloc,
-            recipientRand,
+            recipientRand
         )
         const firstTicketSig = await signMsg(getTicketHash(firstTicket), broadcaster.address)
 
@@ -211,7 +211,7 @@ describe("TicketFrontRun", () => {
             evilActiveTranscoder.address,
             broadcaster.address,
             deposit + reserve,
-            recipientRand,
+            recipientRand
         )
         const secondTicketSig = await signMsg(getTicketHash(secondTicket), broadcaster.address)
 
@@ -227,7 +227,7 @@ describe("TicketFrontRun", () => {
 
         assert.equal(
             (await bondingManager.pendingFees(evilActiveTranscoder.address, currentRound)).toString(),
-            (deposit + reserveAlloc).toString(),
+            (deposit + reserveAlloc).toString()
         )
 
         // Ticket redemption by honestTranscoder confirms on-chain
@@ -240,7 +240,7 @@ describe("TicketFrontRun", () => {
 
         assert.equal(
             (await bondingManager.pendingFees(honestTranscoder.address, currentRound)).toString(),
-            reserveAlloc.toString(),
+            reserveAlloc.toString()
         )
     })
 })

@@ -33,28 +33,6 @@ const processResult = async (txRes, mustAssert) => {
     })
 }
 
-// /**
-//  * Deploy and link `libName` to provided contract artifact.
-//  * Modifies bytecode in place
-//  *
-//  * @param {string} contract Contract name
-//  * @param {string} libName Library name
-// */
-// const linkLib = async (contract, libName) => {
-//     const underscores = n => "_".repeat(n)
-//     const PREFIX_UNDERSCORES = 2
-//     const ADDR_LENGTH = 40
-
-//     const prefix = underscores(PREFIX_UNDERSCORES)
-//     const suffix = underscores(ADDR_LENGTH - PREFIX_UNDERSCORES - libName.length)
-//     const libPlaceholder = `${prefix}${libName}${suffix}`
-
-//     const lib = await (await ethers.getContractFactory(libName)).deploy()
-//     const libAddr = lib.address.replace("0x", "").toLowerCase()
-
-//     contract.bytecode = contract.bytecode.replace(new RegExp(libPlaceholder, "g"), libAddr)
-// }
-
 /**
  * Runs a solidity test file, via javascript.
  * Required to smooth over some technical problems in solidity-coverage
@@ -64,25 +42,22 @@ const processResult = async (txRes, mustAssert) => {
  * @param {Object} mochaContext Mocha context
  */
 async function runSolidityTest(c, libs, mochaContext) {
-    let deployed
-    let artifact
-
     const libraries = {}
-    for (let libName of libs) {
+    for (const libName of libs) {
         libraries[libName] = (await (await ethers.getContractFactory(libName)).deploy()).address
     }
 
-    artifact = await ethers.getContractFactory(c, {
+    const artifact = await ethers.getContractFactory(c, {
         libraries: libraries
     })
 
-    deployed = await artifact.deploy()
+    const deployed = await artifact.deploy()
 
     describe(c, () => {
         mochaContext("> Solidity test", async () => {
             const abi = artifact.interface.format()
-            for (let iface of abi) {
-                let name = iface.split(" ")[1]
+            for (const iface of abi) {
+                const name = iface.split(" ")[1]
                 if (["beforeAll()", "beforeEach()", "afterEach()", "afterAll()"].includes(name)) {
                     // Set up hooks
                     global[HOOKS_MAP[name.slice(0, -2)]](async () => {
