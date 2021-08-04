@@ -1,7 +1,13 @@
 module.exports = {
     mocha: {
-        timeout: 100000
+        timeout: 100000,
     },
-    testCommand: 'npx hardhat deploy && npx hardhat test',
-    skipFiles: ["test", "zeppelin", "rounds/AdjustableRoundsManager.sol", "pm/mixins/interfaces", "bonding/deprecated"]
-}
+    testCommand: "npx hardhat deploy && npx hardhat test",
+    skipFiles: [
+        "test",
+        "zeppelin",
+        "rounds/AdjustableRoundsManager.sol",
+        "pm/mixins/interfaces",
+        "bonding/deprecated",
+    ],
+};
