@@ -148,7 +148,7 @@ describe("Minter", accounts => {
             await fixture.controller.setContractInfo(contractId("Minter"), signers[1].address, fixture.commitHash)
 
             await expect(
-                minter.migrateToNewMinter(newMinter.address),
+                minter.migrateToNewMinter(newMinter.address)
             ).to.be.revertedWith("new Minter must be registered")
         })
 

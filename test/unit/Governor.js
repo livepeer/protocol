@@ -220,7 +220,7 @@ describe("Governor", () => {
                         data: [data0, data1, data2],
                         nonce: 1
                     },
-                    "0",
+                    "0"
                 )
             ).to.be.revertedWith(
                 "unauthorized: msg.sender not owner"

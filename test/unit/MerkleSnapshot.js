@@ -50,7 +50,7 @@ describe("MerkleSnapshot", () => {
     describe("verify", () => {
         let leaves
         let tree
-        let id = bufferToHex(keccak256("LIP-52"))
+        const id = bufferToHex(keccak256("LIP-52"))
         before(async () => {
             leaves = ["a", "b", "c", "d"]
             tree = new MerkleTree(leaves)

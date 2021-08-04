@@ -2,11 +2,11 @@ import util from "util"
 import childProcess from "child_process"
 const exec = util.promisify(childProcess.exec)
 
-import { ethers } from 'hardhat'
-import {DeployOptions, DeployResult, DeploymentsExtension} from 'hardhat-deploy/types'
-import { deployments } from 'hardhat'
-import { Controller } from '../typechain'
-import { Libraries } from 'hardhat/types'
+import {ethers} from "hardhat"
+import {DeployOptions, DeployResult, DeploymentsExtension} from "hardhat-deploy/types"
+import {deployments} from "hardhat"
+import {Controller} from "../typechain"
+import {Libraries} from "hardhat/types"
 
 export default class ContractDeployer {
     deploy: (name: string, options: DeployOptions) => Promise<DeployResult>
@@ -27,7 +27,9 @@ export default class ContractDeployer {
 
     private async getGitHeadCommitHash(): Promise<string> {
         const {stdout, stderr} = await exec("git rev-parse HEAD")
-        if (stderr) {throw new Error(stderr)}
+        if (stderr) {
+            throw new Error(stderr)
+        }
         return `0x${stdout?.trim()}`
     }
 
@@ -59,7 +61,7 @@ export default class ContractDeployer {
     }
 
     async deployAndRegister(config: {contract: string, name: string, proxy?: boolean, args: Array<any>, libraries?: Libraries | undefined}): Promise<DeployResult> {
-        const {contract, name, proxy, args, libraries } = config
+        const {contract, name, proxy, args, libraries} = config
         const targetName = `${name}Target`
 
         const gitHash = await this.getGitHeadCommitHash()
@@ -93,5 +95,4 @@ export default class ContractDeployer {
 
         return managerProxy
     }
-
 }

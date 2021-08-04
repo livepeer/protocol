@@ -154,7 +154,7 @@ describe("transcoder pool size gas report", () => {
                                 ethers.constants.AddressZero,
                                 ethers.constants.AddressZero,
                                 transcoders[2].address,
-                                ethers.constants.AddressZero,
+                                ethers.constants.AddressZero
                             )
                         })
                     })
@@ -175,7 +175,7 @@ describe("transcoder pool size gas report", () => {
                                 ethers.constants.AddressZero,
                                 ethers.constants.AddressZero,
                                 ethers.constants.AddressZero,
-                                transcoders[size - 2].address,
+                                transcoders[size - 2].address
                             )
                         })
                     })
@@ -212,7 +212,7 @@ describe("transcoder pool size gas report", () => {
                                 transcoders[1].address,
                                 ethers.constants.AddressZero,
                                 ethers.constants.AddressZero,
-                                transcoders[size - 2].address,
+                                transcoders[size - 2].address
                             )
                         })
                     })
@@ -233,7 +233,7 @@ describe("transcoder pool size gas report", () => {
                                 ethers.constants.AddressZero,
                                 ethers.constants.AddressZero,
                                 ethers.constants.AddressZero,
-                                transcoders[size - 2].address,
+                                transcoders[size - 2].address
                             )
                         })
                     })
@@ -371,7 +371,7 @@ describe("transcoder pool size gas report", () => {
 
                         // All transcoders besides transcoders[0] (the last position) call reward
                         const rewardTranscoders = transcoders.slice(1)
-                        for (let tr of rewardTranscoders) {
+                        for (const tr of rewardTranscoders) {
                             await bondingManager.connect(tr).reward()
                         }
                     })

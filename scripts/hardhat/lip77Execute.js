@@ -102,7 +102,7 @@ async function main() {
     if (
         events[0].args.newDelegate != transcoder ||
         events[0].args.oldDelegate != transcoder ||
-        events[0].args.delegator != delegator || 
+        events[0].args.delegator != delegator ||
         !events[0].args.additionalAmount.isZero() ||
         !events[0].args.bondedAmount.eq(BigNumber.from(lip77BondedAmount))
     ) {

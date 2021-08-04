@@ -178,7 +178,7 @@ describe("LIP36 transition", () => {
             // Register transcoder
             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound - 2)
             await bondingManager.bond(1000, transcoder.address)
-            await bondingManager.transcoder(50 * PERC_MULTIPLIER, 25 * PERC_MULTIPLIER, )
+            await bondingManager.transcoder(50 * PERC_MULTIPLIER, 25 * PERC_MULTIPLIER )
 
             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound - 1)
 
@@ -255,7 +255,7 @@ describe("LIP36 transition", () => {
             // Register transcoder
             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound - 2)
             await bondingManager.bond(1000, transcoder.address)
-            await bondingManager.transcoder(50 * PERC_MULTIPLIER, 25 * PERC_MULTIPLIER, )
+            await bondingManager.transcoder(50 * PERC_MULTIPLIER, 25 * PERC_MULTIPLIER )
 
             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound - 1)
 
@@ -353,7 +353,7 @@ describe("LIP36 transition", () => {
 
         describe("transcoder", () => {
             it("should return pending fees for rounds both before and after LIP-36 combined when endRound < currentRound", async () => {
-                let cumulativeFees = (await bondingManager.getTranscoder(transcoder.address)).cumulativeFees.toNumber()
+                const cumulativeFees = (await bondingManager.getTranscoder(transcoder.address)).cumulativeFees.toNumber()
                 const pendingFees0 = 125 + 750
                 const pendingFees1 = Math.floor((250 * (1750 * PERC_DIVISOR / 3000)) / PERC_DIVISOR)
 
@@ -365,7 +365,7 @@ describe("LIP36 transition", () => {
             })
 
             it("should return pending fees for a round both before and after LIP-36 combined when endRound == currentRound", async () => {
-                let cumulativeFees = (await bondingManager.getTranscoder(transcoder.address)).cumulativeFees.toNumber()
+                const cumulativeFees = (await bondingManager.getTranscoder(transcoder.address)).cumulativeFees.toNumber()
                 const pendingFees0 = 125 + 750
                 const pendingFees1 = Math.floor((250 * (1750 * PERC_DIVISOR / 3000)) / PERC_DIVISOR)
                 assert.equal(
