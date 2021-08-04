@@ -3,6 +3,7 @@ import "@nomiclabs/hardhat-web3";
 import "@typechain/hardhat";
 import "hardhat-gas-reporter";
 import "@nomiclabs/hardhat-etherscan";
+import "hardhat-abi-exporter";
 
 // deployment plugins
 import "hardhat-deploy";
@@ -18,15 +19,16 @@ const INFURA_KEY = process.env.INFURA_KEY;
 const config: HardhatUserConfig = {
   solidity: {
     compilers: [
-      { version: "0.5.11", 
+      {
+        version: "0.5.11",
         settings: {
           optimizer: {
             enabled: true,
-            runs: 200
-          } 
-        } 
-      }
-    ]
+            runs: 200,
+          },
+        },
+      },
+    ],
   },
   namedAccounts: {
     deployer: 0,
@@ -59,7 +61,12 @@ const config: HardhatUserConfig = {
   },
   etherscan: {
     apiKey: process.env.ETHERSCAN_API_KEY,
-  }
+  },
+  abiExporter: {
+    path: "./abi",
+    clear: true,
+    flat: true,
+  },
 };
 
 export default config;
