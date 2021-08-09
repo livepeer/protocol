@@ -2,7 +2,6 @@ pragma solidity ^0.5.11;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
-
 /**
  * @title A sorted doubly linked list with nodes sorted in descending order. Optionally accepts insert position hints
  *
@@ -19,18 +18,18 @@ library SortedDoublyLL {
 
     // Information for a node in the list
     struct Node {
-        uint256 key;                     // Node's key used for sorting
-        address nextId;                  // Id of next node (smaller key) in the list
-        address prevId;                  // Id of previous node (larger key) in the list
+        uint256 key; // Node's key used for sorting
+        address nextId; // Id of next node (smaller key) in the list
+        address prevId; // Id of previous node (larger key) in the list
     }
 
     // Information for the list
     struct Data {
-        address head;                        // Head of the list. Also the node in the list with the largest key
-        address tail;                        // Tail of the list. Also the node in the list with the smallest key
-        uint256 maxSize;                     // Maximum size of the list
-        uint256 size;                        // Current size of the list
-        mapping (address => Node) nodes;     // Track the corresponding ids for each node in the list
+        address head; // Head of the list. Also the node in the list with the largest key
+        address tail; // Tail of the list. Also the node in the list with the smallest key
+        uint256 maxSize; // Maximum size of the list
+        uint256 size; // Current size of the list
+        mapping(address => Node) nodes; // Track the corresponding ids for each node in the list
     }
 
     /**
@@ -50,7 +49,13 @@ library SortedDoublyLL {
      * @param _prevId Id of previous node for the insert position
      * @param _nextId Id of next node for the insert position
      */
-    function insert(Data storage self, address _id, uint256 _key, address _prevId, address _nextId) public {
+    function insert(
+        Data storage self,
+        address _id,
+        uint256 _key,
+        address _prevId,
+        address _nextId
+    ) public {
         // List must not be full
         require(!isFull(self), "list is full");
         // List must not already contain node
@@ -143,7 +148,13 @@ library SortedDoublyLL {
      * @param _prevId Id of previous node for the new insert position
      * @param _nextId Id of next node for the new insert position
      */
-    function updateKey(Data storage self, address _id, uint256 _newKey, address _prevId, address _nextId) public {
+    function updateKey(
+        Data storage self,
+        address _id,
+        uint256 _newKey,
+        address _prevId,
+        address _nextId
+    ) public {
         // List must contain the node
         require(contains(self, _id), "node not in list");
 
@@ -247,7 +258,12 @@ library SortedDoublyLL {
      * @param _nextId Id of next node for the insert position
      * @return if the insert position is valid
      */
-    function validInsertPosition(Data storage self, uint256 _key, address _prevId, address _nextId) public view returns (bool) {
+    function validInsertPosition(
+        Data storage self,
+        uint256 _key,
+        address _prevId,
+        address _nextId
+    ) public view returns (bool) {
         if (_prevId == address(0) && _nextId == address(0)) {
             // `(null, null)` is a valid insert position if the list is empty
             return isEmpty(self);
@@ -259,7 +275,10 @@ library SortedDoublyLL {
             return self.tail == _prevId && _key <= self.nodes[_prevId].key;
         } else {
             // `(_prevId, _nextId)` is a valid insert position if they are adjacent nodes and `_key` falls between the two nodes' keys
-            return self.nodes[_prevId].nextId == _nextId && self.nodes[_prevId].key >= _key && _key >= self.nodes[_nextId].key;
+            return
+                self.nodes[_prevId].nextId == _nextId &&
+                self.nodes[_prevId].key >= _key &&
+                _key >= self.nodes[_nextId].key;
         }
     }
 
@@ -268,7 +287,11 @@ library SortedDoublyLL {
      * @param _key Node's key
      * @param _startId Id of node to start ascending the list from
      */
-    function descendList(Data storage self, uint256 _key, address _startId) private view returns (address, address) {
+    function descendList(
+        Data storage self,
+        uint256 _key,
+        address _startId
+    ) private view returns (address, address) {
         // If `_startId` is the head, check if the insert position is before the head
         if (self.head == _startId && _key >= self.nodes[_startId].key) {
             return (address(0), _startId);
@@ -291,7 +314,11 @@ library SortedDoublyLL {
      * @param _key Node's key
      * @param _startId Id of node to start descending the list from
      */
-    function ascendList(Data storage self, uint256 _key, address _startId) private view returns (address, address) {
+    function ascendList(
+        Data storage self,
+        uint256 _key,
+        address _startId
+    ) private view returns (address, address) {
         // If `_startId` is the tail, check if the insert position is after the tail
         if (self.tail == _startId && _key <= self.nodes[_startId].key) {
             return (_startId, address(0));
@@ -315,7 +342,12 @@ library SortedDoublyLL {
      * @param _prevId Id of previous node for the insert position
      * @param _nextId Id of next node for the insert position
      */
-    function findInsertPosition(Data storage self, uint256 _key, address _prevId, address _nextId) private view returns (address, address) {
+    function findInsertPosition(
+        Data storage self,
+        uint256 _key,
+        address _prevId,
+        address _nextId
+    ) private view returns (address, address) {
         address prevId = _prevId;
         address nextId = _nextId;
 

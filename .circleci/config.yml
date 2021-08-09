@@ -3,7 +3,7 @@ version: 2
 jobs:
     build:
         docker:
-            - image: circleci/node:10.17.0
+            - image: cimg/node:14.17.4
         working_directory: ~/protocol
         steps:
             - checkout
@@ -16,7 +16,7 @@ jobs:
                     - ~/protocol
     lint:
         docker:
-            - image: circleci/node:10.17.0
+            - image: cimg/node:14.17.4
         working_directory: ~/protocol
         steps:
             - restore_cache:
@@ -27,7 +27,7 @@ jobs:
                 command: npm run lint
     test-contracts:
         docker: 
-            - image: circleci/node:10.17.0
+            - image: cimg/node:14.17.4
         environment:
             SOLC_VERSION: '0.5.11'
         working_directory: ~/protocol
@@ -40,9 +40,12 @@ jobs:
             - run:
                 name: Install Dockerized solc
                 command: docker pull ethereum/solc:$SOLC_VERSION
+            - run:
+                name: Compile contracts
+                command: npm run compile
             - run: 
                 name: Run tests with coverage reporting
-                command: npm run test:coverage:coveralls
+                command: npm run test:coverage
                 no_output_timeout: 20m
 
 workflows:

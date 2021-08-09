@@ -9,7 +9,6 @@ import "../libraries/MathUtilsV2.sol";
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
-
 /**
  * @title Minter
  * @dev Manages inflation rate and the minting of new tokens for each round of the Livepeer protocol
@@ -44,7 +43,8 @@ contract Minter is Manager, IMinter {
     // Checks if caller is either BondingManager or JobsManager
     modifier onlyBondingManagerOrJobsManager() {
         require(
-            msg.sender == controller.getContract(keccak256("BondingManager")) || msg.sender == controller.getContract(keccak256("JobsManager")),
+            msg.sender == controller.getContract(keccak256("BondingManager")) ||
+                msg.sender == controller.getContract(keccak256("JobsManager")),
             "msg.sender not BondingManager or JobsManager"
         );
         _;
@@ -53,7 +53,8 @@ contract Minter is Manager, IMinter {
     // Checks if caller is either the currently registered Minter or JobsManager
     modifier onlyMinterOrJobsManager() {
         require(
-            msg.sender == controller.getContract(keccak256("Minter")) || msg.sender == controller.getContract(keccak256("JobsManager")),
+            msg.sender == controller.getContract(keccak256("Minter")) ||
+                msg.sender == controller.getContract(keccak256("JobsManager")),
             "msg.sender not Minter or JobsManager"
         );
         _;
@@ -65,7 +66,12 @@ contract Minter is Manager, IMinter {
      * @param _inflationChange Change in inflation rate each round (increase or decrease) if target bonding rate is not achieved
      * @param _targetBondingRate Target bonding rate as a percentage of total bonded tokens / total token supply
      */
-    constructor(address _controller, uint256 _inflation, uint256 _inflationChange, uint256 _targetBondingRate) public Manager(_controller) {
+    constructor(
+        address _controller,
+        uint256 _inflation,
+        uint256 _inflationChange,
+        uint256 _targetBondingRate
+    ) public Manager(_controller) {
         // Inflation must be valid percentage
         require(MathUtils.validPerc(_inflation), "_inflation is invalid percentage");
         // Inflation change must be valid percentage
@@ -134,7 +140,12 @@ contract Minter is Manager, IMinter {
      * @param _fracNum Numerator of fraction (active transcoder's stake)
      * @param _fracDenom Denominator of fraction (total active stake)
      */
-    function createReward(uint256 _fracNum, uint256 _fracDenom) external onlyBondingManager whenSystemNotPaused returns (uint256) {
+    function createReward(uint256 _fracNum, uint256 _fracDenom)
+        external
+        onlyBondingManager
+        whenSystemNotPaused
+        returns (uint256)
+    {
         // Compute and mint fraction of mintable tokens to include in reward
         uint256 mintAmount = MathUtils.percOf(currentMintableTokens, _fracNum, _fracDenom);
         // Update amount of minted tokens for round
@@ -170,7 +181,11 @@ contract Minter is Manager, IMinter {
      * @param _to Recipient address
      * @param _amount Amount of ETH
      */
-    function trustedWithdrawETH(address payable _to, uint256 _amount) external onlyBondingManagerOrJobsManager whenSystemNotPaused {
+    function trustedWithdrawETH(address payable _to, uint256 _amount)
+        external
+        onlyBondingManagerOrJobsManager
+        whenSystemNotPaused
+    {
         _to.transfer(_amount);
     }
 

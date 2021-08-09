@@ -1,6 +1,10 @@
 import runSolidityTest from "./helpers/runSolidityTest"
 
-runSolidityTest("TestEarningsPool")
-runSolidityTest("TestEarningsPool2")
-runSolidityTest("TestEarningsPoolNoTranscoderRewardFeePool")
-runSolidityTest("TestEarningsPoolLIP36")
+describe("EarningsPool", () => {
+    it("Runs solidity tests", async () => {
+        await runSolidityTest("TestEarningsPool", ["AssertUint"])
+        await runSolidityTest("TestEarningsPool2", ["AssertUint", "AssertBool"])
+        await runSolidityTest("TestEarningsPoolNoTranscoderRewardFeePool", ["AssertUint", "AssertBool"])
+        await runSolidityTest("TestEarningsPoolLIP36", ["AssertUint"])
+    })
+})

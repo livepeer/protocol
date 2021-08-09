@@ -1,8 +1,7 @@
 // TODO: Eventually avoid conditionally loading from hardhat
 // using global web3 variable injected by truffle
-if (web3 === undefined) {
-    web3 = require("hardhat").web3
-}
+
+import {web3} from "hardhat"
 import {constants} from "../../utils/constants"
 
 const DUMMY_TICKET_CREATION_ROUND = 10

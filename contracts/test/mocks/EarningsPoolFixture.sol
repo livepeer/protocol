@@ -6,7 +6,6 @@ import "../../bonding/libraries/EarningsPoolLIP36.sol";
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
-
 contract EarningsPoolFixture {
     using SafeMath for uint256;
     using EarningsPool for EarningsPool.Data;
@@ -86,7 +85,21 @@ contract EarningsPoolFixture {
         return pool.rewardPoolShare(_stake, _isTranscoder);
     }
 
-    function getEarningsPool() public view returns (uint256, uint256, uint256, uint256, bool, uint256, uint256, uint256, uint256) {
+    function getEarningsPool()
+        public
+        view
+        returns (
+            uint256,
+            uint256,
+            uint256,
+            uint256,
+            bool,
+            uint256,
+            uint256,
+            uint256,
+            uint256
+        )
+    {
         return (
             pool.rewardPool,
             pool.feePool,

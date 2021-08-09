@@ -1,21 +1,22 @@
-const truffleAssert = require("truffle-assertions")
-const {keccak256, bufferToHex} = require("ethereumjs-util")
-
-const {MerkleTree} = require("../../utils/merkleTree")
-import {assert} from "chai"
+import {keccak256, bufferToHex} from "ethereumjs-util"
+import MerkleTree from "../../utils/merkleTree"
 import Fixture from "./helpers/Fixture"
+import {web3, ethers} from "hardhat"
+import chai, {expect, assert} from "chai"
+import {solidity} from "ethereum-waffle"
+chai.use(solidity)
 
-const MerkleSnapshot = artifacts.require("MerkleSnapshot")
-
-contract("MerkleSnapshot", accounts => {
+describe("MerkleSnapshot", () => {
     let fixture
     let merkleSnapshot
+    let signers
 
     before(async () => {
+        signers = await ethers.getSigners()
         fixture = new Fixture(web3)
         await fixture.deploy()
-
-        merkleSnapshot = await MerkleSnapshot.new(fixture.controller.address)
+        const merkleFac = await ethers.getContractFactory("MerkleSnapshot")
+        merkleSnapshot = await merkleFac.deploy(fixture.controller.address)
     })
 
     beforeEach(async () => {
@@ -28,15 +29,16 @@ contract("MerkleSnapshot", accounts => {
 
     describe("setSnapshot", () => {
         it("reverts when caller is not controller owner", async () => {
-            await truffleAssert.reverts(
-                merkleSnapshot.setSnapshot(web3.utils.asciiToHex("1"), web3.utils.asciiToHex("helloworld"), {from: accounts[1]}),
+            expect(
+                merkleSnapshot.connect(signers[1]).setSnapshot(ethers.utils.formatBytes32String("1"), ethers.utils.formatBytes32String("helloworld"))
+            ).to.be.revertedWith(
                 "caller must be Controller owner"
             )
         })
 
         it("sets a snapshot root for an snapshot ID", async () => {
-            let id = web3.utils.asciiToHex("1")
-            let root = web3.utils.padRight(web3.utils.asciiToHex("helloworld"), 64)
+            const id = ethers.utils.formatBytes32String("1")
+            const root = ethers.utils.formatBytes32String("helloworld")
             await merkleSnapshot.setSnapshot(id, root)
             assert.equal(
                 await merkleSnapshot.snapshot(id),
@@ -48,8 +50,8 @@ contract("MerkleSnapshot", accounts => {
     describe("verify", () => {
         let leaves
         let tree
-        let id = bufferToHex(keccak256("LIP-52"))
-        before( async () => {
+        const id = bufferToHex(keccak256("LIP-52"))
+        before(async () => {
             leaves = ["a", "b", "c", "d"]
             tree = new MerkleTree(leaves)
 

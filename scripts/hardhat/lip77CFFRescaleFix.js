@@ -45,12 +45,12 @@ async function main() {
     ]
 
     const transcoders = [
-        "0x3e2b450c0c499d8301146367680e067cd009db93", 
+        "0x3e2b450c0c499d8301146367680e067cd009db93",
         "0xbac7744ada4ab1957cbaafef698b3c068beb4fe0",
         "0xd84781e1a9b74d71ea76cda8bb9f30893bfd00d1",
-        "0xdac817294c0c87ca4fa1895ef4b972eade99f2fd", 
-        "0xf4e8ef0763bcb2b1af693f5970a00050a6ac7e1b", 
-        "0x9D5611bf0DAdddb4441A709141d9229d7F6b3e47" 
+        "0xdac817294c0c87ca4fa1895ef4b972eade99f2fd",
+        "0xf4e8ef0763bcb2b1af693f5970a00050a6ac7e1b",
+        "0x9D5611bf0DAdddb4441A709141d9229d7F6b3e47"
     ]
 
     const lip78Round = 2109
@@ -66,7 +66,7 @@ async function main() {
                 console.log(`Delegator ${del} pendingFees error ${err}`)
             }
         }
-    
+
         for (const tr of transcoders) {
             try {
                 const pf = await bondingManager.pendingFees(tr, lip78Round)
@@ -79,7 +79,7 @@ async function main() {
 
     console.log("PRE UPGRADE")
     await logPendingFees()
-   
+
     // Deploy new BondingManager target implementation
     const BondingManager = await ethers.getContractFactory("BondingManager", {
         libraries: {

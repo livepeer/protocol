@@ -1,25 +1,31 @@
 import Fixture from "./helpers/Fixture"
 
-import truffleAssert from "truffle-assertions"
 import {utils, BigNumber, constants} from "ethers"
-import {BN} from "ethereumjs-util"
 
-const Governor = artifacts.require("Governor")
-const SetUint256 = artifacts.require("SetUint256")
+import {web3, ethers} from "hardhat"
 
-contract("Governor", accounts => {
+import chai, {expect, assert} from "chai"
+import {solidity} from "ethereum-waffle"
+chai.use(solidity)
+
+describe("Governor", () => {
     let fixture
     let governor
     let setUint256
+    let signers
 
-    before(() => {
+    before(async () => {
+        signers = await ethers.getSigners()
         fixture = new Fixture(web3)
+        await fixture.deploy()
+        const govFac = await ethers.getContractFactory("Governor")
+        governor = await govFac.deploy()
+        const setUintFac = await ethers.getContractFactory("SetUint256")
+        setUint256 = await setUintFac.deploy()
     })
 
     beforeEach(async () => {
         await fixture.setUp()
-        governor = await Governor.new()
-        setUint256 = await SetUint256.new()
     })
 
     afterEach(async () => {
@@ -28,7 +34,7 @@ contract("Governor", accounts => {
 
 
     const setUint256Tx = async (i, sender) => {
-        return utils.hexlify(utils.arrayify(setUint256.contract.methods.setUint256(BigNumber.from(i)).encodeABI()))
+        return setUint256.interface.encodeFunctionData("setUint256", [BigNumber.from(i)])
     }
 
     const getUpdateHash = update => {
@@ -37,20 +43,24 @@ contract("Governor", accounts => {
 
     describe("constructor", () => {
         it("initializes state: owner", async () => {
-            assert.equal(await governor.owner(), accounts[0])
+            assert.equal(await governor.owner(), signers[0].address)
         })
     })
 
     describe("transferOwnership", () => {
         it("reverts if not called by the contract itself, even if msg.sender is the owner", async () => {
-            await truffleAssert.reverts(
-                governor.transferOwnership(accounts[1]),
+            await expect(
+                governor.transferOwnership(signers[1].address)
+            ).to.be.revertedWith(
                 "unauthorized: msg.sender not Governor"
             )
         })
 
         it("reverts if the new owner address is the zero-value for the address type", async () => {
-            const txData = utils.arrayify(governor.contract.methods.transferOwnership(constants.AddressZero).encodeABI())
+            const txData = governor.interface.encodeFunctionData(
+                "transferOwnership",
+                [constants.AddressZero]
+            )
             await governor.stage(
                 {
                     target: [governor.address],
@@ -61,7 +71,7 @@ contract("Governor", accounts => {
                 "0"
             )
 
-            await truffleAssert.reverts(
+            await expect(
                 governor.execute(
                     {
                         target: [governor.address],
@@ -69,13 +79,17 @@ contract("Governor", accounts => {
                         data: [txData],
                         nonce: 1
                     }
-                ),
+                )
+            ).to.be.revertedWith(
                 "newOwner is a null address"
             )
         })
 
         it("updates ownership to a new owner", async () => {
-            const txData = utils.arrayify(governor.contract.methods.transferOwnership(accounts[1]).encodeABI())
+            const txData = governor.interface.encodeFunctionData(
+                "transferOwnership",
+                [signers[1].address]
+            )
             await governor.stage(
                 {
                     target: [governor.address],
@@ -95,33 +109,33 @@ contract("Governor", accounts => {
                 }
             )
 
-            assert.equal(await governor.owner(), accounts[1])
-            truffleAssert.eventEmitted(tx, "OwnershipTransferred", e => e.previousOwner == accounts[0] && e.newOwner == accounts[1])
+            assert.equal(await governor.owner(), signers[1].address)
+            expect(tx).to.emit(governor, "OwnershipTransferred").withArgs(signers[0].address, signers[1].address)
         })
     })
 
     describe("stageUpdate", () => {
         it("reverts when sender is not owner", async () => {
-            const data = await setUint256Tx("0", accounts[0])
+            const data = await setUint256Tx("0", signers[0].address)
 
-            await truffleAssert.reverts(
-                governor.stage(
+            await expect(
+                governor.connect(signers[1]).stage(
                     {
                         target: [setUint256.address],
                         value: ["0"],
                         data: [data],
                         nonce: 1
                     },
-                    "0",
-                    {from: accounts[1]}
-                ),
-                "unauthorized: msg.sender not owner",
+                    "0"
+                )
+            ).to.be.revertedWith(
+                "unauthorized: msg.sender not owner"
             )
         })
 
         it("reverts when an update is already staged", async () => {
             // stage an update
-            const data = await setUint256Tx("1", accounts[0])
+            const data = await setUint256Tx("1", signers[0].address)
 
             await governor.stage(
                 {
@@ -134,7 +148,7 @@ contract("Governor", accounts => {
             )
 
             // try staging the same update (same hash)
-            await truffleAssert.reverts(
+            await expect(
                 governor.stage(
                     {
                         target: [setUint256.address],
@@ -143,17 +157,18 @@ contract("Governor", accounts => {
                         nonce: 1
                     },
                     "5"
-                ),
+                )
+            ).to.be.revertedWith(
                 "update already staged"
             )
         })
 
         it("reverts when the current block number added by the delay overflows", async () => {
-            const data = await setUint256Tx("1", accounts[0])
+            const data = await setUint256Tx("1", signers[0].address)
 
             await fixture.rpc.mine()
 
-            await truffleAssert.reverts(
+            await expect(
                 governor.stage(
                     {
                         target: [setUint256.address],
@@ -163,11 +178,11 @@ contract("Governor", accounts => {
                     },
                     constants.MaxUint256
                 )
-            )
+            ).to.be.reverted
         })
 
         it("stage emits an UpdateStaged event", async () => {
-            const data = await setUint256Tx("1", accounts[0])
+            const data = await setUint256Tx("1", signers[0].address)
             const update = {
                 target: [setUint256.address],
                 value: ["0"],
@@ -185,45 +200,38 @@ contract("Governor", accounts => {
 
             assert.equal((await governor.updates(updateHash)).toNumber(), blockNum + 5 + 1) // + 1 because stage() mines a block
 
-            truffleAssert.eventEmitted(
-                tx,
-                "UpdateStaged",
-                e => e.update.target[0] == update.target[0]
-                    && e.update.value[0] == update.value[0]
-                    && e.update.data[0] == update.data[0]
-                    && e.update.nonce == update.nonce
-                    && e.delay.toString() == "5",
-                "UpdateStaged event not emitted correctly"
+            expect(tx).to.emit(governor, "UpdateStaged").withArgs(
+                [...update], 5
             )
         })
     })
 
     describe("batch stageUpdate", () => {
         it("reverts when sender is not owner", async () => {
-            const data0 = await setUint256Tx("0", accounts[0])
-            const data1 = await setUint256Tx("1", accounts[0])
-            const data2 = await setUint256Tx("5", accounts[0])
+            const data0 = await setUint256Tx("0", signers[0].address)
+            const data1 = await setUint256Tx("1", signers[0].address)
+            const data2 = await setUint256Tx("5", signers[0].address)
 
-            await truffleAssert.reverts(
-                governor.stage(
+            await expect(
+                governor.connect(signers[1]).stage(
                     {
                         target: [setUint256.address, setUint256.address, setUint256.address],
                         value: ["0", "0", "0"],
                         data: [data0, data1, data2],
                         nonce: 1
                     },
-                    "0",
-                    {from: accounts[1]}
-                ),
+                    "0"
+                )
+            ).to.be.revertedWith(
                 "unauthorized: msg.sender not owner"
             )
         })
 
         it("reverts when an update is already staged", async () => {
             // stage a batch update
-            const data0 = await setUint256Tx("0", accounts[0])
-            const data1 = await setUint256Tx("1", accounts[0])
-            const data2 = await setUint256Tx("5", accounts[0])
+            const data0 = await setUint256Tx("0", signers[0].address)
+            const data1 = await setUint256Tx("1", signers[0].address)
+            const data2 = await setUint256Tx("5", signers[0].address)
             await governor.stage(
                 {
                     target: [setUint256.address, setUint256.address, setUint256.address],
@@ -235,7 +243,7 @@ contract("Governor", accounts => {
             )
 
             // try staging the same batch update
-            await truffleAssert.reverts(
+            await expect(
                 governor.stage(
                     {
                         target: [setUint256.address, setUint256.address, setUint256.address],
@@ -244,15 +252,16 @@ contract("Governor", accounts => {
                         nonce: 1
                     },
                     "0"
-                ),
+                )
+            ).to.be.revertedWith(
                 "update already staged"
             )
         })
 
         it("stage emits an UpdateStaged event", async () => {
-            const data0 = await setUint256Tx("0", accounts[0])
-            const data1 = await setUint256Tx("1", accounts[0])
-            const data2 = await setUint256Tx("5", accounts[0])
+            const data0 = await setUint256Tx("0", signers[0].address)
+            const data1 = await setUint256Tx("1", signers[0].address)
+            const data2 = await setUint256Tx("5", signers[0].address)
 
             const update = {
                 target: [setUint256.address, setUint256.address, setUint256.address],
@@ -271,47 +280,35 @@ contract("Governor", accounts => {
 
             assert.equal((await governor.updates(updateHash)).toNumber(), blockNum + 5 + 1) // + 1 because stage() mines a block
 
-            truffleAssert.eventEmitted(
-                tx,
-                "UpdateStaged",
-                e => e.update.target[0] == update.target[0]
-                    && e.update.value[0] == update.value[0]
-                    && e.update.data[0] == update.data[0]
-                    && e.update.target[1] == update.target[1]
-                    && e.update.value[1] == update.value[1]
-                    && e.update.data[1] == update.data[1]
-                    && e.update.target[2] == update.target[2]
-                    && e.update.value[2] == update.value[2]
-                    && e.update.data[2] == update.data[2]
-                    && e.update.nonce == update.nonce
-                    && e.delay.toString() == "5",
-                "UpdateStaged event not emitted correctly"
+            expect(tx).to.emit(governor, "UpdateStaged").withArgs(
+                [...update],
+                5
             )
         })
     })
 
     describe("cancelUpdate", async () => {
         it("reverts when msg.sender is not the owner", async () => {
-            const data = await setUint256Tx("1", accounts[0])
+            const data = await setUint256Tx("1", signers[0].address)
 
-            await truffleAssert.reverts(
-                governor.cancel(
+            await expect(
+                governor.connect(signers[1]).cancel(
                     {
                         target: [setUint256.address],
                         value: ["0"],
                         data: [data],
                         nonce: 1
-                    },
-                    {from: accounts[1]}
-                ),
+                    }
+                )
+            ).to.be.revertedWith(
                 "unauthorized: msg.sender not owner"
             )
         })
 
         it("reverts when an update is not staged", async () => {
-            const data = await setUint256Tx("1", accounts[0])
+            const data = await setUint256Tx("1", signers[0].address)
 
-            await truffleAssert.reverts(
+            await expect(
                 governor.cancel(
                     {
                         target: [setUint256.address],
@@ -319,13 +316,14 @@ contract("Governor", accounts => {
                         data: [data],
                         nonce: 1
                     }
-                ),
+                )
+            ).to.be.revertedWith(
                 "update is not staged"
             )
         })
 
         it("cancels a staged update", async () => {
-            const data = await setUint256Tx("1", accounts[0])
+            const data = await setUint256Tx("1", signers[0].address)
             const update = {
                 target: [setUint256.address],
                 value: ["0"],
@@ -341,57 +339,45 @@ contract("Governor", accounts => {
             )
 
             assert.equal((await governor.updates(updateHash)).toNumber(), blockNum + 5 + 1) // + 1 because stage() mines a block
-            truffleAssert.eventEmitted(
-                tx,
-                "UpdateStaged",
-                e => e.update.target[0] == update.target[0]
-                    && e.update.value[0] == update.value[0]
-                    && e.update.data[0] == update.data[0]
-                    && e.update.nonce == update.nonce
-                    && e.delay.toString() == "5",
-                "UpdateStaged event not emitted correctly"
+            expect(tx).to.emit(governor, "UpdateStaged").withArgs(
+                [...update], 5
             )
 
             tx = await governor.cancel(update)
 
             assert.equal((await governor.updates(updateHash)).toNumber(), 0)
 
-            truffleAssert.eventEmitted(
-                tx,
-                "UpdateCancelled",
-                e => e.update.target[0] == update.target[0]
-                    && e.update.value[0] == update.value[0]
-                    && e.update.data[0] == update.data[0]
-                    && e.update.nonce == update.nonce,
-                "UpdateCancelled event not emitted correctly"
+            expect(tx).to.emit(governor, "UpdateCancelled").withArgs(
+                [...update]
             )
         })
     })
 
     describe("batch cancelUpdate", async () => {
         it("reverts when msg.sender is not the owner", async () => {
-            const data0 = await setUint256Tx("0", accounts[0])
-            const data1 = await setUint256Tx("1", accounts[0])
-            const data2 = await setUint256Tx("5", accounts[0])
-            await truffleAssert.reverts(
-                governor.cancel(
+            const data0 = await setUint256Tx("0", signers[0].address)
+            const data1 = await setUint256Tx("1", signers[0].address)
+            const data2 = await setUint256Tx("5", signers[0].address)
+
+            await expect(
+                governor.connect(signers[1]).cancel(
                     {
                         target: [setUint256.address, setUint256.address, setUint256.address],
                         value: ["0", "0", "0"],
                         data: [data0, data1, data2],
                         nonce: 1
-                    },
-                    {from: accounts[1]}
-                ),
+                    }
+                )
+            ).to.be.revertedWith(
                 "unauthorized: msg.sender not owner"
             )
         })
 
         it("reverts when an update is not staged", async () => {
-            const data0 = await setUint256Tx("0", accounts[0])
-            const data1 = await setUint256Tx("1", accounts[0])
-            const data2 = await setUint256Tx("5", accounts[0])
-            await truffleAssert.reverts(
+            const data0 = await setUint256Tx("0", signers[0].address)
+            const data1 = await setUint256Tx("1", signers[0].address)
+            const data2 = await setUint256Tx("5", signers[0].address)
+            await expect(
                 governor.cancel(
                     {
                         target: [setUint256.address, setUint256.address, setUint256.address],
@@ -399,15 +385,16 @@ contract("Governor", accounts => {
                         data: [data0, data1, data2],
                         nonce: 1
                     }
-                ),
+                )
+            ).to.be.revertedWith(
                 "update is not staged"
             )
         })
 
         it("cancels a batch of staged updates", async () => {
-            const data0 = await setUint256Tx("0", accounts[0])
-            const data1 = await setUint256Tx("1", accounts[0])
-            const data2 = await setUint256Tx("5", accounts[0])
+            const data0 = await setUint256Tx("0", signers[0].address)
+            const data1 = await setUint256Tx("1", signers[0].address)
+            const data2 = await setUint256Tx("5", signers[0].address)
 
             const update = {
                 target: [setUint256.address, setUint256.address, setUint256.address],
@@ -425,49 +412,25 @@ contract("Governor", accounts => {
             )
 
             assert.equal((await governor.updates(updateHash)).toNumber(), blockNum + 5 + 1) // + 1 because stage() mines a block
-            truffleAssert.eventEmitted(
-                tx,
-                "UpdateStaged",
-                e => e.update.target[0] == update.target[0]
-                    && e.update.value[0] == update.value[0]
-                    && e.update.data[0] == update.data[0]
-                    && e.update.target[1] == update.target[1]
-                    && e.update.value[1] == update.value[1]
-                    && e.update.data[1] == update.data[1]
-                    && e.update.target[2] == update.target[2]
-                    && e.update.value[2] == update.value[2]
-                    && e.update.data[2] == update.data[2]
-                    && e.update.nonce == update.nonce
-                    && e.delay.toString() == "5",
-                "UpdateStaged event not emitted correctly"
+            expect(tx).to.emit(governor, "UpdateStaged").withArgs(
+                [...update], 5
             )
 
             tx = await governor.cancel(update)
 
             assert.equal((await governor.updates(updateHash)).toNumber(), 0)
 
-            truffleAssert.eventEmitted(
-                tx,
-                "UpdateCancelled",
-                e => e.update.target[0] == update.target[0]
-                    && e.update.value[0] == update.value[0]
-                    && e.update.data[0] == update.data[0]
-                    && e.update.target[1] == update.target[1]
-                    && e.update.value[1] == update.value[1]
-                    && e.update.data[1] == update.data[1]
-                    && e.update.target[2] == update.target[2]
-                    && e.update.value[2] == update.value[2]
-                    && e.update.data[2] == update.data[2],
-                "UpdateCancelled event not emitted correctly"
+            expect(tx).to.emit(governor, "UpdateCancelled").withArgs(
+                [...update]
             )
         })
     })
 
     describe("executeUpdate", () => {
         it("reverts when the update has not been staged", async () => {
-            const data = await setUint256Tx("1", accounts[0])
+            const data = await setUint256Tx("1", signers[0].address)
 
-            await truffleAssert.reverts(
+            await expect(
                 governor.execute(
                     {
                         target: [setUint256.address],
@@ -475,13 +438,12 @@ contract("Governor", accounts => {
                         data: [data],
                         nonce: 1
                     }
-                ),
-                "update is not staged"
-            )
+                )
+            ).to.be.revertedWith("update is not staged")
         })
 
         it("reverts when delay for the staged update has not expired", async () => {
-            const data = await setUint256Tx("1", accounts[0])
+            const data = await setUint256Tx("1", signers[0].address)
 
             await governor.stage(
                 {
@@ -493,7 +455,7 @@ contract("Governor", accounts => {
                 "100"
             )
 
-            await truffleAssert.reverts(
+            await expect(
                 governor.execute(
                     {
                         target: [setUint256.address],
@@ -501,13 +463,14 @@ contract("Governor", accounts => {
                         data: [data],
                         nonce: 1
                     }
-                ),
+                )
+            ).to.be.revertedWith(
                 "delay for update not expired"
             )
         })
 
         it("reverts when one of the remote calls in the batch fails", async () => {
-            const data = await setUint256Tx("1", accounts[0])
+            const data = await setUint256Tx("1", signers[0].address)
 
             await governor.stage(
                 {
@@ -524,18 +487,22 @@ contract("Governor", accounts => {
             await fixture.rpc.wait(101)
 
             // test forwarded revert reason
-            await truffleAssert.reverts(governor.execute(
-                {
-                    target: [setUint256.address],
-                    value: ["0"],
-                    data: [data],
-                    nonce: 1
-                }
-            ), "I should fail")
+            await expect(
+                governor.execute(
+                    {
+                        target: [setUint256.address],
+                        value: ["0"],
+                        data: [data],
+                        nonce: 1
+                    }
+                )
+            ).to.be.revertedWith(
+                "I should fail"
+            )
         })
 
         it("executes an update: delete the update and emit an UpdateExecuted event", async () => {
-            const data = await setUint256Tx("1", accounts[0])
+            const data = await setUint256Tx("1", signers[0].address)
             const update = {
                 target: [setUint256.address],
                 value: ["1000"],
@@ -551,18 +518,12 @@ contract("Governor", accounts => {
 
             await fixture.rpc.wait(100)
 
-            const tx = await governor.execute(update, {from: accounts[0], value: new BN(1000)})
+            const tx = await governor.connect(signers[0]).execute(update, {value: BigNumber.from("1000")})
 
             assert.equal((await governor.updates(updateHash)).toNumber(), 0)
 
-            truffleAssert.eventEmitted(
-                tx,
-                "UpdateExecuted",
-                e => e.update.target[0] == update.target[0]
-                    && e.update.value[0] == update.value[0]
-                    && e.update.data[0] == update.data[0]
-                    && e.update.nonce == update.nonce,
-                "UpdateStaged event not emitted correctly"
+            expect(tx).to.emit(governor, "UpdateExecuted").withArgs(
+                [...update]
             )
 
             // check that ETH balance of target is updated
@@ -572,9 +533,9 @@ contract("Governor", accounts => {
 
     describe("batch executeUpdate", () => {
         it("reverts when the update has not been staged", async () => {
-            const data0 = await setUint256Tx("0", accounts[0])
-            const data1 = await setUint256Tx("1", accounts[0])
-            const data2 = await setUint256Tx("5", accounts[0])
+            const data0 = await setUint256Tx("0", signers[0].address)
+            const data1 = await setUint256Tx("1", signers[0].address)
+            const data2 = await setUint256Tx("5", signers[0].address)
 
             // stage the update partially
             await governor.stage(
@@ -587,7 +548,7 @@ contract("Governor", accounts => {
                 "100"
             )
 
-            await truffleAssert.reverts(
+            await expect(
                 governor.execute(
                     {
                         target: [setUint256.address, setUint256.address, setUint256.address],
@@ -595,15 +556,16 @@ contract("Governor", accounts => {
                         data: [data0, data1, data2],
                         nonce: 1
                     }
-                ),
+                )
+            ).to.be.revertedWith(
                 "update is not staged"
             )
         })
 
         it("reverts when delay for the staged update has not expired", async () => {
-            const data0 = await setUint256Tx("0", accounts[0])
-            const data1 = await setUint256Tx("1", accounts[0])
-            const data2 = await setUint256Tx("5", accounts[0])
+            const data0 = await setUint256Tx("0", signers[0].address)
+            const data1 = await setUint256Tx("1", signers[0].address)
+            const data2 = await setUint256Tx("5", signers[0].address)
 
             const update = {
                 target: [setUint256.address, setUint256.address, setUint256.address],
@@ -617,16 +579,17 @@ contract("Governor", accounts => {
                 "100"
             )
 
-            await truffleAssert.reverts(
-                governor.execute(update),
+            await expect(
+                governor.execute(update)
+            ).to.be.revertedWith(
                 "delay for update not expired"
             )
         })
 
         it("reverts when one of the remote calls in the batch fails", async () => {
-            const data0 = await setUint256Tx("0", accounts[0])
-            const data1 = await setUint256Tx("1", accounts[0])
-            const data2 = await setUint256Tx("5", accounts[0])
+            const data0 = await setUint256Tx("0", signers[0].address)
+            const data1 = await setUint256Tx("1", signers[0].address)
+            const data2 = await setUint256Tx("5", signers[0].address)
 
             const update = {
                 target: [setUint256.address, setUint256.address, setUint256.address],
@@ -645,16 +608,15 @@ contract("Governor", accounts => {
             await fixture.rpc.wait(101)
 
             // test forwarded revert reason
-            await truffleAssert.reverts(
-                governor.execute(update),
-                "I should fail"
-            )
+            await expect(
+                governor.execute(update)
+            ).to.be.revertedWith("I should fail")
         })
 
         it("executes an update: delete the update and emit an UpdateExecuted event", async () => {
-            const data0 = await setUint256Tx("0", accounts[0])
-            const data1 = await setUint256Tx("1", accounts[0])
-            const data2 = await setUint256Tx("5", accounts[0])
+            const data0 = await setUint256Tx("0", signers[0].address)
+            const data1 = await setUint256Tx("1", signers[0].address)
+            const data2 = await setUint256Tx("5", signers[0].address)
 
             const update = {
                 target: [setUint256.address, setUint256.address, setUint256.address],
@@ -674,21 +636,8 @@ contract("Governor", accounts => {
             const tx = await governor.execute(update)
 
             assert.equal((await governor.updates(updateHash)), 0)
-
-            truffleAssert.eventEmitted(
-                tx,
-                "UpdateExecuted",
-                e => e.update.target[0] == update.target[0]
-                    && e.update.value[0] == update.value[0]
-                    && e.update.data[0] == update.data[0]
-                    && e.update.target[1] == update.target[1]
-                    && e.update.value[1] == update.value[1]
-                    && e.update.data[1] == update.data[1]
-                    && e.update.target[2] == update.target[2]
-                    && e.update.value[2] == update.value[2]
-                    && e.update.data[2] == update.data[2]
-                    && e.update.nonce == update.nonce,
-                "UpdateStaged event not emitted correctly"
+            expect(tx).to.emit(governor, "UpdateExecuted").withArgs(
+                [...update]
             )
         })
     })

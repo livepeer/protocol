@@ -26,7 +26,7 @@ async function main() {
 
     // Subset of addresses affected by future factors bug
     const affectedAddrs = [
-        "0x9c4d592042F959254485d443bBc337d29572264F", 
+        "0x9c4d592042F959254485d443bBc337d29572264F",
         "0x89CddDCBE1587C91D8861D1eA2F55502AAe22660"
     ]
 

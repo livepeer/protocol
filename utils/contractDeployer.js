@@ -1,8 +1,9 @@
-const util = require("util")
-const exec = util.promisify(require("child_process").exec)
-const {contractId} = require("./helpers")
+import util from "util"
+import childProcess from "child_process"
+import {contractId} from "./helpers.ts"
+const exec = util.promisify(childProcess.exec)
 
-class ContractDeployer {
+export default class ContractDeployer {
     constructor(truffleDeployer, controllerArtifact, managerProxyArtifact) {
         this.truffleDeployer = truffleDeployer
         this.controllerArtifact = controllerArtifact
@@ -71,5 +72,3 @@ class ContractDeployer {
         return networkName === "mainnet" || networkName === "rinkebyDryRun"
     }
 }
-
-module.exports = ContractDeployer

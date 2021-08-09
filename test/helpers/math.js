@@ -1,16 +1,15 @@
-const BN = require("bn.js")
-const {constants} = require("../../utils/constants")
-
+import {constants} from "../../utils/constants"
+import {BigNumber} from "ethers"
 // Returns a / b scaled by PERC_DIVISOR
 // See percPoints() in contracts/libraries/MathUtils.sol
 const percPoints = (a, b) => {
-    return _percPoints(a, b, new BN(constants.PERC_DIVISOR))
+    return _percPoints(a, b, BigNumber.from(constants.PERC_DIVISOR))
 }
 
 // Returns a * (b / c) scaled by PERC_DIVISOR
 // See percOf() in contracts/libraries/MathUtils.sol
 const percOf = (a, b, c) => {
-    return _percOf(a, b, c, new BN(constants.PERC_DIVISOR))
+    return _percOf(a, b, c, BigNumber.from(constants.PERC_DIVISOR))
 }
 
 const precise = {

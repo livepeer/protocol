@@ -3,7 +3,6 @@ pragma solidity ^0.5.11;
 import "../../ManagerProxyTarget.sol";
 import "./interfaces/MContractRegistry.sol";
 
-
 contract MixinContractRegistry is MContractRegistry, ManagerProxyTarget {
     /**
      * @dev Checks if the current round has been initialized
@@ -13,10 +12,7 @@ contract MixinContractRegistry is MContractRegistry, ManagerProxyTarget {
         _;
     }
 
-    constructor(address _controller)
-        internal
-        Manager(_controller)
-    {}
+    constructor(address _controller) internal Manager(_controller) {}
 
     /**
      * @dev Returns an instance of the IBondingManager interface
