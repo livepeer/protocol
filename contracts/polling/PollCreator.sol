@@ -3,7 +3,6 @@ pragma solidity ^0.5.11;
 import "./Poll.sol";
 import "../token/ILivepeerToken.sol";
 
-
 contract PollCreator {
     // 33.33%
     uint256 public constant QUORUM = 333300;
@@ -15,13 +14,7 @@ contract PollCreator {
 
     ILivepeerToken public token;
 
-    event PollCreated(
-        address indexed poll,
-        bytes proposal,
-        uint256 endBlock,
-        uint256 quorum,
-        uint256 quota
-    );
+    event PollCreated(address indexed poll, bytes proposal, uint256 endBlock, uint256 quorum, uint256 quota);
 
     constructor(address _tokenAddr) public {
         token = ILivepeerToken(_tokenAddr);
@@ -36,19 +29,10 @@ contract PollCreator {
         uint256 endBlock = block.number + POLL_PERIOD;
         Poll poll = new Poll(endBlock);
 
-        require(
-            token.transferFrom(msg.sender, address(this), POLL_CREATION_COST),
-            "LivepeerToken transferFrom failed"
-        );
+        require(token.transferFrom(msg.sender, address(this), POLL_CREATION_COST), "LivepeerToken transferFrom failed");
 
         token.burn(POLL_CREATION_COST);
 
-        emit PollCreated(
-            address(poll),
-            _proposal,
-            endBlock,
-            QUORUM,
-            QUOTA
-        );
+        emit PollCreated(address(poll), _proposal, endBlock, QUORUM, QUOTA);
     }
 }

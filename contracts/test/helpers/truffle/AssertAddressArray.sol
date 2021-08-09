@@ -1,10 +1,9 @@
-pragma solidity >= 0.4.15 < 0.6.0;
+pragma solidity >=0.4.15 <0.6.0;
 
 library AssertAddressArray {
-    
-    uint8 constant ZERO = uint8(byte('0'));
-    uint8 constant A = uint8(byte('a'));
-    
+    uint8 constant ZERO = uint8(bytes1("0"));
+    uint8 constant A = uint8(bytes1("a"));
+
     /*
         Event: TestEvent
 
@@ -37,10 +36,14 @@ library AssertAddressArray {
         Returns:
             result (bool) - The result.
     */
-    function equal(address[] memory arrA, address[] memory arrB, string memory message) public returns (bool result) {
+    function equal(
+        address[] memory arrA,
+        address[] memory arrB,
+        string memory message
+    ) public returns (bool result) {
         result = arrA.length == arrB.length;
         if (result) {
-            for (uint i = 0; i < arrA.length; i++) {
+            for (uint256 i = 0; i < arrA.length; i++) {
                 if (arrA[i] != arrB[i]) {
                     result = false;
                     break;
@@ -69,10 +72,14 @@ library AssertAddressArray {
         Returns:
             result (bool) - The result.
     */
-    function notEqual(address[] memory arrA, address[] memory arrB, string memory message) public returns (bool result) {
+    function notEqual(
+        address[] memory arrA,
+        address[] memory arrB,
+        string memory message
+    ) public returns (bool result) {
         result = arrA.length == arrB.length;
         if (result) {
-            for (uint i = 0; i < arrA.length; i++) {
+            for (uint256 i = 0; i < arrA.length; i++) {
                 if (arrA[i] != arrB[i]) {
                     result = false;
                     break;
@@ -98,12 +105,14 @@ library AssertAddressArray {
         Returns:
             result (bool) - The result.
     */
-    function lengthEqual(address[] memory arr, uint length, string memory message) public returns (bool result) {
-        uint arrLength = arr.length;
-        if (arrLength == length)
-            _report(result, "");
-        else
-            _report(result, _appendTagged(_tag(arrLength, "Tested"), _tag(length, "Against"), message));
+    function lengthEqual(
+        address[] memory arr,
+        uint256 length,
+        string memory message
+    ) public returns (bool result) {
+        uint256 arrLength = arr.length;
+        if (arrLength == length) _report(result, "");
+        else _report(result, _appendTagged(_tag(arrLength, "Tested"), _tag(length, "Against"), message));
     }
 
     /*
@@ -121,17 +130,19 @@ library AssertAddressArray {
         Returns:
             result (bool) - The result.
     */
-    function lengthNotEqual(address[] memory arr, uint length, string memory message) public returns (bool result) {
-        uint arrLength = arr.length;
-        if (arrLength != arr.length)
-            _report(result, "");
-        else
-            _report(result, _appendTagged(_tag(arrLength, "Tested"), _tag(length, "Against"), message));
+    function lengthNotEqual(
+        address[] memory arr,
+        uint256 length,
+        string memory message
+    ) public returns (bool result) {
+        uint256 arrLength = arr.length;
+        if (arrLength != arr.length) _report(result, "");
+        else _report(result, _appendTagged(_tag(arrLength, "Tested"), _tag(length, "Against"), message));
     }
 
     /******************************** internal ********************************/
 
-        /*
+    /*
             Function: _report
 
             Internal function for triggering <TestEvent>.
@@ -141,10 +152,8 @@ library AssertAddressArray {
                 message (string) - The message that is sent if the assertion fails.
         */
     function _report(bool result, string memory message) internal {
-        if(result)
-            emit TestEvent(true, "");
-        else
-            emit TestEvent(false, message);
+        if (result) emit TestEvent(true, "");
+        else emit TestEvent(false, message);
     }
 
     /*
@@ -159,19 +168,17 @@ library AssertAddressArray {
         Returns:
             result (string) - The resulting string.
     */
-    function _utoa(uint n, uint8 radix) internal pure returns (string memory) {
-        if (n == 0 || radix < 2 || radix > 16)
-            return '0';
+    function _utoa(uint256 n, uint8 radix) internal pure returns (string memory) {
+        if (n == 0 || radix < 2 || radix > 16) return "0";
         bytes memory bts = new bytes(256);
-        uint i;
+        uint256 i;
         while (n > 0) {
             bts[i++] = _utoa(uint8(n % radix)); // Turn it to ascii.
             n /= radix;
         }
         // Reverse
         bytes memory rev = new bytes(i);
-        for (uint j = 0; j < i; j++)
-            rev[j] = bts[i - j - 1];
+        for (uint256 j = 0; j < i; j++) rev[j] = bts[i - j - 1];
         return string(rev);
     }
 
@@ -187,13 +194,10 @@ library AssertAddressArray {
         Returns:
             result (string) - The ASCII byte.
     */
-    function _utoa(uint8 u) internal pure returns (byte) {
-        if (u < 10)
-            return byte(u + ZERO);
-        else if (u < 16)
-            return byte(u - 10 + A);
-        else
-            return 0;
+    function _utoa(uint8 u) internal pure returns (bytes1) {
+        if (u < 10) return bytes1(u + ZERO);
+        else if (u < 16) return bytes1(u - 10 + A);
+        else return 0;
     }
 
     /*
@@ -221,24 +225,21 @@ library AssertAddressArray {
             result (string) - "tag: value"
     */
     function _tag(string memory value, string memory tag) internal pure returns (string memory) {
-
         bytes memory valueB = bytes(value);
         bytes memory tagB = bytes(tag);
 
-        uint vl = valueB.length;
-        uint tl = tagB.length;
+        uint256 vl = valueB.length;
+        uint256 tl = tagB.length;
 
         bytes memory newB = new bytes(vl + tl + 2);
 
-        uint i;
-        uint j;
+        uint256 i;
+        uint256 j;
 
-        for (i = 0; i < tl; i++)
-            newB[j++] = tagB[i];
-        newB[j++] = ':';
-        newB[j++] = ' ';
-        for (i = 0; i < vl; i++)
-            newB[j++] = valueB[i];
+        for (i = 0; i < tl; i++) newB[j++] = tagB[i];
+        newB[j++] = ":";
+        newB[j++] = " ";
+        for (i = 0; i < vl; i++) newB[j++] = valueB[i];
 
         return string(newB);
     }
@@ -255,7 +256,7 @@ library AssertAddressArray {
         Returns:
             result (string) - "tag: _utoa(value)"
     */
-    function _tag(uint value, string memory tag) internal pure returns (string memory) {
+    function _tag(uint256 value, string memory tag) internal pure returns (string memory) {
         string memory nstr = _utoa(value, 10);
         return _tag(nstr, tag);
     }
@@ -273,32 +274,32 @@ library AssertAddressArray {
         Returns:
             result (string) - "str (tagged0, tagged1)"
     */
-    function _appendTagged(string memory tagged0, string memory tagged1, string memory str) internal pure returns (string memory) {
-
+    function _appendTagged(
+        string memory tagged0,
+        string memory tagged1,
+        string memory str
+    ) internal pure returns (string memory) {
         bytes memory tagged0B = bytes(tagged0);
         bytes memory tagged1B = bytes(tagged1);
         bytes memory strB = bytes(str);
 
-        uint sl = strB.length;
-        uint t0l = tagged0B.length;
-        uint t1l = tagged1B.length;
+        uint256 sl = strB.length;
+        uint256 t0l = tagged0B.length;
+        uint256 t1l = tagged1B.length;
 
         bytes memory newB = new bytes(sl + t0l + t1l + 5);
 
-        uint i;
-        uint j;
+        uint256 i;
+        uint256 j;
 
-        for (i = 0; i < sl; i++)
-            newB[j++] = strB[i];
-        newB[j++] = ' ';
-        newB[j++] = '(';
-        for (i = 0; i < t0l; i++)
-            newB[j++] = tagged0B[i];
-        newB[j++] = ',';
-        newB[j++] = ' ';
-        for (i = 0; i < t1l; i++)
-            newB[j++] = tagged1B[i];
-        newB[j++] = ')';
+        for (i = 0; i < sl; i++) newB[j++] = strB[i];
+        newB[j++] = " ";
+        newB[j++] = "(";
+        for (i = 0; i < t0l; i++) newB[j++] = tagged0B[i];
+        newB[j++] = ",";
+        newB[j++] = " ";
+        for (i = 0; i < t1l; i++) newB[j++] = tagged1B[i];
+        newB[j++] = ")";
 
         return string(newB);
     }

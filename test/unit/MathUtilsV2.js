@@ -1,3 +1,7 @@
 import runSolidityTest from "./helpers/runSolidityTest"
 
-runSolidityTest("TestMathUtilsV2")
+describe("MathUtilsV2", () => {
+    it("Runs solidity tests", async () => {
+        await runSolidityTest("TestMathUtilsV2", ["AssertBool", "AssertUint"])
+    })
+})

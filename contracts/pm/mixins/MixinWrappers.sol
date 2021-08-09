@@ -5,9 +5,7 @@ pragma experimental ABIEncoderV2;
 import "./interfaces/MTicketBrokerCore.sol";
 import "./interfaces/MContractRegistry.sol";
 
-
 contract MixinWrappers is MContractRegistry, MTicketBrokerCore {
-
     /**
      * @notice Redeems multiple winning tickets. The function will redeem all of the provided tickets and handle any failures gracefully without reverting the entire function
      * @param _tickets Array of winning tickets to be redeemed in order to claim payment
@@ -18,17 +16,9 @@ contract MixinWrappers is MContractRegistry, MTicketBrokerCore {
         Ticket[] memory _tickets,
         bytes[] memory _sigs,
         uint256[] memory _recipientRands
-    )
-        public
-        whenSystemNotPaused
-        currentRoundInitialized
-    {
+    ) public whenSystemNotPaused currentRoundInitialized {
         for (uint256 i = 0; i < _tickets.length; i++) {
-            redeemWinningTicketNoRevert(
-                _tickets[i],
-                _sigs[i],
-                _recipientRands[i]
-            );
+            redeemWinningTicketNoRevert(_tickets[i], _sigs[i], _recipientRands[i]);
         }
     }
 
@@ -45,10 +35,7 @@ contract MixinWrappers is MContractRegistry, MTicketBrokerCore {
         Ticket memory _ticket,
         bytes memory _sig,
         uint256 _recipientRand
-    )
-        internal
-        returns (bool success)
-    {
+    ) internal returns (bool success) {
         // ABI encode calldata for `redeemWinningTicket()`
         // A tuple type is used to represent the Ticket struct in the function signature
         bytes memory redeemWinningTicketCalldata = abi.encodeWithSignature(
@@ -60,6 +47,6 @@ contract MixinWrappers is MContractRegistry, MTicketBrokerCore {
 
         // Call `redeemWinningTicket()`
         // solium-disable-next-line
-        (success,) = address(this).call(redeemWinningTicketCalldata);
+        (success, ) = address(this).call(redeemWinningTicketCalldata);
     }
 }

@@ -1,28 +1,29 @@
-import truffleAssert from "truffle-assertions"
-import {utils} from "ethers"
-
-import {constants} from "../../utils/constants"
 import {contractId} from "../../utils/helpers"
 
-const Controller = artifacts.require("Controller")
-const BondingManager = artifacts.require("BondingManager")
-const Governor = artifacts.require("Governor")
-const Minter = artifacts.require("Minter")
+import {deployments, ethers} from "hardhat"
 
-contract("Governor update", accounts => {
+import chai, {assert, expect} from "chai"
+import {solidity} from "ethereum-waffle"
+chai.use(solidity)
+
+describe("Governor update", () => {
     let controller
     let bondingManager
     let governor
+    let minter
+
+    let signers
 
     before(async () => {
-        controller = await Controller.deployed()
+        signers = await ethers.getSigners()
+        const fixture = await deployments.fixture(["Contracts"])
+        controller = await ethers.getContractAt("Controller", fixture.Controller.address)
+        bondingManager = await ethers.getContractAt("BondingManager", fixture.BondingManager.address)
+        minter = await ethers.getContractAt("Minter", fixture.Minter.address)
+        const governorFac = await ethers.getContractFactory("Governor")
+        governor = await governorFac.deploy()
+
         await controller.unpause()
-
-        const bondingManagerAddr = await controller.getContract(contractId("BondingManager"))
-        bondingManager = await BondingManager.at(bondingManagerAddr)
-
-        // Deploy Governor
-        governor = await Governor.new()
         // Transfer Controller ownership to Governor
         await controller.transferOwnership(governor.address)
     })
@@ -32,19 +33,16 @@ contract("Governor update", accounts => {
     })
 
     it("governor has the correct owner", async () => {
-        assert.equal(await governor.owner(), accounts[0])
+        assert.equal(await governor.owner(), signers[0].address)
     })
 
     describe("single param change", () => {
         it("reverts when the param change is not initiated through the governor", async () => {
-            await truffleAssert.reverts(
-                bondingManager.setNumActiveTranscoders(20),
-                "caller must be Controller owner"
-            )
+            await expect(bondingManager.setNumActiveTranscoders(20)).to.be.revertedWith("caller must be Controller owner")
         })
 
         it("reverts when the delay for the staged update has not expired", async () => {
-            const data = utils.hexlify(utils.arrayify(bondingManager.contract.methods.setNumActiveTranscoders(20).encodeABI()))
+            const data = await bondingManager.interface.encodeFunctionData("setNumActiveTranscoders", [20])
             const update = {
                 target: [bondingManager.address],
                 value: ["0"],
@@ -53,14 +51,11 @@ contract("Governor update", accounts => {
             }
             await governor.stage(update, 10)
 
-            await truffleAssert.reverts(
-                governor.execute(update),
-                "delay for update not expired"
-            )
+            await expect(governor.execute(update)).to.be.revertedWith("delay for update not expired")
         })
 
         it("succesfully executes a single param change", async () => {
-            const data = utils.hexlify(utils.arrayify(bondingManager.contract.methods.setNumActiveTranscoders(30).encodeABI()))
+            const data = await bondingManager.interface.encodeFunctionData("setNumActiveTranscoders", [30])
             const update = {
                 target: [bondingManager.address],
                 value: ["0"],
@@ -69,17 +64,10 @@ contract("Governor update", accounts => {
             }
             await governor.stage(update, 0)
 
-            let tx = await governor.execute(update)
+            const tx = await governor.execute(update)
             assert.equal((await bondingManager.getTranscoderPoolMaxSize()).toNumber(), 30)
 
-            truffleAssert.eventEmitted(
-                tx,
-                "UpdateExecuted",
-                e => e.update.target[0] == update.target[0]
-                    && e.update.value[0] == update.value[0]
-                    && e.update.data[0] == update.data[0],
-                "UpdateStaged event not emitted correctly"
-            )
+            expect(tx).to.emit(governor, "UpdateExecuted").withArgs([...update])
         })
     })
 
@@ -89,7 +77,6 @@ contract("Governor update", accounts => {
         // 2. call migrateToNewMinter
         // 3. register the new Minter
         // 4. Unpause the protocol
-        let minter
         let newMinter
 
         let pauseData
@@ -102,20 +89,19 @@ contract("Governor update", accounts => {
         let unpauseTarget
 
         before(async () => {
-            const minterAddr = await controller.getContract(contractId("Minter"))
-            minter = await Minter.at(minterAddr)
-            newMinter = await Minter.new(controller.address, "100", "1", "500000")
+            const minterFac = await ethers.getContractFactory("Minter")
+            newMinter = await minterFac.deploy(controller.address, "100", "1", "500000")
 
-            pauseData = utils.hexlify(utils.arrayify(controller.contract.methods.pause().encodeABI()))
+            pauseData = controller.interface.encodeFunctionData("pause", [])
             pauseTarget = controller.address
 
-            migrateData = utils.hexlify(utils.arrayify(minter.contract.methods.migrateToNewMinter(newMinter.address).encodeABI()))
+            migrateData = minter.interface.encodeFunctionData("migrateToNewMinter", [newMinter.address])
             migrateTarget = minter.address
 
-            setInfoData = utils.hexlify(utils.arrayify(controller.contract.methods.setContractInfo(contractId("Minter"), newMinter.address, "0x123").encodeABI()))
+            setInfoData = controller.interface.encodeFunctionData("setContractInfo", [contractId("Minter"), newMinter.address, "0x3031323334353637383930313233343536373839"])
             setInfoTarget = controller.address
 
-            unpauseData = utils.hexlify(utils.arrayify(controller.contract.methods.unpause().encodeABI()))
+            unpauseData = controller.interface.encodeFunctionData("unpause", [])
             unpauseTarget = controller.address
         })
 
@@ -131,7 +117,7 @@ contract("Governor update", accounts => {
 
             // run the migrate to new minter update
             await governor.stage(update, "0")
-            await truffleAssert.reverts(governor.execute(update))
+            await expect(governor.execute(update)).to.be.reverted
         })
 
         it("step 2 'migrateToNewMinter' fails: the protocol is not paused", async () => {
@@ -145,15 +131,14 @@ contract("Governor update", accounts => {
 
             // run the migrate to new minter update
             await governor.stage(update, "0")
-            await truffleAssert.reverts(governor.execute(update), "system is not paused")
+            await expect(governor.execute(update)).to.be.revertedWith("system is not paused")
         })
 
         it("step 2 'migrateToNewMinter' fails: new Minter cannot be current Minter", async () => {
             // the previous test should have reverted in it's entirety
             // so we should not run into an "already paused" error
 
-            migrateData = utils.hexlify(utils.arrayify(minter.contract.methods.migrateToNewMinter(minter.address).encodeABI()))
-
+            migrateData = minter.interface.encodeFunctionData("migrateToNewMinter", [minter.address])
 
             const update = {
                 target: [pauseTarget, migrateTarget, setInfoTarget, unpauseTarget],
@@ -164,12 +149,11 @@ contract("Governor update", accounts => {
 
             // run the migrate to new minter update
             await governor.stage(update, "0")
-            await truffleAssert.reverts(governor.execute(update), "new Minter cannot be current Minter")
+            await expect(governor.execute(update)).to.be.revertedWith("new Minter cannot be current Minter")
         })
 
         it("step 2 'migrateToNewMinter' fails: new Minter cannot be null address", async () => {
-            migrateData = utils.hexlify(utils.arrayify(minter.contract.methods.migrateToNewMinter(constants.NULL_ADDRESS).encodeABI()))
-
+            migrateData = minter.interface.encodeFunctionData("migrateToNewMinter", [ethers.constants.AddressZero])
 
             const update = {
                 target: [pauseTarget, migrateTarget, setInfoTarget, unpauseTarget],
@@ -180,11 +164,12 @@ contract("Governor update", accounts => {
 
             // run the migrate to new minter update
             await governor.stage(update, "0")
-            await truffleAssert.reverts(governor.execute(update), "new Minter cannot be null address")
+            await expect(governor.execute(update)).to.be.revertedWith("new Minter cannot be null address")
         })
 
         it("step 3 'setContractInfo' fails: wrong target", async () => {
-            migrateData = utils.hexlify(utils.arrayify(minter.contract.methods.migrateToNewMinter(newMinter.address).encodeABI()))
+            migrateData = minter.interface.encodeFunctionData("migrateToNewMinter", [newMinter.address])
+
 
             const update = {
                 target: [pauseTarget, migrateTarget, migrateTarget, unpauseTarget],
@@ -195,7 +180,7 @@ contract("Governor update", accounts => {
 
             // run the migrate to new minter update
             await governor.stage(update, "0")
-            await truffleAssert.reverts(governor.execute(update))
+            await expect(governor.execute(update)).to.be.reverted
         })
 
         it("step 4 'unpause' fails: system is already unpaused", async () => {
@@ -209,7 +194,7 @@ contract("Governor update", accounts => {
 
             // run the migrate to new minter update
             await governor.stage(update, "0")
-            await truffleAssert.reverts(governor.execute(update))
+            await expect(governor.execute(update)).to.be.reverted
         })
 
         it("succesfully executes all updates", async () => {

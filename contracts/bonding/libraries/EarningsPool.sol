@@ -4,7 +4,6 @@ import "../../libraries/MathUtils.sol";
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
-
 /**
  * @title EarningsPool
  * @dev Manages reward and fee pools for delegators and transcoders
@@ -18,16 +17,15 @@ library EarningsPool {
     // created with a newer version of this library. If the flag is true, then the struct was initialized using the `init` function
     // using a newer version of this library meaning that it is using separate transcoder reward and fee pools
     struct Data {
-        uint256 rewardPool;                // Delegator rewards. If `hasTranscoderRewardFeePool` is false, this will contain transcoder rewards as well
-        uint256 feePool;                   // Delegator fees. If `hasTranscoderRewardFeePool` is false, this will contain transcoder fees as well
-        uint256 totalStake;                // Transcoder's total stake during the earnings pool's round
-        uint256 claimableStake;            // Stake that can be used to claim portions of the fee and reward pools
-        uint256 transcoderRewardCut;       // Transcoder's reward cut during the earnings pool's round
-        uint256 transcoderFeeShare;        // Transcoder's fee share during the earnings pool's round
-        uint256 transcoderRewardPool;      // Transcoder rewards. If `hasTranscoderRewardFeePool` is false, this should always be 0
-        uint256 transcoderFeePool;         // Transcoder fees. If `hasTranscoderRewardFeePool` is false, this should always be 0
-        bool hasTranscoderRewardFeePool;   // Flag to indicate if the earnings pool has separate transcoder reward and fee pools
-
+        uint256 rewardPool; // Delegator rewards. If `hasTranscoderRewardFeePool` is false, this will contain transcoder rewards as well
+        uint256 feePool; // Delegator fees. If `hasTranscoderRewardFeePool` is false, this will contain transcoder fees as well
+        uint256 totalStake; // Transcoder's total stake during the earnings pool's round
+        uint256 claimableStake; // Stake that can be used to claim portions of the fee and reward pools
+        uint256 transcoderRewardCut; // Transcoder's reward cut during the earnings pool's round
+        uint256 transcoderFeeShare; // Transcoder's fee share during the earnings pool's round
+        uint256 transcoderRewardPool; // Transcoder rewards. If `hasTranscoderRewardFeePool` is false, this should always be 0
+        uint256 transcoderFeePool; // Transcoder fees. If `hasTranscoderRewardFeePool` is false, this should always be 0
+        bool hasTranscoderRewardFeePool; // Flag to indicate if the earnings pool has separate transcoder reward and fee pools
         // LIP-36 (https://github.com/livepeer/LIPs/blob/master/LIPs/LIP-36.md) fields
         // See EarningsPoolLIP36.sol
         uint256 cumulativeRewardFactor;
@@ -40,7 +38,11 @@ library EarningsPool {
      * @param _rewardCut Reward cut of transcoder during the earnings pool's round
      * @param _feeShare Fee share of transcoder during the earnings pool's round
      */
-    function setCommission(EarningsPool.Data storage earningsPool, uint256 _rewardCut, uint256 _feeShare) internal {
+    function setCommission(
+        EarningsPool.Data storage earningsPool,
+        uint256 _rewardCut,
+        uint256 _feeShare
+    ) internal {
         earningsPool.transcoderRewardCut = _rewardCut;
         earningsPool.transcoderFeeShare = _feeShare;
         // Prior to LIP-36, we set this flag to true here to differentiate between EarningsPool structs created using older versions of this library.
@@ -74,14 +76,26 @@ library EarningsPool {
      * @param _stake Stake of claimant
      * @param _isTranscoder Flag indicating whether the claimant is a transcoder
      */
-    function feePoolShare(EarningsPool.Data storage earningsPool, uint256 _stake, bool _isTranscoder) internal view returns (uint256) {
+    function feePoolShare(
+        EarningsPool.Data storage earningsPool,
+        uint256 _stake,
+        bool _isTranscoder
+    ) internal view returns (uint256) {
         uint256 delegatorFees = 0;
         uint256 transcoderFees = 0;
 
         if (earningsPool.hasTranscoderRewardFeePool) {
-            (delegatorFees, transcoderFees) = feePoolShareWithTranscoderRewardFeePool(earningsPool, _stake, _isTranscoder);
+            (delegatorFees, transcoderFees) = feePoolShareWithTranscoderRewardFeePool(
+                earningsPool,
+                _stake,
+                _isTranscoder
+            );
         } else {
-            (delegatorFees, transcoderFees) = feePoolShareNoTranscoderRewardFeePool(earningsPool, _stake, _isTranscoder);
+            (delegatorFees, transcoderFees) = feePoolShareNoTranscoderRewardFeePool(
+                earningsPool,
+                _stake,
+                _isTranscoder
+            );
         }
 
         return delegatorFees.add(transcoderFees);
@@ -93,14 +107,26 @@ library EarningsPool {
      * @param _stake Stake of claimant
      * @param _isTranscoder Flag indicating whether the claimant is a transcoder
      */
-    function rewardPoolShare(EarningsPool.Data storage earningsPool, uint256 _stake, bool _isTranscoder) internal view returns (uint256) {
+    function rewardPoolShare(
+        EarningsPool.Data storage earningsPool,
+        uint256 _stake,
+        bool _isTranscoder
+    ) internal view returns (uint256) {
         uint256 delegatorRewards = 0;
         uint256 transcoderRewards = 0;
 
         if (earningsPool.hasTranscoderRewardFeePool) {
-            (delegatorRewards, transcoderRewards) = rewardPoolShareWithTranscoderRewardFeePool(earningsPool, _stake, _isTranscoder);
+            (delegatorRewards, transcoderRewards) = rewardPoolShareWithTranscoderRewardFeePool(
+                earningsPool,
+                _stake,
+                _isTranscoder
+            );
         } else {
-            (delegatorRewards, transcoderRewards) = rewardPoolShareNoTranscoderRewardFeePool(earningsPool, _stake, _isTranscoder);
+            (delegatorRewards, transcoderRewards) = rewardPoolShareNoTranscoderRewardFeePool(
+                earningsPool,
+                _stake,
+                _isTranscoder
+            );
         }
 
         return delegatorRewards.add(transcoderRewards);
@@ -116,14 +142,12 @@ library EarningsPool {
         EarningsPool.Data storage earningsPool,
         uint256 _stake,
         bool _isTranscoder
-    )
-        internal
-        view
-        returns (uint256, uint256)
-    {
+    ) internal view returns (uint256, uint256) {
         // If there is no claimable stake, the fee pool share is 0
         // If there is claimable stake, calculate fee pool share based on remaining amount in fee pool, remaining claimable stake and claimant's stake
-        uint256 delegatorFees = earningsPool.claimableStake > 0 ? MathUtils.percOf(earningsPool.feePool, _stake, earningsPool.claimableStake) : 0;
+        uint256 delegatorFees = earningsPool.claimableStake > 0
+            ? MathUtils.percOf(earningsPool.feePool, _stake, earningsPool.claimableStake)
+            : 0;
 
         // If claimant is a transcoder, include transcoder fee pool as well
         return _isTranscoder ? (delegatorFees, earningsPool.transcoderFeePool) : (delegatorFees, 0);
@@ -139,14 +163,12 @@ library EarningsPool {
         EarningsPool.Data storage earningsPool,
         uint256 _stake,
         bool _isTranscoder
-    )
-        internal
-        view
-        returns (uint256, uint256)
-    {
+    ) internal view returns (uint256, uint256) {
         // If there is no claimable stake, the reward pool share is 0
         // If there is claimable stake, calculate reward pool share based on remaining amount in reward pool, remaining claimable stake and claimant's stake
-        uint256 delegatorRewards = earningsPool.claimableStake > 0 ? MathUtils.percOf(earningsPool.rewardPool, _stake, earningsPool.claimableStake) : 0;
+        uint256 delegatorRewards = earningsPool.claimableStake > 0
+            ? MathUtils.percOf(earningsPool.rewardPool, _stake, earningsPool.claimableStake)
+            : 0;
 
         // If claimant is a transcoder, include transcoder reward pool as well
         return _isTranscoder ? (delegatorRewards, earningsPool.transcoderRewardPool) : (delegatorRewards, 0);
@@ -163,11 +185,7 @@ library EarningsPool {
         EarningsPool.Data storage earningsPool,
         uint256 _stake,
         bool _isTranscoder
-    )
-        internal
-        view
-        returns (uint256, uint256)
-    {
+    ) internal view returns (uint256, uint256) {
         uint256 transcoderFees = 0;
         uint256 delegatorFees = 0;
 
@@ -195,17 +213,17 @@ library EarningsPool {
         EarningsPool.Data storage earningsPool,
         uint256 _stake,
         bool _isTranscoder
-    )
-        internal
-        view
-        returns (uint256, uint256)
-    {
+    ) internal view returns (uint256, uint256) {
         uint256 transcoderRewards = 0;
         uint256 delegatorRewards = 0;
 
         if (earningsPool.claimableStake > 0) {
             transcoderRewards = MathUtils.percOf(earningsPool.rewardPool, earningsPool.transcoderRewardCut);
-            delegatorRewards = MathUtils.percOf(earningsPool.rewardPool.sub(transcoderRewards), _stake, earningsPool.claimableStake);
+            delegatorRewards = MathUtils.percOf(
+                earningsPool.rewardPool.sub(transcoderRewards),
+                _stake,
+                earningsPool.claimableStake
+            );
         }
 
         if (_isTranscoder) {

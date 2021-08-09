@@ -1,7 +1,6 @@
-pragma solidity >= 0.4.15 < 0.6.0;
+pragma solidity >=0.4.15 <0.6.0;
 
 library AssertAddress {
-
     // Constant: ADDRESS_NULL
     // The null address: 0
     address constant ADDRESS_NULL = 0x0000000000000000000000000000000000000000;
@@ -34,10 +33,15 @@ library AssertAddress {
         Returns:
             result (bool) - The result.
     */
-    function equal(address a, address b, string memory message) public returns (bool result) {
+    function equal(
+        address a,
+        address b,
+        string memory message
+    ) public returns (bool result) {
         result = (a == b);
         _report(result, message);
     }
+
     /*
         Function: notEqual(address)
 
@@ -53,9 +57,13 @@ library AssertAddress {
         Returns:
             result (bool) - The result.
     */
-    function notEqual(address a, address b, string memory message) public returns (bool result) {
+    function notEqual(
+        address a,
+        address b,
+        string memory message
+    ) public returns (bool result) {
         result = (a != b);
-         _report(result, message);
+        _report(result, message);
     }
 
     /*
@@ -98,7 +106,7 @@ library AssertAddress {
 
     /******************************** internal ********************************/
 
-        /*
+    /*
             Function: _report
 
             Internal function for triggering <TestEvent>.
@@ -108,9 +116,7 @@ library AssertAddress {
                 message (string) - The message that is sent if the assertion fails.
         */
     function _report(bool result, string memory message) internal {
-        if(result)
-            emit TestEvent(true, "");
-        else
-            emit TestEvent(false, message);
+        if (result) emit TestEvent(true, "");
+        else emit TestEvent(false, message);
     }
 }

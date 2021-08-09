@@ -1,9 +1,8 @@
-pragma solidity >= 0.4.15 < 0.6.0;
+pragma solidity >=0.4.15 <0.6.0;
 
 library AssertUint {
-
-    uint8 constant ZERO = uint8(byte('0'));
-    uint8 constant A = uint8(byte('a'));
+    uint8 constant ZERO = uint8(bytes1("0"));
+    uint8 constant A = uint8(bytes1("a"));
 
     /*
         Event: TestEvent
@@ -33,12 +32,14 @@ library AssertUint {
         Returns:
             result (bool) - The result.
     */
-    function equal(uint a, uint b, string memory message) public returns (bool result) {
+    function equal(
+        uint256 a,
+        uint256 b,
+        string memory message
+    ) public returns (bool result) {
         result = (a == b);
-        if (result)
-            _report(result, message);
-        else
-            _report(result, _appendTagged(_tag(a, "Tested"), _tag(b, "Against"), message));
+        if (result) _report(result, message);
+        else _report(result, _appendTagged(_tag(a, "Tested"), _tag(b, "Against"), message));
     }
 
     /*
@@ -56,12 +57,14 @@ library AssertUint {
         Returns:
             result (bool) - The result.
     */
-    function notEqual(uint a, uint b, string memory message) public returns (bool result) {
+    function notEqual(
+        uint256 a,
+        uint256 b,
+        string memory message
+    ) public returns (bool result) {
         result = (a != b);
-        if (result)
-            _report(result, message);
-        else
-            _report(result, _appendTagged(_tag(a, "Tested"), _tag(b, "Against"), message));
+        if (result) _report(result, message);
+        else _report(result, _appendTagged(_tag(a, "Tested"), _tag(b, "Against"), message));
     }
 
     /*
@@ -79,12 +82,14 @@ library AssertUint {
         Returns:
             result (bool) - The result.
     */
-    function isAbove(uint a, uint b, string memory message) public returns (bool result) {
+    function isAbove(
+        uint256 a,
+        uint256 b,
+        string memory message
+    ) public returns (bool result) {
         result = (a > b);
-        if (result)
-            _report(result, message);
-        else
-            _report(result, _appendTagged(_tag(a, "Tested"), _tag(b, "Against"), message));
+        if (result) _report(result, message);
+        else _report(result, _appendTagged(_tag(a, "Tested"), _tag(b, "Against"), message));
     }
 
     /*
@@ -102,12 +107,14 @@ library AssertUint {
         Returns:
             result (bool) - The result.
     */
-    function isAtLeast(uint a, uint b, string memory message) public returns (bool result) {
+    function isAtLeast(
+        uint256 a,
+        uint256 b,
+        string memory message
+    ) public returns (bool result) {
         result = (a >= b);
-        if (result)
-            _report(result, message);
-        else
-            _report(result, _appendTagged(_tag(a, "Tested"), _tag(b, "Against"), message));
+        if (result) _report(result, message);
+        else _report(result, _appendTagged(_tag(a, "Tested"), _tag(b, "Against"), message));
     }
 
     /*
@@ -125,12 +132,14 @@ library AssertUint {
         Returns:
             result (bool) - The result.
     */
-    function isBelow(uint a, uint b, string memory message) public returns (bool result) {
+    function isBelow(
+        uint256 a,
+        uint256 b,
+        string memory message
+    ) public returns (bool result) {
         result = (a < b);
-        if (result)
-            _report(result, message);
-        else
-            _report(result, _appendTagged(_tag(a, "Tested"), _tag(b, "Against"), message));
+        if (result) _report(result, message);
+        else _report(result, _appendTagged(_tag(a, "Tested"), _tag(b, "Against"), message));
     }
 
     /*
@@ -148,12 +157,14 @@ library AssertUint {
         Returns:
             result (bool) - The result.
     */
-    function isAtMost(uint a, uint b, string memory message) public returns (bool result) {
+    function isAtMost(
+        uint256 a,
+        uint256 b,
+        string memory message
+    ) public returns (bool result) {
         result = (a <= b);
-        if (result)
-            _report(result, message);
-        else
-            _report(result, _appendTagged(_tag(a, "Tested"), _tag(b, "Against"), message));
+        if (result) _report(result, message);
+        else _report(result, _appendTagged(_tag(a, "Tested"), _tag(b, "Against"), message));
     }
 
     /*
@@ -170,12 +181,10 @@ library AssertUint {
         Returns:
             result (bool) - The result.
     */
-    function isZero(uint number, string memory message) public returns (bool result) {
+    function isZero(uint256 number, string memory message) public returns (bool result) {
         result = (number == 0);
-        if (result)
-            _report(result, message);
-        else
-            _report(result, _appendTagged(_tag(number, "Tested"), message));
+        if (result) _report(result, message);
+        else _report(result, _appendTagged(_tag(number, "Tested"), message));
     }
 
     /*
@@ -192,17 +201,15 @@ library AssertUint {
         Returns:
             result (bool) - The result.
     */
-    function isNotZero(uint number, string memory message) public returns (bool result) {
+    function isNotZero(uint256 number, string memory message) public returns (bool result) {
         result = (number != 0);
-        if (result)
-            _report(result, message);
-        else
-            _report(result, _appendTagged(_tag(number, "Tested"), message));
+        if (result) _report(result, message);
+        else _report(result, _appendTagged(_tag(number, "Tested"), message));
     }
 
     /******************************** internal ********************************/
 
-        /*
+    /*
             Function: _report
 
             Internal function for triggering <TestEvent>.
@@ -212,13 +219,10 @@ library AssertUint {
                 message (string) - The message that is sent if the assertion fails.
         */
     function _report(bool result, string memory message) internal {
-        if(result)
-            emit TestEvent(true, "");
-        else
-            emit TestEvent(false, message);
+        if (result) emit TestEvent(true, "");
+        else emit TestEvent(false, message);
     }
 
-  
     /*
         Function: _utoa(uint)
 
@@ -231,19 +235,17 @@ library AssertUint {
         Returns:
             result (string) - The resulting string.
     */
-    function _utoa(uint n, uint8 radix) internal pure returns (string memory) {
-        if (n == 0 || radix < 2 || radix > 16)
-            return '0';
+    function _utoa(uint256 n, uint8 radix) internal pure returns (string memory) {
+        if (n == 0 || radix < 2 || radix > 16) return "0";
         bytes memory bts = new bytes(256);
-        uint i;
+        uint256 i;
         while (n > 0) {
             bts[i++] = _utoa(uint8(n % radix)); // Turn it to ascii.
             n /= radix;
         }
         // Reverse
         bytes memory rev = new bytes(i);
-        for (uint j = 0; j < i; j++)
-            rev[j] = bts[i - j - 1];
+        for (uint256 j = 0; j < i; j++) rev[j] = bts[i - j - 1];
         return string(rev);
     }
 
@@ -259,13 +261,10 @@ library AssertUint {
         Returns:
             result (string) - The ASCII byte.
     */
-    function _utoa(uint8 u) internal pure returns (byte) {
-        if (u < 10)
-            return byte(u + ZERO);
-        else if (u < 16)
-            return byte(u - 10 + A);
-        else
-            return 0;
+    function _utoa(uint8 u) internal pure returns (bytes1) {
+        if (u < 10) return bytes1(u + ZERO);
+        else if (u < 16) return bytes1(u - 10 + A);
+        else return 0;
     }
 
     /*
@@ -293,24 +292,21 @@ library AssertUint {
             result (string) - "tag: value"
     */
     function _tag(string memory value, string memory tag) internal pure returns (string memory) {
-
         bytes memory valueB = bytes(value);
         bytes memory tagB = bytes(tag);
 
-        uint vl = valueB.length;
-        uint tl = tagB.length;
+        uint256 vl = valueB.length;
+        uint256 tl = tagB.length;
 
         bytes memory newB = new bytes(vl + tl + 2);
 
-        uint i;
-        uint j;
+        uint256 i;
+        uint256 j;
 
-        for (i = 0; i < tl; i++)
-            newB[j++] = tagB[i];
-        newB[j++] = ':';
-        newB[j++] = ' ';
-        for (i = 0; i < vl; i++)
-            newB[j++] = valueB[i];
+        for (i = 0; i < tl; i++) newB[j++] = tagB[i];
+        newB[j++] = ":";
+        newB[j++] = " ";
+        for (i = 0; i < vl; i++) newB[j++] = valueB[i];
 
         return string(newB);
     }
@@ -327,7 +323,7 @@ library AssertUint {
         Returns:
             result (string) - "tag: _utoa(value)"
     */
-    function _tag(uint value, string memory tag) internal pure returns (string memory) {
+    function _tag(uint256 value, string memory tag) internal pure returns (string memory) {
         string memory nstr = _utoa(value, 10);
         return _tag(nstr, tag);
     }
@@ -345,25 +341,22 @@ library AssertUint {
             result (string) - "str (tagged)"
     */
     function _appendTagged(string memory tagged, string memory str) internal pure returns (string memory) {
-
         bytes memory taggedB = bytes(tagged);
         bytes memory strB = bytes(str);
 
-        uint sl = strB.length;
-        uint tl = taggedB.length;
+        uint256 sl = strB.length;
+        uint256 tl = taggedB.length;
 
         bytes memory newB = new bytes(sl + tl + 3);
 
-        uint i;
-        uint j;
+        uint256 i;
+        uint256 j;
 
-        for (i = 0; i < sl; i++)
-            newB[j++] = strB[i];
-        newB[j++] = ' ';
-        newB[j++] = '(';
-        for (i = 0; i < tl; i++)
-            newB[j++] = taggedB[i];
-        newB[j++] = ')';
+        for (i = 0; i < sl; i++) newB[j++] = strB[i];
+        newB[j++] = " ";
+        newB[j++] = "(";
+        for (i = 0; i < tl; i++) newB[j++] = taggedB[i];
+        newB[j++] = ")";
 
         return string(newB);
     }
@@ -381,34 +374,33 @@ library AssertUint {
         Returns:
             result (string) - "str (tagged0, tagged1)"
     */
-    function _appendTagged(string memory tagged0, string memory tagged1, string memory str) internal pure returns (string memory) {
-
+    function _appendTagged(
+        string memory tagged0,
+        string memory tagged1,
+        string memory str
+    ) internal pure returns (string memory) {
         bytes memory tagged0B = bytes(tagged0);
         bytes memory tagged1B = bytes(tagged1);
         bytes memory strB = bytes(str);
 
-        uint sl = strB.length;
-        uint t0l = tagged0B.length;
-        uint t1l = tagged1B.length;
+        uint256 sl = strB.length;
+        uint256 t0l = tagged0B.length;
+        uint256 t1l = tagged1B.length;
 
         bytes memory newB = new bytes(sl + t0l + t1l + 5);
 
-        uint i;
-        uint j;
+        uint256 i;
+        uint256 j;
 
-        for (i = 0; i < sl; i++)
-            newB[j++] = strB[i];
-        newB[j++] = ' ';
-        newB[j++] = '(';
-        for (i = 0; i < t0l; i++)
-            newB[j++] = tagged0B[i];
-        newB[j++] = ',';
-        newB[j++] = ' ';
-        for (i = 0; i < t1l; i++)
-            newB[j++] = tagged1B[i];
-        newB[j++] = ')';
+        for (i = 0; i < sl; i++) newB[j++] = strB[i];
+        newB[j++] = " ";
+        newB[j++] = "(";
+        for (i = 0; i < t0l; i++) newB[j++] = tagged0B[i];
+        newB[j++] = ",";
+        newB[j++] = " ";
+        for (i = 0; i < t1l; i++) newB[j++] = tagged1B[i];
+        newB[j++] = ")";
 
         return string(newB);
     }
-
 }

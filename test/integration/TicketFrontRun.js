@@ -1,27 +1,27 @@
-import RPC from "../../utils/rpc"
-import {contractId} from "../../utils/helpers"
 import {constants} from "../../utils/constants"
-import BN from "bn.js"
 import {createWinningTicket, getTicketHash} from "../helpers/ticket"
 import signMsg from "../helpers/signMsg"
-import expectRevertWithReason from "../helpers/expectFail"
 
-const Controller = artifacts.require("Controller")
-const TicketBroker = artifacts.require("TicketBroker")
-const BondingManager = artifacts.require("BondingManager")
-const AdjustableRoundsManager = artifacts.require("AdjustableRoundsManager")
-const LivepeerToken = artifacts.require("LivepeerToken")
+import chai, {assert, expect} from "chai"
+import {solidity} from "ethereum-waffle"
+import {deployments, ethers} from "hardhat"
 
-contract("TicketFrontRun", ([deployer, broadcaster, evilSybilAccount, evilNonActiveTranscoder, evilActiveTranscoder, ...otherAccounts]) => {
-    let honestTranscoder = otherAccounts[0]
+chai.use(solidity)
 
-    let rpc
-    let snapshotId
+describe("TicketFrontRun", () => {
+    let deployer
+    let broadcaster
+    let evilSybilAccount
+    let evilNonActiveTranscoder
+    let evilActiveTranscoder
+    let honestTranscoder
+    let otherAccounts
 
     let controller
     let broker
     let bondingManager
     let roundsManager
+    let token
 
     let deposit
     let reserve
@@ -31,38 +31,35 @@ contract("TicketFrontRun", ([deployer, broadcaster, evilSybilAccount, evilNonAct
         const block = await roundsManager.blockNum()
         const creationRound = (await roundsManager.currentRound()).toString()
         const creationRoundBlockHash = await roundsManager.blockHash(block)
-        const auxData = web3.eth.abi.encodeParameters(
-            ["uint256", "bytes32"],
-            [creationRound, creationRoundBlockHash]
-        )
+        const auxData = ethers.utils.solidityPack(["uint256", "bytes32"], [creationRound, creationRoundBlockHash])
 
         return createWinningTicket(recipient, sender, recipientRand, faceValue, auxData)
     }
 
-    before(async () => {
-        rpc = new RPC(web3)
+    beforeEach(async () => {
+        const signers = await ethers.getSigners();
 
-        controller = await Controller.deployed()
+        [deployer, broadcaster, evilSybilAccount, evilNonActiveTranscoder, evilActiveTranscoder, ...otherAccounts] =
+      signers
+
+        honestTranscoder = otherAccounts[0]
+
+        const fixture = await deployments.fixture(["Contracts"])
+
+        controller = await ethers.getContractAt("Controller", fixture.Controller.address)
         await controller.unpause()
 
-        const brokerAddr = await controller.getContract(contractId("JobsManager"))
-        broker = await TicketBroker.at(brokerAddr)
-
-        const bondingManagerAddr = await controller.getContract(contractId("BondingManager"))
-        bondingManager = await BondingManager.at(bondingManagerAddr)
-
-        const roundsManagerAddr = await controller.getContract(contractId("RoundsManager"))
-        roundsManager = await AdjustableRoundsManager.at(roundsManagerAddr)
-
-        const tokenAddr = await controller.getContract(contractId("LivepeerToken"))
-        const token = await LivepeerToken.at(tokenAddr)
+        broker = await ethers.getContractAt("TicketBroker", fixture.TicketBroker.address)
+        bondingManager = await ethers.getContractAt("BondingManager", fixture.BondingManager.address)
+        roundsManager = await ethers.getContractAt("AdjustableRoundsManager", fixture.AdjustableRoundsManager.address)
+        token = await ethers.getContractAt("LivepeerToken", fixture.LivepeerToken.address)
 
         const registerTranscoder = async transcoder => {
-            const amount = new BN(10).mul(constants.TOKEN_UNIT)
-            await token.transfer(transcoder, amount, {from: deployer})
-            await token.approve(bondingManager.address, amount, {from: transcoder})
-            await bondingManager.bond(amount, transcoder, {from: transcoder})
-            await bondingManager.transcoder(0, 0, {from: transcoder})
+            const amount = ethers.BigNumber.from(10).mul(constants.TOKEN_UNIT.toString())
+            await token.connect(deployer).transfer(transcoder.address, amount)
+            await token.connect(transcoder).approve(bondingManager.address, amount)
+            await bondingManager.connect(transcoder).bond(amount, transcoder.address)
+            await bondingManager.connect(transcoder).transcoder(0, 0)
         }
 
         const maxActive = (await bondingManager.getTranscoderPoolMaxSize()).toNumber()
@@ -71,7 +68,7 @@ contract("TicketFrontRun", ([deployer, broadcaster, evilSybilAccount, evilNonAct
         // For this test, we want 1 evil active transcoder and 1 evil non-active transcoder
         // First we'll fill up the active set and leave one slot for the evil active transcoder
         const otherTranscoders = otherAccounts.slice(0, maxActive - 1)
-        for (let tr of otherTranscoders) {
+        for (const tr of otherTranscoders) {
             await registerTranscoder(tr)
         }
 
@@ -87,168 +84,163 @@ contract("TicketFrontRun", ([deployer, broadcaster, evilSybilAccount, evilNonAct
         reserve = 100000
         reserveAlloc = reserve / (await bondingManager.getTranscoderPoolSize()).toNumber()
 
-        await broker.fundDepositAndReserve(
-            deposit,
-            reserve,
-            {from: broadcaster, value: deposit + reserve}
-        )
+        await broker.connect(broadcaster).fundDepositAndReserve(deposit, reserve, {value: deposit + reserve})
 
-        const roundLength = await roundsManager.roundLength.call()
-        await roundsManager.mineBlocks(roundLength.toNumber() * 1000)
-        await roundsManager.setBlockHash(web3.utils.keccak256("foo"))
+        const roundLength = await roundsManager.roundLength()
+        await roundsManager.mineBlocks(roundLength.mul(1000))
+        await roundsManager.setBlockHash(ethers.utils.solidityKeccak256(["string"], ["foo"]))
         await roundsManager.initializeRound()
     })
 
-    beforeEach(async () => {
-        snapshotId = await rpc.snapshot()
-    })
-
-    afterEach(async () => {
-        await rpc.revert(snapshotId)
-    })
-
     it("broadcaster tries to send a winning ticket to its own Sybil account", async () => {
-        // Use the same recipientRand for both tickets for ease of testing
+    // Use the same recipientRand for both tickets for ease of testing
         const recipientRand = 5
 
         // honestTranscoder receives a winning ticket
         // Since honestTranscoder sets the required faceValue, it sets the faceValue to
         // reserveAlloc which is its max allocation from the broadcaster's reserve
-        const firstTicket = await newWinningTicket(honestTranscoder, broadcaster, reserveAlloc, recipientRand)
-        const firstTicketSig = await signMsg(getTicketHash(firstTicket), broadcaster)
+        const firstTicket = await newWinningTicket(
+            honestTranscoder.address,
+            broadcaster.address,
+            reserveAlloc,
+            recipientRand
+        )
+        const firstTicketSig = await signMsg(getTicketHash(firstTicket), broadcaster.address)
 
         // The malicious broadcaster sends a winning ticket to its own Sybil account and
         // front runs honestTranscoder's transaction to empty the broadcaster's deposit/reserve so that
         // there are insufficient funds to pay honestTranscoder
         // The face value for this ticket is the broadcaster's deposit AND reserve
-        const secondTicket = await newWinningTicket(evilSybilAccount, broadcaster, deposit + reserve, recipientRand)
-        const secondTicketSig = await signMsg(getTicketHash(secondTicket), broadcaster)
+        const secondTicket = await newWinningTicket(
+            evilSybilAccount.address,
+            broadcaster.address,
+            deposit + reserve,
+            recipientRand
+        )
+        const secondTicketSig = await signMsg(getTicketHash(secondTicket), broadcaster.address)
 
         // Ticket redemption by evilSybilAccount fails because it is not a registered transcoder
-        await expectRevertWithReason(
-            broker.redeemWinningTicket(
-                secondTicket,
-                secondTicketSig,
-                recipientRand,
-                {from: evilSybilAccount}
-            ),
-            "transcoder must be registered"
-        )
+        await expect(
+            broker.connect(evilSybilAccount).redeemWinningTicket(secondTicket, secondTicketSig, recipientRand)
+        ).to.be.revertedWith("transcoder must be registered")
 
         // Ticket redemption by honestTranscoder confirms on-chain
-        await broker.redeemWinningTicket(
-            firstTicket,
-            firstTicketSig,
-            recipientRand,
-            {from: honestTranscoder}
-        )
+        await broker.connect(honestTranscoder).redeemWinningTicket(firstTicket, firstTicketSig, recipientRand)
 
         const currentRound = await roundsManager.currentRound()
-        const info = await broker.getSenderInfo(broadcaster)
+        const info = await broker.getSenderInfo(broadcaster.address)
 
         // honestTranscoder's ticket should be fully covered by the the broadcaster's deposit
-        assert.equal(info.sender.deposit.toString(), (deposit - reserveAlloc).toString())
-        assert.equal(info.reserve.fundsRemaining.toString(), reserve.toString())
-
-        assert.equal((await bondingManager.pendingFees(honestTranscoder, currentRound)), reserveAlloc.toString())
+        expect(info.sender.deposit).to.equal(deposit - reserveAlloc)
+        expect(info.reserve.fundsRemaining).to.equal(reserve)
+        const pendingFees = await bondingManager.pendingFees(honestTranscoder.address, currentRound)
+        expect(pendingFees).to.equal(reserveAlloc)
     })
 
     it("broadcaster tries to send a winning ticket to its own non-active transcoder, results in division by zero", async () => {
-        // Use the same recipientRand for both tickets for ease of testing
+    // Use the same recipientRand for both tickets for ease of testing
         const recipientRand = 5
         const currentRound = await roundsManager.currentRound()
 
         // honestTranscoder receives a winning ticket
         // Since honestTranscoder sets the required faceValue, it sets the faceValue to
         // reserveAlloc which is its max allocation from the broadcaster's reserve
-        const firstTicket = await newWinningTicket(honestTranscoder, broadcaster, reserveAlloc, recipientRand)
-        const firstTicketSig = await signMsg(getTicketHash(firstTicket), broadcaster)
+        const firstTicket = await newWinningTicket(
+            honestTranscoder.address,
+            broadcaster.address,
+            reserveAlloc,
+            recipientRand
+        )
+        const firstTicketSig = await signMsg(getTicketHash(firstTicket), broadcaster.address)
 
         // The malicious broadcaster sends a winning ticket to its own non-active transcoder and
         // front runs honestTranscoder's transaction to empty the broadcaster's deposit/reserve so that
         // there are insufficeint funds to pay honestTranscoder
         // The face value for this ticket is the broadcaster's deposit AND reserve
-        const secondTicket = await newWinningTicket(evilNonActiveTranscoder, broadcaster, deposit + reserve, recipientRand)
-        const secondTicketSig = await signMsg(getTicketHash(secondTicket), broadcaster)
+        const secondTicket = await newWinningTicket(
+            evilNonActiveTranscoder.address,
+            broadcaster.address,
+            deposit + reserve,
+            recipientRand
+        )
+        const secondTicketSig = await signMsg(getTicketHash(secondTicket), broadcaster.address)
 
         // Ticket redemption by evilNonActiveTranscoder fails because a non-active transcoder has no totalStake on it's earningsPool
         // This results in division by zero when calculating earnings cumulatively (LIP-36)
-        await expectRevertWithReason(broker.redeemWinningTicket(
-            secondTicket,
-            secondTicketSig,
-            recipientRand,
-            {from: evilNonActiveTranscoder}
-        ), "SafeMath: division by zero")
+        await expect(
+            broker.connect(evilNonActiveTranscoder).redeemWinningTicket(secondTicket, secondTicketSig, recipientRand)
+        ).to.be.revertedWith("SafeMath: division by zero")
 
-        let info = await broker.getSenderInfo(broadcaster)
+        let info = await broker.getSenderInfo(broadcaster.address)
 
         // evilNonActiveTranscoder's ticket should not be able to empty the broadcaster's deposit
         assert.equal(info.sender.deposit.toString(), deposit.toString())
         assert.equal(info.reserve.fundsRemaining.toString(), reserve.toString())
 
-        const honestTPendingFeesBefore = await bondingManager.pendingFees(honestTranscoder, currentRound)
+        const honestTPendingFeesBefore = await bondingManager.pendingFees(honestTranscoder.address, currentRound)
         // Ticket redemption by honestTranscoder confirms on-chain
-        await broker.redeemWinningTicket(
-            firstTicket,
-            firstTicketSig,
-            recipientRand,
-            {from: honestTranscoder}
-        )
+        await broker.connect(honestTranscoder).redeemWinningTicket(firstTicket, firstTicketSig, recipientRand)
 
-        info = await broker.getSenderInfo(broadcaster)
+        info = await broker.getSenderInfo(broadcaster.address)
 
-        const honestTPendingFeesAfter = await bondingManager.pendingFees(honestTranscoder, currentRound)
+        const honestTPendingFeesAfter = await bondingManager.pendingFees(honestTranscoder.address, currentRound)
         assert.equal(honestTPendingFeesAfter.sub(honestTPendingFeesBefore).toString(), reserveAlloc.toString())
     })
 
     it("broadcaster tries to send a winning ticket to its own active transcoder", async () => {
-        // Use the same recipientRand for both tickets for ease of testing
+    // Use the same recipientRand for both tickets for ease of testing
         const recipientRand = 5
         const currentRound = await roundsManager.currentRound()
 
         // honestTranscoder receives a winning ticket
         // Since honestTranscoder sets the required faceValue, it sets the faceValue to
         // reserveAlloc which is its max allocation from the broadcaster's reserve
-        const firstTicket = await newWinningTicket(honestTranscoder, broadcaster, reserveAlloc, recipientRand)
-        const firstTicketSig = await signMsg(getTicketHash(firstTicket), broadcaster)
+        const firstTicket = await newWinningTicket(
+            honestTranscoder.address,
+            broadcaster.address,
+            reserveAlloc,
+            recipientRand
+        )
+        const firstTicketSig = await signMsg(getTicketHash(firstTicket), broadcaster.address)
 
         // The malicious broadcaster sends a winning ticket to its own active transcoder and
         // front runs honestTranscoder's transaction to empty the broadcaster's deposit/reserve so that
         // there are insufficient funds to pay honestTranscoder
         // The face value for this ticket is the broadcaster's deposit AND reserve
-        const secondTicket = await newWinningTicket(evilActiveTranscoder, broadcaster, deposit + reserve, recipientRand)
-        const secondTicketSig = await signMsg(getTicketHash(secondTicket), broadcaster)
+        const secondTicket = await newWinningTicket(
+            evilActiveTranscoder.address,
+            broadcaster.address,
+            deposit + reserve,
+            recipientRand
+        )
+        const secondTicketSig = await signMsg(getTicketHash(secondTicket), broadcaster.address)
 
         // Ticket redemption by evilActiveTranscoder confirms on-chain
-        await broker.redeemWinningTicket(
-            secondTicket,
-            secondTicketSig,
-            recipientRand,
-            {from: evilActiveTranscoder}
-        )
+        await broker.connect(evilActiveTranscoder).redeemWinningTicket(secondTicket, secondTicketSig, recipientRand)
 
-        let info = await broker.getSenderInfo(broadcaster)
+        let info = await broker.getSenderInfo(broadcaster.address)
 
         // evilNonActiveTranscoder's ticket should empty the broadcaster's deposit, but only decrease the reserve by reserveAlloc since
         // evilNonActiveTranscoder cannot claim more than that
         assert.equal(info.sender.deposit.toString(), "0")
         assert.equal(info.reserve.fundsRemaining.toString(), (reserve - reserveAlloc).toString())
 
-        assert.equal((await bondingManager.pendingFees(evilActiveTranscoder, currentRound)).toString(), (deposit + reserveAlloc).toString())
-
-        // Ticket redemption by honestTranscoder confirms on-chain
-        await broker.redeemWinningTicket(
-            firstTicket,
-            firstTicketSig,
-            recipientRand,
-            {from: honestTranscoder}
+        assert.equal(
+            (await bondingManager.pendingFees(evilActiveTranscoder.address, currentRound)).toString(),
+            (deposit + reserveAlloc).toString()
         )
 
-        info = await broker.getSenderInfo(broadcaster)
+        // Ticket redemption by honestTranscoder confirms on-chain
+        await broker.connect(honestTranscoder).redeemWinningTicket(firstTicket, firstTicketSig, recipientRand)
+
+        info = await broker.getSenderInfo(broadcaster.address)
 
         // honestTranscoder's ticket should still still receive the full reserveAlloc amount from the broadcaster's reserve
-        assert.equal(info.reserve.fundsRemaining.toString(), (reserve - (2 * reserveAlloc)).toString())
+        assert.equal(info.reserve.fundsRemaining.toString(), (reserve - 2 * reserveAlloc).toString())
 
-        assert.equal((await bondingManager.pendingFees(honestTranscoder, currentRound)).toString(), reserveAlloc.toString())
+        assert.equal(
+            (await bondingManager.pendingFees(honestTranscoder.address, currentRound)).toString(),
+            reserveAlloc.toString()
+        )
     })
 })

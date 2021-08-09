@@ -1,25 +1,23 @@
 import Fixture from "./helpers/Fixture"
 import {contractId} from "../../utils/helpers"
-import expectThrow from "../helpers/expectThrow"
+import {web3, ethers} from "hardhat"
 
-const Manager = artifacts.require("Manager")
-const Controller = artifacts.require("Controller")
+import chai, {expect, assert} from "chai"
+import {solidity} from "ethereum-waffle"
+chai.use(solidity)
 
-contract("Controller", accounts => {
-    describe("constructor", () => {
-        it("should create contract", async () => {
-            const controller = await Controller.new()
-
-            assert.equal(await controller.owner.call(), accounts[0], "did not set owner correctly")
-        })
-    })
-
+describe("Controller", () => {
     let fixture
     let controller
+    let signers
+    let commitHash
 
     before(async () => {
+        signers = await ethers.getSigners()
         fixture = new Fixture(web3)
-        controller = await Controller.new()
+        await fixture.deploy()
+        controller = fixture.controller
+        commitHash = fixture.commitHash
     })
 
     beforeEach(async () => {
@@ -30,18 +28,22 @@ contract("Controller", accounts => {
         await fixture.tearDown()
     })
 
+    describe("constructor", () => {
+        it("should create contract", async () => {
+            assert.equal(await controller.owner(), signers[0].address, "did not set owner correctly")
+        })
+    })
+
     describe("setContractInfo", () => {
         it("should throw when caller is not the owner", async () => {
             const randomAddress = "0x0000000000000000000000000000000000001234"
-            const commitHash = "0x1230000000000000000000000000000000000000"
-            await expectThrow(controller.setContractInfo(contractId("Manager"), randomAddress, commitHash, {from: accounts[1]}))
+            await expect(controller.connect(signers[1]).setContractInfo(contractId("Manager"), randomAddress, commitHash)).to.be.reverted
         })
 
         it("should set contract info", async () => {
             const id = contractId("Manager")
-            const manager = await Manager.new(controller.address)
-            const commitHash = "0x1230000000000000000000000000000000000000"
-            await controller.setContractInfo(id, manager.address, commitHash)
+            const managerFac = await ethers.getContractFactory("Manager")
+            const manager = await fixture.deployAndRegister(managerFac, "Manager", controller.address)
 
             const cInfo = await controller.getContractInfo(id)
             assert.equal(cInfo[0], manager.address, "did not register contract address correctly")
@@ -55,27 +57,26 @@ contract("Controller", accounts => {
 
         beforeEach(async () => {
             id = contractId("Manager")
-            manager = await Manager.new(controller.address)
-            const commitHash = "0x1230000000000000000000000000000000000000"
-            await controller.setContractInfo(id, manager.address, commitHash)
+            const managerFac = await ethers.getContractFactory("Manager")
+            manager = await fixture.deployAndRegister(managerFac, "Manager", controller.address)
         })
 
         it("should throw when caller is not the owner", async () => {
             const randomAddress = "0x0000000000000000000000000000000000001234"
-            await expectThrow(controller.updateController(id, randomAddress, {from: accounts[1]}))
+            await expect(controller.connect(signers[1]).updateController(id, randomAddress)).to.be.reverted
         })
 
         it("should throw for invalid key", async () => {
             const randomAddress = "0x0000000000000000000000000000000000001234"
             const invalidId = "0x1230000000000000000000000000000000000000"
-            await expectThrow(controller.updateController(invalidId, randomAddress))
+            await expect(controller.updateController(invalidId, randomAddress)).to.be.reverted
         })
 
         it("should update a manager's controller", async () => {
             const randomAddress = "0x0000000000000000000000000000000000001234"
             await controller.updateController(id, randomAddress)
 
-            const newController = await manager.controller.call()
+            const newController = await manager.controller()
             assert.equal(newController, randomAddress, "controller for manager incorrect")
         })
     })

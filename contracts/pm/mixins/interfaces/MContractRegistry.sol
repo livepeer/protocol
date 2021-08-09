@@ -4,7 +4,6 @@ import "../../../bonding/IBondingManager.sol";
 import "../../../token/IMinter.sol";
 import "../../../rounds/IRoundsManager.sol";
 
-
 contract MContractRegistry {
     /**
      * @notice Checks if the system is paused

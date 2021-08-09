@@ -3,7 +3,6 @@ pragma solidity ^0.5.11;
 import "./mocks/EarningsPoolFixture.sol";
 import "./helpers/truffle/Assert.sol";
 
-
 contract TestEarningsPool {
     EarningsPoolFixture fixture;
 
@@ -16,14 +15,14 @@ contract TestEarningsPool {
 
     function test_setCommission() public {
         fixture.setCommission(5, 10);
-        (,,,,,,, uint256 transcoderRewardCut, uint256 transcoderFeeShare) = fixture.getEarningsPool();
+        (, , , , , , , uint256 transcoderRewardCut, uint256 transcoderFeeShare) = fixture.getEarningsPool();
         Assert.equal(transcoderRewardCut, 5, "wrong transcoderRewardCut");
         Assert.equal(transcoderFeeShare, 10, "wrong transcoderFeeShare");
     }
 
     function test_setStake() public {
         fixture.setStake(5000);
-        (,,,,, uint256 totalStake,,,) = fixture.getEarningsPool();
+        (, , , , , uint256 totalStake, , , ) = fixture.getEarningsPool();
         Assert.equal(totalStake, 5000, "wrong totalStake");
     }
 

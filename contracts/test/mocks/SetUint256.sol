@@ -2,7 +2,7 @@ pragma solidity ^0.5.11;
 
 contract SetUint256 {
     uint256 public i;
-    bool shouldFail; 
+    bool shouldFail;
 
     function setUint256(uint256 _i) public payable {
         if (shouldFail) {

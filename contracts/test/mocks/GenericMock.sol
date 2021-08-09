@@ -1,6 +1,5 @@
 pragma solidity ^0.5.11;
 
-
 /**
  * @title A mock contract that can set/return mock values and execute functions
  * on target contracts
@@ -13,20 +12,27 @@ contract GenericMock {
         address addressValue;
         MockValueType valueType;
         bool set;
-        mapping (bytes32 => uint256) uint256Values;
+        mapping(bytes32 => uint256) uint256Values;
     }
 
-    enum MockValueType { Uint256, Bytes32, Bool, Address }
+    enum MockValueType {
+        Uint256,
+        Bytes32,
+        Bool,
+        Address
+    }
 
     // Track function selectors and mapped mock values
-    mapping (bytes4 => MockValue) mockValues;
+    mapping(bytes4 => MockValue) mockValues;
 
     /**
      * @dev Return mock value for a functione
      */
     function() external payable {
         bytes4 func;
-        assembly { func := calldataload(0) }
+        assembly {
+            func := calldataload(0)
+        }
 
         bytes32 dataHash = keccak256(abi.encodePacked(msg.data));
 
@@ -80,7 +86,11 @@ contract GenericMock {
      * @param _dataHash keccak256 hash of tx data i.e. keccak256(msg.data)
      * @param _value Mock uint256 value
      */
-    function setMockUint256WithParam(bytes4 _func, bytes32 _dataHash, uint256 _value) external returns (bool) {
+    function setMockUint256WithParam(
+        bytes4 _func,
+        bytes32 _dataHash,
+        uint256 _value
+    ) external returns (bool) {
         mockValues[_func].valueType = MockValueType.Uint256;
         mockValues[_func].uint256Values[_dataHash] = _value;
         mockValues[_func].set = true;

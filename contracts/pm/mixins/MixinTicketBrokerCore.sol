@@ -9,23 +9,22 @@ import "./interfaces/MContractRegistry.sol";
 import "openzeppelin-solidity/contracts/cryptography/ECDSA.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
-
 contract MixinTicketBrokerCore is MContractRegistry, MReserve, MTicketProcessor, MTicketBrokerCore {
     using SafeMath for uint256;
 
     struct Sender {
-        uint256 deposit;        // Amount of funds deposited
-        uint256 withdrawRound;  // Round that sender can withdraw deposit & reserve
+        uint256 deposit; // Amount of funds deposited
+        uint256 withdrawRound; // Round that sender can withdraw deposit & reserve
     }
 
     // Mapping of address => Sender
-    mapping (address => Sender) internal senders;
+    mapping(address => Sender) internal senders;
 
     // Number of rounds before a sender can withdraw after requesting an unlock
     uint256 public unlockPeriod;
 
     // Mapping of ticket hashes => boolean indicating if ticket was redeemed
-    mapping (bytes32 => bool) public usedTickets;
+    mapping(bytes32 => bool) public usedTickets;
 
     // Checks if msg.value is equal to the given deposit and reserve amounts
     modifier checkDepositReserveETHValueSplit(uint256 _depositAmount, uint256 _reserveAmount) {
@@ -64,24 +63,14 @@ contract MixinTicketBrokerCore is MContractRegistry, MReserve, MTicketProcessor,
     /**
      * @notice Adds ETH to the caller's deposit
      */
-    function fundDeposit()
-        external
-        payable
-        whenSystemNotPaused
-        processDeposit(msg.sender, msg.value)
-    {
+    function fundDeposit() external payable whenSystemNotPaused processDeposit(msg.sender, msg.value) {
         processFunding(msg.value);
     }
 
     /**
      * @notice Adds ETH to the caller's reserve
      */
-    function fundReserve()
-        external
-        payable
-        whenSystemNotPaused
-        processReserve(msg.sender, msg.value)
-    {
+    function fundReserve() external payable whenSystemNotPaused processReserve(msg.sender, msg.value) {
         processFunding(msg.value);
     }
 
@@ -90,10 +79,7 @@ contract MixinTicketBrokerCore is MContractRegistry, MReserve, MTicketProcessor,
      * @param _depositAmount Amount of ETH to add to the caller's deposit
      * @param _reserveAmount Amount of ETH to add to the caller's reserve
      */
-    function fundDepositAndReserve(
-        uint256 _depositAmount,
-        uint256 _reserveAmount
-    )
+    function fundDepositAndReserve(uint256 _depositAmount, uint256 _reserveAmount)
         external
         payable
         whenSystemNotPaused
@@ -115,11 +101,7 @@ contract MixinTicketBrokerCore is MContractRegistry, MReserve, MTicketProcessor,
         Ticket memory _ticket,
         bytes memory _sig,
         uint256 _recipientRand
-    )
-        public
-        whenSystemNotPaused
-        currentRoundInitialized
-    {
+    ) public whenSystemNotPaused currentRoundInitialized {
         bytes32 ticketHash = getTicketHash(_ticket);
 
         // Require a valid winning ticket for redemption
@@ -128,15 +110,9 @@ contract MixinTicketBrokerCore is MContractRegistry, MReserve, MTicketProcessor,
         Sender storage sender = senders[_ticket.sender];
 
         // Require sender to be locked
-        require(
-            isLocked(sender),
-            "sender is unlocked"
-        );
+        require(isLocked(sender), "sender is unlocked");
         // Require either a non-zero deposit or non-zero reserve for the sender
-        require(
-            sender.deposit > 0 || remainingReserve(_ticket.sender) > 0,
-            "sender deposit and reserve are zero"
-        );
+        require(sender.deposit > 0 || remainingReserve(_ticket.sender) > 0, "sender deposit and reserve are zero");
 
         // Mark ticket as used to prevent replay attacks involving redeeming
         // the same winning ticket multiple times
@@ -148,11 +124,9 @@ contract MixinTicketBrokerCore is MContractRegistry, MReserve, MTicketProcessor,
             // If ticket face value > sender's deposit then claim from
             // the sender's reserve
 
-            amountToTransfer = sender.deposit.add(claimFromReserve(
-                _ticket.sender,
-                _ticket.recipient,
-                _ticket.faceValue.sub(sender.deposit)
-            ));
+            amountToTransfer = sender.deposit.add(
+                claimFromReserve(_ticket.sender, _ticket.recipient, _ticket.faceValue.sub(sender.deposit))
+            );
 
             sender.deposit = 0;
         } else {
@@ -186,10 +160,7 @@ contract MixinTicketBrokerCore is MContractRegistry, MReserve, MTicketProcessor,
     function unlock() public whenSystemNotPaused {
         Sender storage sender = senders[msg.sender];
 
-        require(
-            sender.deposit > 0 || remainingReserve(msg.sender) > 0,
-            "sender deposit and reserve are zero"
-        );
+        require(sender.deposit > 0 || remainingReserve(msg.sender) > 0, "sender deposit and reserve are zero");
         require(!_isUnlockInProgress(sender), "unlock already initiated");
 
         uint256 currentRound = roundsManager().currentRound();
@@ -216,18 +187,9 @@ contract MixinTicketBrokerCore is MContractRegistry, MReserve, MTicketProcessor,
         uint256 deposit = sender.deposit;
         uint256 reserve = remainingReserve(msg.sender);
 
-        require(
-            deposit > 0 || reserve > 0,
-            "sender deposit and reserve are zero"
-        );
-        require(
-            _isUnlockInProgress(sender),
-            "no unlock request in progress"
-        );
-        require(
-            !isLocked(sender),
-            "account is locked"
-        );
+        require(deposit > 0 || reserve > 0, "sender deposit and reserve are zero");
+        require(_isUnlockInProgress(sender), "no unlock request in progress");
+        require(!isLocked(sender), "account is locked");
 
         sender.deposit = 0;
         clearReserve(msg.sender);
@@ -252,11 +214,7 @@ contract MixinTicketBrokerCore is MContractRegistry, MReserve, MTicketProcessor,
      * @param _sender Address of sender
      * @return Info about the sender for `_sender`
      */
-    function getSenderInfo(address _sender)
-        public
-        view
-        returns (Sender memory sender, ReserveInfo memory reserve)
-    {
+    function getSenderInfo(address _sender) public view returns (Sender memory sender, ReserveInfo memory reserve) {
         sender = senders[_sender];
         reserve = getReserveInfo(_sender);
     }
@@ -267,17 +225,18 @@ contract MixinTicketBrokerCore is MContractRegistry, MReserve, MTicketProcessor,
      * @return keccak256 hash of `_ticket`
      */
     function getTicketHash(Ticket memory _ticket) public pure returns (bytes32) {
-        return keccak256(
-            abi.encodePacked(
-                _ticket.recipient,
-                _ticket.sender,
-                _ticket.faceValue,
-                _ticket.winProb,
-                _ticket.senderNonce,
-                _ticket.recipientRandHash,
-                _ticket.auxData
-            )
-        );
+        return
+            keccak256(
+                abi.encodePacked(
+                    _ticket.recipient,
+                    _ticket.sender,
+                    _ticket.faceValue,
+                    _ticket.winProb,
+                    _ticket.senderNonce,
+                    _ticket.recipientRandHash,
+                    _ticket.auxData
+                )
+            );
     }
 
     /**
@@ -305,10 +264,7 @@ contract MixinTicketBrokerCore is MContractRegistry, MReserve, MTicketProcessor,
         bytes32 _ticketHash,
         bytes memory _sig,
         uint256 _recipientRand
-    )
-        internal
-        view
-    {
+    ) internal view {
         require(_ticket.recipient != address(0), "ticket recipient is null address");
         require(_ticket.sender != address(0), "ticket sender is null address");
 
@@ -321,15 +277,9 @@ contract MixinTicketBrokerCore is MContractRegistry, MReserve, MTicketProcessor,
 
         require(!usedTickets[_ticketHash], "ticket is used");
 
-        require(
-            isValidTicketSig(_ticket.sender, _sig, _ticketHash),
-            "invalid signature over ticket hash"
-        );
+        require(isValidTicketSig(_ticket.sender, _sig, _ticketHash), "invalid signature over ticket hash");
 
-        require(
-            isWinningTicket(_sig, _recipientRand, _ticket.winProb),
-            "ticket did not win"
-        );
+        require(isWinningTicket(_sig, _recipientRand, _ticket.winProb), "ticket did not win");
     }
 
     /**
@@ -352,11 +302,7 @@ contract MixinTicketBrokerCore is MContractRegistry, MReserve, MTicketProcessor,
         address _sender,
         bytes memory _sig,
         bytes32 _ticketHash
-    )
-        internal
-        pure
-        returns (bool)
-    {
+    ) internal pure returns (bool) {
         address signer = ECDSA.recover(ECDSA.toEthSignedMessageHash(_ticketHash), _sig);
         return signer != address(0) && _sender == signer;
     }
@@ -368,7 +314,11 @@ contract MixinTicketBrokerCore is MContractRegistry, MReserve, MTicketProcessor,
      * @param _winProb The winning probability of the ticket
      * @return Boolean indicating whether the ticket won
      */
-    function isWinningTicket(bytes memory _sig, uint256 _recipientRand, uint256 _winProb) internal pure returns (bool) {
+    function isWinningTicket(
+        bytes memory _sig,
+        uint256 _recipientRand,
+        uint256 _winProb
+    ) internal pure returns (bool) {
         return uint256(keccak256(abi.encodePacked(_sig, _recipientRand))) < _winProb;
     }
 

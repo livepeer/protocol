@@ -1,14 +1,13 @@
-import {contractId} from "../../utils/helpers"
-import BigNumber from "bignumber.js"
+import {constants} from "../../utils/constants"
 
-const Controller = artifacts.require("Controller")
-const BondingManager = artifacts.require("BondingManager")
-const AdjustableRoundsManager = artifacts.require("AdjustableRoundsManager")
-const LivepeerToken = artifacts.require("LivepeerToken")
+import chai, {expect} from "chai"
+import {solidity} from "ethereum-waffle"
+import {ethers} from "hardhat"
 
-contract("RoundInitialization", accounts => {
-    const TOKEN_UNIT = 10 ** 18
+chai.use(solidity)
 
+describe("RoundInitialization", () => {
+    let signers
     let controller
     let bondingManager
     let roundsManager
@@ -17,86 +16,99 @@ contract("RoundInitialization", accounts => {
     let bondAmount
 
     const mineAndInitializeRound = async roundsManager => {
-        const roundLength = await roundsManager.roundLength.call()
+        const roundLength = await roundsManager.roundLength()
         await roundsManager.mineBlocks(roundLength)
         await roundsManager.initializeRound()
     }
 
     const registerTranscodersAndInitializeRound = async (amount, transcoders, bondingManager, token, roundsManager) => {
-        for (let tr of transcoders) {
-            await token.transfer(tr, amount)
-            await token.approve(bondingManager.address, amount, {from: tr})
-            await bondingManager.bond(amount, tr, {from: tr})
-            await bondingManager.transcoder(0, 100, {from: tr})
+        for (const tr of transcoders) {
+            await token.transfer(tr.address, amount)
+            await token.connect(tr).approve(bondingManager.address, amount)
+            await bondingManager.connect(tr).bond(amount, tr.address)
+            await bondingManager.connect(tr).transcoder(0, 100)
         }
 
         await mineAndInitializeRound(roundsManager)
     }
 
     before(async () => {
-        controller = await Controller.deployed()
+        signers = await ethers.getSigners()
+
+        const fixture = await deployments.fixture(["Contracts"])
+
+        controller = await ethers.getContractAt("Controller", fixture.Controller.address)
         await controller.unpause()
 
-        const bondingManagerAddr = await controller.getContract(contractId("BondingManager"))
-        bondingManager = await BondingManager.at(bondingManagerAddr)
+        bondingManager = await ethers.getContractAt("BondingManager", fixture.BondingManager.address)
+        roundsManager = await ethers.getContractAt("AdjustableRoundsManager", fixture.AdjustableRoundsManager.address)
+        token = await ethers.getContractAt("LivepeerToken", fixture.LivepeerToken.address)
 
-        const roundsManagerAddr = await controller.getContract(contractId("RoundsManager"))
-        roundsManager = await AdjustableRoundsManager.at(roundsManagerAddr)
-
-        const tokenAddr = await controller.getContract(contractId("LivepeerToken"))
-        token = await LivepeerToken.at(tokenAddr)
-
-        bondAmount = new BigNumber(1).times(TOKEN_UNIT)
-
+        bondAmount = ethers.BigNumber.from(10).mul(constants.TOKEN_UNIT.toString())
         await mineAndInitializeRound(roundsManager)
     })
 
     it("initializes a round with numActiveTranscoders = 10", async () => {
-        const newTranscoders = accounts.slice(1, 11)
+        const newTranscoders = signers.slice(1, 11)
         await registerTranscodersAndInitializeRound(bondAmount, newTranscoders, bondingManager, token, roundsManager)
 
-        assert.equal(await bondingManager.currentRoundTotalActiveStake(), bondAmount.times(10).toNumber(), "wrong total active stake")
+        expect(await bondingManager.currentRoundTotalActiveStake()).to.equal(
+            bondAmount.mul(10),
+            "wrong total active stake"
+        )
     })
 
     it("initializes a round with numActiveTranscoders = 15", async () => {
-        const newTranscoders = accounts.slice(11, 16)
+        const newTranscoders = signers.slice(11, 16)
         await bondingManager.setNumActiveTranscoders(15)
-        assert.equal(await bondingManager.getTranscoderPoolMaxSize(), 15, "wrong max # of active transcoders")
+        expect(await bondingManager.getTranscoderPoolMaxSize()).to.equal(15, "wrong max # of active transcoders")
         await registerTranscodersAndInitializeRound(bondAmount, newTranscoders, bondingManager, token, roundsManager)
 
-        assert.equal(await bondingManager.currentRoundTotalActiveStake(), bondAmount.times(15).toNumber(), "wrong total active stake")
+        expect(await bondingManager.currentRoundTotalActiveStake()).to.equal(
+            bondAmount.mul(15),
+            "wrong total active stake"
+        )
     })
 
     it("initializes a round with numActiveTranscoders = 20", async () => {
-        const newTranscoders = accounts.slice(16, 21)
+        const newTranscoders = signers.slice(16, 21)
 
         await bondingManager.setNumActiveTranscoders(20)
-        assert.equal(await bondingManager.getTranscoderPoolMaxSize(), 20, "wrong max # of active transcoders")
+        expect(await bondingManager.getTranscoderPoolMaxSize()).to.equal(20, "wrong max # of active transcoders")
 
         await registerTranscodersAndInitializeRound(bondAmount, newTranscoders, bondingManager, token, roundsManager)
 
-        assert.equal(await bondingManager.currentRoundTotalActiveStake(), bondAmount.times(20).toNumber(), "wrong total active stake")
+        expect(await bondingManager.currentRoundTotalActiveStake()).to.equal(
+            bondAmount.mul(20),
+            "wrong total active stake"
+        )
     })
 
     it("initializes a round with numActiveTranscoders = 30", async () => {
-        const newTranscoders = accounts.slice(21, 31)
+        const newTranscoders = signers.slice(21, 31)
 
         await bondingManager.setNumActiveTranscoders(30)
-        assert.equal(await bondingManager.getTranscoderPoolMaxSize(), 30, "wrong max # of active transcoders")
+        expect(await bondingManager.getTranscoderPoolMaxSize()).to.equal(30, "wrong max # of active transcoders")
         await registerTranscodersAndInitializeRound(bondAmount, newTranscoders, bondingManager, token, roundsManager)
 
         await mineAndInitializeRound(roundsManager)
 
-        assert.equal(await bondingManager.currentRoundTotalActiveStake(), bondAmount.times(30).toNumber(), "wrong total active stake")
+        expect(await bondingManager.currentRoundTotalActiveStake()).to.equal(
+            bondAmount.mul(30),
+            "wrong total active stake"
+        )
     })
 
     it("initializes a round with numActiveTranscoders = 40", async () => {
-        const newTranscoders = accounts.slice(31, 41)
+        const newTranscoders = signers.slice(31, 41)
         await bondingManager.setNumActiveTranscoders(40)
-        assert.equal(await bondingManager.getTranscoderPoolMaxSize(), 40, "wrong max # of active transcoders")
+        expect(await bondingManager.getTranscoderPoolMaxSize()).to.equal(40, "wrong max # of active transcoders")
 
         await registerTranscodersAndInitializeRound(bondAmount, newTranscoders, bondingManager, token, roundsManager)
 
-        assert.equal(await bondingManager.currentRoundTotalActiveStake(), bondAmount.times(40).toNumber(), "wrong total active stake")
+        expect(await bondingManager.currentRoundTotalActiveStake()).to.equal(
+            bondAmount.mul(40),
+            "wrong total active stake"
+        )
     })
 })

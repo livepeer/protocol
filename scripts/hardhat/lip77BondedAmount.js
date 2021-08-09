@@ -5,7 +5,7 @@ const utils = ethers.utils
 async function main() {
     await hre.run("compile")
 
-    // The bug was triggered in this tx https://etherscan.io/tx/0xf5221628102f866a2cc1aa356a92ec6d2c9fd58d378e36328f398cccebc4645a 
+    // The bug was triggered in this tx https://etherscan.io/tx/0xf5221628102f866a2cc1aa356a92ec6d2c9fd58d378e36328f398cccebc4645a
     // which was mined in block 12125269
     // Fork from mainnet at a block before this tx was mined
     // i.e. 12125269 - 1 = 12125268

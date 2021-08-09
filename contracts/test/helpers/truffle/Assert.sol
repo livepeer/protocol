@@ -1,7 +1,7 @@
 // This file taken from here: https://raw.githubusercontent.com/smartcontractproduction/sol-unit/master/contracts/src/Assertions.sol
 // It was renamed to Assert.sol by Tim Coulter. Refactored for solidity 0.5.0 by Cruz Molina.
 
-pragma solidity >= 0.4.15 < 0.6.0;
+pragma solidity >=0.4.15 <0.6.0;
 
 import "./AssertString.sol";
 import "./AssertBytes32.sol";
@@ -65,7 +65,6 @@ import "./AssertGeneral.sol";
 */
 
 library Assert {
-
     // ************************************** general **************************************
 
     /*
@@ -100,7 +99,11 @@ library Assert {
         Returns:
             result (bool) - The result.
     */
-    function equal(string memory a, string memory b, string memory message) internal returns (bool result) {
+    function equal(
+        string memory a,
+        string memory b,
+        string memory message
+    ) internal returns (bool result) {
         return AssertString.equal(a, b, message);
     }
 
@@ -119,7 +122,11 @@ library Assert {
         Returns:
             result (bool) - The result.
     */
-    function notEqual(string memory a, string memory b, string memory message) internal returns (bool result) {
+    function notEqual(
+        string memory a,
+        string memory b,
+        string memory message
+    ) internal returns (bool result) {
         return AssertString.notEqual(a, b, message);
     }
 
@@ -176,7 +183,11 @@ library Assert {
         Returns:
             result (bool) - The result.
     */
-    function equal(bytes32 a, bytes32 b, string memory message) internal returns (bool result) {
+    function equal(
+        bytes32 a,
+        bytes32 b,
+        string memory message
+    ) internal returns (bool result) {
         return AssertBytes32.equal(a, b, message);
     }
 
@@ -195,7 +206,11 @@ library Assert {
         Returns:
             result (bool) - The result.
     */
-    function notEqual(bytes32 a, bytes32 b, string memory message) internal returns (bool result) {
+    function notEqual(
+        bytes32 a,
+        bytes32 b,
+        string memory message
+    ) internal returns (bool result) {
         return AssertBytes32.notEqual(a, b, message);
     }
 
@@ -252,9 +267,14 @@ library Assert {
         Returns:
             result (bool) - The result.
     */
-    function equal(address a, address b, string memory message) internal returns (bool result) {
+    function equal(
+        address a,
+        address b,
+        string memory message
+    ) internal returns (bool result) {
         return AssertAddress.equal(a, b, message);
     }
+
     /*
         Function: notEqual(address)
 
@@ -270,7 +290,11 @@ library Assert {
         Returns:
             result (bool) - The result.
     */
-    function notEqual(address a, address b, string memory message) internal returns (bool result) {
+    function notEqual(
+        address a,
+        address b,
+        string memory message
+    ) internal returns (bool result) {
         return AssertAddress.notEqual(a, b, message);
     }
 
@@ -308,7 +332,6 @@ library Assert {
     */
     function isNotZero(address addr, string memory message) internal returns (bool result) {
         return AssertAddress.isNotZero(addr, message);
-
     }
 
     // ************************************** bool **************************************
@@ -364,7 +387,11 @@ library Assert {
         Returns:
             result (bool) - The result.
     */
-    function equal(bool a, bool b, string memory message) internal returns (bool result) {
+    function equal(
+        bool a,
+        bool b,
+        string memory message
+    ) internal returns (bool result) {
         return AssertBool.equal(a, b, message);
     }
 
@@ -383,7 +410,11 @@ library Assert {
         Returns:
             result (bool) - The result.
     */
-    function notEqual(bool a, bool b, string memory message) internal returns (bool result) {
+    function notEqual(
+        bool a,
+        bool b,
+        string memory message
+    ) internal returns (bool result) {
         return AssertBool.notEqual(a, b, message);
     }
 
@@ -404,7 +435,11 @@ library Assert {
         Returns:
             result (bool) - The result.
     */
-    function equal(uint a, uint b, string memory message) internal returns (bool result) {
+    function equal(
+        uint256 a,
+        uint256 b,
+        string memory message
+    ) internal returns (bool result) {
         return AssertUint.equal(a, b, message);
     }
 
@@ -423,7 +458,11 @@ library Assert {
         Returns:
             result (bool) - The result.
     */
-    function notEqual(uint a, uint b, string memory message) internal returns (bool result) {
+    function notEqual(
+        uint256 a,
+        uint256 b,
+        string memory message
+    ) internal returns (bool result) {
         return AssertUint.notEqual(a, b, message);
     }
 
@@ -442,7 +481,11 @@ library Assert {
         Returns:
             result (bool) - The result.
     */
-    function isAbove(uint a, uint b, string memory message) internal returns (bool result) {
+    function isAbove(
+        uint256 a,
+        uint256 b,
+        string memory message
+    ) internal returns (bool result) {
         return AssertUint.isAbove(a, b, message);
     }
 
@@ -461,7 +504,11 @@ library Assert {
         Returns:
             result (bool) - The result.
     */
-    function isAtLeast(uint a, uint b, string memory message) internal returns (bool result) {
+    function isAtLeast(
+        uint256 a,
+        uint256 b,
+        string memory message
+    ) internal returns (bool result) {
         return AssertUint.isAtLeast(a, b, message);
     }
 
@@ -480,7 +527,11 @@ library Assert {
         Returns:
             result (bool) - The result.
     */
-    function isBelow(uint a, uint b, string memory message) internal returns (bool result) {
+    function isBelow(
+        uint256 a,
+        uint256 b,
+        string memory message
+    ) internal returns (bool result) {
         return AssertUint.isBelow(a, b, message);
     }
 
@@ -499,7 +550,11 @@ library Assert {
         Returns:
             result (bool) - The result.
     */
-    function isAtMost(uint a, uint b, string memory message) internal returns (bool result) {
+    function isAtMost(
+        uint256 a,
+        uint256 b,
+        string memory message
+    ) internal returns (bool result) {
         return AssertUint.isAtMost(a, b, message);
     }
 
@@ -517,7 +572,7 @@ library Assert {
         Returns:
             result (bool) - The result.
     */
-    function isZero(uint number, string memory message) internal returns (bool result) {
+    function isZero(uint256 number, string memory message) internal returns (bool result) {
         return AssertUint.isZero(number, message);
     }
 
@@ -535,7 +590,7 @@ library Assert {
         Returns:
             result (bool) - The result.
     */
-    function isNotZero(uint number, string memory message) internal returns (bool result) {
+    function isNotZero(uint256 number, string memory message) internal returns (bool result) {
         return AssertUint.isNotZero(number, message);
     }
 
@@ -556,7 +611,11 @@ library Assert {
         Returns:
             result (bool) - The result.
     */
-    function equal(int a, int b, string memory message) internal returns (bool result) {
+    function equal(
+        int256 a,
+        int256 b,
+        string memory message
+    ) internal returns (bool result) {
         return AssertInt.equal(a, b, message);
     }
 
@@ -575,7 +634,11 @@ library Assert {
         Returns:
             result (bool) - The result.
     */
-    function notEqual(int a, int b, string memory message) internal returns (bool result) {
+    function notEqual(
+        int256 a,
+        int256 b,
+        string memory message
+    ) internal returns (bool result) {
         return AssertInt.notEqual(a, b, message);
     }
 
@@ -594,7 +657,11 @@ library Assert {
         Returns:
             result (bool) - The result.
     */
-    function isAbove(int a, int b, string memory message) internal returns (bool result) {
+    function isAbove(
+        int256 a,
+        int256 b,
+        string memory message
+    ) internal returns (bool result) {
         return AssertInt.isAbove(a, b, message);
     }
 
@@ -613,7 +680,11 @@ library Assert {
         Returns:
             result (bool) - The result.
     */
-    function isAtLeast(int a, int b, string memory message) internal returns (bool result) {
+    function isAtLeast(
+        int256 a,
+        int256 b,
+        string memory message
+    ) internal returns (bool result) {
         return AssertInt.isAtLeast(a, b, message);
     }
 
@@ -632,7 +703,11 @@ library Assert {
         Returns:
             result (bool) - The result.
     */
-    function isBelow(int a, int b, string memory message) internal returns (bool result) {
+    function isBelow(
+        int256 a,
+        int256 b,
+        string memory message
+    ) internal returns (bool result) {
         return AssertInt.isBelow(a, b, message);
     }
 
@@ -651,7 +726,11 @@ library Assert {
         Returns:
             result (bool) - The result.
     */
-    function isAtMost(int a, int b, string memory message) internal returns (bool result) {
+    function isAtMost(
+        int256 a,
+        int256 b,
+        string memory message
+    ) internal returns (bool result) {
         return AssertInt.isAtMost(a, b, message);
     }
 
@@ -669,7 +748,7 @@ library Assert {
         Returns:
             result (bool) - The result.
     */
-    function isZero(int number, string memory message) internal returns (bool result) {
+    function isZero(int256 number, string memory message) internal returns (bool result) {
         return AssertInt.isZero(number, message);
     }
 
@@ -687,7 +766,7 @@ library Assert {
         Returns:
             result (bool) - The result.
     */
-    function isNotZero(int number, string memory message) internal returns (bool result) {
+    function isNotZero(int256 number, string memory message) internal returns (bool result) {
         return AssertInt.isNotZero(number, message);
     }
 
@@ -712,7 +791,11 @@ library Assert {
         Returns:
             result (bool) - The result.
     */
-    function equal(uint[] memory arrA, uint[] memory arrB, string memory message) internal returns (bool result) {
+    function equal(
+        uint256[] memory arrA,
+        uint256[] memory arrB,
+        string memory message
+    ) internal returns (bool result) {
         return AssertUintArray.equal(arrA, arrB, message);
     }
 
@@ -735,7 +818,11 @@ library Assert {
         Returns:
             result (bool) - The result.
     */
-    function notEqual(uint[] memory arrA, uint[] memory arrB, string memory message) internal returns (bool result) {
+    function notEqual(
+        uint256[] memory arrA,
+        uint256[] memory arrB,
+        string memory message
+    ) internal returns (bool result) {
         return AssertUintArray.notEqual(arrA, arrB, message);
     }
 
@@ -754,7 +841,11 @@ library Assert {
         Returns:
             result (bool) - The result.
     */
-    function lengthEqual(uint[] memory arr, uint length, string memory message) internal returns (bool result) {
+    function lengthEqual(
+        uint256[] memory arr,
+        uint256 length,
+        string memory message
+    ) internal returns (bool result) {
         return AssertUintArray.lengthEqual(arr, length, message);
     }
 
@@ -773,7 +864,11 @@ library Assert {
         Returns:
             result (bool) - The result.
     */
-    function lengthNotEqual(uint[] memory arr, uint length, string memory message) internal returns (bool result) {
+    function lengthNotEqual(
+        uint256[] memory arr,
+        uint256 length,
+        string memory message
+    ) internal returns (bool result) {
         return AssertUintArray.lengthNotEqual(arr, length, message);
     }
 
@@ -798,7 +893,11 @@ library Assert {
         Returns:
             result (bool) - The result.
     */
-    function equal(int[] memory arrA, int[] memory arrB, string memory message) internal returns (bool result) {
+    function equal(
+        int256[] memory arrA,
+        int256[] memory arrB,
+        string memory message
+    ) internal returns (bool result) {
         return AssertIntArray.equal(arrA, arrB, message);
     }
 
@@ -821,7 +920,11 @@ library Assert {
         Returns:
             result (bool) - The result.
     */
-    function notEqual(int[] memory arrA, int[] memory arrB, string memory message) internal returns (bool result) {
+    function notEqual(
+        int256[] memory arrA,
+        int256[] memory arrB,
+        string memory message
+    ) internal returns (bool result) {
         return AssertIntArray.notEqual(arrA, arrB, message);
     }
 
@@ -840,7 +943,11 @@ library Assert {
         Returns:
             result (bool) - The result.
     */
-    function lengthEqual(int[] memory arr, uint length, string memory message) internal returns (bool result) {
+    function lengthEqual(
+        int256[] memory arr,
+        uint256 length,
+        string memory message
+    ) internal returns (bool result) {
         return AssertIntArray.lengthEqual(arr, length, message);
     }
 
@@ -859,7 +966,11 @@ library Assert {
         Returns:
             result (bool) - The result.
     */
-    function lengthNotEqual(int[] memory arr, uint length, string memory message) internal returns (bool result) {
+    function lengthNotEqual(
+        int256[] memory arr,
+        uint256 length,
+        string memory message
+    ) internal returns (bool result) {
         return AssertIntArray.lengthNotEqual(arr, length, message);
     }
 
@@ -884,7 +995,11 @@ library Assert {
         Returns:
             result (bool) - The result.
     */
-    function equal(address[] memory arrA, address[] memory arrB, string memory message) internal returns (bool result) {
+    function equal(
+        address[] memory arrA,
+        address[] memory arrB,
+        string memory message
+    ) internal returns (bool result) {
         return AssertAddressArray.equal(arrA, arrB, message);
     }
 
@@ -907,7 +1022,11 @@ library Assert {
         Returns:
             result (bool) - The result.
     */
-    function notEqual(address[] memory arrA, address[] memory arrB, string memory message) internal returns (bool result) {
+    function notEqual(
+        address[] memory arrA,
+        address[] memory arrB,
+        string memory message
+    ) internal returns (bool result) {
         return AssertAddressArray.notEqual(arrA, arrB, message);
     }
 
@@ -926,7 +1045,11 @@ library Assert {
         Returns:
             result (bool) - The result.
     */
-    function lengthEqual(address[] memory arr, uint length, string memory message) internal returns (bool result) {
+    function lengthEqual(
+        address[] memory arr,
+        uint256 length,
+        string memory message
+    ) internal returns (bool result) {
         return AssertAddressArray.lengthEqual(arr, length, message);
     }
 
@@ -945,7 +1068,11 @@ library Assert {
         Returns:
             result (bool) - The result.
     */
-    function lengthNotEqual(address[] memory arr, uint length, string memory message) internal returns (bool result) {
+    function lengthNotEqual(
+        address[] memory arr,
+        uint256 length,
+        string memory message
+    ) internal returns (bool result) {
         return AssertAddressArray.lengthNotEqual(arr, length, message);
     }
 
@@ -970,9 +1097,9 @@ library Assert {
         Returns:
             result (bool) - The result.
     */
-//    function equal(address payable[] memory arrA, address payable[] memory arrB, string memory message) internal returns (bool result) {
-//        return AssertAddressPayableArray.equal(arrA, arrB, message);
-//    }
+    //    function equal(address payable[] memory arrA, address payable[] memory arrB, string memory message) internal returns (bool result) {
+    //        return AssertAddressPayableArray.equal(arrA, arrB, message);
+    //    }
 
     /*
         Function: notEqual(address payable[])
@@ -993,9 +1120,9 @@ library Assert {
         Returns:
             result (bool) - The result.
     */
-//    function notEqual(address payable[] memory arrA, address payable[] memory arrB, string memory message) internal returns (bool result) {
-//        return AssertAddressPayableArray.notEqual(arrA, arrB, message);
-//    }
+    //    function notEqual(address payable[] memory arrA, address payable[] memory arrB, string memory message) internal returns (bool result) {
+    //        return AssertAddressPayableArray.notEqual(arrA, arrB, message);
+    //    }
 
     /*
         Function: lengthEqual(address payable[])
@@ -1012,9 +1139,9 @@ library Assert {
         Returns:
             result (bool) - The result.
     */
-//    function lengthEqual(address payable[] memory arr, uint length, string memory message) internal returns (bool result) {
-//        return AssertAddressPayableArray.lengthEqual(arr, length, message);
-//    }
+    //    function lengthEqual(address payable[] memory arr, uint length, string memory message) internal returns (bool result) {
+    //        return AssertAddressPayableArray.lengthEqual(arr, length, message);
+    //    }
 
     /*
         Function: lengthNotEqual(address payable[])
@@ -1031,9 +1158,9 @@ library Assert {
         Returns:
             result (bool) - The result.
     */
-//    function lengthNotEqual(address payable[] memory arr, uint length, string memory message) internal returns (bool result) {
-//        return AssertAddressPayableArray.lengthNotEqual(arr, length, message);
-//    }
+    //    function lengthNotEqual(address payable[] memory arr, uint length, string memory message) internal returns (bool result) {
+    //        return AssertAddressPayableArray.lengthNotEqual(arr, length, message);
+    //    }
 
     // ************************************** bytes32[] **************************************
 
@@ -1056,7 +1183,11 @@ library Assert {
         Returns:
             result (bool) - The result.
     */
-    function equal(bytes32[] memory arrA, bytes32[] memory arrB, string memory message) internal returns (bool result) {
+    function equal(
+        bytes32[] memory arrA,
+        bytes32[] memory arrB,
+        string memory message
+    ) internal returns (bool result) {
         return AssertBytes32Array.equal(arrA, arrB, message);
     }
 
@@ -1079,7 +1210,11 @@ library Assert {
         Returns:
             result (bool) - The result.
     */
-    function notEqual(bytes32[] memory arrA, bytes32[] memory arrB, string memory message) internal returns (bool result) {
+    function notEqual(
+        bytes32[] memory arrA,
+        bytes32[] memory arrB,
+        string memory message
+    ) internal returns (bool result) {
         return AssertBytes32Array.notEqual(arrA, arrB, message);
     }
 
@@ -1098,7 +1233,11 @@ library Assert {
         Returns:
             result (bool) - The result.
     */
-    function lengthEqual(bytes32[] memory arr, uint length, string memory message) internal returns (bool result) {
+    function lengthEqual(
+        bytes32[] memory arr,
+        uint256 length,
+        string memory message
+    ) internal returns (bool result) {
         return AssertBytes32Array.lengthEqual(arr, length, message);
     }
 
@@ -1117,7 +1256,11 @@ library Assert {
         Returns:
             result (bool) - The result.
     */
-    function lengthNotEqual(bytes32[] memory arr, uint length, string memory message) internal returns (bool result) {
+    function lengthNotEqual(
+        bytes32[] memory arr,
+        uint256 length,
+        string memory message
+    ) internal returns (bool result) {
         return AssertBytes32Array.lengthNotEqual(arr, length, message);
     }
 
@@ -1138,7 +1281,11 @@ library Assert {
         Returns:
             result (bool) - The result.
     */
-    function balanceEqual(address a, uint b, string memory message) internal returns (bool result) {
+    function balanceEqual(
+        address a,
+        uint256 b,
+        string memory message
+    ) internal returns (bool result) {
         return AssertBalance.balanceEqual(a, b, message);
     }
 
@@ -1157,7 +1304,11 @@ library Assert {
         Returns:
             result (bool) - The result.
     */
-    function balanceNotEqual(address a, uint b, string memory message) internal returns (bool result) {
+    function balanceNotEqual(
+        address a,
+        uint256 b,
+        string memory message
+    ) internal returns (bool result) {
         return AssertBalance.balanceNotEqual(a, b, message);
     }
 

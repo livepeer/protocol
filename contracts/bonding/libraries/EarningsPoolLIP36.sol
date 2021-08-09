@@ -5,7 +5,6 @@ import "../../libraries/PreciseMathUtils.sol";
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
-
 library EarningsPoolLIP36 {
     using SafeMath for uint256;
 
@@ -15,9 +14,15 @@ library EarningsPoolLIP36 {
      * @param _prevEarningsPool In-memory EarningsPool.Data struct that stores the previous cumulative reward and fee factors
      * @param _fees Amount of new fees
      */
-    function updateCumulativeFeeFactor(EarningsPool.Data storage earningsPool, EarningsPool.Data memory _prevEarningsPool, uint256 _fees) internal {
+    function updateCumulativeFeeFactor(
+        EarningsPool.Data storage earningsPool,
+        EarningsPool.Data memory _prevEarningsPool,
+        uint256 _fees
+    ) internal {
         uint256 prevCumulativeFeeFactor = _prevEarningsPool.cumulativeFeeFactor;
-        uint256 prevCumulativeRewardFactor = _prevEarningsPool.cumulativeRewardFactor != 0 ? _prevEarningsPool.cumulativeRewardFactor : PreciseMathUtils.percPoints(1, 1);
+        uint256 prevCumulativeRewardFactor = _prevEarningsPool.cumulativeRewardFactor != 0
+            ? _prevEarningsPool.cumulativeRewardFactor
+            : PreciseMathUtils.percPoints(1, 1);
 
         // Initialize the cumulativeFeeFactor when adding fees for the first time
         if (earningsPool.cumulativeFeeFactor == 0) {
@@ -38,8 +43,14 @@ library EarningsPoolLIP36 {
      * @param _prevEarningsPool Storage pointer to EarningsPool.Data struct that stores the previous cumulative reward factor
      * @param _rewards Amount of new rewards
      */
-    function updateCumulativeRewardFactor(EarningsPool.Data storage earningsPool, EarningsPool.Data memory _prevEarningsPool, uint256 _rewards) internal {
-        uint256 prevCumulativeRewardFactor = _prevEarningsPool.cumulativeRewardFactor != 0 ? _prevEarningsPool.cumulativeRewardFactor : PreciseMathUtils.percPoints(1, 1);
+    function updateCumulativeRewardFactor(
+        EarningsPool.Data storage earningsPool,
+        EarningsPool.Data memory _prevEarningsPool,
+        uint256 _rewards
+    ) internal {
+        uint256 prevCumulativeRewardFactor = _prevEarningsPool.cumulativeRewardFactor != 0
+            ? _prevEarningsPool.cumulativeRewardFactor
+            : PreciseMathUtils.percPoints(1, 1);
 
         earningsPool.cumulativeRewardFactor = prevCumulativeRewardFactor.add(
             PreciseMathUtils.percOf(prevCumulativeRewardFactor, _rewards, earningsPool.totalStake)
