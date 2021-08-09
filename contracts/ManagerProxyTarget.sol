@@ -2,7 +2,6 @@ pragma solidity ^0.5.11;
 
 import "./Manager.sol";
 
-
 /**
  * @title ManagerProxyTarget
  * @notice The base contract that target contracts used by a proxy contract should inherit from

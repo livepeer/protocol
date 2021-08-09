@@ -3,13 +3,11 @@ pragma experimental ABIEncoderV2;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
-
 /**
  * @title Governor
  * @dev The Governor holds the rights to stage and execute contract calls i.e. changing Livepeer protocol parameters.
  */
 contract Governor {
-
     using SafeMath for uint256;
 
     address public owner;
@@ -32,12 +30,11 @@ contract Governor {
         uint256 nonce;
     }
 
-   /// @notice Throws if called by any account other than the owner.
+    /// @notice Throws if called by any account other than the owner.
     modifier onlyOwner() {
         require(msg.sender == owner, "unauthorized: msg.sender not owner");
         _;
     }
-
 
     /// @notice Throws if called by any account other than this contract.
     /// @dev Forces the `stage/execute` path to be used to call functions with this modifier instead of directly.
@@ -46,13 +43,11 @@ contract Governor {
         _;
     }
 
-
     /// @dev The Ownable constructor sets the original `owner` of the contract to the sender account.
     constructor() public {
         owner = msg.sender;
         emit OwnershipTransferred(address(0), msg.sender);
     }
-
 
     /// @notice Allows the current owner to transfer control of the contract to a newOwner.
     /// @dev Can only be called through stage/execute, will revert if the caller is not this contract's address.

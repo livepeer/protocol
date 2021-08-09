@@ -2,7 +2,6 @@ pragma solidity ^0.5.11;
 
 import "./ManagerProxyTarget.sol";
 
-
 /**
  * @title ManagerProxy
  * @notice A proxy contract that uses delegatecall to execute function calls on a target contract using its own storage context.
@@ -35,10 +34,7 @@ contract ManagerProxy is ManagerProxyTarget {
      */
     function() external payable {
         address target = controller.getContract(targetContractId);
-        require(
-            target != address(0),
-            "target contract must be registered"
-        );
+        require(target != address(0), "target contract must be registered");
 
         assembly {
             // Solidity keeps a free memory pointer at position 0x40 in memory
@@ -65,7 +61,8 @@ contract ManagerProxy is ManagerProxyTarget {
                 // Method call failed - revert
                 // Return any error message stored in mem[returndataMemoryOffset..(returndataMemoryOffset + returndatasize)]
                 revert(returndataMemoryOffset, returndatasize)
-            } default {
+            }
+            default {
                 // Return result of method call stored in mem[returndataMemoryOffset..(returndataMemoryOffset + returndatasize)]
                 return(returndataMemoryOffset, returndatasize)
             }

@@ -1,7 +1,6 @@
-pragma solidity >= 0.4.15 < 0.6.0;
+pragma solidity >=0.4.15 <0.6.0;
 
 library AssertGeneral {
-
     /*
         Event: TestEvent
 
@@ -12,7 +11,7 @@ library AssertGeneral {
             message (string) - A message to display if the assertion does not hold.
     */
     event TestEvent(bool indexed result, string message);
-    
+
     // ************************************** general **************************************
 
     /*
@@ -30,10 +29,10 @@ library AssertGeneral {
         _report(false, message);
         return false;
     }
-    
+
     /******************************** internal ********************************/
 
-        /*
+    /*
             Function: _report
 
             Internal function for triggering <TestEvent>.
@@ -43,9 +42,7 @@ library AssertGeneral {
                 message (string) - The message that is sent if the assertion fails.
         */
     function _report(bool result, string memory message) internal {
-        if(result)
-            emit TestEvent(true, "");
-        else
-            emit TestEvent(false, message);
+        if (result) emit TestEvent(true, "");
+        else emit TestEvent(false, message);
     }
 }

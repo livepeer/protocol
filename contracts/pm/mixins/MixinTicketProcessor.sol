@@ -4,7 +4,6 @@ import "./interfaces/MTicketProcessor.sol";
 import "./interfaces/MContractRegistry.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
-
 contract MixinTicketProcessor is MContractRegistry, MTicketProcessor {
     using SafeMath for uint256;
 
@@ -36,16 +35,16 @@ contract MixinTicketProcessor is MContractRegistry, MTicketProcessor {
      * @param _amount Amount of funds for the winning ticket
      * @param _auxData Auxilary data for the winning ticket
      */
-    function winningTicketTransfer(address _recipient, uint256 _amount, bytes memory _auxData) internal {
-        (uint256 creationRound,) = getCreationRoundAndBlockHash(_auxData);
+    function winningTicketTransfer(
+        address _recipient,
+        uint256 _amount,
+        bytes memory _auxData
+    ) internal {
+        (uint256 creationRound, ) = getCreationRoundAndBlockHash(_auxData);
 
         // Ask BondingManager to update fee pool for recipient with
         // winning ticket funds
-        bondingManager().updateTranscoderWithFees(
-            _recipient,
-            _amount,
-            creationRound
-        );
+        bondingManager().updateTranscoderWithFees(_recipient, _amount, creationRound);
     }
 
     /**
@@ -56,21 +55,12 @@ contract MixinTicketProcessor is MContractRegistry, MTicketProcessor {
         (uint256 creationRound, bytes32 creationRoundBlockHash) = getCreationRoundAndBlockHash(_auxData);
         bytes32 blockHash = roundsManager().blockHashForRound(creationRound);
 
-        require(
-            blockHash != bytes32(0),
-            "ticket creationRound does not have a block hash"
-        );
-        require(
-            creationRoundBlockHash == blockHash,
-            "ticket creationRoundBlockHash invalid for creationRound"
-        );
+        require(blockHash != bytes32(0), "ticket creationRound does not have a block hash");
+        require(creationRoundBlockHash == blockHash, "ticket creationRoundBlockHash invalid for creationRound");
 
         uint256 currRound = roundsManager().currentRound();
 
-        require(
-            creationRound.add(ticketValidityPeriod) > currRound,
-            "ticket is expired"
-        );
+        require(creationRound.add(ticketValidityPeriod) > currRound, "ticket is expired");
     }
 
     /**
@@ -81,15 +71,9 @@ contract MixinTicketProcessor is MContractRegistry, MTicketProcessor {
     function getCreationRoundAndBlockHash(bytes memory _auxData)
         internal
         pure
-        returns (
-            uint256 creationRound,
-            bytes32 creationRoundBlockHash
-        )
+        returns (uint256 creationRound, bytes32 creationRoundBlockHash)
     {
-        require(
-            _auxData.length == 64,
-            "invalid length for ticket auxData: must be 64 bytes"
-        );
+        require(_auxData.length == 64, "invalid length for ticket auxData: must be 64 bytes");
 
         // _auxData format:
         // Bytes [0:31] = creationRound

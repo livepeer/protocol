@@ -1,32 +1,25 @@
 import Fixture from "./helpers/Fixture"
-import truffleAssert from "truffle-assertions"
+import {web3, ethers} from "hardhat"
 
-const ServiceRegistry = artifacts.require("ServiceRegistry")
+import chai, {expect, assert} from "chai"
+import {solidity} from "ethereum-waffle"
+chai.use(solidity)
 
-contract("ServiceRegistry", accounts => {
-    describe("constructor", () => {
-        it("invokes base Manager contract constructor", async () => {
-            // Use dummy Controller
-            const controller = accounts[0]
-            const registry = await ServiceRegistry.new(controller)
-
-            assert.equal(await registry.controller.call(), controller, "wrong Controller address")
-        })
-    })
-
+describe("ServiceRegistry", () => {
     let fixture
     let registry
-
+    let signers
+    let controller
     before(async () => {
+        signers = await ethers.getSigners()
         fixture = new Fixture(web3)
-
         // Use dummy Controller in these unit tests
         // We are testing the logic of ServiceRegistry directly so we do not
         // interact with the contract via a proxy
         // Thus, we do not need an actual Controller for the tests
-        const controller = accounts[0]
+        controller = signers[0].address
 
-        registry = await ServiceRegistry.new(controller)
+        registry = await (await ethers.getContractFactory("ServiceRegistry")).deploy(controller)
     })
 
     beforeEach(async () => {
@@ -37,37 +30,40 @@ contract("ServiceRegistry", accounts => {
         await fixture.tearDown()
     })
 
+    describe("constructor", () => {
+        it("invokes base Manager contract constructor", async () => {
+            assert.equal(await registry.controller(), controller, "wrong Controller address")
+        })
+    })
+
     describe("setServiceURI", () => {
         it("stores service URI endpoint for caller", async () => {
-            await registry.setServiceURI("foo", {from: accounts[0]})
-            await registry.setServiceURI("bar", {from: accounts[1]})
+            await registry.setServiceURI("foo")
+            await registry.connect(signers[1]).setServiceURI("bar")
 
-            assert.equal(await registry.getServiceURI(accounts[0]), "foo", "wrong service URI stored for caller 1")
-            assert.equal(await registry.getServiceURI(accounts[1]), "bar", "wrong service URI stored for caller 2")
+            assert.equal(await registry.getServiceURI(signers[0].address), "foo", "wrong service URI stored for caller 1")
+            assert.equal(await registry.getServiceURI(signers[1].address), "bar", "wrong service URI stored for caller 2")
         })
 
         it("fires ServiceURIUpdate event", async () => {
-            const txRes = await registry.setServiceURI("foo", {from: accounts[0]})
-            truffleAssert.eventEmitted(
-                txRes,
-                "ServiceURIUpdate",
-                e => e.addr == accounts[0] && e.serviceURI == "foo",
-                "ServiceURIUpdate event not emitted correctly"
+            const tx = await registry.setServiceURI("foo")
+            expect(tx).to.emit(registry, "ServiceURIUpdate").withArgs(
+                signers[0].address, "foo"
             )
         })
     })
 
     describe("getServiceURI", () => {
         it("returns service URI endpoint for provided address", async () => {
-            await registry.setServiceURI("foo", {from: accounts[0]})
-            await registry.setServiceURI("bar", {from: accounts[1]})
+            await registry.setServiceURI("foo")
+            await registry.connect(signers[1]).setServiceURI("bar")
 
-            assert.equal(await registry.getServiceURI(accounts[0]), "foo", "wrong service URI stored for caller 1")
-            assert.equal(await registry.getServiceURI(accounts[1]), "bar", "wrong service URI stored for caller 2")
+            assert.equal(await registry.getServiceURI(signers[0].address), "foo", "wrong service URI stored for caller 1")
+            assert.equal(await registry.getServiceURI(signers[1].address), "bar", "wrong service URI stored for caller 2")
         })
 
         it("returns empty string for address without stored service URI endpoint", async () => {
-            assert.equal(await registry.getServiceURI(accounts[5]), "", "should return empty string for address without service URI")
+            assert.equal(await registry.getServiceURI(signers[5].address), "", "should return empty string for address without service URI")
         })
     })
 })

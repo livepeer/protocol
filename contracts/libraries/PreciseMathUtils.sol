@@ -2,12 +2,11 @@ pragma solidity ^0.5.11;
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
-
 library PreciseMathUtils {
     using SafeMath for uint256;
 
     // Divisor used for representing percentages
-    uint256 public constant PERC_DIVISOR = 10 ** 27;
+    uint256 public constant PERC_DIVISOR = 10**27;
 
     /**
      * @dev Returns whether an amount is a valid percentage out of PERC_DIVISOR
@@ -23,7 +22,11 @@ library PreciseMathUtils {
      * @param _fracNum Numerator of fraction representing the percentage
      * @param _fracDenom Denominator of fraction representing the percentage
      */
-    function percOf(uint256 _amount, uint256 _fracNum, uint256 _fracDenom) internal pure returns (uint256) {
+    function percOf(
+        uint256 _amount,
+        uint256 _fracNum,
+        uint256 _fracDenom
+    ) internal pure returns (uint256) {
         return _amount.mul(percPoints(_fracNum, _fracDenom)).div(PERC_DIVISOR);
     }
 

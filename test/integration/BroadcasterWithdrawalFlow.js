@@ -1,16 +1,14 @@
-import {contractId} from "../../utils/helpers"
-import BN from "bn.js"
 import calcTxCost from "../helpers/calcTxCost"
 
-const Controller = artifacts.require("Controller")
-const TicketBroker = artifacts.require("TicketBroker")
-const BondingManager = artifacts.require("BondingManager")
-const Minter = artifacts.require("Minter")
-const AdjustableRoundsManager = artifacts.require("AdjustableRoundsManager")
-const LivepeerToken = artifacts.require("LivepeerToken")
+import {deployments, ethers} from "hardhat"
 
-contract("BroadcasterWithdrawalFlow", accounts => {
-    const broadcaster = accounts[0]
+import chai, {expect} from "chai"
+import {solidity} from "ethereum-waffle"
+chai.use(solidity)
+
+describe("BroadcasterWithdrawalFlow", () => {
+    let signers
+    let broadcaster
 
     let broker
     let minter
@@ -19,23 +17,15 @@ contract("BroadcasterWithdrawalFlow", accounts => {
     const unlockPeriod = 100
 
     before(async () => {
-        const controller = await Controller.deployed()
+        signers = await ethers.getSigners()
+        broadcaster = signers[0].address
+        const fixture = await deployments.fixture(["Contracts"])
+        broker = await ethers.getContractAt("TicketBroker", fixture.TicketBroker.address)
+        minter = await ethers.getContractAt("Minter", fixture.Minter.address)
+        roundsManager = await ethers.getContractAt("AdjustableRoundsManager", fixture.AdjustableRoundsManager.address)
+        const controller = await ethers.getContractAt("Controller", fixture.Controller.address)
+
         await controller.unpause()
-
-        const brokerAddr = await controller.getContract(contractId("JobsManager"))
-        broker = await TicketBroker.at(brokerAddr)
-
-        const bondingManagerAddr = await controller.getContract(contractId("BondingManager"))
-        await BondingManager.at(bondingManagerAddr)
-
-        const roundsManagerAddr = await controller.getContract(contractId("RoundsManager"))
-        roundsManager = await AdjustableRoundsManager.at(roundsManagerAddr)
-
-        const tokenAddr = await controller.getContract(contractId("LivepeerToken"))
-        await LivepeerToken.at(tokenAddr)
-
-        const minterAddr = await controller.getContract(contractId("Minter"))
-        minter = await Minter.at(minterAddr)
 
         // The reason for this intervention is that fast-forwarding the current default
         // unlockPeriod takes a very long time
@@ -43,28 +33,29 @@ contract("BroadcasterWithdrawalFlow", accounts => {
     })
 
     it("broadcaster withdraws deposit and penalty escrow", async () => {
-        const deposit = new BN(web3.utils.toWei("1", "ether"))
-        const reserve = new BN(web3.utils.toWei("1", "ether"))
-        await broker.fundDeposit({from: broadcaster, value: deposit})
-        await broker.fundReserve({from: broadcaster, value: reserve})
+        const deposit = ethers.utils.parseEther("1")
+        const reserve = ethers.utils.parseEther("1")
+
+        await broker.fundDeposit({value: deposit})
+        await broker.fundReserve({value: reserve})
         const withdrawalAmount = deposit.add(reserve)
 
-        await broker.unlock({from: broadcaster})
+        await broker.unlock()
         const unlockPeriod = (await broker.unlockPeriod.call()).toNumber()
         const currentRound = (await roundsManager.currentRound()).toNumber()
         const roundLength = (await roundsManager.roundLength()).toNumber()
         await roundsManager.setBlockNum((currentRound * roundLength) + (unlockPeriod * roundLength))
 
-        const startBroadcasterBalance = new BN(await web3.eth.getBalance(broadcaster))
-        const startMinterBalance = new BN(await web3.eth.getBalance(minter.address))
+        const startBroadcasterBalance = await ethers.provider.getBalance(broadcaster)
+        const startMinterBalance = await ethers.provider.getBalance(minter.address)
 
-        const withdrawResult = await broker.withdraw({from: broadcaster})
+        const withdrawResult = await broker.withdraw()
 
-        const endMinterBalance = new BN(await web3.eth.getBalance(minter.address))
-        assert.equal(startMinterBalance.sub(endMinterBalance).toString(), withdrawalAmount.toString())
+        const endMinterBalance = await ethers.provider.getBalance(minter.address)
+        expect(startMinterBalance.sub(endMinterBalance)).to.equal(withdrawalAmount)
 
         const txCost = await calcTxCost(withdrawResult)
-        const endBroadcasterBalance = new BN(await web3.eth.getBalance(broadcaster))
-        assert.equal(endBroadcasterBalance.sub(startBroadcasterBalance).add(txCost).toString(), withdrawalAmount.toString())
+        const endBroadcasterBalance = await ethers.provider.getBalance(broadcaster)
+        expect(endBroadcasterBalance.sub(startBroadcasterBalance).add(txCost.toString())).to.equal(withdrawalAmount)
     })
 })

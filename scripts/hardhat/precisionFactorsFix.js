@@ -125,7 +125,7 @@ async function main() {
     await ticketBroker.fundDepositAndReserve(
         ethers.utils.parseUnits("10", "ether"),
         ethers.utils.parseUnits("10", "ether"),
-        { value: ethers.utils.parseUnits("20", "ether") }
+        {value: ethers.utils.parseUnits("20", "ether")}
     )
 
     const newWinningTicket = async (recipient, recipientRand) => {
@@ -165,7 +165,7 @@ async function main() {
         currentRound
     )
     if (!currPool.cumulativeFeeFactor.isZero()) {
-        throw new Error(`current cumulativeFeeFactor != 0`)
+        throw new Error("current cumulativeFeeFactor != 0")
     }
 
     const startPendingFees = await bondingManager.pendingFees(delegator, currentRound)
@@ -179,12 +179,12 @@ async function main() {
         currentRound
     )
     if (!currPool.cumulativeFeeFactor.isZero()) {
-        throw new Error(`current cumulativeFeeFactor != 0`)
+        throw new Error("current cumulativeFeeFactor != 0")
     }
 
     const endPendingFees = await bondingManager.pendingFees(delegator, currentRound)
     if (!startPendingFees.eq(endPendingFees)) {
-        throw new Error(`start pendingFees != end pendingFees before LIP-71 round`)
+        throw new Error("start pendingFees != end pendingFees before LIP-71 round")
     }
 
     const rpc = new RPC(hre.web3)
@@ -199,7 +199,7 @@ async function main() {
         (await bondingManager.getTranscoder(recipient)).lastFeeRound
     )
     if (!lffPool.cumulativeFeeFactor.isZero()) {
-        throw new Error(`previous cumulativeFeeFactor != 0`)
+        throw new Error("previous cumulativeFeeFactor != 0")
     }
 
     let delStartFees = await bondingManager.pendingFees(delegator, currentRound)
@@ -213,7 +213,7 @@ async function main() {
         currentRound
     )
     if (currPool.cumulativeFeeFactor.isZero()) {
-        throw new Error(`current cumulativeFeeFactor = 0`)
+        throw new Error("current cumulativeFeeFactor = 0")
     }
 
     let delEndFees = await bondingManager.pendingFees(delegator, currentRound)
@@ -224,7 +224,7 @@ async function main() {
     }
 
     // Ensure that the new cumulativeFeeFactor is scaled correctly when the previous cumulativeFeeFactor > 0
-    recipient = "0xe3a5793d7c1d2a04a903fa1695b3e3555d6084ca" 
+    recipient = "0xe3a5793d7c1d2a04a903fa1695b3e3555d6084ca"
     delegator = "0xdb7040c40f5ead5ff082fcb28c57bbf7dfd4bee3"
 
     lffPool = await bondingManager.getTranscoderEarningsPoolForRound(
@@ -232,7 +232,7 @@ async function main() {
         (await bondingManager.getTranscoder(recipient)).lastFeeRound
     )
     if (lffPool.cumulativeFeeFactor.isZero()) {
-        throw new Error(`previous cumulativeFeeFactor = 0`)
+        throw new Error("previous cumulativeFeeFactor = 0")
     }
 
     delStartFees = await bondingManager.pendingFees(delegator, currentRound)
@@ -246,7 +246,7 @@ async function main() {
         currentRound
     )
     if (currPool.cumulativeFeeFactor.isZero()) {
-        throw new Error(`current cumulativeFeeFactor = 0`)
+        throw new Error("current cumulativeFeeFactor = 0")
     }
 
     delEndFees = await bondingManager.pendingFees(delegator, currentRound)

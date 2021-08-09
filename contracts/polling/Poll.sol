@@ -1,6 +1,5 @@
 pragma solidity ^0.5.11;
 
-
 contract Poll {
     // The block at which the poll ends and votes can no longer be submitted.
     uint256 public endBlock;
@@ -10,10 +9,7 @@ contract Poll {
     event Vote(address indexed voter, uint256 choiceID);
 
     modifier isActive() {
-        require(
-            block.number <= endBlock,
-            "poll is over"
-        );
+        require(block.number <= endBlock, "poll is over");
         _;
     }
 

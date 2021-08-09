@@ -2,7 +2,6 @@ pragma solidity ^0.5.11;
 
 import "./RoundsManager.sol";
 
-
 contract AdjustableRoundsManager is RoundsManager {
     uint256 num;
     bytes32 hash;

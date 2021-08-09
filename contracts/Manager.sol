@@ -3,7 +3,6 @@ pragma solidity ^0.5.11;
 import "./IManager.sol";
 import "./IController.sol";
 
-
 contract Manager is IManager {
     // Controller that contract is registered with
     IController public controller;

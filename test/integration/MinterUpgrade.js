@@ -1,21 +1,17 @@
 import {contractId} from "../../utils/helpers"
-import {constants} from "../../utils/constants"
-import BN from "bn.js"
+import {deployments, ethers} from "hardhat"
 
-const Controller = artifacts.require("Controller")
-const BondingManager = artifacts.require("BondingManager")
-const Minter = artifacts.require("Minter")
-const AdjustableRoundsManager = artifacts.require("AdjustableRoundsManager")
-const LivepeerToken = artifacts.require("LivepeerToken")
-const TicketBroker = artifacts.require("TicketBroker")
+import chai, {assert, expect} from "chai"
+import {solidity} from "ethereum-waffle"
+chai.use(solidity)
 
-contract("MinterUpgrade", accounts => {
-    const NEW_INFLATION_CHANGE = new BN(1)
+describe("MinterUpgrade", () => {
+    const NEW_INFLATION_CHANGE = ethers.constants.One
 
-    const transcoder1 = accounts[1]
-    const transcoder2 = accounts[2]
-    const broadcaster1 = accounts[3]
-    const broadcaster2 = accounts[4]
+    let transcoder1
+    let transcoder2
+    let broadcaster1
+    let broadcaster2
 
     let controller
     let bondingManager
@@ -26,66 +22,71 @@ contract("MinterUpgrade", accounts => {
 
     let roundLength
 
+    let signers
+
     const checkWithdrawalResult = async broadcaster => {
         const unlockPeriod = await broker.unlockPeriod()
 
-        await broker.unlock({from: broadcaster})
+        await broker.connect(broadcaster).unlock()
 
         await roundsManager.mineBlocks(unlockPeriod.mul(roundLength))
 
-        const startMinterBalance = new BN(await web3.eth.getBalance(minter.address))
-        const startInfo = await broker.getSenderInfo(broadcaster)
+        const startMinterBalance = await ethers.provider.getBalance(minter.address)
+        const startInfo = await broker.getSenderInfo(broadcaster.address)
 
-        await broker.withdraw({from: broadcaster})
+        await broker.connect(broadcaster).withdraw()
 
-        const endMinterBalance = new BN(await web3.eth.getBalance(minter.address))
-        const endInfo = await broker.getSenderInfo(broadcaster)
+        const endMinterBalance = await ethers.provider.getBalance(minter.address)
+        const endInfo = await broker.getSenderInfo(broadcaster.address)
 
         assert.equal(endInfo.sender.deposit.toString(), "0")
         assert.equal(startMinterBalance.sub(endMinterBalance).toString(), startInfo.sender.deposit.toString())
     }
 
     before(async () => {
-        controller = await Controller.deployed()
+        signers = await ethers.getSigners()
+        transcoder1 = signers[0]
+        transcoder2 = signers[1]
+        broadcaster1 = signers[2]
+        broadcaster2 = signers[3]
+
+        const fixture = await deployments.fixture(["Contracts"])
+
+        controller = await ethers.getContractAt("Controller", fixture.Controller.address)
         await controller.unpause()
 
-        const bondingManagerAddr = await controller.getContract(contractId("BondingManager"))
-        bondingManager = await BondingManager.at(bondingManagerAddr)
+        bondingManager = await ethers.getContractAt("BondingManager", fixture.BondingManager.address)
 
-        const roundsManagerAddr = await controller.getContract(contractId("RoundsManager"))
-        roundsManager = await AdjustableRoundsManager.at(roundsManagerAddr)
+        roundsManager = await ethers.getContractAt("AdjustableRoundsManager", fixture.AdjustableRoundsManager.address)
 
-        const tokenAddr = await controller.getContract(contractId("LivepeerToken"))
-        token = await LivepeerToken.at(tokenAddr)
+        token = await ethers.getContractAt("LivepeerToken", fixture.LivepeerToken.address)
 
-        const minterAddr = await controller.getContract(contractId("Minter"))
-        minter = await Minter.at(minterAddr)
+        minter = await ethers.getContractAt("Minter", fixture.Minter.address)
 
-        const brokerAddr = await controller.getContract(contractId("TicketBroker"))
-        broker = await TicketBroker.at(brokerAddr)
+        broker = await ethers.getContractAt("TicketBroker", fixture.TicketBroker.address)
 
         // Set target bonding rate to 0 so inflation decreases each round
         await minter.setTargetBondingRate(0)
 
-        const amount = new BN(10).mul(constants.TOKEN_UNIT)
-        await token.transfer(transcoder1, amount, {from: accounts[0]})
-        await token.transfer(transcoder2, amount, {from: accounts[0]})
+        const amount = ethers.utils.parseEther("10")
+        await token.transfer(transcoder1.address, amount)
+        await token.transfer(transcoder2.address, amount)
 
         // Register transcoder 1
-        await token.approve(bondingManager.address, amount, {from: transcoder1})
-        await bondingManager.bond(amount, transcoder1, {from: transcoder1})
+        await token.connect(transcoder1).approve(bondingManager.address, amount)
+        await bondingManager.connect(transcoder1).bond(amount, transcoder1.address)
 
         // Register transcoder 2
-        await token.approve(bondingManager.address, amount, {from: transcoder2})
-        await bondingManager.bond(amount, transcoder2, {from: transcoder2})
+        await token.connect(transcoder2).approve(bondingManager.address, amount)
+        await bondingManager.connect(transcoder2).bond(amount, transcoder2.address)
 
-        const deposit = new BN(web3.utils.toWei("1", "ether"))
+        const deposit = ethers.utils.parseEther("1")
 
         // Deposit ETH from broadcaster 1
-        await broker.fundDeposit({from: broadcaster1, value: deposit})
+        await broker.connect(broadcaster1).fundDeposit({value: deposit})
 
         // Deposit ETH from broadcaster 2
-        await broker.fundDeposit({from: broadcaster2, value: deposit})
+        await broker.connect(broadcaster2).fundDeposit({value: deposit})
 
         roundLength = await roundsManager.roundLength()
         await roundsManager.setBlockHash(web3.utils.keccak256("foo"))
@@ -103,13 +104,12 @@ contract("MinterUpgrade", accounts => {
     })
 
     it("transcoder 1 calls reward pre-upgrade and receives tokens", async () => {
-        const startStake = await bondingManager.transcoderTotalStake(transcoder1)
+        const startStake = await bondingManager.transcoderTotalStake(transcoder1.address)
 
-        await bondingManager.reward({from: transcoder1})
+        await bondingManager.connect(transcoder1).reward()
 
-        const endStake = await bondingManager.transcoderTotalStake(transcoder1)
-
-        assert.ok(endStake.sub(startStake).gt(new BN(0)))
+        const endStake = await bondingManager.transcoderTotalStake(transcoder1.address)
+        expect(endStake.sub(startStake)).to.be.gt(ethers.constants.Zero)
     })
 
     it("Minter upgrade is executed", async () => {
@@ -117,13 +117,13 @@ contract("MinterUpgrade", accounts => {
         const inflationChange = await minter.inflationChange()
         const targetBondingRate = await minter.targetBondingRate()
         const tokenBal = await token.balanceOf(minter.address)
-        const ethBal = await web3.eth.getBalance(minter.address)
+        const ethBal = await ethers.provider.getBalance(minter.address)
 
         // Sanity check
         assert.notOk(inflationChange.eq(NEW_INFLATION_CHANGE))
 
         // Deploy the new Minter
-        const newMinter = await Minter.new(controller.address, inflation, NEW_INFLATION_CHANGE, targetBondingRate)
+        const newMinter = await (await ethers.getContractFactory("Minter")).deploy(controller.address, inflation, NEW_INFLATION_CHANGE, targetBondingRate)
 
         // Pause the Controller so migrateToNewMinter() can be called
         await controller.pause()
@@ -132,7 +132,7 @@ contract("MinterUpgrade", accounts => {
         await minter.migrateToNewMinter(newMinter.address)
 
         // Register the new Minter
-        await controller.setContractInfo(contractId("Minter"), newMinter.address, "0x123")
+        await controller.setContractInfo(contractId("Minter"), newMinter.address, "0x3031323334353637383930313233343536373839")
 
         // Unpause the Controller after migrateToNewMinter() has been called
         await controller.unpause()
@@ -142,7 +142,7 @@ contract("MinterUpgrade", accounts => {
         assert.equal((await newMinter.targetBondingRate()).toString(), targetBondingRate.toString())
         assert.equal((await newMinter.inflationChange()).toString(), NEW_INFLATION_CHANGE.toString())
         assert.equal((await token.balanceOf(newMinter.address)).toString(), tokenBal.toString())
-        assert.equal((await web3.eth.getBalance(newMinter.address)).toString(), ethBal.toString())
+        assert.equal((await ethers.provider.getBalance(newMinter.address)).toString(), ethBal.toString())
 
         // Check that internal state is reset
         assert.equal((await newMinter.currentMintableTokens()).toString(), "0")
@@ -156,11 +156,11 @@ contract("MinterUpgrade", accounts => {
     })
 
     it("transcoder 2 calls reward post-upgrade in the same round and receives nothing", async () => {
-        const startStake = await bondingManager.transcoderTotalStake(transcoder2)
+        const startStake = await bondingManager.transcoderTotalStake(transcoder2.address)
 
-        await bondingManager.reward({from: transcoder2})
+        await bondingManager.connect(transcoder2).reward()
 
-        const endStake = await bondingManager.transcoderTotalStake(transcoder2)
+        const endStake = await bondingManager.transcoderTotalStake(transcoder2.address)
 
         assert.equal(endStake.sub(startStake).toString(), "0")
     })
@@ -179,23 +179,23 @@ contract("MinterUpgrade", accounts => {
     })
 
     it("transcoder 1 calls reward in the round after the upgrade round and receives tokens", async () => {
-        const startStake = await bondingManager.transcoderTotalStake(transcoder1)
+        const startStake = await bondingManager.transcoderTotalStake(transcoder1.address)
 
-        await bondingManager.reward({from: transcoder1})
+        await bondingManager.connect(transcoder1).reward()
 
-        const endStake = await bondingManager.transcoderTotalStake(transcoder1)
+        const endStake = await bondingManager.transcoderTotalStake(transcoder1.address)
 
-        assert.ok(endStake.sub(startStake).gt(new BN(0)))
+        expect(endStake.sub(startStake)).gt(ethers.constants.Zero)
     })
 
     it("transcoder 2 calls reward in the round after the upgrade round and receives tokens", async () => {
-        const startStake = await bondingManager.transcoderTotalStake(transcoder2)
+        const startStake = await bondingManager.transcoderTotalStake(transcoder2.address)
 
-        await bondingManager.reward({from: transcoder2})
+        await bondingManager.connect(transcoder2).reward()
 
-        const endStake = await bondingManager.transcoderTotalStake(transcoder2)
+        const endStake = await bondingManager.transcoderTotalStake(transcoder2.address)
 
-        assert.ok(endStake.sub(startStake).gt(new BN(0)))
+        assert.ok(endStake.sub(startStake).gt(ethers.constants.Zero))
     })
 
     it("broadcaster 1 withdraws deposit", async () => {
