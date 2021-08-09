@@ -28,18 +28,11 @@ jobs:
     test-contracts:
         docker: 
             - image: cimg/node:14.17.4
-        environment:
-            SOLC_VERSION: '0.5.11'
         working_directory: ~/protocol
         steps:
             - restore_cache:
                 keys:
                     - protocol-{{ .Environment.CIRCLE_SHA1 }}
-            - setup_remote_docker:
-                version: 17.09.0-ce
-            - run:
-                name: Install Dockerized solc
-                command: docker pull ethereum/solc:$SOLC_VERSION
             - run:
                 name: Compile contracts
                 command: yarn compile
