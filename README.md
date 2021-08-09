@@ -47,7 +47,7 @@ Make sure Node.js is installed.
 ```
 git clone https://github.com/livepeer/protocol.git
 cd protocol
-npm install
+yarn
 ```
 
 ### Build
@@ -55,7 +55,7 @@ npm install
 Compile the contracts and build artifacts used for testing and deployment.
 
 ```
-npm run compile
+yarn compile
 ```
 
 ### Clean
@@ -63,7 +63,7 @@ npm run compile
 Remove existing build artifacts.
 
 ```
-npm run clean
+yarn clean
 ```
 
 ### Lint
@@ -71,7 +71,7 @@ npm run clean
 The project uses [ESLint](https://github.com/eslint/eslint) for Javascript linting and [Solium](https://github.com/duaraghav8/Ethlint) for Solidity linting.
 
 ```
-npm run lint
+yarn lint
 ```
 
 ### Run Tests
@@ -83,31 +83,31 @@ Make sure to add relevant API keys inside `.env` file (by copying provided `.env
 To run all tests:
 
 ```
-npm run test
+yarn test
 ```
 
 To run unit tests only:
 
 ```
-npm run test:unit
+yarn test:unit
 ```
 
 To run integration tests only:
 
 ```
-npm run test:integration
+yarn test:integration
 ```
 
 To run gas reporting tests (via [hardhat-gas-reporter](https://hardhat.org/plugins/hardhat-gas-reporter.html)) only:
 
 ```
-npm run test:gas
+yarn test:gas
 ```
 
 To run tests with coverage (via [solidity-coverage](https://github.com/sc-forks/solidity-coverage)) reporting:
 
 ```
-npm run test:coverage
+yarn test:coverage
 ```
 
 ## Deployment
@@ -115,5 +115,5 @@ npm run test:coverage
 Make sure that an ETH node is accessible and that the network being deployed to is supported by the `hardhat.config.ts` configuration.
 
 ```
-npm run deploy
+yarn deploy
 ```

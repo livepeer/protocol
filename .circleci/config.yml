@@ -8,8 +8,8 @@ jobs:
         steps:
             - checkout
             - run:
-                name: npm install
-                command: npm install
+                name: yarn
+                command: yarn
             - save_cache:
                 key: protocol-{{ .Environment.CIRCLE_SHA1 }}
                 paths:
@@ -24,7 +24,7 @@ jobs:
                     - protocol-{{ .Environment.CIRCLE_SHA1 }}
             - run: 
                 name: Run linting
-                command: npm run lint
+                command: yarn lint
     test-contracts:
         docker: 
             - image: cimg/node:14.17.4
@@ -42,10 +42,10 @@ jobs:
                 command: docker pull ethereum/solc:$SOLC_VERSION
             - run:
                 name: Compile contracts
-                command: npm run compile
+                command: yarn compile
             - run: 
                 name: Run tests with coverage reporting
-                command: npm run test:coverage
+                command: yarn test:coverage
                 no_output_timeout: 20m
 
 workflows:

@@ -5,5 +5,5 @@ WORKDIR /app/
 # Need .git so we can get the git head commit hash
 COPY / /app/
 
-RUN npm install
-RUN npm run compile
+RUN yarn
+RUN yarn compile
