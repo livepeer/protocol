@@ -42,7 +42,7 @@
   },
   "homepage": "https://github.com/livepeer/protocol#readme",
   "devDependencies": {
-    "@nomiclabs/hardhat-ethers": "yarn:hardhat-deploy-ethers@^0.3.0-beta.10",
+    "@nomiclabs/hardhat-ethers": "npm:hardhat-deploy-ethers@^0.3.0-beta.10",
     "@nomiclabs/hardhat-etherscan": "^2.1.4",
     "@nomiclabs/hardhat-web3": "^2.0.0",
     "@typechain/ethers-v5": "^7.0.1",
