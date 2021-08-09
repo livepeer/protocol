@@ -1,17 +1,20 @@
-import truffleAssert from "truffle-assertions"
-
 import Fixture from "./helpers/Fixture"
-import expectRevertWithReason from "../helpers/expectFail"
 
-const Poll = artifacts.require("Poll")
+import {web3, ethers} from "hardhat"
 
-contract("Poll", accounts => {
+import chai, {expect, assert} from "chai"
+import {solidity} from "ethereum-waffle"
+chai.use(solidity)
+
+describe("Poll", () => {
     let fixture
     let poll
     let startBlock
     let endBlock
+    let signers
 
-    before(() => {
+    before(async () => {
+        signers = await ethers.getSigners()
         fixture = new Fixture(web3)
     })
 
@@ -19,7 +22,7 @@ contract("Poll", accounts => {
         await fixture.setUp()
         startBlock = await fixture.rpc.getBlockNumberAsync()
         endBlock = startBlock + 10
-        poll = await Poll.new(endBlock)
+        poll = await (await ethers.getContractFactory("Poll")).deploy(endBlock)
     })
 
     afterEach(async () => {
@@ -35,27 +38,27 @@ contract("Poll", accounts => {
     describe("vote", () => {
         it("emit \"Vote\" event when poll is active", async () => {
             let tx = await poll.vote(0)
-            truffleAssert.eventEmitted(tx, "Vote", e => e.voter == accounts[0] && e.choiceID == 0, "Vote event not emitted correctly")
-            tx = await poll.vote(1, {from: accounts[1]})
-            truffleAssert.eventEmitted(tx, "Vote", e => e.voter == accounts[1] && e.choiceID == 1, "Vote event not emitted correctly")
+            expect(tx).to.emit(poll, "Vote").withArgs(signers[0].address, 0)
+            tx = await poll.connect(signers[1]).vote(1)
+            expect(tx).to.emit(poll, "Vote").withArgs(signers[1].address, 1)
         })
 
         it("revert when poll is inactive", async () => {
             await fixture.rpc.waitUntilBlock(endBlock + 1)
-            await expectRevertWithReason(poll.vote(0), "poll is over")
+            await expect(poll.vote(0)).to.be.revertedWith("poll is over")
         })
     })
 
     describe("destroy", () => {
         it("revert when poll is active", async () => {
-            await expectRevertWithReason(poll.destroy(), "poll is active")
+            await expect(poll.destroy()).to.be.revertedWith("poll is active")
         })
 
         it("destroy the contract when poll has ended", async () => {
             await fixture.rpc.waitUntilBlock(endBlock + 1)
-            let tx = await poll.destroy()
+            const tx = await poll.destroy()
             assert.equal(await web3.eth.getCode(poll.address), "0x")
-            assert.equal(tx.receipt.status, true)
+            assert.equal((await tx.wait()).status, 1)
         })
     })
 })

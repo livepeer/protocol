@@ -1,12 +1,11 @@
-pragma solidity >= 0.4.15 < 0.6.0;
+pragma solidity >=0.4.15 <0.6.0;
 
 library AssertBytes32 {
-
     // Constant: BYTES32_NULL
     // The null bytes32: 0
     bytes32 constant BYTES32_NULL = 0x0;
 
-    byte constant MINUS = byte('-');
+    bytes1 constant MINUS = bytes1("-");
 
     /*
         Event: TestEvent
@@ -36,7 +35,11 @@ library AssertBytes32 {
         Returns:
             result (bool) - The result.
     */
-    function equal(bytes32 a, bytes32 b, string memory message) public returns (bool result) {
+    function equal(
+        bytes32 a,
+        bytes32 b,
+        string memory message
+    ) public returns (bool result) {
         result = (a == b);
         _report(result, message);
     }
@@ -56,7 +59,11 @@ library AssertBytes32 {
         Returns:
             result (bool) - The result.
     */
-    function notEqual(bytes32 a, bytes32 b, string memory message) public returns (bool result) {
+    function notEqual(
+        bytes32 a,
+        bytes32 b,
+        string memory message
+    ) public returns (bool result) {
         result = (a != b);
         _report(result, message);
     }
@@ -101,7 +108,7 @@ library AssertBytes32 {
 
     /******************************** internal ********************************/
 
-        /*
+    /*
             Function: _report
 
             Internal function for triggering <TestEvent>.
@@ -111,10 +118,7 @@ library AssertBytes32 {
                 message (string) - The message that is sent if the assertion fails.
         */
     function _report(bool result, string memory message) internal {
-        if(result)
-            emit TestEvent(true, "");
-        else
-            emit TestEvent(false, message);
+        if (result) emit TestEvent(true, "");
+        else emit TestEvent(false, message);
     }
-
 }

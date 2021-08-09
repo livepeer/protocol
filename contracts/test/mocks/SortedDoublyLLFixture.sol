@@ -2,7 +2,6 @@ pragma solidity ^0.5.11;
 
 import "../../libraries/SortedDoublyLL.sol";
 
-
 contract SortedDoublyLLFixture {
     using SortedDoublyLL for SortedDoublyLL.Data;
 
@@ -12,7 +11,12 @@ contract SortedDoublyLLFixture {
         list.setMaxSize(_size);
     }
 
-    function insert(address _id, uint256 _key, address _prevId, address _nextId) public {
+    function insert(
+        address _id,
+        uint256 _key,
+        address _prevId,
+        address _nextId
+    ) public {
         list.insert(_id, _key, _prevId, _nextId);
     }
 
@@ -20,7 +24,12 @@ contract SortedDoublyLLFixture {
         list.remove(_id);
     }
 
-    function updateKey(address _id, uint256 _newKey, address _prevId, address _nextId) public {
+    function updateKey(
+        address _id,
+        uint256 _newKey,
+        address _prevId,
+        address _nextId
+    ) public {
         list.updateKey(_id, _newKey, _prevId, _nextId);
     }
 

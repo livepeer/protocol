@@ -1,6 +1,5 @@
 pragma solidity ^0.5.11;
 
-
 contract RevertProxy {
     bytes data;
 
@@ -10,7 +9,7 @@ contract RevertProxy {
 
     // solium-disable security/no-low-level-calls
     function execute(address _target) external returns (bool) {
-        (bool ok,) = _target.call(data);
+        (bool ok, ) = _target.call(data);
         return ok;
     }
 }

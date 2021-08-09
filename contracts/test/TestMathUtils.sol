@@ -3,7 +3,6 @@ pragma solidity ^0.5.11;
 import "../libraries/MathUtils.sol";
 import "./helpers/truffle/Assert.sol";
 
-
 contract TestMathUtils {
     function test_validPerc() public {
         Assert.equal(MathUtils.validPerc(50), true, "50 should be a valid percentage");

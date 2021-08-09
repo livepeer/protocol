@@ -1,24 +1,27 @@
 import RPC from "../../../utils/rpc"
 import {contractId} from "../../../utils/helpers"
-
-const Controller = artifacts.require("Controller")
-const GenericMock = artifacts.require("GenericMock")
-const BondingManagerMock = artifacts.require("BondingManagerMock")
-const MinterMock = artifacts.require("MinterMock")
+import {ethers} from "hardhat"
 
 export default class Fixture {
     constructor(web3) {
         this.rpc = new RPC(web3)
+        this.commitHash = "0x3031323334353637383930313233343536373839"
     }
 
     async deploy() {
-        this.controller = await Controller.new()
+        const controllerFactory = await ethers.getContractFactory("Controller")
+
+        this.controller = await controllerFactory.deploy()
 
         await this.deployMocks()
         await this.controller.unpause()
     }
 
     async deployMocks() {
+        const GenericMock = await ethers.getContractFactory("GenericMock")
+        const MinterMock = await ethers.getContractFactory("MinterMock")
+        const BondingManagerMock = await ethers.getContractFactory("BondingManagerMock")
+
         this.token = await this.deployAndRegister(GenericMock, "LivepeerToken")
         this.minter = await this.deployAndRegister(MinterMock, "Minter")
         this.bondingManager = await this.deployAndRegister(BondingManagerMock, "BondingManager")
@@ -34,12 +37,12 @@ export default class Fixture {
 
     async register(name, addr) {
         // Use dummy Git commit hash
-        const commitHash = web3.utils.asciiToHex("0x123")
-        await this.controller.setContractInfo(contractId(name), addr, commitHash)
+        await this.controller.setContractInfo(contractId(name), addr, this.commitHash)
     }
 
-    async deployAndRegister(artifact, name, ...args) {
-        const contract = await artifact.new(...args)
+    async deployAndRegister(contractFactory, name, ...args) {
+        const contract = await contractFactory.deploy(...args)
+        await contract.deployed()
         await this.register(name, contract.address)
         return contract
     }

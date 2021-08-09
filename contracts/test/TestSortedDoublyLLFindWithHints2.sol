@@ -3,7 +3,6 @@ pragma solidity ^0.5.11;
 import "./mocks/SortedDoublyLLFixture.sol";
 import "./helpers/truffle/Assert.sol";
 
-
 contract TestSortedDoublyLLFindWithHints2 {
     address[] ids = [address(1), address(2), address(3), address(4), address(5), address(6)];
     uint256[] keys = [uint256(13), uint256(11), uint256(9), uint256(7), uint256(5), uint256(3)];

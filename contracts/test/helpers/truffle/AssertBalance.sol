@@ -1,7 +1,6 @@
-pragma solidity >= 0.4.15 < 0.6.0;
+pragma solidity >=0.4.15 <0.6.0;
 
 library AssertBalance {
-
     /*
         Event: TestEvent
 
@@ -30,7 +29,11 @@ library AssertBalance {
         Returns:
             result (bool) - The result.
     */
-    function balanceEqual(address a, uint b, string memory message) public returns (bool result) {
+    function balanceEqual(
+        address a,
+        uint256 b,
+        string memory message
+    ) public returns (bool result) {
         result = (a.balance == b);
         _report(result, message);
     }
@@ -50,7 +53,11 @@ library AssertBalance {
         Returns:
             result (bool) - The result.
     */
-    function balanceNotEqual(address a, uint b, string memory message) public returns (bool result) {
+    function balanceNotEqual(
+        address a,
+        uint256 b,
+        string memory message
+    ) public returns (bool result) {
         result = (a.balance != b);
         _report(result, message);
     }
@@ -95,7 +102,7 @@ library AssertBalance {
 
     /******************************** internal ********************************/
 
-        /*
+    /*
             Function: _report
 
             Internal function for triggering <TestEvent>.
@@ -105,10 +112,7 @@ library AssertBalance {
                 message (string) - The message that is sent if the assertion fails.
         */
     function _report(bool result, string memory message) internal {
-        if(result)
-            emit TestEvent(true, "");
-        else
-            emit TestEvent(false, message);
+        if (result) emit TestEvent(true, "");
+        else emit TestEvent(false, message);
     }
-
 }

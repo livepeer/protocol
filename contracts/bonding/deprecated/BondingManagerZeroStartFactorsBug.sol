@@ -13,7 +13,6 @@ import "../../snapshots/IMerkleSnapshot.sol";
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
-
 /**
  * @title BondingManager
  * @notice Manages bonding, transcoder and rewards/fee accounting related operations of the Livepeer protocol
@@ -38,51 +37,58 @@ contract BondingManagerZeroStartFactorsBug is ManagerProxyTarget, IBondingManage
 
     // Represents a transcoder's current state
     struct Transcoder {
-        uint256 lastRewardRound;                                        // Last round that the transcoder called reward
-        uint256 rewardCut;                                              // % of reward paid to transcoder by a delegator
-        uint256 feeShare;                                               // % of fees paid to delegators by transcoder
-        uint256 pricePerSegmentDEPRECATED;                              // DEPRECATED - DO NOT USE
-        uint256 pendingRewardCutDEPRECATED;                             // DEPRECATED - DO NOT USE
-        uint256 pendingFeeShareDEPRECATED;                              // DEPRECATED - DO NOT USE
-        uint256 pendingPricePerSegmentDEPRECATED;                       // DEPRECATED - DO NOT USE
-        mapping (uint256 => EarningsPool.Data) earningsPoolPerRound;    // Mapping of round => earnings pool for the round
-        uint256 lastActiveStakeUpdateRound;                             // Round for which the stake was last updated while the transcoder is active
-        uint256 activationRound;                                        // Round in which the transcoder became active - 0 if inactive
-        uint256 deactivationRound;                                      // Round in which the transcoder will become inactive
-        uint256 activeCumulativeRewards;                                // The transcoder's cumulative rewards that are active in the current round
-        uint256 cumulativeRewards;                                      // The transcoder's cumulative rewards (earned via the its active staked rewards and its reward cut).
-        uint256 cumulativeFees;                                         // The transcoder's cumulative fees (earned via the its active staked rewards and its fee share)
-        uint256 lastFeeRound;                                           // Latest round in which the transcoder received fees
+        uint256 lastRewardRound; // Last round that the transcoder called reward
+        uint256 rewardCut; // % of reward paid to transcoder by a delegator
+        uint256 feeShare; // % of fees paid to delegators by transcoder
+        uint256 pricePerSegmentDEPRECATED; // DEPRECATED - DO NOT USE
+        uint256 pendingRewardCutDEPRECATED; // DEPRECATED - DO NOT USE
+        uint256 pendingFeeShareDEPRECATED; // DEPRECATED - DO NOT USE
+        uint256 pendingPricePerSegmentDEPRECATED; // DEPRECATED - DO NOT USE
+        mapping(uint256 => EarningsPool.Data) earningsPoolPerRound; // Mapping of round => earnings pool for the round
+        uint256 lastActiveStakeUpdateRound; // Round for which the stake was last updated while the transcoder is active
+        uint256 activationRound; // Round in which the transcoder became active - 0 if inactive
+        uint256 deactivationRound; // Round in which the transcoder will become inactive
+        uint256 activeCumulativeRewards; // The transcoder's cumulative rewards that are active in the current round
+        uint256 cumulativeRewards; // The transcoder's cumulative rewards (earned via the its active staked rewards and its reward cut).
+        uint256 cumulativeFees; // The transcoder's cumulative fees (earned via the its active staked rewards and its fee share)
+        uint256 lastFeeRound; // Latest round in which the transcoder received fees
     }
 
     // The various states a transcoder can be in
-    enum TranscoderStatus { NotRegistered, Registered }
+    enum TranscoderStatus {
+        NotRegistered,
+        Registered
+    }
 
     // Represents a delegator's current state
     struct Delegator {
-        uint256 bondedAmount;                    // The amount of bonded tokens
-        uint256 fees;                            // The amount of fees collected
-        address delegateAddress;                 // The address delegated to
-        uint256 delegatedAmount;                 // The amount of tokens delegated to the delegator
-        uint256 startRound;                      // The round the delegator transitions to bonded phase and is delegated to someone
-        uint256 withdrawRoundDEPRECATED;         // DEPRECATED - DO NOT USE
-        uint256 lastClaimRound;                  // The last round during which the delegator claimed its earnings
-        uint256 nextUnbondingLockId;             // ID for the next unbonding lock created
-        mapping (uint256 => UnbondingLock) unbondingLocks; // Mapping of unbonding lock ID => unbonding lock
+        uint256 bondedAmount; // The amount of bonded tokens
+        uint256 fees; // The amount of fees collected
+        address delegateAddress; // The address delegated to
+        uint256 delegatedAmount; // The amount of tokens delegated to the delegator
+        uint256 startRound; // The round the delegator transitions to bonded phase and is delegated to someone
+        uint256 withdrawRoundDEPRECATED; // DEPRECATED - DO NOT USE
+        uint256 lastClaimRound; // The last round during which the delegator claimed its earnings
+        uint256 nextUnbondingLockId; // ID for the next unbonding lock created
+        mapping(uint256 => UnbondingLock) unbondingLocks; // Mapping of unbonding lock ID => unbonding lock
     }
 
     // The various states a delegator can be in
-    enum DelegatorStatus { Pending, Bonded, Unbonded }
+    enum DelegatorStatus {
+        Pending,
+        Bonded,
+        Unbonded
+    }
 
     // Represents an amount of tokens that are being unbonded
     struct UnbondingLock {
-        uint256 amount;              // Amount of tokens being unbonded
-        uint256 withdrawRound;       // Round at which unbonding period is over and tokens can be withdrawn
+        uint256 amount; // Amount of tokens being unbonded
+        uint256 withdrawRound; // Round at which unbonding period is over and tokens can be withdrawn
     }
 
     // Keep track of the known transcoders and delegators
-    mapping (address => Delegator) private delegators;
-    mapping (address => Transcoder) private transcoders;
+    mapping(address => Delegator) private delegators;
+    mapping(address => Transcoder) private transcoders;
 
     // DEPRECATED - DO NOT USE
     // The function getTotalBonded() no longer uses this variable
@@ -95,12 +101,12 @@ contract BondingManagerZeroStartFactorsBug is ManagerProxyTarget, IBondingManage
     // DEPRECATED - DO NOT USE
     struct ActiveTranscoderSetDEPRECATED {
         address[] transcoders;
-        mapping (address => bool) isActive;
+        mapping(address => bool) isActive;
         uint256 totalStake;
     }
 
     // DEPRECATED - DO NOT USE
-    mapping (uint256 => ActiveTranscoderSetDEPRECATED) public activeTranscoderSetDEPRECATED;
+    mapping(uint256 => ActiveTranscoderSetDEPRECATED) public activeTranscoderSetDEPRECATED;
 
     // The total active stake (sum of the stake of active set members) for the current round
     uint256 public currentRoundTotalActiveStake;
@@ -199,14 +205,7 @@ contract BondingManagerZeroStartFactorsBug is ManagerProxyTarget, IBondingManage
      * @param _to The address of the transcoder to stake towards
      */
     function bond(uint256 _amount, address _to) external {
-        bondWithHint(
-            _amount,
-            _to,
-            address(0),
-            address(0),
-            address(0),
-            address(0)
-        );
+        bondWithHint(_amount, _to, address(0), address(0), address(0), address(0));
     }
 
     /**
@@ -238,16 +237,15 @@ contract BondingManagerZeroStartFactorsBug is ManagerProxyTarget, IBondingManage
      * @notice Withdraws tokens for an unbonding lock that has existed through an unbonding period
      * @param _unbondingLockId ID of unbonding lock to withdraw with
      */
-    function withdrawStake(uint256 _unbondingLockId)
-        external
-        whenSystemNotPaused
-        currentRoundInitialized
-    {
+    function withdrawStake(uint256 _unbondingLockId) external whenSystemNotPaused currentRoundInitialized {
         Delegator storage del = delegators[msg.sender];
         UnbondingLock storage lock = del.unbondingLocks[_unbondingLockId];
 
         require(isValidUnbondingLock(msg.sender, _unbondingLockId), "invalid unbonding lock ID");
-        require(lock.withdrawRound <= roundsManager().currentRound(), "withdraw round must be before or equal to the current round");
+        require(
+            lock.withdrawRound <= roundsManager().currentRound(),
+            "withdraw round must be before or equal to the current round"
+        );
 
         uint256 amount = lock.amount;
         uint256 withdrawRound = lock.withdrawRound;
@@ -263,12 +261,7 @@ contract BondingManagerZeroStartFactorsBug is ManagerProxyTarget, IBondingManage
     /**
      * @notice Withdraws fees to the caller
      */
-    function withdrawFees()
-        external
-        whenSystemNotPaused
-        currentRoundInitialized
-        autoClaimEarnings
-    {
+    function withdrawFees() external whenSystemNotPaused currentRoundInitialized autoClaimEarnings {
         uint256 fees = delegators[msg.sender].fees;
         require(fees > 0, "no fees to withdraw");
         delegators[msg.sender].fees = 0;
@@ -295,11 +288,7 @@ contract BondingManagerZeroStartFactorsBug is ManagerProxyTarget, IBondingManage
         address _transcoder,
         uint256 _fees,
         uint256 _round
-    )
-        external
-        whenSystemNotPaused
-        onlyTicketBroker
-    {
+    ) external whenSystemNotPaused onlyTicketBroker {
         // Silence unused param compiler warning
         _round;
 
@@ -321,10 +310,7 @@ contract BondingManagerZeroStartFactorsBug is ManagerProxyTarget, IBondingManage
         // on the 'EarningsPool' for '_round' would not be initialized and the fee distribution wouldn't happen as expected
         // for cumulative fee calculation this would result in division by zero.
         if (currentRound > lastRewardRound) {
-            earningsPool.setCommission(
-                t.rewardCut,
-                t.feeShare
-            );
+            earningsPool.setCommission(t.rewardCut, t.feeShare);
 
             uint256 lastUpdateRound = t.lastActiveStakeUpdateRound;
             if (lastUpdateRound < currentRound) {
@@ -344,7 +330,11 @@ contract BondingManagerZeroStartFactorsBug is ManagerProxyTarget, IBondingManage
             // retroactively calculate what its cumulativeRewardFactor would have been for 'currentRound - 1' (cfr. previous lastRewardRound for transcoder)
             // based on rewards for currentRound
             IMinter mtr = minter();
-            uint256 rewards = MathUtils.percOf(mtr.currentMintableTokens().add(mtr.currentMintedTokens()), totalStake, currentRoundTotalActiveStake);
+            uint256 rewards = MathUtils.percOf(
+                mtr.currentMintableTokens().add(mtr.currentMintedTokens()),
+                totalStake,
+                currentRoundTotalActiveStake
+            );
             uint256 transcoderCommissionRewards = MathUtils.percOf(rewards, earningsPool.transcoderRewardCut);
             uint256 delegatorsRewards = rewards.sub(transcoderCommissionRewards);
 
@@ -382,11 +372,7 @@ contract BondingManagerZeroStartFactorsBug is ManagerProxyTarget, IBondingManage
         address _finder,
         uint256 _slashAmount,
         uint256 _finderFee
-    )
-        external
-        whenSystemNotPaused
-        onlyVerifier
-    {
+    ) external whenSystemNotPaused onlyVerifier {
         Delegator storage del = delegators[_transcoder];
 
         if (del.bondedAmount > 0) {
@@ -402,7 +388,9 @@ contract BondingManagerZeroStartFactorsBug is ManagerProxyTarget, IBondingManage
 
             // If still bonded decrease delegate's delegated amount
             if (delegatorStatus(_transcoder) == DelegatorStatus.Bonded) {
-                delegators[del.delegateAddress].delegatedAmount = delegators[del.delegateAddress].delegatedAmount.sub(penalty);
+                delegators[del.delegateAddress].delegatedAmount = delegators[del.delegateAddress].delegatedAmount.sub(
+                    penalty
+                );
             }
 
             // Account for penalty
@@ -453,11 +441,7 @@ contract BondingManagerZeroStartFactorsBug is ManagerProxyTarget, IBondingManage
         uint256 _pendingFees,
         bytes32[] calldata _earningsProof,
         bytes calldata _data
-    )
-        external
-        whenSystemNotPaused
-        currentRoundInitialized
-    {
+    ) external whenSystemNotPaused currentRoundInitialized {
         Delegator storage del = delegators[msg.sender];
 
         uint256 lip52Round = roundsManager().lipUpgradeRound(52);
@@ -469,7 +453,11 @@ contract BondingManagerZeroStartFactorsBug is ManagerProxyTarget, IBondingManage
         bytes32 leaf = keccak256(abi.encode(msg.sender, _pendingStake, _pendingFees));
 
         require(
-            IMerkleSnapshot(controller.getContract(keccak256("MerkleSnapshot"))).verify(keccak256("LIP-52"), _earningsProof, leaf),
+            IMerkleSnapshot(controller.getContract(keccak256("MerkleSnapshot"))).verify(
+                keccak256("LIP-52"),
+                _earningsProof,
+                leaf
+            ),
             "Merkle proof is invalid"
         );
 
@@ -511,15 +499,13 @@ contract BondingManagerZeroStartFactorsBug is ManagerProxyTarget, IBondingManage
      * @param _newPosPrev Address of previous transcoder in pool if the caller joins the pool
      * @param _newPosNext Address of next transcoder in pool if the caller joins the pool
      */
-    function transcoderWithHint(uint256 _rewardCut, uint256 _feeShare, address _newPosPrev, address _newPosNext)
-        public
-        whenSystemNotPaused
-        currentRoundInitialized
-    {
-        require(
-            !roundsManager().currentRoundLocked(),
-            "can't update transcoder params, current round is locked"
-        );
+    function transcoderWithHint(
+        uint256 _rewardCut,
+        uint256 _feeShare,
+        address _newPosPrev,
+        address _newPosNext
+    ) public whenSystemNotPaused currentRoundInitialized {
+        require(!roundsManager().currentRoundLocked(), "can't update transcoder params, current round is locked");
         require(MathUtils.validPerc(_rewardCut), "invalid rewardCut percentage");
         require(MathUtils.validPerc(_feeShare), "invalid feeShare percentage");
         require(isRegisteredTranscoder(msg.sender), "transcoder must be registered");
@@ -536,7 +522,13 @@ contract BondingManagerZeroStartFactorsBug is ManagerProxyTarget, IBondingManage
         t.feeShare = _feeShare;
 
         if (!transcoderPoolV2.contains(msg.sender)) {
-            tryToJoinActiveSet(msg.sender, delegators[msg.sender].delegatedAmount, currentRound.add(1), _newPosPrev, _newPosNext);
+            tryToJoinActiveSet(
+                msg.sender,
+                delegators[msg.sender].delegatedAmount,
+                currentRound.add(1),
+                _newPosPrev,
+                _newPosNext
+            );
         }
 
         emit TranscoderUpdate(msg.sender, _rewardCut, _feeShare);
@@ -564,12 +556,7 @@ contract BondingManagerZeroStartFactorsBug is ManagerProxyTarget, IBondingManage
         address _oldDelegateNewPosNext,
         address _currDelegateNewPosPrev,
         address _currDelegateNewPosNext
-    )
-        public
-        whenSystemNotPaused
-        currentRoundInitialized
-        autoClaimEarnings
-    {
+    ) public whenSystemNotPaused currentRoundInitialized autoClaimEarnings {
         Delegator storage del = delegators[msg.sender];
 
         uint256 currentRound = roundsManager().currentRound();
@@ -591,7 +578,10 @@ contract BondingManagerZeroStartFactorsBug is ManagerProxyTarget, IBondingManage
             // In the future, if delegation towards another registered transcoder as an already
             // registered transcoder becomes useful (i.e. for transitive delegation), this restriction
             // could be removed
-            require(!isRegisteredTranscoder(msg.sender), "registered transcoders can't delegate towards other addresses");
+            require(
+                !isRegisteredTranscoder(msg.sender),
+                "registered transcoders can't delegate towards other addresses"
+            );
             // Changing delegate
             // Set start round
             del.startRound = currentRound.add(1);
@@ -627,12 +617,11 @@ contract BondingManagerZeroStartFactorsBug is ManagerProxyTarget, IBondingManage
      * @param _newPosPrev Address of previous transcoder in pool if the caller remains in the pool
      * @param _newPosNext Address of next transcoder in pool if the caller remains in the pool
      */
-    function unbondWithHint(uint256 _amount, address _newPosPrev, address _newPosNext)
-        public
-        whenSystemNotPaused
-        currentRoundInitialized
-        autoClaimEarnings
-    {
+    function unbondWithHint(
+        uint256 _amount,
+        address _newPosPrev,
+        address _newPosNext
+    ) public whenSystemNotPaused currentRoundInitialized autoClaimEarnings {
         require(delegatorStatus(msg.sender) == DelegatorStatus.Bonded, "caller must be bonded");
 
         Delegator storage del = delegators[msg.sender];
@@ -646,10 +635,7 @@ contract BondingManagerZeroStartFactorsBug is ManagerProxyTarget, IBondingManage
         uint256 unbondingLockId = del.nextUnbondingLockId;
 
         // Create new unbonding lock
-        del.unbondingLocks[unbondingLockId] = UnbondingLock({
-            amount: _amount,
-            withdrawRound: withdrawRound
-        });
+        del.unbondingLocks[unbondingLockId] = UnbondingLock({ amount: _amount, withdrawRound: withdrawRound });
         // Increment ID for next unbonding lock
         del.nextUnbondingLockId = unbondingLockId.add(1);
         // Decrease delegator's bonded amount
@@ -686,12 +672,7 @@ contract BondingManagerZeroStartFactorsBug is ManagerProxyTarget, IBondingManage
         uint256 _unbondingLockId,
         address _newPosPrev,
         address _newPosNext
-    )
-        public
-        whenSystemNotPaused
-        currentRoundInitialized
-        autoClaimEarnings
-    {
+    ) public whenSystemNotPaused currentRoundInitialized autoClaimEarnings {
         require(delegatorStatus(msg.sender) != DelegatorStatus.Unbonded, "caller must be bonded");
 
         // Process rebond using unbonding lock
@@ -714,12 +695,7 @@ contract BondingManagerZeroStartFactorsBug is ManagerProxyTarget, IBondingManage
         uint256 _unbondingLockId,
         address _newPosPrev,
         address _newPosNext
-    )
-        public
-        whenSystemNotPaused
-        currentRoundInitialized
-        autoClaimEarnings
-    {
+    ) public whenSystemNotPaused currentRoundInitialized autoClaimEarnings {
         require(delegatorStatus(msg.sender) == DelegatorStatus.Unbonded, "caller must be unbonded");
 
         // Set delegator's start round and transition into Pending state
@@ -738,11 +714,18 @@ contract BondingManagerZeroStartFactorsBug is ManagerProxyTarget, IBondingManage
      * @param _newPosPrev Address of previous transcoder in pool if the caller is in the pool
      * @param _newPosNext Address of next transcoder in pool if the caller is in the pool
      */
-    function rewardWithHint(address _newPosPrev, address _newPosNext) public whenSystemNotPaused currentRoundInitialized {
+    function rewardWithHint(address _newPosPrev, address _newPosNext)
+        public
+        whenSystemNotPaused
+        currentRoundInitialized
+    {
         uint256 currentRound = roundsManager().currentRound();
 
         require(isActiveTranscoder(msg.sender), "caller must be an active transcoder");
-        require(transcoders[msg.sender].lastRewardRound != currentRound, "caller has already called reward for the current round");
+        require(
+            transcoders[msg.sender].lastRewardRound != currentRound,
+            "caller has already called reward for the current round"
+        );
 
         Transcoder storage t = transcoders[msg.sender];
         EarningsPool.Data storage earningsPool = t.earningsPoolPerRound[currentRound];
@@ -778,9 +761,7 @@ contract BondingManagerZeroStartFactorsBug is ManagerProxyTarget, IBondingManage
      * @return Pending bonded stake for '_delegator' since last claiming rewards
      */
     function pendingStake(address _delegator, uint256 _endRound) public view returns (uint256) {
-        (
-            uint256 stake,
-        ) = pendingStakeAndFees(_delegator, _endRound);
+        (uint256 stake, ) = pendingStakeAndFees(_delegator, _endRound);
         return stake;
     }
 
@@ -791,10 +772,7 @@ contract BondingManagerZeroStartFactorsBug is ManagerProxyTarget, IBondingManage
      * @return Pending fees for '_delegator' since last claiming fees
      */
     function pendingFees(address _delegator, uint256 _endRound) public view returns (uint256) {
-        (
-            ,
-            uint256 fees
-        ) = pendingStakeAndFees(_delegator, _endRound);
+        (, uint256 fees) = pendingStakeAndFees(_delegator, _endRound);
         return fees;
     }
 
@@ -853,12 +831,21 @@ contract BondingManagerZeroStartFactorsBug is ManagerProxyTarget, IBondingManage
      * @return cumulativeFees Transcoder's cumulative fees (earned via its active staked rewards and its fee share)
      * @return lastFeeRound Latest round that the transcoder received fees
      */
-    function getTranscoder(
-        address _transcoder
-    )
+    function getTranscoder(address _transcoder)
         public
         view
-        returns (uint256 lastRewardRound, uint256 rewardCut, uint256 feeShare, uint256 lastActiveStakeUpdateRound, uint256 activationRound, uint256 deactivationRound, uint256 activeCumulativeRewards, uint256 cumulativeRewards, uint256 cumulativeFees, uint256 lastFeeRound)
+        returns (
+            uint256 lastRewardRound,
+            uint256 rewardCut,
+            uint256 feeShare,
+            uint256 lastActiveStakeUpdateRound,
+            uint256 activationRound,
+            uint256 deactivationRound,
+            uint256 activeCumulativeRewards,
+            uint256 cumulativeRewards,
+            uint256 cumulativeFees,
+            uint256 lastFeeRound
+        )
     {
         Transcoder storage t = transcoders[_transcoder];
 
@@ -890,13 +877,22 @@ contract BondingManagerZeroStartFactorsBug is ManagerProxyTarget, IBondingManage
      * @return cumulativeRewardFactor The cumulative reward factor for delegator rewards calculation (only used after LIP-36)
      * @return cumulativeFeeFactor The cumulative fee factor for delegator fees calculation (only used after LIP-36)
      */
-    function getTranscoderEarningsPoolForRound(
-        address _transcoder,
-        uint256 _round
-    )
+    function getTranscoderEarningsPoolForRound(address _transcoder, uint256 _round)
         public
         view
-        returns (uint256 rewardPool, uint256 feePool, uint256 totalStake, uint256 claimableStake, uint256 transcoderRewardCut, uint256 transcoderFeeShare, uint256 transcoderRewardPool, uint256 transcoderFeePool, bool hasTranscoderRewardFeePool, uint256 cumulativeRewardFactor, uint256 cumulativeFeeFactor)
+        returns (
+            uint256 rewardPool,
+            uint256 feePool,
+            uint256 totalStake,
+            uint256 claimableStake,
+            uint256 transcoderRewardCut,
+            uint256 transcoderFeeShare,
+            uint256 transcoderRewardPool,
+            uint256 transcoderFeePool,
+            bool hasTranscoderRewardFeePool,
+            uint256 cumulativeRewardFactor,
+            uint256 cumulativeFeeFactor
+        )
     {
         EarningsPool.Data storage earningsPool = transcoders[_transcoder].earningsPoolPerRound[_round];
 
@@ -924,12 +920,18 @@ contract BondingManagerZeroStartFactorsBug is ManagerProxyTarget, IBondingManage
      * @return round for which '_delegator' has last claimed earnings
      * @return ID for the next unbonding lock created for '_delegator'
      */
-    function getDelegator(
-        address _delegator
-    )
+    function getDelegator(address _delegator)
         public
         view
-        returns (uint256 bondedAmount, uint256 fees, address delegateAddress, uint256 delegatedAmount, uint256 startRound, uint256 lastClaimRound, uint256 nextUnbondingLockId)
+        returns (
+            uint256 bondedAmount,
+            uint256 fees,
+            address delegateAddress,
+            uint256 delegatedAmount,
+            uint256 startRound,
+            uint256 lastClaimRound,
+            uint256 nextUnbondingLockId
+        )
     {
         Delegator storage del = delegators[_delegator];
 
@@ -949,10 +951,7 @@ contract BondingManagerZeroStartFactorsBug is ManagerProxyTarget, IBondingManage
      * @return amount of stake locked up by unbonding lock
      * @return round in which 'amount' becomes available for withdrawal
      */
-    function getDelegatorUnbondingLock(
-        address _delegator,
-        uint256 _unbondingLockId
-    )
+    function getDelegatorUnbondingLock(address _delegator, uint256 _unbondingLockId)
         public
         view
         returns (uint256 amount, uint256 withdrawRound)
@@ -1003,7 +1002,7 @@ contract BondingManagerZeroStartFactorsBug is ManagerProxyTarget, IBondingManage
         return currentRoundTotalActiveStake;
     }
 
-   /**
+    /**
      * @notice Return whether a transcoder is active for the current round
      * @param _transcoder Transcoder address
      * @return true if transcoder is active
@@ -1041,7 +1040,11 @@ contract BondingManagerZeroStartFactorsBug is ManagerProxyTarget, IBondingManage
      * @param _round The round to fetch the latest cumulative factors for
      * @return pool An EarningsPool.Data populated with the latest cumulative factors for _round
      */
-    function latestCumulativeFactorsPool(Transcoder storage _transcoder, uint256 _round) internal view returns (EarningsPool.Data memory pool) {
+    function latestCumulativeFactorsPool(Transcoder storage _transcoder, uint256 _round)
+        internal
+        view
+        returns (EarningsPool.Data memory pool)
+    {
         pool.cumulativeRewardFactor = _transcoder.earningsPoolPerRound[_round].cumulativeRewardFactor;
         pool.cumulativeFeeFactor = _transcoder.earningsPoolPerRound[_round].cumulativeFeeFactor;
 
@@ -1075,11 +1078,7 @@ contract BondingManagerZeroStartFactorsBug is ManagerProxyTarget, IBondingManage
         uint256 _endRound,
         uint256 _stake,
         uint256 _fees
-    )
-        internal
-        view
-        returns (uint256 cStake, uint256 cFees)
-    {
+    ) internal view returns (uint256 cStake, uint256 cFees) {
         uint256 baseRewardFactor = MathUtils.percPoints(1, 1);
 
         // Fetch start cumulative factors
@@ -1106,11 +1105,7 @@ contract BondingManagerZeroStartFactorsBug is ManagerProxyTarget, IBondingManage
             )
         );
 
-        cStake = MathUtils.percOf(
-            _stake,
-            endPool.cumulativeRewardFactor,
-            startPool.cumulativeRewardFactor
-        );
+        cStake = MathUtils.percOf(_stake, endPool.cumulativeRewardFactor, startPool.cumulativeRewardFactor);
 
         return (cStake, cFees);
     }
@@ -1121,7 +1116,11 @@ contract BondingManagerZeroStartFactorsBug is ManagerProxyTarget, IBondingManage
      * @param _endRound The last round to claim earnings for when calculating the pending stake and fees
      * @return (stake, fees) where stake is the delegator's pending stake and fees is the delegator's pending fees
      */
-    function pendingStakeAndFees(address _delegator, uint256 _endRound) internal view returns (uint256 stake, uint256 fees) {
+    function pendingStakeAndFees(address _delegator, uint256 _endRound)
+        internal
+        view
+        returns (uint256 stake, uint256 fees)
+    {
         Delegator storage del = delegators[_delegator];
         Transcoder storage t = transcoders[del.delegateAddress];
 
@@ -1167,10 +1166,7 @@ contract BondingManagerZeroStartFactorsBug is ManagerProxyTarget, IBondingManage
 
         // The LIP-36 earnings claiming algorithm uses the cumulative factors from the delegator's lastClaimRound i.e. startRound - 1
         // and from the specified _endRound
-        (
-            stake,
-            fees
-        ) = delegatorCumulativeStakeAndFees(t, startRound.sub(1), _endRound, stake, fees);
+        (stake, fees) = delegatorCumulativeStakeAndFees(t, startRound.sub(1), _endRound, stake, fees);
 
         if (isTranscoder) {
             stake = stake.add(t.cumulativeRewards);
@@ -1185,7 +1181,12 @@ contract BondingManagerZeroStartFactorsBug is ManagerProxyTarget, IBondingManage
      * @param _delegate The delegate to increase the stake for
      * @param _amount The amount to increase the stake for '_delegate' by
      */
-    function increaseTotalStake(address _delegate, uint256 _amount, address _newPosPrev, address _newPosNext) internal {
+    function increaseTotalStake(
+        address _delegate,
+        uint256 _amount,
+        address _newPosPrev,
+        address _newPosNext
+    ) internal {
         if (isRegisteredTranscoder(_delegate)) {
             uint256 currStake = transcoderTotalStake(_delegate);
             uint256 newStake = currStake.add(_amount);
@@ -1223,7 +1224,12 @@ contract BondingManagerZeroStartFactorsBug is ManagerProxyTarget, IBondingManage
      * @param _delegate The transcoder to decrease the stake for
      * @param _amount The amount to decrease the stake for '_delegate' by
      */
-    function decreaseTotalStake(address _delegate, uint256 _amount, address _newPosPrev, address _newPosNext) internal {
+    function decreaseTotalStake(
+        address _delegate,
+        uint256 _amount,
+        address _newPosPrev,
+        address _newPosNext
+    ) internal {
         if (transcoderPoolV2.contains(_delegate)) {
             uint256 currStake = transcoderTotalStake(_delegate);
             uint256 newStake = currStake.sub(_amount);
@@ -1262,9 +1268,7 @@ contract BondingManagerZeroStartFactorsBug is ManagerProxyTarget, IBondingManage
         uint256 _activationRound,
         address _newPosPrev,
         address _newPosNext
-    )
-        internal
-    {
+    ) internal {
         uint256 pendingNextRoundTotalActiveStake = nextRoundTotalActiveStake;
 
         if (transcoderPoolV2.isFull()) {
@@ -1330,9 +1334,7 @@ contract BondingManagerZeroStartFactorsBug is ManagerProxyTarget, IBondingManage
         uint256 _round,
         address _newPosPrev,
         address _newPosNext
-    )
-        internal
-    {
+    ) internal {
         Transcoder storage t = transcoders[_transcoder];
         EarningsPool.Data storage earningsPool = t.earningsPoolPerRound[_round];
         EarningsPool.Data storage prevEarningsPool = t.earningsPoolPerRound[t.lastRewardRound];
@@ -1342,7 +1344,11 @@ contract BondingManagerZeroStartFactorsBug is ManagerProxyTarget, IBondingManage
         uint256 transcoderCommissionRewards = MathUtils.percOf(_rewards, earningsPool.transcoderRewardCut);
         uint256 delegatorsRewards = _rewards.sub(transcoderCommissionRewards);
         // Calculate the rewards earned by the transcoder's earned rewards
-        uint256 transcoderRewardStakeRewards = MathUtils.percOf(delegatorsRewards, t.activeCumulativeRewards, earningsPool.totalStake);
+        uint256 transcoderRewardStakeRewards = MathUtils.percOf(
+            delegatorsRewards,
+            t.activeCumulativeRewards,
+            earningsPool.totalStake
+        );
         // Track rewards earned by the transcoder based on its earned rewards and rewardCut
         t.cumulativeRewards = t.cumulativeRewards.add(transcoderRewardStakeRewards).add(transcoderCommissionRewards);
         // Update cumulative reward factor with new rewards
@@ -1360,7 +1366,11 @@ contract BondingManagerZeroStartFactorsBug is ManagerProxyTarget, IBondingManage
      * @param _endRound The last round for which to update a delegator's stake with earnings pool shares
      * @param _lastClaimRound The round for which a delegator has last claimed earnings
      */
-    function updateDelegatorWithEarnings(address _delegator, uint256 _endRound, uint256 _lastClaimRound) internal {
+    function updateDelegatorWithEarnings(
+        address _delegator,
+        uint256 _endRound,
+        uint256 _lastClaimRound
+    ) internal {
         Delegator storage del = delegators[_delegator];
         uint256 startRound = _lastClaimRound.add(1);
         uint256 currentBondedAmount = del.bondedAmount;
@@ -1378,13 +1388,13 @@ contract BondingManagerZeroStartFactorsBug is ManagerProxyTarget, IBondingManage
                 // The user should instead manually invoke `claimEarnings` to split up the claiming process
                 // across multiple transactions
                 uint256 endLoopRound = _endRound <= lip36Round ? _endRound : lip36Round;
-                require(endLoopRound.sub(_lastClaimRound) <= maxEarningsClaimsRounds, "too many rounds to claim through");
+                require(
+                    endLoopRound.sub(_lastClaimRound) <= maxEarningsClaimsRounds,
+                    "too many rounds to claim through"
+                );
             }
 
-            (
-                currentBondedAmount,
-                currentFees
-            ) = pendingStakeAndFees(_delegator, _endRound);
+            (currentBondedAmount, currentFees) = pendingStakeAndFees(_delegator, _endRound);
 
             // Check whether the endEarningsPool is initialised
             // If it is not initialised set it's cumulative factors so that they can be used when a delegator
@@ -1392,7 +1402,9 @@ contract BondingManagerZeroStartFactorsBug is ManagerProxyTarget, IBondingManage
             Transcoder storage t = transcoders[del.delegateAddress];
             EarningsPool.Data storage endEarningsPool = t.earningsPoolPerRound[_endRound];
             if (endEarningsPool.cumulativeRewardFactor == 0) {
-                endEarningsPool.cumulativeRewardFactor = t.earningsPoolPerRound[t.lastRewardRound].cumulativeRewardFactor;
+                endEarningsPool.cumulativeRewardFactor = t
+                    .earningsPoolPerRound[t.lastRewardRound]
+                    .cumulativeRewardFactor;
             }
             if (endEarningsPool.cumulativeFeeFactor == 0) {
                 endEarningsPool.cumulativeFeeFactor = t.earningsPoolPerRound[t.lastFeeRound].cumulativeFeeFactor;
@@ -1428,7 +1440,12 @@ contract BondingManagerZeroStartFactorsBug is ManagerProxyTarget, IBondingManage
      * @param _newPosPrev Address of previous transcoder in pool if the delegate is already in or joins the pool
      * @param _newPosNext Address of next transcoder in pool if the delegate is already in or joins the pool
      */
-    function processRebond(address _delegator, uint256 _unbondingLockId, address _newPosPrev, address _newPosNext) internal {
+    function processRebond(
+        address _delegator,
+        uint256 _unbondingLockId,
+        address _newPosPrev,
+        address _newPosNext
+    ) internal {
         Delegator storage del = delegators[_delegator];
         UnbondingLock storage lock = del.unbondingLocks[_unbondingLockId];
 
@@ -1471,24 +1488,18 @@ contract BondingManagerZeroStartFactorsBug is ManagerProxyTarget, IBondingManage
     }
 
     function _onlyTicketBroker() internal view {
-        require(
-            msg.sender == controller.getContract(keccak256("TicketBroker")),
-            "caller must be TicketBroker"
-        );
+        require(msg.sender == controller.getContract(keccak256("TicketBroker")), "caller must be TicketBroker");
     }
 
     function _onlyRoundsManager() internal view {
-        require(
-            msg.sender == controller.getContract(keccak256("RoundsManager")),
-            "caller must be RoundsManager"
-        );
+        require(msg.sender == controller.getContract(keccak256("RoundsManager")), "caller must be RoundsManager");
     }
 
     function _onlyVerifier() internal view {
         require(msg.sender == controller.getContract(keccak256("Verifier")), "caller must be Verifier");
     }
 
-    function  _currentRoundInitialized() internal view {
+    function _currentRoundInitialized() internal view {
         require(roundsManager().currentRoundInitialized(), "current round is not initialized");
     }
 

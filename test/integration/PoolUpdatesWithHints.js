@@ -1,16 +1,13 @@
 import RPC from "../../utils/rpc"
-import {contractId} from "../../utils/helpers"
-import {constants} from "../../utils/constants"
-import truffleAssert from "truffle-assertions"
+import {deployments, ethers} from "hardhat"
+import chai, {assert, expect} from "chai"
+import {solidity} from "ethereum-waffle"
+chai.use(solidity)
 
-const Controller = artifacts.require("Controller")
-const BondingManager = artifacts.require("BondingManager")
-const AdjustableRoundsManager = artifacts.require("AdjustableRoundsManager")
-const LivepeerToken = artifacts.require("LivepeerToken")
-
-contract("PoolUpdatesWithHints", accounts => {
+describe("PoolUpdatesWithHints", () => {
     let rpc
     let snapshotId
+    let signers
 
     let controller
     let bondingManager
@@ -20,18 +17,18 @@ contract("PoolUpdatesWithHints", accounts => {
     let roundLength
 
     // Default active set size is 10
-    const transcoders = accounts.slice(0, 10)
-    const delegator = accounts[11]
-    const newTranscoder = accounts[12]
+    let transcoders
+    let delegator
+    let newTranscoder
 
     // Creates a full pool using the addresses in `accs`
     // Upon creation, the pool ordering (descending from first position) is:
     // (accs[0], accs.length) -> (accs[1], accs.length - 1) -> .. -> (accs[accs.length - 1], 1)
     const createFullPool = async accs => {
-        let prevAcc = constants.NULL_ADDRESS
+        let prevAcc = {address: ethers.constants.AddressZero}
         let stake = accs.length
-        for (let acc of accs) {
-            await selfBond(acc, stake, prevAcc, constants.NULL_ADDRESS)
+        for (const acc of accs) {
+            await selfBond(acc, stake, prevAcc, ethers.constants.AddressZero)
             prevAcc = acc
             stake--
         }
@@ -41,20 +38,19 @@ contract("PoolUpdatesWithHints", accounts => {
     }
 
     const approve = async (delegator, amount) => {
-        await token.transfer(delegator, amount)
-        await token.approve(bondingManager.address, amount, {from: delegator})
+        await token.transfer(delegator.address, amount)
+        await token.connect(delegator).approve(bondingManager.address, amount)
     }
 
     const selfBond = async (delegator, amount, newPosPrev, newPosNext) => {
         await approve(delegator, amount)
-        await bondingManager.bondWithHint(
+        await bondingManager.connect(delegator).bondWithHint(
             amount,
-            delegator,
-            constants.NULL_ADDRESS,
-            constants.NULL_ADDRESS,
-            newPosPrev,
-            newPosNext,
-            {from: delegator}
+            delegator.address,
+            ethers.constants.AddressZero,
+            ethers.constants.AddressZero,
+            newPosPrev.address,
+            newPosNext
         )
     }
 
@@ -64,10 +60,10 @@ contract("PoolUpdatesWithHints", accounts => {
     }
 
     const transcoderPool = async () => {
-        let pool = []
+        const pool = []
         let tr = await bondingManager.getFirstTranscoderInPool()
 
-        while (tr != constants.NULL_ADDRESS) {
+        while (tr != ethers.constants.AddressZero) {
             pool.push(tr)
             tr = await bondingManager.getNextTranscoderInPool(tr)
         }
@@ -76,20 +72,22 @@ contract("PoolUpdatesWithHints", accounts => {
     }
 
     before(async () => {
+        signers = await ethers.getSigners()
+        transcoders = signers.slice(0, 10)
+        delegator = signers[11]
+        newTranscoder = signers[12]
         rpc = new RPC(web3)
 
-        controller = await Controller.deployed()
+        const fixture = await deployments.fixture(["Contracts"])
+        controller = await ethers.getContractAt("Controller", fixture.Controller.address)
 
-        const bondingManagerAddr = await controller.getContract(contractId("BondingManager"))
-        bondingManager = await BondingManager.at(bondingManagerAddr)
+        bondingManager = await ethers.getContractAt("BondingManager", fixture.BondingManager.address)
 
-        const roundsManagerAddr = await controller.getContract(contractId("RoundsManager"))
-        roundsManager = await AdjustableRoundsManager.at(roundsManagerAddr)
+        roundsManager = await ethers.getContractAt("AdjustableRoundsManager", fixture.AdjustableRoundsManager.address)
 
-        const tokenAddr = await controller.getContract(contractId("LivepeerToken"))
-        token = await LivepeerToken.at(tokenAddr)
+        token = await ethers.getContractAt("LivepeerToken", fixture.LivepeerToken.address)
 
-        roundLength = await roundsManager.roundLength.call()
+        roundLength = await roundsManager.roundLength()
 
         await controller.unpause()
 
@@ -108,7 +106,7 @@ contract("PoolUpdatesWithHints", accounts => {
         const pool = await transcoderPool()
 
         for (let i = 0; i < transcoders.length; i++) {
-            assert.equal(pool[i], transcoders[i])
+            assert.equal(pool[i], transcoders[i].address)
         }
     })
 
@@ -116,100 +114,103 @@ contract("PoolUpdatesWithHints", accounts => {
         // All transcoders call reward() except for the last one
         const size = transcoders.length - 1
         const rewardTranscoders = transcoders.slice(0, size - 1)
-        for (let tr of rewardTranscoders) {
-            await bondingManager.reward({from: tr})
+        for (const tr of rewardTranscoders) {
+            await bondingManager.connect(tr).reward()
         }
 
-        let testSnapshotId = await rpc.snapshot()
+        const testSnapshotId = await rpc.snapshot()
 
         // Get gas cost of reward()
-        const txResRewardNoHint = await bondingManager.reward({from: transcoders[size - 1]})
-        assert.equal(await transcoderAtPoolPos(size - 1), transcoders[size - 1])
+        const txResNoHint = await (await bondingManager.connect(transcoders[size - 1]).reward()).wait()
+        assert.equal(await transcoderAtPoolPos(size - 1), transcoders[size - 1].address)
 
         await rpc.revert(testSnapshotId)
 
         // Get gas cost rewardWithHint()
-        const txResRewardHint = await bondingManager.rewardWithHint(transcoders[size - 2], constants.NULL_ADDRESS, {from: transcoders[size - 1]})
-        assert.equal(await transcoderAtPoolPos(size - 1), transcoders[size - 1])
+        const txResHint = await (await bondingManager.connect(transcoders[size - 1]).rewardWithHint(transcoders[size - 2].address, ethers.constants.AddressZero)).wait()
+        assert.equal(await transcoderAtPoolPos(size - 1), transcoders[size - 1].address)
 
         // Gas cost of rewardWithHint() should be less than gas cost of reward()
-        assert.isBelow(txResRewardHint.receipt.gasUsed, txResRewardNoHint.receipt.gasUsed)
+        assert.isBelow(txResHint.cumulativeGasUsed, txResNoHint.cumulativeGasUsed)
     })
 
     it("new transcoder joins the pool", async () => {
         const size = transcoders.length
         await approve(transcoders[size - 2], 1)
-        await bondingManager.bond(1, transcoders[size - 2], {from: transcoders[size - 2]})
+        await bondingManager.connect(transcoders[size - 2]).bond(1, transcoders[size - 2].address)
         await approve(transcoders[size - 1], 1)
-        await bondingManager.bond(1, transcoders[size - 1], {from: transcoders[size - 1]})
+        await bondingManager.connect(transcoders[size - 1]).bond(1, transcoders[size - 1].address)
 
         // Not enough stake to join pool
         await approve(newTranscoder, 2)
-        await bondingManager.bond(2, newTranscoder, {from: newTranscoder})
+        await bondingManager.connect(newTranscoder).bond(2, newTranscoder.address)
 
         // After this tx, the new transcoder should have enough stake to join pool
-        await bondingManager.unbond(1, {from: transcoders[size - 1]})
+        await bondingManager.connect(transcoders[size - 1]).unbond(1)
+        const dr = (await roundsManager.currentRound()).add(1)
+        const testSnapshotId = await rpc.snapshot()
 
-        let testSnapshotId = await rpc.snapshot()
 
         // Pool ordering (descending)
         // (transcoders[size - 4], 4) -> (transcoders[size - 2], 3) -> (transcoders[size - 3], 3) -> (transcoders[size - 1], 2)
 
         // Get gas cost of transcoder()
-        const txResNoHint = await bondingManager.transcoder(0, 0, {from: newTranscoder})
-        assert.equal(await transcoderAtPoolPos(size - 1), newTranscoder)
-        truffleAssert.eventEmitted(txResNoHint, "TranscoderDeactivated", e => e.transcoder == transcoders[size - 1])
+        let tx = await bondingManager.connect(newTranscoder).transcoder(0, 0)
+        const txResNoHint = await tx.wait()
+
+        assert.equal(await transcoderAtPoolPos(size - 1), newTranscoder.address)
+        expect(tx).to.emit(bondingManager, "TranscoderDeactivated").withArgs(transcoders[size - 1].address, dr)
 
         await rpc.revert(testSnapshotId)
 
         // Get gas cost of transcoderWithHint()
-        const txResHint = await bondingManager.transcoderWithHint(0, 0, transcoders[size - 3], constants.NULL_ADDRESS, {from: newTranscoder})
-        assert.equal(await transcoderAtPoolPos(size - 1), newTranscoder)
-        truffleAssert.eventEmitted(txResHint, "TranscoderDeactivated", e => e.transcoder == transcoders[size - 1])
+        tx = await bondingManager.connect(newTranscoder).transcoderWithHint(0, 0, transcoders[size - 3].address, ethers.constants.AddressZero)
+        const txResHint = await tx.wait()
+        assert.equal(await transcoderAtPoolPos(size - 1), newTranscoder.address)
+        expect(tx).to.emit(bondingManager, "TranscoderDeactivated").withArgs(transcoders[size - 1].address, dr)
 
         // Gas cost of transcoderWithHint() should be less than gas cost of transcoder()
-        assert.isBelow(txResHint.receipt.gasUsed, txResNoHint.receipt.gasUsed)
+        assert.isBelow(txResHint.cumulativeGasUsed, txResNoHint.cumulativeGasUsed)
     })
 
     it("delegator bonds with hint", async () => {
         const size = transcoders.length
         await approve(delegator, 1)
 
-        let testSnapshotId = await rpc.snapshot()
+        const testSnapshotId = await rpc.snapshot()
 
         // Pool ordering (descending)
         // (transcoders[size - 4], 4) -> (transcoders[size - 3], 3) -> (transcoders[size - 2], 2) -> (transcoders[size - 1], 1)
 
         // Get gas cost of bond()
-        const txResNoHint = await bondingManager.bond(1, transcoders[size - 2], {from: delegator})
+        const txResNoHint = await (await bondingManager.connect(delegator).bond(1, transcoders[size - 2].address)).wait()
         // transcoders[size - 2] should have moved up one position
-        assert.equal(await transcoderAtPoolPos(size - 3), transcoders[size - 2])
+        assert.equal(await transcoderAtPoolPos(size - 3), transcoders[size - 2].address)
 
         await rpc.revert(testSnapshotId)
 
         // Get gas cost of bondWithHint()
-        const txResHint = await bondingManager.bondWithHint(
+        const txResHint = await (await bondingManager.connect(delegator).bondWithHint(
             1,
-            transcoders[size - 2],
-            constants.NULL_ADDRESS,
-            constants.NULL_ADDRESS,
-            transcoders[size - 4],
-            transcoders[size - 3],
-            {from: delegator}
-        )
+            transcoders[size - 2].address,
+            ethers.constants.AddressZero,
+            ethers.constants.AddressZero,
+            transcoders[size - 4].address,
+            transcoders[size - 3].address
+        )).wait()
         // transcoders[size - 2] should have moved up one position
-        assert.equal(await transcoderAtPoolPos(size - 3), transcoders[size - 2])
+        assert.equal(await transcoderAtPoolPos(size - 3), transcoders[size - 2].address)
 
         // Gas cost of bondWithHint() should be less than gas cost of bond()
-        assert.isBelow(txResHint.receipt.gasUsed, txResNoHint.receipt.gasUsed)
+        assert.isBelow(txResHint.cumulativeGasUsed, txResNoHint.cumulativeGasUsed)
     })
 
     it("delegator changes delegation with hint", async () => {
         const size = transcoders.length
         await approve(delegator, 1)
-        await bondingManager.bond(1, transcoders[size - 2], {from: delegator})
+        await bondingManager.connect(delegator).bond(1, transcoders[size - 2].address)
 
-        let testSnapshotId = await rpc.snapshot()
+        const testSnapshotId = await rpc.snapshot()
 
         // Pool ordering (descending)
         // Before:
@@ -218,63 +219,63 @@ contract("PoolUpdatesWithHints", accounts => {
         // (transcoders[size - 4], 4) -> (transcoders[size - 3], 3) -> (transcoders[size - 1], 2) -> (transcoders[size - 2], 2)
 
         // Get gas cost of bond()
-        const txResNoHint = await bondingManager.bond(0, transcoders[size - 1], {from: delegator})
-        assert.equal(await transcoderAtPoolPos(size - 1), transcoders[size - 2])
-        assert.equal(await transcoderAtPoolPos(size - 2), transcoders[size - 1])
+        const txResNoHint = await (await bondingManager.connect(delegator).bond(0, transcoders[size - 1].address)).wait()
+        assert.equal(await transcoderAtPoolPos(size - 1), transcoders[size - 2].address)
+        assert.equal(await transcoderAtPoolPos(size - 2), transcoders[size - 1].address)
 
         await rpc.revert(testSnapshotId)
 
         // Get gas cost of bondWithHint()
-        const txResHint = await bondingManager.bondWithHint(
+        const txResHint = await (await bondingManager.connect(delegator).bondWithHint(
             0,
-            transcoders[size - 1],
-            transcoders[size - 3],
-            transcoders[size - 1],
-            transcoders[size - 3],
-            transcoders[size - 2],
-            {from: delegator}
-        )
-        assert.equal(await transcoderAtPoolPos(size - 1), transcoders[size - 2])
-        assert.equal(await transcoderAtPoolPos(size - 2), transcoders[size - 1])
+            transcoders[size - 1].address,
+            transcoders[size - 3].address,
+            transcoders[size - 1].address,
+            transcoders[size - 3].address,
+            transcoders[size - 2].address
+        )).wait()
+
+        assert.equal(await transcoderAtPoolPos(size - 1), transcoders[size - 2].address)
+        assert.equal(await transcoderAtPoolPos(size - 2), transcoders[size - 1].address)
 
         // Gas cost of bondWithHint() should be less than gas cost of bond()
-        assert.isBelow(txResHint.receipt.gasUsed, txResNoHint.receipt.gasUsed)
+        assert.isBelow(txResHint.cumulativeGasUsed, txResNoHint.cumulativeGasUsed)
     })
 
     it("transcoder partially unbonds and rebonds", async () => {
         const size = transcoders.length
 
-        let testSnapshotId = await rpc.snapshot()
+        const testSnapshotId = await rpc.snapshot()
 
         // Pool ordering (descending)
         // Before:
         // (transcoders[size - 4], 4) -> (transcoders[size - 3], 3) -> (transcoders[size - 2], 2) -> (transcoders[size - 1], 1)
 
-        const txResUnbondNoHint = await bondingManager.unbond(2, {from: transcoders[size - 4]})
+        const txResUnbondNoHint = await (await bondingManager.connect(transcoders[size - 4]).unbond(2)).wait()
         // Should have dropped 1 position
-        assert.equal(await transcoderAtPoolPos(size - 3), transcoders[size - 4])
-        const txResRebondNoHint = await bondingManager.rebond(0, {from: transcoders[size - 4]})
+        assert.equal(await transcoderAtPoolPos(size - 3), transcoders[size - 4].address)
+        const txResRebondNoHint = await (await bondingManager.connect(transcoders[size - 4]).rebond(0)).wait()
         // Should have gained 1 position
-        assert.equal(await transcoderAtPoolPos(size - 4), transcoders[size - 4])
+        assert.equal(await transcoderAtPoolPos(size - 4), transcoders[size - 4].address)
 
         await rpc.revert(testSnapshotId)
 
-        const txResUnbondHint = await bondingManager.unbondWithHint(2, transcoders[size - 3], transcoders[size - 2], {from: transcoders[size - 4]})
+        const txResUnbondHint = await (await bondingManager.connect(transcoders[size - 4]).unbondWithHint(2, transcoders[size - 3].address, transcoders[size - 2].address)).wait()
         // Should have dropped 1 position
-        assert.equal(await transcoderAtPoolPos(size - 3), transcoders[size - 4])
-        const txResRebondHint = await bondingManager.rebondWithHint(0, transcoders[size - 5], transcoders[size - 3], {from: transcoders[size - 4]})
+        assert.equal(await transcoderAtPoolPos(size - 3), transcoders[size - 4].address)
+        const txResRebondHint = await (await bondingManager.connect(transcoders[size - 4]).rebondWithHint(0, transcoders[size - 5].address, transcoders[size - 3].address)).wait()
         // Should have gained 1 position
-        assert.equal(await transcoderAtPoolPos(size - 4), transcoders[size - 4])
+        assert.equal(await transcoderAtPoolPos(size - 4), transcoders[size - 4].address)
 
-        assert.isBelow(txResUnbondHint.receipt.gasUsed, txResUnbondNoHint.receipt.gasUsed)
-        assert.isBelow(txResRebondHint.receipt.gasUsed, txResRebondNoHint.receipt.gasUsed)
+        assert.isBelow(txResUnbondHint.cumulativeGasUsed, txResUnbondNoHint.cumulativeGasUsed)
+        assert.isBelow(txResRebondHint.cumulativeGasUsed, txResRebondNoHint.cumulativeGasUsed)
     })
 
     it("transcoder rebonds from unbonded", async () => {
         const size = transcoders.length
-        await bondingManager.unbond(4, {from: transcoders[size - 4]})
+        await bondingManager.connect(transcoders[size - 4]).unbond(4)
 
-        let testSnapshotId = await rpc.snapshot()
+        const testSnapshotId = await rpc.snapshot()
 
         // Pool ordering (descending)
         // Before:
@@ -282,20 +283,19 @@ contract("PoolUpdatesWithHints", accounts => {
         // After (expected):
         // (transcoders[size - 4], 4) -> (transcoders[size - 3], 3) -> (transcoders[size - 2], 2) -> (transcoders[size - 1], 1)
 
-        const txResRebondNoHint = await bondingManager.rebondFromUnbonded(transcoders[size - 4], 0, {from: transcoders[size - 4]})
-        assert.equal(await transcoderAtPoolPos(size - 4), transcoders[size - 4])
+        const txResNoHint = await (await bondingManager.connect(transcoders[size - 4]).rebondFromUnbonded(transcoders[size - 4].address, 0)).wait()
+        assert.equal(await transcoderAtPoolPos(size - 4), transcoders[size - 4].address)
 
         await rpc.revert(testSnapshotId)
 
-        const txResRebondHint = await bondingManager.rebondFromUnbondedWithHint(
-            transcoders[size - 4],
+        const txResHint = await (await bondingManager.connect(transcoders[size - 4]).rebondFromUnbondedWithHint(
+            transcoders[size - 4].address,
             0,
-            transcoders[size - 5],
-            transcoders[size - 3],
-            {from: transcoders[size - 4]}
-        )
-        assert.equal(await transcoderAtPoolPos(size - 4), transcoders[size - 4])
+            transcoders[size - 5].address,
+            transcoders[size - 3].address
+        )).wait()
+        assert.equal(await transcoderAtPoolPos(size - 4), transcoders[size - 4].address)
 
-        assert.isBelow(txResRebondHint.receipt.gasUsed, txResRebondNoHint.receipt.gasUsed)
+        assert.isBelow(txResHint.cumulativeGasUsed, txResNoHint.cumulativeGasUsed)
     })
 })

@@ -2,7 +2,6 @@ pragma solidity ^0.5.11;
 
 import "../../ManagerProxyTarget.sol";
 
-
 contract ManagerProxyTargetMockV2 is ManagerProxyTarget {
     uint256 public initValue;
     uint8 public uint8Value;
