@@ -42,7 +42,7 @@ There have been bugs related to ABIEncoderV2 in the past and it is still experim
 
 ### Install
 
-Make sure Node.js is installed.
+Make sure Node.js (>=v12.0) is installed.
 
 ```
 git clone https://github.com/livepeer/protocol.git
