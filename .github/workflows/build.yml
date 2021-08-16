@@ -1,10 +1,10 @@
 name: Build
 on:
-    pull_request:
-    push:
-        branches:
-            - streamflow
-            - next
+  pull_request:
+  push:
+    branches:
+      - streamflow
+      - next
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -14,25 +14,18 @@ jobs:
         with:
           # Needed for commands that depend on git tags
           fetch-depth: 0
-      - uses: actions/setup-node@v2
-        with:
-          node-version: '10.17.0'
-      - uses: actions/setup-python@v2
-        with:
-          python-version: '3.x' # Version range or exact version of a Python version to use, using SemVer's version range syntax
-          architecture: 'x64' # optional x64 or x86. Defaults to x64 if not specified
       - name: Install dependencies
         run: |
-          NODE_OPTIONS="--max-old-space-size=8192" npm install
+          yarn
       - name: Linter
         run: |
-          npm run lint
+          yarn lint
       - name: Compile contracts
         run: |
-          npm run compile
+          yarn compile
       - name: 💡 Run contract tests with coverage reporting
         run: |
-          npm run test:coverage
+          yarn test:coverage
       - name: Coveralls
         uses: coverallsapp/github-action@master
         with:

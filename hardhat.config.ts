@@ -37,6 +37,7 @@ const config: HardhatUserConfig = {
     networks: {
         hardhat: {
             gas: 12000000,
+            hardfork: "berlin",
             allowUnlimitedContractSize: true,
             blockGasLimit: 12000000,
             accounts: {
