@@ -1,12 +1,8 @@
-pragma solidity ^0.5.11;
+pragma solidity 0.8.4;
 
-import "./interfaces/MTicketProcessor.sol";
-import "./interfaces/MContractRegistry.sol";
-import "openzeppelin-solidity/contracts/math/SafeMath.sol";
+import "./MixinContractRegistry.sol";
 
-contract MixinTicketProcessor is MContractRegistry, MTicketProcessor {
-    using SafeMath for uint256;
-
+abstract contract MixinTicketProcessor is MixinContractRegistry {
     // Number of rounds that a ticket is valid for starting from
     // its creationRound
     uint256 public ticketValidityPeriod;
@@ -17,7 +13,7 @@ contract MixinTicketProcessor is MContractRegistry, MTicketProcessor {
      */
     function processFunding(uint256 _amount) internal {
         // Send funds to Minter
-        minter().depositETH.value(_amount)();
+        minter().depositETH{ value: _amount }();
     }
 
     /**
@@ -60,7 +56,7 @@ contract MixinTicketProcessor is MContractRegistry, MTicketProcessor {
 
         uint256 currRound = roundsManager().currentRound();
 
-        require(creationRound.add(ticketValidityPeriod) > currRound, "ticket is expired");
+        require(creationRound + ticketValidityPeriod > currRound, "ticket is expired");
     }
 
     /**

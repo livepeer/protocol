@@ -1,9 +1,11 @@
-pragma solidity ^0.5.11;
+pragma solidity 0.8.4;
 
 import "../../ManagerProxyTarget.sol";
-import "./interfaces/MContractRegistry.sol";
+import "../../bonding/IBondingManager.sol";
+import "../../token/IMinter.sol";
+import "../../rounds/IRoundsManager.sol";
 
-contract MixinContractRegistry is MContractRegistry, ManagerProxyTarget {
+contract MixinContractRegistry is ManagerProxyTarget {
     /**
      * @dev Checks if the current round has been initialized
      */
@@ -12,7 +14,7 @@ contract MixinContractRegistry is MContractRegistry, ManagerProxyTarget {
         _;
     }
 
-    constructor(address _controller) internal Manager(_controller) {}
+    constructor(address _controller) Manager(_controller) {}
 
     /**
      * @dev Returns an instance of the IBondingManager interface
