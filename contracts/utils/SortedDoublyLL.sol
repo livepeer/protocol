@@ -1,6 +1,8 @@
-pragma solidity ^0.5.11;
+// SPDX-FileCopyrightText: 2021 Livepeer <nico@livepeer.org>
 
-import "openzeppelin-solidity/contracts/math/SafeMath.sol";
+// SPDX-License-Identifier: GPL-3.0
+
+pragma solidity 0.8.4;
 
 /**
  * @title A sorted doubly linked list with nodes sorted in descending order. Optionally accepts insert position hints
@@ -14,8 +16,6 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
  * to find the appropriate insert position.
  */
 library SortedDoublyLL {
-    using SafeMath for uint256;
-
     // Information for a node in the list
     struct Node {
         uint256 key; // Node's key used for sorting
@@ -98,7 +98,7 @@ library SortedDoublyLL {
             self.nodes[nextId].prevId = _id;
         }
 
-        self.size = self.size.add(1);
+        self.size += 1;
     }
 
     /**
@@ -138,7 +138,7 @@ library SortedDoublyLL {
         }
 
         delete self.nodes[_id];
-        self.size = self.size.sub(1);
+        self.size -= 1;
     }
 
     /**
