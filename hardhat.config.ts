@@ -27,6 +27,9 @@ const config: HardhatUserConfig = {
                         runs: 200
                     }
                 }
+            },
+            {
+                version: "0.8.4"
             }
         ]
     },
