@@ -1,4 +1,8 @@
-pragma solidity ^0.5.11;
+// SPDX-FileCopyrightText: 2021 Livepeer <info@livepeer.org>
+
+// SPDX-License-Identifier: GPL-3.0
+
+pragma solidity 0.8.4;
 
 contract Poll {
     // The block at which the poll ends and votes can no longer be submitted.
@@ -32,6 +36,6 @@ contract Poll {
      */
     function destroy() external {
         require(block.number > endBlock, "poll is active");
-        selfdestruct(msg.sender);
+        selfdestruct(payable(msg.sender));
     }
 }
