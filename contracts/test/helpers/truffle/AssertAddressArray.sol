@@ -1,4 +1,4 @@
-pragma solidity >=0.4.15 <0.6.0;
+pragma solidity ^0.8.4;
 
 library AssertAddressArray {
     uint8 constant ZERO = uint8(bytes1("0"));

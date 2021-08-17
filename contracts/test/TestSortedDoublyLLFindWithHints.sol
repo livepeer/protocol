@@ -1,5 +1,4 @@
-pragma solidity ^0.5.11;
-
+pragma solidity 0.8.4;
 import "./mocks/SortedDoublyLLFixture.sol";
 import "./helpers/truffle/Assert.sol";
 

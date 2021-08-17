@@ -1,9 +1,9 @@
-pragma solidity ^0.5.11;
+pragma solidity 0.8.4;
 
 contract RevertProxy {
     bytes data;
 
-    function() external {
+    fallback() external {
         data = msg.data;
     }
 
