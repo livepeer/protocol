@@ -1,4 +1,8 @@
-pragma solidity ^0.5.11;
+// SPDX-FileCopyrightText: 2021 Livepeer <info@livepeer.org>
+
+// SPDX-License-Identifier: GPL-3.0
+
+pragma solidity 0.8.4;
 
 import "./ManagerProxyTarget.sol";
 
@@ -22,7 +26,7 @@ contract ServiceRegistry is ManagerProxyTarget {
      * @notice ServiceRegistry constructor. Only invokes constructor of base Manager contract with provided Controller address
      * @param _controller Address of a Controller that this contract will be registered with
      */
-    constructor(address _controller) public Manager(_controller) {}
+    constructor(address _controller) Manager(_controller) {}
 
     /**
      * @notice Stores service URI endpoint for the caller that can be used to send requests to the caller off-chain
