@@ -7,7 +7,7 @@ import "hardhat-abi-exporter"
 
 // deployment plugins
 import "hardhat-deploy"
-import "hardhat-deploy-ethers"
+import "@nomiclabs/hardhat-ethers"
 
 import "solidity-coverage"
 
