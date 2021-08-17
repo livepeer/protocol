@@ -1,10 +1,15 @@
-pragma solidity ^0.5.11;
+// SPDX-FileCopyrightText: 2021 Livepeer <info@livepeer.org>
 
-import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
-import "../zeppelin/Ownable.sol";
+// SPDX-License-Identifier: GPL-3.0
 
-contract ILivepeerToken is ERC20, Ownable {
-    function mint(address _to, uint256 _amount) public returns (bool);
+pragma solidity 0.8.4;
 
-    function burn(uint256 _amount) public;
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
+interface ILivepeerToken is IERC20 {
+    function mint(address _to, uint256 _amount) external returns (bool);
+
+    function burn(uint256 _amount) external;
+
+    function transferOwnership(address newOwner) external;
 }

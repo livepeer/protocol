@@ -1,8 +1,12 @@
-pragma solidity ^0.5.11;
+// SPDX-FileCopyrightText: 2021 Livepeer <info@livepeer.org>
 
-import "../zeppelin/MintableToken.sol";
+// SPDX-License-Identifier: GPL-3.0
 
-contract VariableSupplyToken is MintableToken {
+pragma solidity 0.8.4;
+
+import "./MintableToken.sol";
+
+abstract contract VariableSupplyToken is MintableToken {
     event Burn(address indexed burner, uint256 value);
 
     /**

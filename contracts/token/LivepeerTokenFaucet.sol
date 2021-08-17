@@ -1,8 +1,11 @@
-pragma solidity ^0.5.11;
+// SPDX-FileCopyrightText: 2021 Livepeer <info@livepeer.org>
+
+// SPDX-License-Identifier: GPL-3.0
+
+pragma solidity 0.8.4;
 
 import "./ILivepeerToken.sol";
-
-import "../zeppelin/Ownable.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
  * @title Faucet for the Livepeer Token
@@ -41,7 +44,7 @@ contract LivepeerTokenFaucet is Ownable {
         address _token,
         uint256 _requestAmount,
         uint256 _requestWait
-    ) public {
+    ) {
         token = ILivepeerToken(_token);
         requestAmount = _requestAmount;
         requestWait = _requestWait;

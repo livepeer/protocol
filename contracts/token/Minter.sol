@@ -1,20 +1,23 @@
-pragma solidity ^0.5.11;
+// SPDX-FileCopyrightText: 2021 Livepeer <info@livepeer.org>
+
+// SPDX-License-Identifier: GPL-3.0
+
+pragma solidity 0.8.4;
 
 import "../Manager.sol";
 import "./IMinter.sol";
 import "./ILivepeerToken.sol";
 import "../rounds/IRoundsManager.sol";
 import "../bonding/IBondingManager.sol";
-import "../libraries/MathUtilsV2.sol";
-
-import "openzeppelin-solidity/contracts/math/SafeMath.sol";
+import "../utils/MathUtils.sol";
 
 /**
  * @title Minter
  * @dev Manages inflation rate and the minting of new tokens for each round of the Livepeer protocol
  */
-contract Minter is Manager, IMinter {
-    using SafeMath for uint256;
+contract Minter is Manager {
+    // Events
+    event SetCurrentRewardTokens(uint256 currentMintableTokens, uint256 currentInflation);
 
     // Per round inflation rate
     uint256 public inflation;
@@ -71,7 +74,7 @@ contract Minter is Manager, IMinter {
         uint256 _inflation,
         uint256 _inflationChange,
         uint256 _targetBondingRate
-    ) public Manager(_controller) {
+    ) Manager(_controller) {
         // Inflation must be valid percentage
         require(MathUtils.validPerc(_inflation), "_inflation is invalid percentage");
         // Inflation change must be valid percentage
@@ -115,7 +118,7 @@ contract Minter is Manager, IMinter {
      * as the current Minter's token balance to the new Minter. Only callable by Controller when system is paused
      * @param _newMinter Address of new Minter
      */
-    function migrateToNewMinter(IMinter _newMinter) external onlyControllerOwner whenSystemPaused {
+    function migrateToNewMinter(Minter _newMinter) external onlyControllerOwner whenSystemPaused {
         // New Minter cannot be the current Minter
         require(_newMinter != this, "new Minter cannot be current Minter");
         // Check for null address
@@ -132,7 +135,7 @@ contract Minter is Manager, IMinter {
         // Transfer current Minter's token balance to new Minter
         livepeerToken().transfer(address(_newMinter), livepeerToken().balanceOf(address(this)));
         // Transfer current Minter's ETH balance to new Minter
-        _newMinter.depositETH.value(address(this).balance)();
+        _newMinter.depositETH{ value: address(this).balance }();
     }
 
     /**
@@ -149,7 +152,7 @@ contract Minter is Manager, IMinter {
         // Compute and mint fraction of mintable tokens to include in reward
         uint256 mintAmount = MathUtils.percOf(currentMintableTokens, _fracNum, _fracDenom);
         // Update amount of minted tokens for round
-        currentMintedTokens = currentMintedTokens.add(mintAmount);
+        currentMintedTokens += mintAmount;
         // Minted tokens must not exceed mintable tokens
         require(currentMintedTokens <= currentMintableTokens, "minted tokens cannot exceed mintable tokens");
         // Mint new tokens
@@ -230,13 +233,13 @@ contract Minter is Manager, IMinter {
 
         if (currentBondingRate < targetBondingRate) {
             // Bonding rate is below the target - increase inflation
-            inflation = inflation.add(inflationChange);
+            inflation += inflationChange;
         } else if (currentBondingRate > targetBondingRate) {
             // Bonding rate is above the target - decrease inflation
             if (inflationChange > inflation) {
                 inflation = 0;
             } else {
-                inflation = inflation.sub(inflationChange);
+                inflation -= inflationChange;
             }
         }
     }

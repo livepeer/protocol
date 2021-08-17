@@ -1,14 +1,15 @@
-pragma solidity ^0.5.11;
+// SPDX-FileCopyrightText: 2021 Livepeer <info@livepeer.org>
+
+// SPDX-License-Identifier: GPL-3.0
+
+pragma solidity 0.8.4;
 
 import "../IController.sol";
 
 /**
  * @title Minter interface
  */
-contract IMinter {
-    // Events
-    event SetCurrentRewardTokens(uint256 currentMintableTokens, uint256 currentInflation);
-
+interface IMinter {
     // External functions
     function createReward(uint256 _fracNum, uint256 _fracDenom) external returns (uint256);
 
@@ -26,6 +27,5 @@ contract IMinter {
 
     function currentMintedTokens() external view returns (uint256);
 
-    // Public functions
-    function getController() public view returns (IController);
+    function getController() external view returns (IController);
 }
