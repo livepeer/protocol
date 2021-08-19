@@ -7,7 +7,7 @@ import "hardhat-abi-exporter"
 
 // deployment plugins
 import "hardhat-deploy"
-import "hardhat-deploy-ethers"
+import "@nomiclabs/hardhat-ethers"
 
 import "solidity-coverage"
 
@@ -37,7 +37,7 @@ const config: HardhatUserConfig = {
     networks: {
         hardhat: {
             gas: 12000000,
-            hardfork: "berlin",
+            initialBaseFeePerGas: 0,
             allowUnlimitedContractSize: true,
             blockGasLimit: 12000000,
             accounts: {
