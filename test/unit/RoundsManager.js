@@ -8,7 +8,7 @@ import chai, {expect, assert} from "chai"
 import {solidity} from "ethereum-waffle"
 chai.use(solidity)
 
-describe("RoundsManager", accounts => {
+describe("RoundsManager", () => {
     let fixture
     let roundsManager
     let signers

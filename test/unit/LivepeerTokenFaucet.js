@@ -4,7 +4,7 @@ import {solidity} from "ethereum-waffle"
 import {ethers} from "hardhat"
 chai.use(solidity)
 
-describe("LivepeerTokenFaucet", accounts => {
+describe("LivepeerTokenFaucet", () => {
     const faucetAmount = 10000000000000
     const requestAmount = 100
     const requestWait = 2
