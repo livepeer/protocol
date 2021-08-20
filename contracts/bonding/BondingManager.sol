@@ -102,7 +102,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * - setMaxEarningsClaimsRounds()
      * @param _controller Address of Controller that this contract will be registered with
      */
-    constructor(address _controller) public Manager(_controller) {}
+    constructor(address _controller) Manager(_controller) {}
 
     /**
      * PROTOCOL PARAMETERRS
@@ -137,7 +137,21 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * @param _to The address of the transcoder to stake towards
      */
     function bond(uint256 _amount, address _to) external {
-        bondWithHint(_amount, _to, address(0), address(0), address(0), address(0));
+        bondWithHint(_amount, _to, msg.sender, address(0), address(0), address(0), address(0));
+    }
+
+    /**
+     * @notice Delegate stake towards a specific address on behalf of another address
+     * @param _amount The amount of tokens to stake
+     * @param _to The address of the transcoder to stake towards
+     * @param _onBehalfOf The address which will own the stake
+     */
+    function bondOnBehalf(
+        uint256 _amount,
+        address _to,
+        address _onBehalfOf
+    ) external {
+        bondWithHint(_amount, _to, _onBehalfOf, address(0), address(0), address(0), address(0));
     }
 
     /**
@@ -150,6 +164,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * is the correct position so no search is executed. See SortedDoublyLL.sol for details on list hints
      * @param _amount The amount of tokens to stake.
      * @param _to The address of the transcoder to stake towards
+     * @param _onBehalfOf The address which will own the stake
      * @param _oldDelegateNewPosPrev The address of the previous transcoder in the pool for the old delegate
      * @param _oldDelegateNewPosNext The address of the next transcoder in the pool for the old delegate
      * @param _currDelegateNewPosPrev The address of the previous transcoder in the pool for the current delegate
@@ -158,13 +173,14 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     function bondWithHint(
         uint256 _amount,
         address _to,
+        address _onBehalfOf,
         address _oldDelegateNewPosPrev,
         address _oldDelegateNewPosNext,
         address _currDelegateNewPosPrev,
         address _currDelegateNewPosNext
     ) public whenSystemNotPaused currentRoundInitialized autoClaimFees(_to) {
-        if (_to != msg.sender) {
-            require(!isRegisteredOrchestrator(msg.sender), "ORCHESTRATOR_CAN_NOT_DELEGATE");
+        if (_to != _onBehalfOf) {
+            require(!isRegisteredOrchestrator(_onBehalfOf), "ORCHESTRATOR_CAN_NOT_DELEGATE");
         }
 
         // cannot delegate zero amount
@@ -173,14 +189,14 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // Bond total to stake to new orchestrator
         Delegations.Pool storage newPool = orchestrators[_to].delegationPool;
         uint256 oldTotalStake = newPool.poolTotalStake();
-        newPool.stake(msg.sender, _amount);
+        newPool.stake(_onBehalfOf, _amount);
 
         _increaseOrchTotalStake(_to, oldTotalStake, _amount, _currDelegateNewPosPrev, _currDelegateNewPosNext);
 
         // Transfer the LPT to the Minter
-        livepeerToken().transferFrom(msg.sender, address(minter()), _amount);
+        livepeerToken().transferFrom(_onBehalfOf, address(minter()), _amount);
 
-        emit Bond(_to, msg.sender, _amount, newPool.stakeOf(msg.sender));
+        emit Bond(_to, _onBehalfOf, _amount, newPool.stakeOf(_onBehalfOf));
     }
 
     /**
