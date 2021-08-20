@@ -1,8 +1,9 @@
-import BN from "bn.js"
+import {BigNumber} from "ethers"
 
 export default async txRes => {
-    const tx = await web3.eth.getTransaction(txRes.tx)
-    const gasPrice = new BN(tx.gasPrice)
-    const gasUsed = new BN(txRes.receipt.gasUsed)
+    const receipt = await txRes.wait()
+    const tx = await web3.eth.getTransaction(txRes.hash)
+    const gasPrice = BigNumber.from(tx.gasPrice)
+    const gasUsed = BigNumber.from(receipt.cumulativeGasUsed.toString())
     return gasPrice.mul(gasUsed)
 }

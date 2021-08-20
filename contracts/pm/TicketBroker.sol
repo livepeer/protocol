@@ -8,7 +8,6 @@ import "./mixins/MixinTicketBrokerCore.sol";
 import "./mixins/MixinTicketProcessor.sol";
 import "./mixins/MixinWrappers.sol";
 
-
 contract TicketBroker is
     MixinContractRegistry,
     MixinReserve,
@@ -24,9 +23,7 @@ contract TicketBroker is
      * - setTicketValidityPeriod()
      * @param _controller Address of Controller that this contract will be registered with
      */
-    constructor(
-        address _controller
-    )
+    constructor(address _controller)
         public
         MixinContractRegistry(_controller)
         MixinReserve()

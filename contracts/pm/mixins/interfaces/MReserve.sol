@@ -2,10 +2,9 @@ pragma solidity ^0.5.11;
 // solium-disable-next-line
 pragma experimental ABIEncoderV2;
 
-
 contract MReserve {
     struct ReserveInfo {
-        uint256 fundsRemaining;        // Funds remaining in reserve
+        uint256 fundsRemaining; // Funds remaining in reserve
         uint256 claimedInCurrentRound; // Funds claimed from reserve in current round
     }
 
@@ -53,9 +52,7 @@ contract MReserve {
         address _reserveHolder,
         address _claimant,
         uint256 _amount
-    )
-        internal
-        returns (uint256);
+    ) internal returns (uint256);
 
     /**
      * @dev Returns the amount of funds remaining in a reserve

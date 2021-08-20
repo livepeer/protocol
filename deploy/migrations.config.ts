@@ -1,7 +1,6 @@
-import BN from "bn.js"
-import {constants} from "../utils/constants"
+import {ethers} from "hardhat"
 
-module.exports = {
+export default {
     bondingManager: {
         numTranscoders: 20,
         numActiveTranscoders: 10,
@@ -10,15 +9,15 @@ module.exports = {
     },
     broker: {
         // TODO: Consider updating these values prior to deploying to testnet
-        unlockPeriod: new BN(40320), // approximately 7 days worth of blocks
-        ticketValidityPeriod: new BN(2)
+        unlockPeriod: ethers.BigNumber.from(40320), // approximately 7 days worth of blocks
+        ticketValidityPeriod: ethers.BigNumber.from(2)
     },
     roundsManager: {
         roundLength: 5760,
         roundLockAmount: 100000
     },
     faucet: {
-        requestAmount: (new BN(10)).mul(constants.TOKEN_UNIT),
+        requestAmount: ethers.utils.parseEther("10"),
         requestWait: 1,
         whitelist: []
     },

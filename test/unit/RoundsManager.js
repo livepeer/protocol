@@ -1,14 +1,17 @@
 import Fixture from "./helpers/Fixture"
-import expectRevertWithReason from "../helpers/expectFail"
 import {contractId} from "../../utils/helpers"
 import {constants} from "../../utils/constants"
-import truffleAssert from "truffle-assertions"
 
-const RoundsManager = artifacts.require("RoundsManager")
+import {web3, ethers} from "hardhat"
 
-contract("RoundsManager", accounts => {
+import chai, {expect, assert} from "chai"
+import {solidity} from "ethereum-waffle"
+chai.use(solidity)
+
+describe("RoundsManager", () => {
     let fixture
     let roundsManager
+    let signers
 
     const PERC_DIVISOR = 1000000
     const PERC_MULTIPLIER = PERC_DIVISOR / 100
@@ -17,10 +20,11 @@ contract("RoundsManager", accounts => {
     const ROUND_LOCK_AMOUNT = 10 * PERC_MULTIPLIER
 
     before(async () => {
+        signers = await ethers.getSigners()
         fixture = new Fixture(web3)
         await fixture.deploy()
 
-        roundsManager = await fixture.deployAndRegister(RoundsManager, "RoundsManager", fixture.controller.address)
+        roundsManager = await fixture.deployAndRegister(await ethers.getContractFactory("RoundsManager"), "RoundsManager", fixture.controller.address)
 
         await roundsManager.setRoundLength(ROUND_LENGTH)
         await roundsManager.setRoundLockAmount(ROUND_LOCK_AMOUNT)
@@ -36,73 +40,73 @@ contract("RoundsManager", accounts => {
 
     describe("setController", () => {
         it("should fail if caller is not Controller", async () => {
-            await expectRevertWithReason(roundsManager.setController(accounts[0]), "caller must be Controller")
+            await expect(roundsManager.setController(signers[0].address)).to.be.revertedWith("caller must be Controller")
         })
 
         it("should set new Controller", async () => {
-            await fixture.controller.updateController(contractId("RoundsManager"), accounts[0])
+            await fixture.controller.updateController(contractId("RoundsManager"), signers[0].address)
 
-            assert.equal(await roundsManager.controller.call(), accounts[0], "should set new Controller")
+            assert.equal(await roundsManager.controller(), signers[0].address, "should set new Controller")
         })
     })
 
     describe("setRoundLength", () => {
         it("should fail if caller is not the Controller owner", async () => {
-            await expectRevertWithReason(roundsManager.setRoundLength(10, {from: accounts[2]}), "caller must be Controller owner")
+            await expect(roundsManager.connect(signers[2]).setRoundLength(10)).to.be.revertedWith("caller must be Controller owner")
         })
 
         it("should fail if provided roundLength == 0", async () => {
-            await expectRevertWithReason(roundsManager.setRoundLength(0), "round length cannot be 0")
+            await expect(roundsManager.setRoundLength(0)).to.be.revertedWith("round length cannot be 0")
         })
 
         it("should set roundLength before lastRoundLengthUpdateRound and lastRoundLengthUpdateStartBlock when roundLength = 0", async () => {
-            const newRoundsManager = await RoundsManager.new(fixture.controller.address)
+            const newRoundsManager = await (await ethers.getContractFactory("RoundsManager")).deploy(fixture.controller.address)
             const blockNum = await web3.eth.getBlockNumber()
             const expLastUpdateRound = Math.floor(blockNum / 50)
             const expLastUpdateStartBlock = expLastUpdateRound * 50
 
             await newRoundsManager.setRoundLength(50)
 
-            assert.equal(await newRoundsManager.roundLength.call(), 50, "wrong roundLength")
-            assert.equal(await newRoundsManager.lastRoundLengthUpdateRound.call(), expLastUpdateRound, "wrong lastRoundLengthUpdateRound")
-            assert.equal(await newRoundsManager.lastRoundLengthUpdateStartBlock.call(), expLastUpdateStartBlock, "wrong lastRoundLengthUpdateStartBlock")
+            assert.equal(await newRoundsManager.roundLength(), 50, "wrong roundLength")
+            assert.equal(await newRoundsManager.lastRoundLengthUpdateRound(), expLastUpdateRound, "wrong lastRoundLengthUpdateRound")
+            assert.equal(await newRoundsManager.lastRoundLengthUpdateStartBlock(), expLastUpdateStartBlock, "wrong lastRoundLengthUpdateStartBlock")
         })
 
         it("should set roundLength, lastRoundLengthUpdateRound and lastRoundLengthUpdateStartBlock when increasing roundLength", async () => {
-            const lastUpdateRound = (await roundsManager.lastRoundLengthUpdateRound.call()).toNumber()
-            const lastUpdateStartBlock = (await roundsManager.lastRoundLengthUpdateStartBlock.call()).toNumber()
+            const lastUpdateRound = (await roundsManager.lastRoundLengthUpdateRound()).toNumber()
+            const lastUpdateStartBlock = (await roundsManager.lastRoundLengthUpdateStartBlock()).toNumber()
 
             const blockNum = await web3.eth.getBlockNumber()
-            const roundLength = await roundsManager.roundLength.call()
+            const roundLength = await roundsManager.roundLength()
             const expLastUpdateRound = lastUpdateRound + Math.floor((blockNum - lastUpdateStartBlock) / roundLength.toNumber())
             const expLastUpdateStartBlock = lastUpdateStartBlock + Math.floor((blockNum - lastUpdateStartBlock) / roundLength.toNumber())
 
             await roundsManager.setRoundLength(60)
 
-            assert.equal(await roundsManager.roundLength.call(), 60, "wrong roundLength")
-            assert.equal(await roundsManager.lastRoundLengthUpdateRound.call(), expLastUpdateRound, "wrong lastRoundLengthUpdateRound")
-            assert.equal(await roundsManager.lastRoundLengthUpdateStartBlock.call(), expLastUpdateStartBlock, "wrong lastRoundLengthUpdateStartBlock")
+            assert.equal(await roundsManager.roundLength(), 60, "wrong roundLength")
+            assert.equal(await roundsManager.lastRoundLengthUpdateRound(), expLastUpdateRound, "wrong lastRoundLengthUpdateRound")
+            assert.equal(await roundsManager.lastRoundLengthUpdateStartBlock(), expLastUpdateStartBlock, "wrong lastRoundLengthUpdateStartBlock")
         })
 
         it("should set roundLength, lastRoundLengthUpdateRound and lastRoundLengthUpdateStartBlock when decreasing roundLength", async () => {
-            const lastUpdateRound = (await roundsManager.lastRoundLengthUpdateRound.call()).toNumber()
-            const lastUpdateStartBlock = (await roundsManager.lastRoundLengthUpdateStartBlock.call()).toNumber()
+            const lastUpdateRound = (await roundsManager.lastRoundLengthUpdateRound()).toNumber()
+            const lastUpdateStartBlock = (await roundsManager.lastRoundLengthUpdateStartBlock()).toNumber()
 
             const blockNum = await web3.eth.getBlockNumber()
-            const roundLength = await roundsManager.roundLength.call()
+            const roundLength = await roundsManager.roundLength()
             const expLastUpdateRound = lastUpdateRound + Math.floor((blockNum - lastUpdateStartBlock) / roundLength.toNumber())
             const expLastUpdateStartBlock = lastUpdateStartBlock + Math.floor((blockNum - lastUpdateStartBlock) / roundLength.toNumber())
 
             await roundsManager.setRoundLength(40)
 
-            assert.equal(await roundsManager.roundLength.call(), 40, "wrong roundLength")
-            assert.equal(await roundsManager.lastRoundLengthUpdateRound.call(), expLastUpdateRound, "wrong lastRoundLengthUpdateRound")
-            assert.equal(await roundsManager.lastRoundLengthUpdateStartBlock.call(), expLastUpdateStartBlock, "wrong lastRoundLengthUpdateStartBlock")
+            assert.equal(await roundsManager.roundLength(), 40, "wrong roundLength")
+            assert.equal(await roundsManager.lastRoundLengthUpdateRound(), expLastUpdateRound, "wrong lastRoundLengthUpdateRound")
+            assert.equal(await roundsManager.lastRoundLengthUpdateStartBlock(), expLastUpdateStartBlock, "wrong lastRoundLengthUpdateStartBlock")
         })
 
         it("should set roundLength, lastRoundLengthUpdateRound and lastRoundLengthUpdateStartBlock multiple times", async () => {
-            const lastUpdateRound0 = (await roundsManager.lastRoundLengthUpdateRound.call()).toNumber()
-            const lastUpdateStartBlock0 = (await roundsManager.lastRoundLengthUpdateStartBlock.call()).toNumber()
+            const lastUpdateRound0 = (await roundsManager.lastRoundLengthUpdateRound()).toNumber()
+            const lastUpdateStartBlock0 = (await roundsManager.lastRoundLengthUpdateStartBlock()).toNumber()
 
             await fixture.rpc.waitUntilNextBlockMultiple(50)
             await roundsManager.setRoundLength(100)
@@ -118,9 +122,9 @@ contract("RoundsManager", accounts => {
 
             assert.isAtLeast(lastUpdateRound2, lastUpdateRound1, "lastRoundLengthUpdateRound cannot decrease")
             assert.isAtLeast(lastUpdateStartBlock2, lastUpdateStartBlock1, "lastRoundLengthUpdateStartBlock cannot decrease")
-            assert.equal(await roundsManager.roundLength.call(), 50, "wrong roundLength")
-            assert.equal(await roundsManager.lastRoundLengthUpdateRound.call(), lastUpdateRound2, "wrong lastRoundLengthUpdateRound")
-            assert.equal(await roundsManager.lastRoundLengthUpdateStartBlock.call(), lastUpdateStartBlock2, "wrong lastRoundLengthUpdateStartBlock")
+            assert.equal(await roundsManager.roundLength(), 50, "wrong roundLength")
+            assert.equal(await roundsManager.lastRoundLengthUpdateRound(), lastUpdateRound2, "wrong lastRoundLengthUpdateRound")
+            assert.equal(await roundsManager.lastRoundLengthUpdateStartBlock(), lastUpdateStartBlock2, "wrong lastRoundLengthUpdateStartBlock")
 
             await fixture.rpc.wait(20)
             await roundsManager.setRoundLength(20)
@@ -130,9 +134,9 @@ contract("RoundsManager", accounts => {
 
             assert.isAtLeast(lastUpdateRound3, lastUpdateRound2, "lastRoundLengthUpdateRound cannot decrease")
             assert.isAtLeast(lastUpdateStartBlock3, lastUpdateStartBlock2, "lastRoundLengthUpdateStartBlock cannot decrease")
-            assert.equal(await roundsManager.roundLength.call(), 20, "wrong roundLength")
-            assert.equal(await roundsManager.lastRoundLengthUpdateRound.call(), lastUpdateRound3, "wrong lastRoundLengthUpdateRound")
-            assert.equal(await roundsManager.lastRoundLengthUpdateStartBlock.call(), lastUpdateStartBlock3, "wrong lastRoundLengthUpdateStartBlock")
+            assert.equal(await roundsManager.roundLength(), 20, "wrong roundLength")
+            assert.equal(await roundsManager.lastRoundLengthUpdateRound(), lastUpdateRound3, "wrong lastRoundLengthUpdateRound")
+            assert.equal(await roundsManager.lastRoundLengthUpdateStartBlock(), lastUpdateStartBlock3, "wrong lastRoundLengthUpdateStartBlock")
 
             await fixture.rpc.wait(30)
             await roundsManager.setRoundLength(100)
@@ -142,47 +146,47 @@ contract("RoundsManager", accounts => {
 
             assert.isAtLeast(lastUpdateRound4, lastUpdateRound3, "lastRoundLengthUpdateRound cannot decrease")
             assert.isAtLeast(lastUpdateStartBlock4, lastUpdateStartBlock3, "lastRoundLengthUpdateStartBlock cannot decrease")
-            assert.equal(await roundsManager.roundLength.call(), 100, "wrong roundLength")
-            assert.equal(await roundsManager.lastRoundLengthUpdateRound.call(), lastUpdateRound4, "wrong lastRoundLengthUpdateRound")
-            assert.equal(await roundsManager.lastRoundLengthUpdateStartBlock.call(), lastUpdateStartBlock4, "wrong lastRoundLengthUpdateStartBlock")
+            assert.equal(await roundsManager.roundLength(), 100, "wrong roundLength")
+            assert.equal(await roundsManager.lastRoundLengthUpdateRound(), lastUpdateRound4, "wrong lastRoundLengthUpdateRound")
+            assert.equal(await roundsManager.lastRoundLengthUpdateStartBlock(), lastUpdateStartBlock4, "wrong lastRoundLengthUpdateStartBlock")
         })
     })
 
     describe("setRoundLockAmount", () => {
         it("should fail if caller is not the Controller owner", async () => {
-            await expectRevertWithReason(roundsManager.setRoundLockAmount(50, {from: accounts[2]}), "caller must be Controller owner")
+            await expect(roundsManager.connect(signers[2]).setRoundLockAmount(50)).to.be.revertedWith("caller must be Controller owner")
         })
 
         it("should fail if provided roundLockAmount is an invalid percentage (> 100%)", async () => {
-            await expectRevertWithReason(roundsManager.setRoundLockAmount(PERC_DIVISOR + 1), "round lock amount must be a valid percentage")
+            await expect(roundsManager.setRoundLockAmount(PERC_DIVISOR + 1)).to.be.revertedWith("round lock amount must be a valid percentage")
         })
 
         it("should set roundLockAmount", async () => {
             await roundsManager.setRoundLockAmount(50)
 
-            assert.equal(await roundsManager.roundLockAmount.call(), 50, "wrong round lock amount")
+            assert.equal(await roundsManager.roundLockAmount(), 50, "wrong round lock amount")
         })
     })
 
     describe("initializeRound", () => {
         it("should fail if system is paused", async () => {
-            const roundLength = await roundsManager.roundLength.call()
+            const roundLength = await roundsManager.roundLength()
             await fixture.rpc.waitUntilNextBlockMultiple(roundLength.toNumber())
             await fixture.controller.pause()
 
-            await expectRevertWithReason(roundsManager.initializeRound(), "system is paused")
+            await expect(roundsManager.initializeRound()).to.be.revertedWith("system is paused")
         })
 
         it("should fail if current round is already initialized", async () => {
-            const roundLength = await roundsManager.roundLength.call()
+            const roundLength = await roundsManager.roundLength()
             await fixture.rpc.waitUntilNextBlockMultiple(roundLength.toNumber())
             await roundsManager.initializeRound()
 
-            await expectRevertWithReason(roundsManager.initializeRound(), "round already initialized")
+            await expect(roundsManager.initializeRound()).to.be.revertedWith("round already initialized")
         })
 
         it("should set the current round as initialized", async () => {
-            const roundLength = await roundsManager.roundLength.call()
+            const roundLength = await roundsManager.roundLength()
             await fixture.rpc.waitUntilNextBlockMultiple(roundLength.toNumber())
 
             await roundsManager.initializeRound()
@@ -192,7 +196,7 @@ contract("RoundsManager", accounts => {
         })
 
         it("should store the previous block hash", async () => {
-            const roundLength = await roundsManager.roundLength.call()
+            const roundLength = await roundsManager.roundLength()
             await fixture.rpc.waitUntilNextBlockMultiple(roundLength.toNumber())
             const blockHash = (await web3.eth.getBlock("latest")).hash
 
@@ -203,43 +207,35 @@ contract("RoundsManager", accounts => {
         })
 
         it("emits a NewRound event", async () => {
-            const roundLength = await roundsManager.roundLength.call()
+            const roundLength = await roundsManager.roundLength()
             await fixture.rpc.waitUntilNextBlockMultiple(roundLength.toNumber())
             const blockHash = (await web3.eth.getBlock("latest")).hash
 
-            const txRes = await roundsManager.initializeRound()
+            const tx = await roundsManager.initializeRound()
 
             const currentRound = await roundsManager.currentRound()
-            truffleAssert.eventEmitted(txRes, "NewRound", ev => {
-                return ev.round.toString() === currentRound.toString()
-                    && ev.blockHash === blockHash
-            })
+            expect(tx).to.emit(roundsManager, "NewRound").withArgs(currentRound, blockHash)
         })
 
         it("emits a NewRound event with indexed round", async () => {
             const fromBlock = (await web3.eth.getBlock("latest")).number
-            const roundLength = await roundsManager.roundLength.call()
+            const roundLength = await roundsManager.roundLength()
             await fixture.rpc.waitUntilNextBlockMultiple(roundLength.toNumber())
             // Track block hash for round N
             const blockHash = (await web3.eth.getBlock("latest")).hash
-            const round = (await roundsManager.currentRound()).toString()
+            const round = await roundsManager.currentRound()
             // Initialize round N
             await roundsManager.initializeRound()
             await fixture.rpc.waitUntilNextBlockMultiple(roundLength.toNumber())
             // Initialize round N + 1
             await roundsManager.initializeRound()
 
-            const events = await roundsManager.getPastEvents("NewRound", {
-                filter: {
-                    round
-                },
-                fromBlock,
-                toBlock: "latest"
-            })
+            const filter = await roundsManager.filters.NewRound(round)
+            const events = await roundsManager.queryFilter(filter, fromBlock, "latest")
 
             assert.equal(events.length, 1)
-            assert.equal(events[0].returnValues.round.toString(), round.toString())
-            assert.equal(events[0].returnValues.blockHash, blockHash)
+            assert.equal(events[0].args.round.toString(), round.toString())
+            assert.equal(events[0].args.blockHash, blockHash)
         })
     })
 
@@ -253,19 +249,19 @@ contract("RoundsManager", accounts => {
     describe("blockHash", () => {
         it("should fail if block is in the future", async () => {
             const latestBlock = await web3.eth.getBlockNumber()
-            await expectRevertWithReason(roundsManager.blockHash(latestBlock + 1), "can only retrieve past block hashes")
+            await expect(roundsManager.blockHash(latestBlock + 1)).to.be.revertedWith("can only retrieve past block hashes")
         })
 
         it("should fail if the current block >= 256 and the block is more than 256 blocks in the past", async () => {
             await fixture.rpc.wait(256)
 
             const latestBlock = await web3.eth.getBlockNumber()
-            await expectRevertWithReason(roundsManager.blockHash(latestBlock - 257), "can only retrieve hashes for last 256 blocks")
+            await expect(roundsManager.blockHash(latestBlock - 257)).to.be.revertedWith("can only retrieve hashes for last 256 blocks")
         })
 
         it("should fail if block is the current block", async () => {
             const latestBlock = await web3.eth.getBlockNumber()
-            await expectRevertWithReason(roundsManager.blockHash(latestBlock), "can only retrieve past block hashes")
+            await expect(roundsManager.blockHash(latestBlock)).to.be.revertedWith("can only retrieve past block hashes")
         })
 
         it("should return the block hash if the current block is >= 256 and the block is not more than 256 blocks in the past", async () => {
@@ -287,7 +283,7 @@ contract("RoundsManager", accounts => {
 
         it("should return 0x0 if a past round was not initialized", async () => {
             // Ensure that we are past round 0
-            const roundLength = await roundsManager.roundLength.call()
+            const roundLength = await roundsManager.roundLength()
             await fixture.rpc.waitUntilNextBlockMultiple(roundLength.toNumber())
             await roundsManager.initializeRound()
 
@@ -295,7 +291,7 @@ contract("RoundsManager", accounts => {
         })
 
         it("should return the block hash stored for the current round", async () => {
-            const roundLength = await roundsManager.roundLength.call()
+            const roundLength = await roundsManager.roundLength()
             await fixture.rpc.waitUntilNextBlockMultiple(roundLength.toNumber())
             const blockHash = (await web3.eth.getBlock("latest")).hash
             await roundsManager.initializeRound()
@@ -305,7 +301,7 @@ contract("RoundsManager", accounts => {
         })
 
         it("should return the block hash stored for a previous round", async () => {
-            const roundLength = await roundsManager.roundLength.call()
+            const roundLength = await roundsManager.roundLength()
             await fixture.rpc.waitUntilNextBlockMultiple(roundLength.toNumber())
             // Track block hash for round N
             const blockHash = (await web3.eth.getBlock("latest")).hash
@@ -322,13 +318,13 @@ contract("RoundsManager", accounts => {
 
     describe("currentRound", () => {
         beforeEach(async () => {
-            const roundLength = await roundsManager.roundLength.call()
+            const roundLength = await roundsManager.roundLength()
             await fixture.rpc.waitUntilNextBlockMultiple(roundLength.toNumber())
         })
 
         it("should return the current round", async () => {
             const blockNum = await web3.eth.getBlockNumber()
-            const roundLength = await roundsManager.roundLength.call()
+            const roundLength = await roundsManager.roundLength()
             const expCurrentRound = Math.floor(blockNum / roundLength.toNumber())
 
             assert.equal(await roundsManager.currentRound(), expCurrentRound, "wrong current round")
@@ -371,13 +367,13 @@ contract("RoundsManager", accounts => {
 
     describe("currentRoundStartBlock", () => {
         beforeEach(async () => {
-            const roundLength = await roundsManager.roundLength.call()
+            const roundLength = await roundsManager.roundLength()
             await fixture.rpc.waitUntilNextBlockMultiple(roundLength.toNumber())
         })
 
         it("should return the start block of the current round", async () => {
             const blockNum = await web3.eth.getBlockNumber()
-            const roundLength = await roundsManager.roundLength.call()
+            const roundLength = await roundsManager.roundLength()
             const expStartBlock = Math.floor(blockNum / roundLength.toNumber()) * roundLength.toNumber()
 
             assert.equal(await roundsManager.currentRoundStartBlock(), expStartBlock, "current round start block is incorrect")
@@ -420,7 +416,7 @@ contract("RoundsManager", accounts => {
 
     describe("currentRoundInitialized", () => {
         beforeEach(async () => {
-            const roundLength = await roundsManager.roundLength.call()
+            const roundLength = await roundsManager.roundLength()
             await fixture.rpc.waitUntilNextBlockMultiple(roundLength.toNumber())
         })
 
@@ -439,12 +435,12 @@ contract("RoundsManager", accounts => {
         let roundLength
 
         beforeEach(async () => {
-            roundLength = (await roundsManager.roundLength.call()).toNumber()
+            roundLength = (await roundsManager.roundLength()).toNumber()
             await fixture.rpc.waitUntilNextBlockMultiple(roundLength)
         })
 
         it("should return true if the current round is locked", async () => {
-            const roundLockAmount = (await roundsManager.roundLockAmount.call()).toNumber()
+            const roundLockAmount = (await roundsManager.roundLockAmount()).toNumber()
             const roundLockBlocks = Math.floor((roundLength * roundLockAmount) / PERC_DIVISOR)
             await fixture.rpc.wait(roundLength - roundLockBlocks)
 
@@ -461,12 +457,12 @@ contract("RoundsManager", accounts => {
             const currentRound = (await roundsManager.currentRound()).toNumber()
             await roundsManager.setLIPUpgradeRound(50, currentRound + 100)
             assert.equal((await roundsManager.lipUpgradeRound(50)).toNumber(), currentRound + 100)
-            await truffleAssert.reverts(roundsManager.setLIPUpgradeRound(50, currentRound + 100), "LIP upgrade round already set")
+            await expect(roundsManager.setLIPUpgradeRound(50, currentRound + 100)).to.be.revertedWith("LIP upgrade round already set")
         })
 
         it("reverts when msg.sender is not the controller owner", async () => {
             const currentRound = (await roundsManager.currentRound()).toNumber()
-            await truffleAssert.reverts(roundsManager.setLIPUpgradeRound(50, currentRound + 100, {from: accounts[1]}), "caller must be Controller owner")
+            await expect(roundsManager.connect(signers[1]).setLIPUpgradeRound(50, currentRound + 100)).to.be.revertedWith("caller must be Controller owner")
         })
 
         it("sets LIP upgrade round for a LIP to the provided round", async () => {

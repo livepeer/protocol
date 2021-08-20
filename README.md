@@ -5,11 +5,11 @@
 
 Ethereum smart contracts used for the Livepeer protocol. These contracts govern the logic for:
 
-* Livepeer Token (LPT) ownership
-* Bonding and delegating LPT to elect active workers
-* Distributing inflationary rewards and fees to active participants
-* Time progression in the protocol
-* ETH escrow and ticket validation for a probabilistic micropayment protocol used to pay for transcoding work
+- Livepeer Token (LPT) ownership
+- Bonding and delegating LPT to elect active workers
+- Distributing inflationary rewards and fees to active participants
+- Time progression in the protocol
+- ETH escrow and ticket validation for a probabilistic micropayment protocol used to pay for transcoding work
 
 ## Documentation
 
@@ -38,16 +38,16 @@ At the moment, the following contract files use the experimental ABIEncoderV2 So
 - `pm/MixinTicketBrokerCore.sol`
 - `pm/MixinWrappers.sol`
 
-There have been bugs related to ABIEncoderV2 in the past and it is still experimental so developers should pay attention to the [list of bugs associated with ABIEncoderV2](https://solidity.readthedocs.io/en/latest/bugs.html) when making any contract code changes that involve ABIEncoderV2 and should make sure to use a compiler version with the necessary fixes. The primary motivation behind enabling ABIEncoderV2 in these contract files is to allow for Solidity structs to be passed as function arguments. 
+There have been bugs related to ABIEncoderV2 in the past and it is still experimental so developers should pay attention to the [list of bugs associated with ABIEncoderV2](https://solidity.readthedocs.io/en/latest/bugs.html) when making any contract code changes that involve ABIEncoderV2 and should make sure to use a compiler version with the necessary fixes. The primary motivation behind enabling ABIEncoderV2 in these contract files is to allow for Solidity structs to be passed as function arguments.
 
-### Install 
+### Install
 
-Make sure Node.js v10.17.0 is installed.
+Make sure Node.js (>=v12.0) is installed.
 
 ```
 git clone https://github.com/livepeer/protocol.git
 cd protocol
-npm install
+yarn
 ```
 
 ### Build
@@ -55,7 +55,7 @@ npm install
 Compile the contracts and build artifacts used for testing and deployment.
 
 ```
-npm run compile
+yarn compile
 ```
 
 ### Clean
@@ -63,7 +63,7 @@ npm run compile
 Remove existing build artifacts.
 
 ```
-npm run clean
+yarn clean
 ```
 
 ### Lint
@@ -71,47 +71,49 @@ npm run clean
 The project uses [ESLint](https://github.com/eslint/eslint) for Javascript linting and [Solium](https://github.com/duaraghav8/Ethlint) for Solidity linting.
 
 ```
-npm run lint
+yarn lint
 ```
 
 ### Run Tests
 
-All tests will be executed against an instance of [ganache-cli](https://github.com/trufflesuite/ganache-cli).
+All tests will be executed via [hardhat](https://hardhat.org/guides/waffle-testing.html).
+
+Make sure to add relevant API keys inside `.env` file (by copying provided `.env.example`) to assist tests and deployments.
 
 To run all tests:
 
 ```
-npm run test
+yarn test
 ```
 
 To run unit tests only:
 
 ```
-npm run test:unit
+yarn test:unit
 ```
 
 To run integration tests only:
 
 ```
-npm run test:integration
+yarn test:integration
 ```
 
-To run gas reporting tests (via [eth-gas-reporter](https://github.com/cgewecke/eth-gas-reporter)) only:
+To run gas reporting tests (via [hardhat-gas-reporter](https://hardhat.org/plugins/hardhat-gas-reporter.html)) only:
 
 ```
-npm run test:gas
+yarn test:gas
 ```
 
 To run tests with coverage (via [solidity-coverage](https://github.com/sc-forks/solidity-coverage)) reporting:
 
 ```
-npm run test:coverage
+yarn test:coverage
 ```
 
 ## Deployment
 
-Make sure that an ETH node is accessible and that the network being deployed to is supported by the `truffle.js` configuration.
+Make sure that an ETH node is accessible and that the network being deployed to is supported by the `hardhat.config.ts` configuration.
 
 ```
-npm run migrate
+yarn deploy
 ```

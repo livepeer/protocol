@@ -1,11 +1,10 @@
-pragma solidity >= 0.4.15 < 0.6.0;
+pragma solidity >=0.4.15 <0.6.0;
 
 library AssertInt {
+    uint8 constant ZERO = uint8(bytes1("0"));
+    uint8 constant A = uint8(bytes1("a"));
 
-    uint8 constant ZERO = uint8(byte('0'));
-    uint8 constant A = uint8(byte('a'));
-
-    byte constant MINUS = byte('-');
+    bytes1 constant MINUS = bytes1("-");
 
     /*
         Event: TestEvent
@@ -35,12 +34,14 @@ library AssertInt {
         Returns:
             result (bool) - The result.
     */
-    function equal(int a, int b, string memory message) public returns (bool result) {
+    function equal(
+        int256 a,
+        int256 b,
+        string memory message
+    ) public returns (bool result) {
         result = (a == b);
-        if (result)
-            _report(result, message);
-        else
-            _report(result, _appendTagged(_tag(a, "Tested"), _tag(b, "Against"), message));
+        if (result) _report(result, message);
+        else _report(result, _appendTagged(_tag(a, "Tested"), _tag(b, "Against"), message));
     }
 
     /*
@@ -58,12 +59,14 @@ library AssertInt {
         Returns:
             result (bool) - The result.
     */
-    function notEqual(int a, int b, string memory message) public returns (bool result) {
+    function notEqual(
+        int256 a,
+        int256 b,
+        string memory message
+    ) public returns (bool result) {
         result = (a != b);
-        if (result)
-            _report(result, message);
-        else
-            _report(result, _appendTagged(_tag(a, "Tested"), _tag(b, "Against"), message));
+        if (result) _report(result, message);
+        else _report(result, _appendTagged(_tag(a, "Tested"), _tag(b, "Against"), message));
     }
 
     /*
@@ -81,12 +84,14 @@ library AssertInt {
         Returns:
             result (bool) - The result.
     */
-    function isAbove(int a, int b, string memory message) public returns (bool result) {
+    function isAbove(
+        int256 a,
+        int256 b,
+        string memory message
+    ) public returns (bool result) {
         result = (a > b);
-        if (result)
-            _report(result, message);
-        else
-            _report(result, _appendTagged(_tag(a, "Tested"), _tag(b, "Against"), message));
+        if (result) _report(result, message);
+        else _report(result, _appendTagged(_tag(a, "Tested"), _tag(b, "Against"), message));
     }
 
     /*
@@ -104,12 +109,14 @@ library AssertInt {
         Returns:
             result (bool) - The result.
     */
-    function isAtLeast(int a, int b, string memory message) public returns (bool result) {
+    function isAtLeast(
+        int256 a,
+        int256 b,
+        string memory message
+    ) public returns (bool result) {
         result = (a >= b);
-        if (result)
-            _report(result, message);
-        else
-            _report(result, _appendTagged(_tag(a, "Tested"), _tag(b, "Against"), message));
+        if (result) _report(result, message);
+        else _report(result, _appendTagged(_tag(a, "Tested"), _tag(b, "Against"), message));
     }
 
     /*
@@ -127,12 +134,14 @@ library AssertInt {
         Returns:
             result (bool) - The result.
     */
-    function isBelow(int a, int b, string memory message) public returns (bool result) {
+    function isBelow(
+        int256 a,
+        int256 b,
+        string memory message
+    ) public returns (bool result) {
         result = (a < b);
-        if (result)
-            _report(result, message);
-        else
-            _report(result, _appendTagged(_tag(a, "Tested"), _tag(b, "Against"), message));
+        if (result) _report(result, message);
+        else _report(result, _appendTagged(_tag(a, "Tested"), _tag(b, "Against"), message));
     }
 
     /*
@@ -150,12 +159,14 @@ library AssertInt {
         Returns:
             result (bool) - The result.
     */
-    function isAtMost(int a, int b, string memory message) public returns (bool result) {
+    function isAtMost(
+        int256 a,
+        int256 b,
+        string memory message
+    ) public returns (bool result) {
         result = (a <= b);
-        if (result)
-            _report(result, message);
-        else
-            _report(result, _appendTagged(_tag(a, "Tested"), _tag(b, "Against"), message));
+        if (result) _report(result, message);
+        else _report(result, _appendTagged(_tag(a, "Tested"), _tag(b, "Against"), message));
     }
 
     /*
@@ -172,12 +183,10 @@ library AssertInt {
         Returns:
             result (bool) - The result.
     */
-    function isZero(int number, string memory message) public returns (bool result) {
+    function isZero(int256 number, string memory message) public returns (bool result) {
         result = (number == 0);
-        if (result)
-            _report(result, message);
-        else
-            _report(result, _appendTagged(_tag(number, "Tested"), message));
+        if (result) _report(result, message);
+        else _report(result, _appendTagged(_tag(number, "Tested"), message));
     }
 
     /*
@@ -194,17 +203,15 @@ library AssertInt {
         Returns:
             result (bool) - The result.
     */
-    function isNotZero(int number, string memory message) public returns (bool result) {
+    function isNotZero(int256 number, string memory message) public returns (bool result) {
         result = (number != 0);
-        if (result)
-            _report(result, message);
-        else
-            _report(result, _appendTagged(_tag(number, "Tested"), message));
+        if (result) _report(result, message);
+        else _report(result, _appendTagged(_tag(number, "Tested"), message));
     }
 
     /******************************** internal ********************************/
 
-        /*
+    /*
             Function: _report
 
             Internal function for triggering <TestEvent>.
@@ -214,10 +221,8 @@ library AssertInt {
                 message (string) - The message that is sent if the assertion fails.
         */
     function _report(bool result, string memory message) internal {
-        if(result)
-            emit TestEvent(true, "");
-        else
-            emit TestEvent(false, message);
+        if (result) emit TestEvent(true, "");
+        else emit TestEvent(false, message);
     }
 
     /*
@@ -232,11 +237,10 @@ library AssertInt {
         Returns:
             result (string) - The resulting string.
     */
-    function _itoa(int n, uint8 radix) internal pure returns (string memory) {
-        if (n == 0 || radix < 2 || radix > 16)
-            return '0';
+    function _itoa(int256 n, uint8 radix) internal pure returns (string memory) {
+        if (n == 0 || radix < 2 || radix > 16) return "0";
         bytes memory bts = new bytes(256);
-        uint i;
+        uint256 i;
         bool neg = false;
         if (n < 0) {
             n = -n;
@@ -247,20 +251,17 @@ library AssertInt {
             n /= radix;
         }
         // Reverse
-        uint size = i;
-        uint j = 0;
+        uint256 size = i;
+        uint256 j = 0;
         bytes memory rev;
         if (neg) {
             size++;
             j = 1;
             rev = new bytes(size);
             rev[0] = MINUS;
-        }
-        else
-            rev = new bytes(size);
+        } else rev = new bytes(size);
 
-        for (; j < size; j++)
-            rev[j] = bts[size - j - 1];
+        for (; j < size; j++) rev[j] = bts[size - j - 1];
         return string(rev);
     }
 
@@ -276,13 +277,10 @@ library AssertInt {
         Returns:
             result (string) - The ASCII byte.
     */
-    function _utoa(uint8 u) internal pure returns (byte) {
-        if (u < 10)
-            return byte(u + ZERO);
-        else if (u < 16)
-            return byte(u - 10 + A);
-        else
-            return 0;
+    function _utoa(uint8 u) internal pure returns (bytes1) {
+        if (u < 10) return bytes1(u + ZERO);
+        else if (u < 16) return bytes1(u - 10 + A);
+        else return 0;
     }
 
     /*
@@ -310,24 +308,21 @@ library AssertInt {
             result (string) - "tag: value"
     */
     function _tag(string memory value, string memory tag) internal pure returns (string memory) {
-
         bytes memory valueB = bytes(value);
         bytes memory tagB = bytes(tag);
 
-        uint vl = valueB.length;
-        uint tl = tagB.length;
+        uint256 vl = valueB.length;
+        uint256 tl = tagB.length;
 
         bytes memory newB = new bytes(vl + tl + 2);
 
-        uint i;
-        uint j;
+        uint256 i;
+        uint256 j;
 
-        for (i = 0; i < tl; i++)
-            newB[j++] = tagB[i];
-        newB[j++] = ':';
-        newB[j++] = ' ';
-        for (i = 0; i < vl; i++)
-            newB[j++] = valueB[i];
+        for (i = 0; i < tl; i++) newB[j++] = tagB[i];
+        newB[j++] = ":";
+        newB[j++] = " ";
+        for (i = 0; i < vl; i++) newB[j++] = valueB[i];
 
         return string(newB);
     }
@@ -344,11 +339,10 @@ library AssertInt {
         Returns:
             result (string) - "tag: _itoa(value)"
     */
-    function _tag(int value, string memory tag) internal pure returns (string memory) {
+    function _tag(int256 value, string memory tag) internal pure returns (string memory) {
         string memory nstr = _itoa(value, 10);
         return _tag(nstr, tag);
     }
-
 
     /*
         Function: _appendTagged(string)
@@ -363,25 +357,22 @@ library AssertInt {
             result (string) - "str (tagged)"
     */
     function _appendTagged(string memory tagged, string memory str) internal pure returns (string memory) {
-
         bytes memory taggedB = bytes(tagged);
         bytes memory strB = bytes(str);
 
-        uint sl = strB.length;
-        uint tl = taggedB.length;
+        uint256 sl = strB.length;
+        uint256 tl = taggedB.length;
 
         bytes memory newB = new bytes(sl + tl + 3);
 
-        uint i;
-        uint j;
+        uint256 i;
+        uint256 j;
 
-        for (i = 0; i < sl; i++)
-            newB[j++] = strB[i];
-        newB[j++] = ' ';
-        newB[j++] = '(';
-        for (i = 0; i < tl; i++)
-            newB[j++] = taggedB[i];
-        newB[j++] = ')';
+        for (i = 0; i < sl; i++) newB[j++] = strB[i];
+        newB[j++] = " ";
+        newB[j++] = "(";
+        for (i = 0; i < tl; i++) newB[j++] = taggedB[i];
+        newB[j++] = ")";
 
         return string(newB);
     }
@@ -399,32 +390,32 @@ library AssertInt {
         Returns:
             result (string) - "str (tagged0, tagged1)"
     */
-    function _appendTagged(string memory tagged0, string memory tagged1, string memory str) internal pure returns (string memory) {
-
+    function _appendTagged(
+        string memory tagged0,
+        string memory tagged1,
+        string memory str
+    ) internal pure returns (string memory) {
         bytes memory tagged0B = bytes(tagged0);
         bytes memory tagged1B = bytes(tagged1);
         bytes memory strB = bytes(str);
 
-        uint sl = strB.length;
-        uint t0l = tagged0B.length;
-        uint t1l = tagged1B.length;
+        uint256 sl = strB.length;
+        uint256 t0l = tagged0B.length;
+        uint256 t1l = tagged1B.length;
 
         bytes memory newB = new bytes(sl + t0l + t1l + 5);
 
-        uint i;
-        uint j;
+        uint256 i;
+        uint256 j;
 
-        for (i = 0; i < sl; i++)
-            newB[j++] = strB[i];
-        newB[j++] = ' ';
-        newB[j++] = '(';
-        for (i = 0; i < t0l; i++)
-            newB[j++] = tagged0B[i];
-        newB[j++] = ',';
-        newB[j++] = ' ';
-        for (i = 0; i < t1l; i++)
-            newB[j++] = tagged1B[i];
-        newB[j++] = ')';
+        for (i = 0; i < sl; i++) newB[j++] = strB[i];
+        newB[j++] = " ";
+        newB[j++] = "(";
+        for (i = 0; i < t0l; i++) newB[j++] = tagged0B[i];
+        newB[j++] = ",";
+        newB[j++] = " ";
+        for (i = 0; i < t1l; i++) newB[j++] = tagged1B[i];
+        newB[j++] = ")";
 
         return string(newB);
     }

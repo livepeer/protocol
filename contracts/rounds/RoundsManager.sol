@@ -8,7 +8,6 @@ import "../libraries/MathUtils.sol";
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
-
 /**
  * @title RoundsManager
  * @notice Manages round progression and other blockchain time related operations of the Livepeer protocol
@@ -31,12 +30,12 @@ contract RoundsManager is ManagerProxyTarget, IRoundsManager {
     uint256 public lastRoundLengthUpdateStartBlock;
 
     // Mapping round number => block hash for the round
-    mapping (uint256 => bytes32) internal _blockHashForRound;
+    mapping(uint256 => bytes32) internal _blockHashForRound;
 
     // LIP Upgrade Rounds
     // These can be used in conditionals to ensure backwards compatibility or skip such backwards compatibility logic
     // in case 'currentRound' > LIP-X upgrade round
-    mapping (uint256 => uint256) public lipUpgradeRound; // mapping (LIP-number > round number)
+    mapping(uint256 => uint256) public lipUpgradeRound; // mapping (LIP-number > round number)
 
     /**
      * @notice RoundsManager constructor. Only invokes constructor of base Manager contract with provided Controller address
@@ -107,10 +106,10 @@ contract RoundsManager is ManagerProxyTarget, IRoundsManager {
     }
 
     /**
-    * @notice setLIPUpgradeRound sets the round an LIP upgrade would become active.
-    * @param _lip the LIP number.
-    * @param _round (optional) the round in which the LIP becomes active
-    */
+     * @notice setLIPUpgradeRound sets the round an LIP upgrade would become active.
+     * @param _lip the LIP number.
+     * @param _round (optional) the round in which the LIP becomes active
+     */
     function setLIPUpgradeRound(uint256 _lip, uint256 _round) external onlyControllerOwner {
         require(lipUpgradeRound[_lip] == 0, "LIP upgrade round already set");
         lipUpgradeRound[_lip] = _round;

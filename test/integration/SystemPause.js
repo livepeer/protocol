@@ -1,13 +1,11 @@
-import {contractId} from "../../utils/helpers"
-import BN from "bn.js"
 import {constants} from "../../utils/constants"
 
-const Controller = artifacts.require("Controller")
-const BondingManager = artifacts.require("BondingManager")
-const AdjustableRoundsManager = artifacts.require("AdjustableRoundsManager")
-const LivepeerToken = artifacts.require("LivepeerToken")
+import chai, {assert, expect} from "chai"
+import {solidity} from "ethereum-waffle"
+import {ethers} from "hardhat"
+chai.use(solidity)
 
-contract("System Pause", accounts => {
+describe("System Pause", () => {
     let controller
     let bondingManager
     let roundsManager
@@ -20,52 +18,51 @@ contract("System Pause", accounts => {
     let roundLength
 
     before(async () => {
-        transcoder1 = accounts[0]
-        delegator1 = accounts[2]
-        delegator2 = accounts[3]
+        const signers = await ethers.getSigners()
 
-        controller = await Controller.deployed()
+        transcoder1 = signers[0]
+        delegator1 = signers[2]
+        delegator2 = signers[3]
+
+        const fixture = await deployments.fixture(["Contracts"])
+
+        controller = await ethers.getContractAt("Controller", fixture.Controller.address)
         await controller.unpause()
 
-        const bondingManagerAddr = await controller.getContract(contractId("BondingManager"))
-        bondingManager = await BondingManager.at(bondingManagerAddr)
+        bondingManager = await ethers.getContractAt("BondingManager", fixture.BondingManager.address)
+        roundsManager = await ethers.getContractAt("AdjustableRoundsManager", fixture.AdjustableRoundsManager.address)
+        token = await ethers.getContractAt("LivepeerToken", fixture.LivepeerToken.address)
 
-        const roundsManagerAddr = await controller.getContract(contractId("RoundsManager"))
-        roundsManager = await AdjustableRoundsManager.at(roundsManagerAddr)
+        const transferAmount = ethers.BigNumber.from(10).mul(constants.TOKEN_UNIT.toString())
+        await token.connect(signers[0]).transfer(transcoder1.address, transferAmount)
+        await token.connect(signers[0]).transfer(delegator1.address, transferAmount)
+        await token.connect(signers[0]).transfer(delegator2.address, transferAmount)
 
-        const tokenAddr = await controller.getContract(contractId("LivepeerToken"))
-        token = await LivepeerToken.at(tokenAddr)
-
-        const transferAmount = (new BN(10)).mul(constants.TOKEN_UNIT)
-        await token.transfer(transcoder1, transferAmount, {from: accounts[0]})
-        await token.transfer(delegator1, transferAmount, {from: accounts[0]})
-        await token.transfer(delegator2, transferAmount, {from: accounts[0]})
-
-        roundLength = await roundsManager.roundLength.call()
-        await roundsManager.mineBlocks(roundLength.toNumber() * 1000)
+        roundLength = await roundsManager.roundLength()
+        await roundsManager.mineBlocks(roundLength.mul(1000))
         await roundsManager.initializeRound()
     })
 
     it("registers transcoder 1 that self bonds", async () => {
-        await token.approve(bondingManager.address, 1000, {from: transcoder1})
-        await bondingManager.bond(1000, transcoder1, {from: transcoder1})
-        await bondingManager.transcoder(0, 5, {from: transcoder1})
-        assert.isTrue(await bondingManager.isRegisteredTranscoder(transcoder1), "wrong transcoder status")
+        await token.connect(transcoder1).approve(bondingManager.address, 1000)
+        await bondingManager.connect(transcoder1).bond(1000, transcoder1.address)
+        await bondingManager.connect(transcoder1).transcoder(0, 5)
+        assert.isTrue(await bondingManager.isRegisteredTranscoder(transcoder1.address), "wrong transcoder status")
     })
 
     it("delegator 1 bonds to transcoder 1", async () => {
-        await token.approve(bondingManager.address, 1000, {from: delegator1})
-        await bondingManager.bond(500, transcoder1, {from: delegator1})
+        await token.connect(delegator1).approve(bondingManager.address, 1000)
+        await bondingManager.connect(delegator1).bond(500, transcoder1.address)
 
-        const bond = (await bondingManager.getDelegator(delegator1))[0]
+        const bond = (await bondingManager.getDelegator(delegator1.address))[0]
         assert.equal(bond, 500, "delegator 1 bonded amount incorrect")
     })
 
     it("delegator 2 bonds to transcoder 1", async () => {
-        await token.approve(bondingManager.address, 1000, {from: delegator2})
-        await bondingManager.bond(500, transcoder1, {from: delegator2})
+        await token.connect(delegator2).approve(bondingManager.address, 1000)
+        await bondingManager.connect(delegator2).bond(500, transcoder1.address)
 
-        const bond = (await bondingManager.getDelegator(delegator2))[0]
+        const bond = (await bondingManager.getDelegator(delegator2.address))[0]
         assert.equal(bond, 500, "delegator 2 bonded amount incorrect")
     })
 
@@ -73,7 +70,7 @@ contract("System Pause", accounts => {
         await roundsManager.mineBlocks(roundLength)
         await roundsManager.initializeRound()
 
-        await bondingManager.reward({from: transcoder1})
+        await bondingManager.connect(transcoder1).reward()
 
         await controller.pause()
         await roundsManager.mineBlocks(roundLength * 5)
@@ -82,19 +79,19 @@ contract("System Pause", accounts => {
 
         const currentRound = await roundsManager.currentRound()
 
-        const t1Pending = await bondingManager.pendingStake(transcoder1, currentRound)
-        await bondingManager.claimEarnings(currentRound, {from: transcoder1})
-        const endT1Info = await bondingManager.getDelegator(transcoder1)
-        assert.equal(t1Pending.toString(), endT1Info.bondedAmount.toString(), "wrong bonded amount for transcoder 1")
+        const t1Pending = await bondingManager.pendingStake(transcoder1.address, currentRound)
+        await bondingManager.connect(transcoder1).claimEarnings(currentRound)
+        const endT1Info = await bondingManager.getDelegator(transcoder1.address)
+        expect(t1Pending).to.equal(endT1Info.bondedAmount, "wrong bonded amount for transcoder 1")
 
-        const d1Pending = await bondingManager.pendingStake(delegator1, currentRound)
-        await bondingManager.claimEarnings(currentRound, {from: delegator1})
-        const endD1Info = await bondingManager.getDelegator(delegator1)
-        assert.equal(d1Pending.toString(), endD1Info.bondedAmount.toString(), "wrong bonded amount for delegator 1")
+        const d1Pending = await bondingManager.pendingStake(delegator1.address, currentRound)
+        await bondingManager.connect(delegator1).claimEarnings(currentRound)
+        const endD1Info = await bondingManager.getDelegator(delegator1.address)
+        expect(d1Pending).to.equal(endD1Info.bondedAmount, "wrong bonded amount for delegator 1")
 
-        const d2Pending = await bondingManager.pendingStake(delegator2, currentRound)
-        await bondingManager.claimEarnings(currentRound, {from: delegator2})
-        const endD2Info = await bondingManager.getDelegator(delegator2)
-        assert.equal(d2Pending.toString(), endD2Info.bondedAmount.toString(), "wrong bonded amount for delegator 2")
+        const d2Pending = await bondingManager.pendingStake(delegator2.address, currentRound)
+        await bondingManager.connect(delegator2).claimEarnings(currentRound)
+        const endD2Info = await bondingManager.getDelegator(delegator2.address)
+        expect(d2Pending).to.equal(endD2Info.bondedAmount, "wrong bonded amount for delegator 2")
     })
 })

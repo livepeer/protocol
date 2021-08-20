@@ -1,11 +1,10 @@
-pragma solidity >= 0.4.15 < 0.6.0;
+pragma solidity >=0.4.15 <0.6.0;
 
 library AssertString {
-
     // Constant: STRING_NULL
     // The null string: ""
     string constant STRING_NULL = "";
-    
+
     /*
         Event: TestEvent
 
@@ -34,12 +33,14 @@ library AssertString {
         Returns:
             result (bool) - The result.
     */
-    function equal(string memory a, string memory b, string memory message) public returns (bool result) {
+    function equal(
+        string memory a,
+        string memory b,
+        string memory message
+    ) public returns (bool result) {
         result = _stringsEqual(a, b);
-        if (result)
-            _report(result, message);
-        else
-            _report(result, _appendTagged(_tag(a, "Tested"), _tag(b, "Against"), message));
+        if (result) _report(result, message);
+        else _report(result, _appendTagged(_tag(a, "Tested"), _tag(b, "Against"), message));
     }
 
     /*
@@ -57,12 +58,14 @@ library AssertString {
         Returns:
             result (bool) - The result.
     */
-    function notEqual(string memory a, string memory b, string memory message) public returns (bool result) {
+    function notEqual(
+        string memory a,
+        string memory b,
+        string memory message
+    ) public returns (bool result) {
         result = !_stringsEqual(a, b);
-        if (result)
-            _report(result, message);
-        else
-            _report(result, _appendTagged(_tag(a, "Tested"), _tag(b, "Against"), message));
+        if (result) _report(result, message);
+        else _report(result, _appendTagged(_tag(a, "Tested"), _tag(b, "Against"), message));
     }
 
     /*
@@ -81,10 +84,8 @@ library AssertString {
     */
     function isEmpty(string memory str, string memory message) public returns (bool result) {
         result = _stringsEqual(str, STRING_NULL);
-        if (result)
-            _report(result, message);
-        else
-            _report(result, _appendTagged(_tag(str, "Tested"), message));
+        if (result) _report(result, message);
+        else _report(result, _appendTagged(_tag(str, "Tested"), message));
     }
 
     /*
@@ -103,15 +104,13 @@ library AssertString {
     */
     function isNotEmpty(string memory str, string memory message) public returns (bool result) {
         result = !_stringsEqual(str, STRING_NULL);
-        if (result)
-            _report(result, message);
-        else
-            _report(result, _appendTagged(_tag(str, "Tested"), message));
+        if (result) _report(result, message);
+        else _report(result, _appendTagged(_tag(str, "Tested"), message));
     }
 
     /******************************** internal ********************************/
 
-        /*
+    /*
             Function: _report
 
             Internal function for triggering <TestEvent>.
@@ -121,10 +120,8 @@ library AssertString {
                 message (string) - The message that is sent if the assertion fails.
         */
     function _report(bool result, string memory message) internal {
-        if(result)
-            emit TestEvent(true, "");
-        else
-            emit TestEvent(false, message);
+        if (result) emit TestEvent(true, "");
+        else emit TestEvent(false, message);
     }
 
     /*
@@ -144,11 +141,9 @@ library AssertString {
         bytes memory ba = bytes(a);
         bytes memory bb = bytes(b);
 
-        if (ba.length != bb.length)
-            return false;
-        for (uint i = 0; i < ba.length; i ++) {
-            if (ba[i] != bb[i])
-                return false;
+        if (ba.length != bb.length) return false;
+        for (uint256 i = 0; i < ba.length; i++) {
+            if (ba[i] != bb[i]) return false;
         }
         return true;
     }
@@ -166,24 +161,21 @@ library AssertString {
             result (string) - "tag: value"
     */
     function _tag(string memory value, string memory tag) internal pure returns (string memory) {
-
         bytes memory valueB = bytes(value);
         bytes memory tagB = bytes(tag);
 
-        uint vl = valueB.length;
-        uint tl = tagB.length;
+        uint256 vl = valueB.length;
+        uint256 tl = tagB.length;
 
         bytes memory newB = new bytes(vl + tl + 2);
 
-        uint i;
-        uint j;
+        uint256 i;
+        uint256 j;
 
-        for (i = 0; i < tl; i++)
-            newB[j++] = tagB[i];
-        newB[j++] = ':';
-        newB[j++] = ' ';
-        for (i = 0; i < vl; i++)
-            newB[j++] = valueB[i];
+        for (i = 0; i < tl; i++) newB[j++] = tagB[i];
+        newB[j++] = ":";
+        newB[j++] = " ";
+        for (i = 0; i < vl; i++) newB[j++] = valueB[i];
 
         return string(newB);
     }
@@ -201,25 +193,22 @@ library AssertString {
             result (string) - "str (tagged)"
     */
     function _appendTagged(string memory tagged, string memory str) internal pure returns (string memory) {
-
         bytes memory taggedB = bytes(tagged);
         bytes memory strB = bytes(str);
 
-        uint sl = strB.length;
-        uint tl = taggedB.length;
+        uint256 sl = strB.length;
+        uint256 tl = taggedB.length;
 
         bytes memory newB = new bytes(sl + tl + 3);
 
-        uint i;
-        uint j;
+        uint256 i;
+        uint256 j;
 
-        for (i = 0; i < sl; i++)
-            newB[j++] = strB[i];
-        newB[j++] = ' ';
-        newB[j++] = '(';
-        for (i = 0; i < tl; i++)
-            newB[j++] = taggedB[i];
-        newB[j++] = ')';
+        for (i = 0; i < sl; i++) newB[j++] = strB[i];
+        newB[j++] = " ";
+        newB[j++] = "(";
+        for (i = 0; i < tl; i++) newB[j++] = taggedB[i];
+        newB[j++] = ")";
 
         return string(newB);
     }
@@ -237,34 +226,33 @@ library AssertString {
         Returns:
             result (string) - "str (tagged0, tagged1)"
     */
-    function _appendTagged(string memory tagged0, string memory tagged1, string memory str) internal pure returns (string memory) {
-
+    function _appendTagged(
+        string memory tagged0,
+        string memory tagged1,
+        string memory str
+    ) internal pure returns (string memory) {
         bytes memory tagged0B = bytes(tagged0);
         bytes memory tagged1B = bytes(tagged1);
         bytes memory strB = bytes(str);
 
-        uint sl = strB.length;
-        uint t0l = tagged0B.length;
-        uint t1l = tagged1B.length;
+        uint256 sl = strB.length;
+        uint256 t0l = tagged0B.length;
+        uint256 t1l = tagged1B.length;
 
         bytes memory newB = new bytes(sl + t0l + t1l + 5);
 
-        uint i;
-        uint j;
+        uint256 i;
+        uint256 j;
 
-        for (i = 0; i < sl; i++)
-            newB[j++] = strB[i];
-        newB[j++] = ' ';
-        newB[j++] = '(';
-        for (i = 0; i < t0l; i++)
-            newB[j++] = tagged0B[i];
-        newB[j++] = ',';
-        newB[j++] = ' ';
-        for (i = 0; i < t1l; i++)
-            newB[j++] = tagged1B[i];
-        newB[j++] = ')';
+        for (i = 0; i < sl; i++) newB[j++] = strB[i];
+        newB[j++] = " ";
+        newB[j++] = "(";
+        for (i = 0; i < t0l; i++) newB[j++] = tagged0B[i];
+        newB[j++] = ",";
+        newB[j++] = " ";
+        for (i = 0; i < t1l; i++) newB[j++] = tagged1B[i];
+        newB[j++] = ")";
 
         return string(newB);
     }
-
 }
