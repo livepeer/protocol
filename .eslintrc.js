@@ -19,6 +19,8 @@ module.exports = {
         "quotes": ["error", "double"],
         "comma-dangle": ["error", "never"],
         "indent": ["error", 4],
-        "space-infix-ops": ["error"]
+        "space-infix-ops": ["error"],
+        "camelcase": "off",
+        "max-len": ["error", {"code": 256}]
     }
 }

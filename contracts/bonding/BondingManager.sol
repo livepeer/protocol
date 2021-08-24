@@ -13,6 +13,8 @@ import "../token/IMinter.sol";
 import "../rounds/IRoundsManager.sol";
 import "./IBondingManager.sol";
 
+import "hardhat/console.sol";
+
 uint256 constant MAX_FUTURE_ROUND = 2**256 - 1;
 
 contract BondingManager is ManagerProxyTarget, IBondingManager {
