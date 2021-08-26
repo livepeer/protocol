@@ -5,8 +5,6 @@ pragma solidity 0.8.4;
 
 import "../utils/MathUtils.sol";
 
-import "hardhat/console.sol";
-
 /**
  * @title Delegations
  * @author Nico Vergauwen (@kyriediculous)
@@ -162,6 +160,7 @@ library Delegations {
      * @return stake total stake of the delegator
      */
     function stakeOf(Pool storage _pool, address _delegator) internal view returns (uint256 stake) {
+        if (_pool.totalStake == 0) return 0;
         stake = MathUtils.percOf(_pool.totalStake, _pool.delegations[_delegator].shares, _pool.totalShares);
     }
 
@@ -233,15 +232,13 @@ library Delegations {
         uint256 totalStake = _pool.totalStake;
         uint256 totalShares = _pool.totalShares;
 
-        if (totalStake == 0) {
-            return 0;
-        }
-
         if (totalShares == 0) {
             return _tokens;
+        } else if (totalStake == 0) {
+            return 0;
+        } else {
+            shares = MathUtils.percOf(_tokens, totalShares, _pool.totalStake);
         }
-
-        shares = MathUtils.percOf(_tokens, totalShares, _pool.totalStake);
     }
 
     /**

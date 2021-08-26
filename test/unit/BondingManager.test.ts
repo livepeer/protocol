@@ -34,11 +34,7 @@ describe("BondingManager", () => {
             signers[0]
         )
 
-        bondingManager = await fixture.deployAndRegister(
-            bondingManagerFactory,
-            "BondingManager",
-            fixture?.controller?.address
-        )
+        bondingManager = await fixture.deployAndRegister(bondingManagerFactory, "BondingManager", fixture?.controller?.address)
 
         const lptFactory = new LivepeerToken__factory(signers[0])
         lpt = await fixture.deployAndRegister(lptFactory, "LivepeerToken")
@@ -57,45 +53,80 @@ describe("BondingManager", () => {
 
     describe("bond", () => {
         let orchestrator0: SignerWithAddress
-        let delegator: SignerWithAddress
-        let delegator2: SignerWithAddress
+        let orchestrator1: SignerWithAddress
+        let delegator0: SignerWithAddress
+        let delegator1: SignerWithAddress
         const currentRound = 100
 
         before(async () => {
-            orchestrator0 = signers[0]
-            delegator = signers[3]
-            delegator2 = signers[4]
+            orchestrator0 = signers[1]
+            orchestrator1 = signers[2]
+            delegator0 = signers[3]
+            delegator1 = signers[4]
 
             await lpt.mint(orchestrator0.address, 1000000)
-            await lpt.mint(delegator.address, 1000000)
-            await lpt.mint(delegator2.address, 1000000)
+            await lpt.mint(orchestrator1.address, 1000000)
+            await lpt.mint(delegator0.address, 1000000)
+            await lpt.mint(delegator1.address, 1000000)
 
             await lpt.connect(orchestrator0).approve(bondingManager.address, ethers.constants.MaxUint256)
-            await lpt.connect(delegator).approve(bondingManager.address, ethers.constants.MaxUint256)
-            await lpt.connect(delegator2).approve(bondingManager.address, ethers.constants.MaxUint256)
-        })
-
-        beforeEach(async () => {
-            await fixture?.roundsManager?.setMockBool(functionSig("currentRoundInitialized()"), true)
-            await fixture?.roundsManager?.setMockBool(functionSig("currentRoundLocked()"), false)
-            await fixture?.roundsManager?.setMockUint256(functionSig("currentRound()"), currentRound - 1)
-            await bondingManager.connect(orchestrator0).bond(1000, orchestrator0.address)
-            await bondingManager.connect(orchestrator0).transcoder(5, 10)
-            await fixture?.roundsManager?.setMockUint256(functionSig("currentRound()"), currentRound)
+            await lpt.connect(orchestrator1).approve(bondingManager.address, ethers.constants.MaxUint256)
+            await lpt.connect(delegator0).approve(bondingManager.address, ethers.constants.MaxUint256)
+            await lpt.connect(delegator1).approve(bondingManager.address, ethers.constants.MaxUint256)
         })
 
         it("should fail if current round is not initialized", async () => {
             await fixture?.roundsManager?.setMockBool(functionSig("currentRoundInitialized()"), false)
 
-            await expect(bondingManager.connect(delegator).bond(1000, orchestrator0.address)).to.be.revertedWith(
-                "current round is not initialized"
-            )
+            await expect(bondingManager.connect(delegator0).bond(1000, orchestrator0.address)).to.be.revertedWith("current round is not initialized")
         })
 
         describe("staking", () => {
-            it("delegator stakes funds to orchestrator for itself", async () => {})
+            before(async () => {
+                await fixture?.roundsManager?.setMockBool(functionSig("currentRoundInitialized()"), true)
+                await fixture?.roundsManager?.setMockBool(functionSig("currentRoundLocked()"), false)
+                await fixture?.roundsManager?.setMockUint256(functionSig("currentRound()"), currentRound - 1)
 
-            it("delegator stakes funds to orchestrator on behalf of delegator 2", async () => {})
+                await bondingManager.connect(orchestrator0).bond(1000, orchestrator0.address)
+                await bondingManager.connect(orchestrator1).bond(1000, orchestrator1.address)
+
+                await bondingManager.connect(orchestrator0).transcoder(5, 10)
+                await bondingManager.connect(orchestrator1).transcoder(5, 10)
+
+                await fixture?.roundsManager?.setMockUint256(functionSig("currentRound()"), currentRound)
+            })
+
+            describe("caller is unbonded", () => {
+                it("should fail if orchestrator delegates to another orchestrator", async () => {
+                    await expect(bondingManager.connect(orchestrator0).bond(1000, orchestrator1.address)).to.be.revertedWith("ORCHESTRATOR_CAN_NOT_DELEGATE")
+                })
+
+                it("should fail if provided amount = 0", async () => {
+                    await expect(bondingManager.connect(delegator0).bond(ethers.BigNumber.from(0), orchestrator0.address)).to.be.revertedWith("ZERO_DELEGATION_AMOUNT")
+                })
+
+                it("delegator stakes funds to orchestrator for itself", async () => {
+                    const startDelegatedAmount = await bondingManager.orchestratorTotalStake(orchestrator0.address)
+                    await bondingManager.connect(delegator0).bond(1000, orchestrator0.address)
+
+                    expect(await bondingManager.orchestratorTotalStake(orchestrator0.address)).to.equal(startDelegatedAmount.add(1000), "wrong change in delegatedAmount")
+                    expect(await bondingManager.stakeOf(orchestrator0.address, delegator0.address)).to.equal(ethers.BigNumber.from(1000), "wrong bondedAmount")
+                })
+
+                it("should fire a Bond event when bonding", async () => {
+                    const txRes = await bondingManager.connect(delegator0).bond(1000, orchestrator0.address)
+                    expect(txRes).to.emit(bondingManager, "Bond").withArgs(orchestrator0.address, delegator0.address, 1000, 1000)
+                })
+
+                it("delegator stakes funds to orchestrator on behalf of second delegator", async () => {
+                    const startDelegatedAmount = await bondingManager.orchestratorTotalStake(orchestrator0.address)
+                    await bondingManager.connect(delegator0).bondOnBehalf(1000, orchestrator0.address, delegator1.address)
+
+                    expect(await bondingManager.orchestratorTotalStake(orchestrator0.address)).to.equal(startDelegatedAmount.add(1000), "wrong change in delegatedAmount")
+                    expect(await bondingManager.stakeOf(orchestrator0.address, delegator0.address)).to.equal(ethers.BigNumber.from(0), "wrong bondedAmount for proxy delegator")
+                    expect(await bondingManager.stakeOf(orchestrator0.address, delegator1.address)).to.equal(ethers.BigNumber.from(1000), "wrong bondedAmount for stake owner")
+                })
+            })
         })
     })
 })
