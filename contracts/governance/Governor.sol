@@ -1,15 +1,14 @@
-pragma solidity 0.5.11;
-pragma experimental ABIEncoderV2;
+// SPDX-FileCopyrightText: 2021 Livepeer <info@livepeer.org>
 
-import "openzeppelin-solidity/contracts/math/SafeMath.sol";
+// SPDX-License-Identifier: MIT
+
+pragma solidity 0.8.4;
 
 /**
  * @title Governor
  * @dev The Governor holds the rights to stage and execute contract calls i.e. changing Livepeer protocol parameters.
  */
 contract Governor {
-    using SafeMath for uint256;
-
     address public owner;
 
     /// @dev mapping of updateHash (keccak256(update) => executeBlock (block.number + delay)
@@ -68,7 +67,7 @@ contract Governor {
 
         require(updates[updateHash] == 0, "update already staged");
 
-        updates[updateHash] = block.number.add(_delay);
+        updates[updateHash] = block.number + _delay;
 
         emit UpdateStaged(_update, _delay);
     }
@@ -88,7 +87,9 @@ contract Governor {
         delete updates[updateHash];
         for (uint256 i = 0; i < _update.target.length; i++) {
             /* solium-disable-next-line */
-            (bool success, bytes memory returnData) = _update.target[i].call.value(_update.value[i])(_update.data[i]);
+            (bool success, bytes memory returnData) = _update.target[i].call{ value: _update.value[i] }(
+                _update.data[i]
+            );
             require(success, string(returnData));
         }
 

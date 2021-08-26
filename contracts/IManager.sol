@@ -1,6 +1,9 @@
-pragma solidity ^0.5.11;
+// SPDX-FileCopyrightText: 2021 Livepeer <info@livepeer.org>
+// SPDX-License-Identifier: MIT
 
-contract IManager {
+pragma solidity 0.8.4;
+
+interface IManager {
     event SetController(address controller);
     event ParameterUpdate(string param);
 

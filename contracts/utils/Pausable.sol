@@ -1,6 +1,10 @@
-pragma solidity ^0.5.11;
+// SPDX-FileCopyrightText: 2021 Livepeer <info@livepeer.org>
 
-import "./Ownable.sol";
+// SPDX-License-Identifier: MIT
+
+pragma solidity 0.8.4;
+
+import "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
  * @title Pausable

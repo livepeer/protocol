@@ -1,20 +1,20 @@
-pragma solidity 0.5.11;
+// SPDX-FileCopyrightText: 2021 Livepeer <info@livepeer.org>
+
+// SPDX-License-Identifier: MIT
+
+pragma solidity 0.8.4;
 
 import "../ManagerProxyTarget.sol";
 import "./IRoundsManager.sol";
 import "../bonding/IBondingManager.sol";
 import "../token/IMinter.sol";
-import "../libraries/MathUtils.sol";
-
-import "openzeppelin-solidity/contracts/math/SafeMath.sol";
+import "../utils/MathUtils.sol";
 
 /**
  * @title RoundsManager
  * @notice Manages round progression and other blockchain time related operations of the Livepeer protocol
  */
-contract RoundsManager is ManagerProxyTarget, IRoundsManager {
-    using SafeMath for uint256;
-
+contract RoundsManager is IRoundsManager, ManagerProxyTarget {
     // Round length in blocks
     uint256 public roundLength;
     // Lock period of a round as a % of round length
@@ -35,7 +35,7 @@ contract RoundsManager is ManagerProxyTarget, IRoundsManager {
     // LIP Upgrade Rounds
     // These can be used in conditionals to ensure backwards compatibility or skip such backwards compatibility logic
     // in case 'currentRound' > LIP-X upgrade round
-    mapping(uint256 => uint256) public lipUpgradeRound; // mapping (LIP-number > round number)
+    mapping(uint256 => uint256) public override lipUpgradeRound; // mapping (LIP-number > round number)
 
     /**
      * @notice RoundsManager constructor. Only invokes constructor of base Manager contract with provided Controller address
@@ -45,7 +45,7 @@ contract RoundsManager is ManagerProxyTarget, IRoundsManager {
      * - setRoundLockAmount()
      * @param _controller Address of Controller that this contract will be registered with
      */
-    constructor(address _controller) public Manager(_controller) {}
+    constructor(address _controller) Manager(_controller) {}
 
     /**
      * @notice Set round length. Only callable by the controller owner
@@ -86,7 +86,7 @@ contract RoundsManager is ManagerProxyTarget, IRoundsManager {
     /**
      * @notice Initialize the current round. Called once at the start of any round
      */
-    function initializeRound() external whenSystemNotPaused {
+    function initializeRound() external override whenSystemNotPaused {
         uint256 currRound = currentRound();
 
         // Check if already called for the current round
@@ -95,7 +95,7 @@ contract RoundsManager is ManagerProxyTarget, IRoundsManager {
         // Set current round as initialized
         lastInitializedRound = currRound;
         // Store block hash for round
-        bytes32 roundBlockHash = blockHash(blockNum().sub(1));
+        bytes32 roundBlockHash = blockHash(blockNum() - 1);
         _blockHashForRound[currRound] = roundBlockHash;
         // Set total active stake for the round
         bondingManager().setCurrentRoundTotalActiveStake();
@@ -118,14 +118,14 @@ contract RoundsManager is ManagerProxyTarget, IRoundsManager {
     /**
      * @notice Return current block number
      */
-    function blockNum() public view returns (uint256) {
+    function blockNum() public view virtual override returns (uint256) {
         return block.number;
     }
 
     /**
      * @notice Return blockhash for a block
      */
-    function blockHash(uint256 _block) public view returns (bytes32) {
+    function blockHash(uint256 _block) public view virtual override returns (bytes32) {
         uint256 currentBlock = blockNum();
         require(_block < currentBlock, "can only retrieve past block hashes");
         require(currentBlock < 256 || _block >= currentBlock - 256, "can only retrieve hashes for last 256 blocks");
@@ -138,43 +138,43 @@ contract RoundsManager is ManagerProxyTarget, IRoundsManager {
      * @param _round Round number
      * @return Blockhash for `_round`
      */
-    function blockHashForRound(uint256 _round) public view returns (bytes32) {
+    function blockHashForRound(uint256 _round) public view override returns (bytes32) {
         return _blockHashForRound[_round];
     }
 
     /**
      * @notice Return current round
      */
-    function currentRound() public view returns (uint256) {
+    function currentRound() public view override returns (uint256) {
         // Compute # of rounds since roundLength was last updated
-        uint256 roundsSinceUpdate = blockNum().sub(lastRoundLengthUpdateStartBlock).div(roundLength);
+        uint256 roundsSinceUpdate = _roundsSinceUpdate();
         // Current round = round that roundLength was last updated + # of rounds since roundLength was last updated
-        return lastRoundLengthUpdateRound.add(roundsSinceUpdate);
+        return lastRoundLengthUpdateRound + roundsSinceUpdate;
     }
 
     /**
      * @notice Return start block of current round
      */
-    function currentRoundStartBlock() public view returns (uint256) {
+    function currentRoundStartBlock() public view override returns (uint256) {
         // Compute # of rounds since roundLength was last updated
-        uint256 roundsSinceUpdate = blockNum().sub(lastRoundLengthUpdateStartBlock).div(roundLength);
+        uint256 roundsSinceUpdate = _roundsSinceUpdate();
         // Current round start block = start block of round that roundLength was last updated + (# of rounds since roundLenght was last updated * roundLength)
-        return lastRoundLengthUpdateStartBlock.add(roundsSinceUpdate.mul(roundLength));
+        return lastRoundLengthUpdateStartBlock + roundsSinceUpdate * roundLength;
     }
 
     /**
      * @notice Check if current round is initialized
      */
-    function currentRoundInitialized() public view returns (bool) {
+    function currentRoundInitialized() public view override returns (bool) {
         return lastInitializedRound == currentRound();
     }
 
     /**
      * @notice Check if we are in the lock period of the current round
      */
-    function currentRoundLocked() public view returns (bool) {
+    function currentRoundLocked() public view override returns (bool) {
         uint256 lockedBlocks = MathUtils.percOf(roundLength, roundLockAmount);
-        return blockNum().sub(currentRoundStartBlock()) >= roundLength.sub(lockedBlocks);
+        return blockNum() - currentRoundStartBlock() >= roundLength - lockedBlocks;
     }
 
     /**
@@ -182,6 +182,10 @@ contract RoundsManager is ManagerProxyTarget, IRoundsManager {
      */
     function bondingManager() internal view returns (IBondingManager) {
         return IBondingManager(controller.getContract(keccak256("BondingManager")));
+    }
+
+    function _roundsSinceUpdate() internal view returns (uint256) {
+        return blockNum() - lastRoundLengthUpdateStartBlock / roundLength;
     }
 
     /**

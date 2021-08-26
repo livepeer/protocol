@@ -1,6 +1,4 @@
-pragma solidity ^0.5.11;
-// solium-disable-next-line
-pragma experimental ABIEncoderV2;
+pragma solidity 0.8.4;
 
 import "./mixins/MixinContractRegistry.sol";
 import "./mixins/MixinReserve.sol";
@@ -11,8 +9,8 @@ import "./mixins/MixinWrappers.sol";
 contract TicketBroker is
     MixinContractRegistry,
     MixinReserve,
-    MixinTicketBrokerCore,
     MixinTicketProcessor,
+    MixinTicketBrokerCore,
     MixinWrappers
 {
     /**
@@ -24,7 +22,6 @@ contract TicketBroker is
      * @param _controller Address of Controller that this contract will be registered with
      */
     constructor(address _controller)
-        public
         MixinContractRegistry(_controller)
         MixinReserve()
         MixinTicketBrokerCore()

@@ -1,12 +1,15 @@
-pragma solidity ^0.5.11;
+// SPDX-FileCopyrightText: 2021 Livepeer <info@livepeer.org>
+
+// SPDX-License-Identifier: MIT
+
+pragma solidity 0.8.4;
 
 import "./ILivepeerToken.sol";
 import "./VariableSupplyToken.sol";
 
 // Livepeer Token
-contract LivepeerToken is ILivepeerToken, VariableSupplyToken {
-    string public name = "Livepeer Token";
-    uint8 public decimals = 18;
-    string public symbol = "LPT";
+contract LivepeerToken is VariableSupplyToken {
     string public version = "0.1";
+
+    constructor() ERC20("Livepeer Token", "LPT") {}
 }

@@ -1,11 +1,8 @@
-pragma solidity ^0.5.11;
-// solium-disable-next-line
-pragma experimental ABIEncoderV2;
+pragma solidity 0.8.4;
 
-import "./interfaces/MTicketBrokerCore.sol";
-import "./interfaces/MContractRegistry.sol";
+import "./MixinTicketBrokerCore.sol";
 
-contract MixinWrappers is MContractRegistry, MTicketBrokerCore {
+abstract contract MixinWrappers is MixinTicketBrokerCore {
     /**
      * @notice Redeems multiple winning tickets. The function will redeem all of the provided tickets and handle any failures gracefully without reverting the entire function
      * @param _tickets Array of winning tickets to be redeemed in order to claim payment
@@ -29,7 +26,7 @@ contract MixinWrappers is MContractRegistry, MTicketBrokerCore {
      * @param _ticket Winning ticket to be redeemed in order to claim payment
      * @param _sig Sender's signature over the hash of `_ticket`
      * @param _recipientRand The preimage for the recipientRandHash included in `_ticket`
-     * @return Boolean indicating whether the underlying `redeemWinningTicket()` call succeeded
+     * @return success Boolean indicating whether the underlying `redeemWinningTicket()` call succeeded
      */
     function redeemWinningTicketNoRevert(
         Ticket memory _ticket,

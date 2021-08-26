@@ -1,4 +1,4 @@
-pragma solidity >=0.4.15 <0.6.0;
+pragma solidity ^0.8.4;
 
 library AssertIntArray {
     uint8 constant ZERO = uint8(bytes1("0"));
@@ -180,8 +180,8 @@ library AssertIntArray {
             neg = true;
         }
         while (n > 0) {
-            bts[i++] = _utoa(uint8(n % radix)); // Turn it to ascii.
-            n /= radix;
+            bts[i++] = _utoa(uint8(int8(n % int8(radix)))); // Turn it to ascii.
+            n /= int8(radix);
         }
         // Reverse
         uint256 size = i;

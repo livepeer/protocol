@@ -1,17 +1,13 @@
-pragma solidity ^0.5.11;
-// solium-disable-next-line
-pragma experimental ABIEncoderV2;
+pragma solidity 0.8.4;
 
-import "./interfaces/MReserve.sol";
-import "./interfaces/MTicketProcessor.sol";
+import "./MixinReserve.sol";
+import "./MixinTicketProcessor.sol";
 import "./interfaces/MTicketBrokerCore.sol";
-import "./interfaces/MContractRegistry.sol";
-import "openzeppelin-solidity/contracts/cryptography/ECDSA.sol";
-import "openzeppelin-solidity/contracts/math/SafeMath.sol";
+import "./MixinContractRegistry.sol";
 
-contract MixinTicketBrokerCore is MContractRegistry, MReserve, MTicketProcessor, MTicketBrokerCore {
-    using SafeMath for uint256;
+import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
+abstract contract MixinTicketBrokerCore is MixinReserve, MixinTicketProcessor, MTicketBrokerCore {
     struct Sender {
         uint256 deposit; // Amount of funds deposited
         uint256 withdrawRound; // Round that sender can withdraw deposit & reserve
@@ -29,17 +25,16 @@ contract MixinTicketBrokerCore is MContractRegistry, MReserve, MTicketProcessor,
     // Checks if msg.value is equal to the given deposit and reserve amounts
     modifier checkDepositReserveETHValueSplit(uint256 _depositAmount, uint256 _reserveAmount) {
         require(
-            msg.value == _depositAmount.add(_reserveAmount),
+            msg.value == _depositAmount + _reserveAmount,
             "msg.value does not equal sum of deposit amount and reserve amount"
         );
-
         _;
     }
 
     // Process deposit funding
     modifier processDeposit(address _sender, uint256 _amount) {
         Sender storage sender = senders[_sender];
-        sender.deposit = sender.deposit.add(_amount);
+        sender.deposit += _amount;
         if (_isUnlockInProgress(sender)) {
             _cancelUnlock(sender, _sender);
         }
@@ -124,9 +119,9 @@ contract MixinTicketBrokerCore is MContractRegistry, MReserve, MTicketProcessor,
             // If ticket face value > sender's deposit then claim from
             // the sender's reserve
 
-            amountToTransfer = sender.deposit.add(
-                claimFromReserve(_ticket.sender, _ticket.recipient, _ticket.faceValue.sub(sender.deposit))
-            );
+            amountToTransfer =
+                sender.deposit +
+                claimFromReserve(_ticket.sender, _ticket.recipient, _ticket.faceValue - sender.deposit);
 
             sender.deposit = 0;
         } else {
@@ -134,7 +129,7 @@ contract MixinTicketBrokerCore is MContractRegistry, MReserve, MTicketProcessor,
             // from sender's deposit
 
             amountToTransfer = _ticket.faceValue;
-            sender.deposit = sender.deposit.sub(_ticket.faceValue);
+            sender.deposit -= amountToTransfer;
         }
 
         if (amountToTransfer > 0) {
@@ -164,7 +159,7 @@ contract MixinTicketBrokerCore is MContractRegistry, MReserve, MTicketProcessor,
         require(!_isUnlockInProgress(sender), "unlock already initiated");
 
         uint256 currentRound = roundsManager().currentRound();
-        sender.withdrawRound = currentRound.add(unlockPeriod);
+        sender.withdrawRound = currentRound + unlockPeriod;
 
         emit Unlock(msg.sender, currentRound, sender.withdrawRound);
     }
@@ -194,7 +189,7 @@ contract MixinTicketBrokerCore is MContractRegistry, MReserve, MTicketProcessor,
         sender.deposit = 0;
         clearReserve(msg.sender);
 
-        withdrawTransfer(msg.sender, deposit.add(reserve));
+        withdrawTransfer(payable(msg.sender), deposit + reserve);
 
         emit Withdrawal(msg.sender, deposit, reserve);
     }
@@ -212,7 +207,7 @@ contract MixinTicketBrokerCore is MContractRegistry, MReserve, MTicketProcessor,
     /**
      * @notice Returns info about a sender
      * @param _sender Address of sender
-     * @return Info about the sender for `_sender`
+     * @return sender Info about the sender for `_sender`
      */
     function getSenderInfo(address _sender) public view returns (Sender memory sender, ReserveInfo memory reserve) {
         sender = senders[_sender];

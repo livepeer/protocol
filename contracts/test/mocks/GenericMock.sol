@@ -1,4 +1,4 @@
-pragma solidity ^0.5.11;
+pragma solidity 0.8.4;
 
 /**
  * @title A mock contract that can set/return mock values and execute functions
@@ -28,7 +28,7 @@ contract GenericMock {
     /**
      * @dev Return mock value for a functione
      */
-    function() external payable {
+    fallback() external payable {
         bytes4 func;
         assembly {
             func := calldataload(0)
@@ -65,7 +65,7 @@ contract GenericMock {
      */
     function execute(address _target, bytes calldata _data) external payable {
         // solium-disable-next-line
-        (bool ok, bytes memory res) = _target.call.value(msg.value)(_data);
+        (bool ok, bytes memory res) = _target.call{ value: msg.value }(_data);
         require(ok, string(res));
     }
 

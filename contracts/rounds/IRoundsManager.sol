@@ -1,9 +1,12 @@
-pragma solidity ^0.5.11;
+// SPDX-FileCopyrightText: 2021 Livepeer <info@livepeer.org>
+// SPDX-License-Identifier: MIT
+
+pragma solidity 0.8.4;
 
 /**
  * @title RoundsManager interface
  */
-contract IRoundsManager {
+interface IRoundsManager {
     // Events
     event NewRound(uint256 indexed round, bytes32 blockHash);
 
@@ -18,17 +21,17 @@ contract IRoundsManager {
     function lipUpgradeRound(uint256 _lip) external view returns (uint256);
 
     // Public functions
-    function blockNum() public view returns (uint256);
+    function blockNum() external view returns (uint256);
 
-    function blockHash(uint256 _block) public view returns (bytes32);
+    function blockHash(uint256 _block) external view returns (bytes32);
 
-    function blockHashForRound(uint256 _round) public view returns (bytes32);
+    function blockHashForRound(uint256 _round) external view returns (bytes32);
 
-    function currentRound() public view returns (uint256);
+    function currentRound() external view returns (uint256);
 
-    function currentRoundStartBlock() public view returns (uint256);
+    function currentRoundStartBlock() external view returns (uint256);
 
-    function currentRoundInitialized() public view returns (bool);
+    function currentRoundInitialized() external view returns (bool);
 
-    function currentRoundLocked() public view returns (bool);
+    function currentRoundLocked() external view returns (bool);
 }

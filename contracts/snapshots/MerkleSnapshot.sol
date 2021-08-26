@@ -1,6 +1,10 @@
-pragma solidity ^0.5.11;
+// SPDX-FileCopyrightText: 2021 Livepeer <info@livepeer.org>
 
-import "../zeppelin/MerkleProof.sol";
+// SPDX-License-Identifier: MIT
+
+pragma solidity 0.8.4;
+
+import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "../Manager.sol";
 
 contract MerkleSnapshot is Manager {

@@ -1,7 +1,11 @@
-pragma solidity ^0.5.11;
+// SPDX-FileCopyrightText: 2021 Livepeer <info@livepeer.org>
 
-import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
-import "./Ownable.sol";
+// SPDX-License-Identifier: MIT
+
+pragma solidity 0.8.4;
+
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
  * @title Mintable token
@@ -10,7 +14,7 @@ import "./Ownable.sol";
  * Based on code by TokenMarketNet: https://github.com/TokenMarketNet/ico/blob/master/contracts/MintableToken.sol
  */
 
-contract MintableToken is ERC20, Ownable {
+abstract contract MintableToken is ERC20, Ownable {
     event Mint(address indexed to, uint256 amount);
     event MintFinished();
 

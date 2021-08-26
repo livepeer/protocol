@@ -600,8 +600,12 @@
     "@nodelib/fs.scandir" "2.1.5"
     fastq "^1.6.0"
 
+<<<<<<< HEAD
 "@nomiclabs/hardhat-ethers@npm:hardhat-deploy-ethers", hardhat-deploy-ethers@^0.3.0-beta.10:
   name "@nomiclabs/hardhat-ethers"
+=======
+"@nomiclabs/hardhat-ethers@npm:hardhat-deploy-ethers@^0.3.0-beta.10", hardhat-deploy-ethers@^0.3.0-beta.10:
+>>>>>>> 90d5f5e... libs/utils: rework utilities and update compiler version and openzeppelin version
   version "0.3.0-beta.10"
   resolved "https://registry.yarnpkg.com/hardhat-deploy-ethers/-/hardhat-deploy-ethers-0.3.0-beta.10.tgz#bccfcf635d380bbab3638960f6739fe4d396fc5f"
   integrity sha512-TeyriUshRZ7XVHOjMsDtTozIrdwLf3Bw+oZRYNhXdG/eut5HeDhjUFPfRlG7TI1lSLvkcB5dt7OxOtPYKDOxTg==
@@ -625,6 +629,11 @@
   integrity sha512-zt4xN+D+fKl3wW2YlTX3k9APR3XZgPkxJYf36AcliJn3oujnKEVRZaHu0PhgLjO+gR+F/kiYayo9fgd2L8970Q==
   dependencies:
     "@types/bignumber.js" "^5.0.0"
+
+"@openzeppelin/contracts@^4.2.0":
+  version "4.2.0"
+  resolved "https://registry.yarnpkg.com/@openzeppelin/contracts/-/contracts-4.2.0.tgz#260d921d99356e48013d9d760caaa6cea35dc642"
+  integrity sha512-LD4NnkKpHHSMo5z9MvFsG4g1xxZUDqV3A3Futu3nvyfs4wPwXxqOgMaxOoa2PeyGL2VNeSlbxT54enbQzGcgJQ==
 
 "@resolver-engine/core@^0.3.3":
   version "0.3.3"

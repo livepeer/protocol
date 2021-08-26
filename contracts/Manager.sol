@@ -1,4 +1,7 @@
-pragma solidity ^0.5.11;
+// SPDX-FileCopyrightText: 2021 Livepeer <info@livepeer.org>
+// SPDX-License-Identifier: MIT
+
+pragma solidity 0.8.4;
 
 import "./IManager.sol";
 import "./IController.sol";
@@ -31,7 +34,7 @@ contract Manager is IManager {
         _;
     }
 
-    constructor(address _controller) public {
+    constructor(address _controller) {
         controller = IController(_controller);
     }
 
@@ -39,7 +42,7 @@ contract Manager is IManager {
      * @notice Set controller. Only callable by current controller
      * @param _controller Controller contract address
      */
-    function setController(address _controller) external onlyController {
+    function setController(address _controller) external override onlyController {
         controller = IController(_controller);
 
         emit SetController(_controller);

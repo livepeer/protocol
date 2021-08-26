@@ -1,15 +1,18 @@
-pragma solidity ^0.5.11;
+// SPDX-FileCopyrightText: 2021 Livepeer <info@livepeer.org>
 
-import "openzeppelin-solidity/contracts/math/SafeMath.sol";
+// SPDX-License-Identifier: MIT
+
+pragma solidity 0.8.4;
 
 library MathUtils {
-    using SafeMath for uint256;
-
-    // Divisor used for representing percentages
-    uint256 public constant PERC_DIVISOR = 1000000000;
+    /**
+     * @notice precision used for MathUtils
+     * @return PERC_DIVISOR precision
+     */
+    uint256 public constant PERC_DIVISOR = 10**27;
 
     /**
-     * @dev Returns whether an amount is a valid percentage out of PERC_DIVISOR
+     * @notice Returns whether an amount is a valid percentage out of PERC_DIVISOR
      * @param _amount Amount that is supposed to be a percentage
      */
     function validPerc(uint256 _amount) internal pure returns (bool) {
@@ -17,7 +20,7 @@ library MathUtils {
     }
 
     /**
-     * @dev Compute percentage of a value with the percentage represented by a fraction
+     * @notice Compute percentage of a value with the percentage represented by a fraction
      * @param _amount Amount to take the percentage of
      * @param _fracNum Numerator of fraction representing the percentage
      * @param _fracDenom Denominator of fraction representing the percentage
@@ -27,24 +30,30 @@ library MathUtils {
         uint256 _fracNum,
         uint256 _fracDenom
     ) internal pure returns (uint256) {
-        return _amount.mul(percPoints(_fracNum, _fracDenom)).div(PERC_DIVISOR);
+        return (_amount * percPoints(_fracNum, _fracDenom)) / PERC_DIVISOR;
     }
 
     /**
-     * @dev Compute percentage of a value with the percentage represented by a fraction over PERC_DIVISOR
+     * @notice Compute percentage of a value with the percentage represented by a fraction over PERC_DIVISOR
      * @param _amount Amount to take the percentage of
      * @param _fracNum Numerator of fraction representing the percentage with PERC_DIVISOR as the denominator
      */
     function percOf(uint256 _amount, uint256 _fracNum) internal pure returns (uint256) {
-        return _amount.mul(_fracNum).div(PERC_DIVISOR);
+        return (_amount * _fracNum) / PERC_DIVISOR;
     }
 
     /**
-     * @dev Compute percentage representation of a fraction
+     * @notice Compute percentage representation of a fraction
      * @param _fracNum Numerator of fraction represeting the percentage
      * @param _fracDenom Denominator of fraction represeting the percentage
      */
     function percPoints(uint256 _fracNum, uint256 _fracDenom) internal pure returns (uint256) {
-        return _fracNum.mul(PERC_DIVISOR).div(_fracDenom);
+        return (_fracNum * PERC_DIVISOR) / _fracDenom;
+    }
+
+    function min(uint256 _a, uint256 _b) internal pure returns (uint256) {
+        if (_a > _b) return _b;
+        if (_a < _b) return _a;
+        return _a;
     }
 }

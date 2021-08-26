@@ -1,27 +1,16 @@
-pragma solidity ^0.5.11;
-// solium-disable-next-line
-pragma experimental ABIEncoderV2;
+pragma solidity 0.8.4;
 
+import "./MixinContractRegistry.sol";
 import "./interfaces/MReserve.sol";
-import "./interfaces/MContractRegistry.sol";
-import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
-contract MixinReserve is MContractRegistry, MReserve {
-    using SafeMath for uint256;
-
-    struct Reserve {
-        uint256 funds; // Amount of funds in the reserve
-        mapping(uint256 => uint256) claimedForRound; // Mapping of round => total amount claimed
-        mapping(uint256 => mapping(address => uint256)) claimedByAddress; // Mapping of round => claimant address => amount claimed
-    }
-
+abstract contract MixinReserve is MixinContractRegistry, MReserve {
     // Mapping of address => reserve
     mapping(address => Reserve) internal reserves;
 
     /**
      * @dev Returns info about a reserve
      * @param _reserveHolder Address of reserve holder
-     * @return Info about the reserve for `_reserveHolder`
+     * @return info about the reserve for `_reserveHolder`
      */
     function getReserveInfo(address _reserveHolder) public view returns (ReserveInfo memory info) {
         info.fundsRemaining = remainingReserve(_reserveHolder);
@@ -49,8 +38,8 @@ contract MixinReserve is MContractRegistry, MReserve {
         }
 
         // Total claimable funds = remaining funds + amount claimed for the round
-        uint256 totalClaimable = reserve.funds.add(reserve.claimedForRound[currentRound]);
-        return totalClaimable.div(poolSize).sub(reserve.claimedByAddress[currentRound][_claimant]);
+        uint256 totalClaimable = reserve.funds + reserve.claimedForRound[currentRound];
+        return totalClaimable / poolSize - reserve.claimedByAddress[currentRound][_claimant];
     }
 
     /**
@@ -71,7 +60,7 @@ contract MixinReserve is MContractRegistry, MReserve {
      * @param _amount Amount of funds to add to reserve
      */
     function addReserve(address _reserveHolder, uint256 _amount) internal {
-        reserves[_reserveHolder].funds = reserves[_reserveHolder].funds.add(_amount);
+        reserves[_reserveHolder].funds += _amount;
 
         emit ReserveFunded(_reserveHolder, _amount);
     }
@@ -118,13 +107,11 @@ contract MixinReserve is MContractRegistry, MReserve {
             uint256 currentRound = roundsManager().currentRound();
             Reserve storage reserve = reserves[_reserveHolder];
             // Increase total amount claimed for the round
-            reserve.claimedForRound[currentRound] = reserve.claimedForRound[currentRound].add(claimAmount);
+            reserve.claimedForRound[currentRound] += claimAmount;
             // Increase amount claimed by claimant for the round
-            reserve.claimedByAddress[currentRound][_claimant] = reserve.claimedByAddress[currentRound][_claimant].add(
-                claimAmount
-            );
+            reserve.claimedByAddress[currentRound][_claimant] += claimAmount;
             // Decrease remaining reserve
-            reserve.funds = reserve.funds.sub(claimAmount);
+            reserve.funds -= claimAmount;
 
             emit ReserveClaimed(_reserveHolder, _claimant, claimAmount);
         }
