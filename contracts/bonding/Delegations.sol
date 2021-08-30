@@ -160,7 +160,7 @@ library Delegations {
      * @return stake total stake of the delegator
      */
     function stakeOf(Pool storage _pool, address _delegator) internal view returns (uint256 stake) {
-        if (_pool.totalStake == 0) return 0;
+        if (_pool.totalStake == 0 || _pool.totalShares == 0) return 0;
         stake = MathUtils.percOf(_pool.totalStake, _pool.delegations[_delegator].shares, _pool.totalShares);
     }
 

@@ -134,24 +134,59 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     /**
      * @notice Delegate stake towards a specific address
      * @param _amount The amount of tokens to stake
-     * @param _to The address of the transcoder to stake towards
+     * @param _orchestrator The address of the transcoder to stake towards
+     * @param _oldDelegateNewPosPrev The address of the previous transcoder in the pool for the old delegate
+     * @param _oldDelegateNewPosNext The address of the next transcoder in the pool for the old delegate
+     * @param _currDelegateNewPosPrev The address of the previous transcoder in the pool for the current delegate
+     * @param _currDelegateNewPosNext The address of the next transcoder in the pool for the current delegate
      */
-    function bond(uint256 _amount, address _to) external {
-        bondWithHint(_amount, _to, msg.sender, address(0), address(0), address(0), address(0));
+    function bond(
+        uint256 _amount,
+        address _orchestrator,
+        address _oldDelegateNewPosPrev,
+        address _oldDelegateNewPosNext,
+        address _currDelegateNewPosPrev,
+        address _currDelegateNewPosNext
+    ) external {
+        bond(
+            _amount,
+            _orchestrator,
+            msg.sender,
+            _oldDelegateNewPosPrev,
+            _oldDelegateNewPosNext,
+            _currDelegateNewPosPrev,
+            _currDelegateNewPosNext
+        );
     }
 
     /**
      * @notice Delegate stake towards a specific address on behalf of another address
      * @param _amount The amount of tokens to stake
-     * @param _to The address of the transcoder to stake towards
-     * @param _onBehalfOf The address which will own the stake
+     * @param _orchestrator The address of the transcoder to stake towards
+     * @param _for The address which will own the stake
+     * @param _oldDelegateNewPosPrev The address of the previous transcoder in the pool for the old delegate
+     * @param _oldDelegateNewPosNext The address of the next transcoder in the pool for the old delegate
+     * @param _currDelegateNewPosPrev The address of the previous transcoder in the pool for the current delegate
+     * @param _currDelegateNewPosNext The address of the next transcoder in the pool for the current delegate
      */
-    function bondOnBehalf(
+    function bondFor(
         uint256 _amount,
-        address _to,
-        address _onBehalfOf
+        address _orchestrator,
+        address _for,
+        address _oldDelegateNewPosPrev,
+        address _oldDelegateNewPosNext,
+        address _currDelegateNewPosPrev,
+        address _currDelegateNewPosNext
     ) external {
-        bondWithHint(_amount, _to, _onBehalfOf, address(0), address(0), address(0), address(0));
+        bond(
+            _amount,
+            _orchestrator,
+            _for,
+            _oldDelegateNewPosPrev,
+            _oldDelegateNewPosNext,
+            _currDelegateNewPosPrev,
+            _currDelegateNewPosNext
+        );
     }
 
     /**
@@ -163,40 +198,46 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * In both cases, a linear search will be executed starting at the hint to find the correct position. In the best case, the hint
      * is the correct position so no search is executed. See SortedDoublyLL.sol for details on list hints
      * @param _amount The amount of tokens to stake.
-     * @param _to The address of the transcoder to stake towards
-     * @param _onBehalfOf The address which will own the stake
+     * @param _orchestrator The address of the transcoder to stake towards
+     * @param _for The address which will own the stake
      * @param _oldDelegateNewPosPrev The address of the previous transcoder in the pool for the old delegate
      * @param _oldDelegateNewPosNext The address of the next transcoder in the pool for the old delegate
      * @param _currDelegateNewPosPrev The address of the previous transcoder in the pool for the current delegate
      * @param _currDelegateNewPosNext The address of the next transcoder in the pool for the current delegate
      */
-    function bondWithHint(
+    function bond(
         uint256 _amount,
-        address _to,
-        address _onBehalfOf,
+        address _orchestrator,
+        address _for,
         address _oldDelegateNewPosPrev,
         address _oldDelegateNewPosNext,
         address _currDelegateNewPosPrev,
         address _currDelegateNewPosNext
-    ) public whenSystemNotPaused currentRoundInitialized autoClaimFees(_to) {
-        if (_to != _onBehalfOf) {
-            require(!isRegisteredOrchestrator(_onBehalfOf), "ORCHESTRATOR_CAN_NOT_DELEGATE");
+    ) internal whenSystemNotPaused currentRoundInitialized autoClaimFees(_orchestrator) {
+        if (_orchestrator != _for) {
+            require(!isRegisteredOrchestrator(_for), "ORCHESTRATOR_CAN_NOT_DELEGATE");
         }
 
         // cannot delegate zero amount
         require(_amount > 0, "ZERO_DELEGATION_AMOUNT");
 
         // Bond total to stake to new orchestrator
-        Delegations.Pool storage newPool = orchestrators[_to].delegationPool;
+        Delegations.Pool storage newPool = orchestrators[_orchestrator].delegationPool;
         uint256 oldTotalStake = newPool.poolTotalStake();
-        newPool.stake(_onBehalfOf, _amount);
+        newPool.stake(_for, _amount);
 
-        _increaseOrchTotalStake(_to, oldTotalStake, _amount, _currDelegateNewPosPrev, _currDelegateNewPosNext);
+        _increaseOrchTotalStake(
+            _orchestrator,
+            oldTotalStake,
+            _amount,
+            _currDelegateNewPosPrev,
+            _currDelegateNewPosNext
+        );
 
         // Transfer the LPT to the Minter
-        livepeerToken().transferFrom(_onBehalfOf, address(minter()), _amount);
+        livepeerToken().transferFrom(_for, address(minter()), _amount);
 
-        emit Bond(_to, _onBehalfOf, _amount, newPool.stakeOf(_onBehalfOf));
+        emit Bond(_orchestrator, _for, _amount, newPool.stakeOf(_for));
     }
 
     /**
