@@ -148,7 +148,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         address _currDelegateNewPosPrev,
         address _currDelegateNewPosNext
     ) external {
-        bond(
+        _bond(
             _amount,
             _orchestrator,
             msg.sender,
@@ -178,7 +178,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         address _currDelegateNewPosPrev,
         address _currDelegateNewPosNext
     ) external {
-        bond(
+        _bond(
             _amount,
             _orchestrator,
             _for,
@@ -205,7 +205,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * @param _currDelegateNewPosPrev The address of the previous transcoder in the pool for the current delegate
      * @param _currDelegateNewPosNext The address of the next transcoder in the pool for the current delegate
      */
-    function bond(
+    function _bond(
         uint256 _amount,
         address _orchestrator,
         address _for,
