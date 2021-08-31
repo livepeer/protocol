@@ -33,7 +33,6 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // Commission accounting
         uint256 rewardShare; // % of reward shared with delegations
         uint256 feeShare; // % of fees shared with delegations
-        uint256 rewardCommissions; // reward earned from commission (not shared with delegators)
         uint256 feeCommissions; // fees earned from commission (not shared with delegators)
         uint256 lastRewardRound;
         // Delegation Pool
@@ -88,8 +87,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         _;
     }
 
-    modifier autoClaimFees(address _delegate) {
-        _claimFees(_delegate, payable(msg.sender));
+    modifier autoClaimFees(address _orchestrator, address _delegator) {
+        _claimFees(_orchestrator, payable(_delegator));
         _;
     }
 
@@ -131,62 +130,76 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * STAKING & DELEGATION ACTIONS
      */
 
-    /**
-     * @notice Delegate stake towards a specific address
-     * @param _amount The amount of tokens to stake
-     * @param _orchestrator The address of the transcoder to stake towards
-     * @param _oldDelegateNewPosPrev The address of the previous transcoder in the pool for the old delegate
-     * @param _oldDelegateNewPosNext The address of the next transcoder in the pool for the old delegate
-     * @param _currDelegateNewPosPrev The address of the previous transcoder in the pool for the current delegate
-     * @param _currDelegateNewPosNext The address of the next transcoder in the pool for the current delegate
-     */
-    function bond(
+    function stake(
         uint256 _amount,
-        address _orchestrator,
-        address _oldDelegateNewPosPrev,
-        address _oldDelegateNewPosNext,
-        address _currDelegateNewPosPrev,
-        address _currDelegateNewPosNext
+        address _currOrchestratorNewPosPrev,
+        address _currOrchestratorNewPosNext
     ) external {
-        _bond(
-            _amount,
-            _orchestrator,
-            msg.sender,
-            _oldDelegateNewPosPrev,
-            _oldDelegateNewPosNext,
-            _currDelegateNewPosPrev,
-            _currDelegateNewPosNext
-        );
+        _delegate(_amount, msg.sender, msg.sender, _currOrchestratorNewPosPrev, _currOrchestratorNewPosNext);
+        emit Stake(msg.sender, _amount);
     }
 
-    /**
-     * @notice Delegate stake towards a specific address on behalf of another address
-     * @param _amount The amount of tokens to stake
-     * @param _orchestrator The address of the transcoder to stake towards
-     * @param _for The address which will own the stake
-     * @param _oldDelegateNewPosPrev The address of the previous transcoder in the pool for the old delegate
-     * @param _oldDelegateNewPosNext The address of the next transcoder in the pool for the old delegate
-     * @param _currDelegateNewPosPrev The address of the previous transcoder in the pool for the current delegate
-     * @param _currDelegateNewPosNext The address of the next transcoder in the pool for the current delegate
-     */
-    function bondFor(
+    function stakeFor(
+        uint256 _amount,
+        address _for,
+        address _currOrchestratorNewPosPrev,
+        address _currOrchestratorNewPosNext
+    ) external {
+        _delegate(_amount, _for, _for, _currOrchestratorNewPosPrev, _currOrchestratorNewPosNext);
+        emit Stake(_for, _amount);
+    }
+
+    function unstake(
+        uint256 _amount,
+        address _currOrchestratorNewPosPrev,
+        address _currOrchestratorNewPosNext
+    ) external {
+        _undelegate(_amount, msg.sender, msg.sender, _currOrchestratorNewPosPrev, _currOrchestratorNewPosNext);
+        emit Unstake(msg.sender, _amount);
+    }
+
+    function delegate(
+        uint256 _amount,
+        address _orchestrator,
+        address _currOrchestratorNewPosPrev,
+        address _currOrchestratorNewPosNext
+    ) external {
+        require(_orchestrator != msg.sender, "ORCHESTRATOR_CANNOT_DELEGATE");
+        _delegate(_amount, _orchestrator, msg.sender, _currOrchestratorNewPosPrev, _currOrchestratorNewPosNext);
+        emit Delegate(msg.sender, _orchestrator, _amount);
+    }
+
+    function delegateFor(
         uint256 _amount,
         address _orchestrator,
         address _for,
-        address _oldDelegateNewPosPrev,
-        address _oldDelegateNewPosNext,
-        address _currDelegateNewPosPrev,
-        address _currDelegateNewPosNext
+        address _currOrchestratorNewPosPrev,
+        address _currOrchestratorNewPosNext
     ) external {
-        _bond(
-            _amount,
-            _orchestrator,
-            _for,
-            _oldDelegateNewPosPrev,
-            _oldDelegateNewPosNext,
-            _currDelegateNewPosPrev,
-            _currDelegateNewPosNext
-        );
+        require(_orchestrator != _for, "ORCHESTRATOR_CANNOT_DELEGATE");
+        _delegate(_amount, _orchestrator, _for, _currOrchestratorNewPosPrev, _currOrchestratorNewPosNext);
+        emit Delegate(_for, _orchestrator, _amount);
+    }
+
+    function changeDelegation(
+        address _oldOrchestrator,
+        address _newOrchestrator,
+        address _oldOrchestratorNewPosPrev,
+        address _oldOrchestratorNewPosNext,
+        address _currOrchestratorNewPosPrev,
+        address _currOrchestratorNewPosNext
+    ) external {
+        // If _orchestrator == msg.sender , revert
+    }
+
+    function undelegate(
+        uint256 _amount,
+        address _orchestrator,
+        address _currOrchestratorNewPosPrev,
+        address _currOrchestratorNewPosNext
+    ) external {
+        _undelegate(_amount, _orchestrator, msg.sender, _currOrchestratorNewPosPrev, _currOrchestratorNewPosNext);
+        emit Undelegate(msg.sender, _orchestrator, _amount);
     }
 
     /**
@@ -200,31 +213,23 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * @param _amount The amount of tokens to stake.
      * @param _orchestrator The address of the transcoder to stake towards
      * @param _for The address which will own the stake
-     * @param _oldDelegateNewPosPrev The address of the previous transcoder in the pool for the old delegate
-     * @param _oldDelegateNewPosNext The address of the next transcoder in the pool for the old delegate
      * @param _currDelegateNewPosPrev The address of the previous transcoder in the pool for the current delegate
      * @param _currDelegateNewPosNext The address of the next transcoder in the pool for the current delegate
      */
-    function _bond(
+    function _delegate(
         uint256 _amount,
         address _orchestrator,
         address _for,
-        address _oldDelegateNewPosPrev,
-        address _oldDelegateNewPosNext,
         address _currDelegateNewPosPrev,
         address _currDelegateNewPosNext
-    ) internal whenSystemNotPaused currentRoundInitialized autoClaimFees(_orchestrator) {
-        if (_orchestrator != _for) {
-            require(!isRegisteredOrchestrator(_for), "ORCHESTRATOR_CAN_NOT_DELEGATE");
-        }
-
+    ) internal whenSystemNotPaused currentRoundInitialized autoClaimFees(_orchestrator, _for) {
         // cannot delegate zero amount
         require(_amount > 0, "ZERO_DELEGATION_AMOUNT");
 
-        // Bond total to stake to new orchestrator
-        Delegations.Pool storage newPool = orchestrators[_orchestrator].delegationPool;
-        uint256 oldTotalStake = newPool.poolTotalStake();
-        newPool.stake(_for, _amount);
+        // Delegate stake to _orchestrator for account "_for"
+        Delegations.Pool storage _pool = orchestrators[_orchestrator].delegationPool;
+        uint256 oldTotalStake = _pool.poolTotalStake();
+        _pool.stake(_for, _amount);
 
         _increaseOrchTotalStake(
             _orchestrator,
@@ -236,17 +241,61 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
         // Transfer the LPT to the Minter
         livepeerToken().transferFrom(_for, address(minter()), _amount);
+    }
 
-        emit Bond(_orchestrator, _for, _amount, newPool.stakeOf(_for));
+    function _undelegate(
+        uint256 _amount,
+        address _orchestrator,
+        address _for,
+        address _currDelegateNewPosPrev,
+        address _currDelegateNewPosNext
+    ) internal whenSystemNotPaused currentRoundInitialized autoClaimFees(_orchestrator, _for) {
+        require(_amount > 0, "ZERO_UNBOND_AMOUNT");
+
+        uint256 orchStake = getStake(_orchestrator);
+        uint256 delegatorStake = getDelegatedStake(_orchestrator, _for);
+
+        require(delegatorStake > 0, "CALLER_NOT_BONDED");
+        require(_amount <= delegatorStake, "AMOUNT_EXCEEDS_STAKE");
+
+        // If the orchestrator is in the orchestrator pool, update the pool
+        if (orchestratorPoolV2.contains(_orchestrator)) {
+            // If the caller is the orchestrator itself and the amount to undelegate
+            // equals the self-staked amount, resign the orchestrator
+            if (_orchestrator == _for && _amount == delegatorStake) {
+                _resignOrchestrator(_orchestrator);
+            } else {
+                // Otherwise decrease the orchestrator's stake and update its position in the orchestrator pool
+                _decreaseOrchTotalStake(
+                    _orchestrator,
+                    orchStake,
+                    _amount,
+                    _currDelegateNewPosPrev,
+                    _currDelegateNewPosNext
+                );
+            }
+        }
+
+        Delegations.Pool storage pool = orchestrators[_orchestrator].delegationPool;
+        pool.unstake(_for, _amount);
+
+        // Create unbonding lock for _amount
+        uint256 id = lastUnbondingLockID;
+        lastUnbondingLockID++;
+
+        uint256 currentRound = roundsManager().currentRound();
+
+        unbondingLocks[id] = UnbondingLock({
+            orchestrator: _orchestrator,
+            amount: _amount,
+            withdrawRound: currentRound + unbondingPeriod
+        });
     }
 
     /**
      * @notice Unbond an amount of the delegator's bonded stake
      * @param _amount Amount of tokens to unbond
      */
-    function unbond(uint256 _amount) external {
-        unbondWithHint(msg.sender, _amount, address(0), address(0));
-    }
 
     /**
      * @notice Unbond an amount of the delegator's bonded stake and updates the transcoder pool using an optional list hint if needed
@@ -257,53 +306,6 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * @param _newPosPrev Address of previous transcoder in pool if the caller remains in the pool
      * @param _newPosNext Address of next transcoder in pool if the caller remains in the pool
      */
-    function unbondWithHint(
-        address _delegate,
-        uint256 _amount,
-        address _newPosPrev,
-        address _newPosNext
-    ) public whenSystemNotPaused currentRoundInitialized autoClaimFees(_delegate) {
-        require(_amount > 0, "ZERO_UNBOND_AMOUNT");
-
-        uint256 delegatorStake = stakeOf(_delegate, msg.sender);
-        require(delegatorStake > 0, "CALLER_NOT_BONDED");
-        require(_amount <= delegatorStake, "AMOUNT_EXCEEDS_STAKE");
-
-        uint256 amount = _amount;
-
-        // If the delegator is an orchestrator, draw from commission first
-        if (msg.sender == _delegate) {
-            Orchestrator storage orch = orchestrators[_delegate];
-            uint256 rewardCommissions = orch.rewardCommissions;
-            uint256 fromCommission = MathUtils.min(rewardCommissions, amount);
-            amount -= fromCommission;
-
-            if (orchestratorPoolV2.contains(msg.sender)) {
-                if (_amount == delegatorStake) {
-                    _resignOrchestrator(msg.sender);
-                } else {
-                    _decreaseOrchTotalStake(msg.sender, delegatorStake, _amount, _newPosPrev, _newPosNext);
-                }
-            }
-
-            orch.rewardCommissions -= fromCommission;
-        }
-
-        if (amount > 0) {
-            Delegations.Pool storage pool = orchestrators[_delegate].delegationPool;
-            pool.unstake(msg.sender, amount);
-        }
-
-        // Create unbonding lock for _amount
-        uint256 id = lastUnbondingLockID;
-        lastUnbondingLockID++;
-
-        uint256 currentRound = roundsManager().currentRound();
-
-        unbondingLocks[id] = UnbondingLock({ orchestrator: _delegate, amount: _amount, withdrawRound: currentRound });
-
-        emit Unbond(_delegate, msg.sender, id, _amount, currentRound);
-    }
 
     /**
      * @notice Rebond tokens for an unbonding lock to a delegator's current 
@@ -359,7 +361,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         address _newPosPrev,
         address _newPosNext
     ) public whenSystemNotPaused currentRoundInitialized {
-        require(stakeOf(_delegate, msg.sender) == 0, "CALLER_NOT_UNBONDED");
+        require(getDelegatedStake(_delegate, msg.sender) == 0, "CALLER_NOT_UNBONDED");
 
         unbondingLocks[_unbondingLockId].orchestrator = _delegate;
         // Process rebond using unbonding lock
@@ -558,12 +560,18 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         so for multi-delegation we can do calculations off chain
         and repurpose this to 'orchestratorStake(address _orchestrator)'
      */
-    function stakeOf(address _delegate, address _delegator) public view returns (uint256 stake) {
-        Orchestrator storage orch = orchestrators[_delegate];
-        stake = orch.delegationPool.stakeOf(_delegator);
-        if (_delegate == _delegator) {
-            stake += orch.rewardCommissions;
-        }
+    function getDelegatedStake(address _orchestrator, address _delegator) public view returns (uint256 delegatedStake) {
+        Orchestrator storage orch = orchestrators[_orchestrator];
+        delegatedStake = orch.delegationPool.stakeOf(_delegator);
+    }
+
+    /**
+     * @notice Calculate the total stake for an _orchestrator including its delegated stake
+     * @param _orchestrator address of the orchestrator
+     * @return stake total stake of _orchestrator including its delegated stake
+     */
+    function getStake(address _orchestrator) public view returns (uint256 stake) {
+        stake = getDelegatedStake(_orchestrator, _orchestrator);
     }
 
     /**
@@ -687,7 +695,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
         uint256 rewardShare = MathUtils.percOf(_rewards, orch.rewardShare);
 
-        orch.rewardCommissions = _rewards - rewardShare;
+        uint256 rewardCut = _rewards - rewardShare;
+        orch.delegationPool.stake(_orchestrator, rewardCut);
         orch.delegationPool.addRewards(rewardShare);
     }
 
@@ -811,7 +820,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         _claimFees(delegate, payable(_delegator));
 
         // Increase delegator's bonded amount
-        uint256 oldStake = stakeOf(delegate, _delegator);
+        uint256 oldStake = getDelegatedStake(delegate, _delegator);
         orchestrators[delegate].delegationPool.stake(_delegator, amount);
 
         // Delete lock
