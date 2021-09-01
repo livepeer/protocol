@@ -2,13 +2,13 @@ pragma solidity 0.8.4;
 import "./GenericMock.sol";
 
 contract BondingManagerMock is GenericMock {
-    event UpdateTranscoderWithFees(address transcoder, uint256 fees, uint256 round);
+    event UpdateOrchestratorWithFees(address transcoder, uint256 fees, uint256 round);
 
-    function updateTranscoderWithFees(
+    function updateOrchestratorWithFees(
         address _transcoder,
         uint256 _fees,
         uint256 _round
     ) external {
-        emit UpdateTranscoderWithFees(_transcoder, _fees, _round);
+        emit UpdateOrchestratorWithFees(_transcoder, _fees, _round);
     }
 }

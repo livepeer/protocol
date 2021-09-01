@@ -40,7 +40,7 @@ abstract contract MixinTicketProcessor is MixinContractRegistry {
 
         // Ask BondingManager to update fee pool for recipient with
         // winning ticket funds
-        bondingManager().updateTranscoderWithFees(_recipient, _amount, creationRound);
+        bondingManager().updateOrchestratorWithFees(_recipient, _amount, creationRound);
     }
 
     /**

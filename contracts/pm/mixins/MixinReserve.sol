@@ -28,11 +28,11 @@ abstract contract MixinReserve is MixinContractRegistry, MReserve {
 
         uint256 currentRound = roundsManager().currentRound();
 
-        if (!bondingManager().isActiveTranscoder(_claimant)) {
+        if (!bondingManager().isActiveOrchestrator(_claimant)) {
             return 0;
         }
 
-        uint256 poolSize = bondingManager().getTranscoderPoolSize();
+        uint256 poolSize = bondingManager().getOrchestratorPoolSize();
         if (poolSize == 0) {
             return 0;
         }
