@@ -218,7 +218,7 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
         address _newPosPrev,
         address _newPosNext
     ) external {
-        require(_orchestrator != msg.sender, "ORCHESTRATOR_CANNOT_DELEGATE");
+        require(_orchestrator != msg.sender, "CANNOT_SELF_DELEGATE");
         _delegate(_amount, _orchestrator, msg.sender, _newPosPrev, _newPosNext);
         emit Delegate(msg.sender, _orchestrator, _amount);
     }
@@ -239,7 +239,7 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
         address _newPosPrev,
         address _newPosNext
     ) external {
-        require(_orchestrator != _for, "ORCHESTRATOR_CANNOT_DELEGATE");
+        require(_orchestrator != _for, "CANNOT_SELF_DELEGATE");
         _delegate(_amount, _orchestrator, _for, _newPosPrev, _newPosNext);
         emit Delegate(_for, _orchestrator, _amount);
     }
@@ -266,8 +266,8 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
         address _newOrchestratorNewPosPrev,
         address _newOrchestratorNewPosNext
     ) external {
-        // If _orchestrator == msg.sender , revert
-        require(msg.sender != _oldOrchestrator, "ORCHESTRATOR_CANNOT_CHANGE_DELEGATION");
+        // If _oldOrchestrator == msg.sender , revert
+        require(msg.sender != _oldOrchestrator, "CANNOT_CHANGE_DELEGATION_FOR_SELF");
         // cannot change zero amount
         require(_amount > 0, "ZERO_CHANGE_DELEGATION_AMOUNT");
 
@@ -349,7 +349,7 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
     function withdrawStake(uint256 _unstakingLockId) external whenSystemNotPaused currentRoundInitialized {
         UnstakingLock storage lock = unstakingLocks[_unstakingLockId];
 
-        require(isValidUnstakingLock(_unstakingLockId), "invalid unstaking lock ID");
+        require(isValidUnstakingLock(_unstakingLockId), "INVALID_UNSTAKING_LOCK_ID");
         require(
             lock.withdrawRound <= roundsManager().currentRound(),
             "withdraw round must be before or equal to the current round"
@@ -436,11 +436,11 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
     function reward(address _newPosPrev, address _newPosNext) public whenSystemNotPaused currentRoundInitialized {
         uint256 currentRound = roundsManager().currentRound();
 
-        require(isActiveOrchestrator(msg.sender), "caller must be an active orchestrator");
+        require(isActiveOrchestrator(msg.sender), "ORCHESTRATOR_NOT_ACTIVE");
 
         Orchestrator storage o = orchestrators[msg.sender];
 
-        require(o.lastRewardRound != currentRound, "caller has already called reward for the current round");
+        require(o.lastRewardRound != currentRound, "ALREADY_CALLED_REWARD_FOR_CURRENT_ROUND");
 
         // Create reward based on active orchestrator's stake relative to the total active stake
         // rewardTokens = (current mintable tokens for the round * active orchestrator stake) / total active stake
@@ -896,18 +896,18 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
     }
 
     function _onlyTicketBroker() internal view {
-        require(msg.sender == controller.getContract(keccak256("TicketBroker")), "caller must be TicketBroker");
+        require(msg.sender == controller.getContract(keccak256("TicketBroker")), "CALLER_MUST_BE_TicketBroker");
     }
 
     function _onlyRoundsManager() internal view {
-        require(msg.sender == controller.getContract(keccak256("RoundsManager")), "caller must be RoundsManager");
+        require(msg.sender == controller.getContract(keccak256("RoundsManager")), "CALLER_MUST_BE_RoundsManager");
     }
 
     function _onlyVerifier() internal view {
-        require(msg.sender == controller.getContract(keccak256("Verifier")), "caller must be Verifier");
+        require(msg.sender == controller.getContract(keccak256("Verifier")), "CALLER_MUST_BE_Verifier");
     }
 
     function _currentRoundInitialized() internal view {
-        require(roundsManager().currentRoundInitialized(), "current round is not initialized");
+        require(roundsManager().currentRoundInitialized(), "CURRENT_ROUND_NOT_INITIALIZED");
     }
 }
