@@ -651,13 +651,7 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
         uint256 oldTotalStake = _pool.poolTotalStake();
         _pool.stake(_for, _amount);
 
-        _increaseOrchTotalStake(
-            _orchestrator,
-            oldTotalStake,
-            _amount,
-            _newPosPrev,
-            _newPosNext
-        );
+        _increaseOrchTotalStake(_orchestrator, oldTotalStake, _amount, _newPosPrev, _newPosNext);
 
         // Transfer the LPT to the Minter
         livepeerToken().transferFrom(_for, address(minter()), _amount);
@@ -686,13 +680,7 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
                 _resignOrchestrator(_orchestrator);
             } else {
                 // Otherwise decrease the orchestrator's stake and update its position in the orchestrator pool
-                _decreaseOrchTotalStake(
-                    _orchestrator,
-                    orchStake,
-                    _amount,
-                    _newPosPrev,
-                    _newPosNext
-                );
+                _decreaseOrchTotalStake(_orchestrator, orchStake, _amount, _newPosPrev, _newPosNext);
             }
         }
 

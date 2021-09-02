@@ -30,10 +30,7 @@ abstract contract MixinTicketProcessor is MixinContractRegistry {
      * @param _recipient Address of recipient
      * @param _amount Amount of funds for the winning ticket
      */
-    function winningTicketTransfer(
-        address _recipient,
-        uint256 _amount    
-    ) internal {
+    function winningTicketTransfer(address _recipient, uint256 _amount) internal {
         // Ask StakingManager to update fee pool for recipient with
         // winning ticket funds
         stakingManager().updateOrchestratorWithFees(_recipient, _amount);
