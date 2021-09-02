@@ -19,7 +19,7 @@ describe("TicketFrontRun", () => {
 
     let controller
     let broker
-    let bondingManager
+    let stakingManager
     let roundsManager
     let token
 
@@ -50,19 +50,19 @@ describe("TicketFrontRun", () => {
         await controller.unpause()
 
         broker = await ethers.getContractAt("TicketBroker", fixture.TicketBroker.address)
-        bondingManager = await ethers.getContractAt("BondingManager", fixture.BondingManager.address)
+        stakingManager = await ethers.getContractAt("StakingManager", fixture.StakingManager.address)
         roundsManager = await ethers.getContractAt("AdjustableRoundsManager", fixture.AdjustableRoundsManager.address)
         token = await ethers.getContractAt("LivepeerToken", fixture.LivepeerToken.address)
 
         const registerTranscoder = async transcoder => {
             const amount = ethers.BigNumber.from(10).mul(constants.TOKEN_UNIT.toString())
             await token.connect(deployer).transfer(transcoder.address, amount)
-            await token.connect(transcoder).approve(bondingManager.address, amount)
-            await bondingManager.connect(transcoder).bond(amount, transcoder.address)
-            await bondingManager.connect(transcoder).transcoder(0, 0)
+            await token.connect(transcoder).approve(stakingManager.address, amount)
+            await stakingManager.connect(transcoder).bond(amount, transcoder.address)
+            await stakingManager.connect(transcoder).transcoder(0, 0)
         }
 
-        const maxActive = (await bondingManager.getTranscoderPoolMaxSize()).toNumber()
+        const maxActive = (await stakingManager.getTranscoderPoolMaxSize()).toNumber()
 
         // Register transcoders
         // For this test, we want 1 evil active transcoder and 1 evil non-active transcoder
@@ -82,7 +82,7 @@ describe("TicketFrontRun", () => {
         // Fund the broadcaster
         deposit = 1000000
         reserve = 100000
-        reserveAlloc = reserve / (await bondingManager.getTranscoderPoolSize()).toNumber()
+        reserveAlloc = reserve / (await stakingManager.getTranscoderPoolSize()).toNumber()
 
         await broker.connect(broadcaster).fundDepositAndReserve(deposit, reserve, {value: deposit + reserve})
 
@@ -133,7 +133,7 @@ describe("TicketFrontRun", () => {
         // honestTranscoder's ticket should be fully covered by the the broadcaster's deposit
         expect(info.sender.deposit).to.equal(deposit - reserveAlloc)
         expect(info.reserve.fundsRemaining).to.equal(reserve)
-        const pendingFees = await bondingManager.pendingFees(honestTranscoder.address, currentRound)
+        const pendingFees = await stakingManager.pendingFees(honestTranscoder.address, currentRound)
         expect(pendingFees).to.equal(reserveAlloc)
     })
 
@@ -177,13 +177,13 @@ describe("TicketFrontRun", () => {
         assert.equal(info.sender.deposit.toString(), deposit.toString())
         assert.equal(info.reserve.fundsRemaining.toString(), reserve.toString())
 
-        const honestTPendingFeesBefore = await bondingManager.pendingFees(honestTranscoder.address, currentRound)
+        const honestTPendingFeesBefore = await stakingManager.pendingFees(honestTranscoder.address, currentRound)
         // Ticket redemption by honestTranscoder confirms on-chain
         await broker.connect(honestTranscoder).redeemWinningTicket(firstTicket, firstTicketSig, recipientRand)
 
         info = await broker.getSenderInfo(broadcaster.address)
 
-        const honestTPendingFeesAfter = await bondingManager.pendingFees(honestTranscoder.address, currentRound)
+        const honestTPendingFeesAfter = await stakingManager.pendingFees(honestTranscoder.address, currentRound)
         assert.equal(honestTPendingFeesAfter.sub(honestTPendingFeesBefore).toString(), reserveAlloc.toString())
     })
 
@@ -226,7 +226,7 @@ describe("TicketFrontRun", () => {
         assert.equal(info.reserve.fundsRemaining.toString(), (reserve - reserveAlloc).toString())
 
         assert.equal(
-            (await bondingManager.pendingFees(evilActiveTranscoder.address, currentRound)).toString(),
+            (await stakingManager.pendingFees(evilActiveTranscoder.address, currentRound)).toString(),
             (deposit + reserveAlloc).toString()
         )
 
@@ -239,7 +239,7 @@ describe("TicketFrontRun", () => {
         assert.equal(info.reserve.fundsRemaining.toString(), (reserve - 2 * reserveAlloc).toString())
 
         assert.equal(
-            (await bondingManager.pendingFees(honestTranscoder.address, currentRound)).toString(),
+            (await stakingManager.pendingFees(honestTranscoder.address, currentRound)).toString(),
             reserveAlloc.toString()
         )
     })

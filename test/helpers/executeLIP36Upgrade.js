@@ -1,7 +1,7 @@
 import {contractId} from "../../utils/helpers"
 import {ethers} from "hardhat"
 
-module.exports = async function(controller, roundsManager, bondingManagerProxyAddress) {
+module.exports = async function(controller, roundsManager, stakingManagerProxyAddress) {
     // See Deployment section of https://github.com/livepeer/LIPs/blob/master/LIPs/LIP-36.md
 
     // Define LIP-36 round
@@ -13,9 +13,9 @@ module.exports = async function(controller, roundsManager, bondingManagerProxyAd
     // would be different than the new implementation contract and we would be using the RoundsManager instead of the AdjustableRoundsManager
     const roundsManagerTarget = await (await ethers.getContractFactory("AdjustableRoundsManager")).deploy(controller.address)
 
-    // Deploy a new BondingManager implementation contract
+    // Deploy a new StakingManager implementation contract
     const ll = await (await ethers.getContractFactory("SortedDoublyLL")).deploy()
-    const bondingManagerTarget = await (await ethers.getContractFactory("BondingManager", {libraries: {
+    const stakingManagerTarget = await (await ethers.getContractFactory("StakingManager", {libraries: {
         SortedDoublyLL: ll.address
     }})).deploy(controller.address)
 
@@ -25,8 +25,8 @@ module.exports = async function(controller, roundsManager, bondingManagerProxyAd
     // Set LIP upgrade round
     await roundsManager.setLIPUpgradeRound(36, lip36Round)
 
-    // Register the new BondingManager implementation contract
-    await controller.setContractInfo(contractId("BondingManagerTarget"), bondingManagerTarget.address, "0x3031323334353637383930313233343536373839")
+    // Register the new StakingManager implementation contract
+    await controller.setContractInfo(contractId("StakingManagerTarget"), stakingManagerTarget.address, "0x3031323334353637383930313233343536373839")
 
-    return await ethers.getContractAt("BondingManager", bondingManagerProxyAddress)
+    return await ethers.getContractAt("StakingManager", stakingManagerProxyAddress)
 }

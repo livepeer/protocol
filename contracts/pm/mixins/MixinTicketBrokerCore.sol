@@ -133,7 +133,7 @@ abstract contract MixinTicketBrokerCore is MixinReserve, MixinTicketProcessor, M
         }
 
         if (amountToTransfer > 0) {
-            winningTicketTransfer(_ticket.recipient, amountToTransfer, _ticket.auxData);
+            winningTicketTransfer(_ticket.recipient, amountToTransfer);
 
             emit WinningTicketTransfer(_ticket.sender, _ticket.recipient, amountToTransfer);
         }

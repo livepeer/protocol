@@ -4,9 +4,9 @@
 pragma solidity 0.8.4;
 
 /**
- * @title Interface for BondingManager
+ * @title Interface for StakingManager
  */
-interface IBondingManager {
+interface IStakingManager {
     event OrchestratorUpdate(address indexed orchestrator, uint256 rewardCut, uint256 feeShare);
     event OrchestratorActivated(address indexed orchestrator, uint256 activationRound);
     event OrchestratorDeactivated(address indexed orchestrator, uint256 deactivationRound);
@@ -31,5 +31,5 @@ interface IBondingManager {
 
     function isActiveOrchestrator(address _orchestrator) external view returns (bool);
 
-    function getTotalBonded() external view returns (uint256);
+    function getTotalStaked() external view returns (uint256);
 }

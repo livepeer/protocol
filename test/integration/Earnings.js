@@ -13,7 +13,7 @@ chai.use(solidity)
 
 describe("Earnings", accounts => {
     let controller
-    let bondingManager
+    let stakingManager
     let bondingProxy
     let roundsManager
     let token
@@ -65,19 +65,19 @@ describe("Earnings", accounts => {
         controller = await ethers.getContractAt("Controller", fixture.Controller.address)
         await controller.unpause()
 
-        const bondingTarget = await (await ethers.getContractFactory("BondingManagerPreLIP36", {
+        const bondingTarget = await (await ethers.getContractFactory("StakingManagerPreLIP36", {
             libraries: {
                 SortedDoublyLL: fixture.SortedDoublyLL.address
             }
         })).deploy(controller.address)
-        await controller.setContractInfo(contractId("BondingManagerTarget"), bondingTarget.address, "0x3031323334353637383930313233343536373839")
-        bondingProxy = await (await ethers.getContractFactory("ManagerProxy")).deploy(controller.address, contractId("BondingManagerTarget"))
-        await controller.setContractInfo(contractId("BondingManager"), bondingProxy.address, "0x3031323334353637383930313233343536373839")
-        bondingManager = await ethers.getContractAt("BondingManagerPreLIP36", bondingProxy.address)
+        await controller.setContractInfo(contractId("StakingManagerTarget"), bondingTarget.address, "0x3031323334353637383930313233343536373839")
+        bondingProxy = await (await ethers.getContractFactory("ManagerProxy")).deploy(controller.address, contractId("StakingManagerTarget"))
+        await controller.setContractInfo(contractId("StakingManager"), bondingProxy.address, "0x3031323334353637383930313233343536373839")
+        stakingManager = await ethers.getContractAt("StakingManagerPreLIP36", bondingProxy.address)
 
-        await bondingManager.setUnbondingPeriod(UNBONDING_PERIOD)
-        await bondingManager.setNumActiveTranscoders(NUM_ACTIVE_TRANSCODERS)
-        await bondingManager.setMaxEarningsClaimsRounds(MAX_EARNINGS_CLAIMS_ROUNDS)
+        await stakingManager.setUnbondingPeriod(UNBONDING_PERIOD)
+        await stakingManager.setNumActiveTranscoders(NUM_ACTIVE_TRANSCODERS)
+        await stakingManager.setMaxEarningsClaimsRounds(MAX_EARNINGS_CLAIMS_ROUNDS)
 
         roundsManager = await ethers.getContractAt("AdjustableRoundsManager", fixture.AdjustableRoundsManager.address)
 
@@ -96,13 +96,13 @@ describe("Earnings", accounts => {
         await roundsManager.initializeRound()
 
         // Register transcoder
-        await token.connect(transcoder).approve(bondingManager.address, transcoderStake)
-        await bondingManager.connect(transcoder).bond(transcoderStake, transcoder.address)
-        await bondingManager.connect(transcoder).transcoder(rewardCut, feeShare)
+        await token.connect(transcoder).approve(stakingManager.address, transcoderStake)
+        await stakingManager.connect(transcoder).bond(transcoderStake, transcoder.address)
+        await stakingManager.connect(transcoder).transcoder(rewardCut, feeShare)
 
         // Delegate from delegator
-        await token.connect(delegator).approve(bondingManager.address, delegatorStake)
-        await bondingManager.connect(delegator).bond(delegatorStake, transcoder.address)
+        await token.connect(delegator).approve(stakingManager.address, delegatorStake)
+        await stakingManager.connect(delegator).bond(delegatorStake, transcoder.address)
 
         const deposit = ethers.utils.parseEther("5")
         await broker.connect(broadcaster).fundDeposit({value: deposit})
@@ -112,12 +112,12 @@ describe("Earnings", accounts => {
 
     const getStake = async addr => {
         const currentRound = await roundsManager.currentRound()
-        return await bondingManager.pendingStake(addr, currentRound)
+        return await stakingManager.pendingStake(addr, currentRound)
     }
 
     const getFees = async addr => {
         const currentRound = await roundsManager.currentRound()
-        return await bondingManager.pendingFees(addr, currentRound)
+        return await stakingManager.pendingFees(addr, currentRound)
     }
 
     const oldEarningsAndCheck = async () => {
@@ -130,12 +130,12 @@ describe("Earnings", accounts => {
         const transcoderStartFees = await getFees(transcoder.address)
         const delegatorStartFees = await getFees(delegator.address)
 
-        await bondingManager.connect(transcoder).reward()
+        await stakingManager.connect(transcoder).reward()
         await redeemWinningTicket(transcoder, broadcaster, faceValue)
 
         const currentRound = await roundsManager.currentRound()
 
-        const earningsPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder.address, currentRound)
+        const earningsPool = await stakingManager.getTranscoderEarningsPoolForRound(transcoder.address, currentRound)
         const delegatorRewardPool = earningsPool.rewardPool
         const transcoderRewardPool = earningsPool.transcoderRewardPool
         const delegatorFeePool = earningsPool.feePool
@@ -146,10 +146,10 @@ describe("Earnings", accounts => {
         const expTFees = delegatorFeePool.mul(transcoderStartStake).div(totalStartStake).add(transcoderFeePool)
         const expDFees = delegatorFeePool.mul(delegatorStartStake).div(totalStartStake)
 
-        const transcoderEndStake = await bondingManager.pendingStake(transcoder.address, currentRound)
-        const delegatorEndStake = await bondingManager.pendingStake(delegator.address, currentRound)
-        const transcoderEndFees = await bondingManager.pendingFees(transcoder.address, currentRound)
-        const delegatorEndFees = await bondingManager.pendingFees(delegator.address, currentRound)
+        const transcoderEndStake = await stakingManager.pendingStake(transcoder.address, currentRound)
+        const delegatorEndStake = await stakingManager.pendingStake(delegator.address, currentRound)
+        const transcoderEndFees = await stakingManager.pendingFees(transcoder.address, currentRound)
+        const delegatorEndFees = await stakingManager.pendingFees(delegator.address, currentRound)
 
         const transcoderRewardShare = transcoderEndStake.sub(transcoderStartStake)
         const delegatorRewardShare = delegatorEndStake.sub(delegatorStartStake)
@@ -177,8 +177,8 @@ describe("Earnings", accounts => {
             )
         }
 
-        const transcoderDel = await bondingManager.getDelegator(transcoder.address)
-        const delegatorDel = await bondingManager.getDelegator(delegator.address)
+        const transcoderDel = await stakingManager.getDelegator(transcoder.address)
+        const delegatorDel = await stakingManager.getDelegator(delegator.address)
         let transcoderStartStake = transcoderDel.bondedAmount
         let delegatorStartStake = delegatorDel.bondedAmount
         let transcoderStartFees = transcoderDel.fees
@@ -187,37 +187,37 @@ describe("Earnings", accounts => {
         const lastClaimRoundTranscoder = transcoderDel.lastClaimRound
 
         const LIP36Round = await roundsManager.lipUpgradeRound(36)
-        const LIP36EarningsPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder.address, LIP36Round)
+        const LIP36EarningsPool = await stakingManager.getTranscoderEarningsPoolForRound(transcoder.address, LIP36Round)
         if (lastClaimRoundTranscoder.lte(LIP36Round)) {
             const round = LIP36EarningsPool.hasTranscoderRewardFeePool ? LIP36Round : LIP36Round.sub(1)
-            transcoderStartStake = await bondingManager.pendingStake(transcoder.address, round)
-            delegatorStartStake = await bondingManager.pendingStake(delegator.address, round)
-            transcoderStartFees = await bondingManager.pendingFees(transcoder.address, round)
-            delegatorStartFees = await bondingManager.pendingFees(delegator.address, round)
+            transcoderStartStake = await stakingManager.pendingStake(transcoder.address, round)
+            delegatorStartStake = await stakingManager.pendingStake(delegator.address, round)
+            transcoderStartFees = await stakingManager.pendingFees(transcoder.address, round)
+            delegatorStartFees = await stakingManager.pendingFees(delegator.address, round)
         }
 
         // pendingStake() and pendingFees() need to be called before reward/fee
         // generation to get starting stake and fees
-        await bondingManager.connect(transcoder).reward()
+        await stakingManager.connect(transcoder).reward()
         await redeemWinningTicket(transcoder, broadcaster, faceValue)
 
         const currentRound = await roundsManager.currentRound()
 
-        const transC = await bondingManager.getTranscoder(transcoder.address)
-        const startEarningsPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder.address, lastClaimRoundTranscoder)
+        const transC = await stakingManager.getTranscoder(transcoder.address)
+        const startEarningsPool = await stakingManager.getTranscoderEarningsPoolForRound(transcoder.address, lastClaimRoundTranscoder)
         let startRewardFactor = startEarningsPool.cumulativeRewardFactor
         startRewardFactor = startRewardFactor.gt(0) ? startRewardFactor : constants.PERC_DIVISOR_PRECISE
 
         const startFeeFactor = startEarningsPool.cumulativeFeeFactor
-        const endEarningsPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder.address, currentRound)
+        const endEarningsPool = await stakingManager.getTranscoderEarningsPoolForRound(transcoder.address, currentRound)
         let endRewardFactor = endEarningsPool.cumulativeRewardFactor
         if (endRewardFactor.eq(0)) {
-            let lastRewFactor = await bondingManager.getTranscoderEarningsPoolForRound(transcoder.address, transC.lastRewardRound)
+            let lastRewFactor = await stakingManager.getTranscoderEarningsPoolForRound(transcoder.address, transC.lastRewardRound)
             lastRewFactor = lastRewFactor.gt(0) ? lastRewFactor : constants.PERC_DIVISOR_PRECISE
             endRewardFactor = lastRewFactor
         }
 
-        const endFeeFactor = endEarningsPool.cumulativeFeeFactor.gt(0) ? endEarningsPool.cumulativeFeeFactor : (await bondingManager.getTranscoderEarningsPoolForRound(transcoder.address, transC.lastFeeRound)).cumulativeFeeFactor
+        const endFeeFactor = endEarningsPool.cumulativeFeeFactor.gt(0) ? endEarningsPool.cumulativeFeeFactor : (await stakingManager.getTranscoderEarningsPoolForRound(transcoder.address, transC.lastFeeRound)).cumulativeFeeFactor
         const transcoderRewards = transC.cumulativeRewards
         const transcoderFees = transC.cumulativeFees
 
@@ -226,10 +226,10 @@ describe("Earnings", accounts => {
         const expTranscoderFeeShare = calcFeeShare(transcoderStartStake, startFeeFactor, endFeeFactor, startRewardFactor).add(transcoderFees)
         const expDelegatorFeeShare = calcFeeShare(delegatorStartStake, startFeeFactor, endFeeFactor, startRewardFactor)
 
-        const transcoderEndStake = await bondingManager.pendingStake(transcoder.address, currentRound)
-        const delegatorEndStake = await bondingManager.pendingStake(delegator.address, currentRound)
-        const transcoderEndFees = await bondingManager.pendingFees(transcoder.address, currentRound)
-        const delegatorEndFees = await bondingManager.pendingFees(delegator.address, currentRound)
+        const transcoderEndStake = await stakingManager.pendingStake(transcoder.address, currentRound)
+        const delegatorEndStake = await stakingManager.pendingStake(delegator.address, currentRound)
+        const transcoderEndFees = await stakingManager.pendingFees(transcoder.address, currentRound)
+        const delegatorEndFees = await stakingManager.pendingFees(delegator.address, currentRound)
 
         const transcoderRewardShare = transcoderEndStake.sub(transcoderStartStake)
         const delegatorRewardShare = delegatorEndStake.sub(delegatorStartStake)
@@ -252,12 +252,12 @@ describe("Earnings", accounts => {
         const transcoderStartFees = await getFees(transcoder.address)
         const delegatorStartFees = await getFees(delegator.address)
 
-        await bondingManager.connect(transcoder).claimEarnings(currentRound)
-        await bondingManager.connect(delegator).claimEarnings(currentRound)
+        await stakingManager.connect(transcoder).claimEarnings(currentRound)
+        await stakingManager.connect(delegator).claimEarnings(currentRound)
 
 
-        const transcoderDel = await bondingManager.getDelegator(transcoder.address)
-        const delegatorDel = await bondingManager.getDelegator(delegator.address)
+        const transcoderDel = await stakingManager.getDelegator(transcoder.address)
+        const delegatorDel = await stakingManager.getDelegator(delegator.address)
         const transcoderEndStake = transcoderDel.bondedAmount
         const delegatorEndStake = delegatorDel.bondedAmount
         const transcoderEndFees = transcoderDel.fees
@@ -301,7 +301,7 @@ describe("Earnings", accounts => {
 
         it("calculates earnings and deploys LIP-36", async () => {
             await oldEarningsAndCheck()
-            bondingManager = await executeLIP36Upgrade(controller, roundsManager, bondingProxy.address)
+            stakingManager = await executeLIP36Upgrade(controller, roundsManager, bondingProxy.address)
         })
 
         it("calculates earnings after LIP-36", async () => {
@@ -331,25 +331,25 @@ describe("Earnings", accounts => {
             // Ensure that transcoder2 earns rewards by giving it the same stake as transcoder
             const amount = await getStake(transcoder.address)
             await token.transfer(transcoder2.address, amount)
-            await token.connect(transcoder2).approve(bondingManager.address, amount)
-            await bondingManager.connect(transcoder2).bond(amount, transcoder2.address)
-            await bondingManager.connect(transcoder2).transcoder(rewardCut, feeShare)
+            await token.connect(transcoder2).approve(stakingManager.address, amount)
+            await stakingManager.connect(transcoder2).bond(amount, transcoder2.address)
+            await stakingManager.connect(transcoder2).transcoder(rewardCut, feeShare)
 
             await roundsManager.mineBlocks(roundLength.toNumber())
             await roundsManager.initializeRound()
 
-            await bondingManager.connect(transcoder2).reward()
+            await stakingManager.connect(transcoder2).reward()
             await redeemWinningTicket(transcoder2, broadcaster, faceValue)
 
             const cr = await roundsManager.currentRound()
-            const initialPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder2.address, cr)
+            const initialPool = await stakingManager.getTranscoderEarningsPoolForRound(transcoder2.address, cr)
 
             await roundsManager.mineBlocks(roundLength.toNumber())
             await roundsManager.initializeRound()
 
-            await bondingManager.connect(delegator).bond(0, transcoder2.address)
+            await stakingManager.connect(delegator).bond(0, transcoder2.address)
 
-            await bondingManager.connect(transcoder).reward()
+            await stakingManager.connect(transcoder).reward()
             // No reward call from transcoder2
 
             const startStake = await getStake(delegator.address)
@@ -363,8 +363,8 @@ describe("Earnings", accounts => {
 
             const t2Stake = await getStake(transcoder2.address)
 
-            const del = await bondingManager.getDelegator(delegator.address)
-            const lastClaimPool = await bondingManager.getTranscoderEarningsPoolForRound(del.delegateAddress, del.lastClaimRound)
+            const del = await stakingManager.getDelegator(delegator.address)
+            const lastClaimPool = await stakingManager.getTranscoderEarningsPoolForRound(del.delegateAddress, del.lastClaimRound)
 
             assert.equal(startStake.toString(), endStake.toString(), "invalid stake")
             assert.equal(startFees.toString(), endFees.toString(), "invalid fees")
@@ -372,17 +372,17 @@ describe("Earnings", accounts => {
             assert.equal(lastClaimPool.cumulativeFeeFactor.toString(), initialPool.cumulativeFeeFactor.toString(), "invalid cumulative fee factor")
 
             // transcoder 2 should still be able to unbond and withdraw all funds
-            await bondingManager.connect(transcoder2).unbond(t2Stake)
-            await bondingManager.connect(delegator).unbond(endStake)
+            await stakingManager.connect(transcoder2).unbond(t2Stake)
+            await stakingManager.connect(delegator).unbond(endStake)
 
             await roundsManager.mineBlocks(roundLength.toNumber() * UNBONDING_PERIOD)
             await roundsManager.initializeRound()
 
             assert.ok(await Promise.all([
-                bondingManager.connect(transcoder2).withdrawStake(0),
-                bondingManager.connect(delegator).withdrawStake(0),
-                bondingManager.connect(transcoder2).withdrawFees(),
-                bondingManager.connect(delegator).withdrawFees()
+                stakingManager.connect(transcoder2).withdrawStake(0),
+                stakingManager.connect(delegator).withdrawStake(0),
+                stakingManager.connect(transcoder2).withdrawFees(),
+                stakingManager.connect(delegator).withdrawFees()
             ]))
         })
 
@@ -396,18 +396,18 @@ describe("Earnings", accounts => {
             await roundsManager.initializeRound()
 
             // call reward for transcoder and get initial earnings pool
-            await bondingManager.connect(transcoder).reward()
+            await stakingManager.connect(transcoder).reward()
             await redeemWinningTicket(transcoder, broadcaster, faceValue)
 
             const cr = await roundsManager.currentRound()
-            const initialPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder.address, cr)
+            const initialPool = await stakingManager.getTranscoderEarningsPoolForRound(transcoder.address, cr)
 
             await roundsManager.mineBlocks(roundLength.toNumber())
             await roundsManager.initializeRound()
 
             // bond to transcoder
-            await token.connect(delegator4).approve(bondingManager.address, amount)
-            await bondingManager.connect(delegator4).bond(amount, transcoder.address)
+            await token.connect(delegator4).approve(stakingManager.address, amount)
+            await stakingManager.connect(delegator4).bond(amount, transcoder.address)
 
             // no reward call from transcoder in this round
 
@@ -422,8 +422,8 @@ describe("Earnings", accounts => {
 
             const tStake = await getStake(transcoder.address)
 
-            const del = await bondingManager.getDelegator(delegator4.address)
-            const lastClaimPool = await bondingManager.getTranscoderEarningsPoolForRound(del.delegateAddress, del.lastClaimRound)
+            const del = await stakingManager.getDelegator(delegator4.address)
+            const lastClaimPool = await stakingManager.getTranscoderEarningsPoolForRound(del.delegateAddress, del.lastClaimRound)
 
             assert.equal(startStake.toString(), endStake.toString(), "invalid stake")
             assert.equal(startFees.toString(), endFees.toString(), "invalid fees")
@@ -431,21 +431,21 @@ describe("Earnings", accounts => {
             assert.equal(lastClaimPool.cumulativeFeeFactor.toString(), initialPool.cumulativeFeeFactor.toString(), "invalid cumulative fee factor")
 
             // transcoder 2 should still be able to unbond and withdraw all funds
-            await bondingManager.connect(transcoder).unbond(tStake)
-            await bondingManager.connect(delegator4).unbond(endStake)
+            await stakingManager.connect(transcoder).unbond(tStake)
+            await stakingManager.connect(delegator4).unbond(endStake)
 
             await roundsManager.mineBlocks(roundLength.toNumber() * UNBONDING_PERIOD)
             await roundsManager.initializeRound()
 
             assert.ok(await Promise.all([
-                bondingManager.connect(transcoder).withdrawStake(0),
-                bondingManager.connect(delegator4).withdrawStake(0),
-                bondingManager.connect(transcoder).withdrawFees()
+                stakingManager.connect(transcoder).withdrawStake(0),
+                stakingManager.connect(delegator4).withdrawStake(0),
+                stakingManager.connect(transcoder).withdrawFees()
             ]))
 
             // delegator hasn't earned fees so should revert
             await expect(
-                bondingManager.connect(delegator4).withdrawFees()
+                stakingManager.connect(delegator4).withdrawFees()
             ).to.be.revertedWith("no fees to withdraw")
         })
     })

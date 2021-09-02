@@ -10,7 +10,7 @@ describe("PoolUpdatesWithHints", () => {
     let signers
 
     let controller
-    let bondingManager
+    let stakingManager
     let roundsManager
     let token
 
@@ -39,12 +39,12 @@ describe("PoolUpdatesWithHints", () => {
 
     const approve = async (delegator, amount) => {
         await token.transfer(delegator.address, amount)
-        await token.connect(delegator).approve(bondingManager.address, amount)
+        await token.connect(delegator).approve(stakingManager.address, amount)
     }
 
     const selfBond = async (delegator, amount, newPosPrev, newPosNext) => {
         await approve(delegator, amount)
-        await bondingManager.connect(delegator).bondWithHint(
+        await stakingManager.connect(delegator).bondWithHint(
             amount,
             delegator.address,
             ethers.constants.AddressZero,
@@ -61,11 +61,11 @@ describe("PoolUpdatesWithHints", () => {
 
     const transcoderPool = async () => {
         const pool = []
-        let tr = await bondingManager.getFirstTranscoderInPool()
+        let tr = await stakingManager.getFirstTranscoderInPool()
 
         while (tr != ethers.constants.AddressZero) {
             pool.push(tr)
-            tr = await bondingManager.getNextTranscoderInPool(tr)
+            tr = await stakingManager.getNextTranscoderInPool(tr)
         }
 
         return pool
@@ -81,7 +81,7 @@ describe("PoolUpdatesWithHints", () => {
         const fixture = await deployments.fixture(["Contracts"])
         controller = await ethers.getContractAt("Controller", fixture.Controller.address)
 
-        bondingManager = await ethers.getContractAt("BondingManager", fixture.BondingManager.address)
+        stakingManager = await ethers.getContractAt("StakingManager", fixture.StakingManager.address)
 
         roundsManager = await ethers.getContractAt("AdjustableRoundsManager", fixture.AdjustableRoundsManager.address)
 
@@ -115,19 +115,19 @@ describe("PoolUpdatesWithHints", () => {
         const size = transcoders.length - 1
         const rewardTranscoders = transcoders.slice(0, size - 1)
         for (const tr of rewardTranscoders) {
-            await bondingManager.connect(tr).reward()
+            await stakingManager.connect(tr).reward()
         }
 
         const testSnapshotId = await rpc.snapshot()
 
         // Get gas cost of reward()
-        const txResNoHint = await (await bondingManager.connect(transcoders[size - 1]).reward()).wait()
+        const txResNoHint = await (await stakingManager.connect(transcoders[size - 1]).reward()).wait()
         assert.equal(await transcoderAtPoolPos(size - 1), transcoders[size - 1].address)
 
         await rpc.revert(testSnapshotId)
 
         // Get gas cost rewardWithHint()
-        const txResHint = await (await bondingManager.connect(transcoders[size - 1]).rewardWithHint(transcoders[size - 2].address, ethers.constants.AddressZero)).wait()
+        const txResHint = await (await stakingManager.connect(transcoders[size - 1]).rewardWithHint(transcoders[size - 2].address, ethers.constants.AddressZero)).wait()
         assert.equal(await transcoderAtPoolPos(size - 1), transcoders[size - 1].address)
 
         // Gas cost of rewardWithHint() should be less than gas cost of reward()
@@ -137,16 +137,16 @@ describe("PoolUpdatesWithHints", () => {
     it("new transcoder joins the pool", async () => {
         const size = transcoders.length
         await approve(transcoders[size - 2], 1)
-        await bondingManager.connect(transcoders[size - 2]).bond(1, transcoders[size - 2].address)
+        await stakingManager.connect(transcoders[size - 2]).bond(1, transcoders[size - 2].address)
         await approve(transcoders[size - 1], 1)
-        await bondingManager.connect(transcoders[size - 1]).bond(1, transcoders[size - 1].address)
+        await stakingManager.connect(transcoders[size - 1]).bond(1, transcoders[size - 1].address)
 
         // Not enough stake to join pool
         await approve(newTranscoder, 2)
-        await bondingManager.connect(newTranscoder).bond(2, newTranscoder.address)
+        await stakingManager.connect(newTranscoder).bond(2, newTranscoder.address)
 
         // After this tx, the new transcoder should have enough stake to join pool
-        await bondingManager.connect(transcoders[size - 1]).unbond(1)
+        await stakingManager.connect(transcoders[size - 1]).unbond(1)
         const dr = (await roundsManager.currentRound()).add(1)
         const testSnapshotId = await rpc.snapshot()
 
@@ -155,19 +155,19 @@ describe("PoolUpdatesWithHints", () => {
         // (transcoders[size - 4], 4) -> (transcoders[size - 2], 3) -> (transcoders[size - 3], 3) -> (transcoders[size - 1], 2)
 
         // Get gas cost of transcoder()
-        let tx = await bondingManager.connect(newTranscoder).transcoder(0, 0)
+        let tx = await stakingManager.connect(newTranscoder).transcoder(0, 0)
         const txResNoHint = await tx.wait()
 
         assert.equal(await transcoderAtPoolPos(size - 1), newTranscoder.address)
-        expect(tx).to.emit(bondingManager, "TranscoderDeactivated").withArgs(transcoders[size - 1].address, dr)
+        expect(tx).to.emit(stakingManager, "TranscoderDeactivated").withArgs(transcoders[size - 1].address, dr)
 
         await rpc.revert(testSnapshotId)
 
         // Get gas cost of transcoderWithHint()
-        tx = await bondingManager.connect(newTranscoder).transcoderWithHint(0, 0, transcoders[size - 3].address, ethers.constants.AddressZero)
+        tx = await stakingManager.connect(newTranscoder).transcoderWithHint(0, 0, transcoders[size - 3].address, ethers.constants.AddressZero)
         const txResHint = await tx.wait()
         assert.equal(await transcoderAtPoolPos(size - 1), newTranscoder.address)
-        expect(tx).to.emit(bondingManager, "TranscoderDeactivated").withArgs(transcoders[size - 1].address, dr)
+        expect(tx).to.emit(stakingManager, "TranscoderDeactivated").withArgs(transcoders[size - 1].address, dr)
 
         // Gas cost of transcoderWithHint() should be less than gas cost of transcoder()
         assert.isBelow(txResHint.cumulativeGasUsed, txResNoHint.cumulativeGasUsed)
@@ -183,14 +183,14 @@ describe("PoolUpdatesWithHints", () => {
         // (transcoders[size - 4], 4) -> (transcoders[size - 3], 3) -> (transcoders[size - 2], 2) -> (transcoders[size - 1], 1)
 
         // Get gas cost of bond()
-        const txResNoHint = await (await bondingManager.connect(delegator).bond(1, transcoders[size - 2].address)).wait()
+        const txResNoHint = await (await stakingManager.connect(delegator).bond(1, transcoders[size - 2].address)).wait()
         // transcoders[size - 2] should have moved up one position
         assert.equal(await transcoderAtPoolPos(size - 3), transcoders[size - 2].address)
 
         await rpc.revert(testSnapshotId)
 
         // Get gas cost of bondWithHint()
-        const txResHint = await (await bondingManager.connect(delegator).bondWithHint(
+        const txResHint = await (await stakingManager.connect(delegator).bondWithHint(
             1,
             transcoders[size - 2].address,
             ethers.constants.AddressZero,
@@ -208,7 +208,7 @@ describe("PoolUpdatesWithHints", () => {
     it("delegator changes delegation with hint", async () => {
         const size = transcoders.length
         await approve(delegator, 1)
-        await bondingManager.connect(delegator).bond(1, transcoders[size - 2].address)
+        await stakingManager.connect(delegator).bond(1, transcoders[size - 2].address)
 
         const testSnapshotId = await rpc.snapshot()
 
@@ -219,14 +219,14 @@ describe("PoolUpdatesWithHints", () => {
         // (transcoders[size - 4], 4) -> (transcoders[size - 3], 3) -> (transcoders[size - 1], 2) -> (transcoders[size - 2], 2)
 
         // Get gas cost of bond()
-        const txResNoHint = await (await bondingManager.connect(delegator).bond(0, transcoders[size - 1].address)).wait()
+        const txResNoHint = await (await stakingManager.connect(delegator).bond(0, transcoders[size - 1].address)).wait()
         assert.equal(await transcoderAtPoolPos(size - 1), transcoders[size - 2].address)
         assert.equal(await transcoderAtPoolPos(size - 2), transcoders[size - 1].address)
 
         await rpc.revert(testSnapshotId)
 
         // Get gas cost of bondWithHint()
-        const txResHint = await (await bondingManager.connect(delegator).bondWithHint(
+        const txResHint = await (await stakingManager.connect(delegator).bondWithHint(
             0,
             transcoders[size - 1].address,
             transcoders[size - 3].address,
@@ -251,19 +251,19 @@ describe("PoolUpdatesWithHints", () => {
         // Before:
         // (transcoders[size - 4], 4) -> (transcoders[size - 3], 3) -> (transcoders[size - 2], 2) -> (transcoders[size - 1], 1)
 
-        const txResUnbondNoHint = await (await bondingManager.connect(transcoders[size - 4]).unbond(2)).wait()
+        const txResUnbondNoHint = await (await stakingManager.connect(transcoders[size - 4]).unbond(2)).wait()
         // Should have dropped 1 position
         assert.equal(await transcoderAtPoolPos(size - 3), transcoders[size - 4].address)
-        const txResRebondNoHint = await (await bondingManager.connect(transcoders[size - 4]).rebond(0)).wait()
+        const txResRebondNoHint = await (await stakingManager.connect(transcoders[size - 4]).rebond(0)).wait()
         // Should have gained 1 position
         assert.equal(await transcoderAtPoolPos(size - 4), transcoders[size - 4].address)
 
         await rpc.revert(testSnapshotId)
 
-        const txResUnbondHint = await (await bondingManager.connect(transcoders[size - 4]).unbondWithHint(2, transcoders[size - 3].address, transcoders[size - 2].address)).wait()
+        const txResUnbondHint = await (await stakingManager.connect(transcoders[size - 4]).unbondWithHint(2, transcoders[size - 3].address, transcoders[size - 2].address)).wait()
         // Should have dropped 1 position
         assert.equal(await transcoderAtPoolPos(size - 3), transcoders[size - 4].address)
-        const txResRebondHint = await (await bondingManager.connect(transcoders[size - 4]).rebondWithHint(0, transcoders[size - 5].address, transcoders[size - 3].address)).wait()
+        const txResRebondHint = await (await stakingManager.connect(transcoders[size - 4]).rebondWithHint(0, transcoders[size - 5].address, transcoders[size - 3].address)).wait()
         // Should have gained 1 position
         assert.equal(await transcoderAtPoolPos(size - 4), transcoders[size - 4].address)
 
@@ -273,7 +273,7 @@ describe("PoolUpdatesWithHints", () => {
 
     it("transcoder rebonds from unbonded", async () => {
         const size = transcoders.length
-        await bondingManager.connect(transcoders[size - 4]).unbond(4)
+        await stakingManager.connect(transcoders[size - 4]).unbond(4)
 
         const testSnapshotId = await rpc.snapshot()
 
@@ -283,12 +283,12 @@ describe("PoolUpdatesWithHints", () => {
         // After (expected):
         // (transcoders[size - 4], 4) -> (transcoders[size - 3], 3) -> (transcoders[size - 2], 2) -> (transcoders[size - 1], 1)
 
-        const txResNoHint = await (await bondingManager.connect(transcoders[size - 4]).rebondFromUnbonded(transcoders[size - 4].address, 0)).wait()
+        const txResNoHint = await (await stakingManager.connect(transcoders[size - 4]).rebondFromUnbonded(transcoders[size - 4].address, 0)).wait()
         assert.equal(await transcoderAtPoolPos(size - 4), transcoders[size - 4].address)
 
         await rpc.revert(testSnapshotId)
 
-        const txResHint = await (await bondingManager.connect(transcoders[size - 4]).rebondFromUnbondedWithHint(
+        const txResHint = await (await stakingManager.connect(transcoders[size - 4]).rebondFromUnbondedWithHint(
             transcoders[size - 4].address,
             0,
             transcoders[size - 5].address,

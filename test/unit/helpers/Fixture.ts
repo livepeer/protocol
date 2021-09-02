@@ -1,8 +1,8 @@
 import RPC from "../../../utils/rpc"
 import {contractId} from "../../../utils/helpers"
 import {
-    BondingManagerMock,
-    BondingManagerMock__factory,
+    StakingManagerMock,
+    StakingManagerMock__factory,
     Controller,
     Controller__factory,
     GenericMock,
@@ -23,7 +23,7 @@ export default class Fixture {
     public controller?: Controller
     public token?: GenericMock
     public minter?: MinterMock
-    public bondingManager?: BondingManagerMock
+    public stakingManager?: StakingManagerMock
     public roundsManager?: GenericMock
     public jobsManager?: GenericMock
     public ticketBroker?: GenericMock
@@ -48,13 +48,13 @@ export default class Fixture {
         const signers = await ethers.getSigners()
         const GenericMockFactory = new GenericMock__factory(signers[0])
         const MinterMockFactory = new MinterMock__factory(signers[0])
-        const BondingManagerMockFactory = new BondingManagerMock__factory(signers[0])
+        const StakingManagerMockFactory = new StakingManagerMock__factory(signers[0])
 
         this.token = await this.deployAndRegister<GenericMock>(GenericMockFactory, "LivepeerToken")
         this.minter = await this.deployAndRegister<MinterMock>(MinterMockFactory, "Minter")
-        this.bondingManager = await this.deployAndRegister<BondingManagerMock>(
-            BondingManagerMockFactory,
-            "BondingManager"
+        this.stakingManager = await this.deployAndRegister<StakingManagerMock>(
+            StakingManagerMockFactory,
+            "StakingManager"
         )
         this.roundsManager = await this.deployAndRegister<GenericMock>(GenericMockFactory, "RoundsManager")
         this.jobsManager = await this.deployAndRegister<GenericMock>(GenericMockFactory, "JobsManager")

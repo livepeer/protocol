@@ -8,18 +8,18 @@ import chai, {assert, expect} from "chai"
 import {solidity} from "ethereum-waffle"
 chai.use(solidity)
 
-const executeUpgrade = async (controller, gov, bondingManagerProxyAddress) => {
+const executeUpgrade = async (controller, gov, stakingManagerProxyAddress) => {
     const ll = await deployments.get("SortedDoublyLL")
-    const bondingManagerFac = await ethers.getContractFactory("BondingManager", {
+    const stakingManagerFac = await ethers.getContractFactory("StakingManager", {
         libraries: {
             SortedDoublyLL: ll.address
         }
     })
-    const bondingManagerTarget = await bondingManagerFac.deploy(controller.address)
+    const stakingManagerTarget = await stakingManagerFac.deploy(controller.address)
 
-    // Register the new BondingManager implementation contract
+    // Register the new StakingManager implementation contract
     const pauseData = controller.interface.encodeFunctionData("pause", [])
-    const setInfoData = controller.interface.encodeFunctionData("setContractInfo", [contractId("BondingManagerTarget"), bondingManagerTarget.address, "0x3031323334353637383930313233343536373839"])
+    const setInfoData = controller.interface.encodeFunctionData("setContractInfo", [contractId("StakingManagerTarget"), stakingManagerTarget.address, "0x3031323334353637383930313233343536373839"])
     const unpauseData = controller.interface.encodeFunctionData("unpause", [])
     const update = {
         target: [controller.address, controller.address, controller.address],
@@ -31,12 +31,12 @@ const executeUpgrade = async (controller, gov, bondingManagerProxyAddress) => {
     await gov.stage(update, 0)
     await gov.execute(update)
 
-    return await ethers.getContractAt("BondingManager", bondingManagerProxyAddress)
+    return await ethers.getContractAt("StakingManager", stakingManagerProxyAddress)
 }
 
 describe("ZeroStartFactorsBug", () => {
     let controller
-    let bondingManager
+    let stakingManager
     let roundsManager
     let token
     let broker
@@ -115,19 +115,19 @@ describe("ZeroStartFactorsBug", () => {
         controller = controller = await ethers.getContractAt("Controller", fixture.Controller.address)
         await controller.unpause()
 
-        // Deploy old BondingManager with the bug
+        // Deploy old StakingManager with the bug
         const ll = fixture.SortedDoublyLL
-        const bondingManagerBugFac = await ethers.getContractFactory("BondingManagerZeroStartFactorsBug", {libraries: {SortedDoublyLL: ll.address}})
-        const bondingTarget = await bondingManagerBugFac.deploy(controller.address)
-        await controller.setContractInfo(contractId("BondingManagerTarget"), bondingTarget.address, "0x3031323334353637383930313233343536373839")
+        const stakingManagerBugFac = await ethers.getContractFactory("StakingManagerZeroStartFactorsBug", {libraries: {SortedDoublyLL: ll.address}})
+        const bondingTarget = await stakingManagerBugFac.deploy(controller.address)
+        await controller.setContractInfo(contractId("StakingManagerTarget"), bondingTarget.address, "0x3031323334353637383930313233343536373839")
         const proxyFac = await ethers.getContractFactory("ManagerProxy")
-        bondingProxy = await proxyFac.deploy(controller.address, contractId("BondingManagerTarget"))
-        await controller.setContractInfo(contractId("BondingManager"), bondingProxy.address, "0x3031323334353637383930313233343536373839")
-        bondingManager = await ethers.getContractAt("BondingManagerZeroStartFactorsBug", bondingProxy.address)
+        bondingProxy = await proxyFac.deploy(controller.address, contractId("StakingManagerTarget"))
+        await controller.setContractInfo(contractId("StakingManager"), bondingProxy.address, "0x3031323334353637383930313233343536373839")
+        stakingManager = await ethers.getContractAt("StakingManagerZeroStartFactorsBug", bondingProxy.address)
 
-        await bondingManager.setUnbondingPeriod(UNBONDING_PERIOD)
-        await bondingManager.setNumActiveTranscoders(NUM_ACTIVE_TRANSCODERS)
-        await bondingManager.setMaxEarningsClaimsRounds(MAX_EARNINGS_CLAIMS_ROUNDS)
+        await stakingManager.setUnbondingPeriod(UNBONDING_PERIOD)
+        await stakingManager.setNumActiveTranscoders(NUM_ACTIVE_TRANSCODERS)
+        await stakingManager.setMaxEarningsClaimsRounds(MAX_EARNINGS_CLAIMS_ROUNDS)
 
         roundsManager = await ethers.getContractAt("AdjustableRoundsManager", fixture.AdjustableRoundsManager.address)
 
@@ -142,15 +142,15 @@ describe("ZeroStartFactorsBug", () => {
         // Register transcoder
         const register = async transcoder => {
             await token.transfer(transcoder.address, transferAmount)
-            await token.connect(transcoder).approve(bondingManager.address, transferAmount)
-            await bondingManager.connect(transcoder).bond(transferAmount, transcoder.address)
-            await bondingManager.connect(transcoder).transcoder(50 * constants.PERC_MULTIPLIER, 50 * constants.PERC_MULTIPLIER)
+            await token.connect(transcoder).approve(stakingManager.address, transferAmount)
+            await stakingManager.connect(transcoder).bond(transferAmount, transcoder.address)
+            await stakingManager.connect(transcoder).transcoder(50 * constants.PERC_MULTIPLIER, 50 * constants.PERC_MULTIPLIER)
         }
 
         const bond = async (delegator, transcoder) => {
             await token.transfer(delegator.address, transferAmount)
-            await token.connect(delegator).approve(bondingManager.address, transferAmount)
-            await bondingManager.connect(delegator).bond(transferAmount, transcoder.address)
+            await token.connect(delegator).approve(stakingManager.address, transferAmount)
+            await stakingManager.connect(delegator).bond(transferAmount, transcoder.address)
         }
 
         await register(transcoder1)
@@ -182,7 +182,7 @@ describe("ZeroStartFactorsBug", () => {
         await roundsManager.initializeRound()
 
         // Set cumulativeRewardFactor for transcoder1
-        await bondingManager.connect(transcoder1).reward()
+        await stakingManager.connect(transcoder1).reward()
         // Set cumulativeFeeFactor for transcoder2
         await redeemWinningTicket(transcoder2, broadcaster, faceValue)
 
@@ -205,14 +205,14 @@ describe("ZeroStartFactorsBug", () => {
         await roundsManager.initializeRound()
 
         // Trigger bug where cumulative factors for a round prior to the LIP-36 upgrade round are stored
-        await bondingManager.connect(transcoder1).claimEarnings(lip36Round.toNumber() - 1)
+        await stakingManager.connect(transcoder1).claimEarnings(lip36Round.toNumber() - 1)
 
         await roundsManager.mineBlocks(roundLength.toNumber() * MAX_LOOKBACK_ROUNDS)
         await roundsManager.initializeRound()
 
         await bond(delegator5, transcoder1)
 
-        bondingManager = await executeUpgrade(controller, governor, bondingProxy.address)
+        stakingManager = await executeUpgrade(controller, governor, bondingProxy.address)
 
         const cr = await roundsManager.currentRound()
         // Store pendingStake and pendingFees here since we cannot call these
@@ -220,8 +220,8 @@ describe("ZeroStartFactorsBug", () => {
         for (const del of delegators) {
             pendingStakeHistory[del.address] = {}
             pendingFeesHistory[del.address] = {}
-            pendingStakeHistory[del.address][cr.toNumber()] = await bondingManager.pendingStake(del.address, cr)
-            pendingFeesHistory[del.address][cr.toNumber()] = await bondingManager.pendingFees(del.address, cr)
+            pendingStakeHistory[del.address][cr.toNumber()] = await stakingManager.pendingStake(del.address, cr)
+            pendingFeesHistory[del.address][cr.toNumber()] = await stakingManager.pendingFees(del.address, cr)
         }
 
         await roundsManager.mineBlocks(roundLength.toNumber())
@@ -234,18 +234,18 @@ describe("ZeroStartFactorsBug", () => {
 
             // 1 round
             const ps1 = pendingStakeHistory[delegator1.address][cr.toNumber() - 1]
-            const ps2 = await bondingManager.pendingStake(delegator1.address, cr)
+            const ps2 = await stakingManager.pendingStake(delegator1.address, cr)
 
             assert.equal(ps1.toString(), ps2.toString())
 
             // 2 rounds
             const ps3 = pendingStakeHistory[delegator3.address][cr.toNumber() - 1]
-            const ps4 = await bondingManager.pendingStake(delegator3.address, cr)
+            const ps4 = await stakingManager.pendingStake(delegator3.address, cr)
 
             assert.equal(ps3.toString(), ps4.toString())
 
-            const gas1 = await bondingManager.estimateGas.pendingStake(delegator1.address, cr)
-            const gas2 = await bondingManager.estimateGas.pendingStake(delegator3.address, cr)
+            const gas1 = await stakingManager.estimateGas.pendingStake(delegator1.address, cr)
+            const gas2 = await stakingManager.estimateGas.pendingStake(delegator3.address, cr)
             assert.isAbove(gas2, gas1)
         })
 
@@ -254,29 +254,29 @@ describe("ZeroStartFactorsBug", () => {
 
             // 1 round
             const pf1 = pendingFeesHistory[delegator2.address][cr.toNumber() - 1]
-            const pf2 = await bondingManager.pendingFees(delegator2.address, cr)
+            const pf2 = await stakingManager.pendingFees(delegator2.address, cr)
 
             assert.equal(pf1.toString(), pf2.toString())
 
             // 2 rounds
             const pf3 = pendingFeesHistory[delegator4.address][cr.toNumber() - 1]
-            const pf4 = await bondingManager.pendingFees(delegator4.address, cr)
+            const pf4 = await stakingManager.pendingFees(delegator4.address, cr)
 
             assert.equal(pf3.toString(), pf4.toString())
 
-            const gas1 = await bondingManager.estimateGas.pendingStake(delegator2.address, cr)
-            const gas2 = await bondingManager.estimateGas.pendingStake(delegator4.address, cr)
+            const gas1 = await stakingManager.estimateGas.pendingStake(delegator2.address, cr)
+            const gas2 = await stakingManager.estimateGas.pendingStake(delegator4.address, cr)
             assert.isAbove(gas2, gas1)
         })
 
         it("does not lookback past LIP-36 upgrade round", async () => {
             // Ensure that a cumulative factor is not stored for the delegator's lastClaimRound
-            const lcr = (await bondingManager.getDelegator(delegator6.address)).lastClaimRound
-            const lcrPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder1.address, lcr)
+            const lcr = (await stakingManager.getDelegator(delegator6.address)).lastClaimRound
+            const lcrPool = await stakingManager.getTranscoderEarningsPoolForRound(transcoder1.address, lcr)
             assert.ok(lcrPool.cumulativeRewardFactor.isZero())
             // Ensure that a cumulative factor is stored for a round prior to the delegator's lastClaimRound and
             // that is prior to the LIP-36 upgrade round
-            const pastPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder1.address, lip36Round.toNumber() - 1)
+            const pastPool = await stakingManager.getTranscoderEarningsPoolForRound(transcoder1.address, lip36Round.toNumber() - 1)
             assert.notOk(pastPool.cumulativeRewardFactor.isZero())
             // Less than MAX_LOOKBACK_ROUNDS between lastClaimRound and previous round with non-zero cumulative factor
             assert.isBelow(lcr.toNumber() - lip36Round.toNumber() - 1, MAX_LOOKBACK_ROUNDS)
@@ -289,8 +289,8 @@ describe("ZeroStartFactorsBug", () => {
             // transcoder1 triggered the bug allowing a cumulative factor to be stored for a round prior
             // to the LIP-36 upgrade round, but as long as the lookback for delegator6 stops at the LIP-36 upgrade round
             // the stake for delegator6 should be calculated correctly
-            const ps1 = await bondingManager.pendingStake(delegator6.address, cr)
-            const ps2 = await bondingManager.pendingStake(delegator1.address, cr)
+            const ps1 = await stakingManager.pendingStake(delegator6.address, cr)
+            const ps2 = await stakingManager.pendingStake(delegator1.address, cr)
 
             expect(ps1).to.be.gt(ps2)
         })
@@ -300,17 +300,17 @@ describe("ZeroStartFactorsBug", () => {
 
             // > MAX_LOOKBACK_ROUNDS
             const ps1 = pendingStakeHistory[delegator5.address][cr.toNumber() - 1]
-            const ps2 = await bondingManager.pendingStake(delegator5.address, cr)
+            const ps2 = await stakingManager.pendingStake(delegator5.address, cr)
 
             // This should not happen on mainnet because we never have to lookback further than MAX_LOOKBACK_ROUNDS
             assert.notEqual(ps1.toString(), ps2.toString())
 
-            const gas1 = await bondingManager.estimateGas.pendingStake(delegator5.address, cr)
+            const gas1 = await stakingManager.estimateGas.pendingStake(delegator5.address, cr)
 
             await roundsManager.mineBlocks(roundLength.toNumber() * 2)
             await roundsManager.initializeRound()
 
-            const gas2 = await bondingManager.estimateGas.pendingStake(delegator5.address, cr)
+            const gas2 = await stakingManager.estimateGas.pendingStake(delegator5.address, cr)
 
             // Gas should not change
             assert.equal(gas1.toString(), gas2.toString())
@@ -319,20 +319,20 @@ describe("ZeroStartFactorsBug", () => {
         it("persists the correct values when claiming", async () => {
             const cr = await roundsManager.currentRound()
 
-            const ps1 = await bondingManager.pendingStake(delegator1.address, cr)
-            const ps3 = await bondingManager.pendingStake(delegator3.address, cr)
-            const pf2 = await bondingManager.pendingFees(delegator2.address, cr)
-            const pf4 = await bondingManager.pendingFees(delegator4.address, cr)
+            const ps1 = await stakingManager.pendingStake(delegator1.address, cr)
+            const ps3 = await stakingManager.pendingStake(delegator3.address, cr)
+            const pf2 = await stakingManager.pendingFees(delegator2.address, cr)
+            const pf4 = await stakingManager.pendingFees(delegator4.address, cr)
 
-            await bondingManager.connect(delegator1).claimEarnings(cr)
-            await bondingManager.connect(delegator2).claimEarnings(cr)
-            await bondingManager.connect(delegator3).claimEarnings(cr)
-            await bondingManager.connect(delegator4).claimEarnings(cr)
+            await stakingManager.connect(delegator1).claimEarnings(cr)
+            await stakingManager.connect(delegator2).claimEarnings(cr)
+            await stakingManager.connect(delegator3).claimEarnings(cr)
+            await stakingManager.connect(delegator4).claimEarnings(cr)
 
-            const del1 = await bondingManager.getDelegator(delegator1.address)
-            const del2 = await bondingManager.getDelegator(delegator2.address)
-            const del3 = await bondingManager.getDelegator(delegator3.address)
-            const del4 = await bondingManager.getDelegator(delegator4.address)
+            const del1 = await stakingManager.getDelegator(delegator1.address)
+            const del2 = await stakingManager.getDelegator(delegator2.address)
+            const del3 = await stakingManager.getDelegator(delegator3.address)
+            const del4 = await stakingManager.getDelegator(delegator4.address)
 
             assert.equal(del1.bondedAmount.toString(), ps1.toString())
             assert.equal(del3.bondedAmount.toString(), ps3.toString())

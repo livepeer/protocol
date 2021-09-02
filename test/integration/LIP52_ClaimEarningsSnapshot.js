@@ -17,7 +17,7 @@ chai.use(solidity)
 
 describe("ClaimEarningsSnapshot", () => {
     let controller
-    let bondingManager
+    let stakingManager
     let roundsManager
     let token
     let broker
@@ -86,21 +86,21 @@ describe("ClaimEarningsSnapshot", () => {
         controller = await ethers.getContractAt("Controller", fixture.Controller.address)
         await controller.unpause()
 
-        const bondingTarget = await (await ethers.getContractFactory("BondingManagerPreLIP36", {
+        const bondingTarget = await (await ethers.getContractFactory("StakingManagerPreLIP36", {
             libraries: {
                 SortedDoublyLL: fixture.SortedDoublyLL.address
             }
         })).deploy(controller.address)
-        await controller.setContractInfo(contractId("BondingManagerTarget"), bondingTarget.address, "0x3031323334353637383930313233343536373839")
-        bondingProxy = await (await ethers.getContractFactory("ManagerProxy")).deploy(controller.address, contractId("BondingManagerTarget"))
-        await controller.setContractInfo(contractId("BondingManager"), bondingProxy.address, "0x3031323334353637383930313233343536373839")
-        bondingManager = await ethers.getContractAt("BondingManagerPreLIP36", bondingProxy.address)
+        await controller.setContractInfo(contractId("StakingManagerTarget"), bondingTarget.address, "0x3031323334353637383930313233343536373839")
+        bondingProxy = await (await ethers.getContractFactory("ManagerProxy")).deploy(controller.address, contractId("StakingManagerTarget"))
+        await controller.setContractInfo(contractId("StakingManager"), bondingProxy.address, "0x3031323334353637383930313233343536373839")
+        stakingManager = await ethers.getContractAt("StakingManagerPreLIP36", bondingProxy.address)
 
-        await bondingManager.setUnbondingPeriod(UNBONDING_PERIOD)
-        await bondingManager.setNumActiveTranscoders(NUM_ACTIVE_TRANSCODERS)
-        await bondingManager.setMaxEarningsClaimsRounds(MAX_EARNINGS_CLAIMS_ROUNDS)
+        await stakingManager.setUnbondingPeriod(UNBONDING_PERIOD)
+        await stakingManager.setNumActiveTranscoders(NUM_ACTIVE_TRANSCODERS)
+        await stakingManager.setMaxEarningsClaimsRounds(MAX_EARNINGS_CLAIMS_ROUNDS)
 
-        bondingManager = await ethers.getContractAt("BondingManager", bondingProxy.address)
+        stakingManager = await ethers.getContractAt("StakingManager", bondingProxy.address)
 
         roundsManager = await ethers.getContractAt("AdjustableRoundsManager", fixture.AdjustableRoundsManager.address)
 
@@ -122,19 +122,19 @@ describe("ClaimEarningsSnapshot", () => {
         await roundsManager.initializeRound()
 
         // approve LPT for bonding
-        await Promise.all(transcoders.map(t => token.connect(t).approve(bondingManager.address, transferAmount)))
-        await Promise.all(delegates.map(d => token.connect(d).approve(bondingManager.address, transferAmount.div(2))))
+        await Promise.all(transcoders.map(t => token.connect(t).approve(stakingManager.address, transferAmount)))
+        await Promise.all(delegates.map(d => token.connect(d).approve(stakingManager.address, transferAmount.div(2))))
 
         // bond and register transcoders
-        await Promise.all(transcoders.map(t => bondingManager.connect(t).bond(transferAmount, t.address)))
+        await Promise.all(transcoders.map(t => stakingManager.connect(t).bond(transferAmount, t.address)))
         await Promise.all(transcoders.map(t => {
             const rewardCut = Math.floor(Math.random() * 100) * constants.PERC_MULTIPLIER
             const feeShare = Math.floor(Math.random() * 100) * constants.PERC_MULTIPLIER
-            bondingManager.connect(t).transcoder(rewardCut, feeShare)
+            stakingManager.connect(t).transcoder(rewardCut, feeShare)
         }))
 
         // delegate to transcoders
-        await Promise.all(delegates.map((d, i) => bondingManager.connect(d).bond(transferAmount.div(2), transcoders[i % transcoders.length].address)))
+        await Promise.all(delegates.map((d, i) => stakingManager.connect(d).bond(transferAmount.div(2), transcoders[i % transcoders.length].address)))
 
         // Deposit funds for broadcaster
         await broker.connect(broadcaster).fundDepositAndReserve(
@@ -151,12 +151,12 @@ describe("ClaimEarningsSnapshot", () => {
 
     describe("Initial stakes", () => {
         it("checks that transcoders are bonded", async () => {
-            const dels = await Promise.all(transcoders.map(t => bondingManager.getDelegator(t.address)))
+            const dels = await Promise.all(transcoders.map(t => stakingManager.getDelegator(t.address)))
             dels.forEach(d => assert.isTrue(d.bondedAmount.eq(transferAmount)))
         })
 
         it("checks that delegators are bonded", async () => {
-            const dels = await Promise.all(delegates.map(d => bondingManager.getDelegator(d.address)))
+            const dels = await Promise.all(delegates.map(d => stakingManager.getDelegator(d.address)))
             dels.forEach(d => assert.isTrue(d.bondedAmount.eq(transferAmount.div(2))))
         })
     })
@@ -167,7 +167,7 @@ describe("ClaimEarningsSnapshot", () => {
         const id = bufferToHex(keccak256("LIP-52"))
         before(async () => {
             for (let i = 0; i < 10; i++) {
-                await Promise.all(transcoders.map(t => bondingManager.connect(t).reward()))
+                await Promise.all(transcoders.map(t => stakingManager.connect(t).reward()))
                 await Promise.all(transcoders.map(t => redeemWinningTicket(t, broadcaster, faceValue)))
                 await roundsManager.mineBlocks(roundLength.toNumber() * 5)
                 await roundsManager.setBlockHash(web3.utils.keccak256("foo"))
@@ -187,8 +187,8 @@ describe("ClaimEarningsSnapshot", () => {
 
             const leaves = []
             for (const el of elements) {
-                el["pendingStake"] = await bondingManager.pendingStake(el.address, currentRound)
-                el["pendingFees"] = await bondingManager.pendingFees(el.address, currentRound)
+                el["pendingStake"] = await stakingManager.pendingStake(el.address, currentRound)
+                el["pendingFees"] = await stakingManager.pendingFees(el.address, currentRound)
                 leaves.push(abi.rawEncode(["address", "uint256", "uint256"], [el.address, el.pendingStake.toString(), el.pendingFees.toString()]))
             }
 
@@ -217,7 +217,7 @@ describe("ClaimEarningsSnapshot", () => {
         })
 
         it("succesfully calls claimSnapShotEarnings and unbond as arbitrary call using the 'data' field for each delegate", async () => {
-            bondingManager = await executeLIP36Upgrade(controller, roundsManager, bondingProxy.address)
+            stakingManager = await executeLIP36Upgrade(controller, roundsManager, bondingProxy.address)
 
             await roundsManager.mineBlocks(roundLength.toNumber() * 5)
             await roundsManager.initializeRound()
@@ -226,26 +226,26 @@ describe("ClaimEarningsSnapshot", () => {
             const currentRound = await roundsManager.currentRound()
 
             for (const el of elements) {
-                const delegatorBefore = await bondingManager.getDelegator(el.address)
-                const pendingStakeBefore = await bondingManager.pendingStake(el.address, currentRound)
-                const pendingFeesBefore = await bondingManager.pendingFees(el.address, currentRound)
+                const delegatorBefore = await stakingManager.getDelegator(el.address)
+                const pendingStakeBefore = await stakingManager.pendingStake(el.address, currentRound)
+                const pendingFeesBefore = await stakingManager.pendingFees(el.address, currentRound)
 
                 assert.equal(pendingStakeBefore.toString(), el.pendingStake.toString())
                 assert.equal(pendingFeesBefore.toString(), el.pendingFees.toString())
 
                 // unbond for initial bonding amount after claiming snapshot earnings
-                const data = bondingManager.interface.encodeFunctionData("unbond", [delegatorBefore.bondedAmount])
+                const data = stakingManager.interface.encodeFunctionData("unbond", [delegatorBefore.bondedAmount])
                 const leaf = abi.rawEncode(["address", "uint256", "uint256"], [el.address, el.pendingStake.toString(), el.pendingFees.toString()])
                 const proof = tree.getHexProof(leaf)
-                const tx = await bondingManager.connect(await ethers.getSigner(el.address)).claimSnapshotEarnings(el.pendingStake, el.pendingFees, proof, data)
+                const tx = await stakingManager.connect(await ethers.getSigner(el.address)).claimSnapshotEarnings(el.pendingStake, el.pendingFees, proof, data)
 
-                const delegatorAfter = await bondingManager.getDelegator(el.address)
+                const delegatorAfter = await stakingManager.getDelegator(el.address)
 
                 assert.isTrue(delegatorAfter.lastClaimRound.eq(currentRound), "last claim round not correct")
                 assert.isTrue(pendingStakeBefore.sub(delegatorBefore.bondedAmount).eq(delegatorAfter.bondedAmount), "bonded amount not updated after claiming")
                 assert.isTrue(pendingFeesBefore.eq(delegatorAfter.fees), "fees not correctly updated after claiming")
 
-                expect(tx).to.emit(bondingManager, "EarningsClaimed").withArgs(
+                expect(tx).to.emit(stakingManager, "EarningsClaimed").withArgs(
                     delegatorBefore.delegateAddress, el.address, delegatorAfter.bondedAmount, delegatorAfter.fees.sub(delegatorBefore.fees), delegatorBefore.lastClaimRound.add(1), endRound
                 )
             }
@@ -255,7 +255,7 @@ describe("ClaimEarningsSnapshot", () => {
 
 describe("Including cumulative earnings in the snapshot results in excessive earnings (bug)", () => {
     let controller
-    let bondingManager
+    let stakingManager
     let roundsManager
     let token
     let snapshots
@@ -280,21 +280,21 @@ describe("Including cumulative earnings in the snapshot results in excessive ear
         controller = await ethers.getContractAt("Controller", fixture.Controller.address)
         await controller.unpause()
 
-        const bondingTarget = await (await ethers.getContractFactory("BondingManagerPreLIP36", {
+        const bondingTarget = await (await ethers.getContractFactory("StakingManagerPreLIP36", {
             libraries: {
                 SortedDoublyLL: fixture.SortedDoublyLL.address
             }
         })).deploy(controller.address)
-        await controller.setContractInfo(contractId("BondingManagerTarget"), bondingTarget.address, "0x3031323334353637383930313233343536373839")
-        bondingProxy = await (await ethers.getContractFactory("ManagerProxy")).deploy(controller.address, contractId("BondingManagerTarget"))
-        await controller.setContractInfo(contractId("BondingManager"), bondingProxy.address, "0x3031323334353637383930313233343536373839")
-        bondingManager = await ethers.getContractAt("BondingManagerPreLIP36", bondingProxy.address)
+        await controller.setContractInfo(contractId("StakingManagerTarget"), bondingTarget.address, "0x3031323334353637383930313233343536373839")
+        bondingProxy = await (await ethers.getContractFactory("ManagerProxy")).deploy(controller.address, contractId("StakingManagerTarget"))
+        await controller.setContractInfo(contractId("StakingManager"), bondingProxy.address, "0x3031323334353637383930313233343536373839")
+        stakingManager = await ethers.getContractAt("StakingManagerPreLIP36", bondingProxy.address)
 
-        await bondingManager.setUnbondingPeriod(UNBONDING_PERIOD)
-        await bondingManager.setNumActiveTranscoders(NUM_ACTIVE_TRANSCODERS)
-        await bondingManager.setMaxEarningsClaimsRounds(MAX_EARNINGS_CLAIMS_ROUNDS)
+        await stakingManager.setUnbondingPeriod(UNBONDING_PERIOD)
+        await stakingManager.setNumActiveTranscoders(NUM_ACTIVE_TRANSCODERS)
+        await stakingManager.setMaxEarningsClaimsRounds(MAX_EARNINGS_CLAIMS_ROUNDS)
 
-        bondingManager = await ethers.getContractAt("BondingManager", bondingProxy.address)
+        stakingManager = await ethers.getContractAt("StakingManager", bondingProxy.address)
 
         roundsManager = await ethers.getContractAt("AdjustableRoundsManager", fixture.AdjustableRoundsManager.address)
 
@@ -308,12 +308,12 @@ describe("Including cumulative earnings in the snapshot results in excessive ear
         await roundsManager.mineBlocks(roundLength.toNumber() * 1)
         await roundsManager.initializeRound()
 
-        await token.approve(bondingManager.address, transferAmount)
-        await bondingManager.bond(transferAmount, transcoder.address)
+        await token.approve(stakingManager.address, transferAmount)
+        await stakingManager.bond(transferAmount, transcoder.address)
 
         const rewardCut = 50 * constants.PERC_MULTIPLIER
         const feeShare = 50 * constants.PERC_MULTIPLIER
-        bondingManager.transcoder(rewardCut, feeShare)
+        stakingManager.transcoder(rewardCut, feeShare)
 
         await roundsManager.mineBlocks(roundLength.toNumber() * 1)
         await roundsManager.setBlockHash(web3.utils.keccak256("foo"))
@@ -327,15 +327,15 @@ describe("Including cumulative earnings in the snapshot results in excessive ear
         before(async () => {
             elements = [{address: transcoder.address}]
             for (let i = 0; i < 10; i++) {
-                await bondingManager.reward()
+                await stakingManager.reward()
                 await roundsManager.mineBlocks(roundLength.toNumber() * 1)
                 await roundsManager.setBlockHash(web3.utils.keccak256("foo"))
                 await roundsManager.initializeRound()
             }
 
-            bondingManager = await executeLIP36Upgrade(controller, roundsManager, bondingProxy.address)
+            stakingManager = await executeLIP36Upgrade(controller, roundsManager, bondingProxy.address)
 
-            await bondingManager.reward()
+            await stakingManager.reward()
             await roundsManager.mineBlocks(roundLength.toNumber() * 1)
             await roundsManager.setBlockHash(web3.utils.keccak256("foo"))
             await roundsManager.initializeRound()
@@ -344,8 +344,8 @@ describe("Including cumulative earnings in the snapshot results in excessive ear
 
             const leaves = []
             for (const el of elements) {
-                el["pendingStake"] = await bondingManager.pendingStake(el.address, currentRound)
-                el["pendingFees"] = await bondingManager.pendingFees(el.address, currentRound)
+                el["pendingStake"] = await stakingManager.pendingStake(el.address, currentRound)
+                el["pendingFees"] = await stakingManager.pendingFees(el.address, currentRound)
                 leaves.push(abi.rawEncode(["address", "uint256", "uint256"], [el.address, el.pendingStake.toString(), el.pendingFees.toString()]))
             }
 
@@ -354,7 +354,7 @@ describe("Including cumulative earnings in the snapshot results in excessive ear
 
 
         it("checks that transcoder is bonded", async () => {
-            assert.isTrue((await bondingManager.getDelegator(transcoder.address)).bondedAmount.eq(transferAmount))
+            assert.isTrue((await stakingManager.getDelegator(transcoder.address)).bondedAmount.eq(transferAmount))
         })
 
 
@@ -389,11 +389,11 @@ describe("Including cumulative earnings in the snapshot results in excessive ear
         it("there should be residual rewards (this is a bug)", async () => {
             const currentRound = await roundsManager.currentRound()
 
-            const pendingStake = await bondingManager.pendingStake(transcoder.address, currentRound)
-            const data = bondingManager.interface.encodeFunctionData("unbond", [pendingStake])
-            await bondingManager.claimSnapshotEarnings(pendingStake, 0, proof, data)
+            const pendingStake = await stakingManager.pendingStake(transcoder.address, currentRound)
+            const data = stakingManager.interface.encodeFunctionData("unbond", [pendingStake])
+            await stakingManager.claimSnapshotEarnings(pendingStake, 0, proof, data)
 
-            const delegatorAfter = await bondingManager.getDelegator(transcoder.address)
+            const delegatorAfter = await stakingManager.getDelegator(transcoder.address)
 
             assert.isTrue(delegatorAfter.lastClaimRound.eq(currentRound), "last claim round not correct")
             assert.isTrue(delegatorAfter.bondedAmount.toString() != "0", "bonded amount not greater than 0")
@@ -403,7 +403,7 @@ describe("Including cumulative earnings in the snapshot results in excessive ear
 
 describe("Snapshot only existing out of pre-LIP36 earnings should yield correct results", accounts => {
     let controller
-    let bondingManager
+    let stakingManager
     let roundsManager
     let token
     let snapshots
@@ -431,21 +431,21 @@ describe("Snapshot only existing out of pre-LIP36 earnings should yield correct 
         controller = await ethers.getContractAt("Controller", fixture.Controller.address)
         await controller.unpause()
 
-        const bondingTarget = await (await ethers.getContractFactory("BondingManagerPreLIP36", {
+        const bondingTarget = await (await ethers.getContractFactory("StakingManagerPreLIP36", {
             libraries: {
                 SortedDoublyLL: fixture.SortedDoublyLL.address
             }
         })).deploy(controller.address)
-        await controller.setContractInfo(contractId("BondingManagerTarget"), bondingTarget.address, "0x3031323334353637383930313233343536373839")
-        bondingProxy = await (await ethers.getContractFactory("ManagerProxy")).deploy(controller.address, contractId("BondingManagerTarget"))
-        await controller.setContractInfo(contractId("BondingManager"), bondingProxy.address, "0x3031323334353637383930313233343536373839")
-        bondingManager = await ethers.getContractAt("BondingManagerPreLIP36", bondingProxy.address)
+        await controller.setContractInfo(contractId("StakingManagerTarget"), bondingTarget.address, "0x3031323334353637383930313233343536373839")
+        bondingProxy = await (await ethers.getContractFactory("ManagerProxy")).deploy(controller.address, contractId("StakingManagerTarget"))
+        await controller.setContractInfo(contractId("StakingManager"), bondingProxy.address, "0x3031323334353637383930313233343536373839")
+        stakingManager = await ethers.getContractAt("StakingManagerPreLIP36", bondingProxy.address)
 
-        await bondingManager.setUnbondingPeriod(UNBONDING_PERIOD)
-        await bondingManager.setNumActiveTranscoders(NUM_ACTIVE_TRANSCODERS)
-        await bondingManager.setMaxEarningsClaimsRounds(MAX_EARNINGS_CLAIMS_ROUNDS)
+        await stakingManager.setUnbondingPeriod(UNBONDING_PERIOD)
+        await stakingManager.setNumActiveTranscoders(NUM_ACTIVE_TRANSCODERS)
+        await stakingManager.setMaxEarningsClaimsRounds(MAX_EARNINGS_CLAIMS_ROUNDS)
 
-        bondingManager = await ethers.getContractAt("BondingManager", bondingProxy.address)
+        stakingManager = await ethers.getContractAt("StakingManager", bondingProxy.address)
 
         roundsManager = await ethers.getContractAt("AdjustableRoundsManager", fixture.AdjustableRoundsManager.address)
 
@@ -459,12 +459,12 @@ describe("Snapshot only existing out of pre-LIP36 earnings should yield correct 
         await roundsManager.mineBlocks(roundLength.toNumber() * 1)
         await roundsManager.initializeRound()
 
-        await token.approve(bondingManager.address, transferAmount)
-        await bondingManager.bond(transferAmount, transcoder.address)
+        await token.approve(stakingManager.address, transferAmount)
+        await stakingManager.bond(transferAmount, transcoder.address)
 
         const rewardCut = 50 * constants.PERC_MULTIPLIER
         const feeShare = 50 * constants.PERC_MULTIPLIER
-        bondingManager.transcoder(rewardCut, feeShare)
+        stakingManager.transcoder(rewardCut, feeShare)
 
         await roundsManager.mineBlocks(roundLength.toNumber() * 1)
         await roundsManager.setBlockHash(web3.utils.keccak256("foo"))
@@ -477,7 +477,7 @@ describe("Snapshot only existing out of pre-LIP36 earnings should yield correct 
         before(async () => {
             elements = [{address: transcoder.address}]
             for (let i = 0; i < 10; i++) {
-                await bondingManager.reward()
+                await stakingManager.reward()
                 await roundsManager.mineBlocks(roundLength.toNumber() * 1)
                 await roundsManager.setBlockHash(web3.utils.keccak256("foo"))
                 await roundsManager.initializeRound()
@@ -485,17 +485,17 @@ describe("Snapshot only existing out of pre-LIP36 earnings should yield correct 
 
             const snapshotRound = (await roundsManager.currentRound()).sub(1)
 
-            bondingManager = await executeLIP36Upgrade(controller, roundsManager, bondingProxy.address)
+            stakingManager = await executeLIP36Upgrade(controller, roundsManager, bondingProxy.address)
 
-            await bondingManager.reward()
+            await stakingManager.reward()
             await roundsManager.mineBlocks(roundLength.toNumber() * 1)
             await roundsManager.setBlockHash(web3.utils.keccak256("foo"))
             await roundsManager.initializeRound()
 
             const leaves = []
             for (const el of elements) {
-                el["pendingStake"] = await bondingManager.pendingStake(el.address, snapshotRound)
-                el["pendingFees"] = await bondingManager.pendingFees(el.address, snapshotRound)
+                el["pendingStake"] = await stakingManager.pendingStake(el.address, snapshotRound)
+                el["pendingFees"] = await stakingManager.pendingFees(el.address, snapshotRound)
                 leaves.push(abi.rawEncode(["address", "uint256", "uint256"], [el.address, el.pendingStake.toString(), el.pendingFees.toString()]))
             }
 
@@ -504,7 +504,7 @@ describe("Snapshot only existing out of pre-LIP36 earnings should yield correct 
 
 
         it("checks that transcoder is bonded", async () => {
-            assert.isTrue((await bondingManager.getDelegator(transcoder.address)).bondedAmount.eq(transferAmount))
+            assert.isTrue((await stakingManager.getDelegator(transcoder.address)).bondedAmount.eq(transferAmount))
         })
 
 
@@ -539,12 +539,12 @@ describe("Snapshot only existing out of pre-LIP36 earnings should yield correct 
         it("should claim all pending rewards", async () => {
             const currentRound = await roundsManager.currentRound()
 
-            const pendingStake = await bondingManager.pendingStake(transcoder.address, currentRound)
-            bondingManager.interface.encodeFunctionData("unbond", [pendingStake])
-            const data = bondingManager.interface.encodeFunctionData("unbond", [pendingStake])
-            await bondingManager.claimSnapshotEarnings(elements[0].pendingStake, 0, proof, data)
+            const pendingStake = await stakingManager.pendingStake(transcoder.address, currentRound)
+            stakingManager.interface.encodeFunctionData("unbond", [pendingStake])
+            const data = stakingManager.interface.encodeFunctionData("unbond", [pendingStake])
+            await stakingManager.claimSnapshotEarnings(elements[0].pendingStake, 0, proof, data)
 
-            const delegatorAfter = await bondingManager.getDelegator(transcoder.address)
+            const delegatorAfter = await stakingManager.getDelegator(transcoder.address)
 
             assert.isTrue(delegatorAfter.lastClaimRound.eq(currentRound), "last claim round not correct")
             assert.isTrue(delegatorAfter.bondedAmount.toString() == "0", "bonded amount not 0")

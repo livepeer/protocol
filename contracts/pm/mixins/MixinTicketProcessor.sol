@@ -29,18 +29,14 @@ abstract contract MixinTicketProcessor is MixinContractRegistry {
      * @dev Transfer funds for a recipient's winning ticket
      * @param _recipient Address of recipient
      * @param _amount Amount of funds for the winning ticket
-     * @param _auxData Auxilary data for the winning ticket
      */
     function winningTicketTransfer(
         address _recipient,
-        uint256 _amount,
-        bytes memory _auxData
+        uint256 _amount    
     ) internal {
-        (uint256 creationRound, ) = getCreationRoundAndBlockHash(_auxData);
-
-        // Ask BondingManager to update fee pool for recipient with
+        // Ask StakingManager to update fee pool for recipient with
         // winning ticket funds
-        bondingManager().updateOrchestratorWithFees(_recipient, _amount, creationRound);
+        stakingManager().updateOrchestratorWithFees(_recipient, _amount);
     }
 
     /**

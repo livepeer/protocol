@@ -14,7 +14,7 @@ describe("TicketFlow", () => {
 
     let controller
     let broker
-    let bondingManager
+    let stakingManager
     let roundsManager
     let minter
     let token
@@ -33,7 +33,7 @@ describe("TicketFlow", () => {
         controller = await ethers.getContractAt("Controller", fixture.Controller.address)
         await controller.unpause()
 
-        bondingManager = await ethers.getContractAt("BondingManager", fixture.BondingManager.address)
+        stakingManager = await ethers.getContractAt("StakingManager", fixture.StakingManager.address)
         roundsManager = await ethers.getContractAt("AdjustableRoundsManager", fixture.AdjustableRoundsManager.address)
         token = await ethers.getContractAt("LivepeerToken", fixture.LivepeerToken.address)
         minter = await ethers.getContractAt("Minter", fixture.Minter.address)
@@ -42,9 +42,9 @@ describe("TicketFlow", () => {
         await token.connect(signers[0]).transfer(transcoder.address, amount)
 
         // Register transcoder
-        await token.connect(transcoder).approve(bondingManager.address, amount)
-        await bondingManager.connect(transcoder).bond(amount, transcoder.address)
-        await bondingManager.connect(transcoder).transcoder(0, 0)
+        await token.connect(transcoder).approve(stakingManager.address, amount)
+        await stakingManager.connect(transcoder).bond(amount, transcoder.address)
+        await stakingManager.connect(transcoder).transcoder(0, 0)
 
         roundLength = await roundsManager.roundLength()
         await roundsManager.mineBlocks(roundLength.mul(1000))
@@ -82,7 +82,7 @@ describe("TicketFlow", () => {
         const round = await roundsManager.currentRound()
 
         // there are no delegators so pendingFees(transcoder, currentRound) will include all fees
-        expect(await bondingManager.pendingFees(transcoder.address, round)).to.equal(faceValue)
+        expect(await stakingManager.pendingFees(transcoder.address, round)).to.equal(faceValue)
     })
 
     it("broadcaster double spends by over spending with its deposit", async () => {
@@ -100,7 +100,7 @@ describe("TicketFlow", () => {
 
         // claim earnings to reset fee count for the next test
         const round = await roundsManager.currentRound()
-        await bondingManager.connect(transcoder).claimEarnings(round)
+        await stakingManager.connect(transcoder).claimEarnings(round)
         const ticket = createWinningTicket(transcoder.address, broadcaster.address, recipientRand, faceValue, auxData)
         const senderSig = await signMsg(getTicketHash(ticket), broadcaster.address)
 
@@ -114,6 +114,6 @@ describe("TicketFlow", () => {
         expect(reserveDiff).to.equal(ethers.BigNumber.from(100))
 
         // substract the faceValue from the previous test
-        expect((await bondingManager.pendingFees(transcoder.address, round)).sub(1000)).to.equal(ticket.faceValue)
+        expect((await stakingManager.pendingFees(transcoder.address, round)).sub(1000)).to.equal(ticket.faceValue)
     })
 })

@@ -9,7 +9,7 @@ chai.use(solidity)
 describe("RoundInitialization", () => {
     let signers
     let controller
-    let bondingManager
+    let stakingManager
     let roundsManager
     let token
 
@@ -21,12 +21,12 @@ describe("RoundInitialization", () => {
         await roundsManager.initializeRound()
     }
 
-    const registerTranscodersAndInitializeRound = async (amount, transcoders, bondingManager, token, roundsManager) => {
+    const registerTranscodersAndInitializeRound = async (amount, transcoders, stakingManager, token, roundsManager) => {
         for (const tr of transcoders) {
             await token.transfer(tr.address, amount)
-            await token.connect(tr).approve(bondingManager.address, amount)
-            await bondingManager.connect(tr).bond(amount, tr.address)
-            await bondingManager.connect(tr).transcoder(0, 100)
+            await token.connect(tr).approve(stakingManager.address, amount)
+            await stakingManager.connect(tr).bond(amount, tr.address)
+            await stakingManager.connect(tr).transcoder(0, 100)
         }
 
         await mineAndInitializeRound(roundsManager)
@@ -40,7 +40,7 @@ describe("RoundInitialization", () => {
         controller = await ethers.getContractAt("Controller", fixture.Controller.address)
         await controller.unpause()
 
-        bondingManager = await ethers.getContractAt("BondingManager", fixture.BondingManager.address)
+        stakingManager = await ethers.getContractAt("StakingManager", fixture.StakingManager.address)
         roundsManager = await ethers.getContractAt("AdjustableRoundsManager", fixture.AdjustableRoundsManager.address)
         token = await ethers.getContractAt("LivepeerToken", fixture.LivepeerToken.address)
 
@@ -50,9 +50,9 @@ describe("RoundInitialization", () => {
 
     it("initializes a round with numActiveTranscoders = 10", async () => {
         const newTranscoders = signers.slice(1, 11)
-        await registerTranscodersAndInitializeRound(bondAmount, newTranscoders, bondingManager, token, roundsManager)
+        await registerTranscodersAndInitializeRound(bondAmount, newTranscoders, stakingManager, token, roundsManager)
 
-        expect(await bondingManager.currentRoundTotalActiveStake()).to.equal(
+        expect(await stakingManager.currentRoundTotalActiveStake()).to.equal(
             bondAmount.mul(10),
             "wrong total active stake"
         )
@@ -60,11 +60,11 @@ describe("RoundInitialization", () => {
 
     it("initializes a round with numActiveTranscoders = 15", async () => {
         const newTranscoders = signers.slice(11, 16)
-        await bondingManager.setNumActiveTranscoders(15)
-        expect(await bondingManager.getTranscoderPoolMaxSize()).to.equal(15, "wrong max # of active transcoders")
-        await registerTranscodersAndInitializeRound(bondAmount, newTranscoders, bondingManager, token, roundsManager)
+        await stakingManager.setNumActiveTranscoders(15)
+        expect(await stakingManager.getTranscoderPoolMaxSize()).to.equal(15, "wrong max # of active transcoders")
+        await registerTranscodersAndInitializeRound(bondAmount, newTranscoders, stakingManager, token, roundsManager)
 
-        expect(await bondingManager.currentRoundTotalActiveStake()).to.equal(
+        expect(await stakingManager.currentRoundTotalActiveStake()).to.equal(
             bondAmount.mul(15),
             "wrong total active stake"
         )
@@ -73,12 +73,12 @@ describe("RoundInitialization", () => {
     it("initializes a round with numActiveTranscoders = 20", async () => {
         const newTranscoders = signers.slice(16, 21)
 
-        await bondingManager.setNumActiveTranscoders(20)
-        expect(await bondingManager.getTranscoderPoolMaxSize()).to.equal(20, "wrong max # of active transcoders")
+        await stakingManager.setNumActiveTranscoders(20)
+        expect(await stakingManager.getTranscoderPoolMaxSize()).to.equal(20, "wrong max # of active transcoders")
 
-        await registerTranscodersAndInitializeRound(bondAmount, newTranscoders, bondingManager, token, roundsManager)
+        await registerTranscodersAndInitializeRound(bondAmount, newTranscoders, stakingManager, token, roundsManager)
 
-        expect(await bondingManager.currentRoundTotalActiveStake()).to.equal(
+        expect(await stakingManager.currentRoundTotalActiveStake()).to.equal(
             bondAmount.mul(20),
             "wrong total active stake"
         )
@@ -87,13 +87,13 @@ describe("RoundInitialization", () => {
     it("initializes a round with numActiveTranscoders = 30", async () => {
         const newTranscoders = signers.slice(21, 31)
 
-        await bondingManager.setNumActiveTranscoders(30)
-        expect(await bondingManager.getTranscoderPoolMaxSize()).to.equal(30, "wrong max # of active transcoders")
-        await registerTranscodersAndInitializeRound(bondAmount, newTranscoders, bondingManager, token, roundsManager)
+        await stakingManager.setNumActiveTranscoders(30)
+        expect(await stakingManager.getTranscoderPoolMaxSize()).to.equal(30, "wrong max # of active transcoders")
+        await registerTranscodersAndInitializeRound(bondAmount, newTranscoders, stakingManager, token, roundsManager)
 
         await mineAndInitializeRound(roundsManager)
 
-        expect(await bondingManager.currentRoundTotalActiveStake()).to.equal(
+        expect(await stakingManager.currentRoundTotalActiveStake()).to.equal(
             bondAmount.mul(30),
             "wrong total active stake"
         )
@@ -101,12 +101,12 @@ describe("RoundInitialization", () => {
 
     it("initializes a round with numActiveTranscoders = 40", async () => {
         const newTranscoders = signers.slice(31, 41)
-        await bondingManager.setNumActiveTranscoders(40)
-        expect(await bondingManager.getTranscoderPoolMaxSize()).to.equal(40, "wrong max # of active transcoders")
+        await stakingManager.setNumActiveTranscoders(40)
+        expect(await stakingManager.getTranscoderPoolMaxSize()).to.equal(40, "wrong max # of active transcoders")
 
-        await registerTranscodersAndInitializeRound(bondAmount, newTranscoders, bondingManager, token, roundsManager)
+        await registerTranscodersAndInitializeRound(bondAmount, newTranscoders, stakingManager, token, roundsManager)
 
-        expect(await bondingManager.currentRoundTotalActiveStake()).to.equal(
+        expect(await stakingManager.currentRoundTotalActiveStake()).to.equal(
             bondAmount.mul(40),
             "wrong total active stake"
         )

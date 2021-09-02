@@ -6,7 +6,7 @@ pragma solidity 0.8.4;
 
 import "../ManagerProxyTarget.sol";
 import "./IRoundsManager.sol";
-import "../bonding/IBondingManager.sol";
+import "../bonding/IStakingManager.sol";
 import "../token/IMinter.sol";
 import "../utils/MathUtils.sol";
 
@@ -98,7 +98,7 @@ contract RoundsManager is IRoundsManager, ManagerProxyTarget {
         bytes32 roundBlockHash = blockHash(blockNum() - 1);
         _blockHashForRound[currRound] = roundBlockHash;
         // Set total active stake for the round
-        bondingManager().setCurrentRoundTotalActiveStake();
+        stakingManager().setCurrentRoundTotalActiveStake();
         // Set mintable rewards for the round
         minter().setCurrentRewardTokens();
 
@@ -178,10 +178,10 @@ contract RoundsManager is IRoundsManager, ManagerProxyTarget {
     }
 
     /**
-     * @dev Return BondingManager interface
+     * @dev Return StakingManager interface
      */
-    function bondingManager() internal view returns (IBondingManager) {
-        return IBondingManager(controller.getContract(keccak256("BondingManager")));
+    function stakingManager() internal view returns (IStakingManager) {
+        return IStakingManager(controller.getContract(keccak256("StakingManager")));
     }
 
     function _roundsSinceUpdate() internal view returns (uint256) {

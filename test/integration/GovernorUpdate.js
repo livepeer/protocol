@@ -8,7 +8,7 @@ chai.use(solidity)
 
 describe("Governor update", () => {
     let controller
-    let bondingManager
+    let stakingManager
     let governor
     let minter
 
@@ -18,7 +18,7 @@ describe("Governor update", () => {
         signers = await ethers.getSigners()
         const fixture = await deployments.fixture(["Contracts"])
         controller = await ethers.getContractAt("Controller", fixture.Controller.address)
-        bondingManager = await ethers.getContractAt("BondingManager", fixture.BondingManager.address)
+        stakingManager = await ethers.getContractAt("StakingManager", fixture.StakingManager.address)
         minter = await ethers.getContractAt("Minter", fixture.Minter.address)
         const governorFac = await ethers.getContractFactory("Governor")
         governor = await governorFac.deploy()
@@ -38,13 +38,13 @@ describe("Governor update", () => {
 
     describe("single param change", () => {
         it("reverts when the param change is not initiated through the governor", async () => {
-            await expect(bondingManager.setNumActiveTranscoders(20)).to.be.revertedWith("caller must be Controller owner")
+            await expect(stakingManager.setNumActiveTranscoders(20)).to.be.revertedWith("caller must be Controller owner")
         })
 
         it("reverts when the delay for the staged update has not expired", async () => {
-            const data = await bondingManager.interface.encodeFunctionData("setNumActiveTranscoders", [20])
+            const data = await stakingManager.interface.encodeFunctionData("setNumActiveTranscoders", [20])
             const update = {
-                target: [bondingManager.address],
+                target: [stakingManager.address],
                 value: ["0"],
                 data: [data],
                 nonce: 0
@@ -55,9 +55,9 @@ describe("Governor update", () => {
         })
 
         it("succesfully executes a single param change", async () => {
-            const data = await bondingManager.interface.encodeFunctionData("setNumActiveTranscoders", [30])
+            const data = await stakingManager.interface.encodeFunctionData("setNumActiveTranscoders", [30])
             const update = {
-                target: [bondingManager.address],
+                target: [stakingManager.address],
                 value: ["0"],
                 data: [data],
                 nonce: 0
@@ -65,7 +65,7 @@ describe("Governor update", () => {
             await governor.stage(update, 0)
 
             const tx = await governor.execute(update)
-            assert.equal((await bondingManager.getTranscoderPoolMaxSize()).toNumber(), 30)
+            assert.equal((await stakingManager.getTranscoderPoolMaxSize()).toNumber(), 30)
 
             expect(tx).to.emit(governor, "UpdateExecuted").withArgs([...update])
         })

@@ -8,7 +8,7 @@ import "../Manager.sol";
 import "./IMinter.sol";
 import "./ILivepeerToken.sol";
 import "../rounds/IRoundsManager.sol";
-import "../bonding/IBondingManager.sol";
+import "../bonding/IStakingManager.sol";
 import "../utils/MathUtils.sol";
 
 /**
@@ -31,9 +31,9 @@ contract Minter is Manager {
     // Current number of minted tokens. Reset every round
     uint256 public currentMintedTokens;
 
-    // Checks if caller is BondingManager
-    modifier onlyBondingManager() {
-        require(msg.sender == controller.getContract(keccak256("BondingManager")), "msg.sender not BondingManager");
+    // Checks if caller is StakingManager
+    modifier onlyStakingManager() {
+        require(msg.sender == controller.getContract(keccak256("StakingManager")), "msg.sender not StakingManager");
         _;
     }
 
@@ -43,12 +43,12 @@ contract Minter is Manager {
         _;
     }
 
-    // Checks if caller is either BondingManager or JobsManager
-    modifier onlyBondingManagerOrJobsManager() {
+    // Checks if caller is either StakingManager or JobsManager
+    modifier onlyStakingManagerOrJobsManager() {
         require(
-            msg.sender == controller.getContract(keccak256("BondingManager")) ||
+            msg.sender == controller.getContract(keccak256("StakingManager")) ||
                 msg.sender == controller.getContract(keccak256("JobsManager")),
-            "msg.sender not BondingManager or JobsManager"
+            "msg.sender not StakingManager or JobsManager"
         );
         _;
     }
@@ -145,7 +145,7 @@ contract Minter is Manager {
      */
     function createReward(uint256 _fracNum, uint256 _fracDenom)
         external
-        onlyBondingManager
+        onlyStakingManager
         whenSystemNotPaused
         returns (uint256)
     {
@@ -163,30 +163,30 @@ contract Minter is Manager {
     }
 
     /**
-     * @notice Transfer tokens to a receipient. Only callable by BondingManager - always trusts BondingManager
+     * @notice Transfer tokens to a receipient. Only callable by StakingManager - always trusts StakingManager
      * @param _to Recipient address
      * @param _amount Amount of tokens
      */
-    function trustedTransferTokens(address _to, uint256 _amount) external onlyBondingManager whenSystemNotPaused {
+    function trustedTransferTokens(address _to, uint256 _amount) external onlyStakingManager whenSystemNotPaused {
         livepeerToken().transfer(_to, _amount);
     }
 
     /**
-     * @notice Burn tokens. Only callable by BondingManager - always trusts BondingManager
+     * @notice Burn tokens. Only callable by StakingManager - always trusts StakingManager
      * @param _amount Amount of tokens to burn
      */
-    function trustedBurnTokens(uint256 _amount) external onlyBondingManager whenSystemNotPaused {
+    function trustedBurnTokens(uint256 _amount) external onlyStakingManager whenSystemNotPaused {
         livepeerToken().burn(_amount);
     }
 
     /**
-     * @notice Withdraw ETH to a recipient. Only callable by BondingManager or TicketBroker - always trusts these two contracts
+     * @notice Withdraw ETH to a recipient. Only callable by StakingManager or TicketBroker - always trusts these two contracts
      * @param _to Recipient address
      * @param _amount Amount of ETH
      */
     function trustedWithdrawETH(address payable _to, uint256 _amount)
         external
-        onlyBondingManagerOrJobsManager
+        onlyStakingManagerOrJobsManager
         whenSystemNotPaused
     {
         _to.transfer(_amount);
@@ -227,7 +227,7 @@ contract Minter is Manager {
         uint256 totalSupply = livepeerToken().totalSupply();
 
         if (totalSupply > 0) {
-            uint256 totalBonded = bondingManager().getTotalBonded();
+            uint256 totalBonded = stakingManager().getTotalStaked();
             currentBondingRate = MathUtils.percPoints(totalBonded, totalSupply);
         }
 
@@ -252,9 +252,9 @@ contract Minter is Manager {
     }
 
     /**
-     * @dev Returns BondingManager interface
+     * @dev Returns StakingManager interface
      */
-    function bondingManager() internal view returns (IBondingManager) {
-        return IBondingManager(controller.getContract(keccak256("BondingManager")));
+    function stakingManager() internal view returns (IStakingManager) {
+        return IStakingManager(controller.getContract(keccak256("StakingManager")));
     }
 }

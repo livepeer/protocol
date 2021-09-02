@@ -9,7 +9,7 @@ describe("transcoder pool size gas report", () => {
     let rpc
 
     let controller
-    let bondingManager
+    let stakingManager
     let roundsManager
     let token
 
@@ -21,7 +21,7 @@ describe("transcoder pool size gas report", () => {
     // Upon creation, the pool ordering (ascending from last position) is:
     // (accs[0], 1) -> (accs[1], 2) -> (accs[1], 3) -> ... -> (accs[accs.length - 1], accs.length)
     const createFullPool = async accs => {
-        await bondingManager.setNumActiveTranscoders(accs.length)
+        await stakingManager.setNumActiveTranscoders(accs.length)
         await Promise.all(accs.map((acc, i) => selfBond(acc, i + 1)))
 
         await roundsManager.mineBlocks(roundLength.toNumber())
@@ -30,12 +30,12 @@ describe("transcoder pool size gas report", () => {
 
     const approve = async (delegator, amount) => {
         await token.transfer(delegator.address, amount)
-        await token.connect(delegator).approve(bondingManager.address, amount)
+        await token.connect(delegator).approve(stakingManager.address, amount)
     }
 
     const selfBond = async (delegator, amount) => {
         await approve(delegator, amount)
-        await bondingManager.connect(delegator).bond(amount, delegator.address)
+        await stakingManager.connect(delegator).bond(amount, delegator.address)
     }
 
     before(async () => {
@@ -44,7 +44,7 @@ describe("transcoder pool size gas report", () => {
         const fixture = await deployments.fixture(["Contracts"])
         controller = await ethers.getContractAt("Controller", fixture.Controller.address)
 
-        bondingManager = await ethers.getContractAt("BondingManager", fixture.BondingManager.address)
+        stakingManager = await ethers.getContractAt("StakingManager", fixture.StakingManager.address)
 
         roundsManager = await ethers.getContractAt("AdjustableRoundsManager", fixture.AdjustableRoundsManager.address)
 
@@ -96,35 +96,35 @@ describe("transcoder pool size gas report", () => {
                     beforeEach(async () => {
                         // Increase transcoders[1] stake to 3
                         await approve(transcoders[1], 1)
-                        await bondingManager.connect(transcoders[1]).bond(1, transcoders[1].address)
+                        await stakingManager.connect(transcoders[1]).bond(1, transcoders[1].address)
 
                         // Pool ordering (ascending from last position):
                         // (transcoders[0], 1) -> (transcoders[2], 3) -> (transcoders[1], 3)
 
                         // Increase transcoders[0] stake to 2
                         await approve(transcoders[0], 1)
-                        await bondingManager.connect(transcoders[0]).bond(1, transcoders[0].address)
+                        await stakingManager.connect(transcoders[0]).bond(1, transcoders[0].address)
 
                         // Pool ordering (ascending from last position):
                         // (transcoders[0], 2) -> (transcoders[2], 3) -> (transcoders[1], 3)
 
                         // newTranscoder bonds 2 which is not enough to join the pool because the last transcoder's stake is 2
                         await approve(newTranscoder, 2)
-                        await bondingManager.connect(newTranscoder).bond(2, newTranscoder.address)
+                        await stakingManager.connect(newTranscoder).bond(2, newTranscoder.address)
 
                         // Decrease transcoders[0] stake to 1
-                        await bondingManager.connect(transcoders[0]).unbond(1)
+                        await stakingManager.connect(transcoders[0]).unbond(1)
 
                         // Pool ordering (ascending from last position):
                         // (transcoders[0], 1) -> (transcoders[2], 3) -> (transcoders[1], 3)
                     })
 
                     it("insert a new transcoder in the last position and evict the last transcoder", async () => {
-                        await bondingManager.connect(newTranscoder).transcoder(1, 1)
+                        await stakingManager.connect(newTranscoder).transcoder(1, 1)
                     })
 
                     it("insert a new transcoder in the last position and evict the last transcoder (with hint)", async () => {
-                        await bondingManager.connect(newTranscoder).transcoderWithHint(1, 1, transcoders[2].address, ethers.constants.AddressZero)
+                        await stakingManager.connect(newTranscoder).transcoderWithHint(1, 1, transcoders[2].address, ethers.constants.AddressZero)
                     })
                 })
             })
@@ -135,7 +135,7 @@ describe("transcoder pool size gas report", () => {
                         beforeEach(async () => {
                             // Increase transcoders[1] stake to 3
                             await approve(transcoders[1], 1)
-                            await bondingManager.connect(transcoders[1]).bond(1, transcoders[1].address)
+                            await stakingManager.connect(transcoders[1]).bond(1, transcoders[1].address)
 
                             // Pool ordering (ascending from last position):
                             // (transcoders[0], 1) -> (transcoders[2], 3) -> (transcoders[1], 3)
@@ -144,11 +144,11 @@ describe("transcoder pool size gas report", () => {
                         })
 
                         it("insert new transcoder into the last position and evict the last transcoder", async () => {
-                            await bondingManager.connect(newTranscoder).bond(2, newTranscoder.address)
+                            await stakingManager.connect(newTranscoder).bond(2, newTranscoder.address)
                         })
 
                         it("insert new transcoder into the last position and evict the last transcoder (with hint)", async () => {
-                            await bondingManager.connect(newTranscoder).bondWithHint(
+                            await stakingManager.connect(newTranscoder).bondWithHint(
                                 2,
                                 newTranscoder.address,
                                 ethers.constants.AddressZero,
@@ -165,11 +165,11 @@ describe("transcoder pool size gas report", () => {
                         })
 
                         it("insert new transcoder into the first position and evict the last transcoder", async () => {
-                            await bondingManager.connect(newTranscoder).bond(size + 1, newTranscoder.address)
+                            await stakingManager.connect(newTranscoder).bond(size + 1, newTranscoder.address)
                         })
 
                         it("insert new transcoder into the first position and evict the last transcoder (with hint)", async () => {
-                            await bondingManager.connect(newTranscoder).bondWithHint(
+                            await stakingManager.connect(newTranscoder).bondWithHint(
                                 size + 1,
                                 newTranscoder.address,
                                 ethers.constants.AddressZero,
@@ -186,11 +186,11 @@ describe("transcoder pool size gas report", () => {
                         beforeEach(async () => {
                             // Increase transcoders[0] stake to 2
                             await approve(transcoders[0], 1)
-                            await bondingManager.connect(transcoders[0]).bond(1, transcoders[0].address)
+                            await stakingManager.connect(transcoders[0]).bond(1, transcoders[0].address)
 
                             // Decrease transcoders[size - 1] stake by `size - 1` so that its stake becomes 1
                             const amount = size - 1
-                            await bondingManager.connect(transcoders[size - 1]).unbond(amount)
+                            await stakingManager.connect(transcoders[size - 1]).unbond(amount)
 
                             // Pool ordering (ascending from last position):
                             // (transcoders[size - 1], 1) -> (transcoders[1], 2) -> (transcoders[0], 2)
@@ -198,15 +198,15 @@ describe("transcoder pool size gas report", () => {
                             // delegator delegates to transcoders[size - 1] and increases its stake back to `size`
                             // Now transcoders[size - 1] -> first transcoder
                             await approve(delegator, amount)
-                            await bondingManager.connect(delegator).bond(amount, transcoders[size - 1].address)
+                            await stakingManager.connect(delegator).bond(amount, transcoders[size - 1].address)
                         })
 
                         it("move first transcoder to last position and last transcoder to first position", async () => {
-                            await bondingManager.connect(delegator).bond(0, transcoders[1].address)
+                            await stakingManager.connect(delegator).bond(0, transcoders[1].address)
                         })
 
                         it("move first transcoder to last position and last transcoder to first position (with hint)", async () => {
-                            await bondingManager.connect(delegator).bondWithHint(
+                            await stakingManager.connect(delegator).bondWithHint(
                                 0,
                                 transcoders[1].address,
                                 transcoders[1].address,
@@ -223,11 +223,11 @@ describe("transcoder pool size gas report", () => {
                         })
 
                         it("delegate to first transcoder", async () => {
-                            await bondingManager.connect(delegator).bond(100, transcoders[size - 1].address)
+                            await stakingManager.connect(delegator).bond(100, transcoders[size - 1].address)
                         })
 
                         it("delegate to first transcoder (with hint)", async () => {
-                            await bondingManager.connect(delegator).bondWithHint(
+                            await stakingManager.connect(delegator).bondWithHint(
                                 100,
                                 transcoders[size - 1].address,
                                 ethers.constants.AddressZero,
@@ -246,26 +246,26 @@ describe("transcoder pool size gas report", () => {
                 beforeEach(async () => {
                     // Increase transcoders[0] stake to 2
                     await approve(transcoders[0], 1)
-                    await bondingManager.connect(transcoders[0]).bond(1, transcoders[0].address)
+                    await stakingManager.connect(transcoders[0]).bond(1, transcoders[0].address)
 
                     // Pool ordering (ascending from last position):
                     // (transcoders[1], 2) -> (transcoders[0], 2)
                 })
 
                 it("moves the first transcoder to the last position", async () => {
-                    await bondingManager.connect(transcoders[size - 1]).unbond(size - 1)
+                    await stakingManager.connect(transcoders[size - 1]).unbond(size - 1)
                 })
 
                 it("moves the first transcoder to the last position (with hint)", async () => {
-                    await bondingManager.connect(transcoders[size - 1]).unbondWithHint(size - 1, transcoders[1].address, ethers.constants.AddressZero)
+                    await stakingManager.connect(transcoders[size - 1]).unbondWithHint(size - 1, transcoders[1].address, ethers.constants.AddressZero)
                 })
 
                 it("keeps the first transcoder in first position", async () => {
-                    await bondingManager.connect(transcoders[size - 1]).unbond(1)
+                    await stakingManager.connect(transcoders[size - 1]).unbond(1)
                 })
 
                 it("keeps the first transcoder in first position (with hint)", async () => {
-                    await bondingManager.connect(transcoders[size - 1]).unbondWithHint(1, ethers.constants.AddressZero, transcoders[size - 2].address)
+                    await stakingManager.connect(transcoders[size - 1]).unbondWithHint(1, ethers.constants.AddressZero, transcoders[size - 2].address)
                 })
             })
 
@@ -277,36 +277,36 @@ describe("transcoder pool size gas report", () => {
                 describe("last transcoder can rebond and still be last", () => {
                     beforeEach(async () => {
                         await approve(transcoders[0], 1)
-                        await bondingManager.connect(transcoders[0]).bond(1, transcoders[0].address)
+                        await stakingManager.connect(transcoders[0]).bond(1, transcoders[0].address)
                         await approve(transcoders[1], 1)
-                        await bondingManager.connect(transcoders[1]).bond(1, transcoders[1].address)
+                        await stakingManager.connect(transcoders[1]).bond(1, transcoders[1].address)
 
                         // Pool order (ascending from last position):
                         // (transcoders[0], 2) -> (transcoders[2], 3) -> (transcoders[1], 3)
 
-                        await bondingManager.connect(transcoders[0]).unbond(1)
+                        await stakingManager.connect(transcoders[0]).unbond(1)
                     })
 
                     it("inserts a transcoder into the last spot", async () => {
-                        await bondingManager.connect(transcoders[0]).rebond(unbondingLockID)
+                        await stakingManager.connect(transcoders[0]).rebond(unbondingLockID)
                     })
 
                     it("inserts a transcoder into the last spot (with hint)", async () => {
-                        await bondingManager.connect(transcoders[0]).rebondWithHint(unbondingLockID, transcoders[2].address, ethers.constants.AddressZero)
+                        await stakingManager.connect(transcoders[0]).rebondWithHint(unbondingLockID, transcoders[2].address, ethers.constants.AddressZero)
                     })
                 })
 
                 describe("first transcoder can rebond and still be first", () => {
                     beforeEach(async () => {
-                        await bondingManager.connect(transcoders[size - 1]).unbond(1)
+                        await stakingManager.connect(transcoders[size - 1]).unbond(1)
                     })
 
                     it("keeps transcoder in first place", async () => {
-                        await bondingManager.connect(transcoders[size - 1]).rebond(unbondingLockID)
+                        await stakingManager.connect(transcoders[size - 1]).rebond(unbondingLockID)
                     })
 
                     it("keeps transcoder in first place (with hint)", async () => {
-                        await bondingManager.connect(transcoders[size - 1]).rebondWithHint(unbondingLockID, ethers.constants.AddressZero, transcoders[size - 2].address)
+                        await stakingManager.connect(transcoders[size - 1]).rebondWithHint(unbondingLockID, ethers.constants.AddressZero, transcoders[size - 2].address)
                     })
                 })
             })
@@ -319,15 +319,15 @@ describe("transcoder pool size gas report", () => {
                 describe("last transcoder is unbonded", () => {
                     beforeEach(async () => {
                         // The last transcoder's stake is 1 so unbonding 1 will remove it from the pool
-                        await bondingManager.connect(transcoders[0]).unbond(1)
+                        await stakingManager.connect(transcoders[0]).unbond(1)
                     })
 
                     it("inserts a transcoder back into the last spot", async () => {
-                        await bondingManager.connect(transcoders[0]).rebondFromUnbonded(transcoders[0].address, unbondingLockID)
+                        await stakingManager.connect(transcoders[0]).rebondFromUnbonded(transcoders[0].address, unbondingLockID)
                     })
 
                     it("inserts a transcoder back into the last spot (with hint)", async () => {
-                        await bondingManager.connect(transcoders[0]).rebondFromUnbondedWithHint(
+                        await stakingManager.connect(transcoders[0]).rebondFromUnbondedWithHint(
                             transcoders[0].address,
                             unbondingLockID,
                             transcoders[1].address,
@@ -339,15 +339,15 @@ describe("transcoder pool size gas report", () => {
                 describe("first transcoder is unbonded", () => {
                     beforeEach(async () => {
                         // The first transcoder's stake is `size` so unbonding `size` will remove it from the pool
-                        await bondingManager.connect(transcoders[size - 1]).unbond(size)
+                        await stakingManager.connect(transcoders[size - 1]).unbond(size)
                     })
 
                     it("inserts a transcoder back into the first spot", async () => {
-                        await bondingManager.connect(transcoders[size - 1]).rebondFromUnbonded(signers[size - 1].address, unbondingLockID)
+                        await stakingManager.connect(transcoders[size - 1]).rebondFromUnbonded(signers[size - 1].address, unbondingLockID)
                     })
 
                     it("inserts a transcoder back into the first spot (with hint)", async () => {
-                        await bondingManager.connect(transcoders[size - 1]).rebondFromUnbondedWithHint(
+                        await stakingManager.connect(transcoders[size - 1]).rebondFromUnbondedWithHint(
                             signers[size - 1].address,
                             unbondingLockID,
                             ethers.constants.AddressZero,
@@ -372,16 +372,16 @@ describe("transcoder pool size gas report", () => {
                         // All transcoders besides transcoders[0] (the last position) call reward
                         const rewardTranscoders = transcoders.slice(1)
                         for (const tr of rewardTranscoders) {
-                            await bondingManager.connect(tr).reward()
+                            await stakingManager.connect(tr).reward()
                         }
                     })
 
                     it("updates the key for the last transcoder in the pool", async () => {
-                        await bondingManager.connect(transcoders[0]).reward()
+                        await stakingManager.connect(transcoders[0]).reward()
                     })
 
                     it("updates the key for the last transcoder in the pool (with hint)", async () => {
-                        await bondingManager.connect(transcoders[0]).rewardWithHint(transcoders[1].address, ethers.constants.AddressZero)
+                        await stakingManager.connect(transcoders[0]).rewardWithHint(transcoders[1].address, ethers.constants.AddressZero)
                     })
                 })
             })

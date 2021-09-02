@@ -19,7 +19,7 @@ describe("redeem ticket gas report", () => {
     let snapshotId
 
     let controller
-    let bondingManager
+    let stakingManager
     let roundsManager
     let token
     let broker
@@ -42,7 +42,7 @@ describe("redeem ticket gas report", () => {
         const fixture = await deployments.fixture(["Contracts"])
         controller = await ethers.getContractAt("Controller", fixture.Controller.address)
 
-        bondingManager = await ethers.getContractAt("BondingManager", fixture.BondingManager.address)
+        stakingManager = await ethers.getContractAt("StakingManager", fixture.StakingManager.address)
 
         roundsManager = await ethers.getContractAt("AdjustableRoundsManager", fixture.AdjustableRoundsManager.address)
 
@@ -57,8 +57,8 @@ describe("redeem ticket gas report", () => {
         // Register transcoder
         const stake = 100
         await token.transfer(transcoder.address, stake)
-        await token.approve(bondingManager.address, stake)
-        await bondingManager.bond(stake, transcoder.address)
+        await token.approve(stakingManager.address, stake)
+        await stakingManager.bond(stake, transcoder.address)
 
         // Deposit funds for broadcaster
         await broker.connect(broadcaster).fundDepositAndReserve(
