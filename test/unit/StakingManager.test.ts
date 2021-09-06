@@ -15,7 +15,7 @@ describe("StakingManager", () => {
     let lpt: LivepeerToken
 
     const UNSTAKING_PERIOD = 2
-    const NUM_ACTIVE_ORCHESTRATORS = 2
+    const NUM_ACTIVE_ORCHESTRATORS = 3
 
     let signers: SignerWithAddress[]
 
@@ -27,13 +27,11 @@ describe("StakingManager", () => {
         const llFac = await ethers.getContractFactory("SortedDoublyLL")
         const ll = await llFac.deploy()
 
-        const stakingManagerFactory = new StakingManager__factory(
-            {
-                "contracts/utils/SortedDoublyLL.sol:SortedDoublyLL": ll.address
-            },
-            signers[0]
-        )
-
+        const stakingManagerFactory = await ethers.getContractFactory<StakingManager__factory>("StakingManager", {
+            libraries: {
+                SortedDoublyLL: ll.address
+            }
+        })
         stakingManager = await fixture.deployAndRegister(stakingManagerFactory, "StakingManager", fixture?.controller?.address)
 
         const lptFactory = new LivepeerToken__factory(signers[0])
@@ -100,7 +98,7 @@ describe("StakingManager", () => {
                 await fixture?.roundsManager?.setMockUint256(functionSig("currentRound()"), currentRound)
             })
 
-            describe("staking", async () => {
+            describe("stake", async () => {
                 it("should increases stake for itself", async () => {
                     const amount = 1000
                     const currentStake = await stakingManager.orchestratorTotalStake(orchestrator0.address)
@@ -115,6 +113,13 @@ describe("StakingManager", () => {
                     const tx = stakingManager.connect(orchestrator0).stake(amount, constants.NULL_ADDRESS, constants.NULL_ADDRESS)
 
                     await expect(tx).to.be.revertedWith("ZERO_DELEGATION_AMOUNT")
+                })
+
+                it("should fail if insufficient available balance", async () => {
+                    const amount = 1200000
+                    const tx = stakingManager.connect(orchestrator0).stake(amount, constants.NULL_ADDRESS, constants.NULL_ADDRESS)
+
+                    await expect(tx).to.be.revertedWith("ERC20: transfer amount exceeds balance")
                 })
 
                 it("should fire a Stake event when staking", async () => {
@@ -132,7 +137,7 @@ describe("StakingManager", () => {
                 })
             })
 
-            describe("unstaking", async () => {
+            describe("unstake", async () => {
                 it("should fail if provided amount = 0", async () => {
                     const amount = 0
                     const tx = stakingManager.connect(orchestrator0).unstake(amount, constants.NULL_ADDRESS, constants.NULL_ADDRESS)
@@ -162,11 +167,11 @@ describe("StakingManager", () => {
                 it("should fail if no stakes", async () => {})
             })
 
-            describe("restaking", async () => {
+            describe("restake", async () => {
                 it("should restake", async () => {})
             })
 
-            describe("withdraws", async () => {
+            describe("withdrawStake", async () => {
                 it("should withdraws stake", async () => {})
 
                 it("should fire a WithdrawStake event when withdrawing stake", async () => {})
@@ -177,7 +182,7 @@ describe("StakingManager", () => {
             })
 
             describe("third party", async () => {
-                it("stakes on behalf", async () => {
+                it("stakeFor", async () => {
                     const amount = 1000
                     const currentStake = await stakingManager.orchestratorTotalStake(orchestrator0.address)
                     await stakingManager.connect(thirdParty).stakeFor(amount, orchestrator0.address, constants.NULL_ADDRESS, constants.NULL_ADDRESS)
@@ -186,7 +191,7 @@ describe("StakingManager", () => {
                     expect(newStake).to.equal(currentStake.add(amount))
                 })
 
-                it("should fail to delegate to orchestrator on behalf of same orchestrator", async () => {
+                it("should fail to call delegateFor to orchestrator on behalf of same orchestrator", async () => {
                     const amount = 1000
                     const tx = stakingManager.connect(thirdParty).delegateFor(amount, orchestrator0.address, orchestrator0.address, constants.NULL_ADDRESS, constants.NULL_ADDRESS)
 
@@ -208,7 +213,7 @@ describe("StakingManager", () => {
         })
 
         describe("delegator", () => {
-            describe("delegation", () => {
+            describe("delegate", () => {
                 it("should fail if provided amount = 0", async () => {
                     const amount = 0
                     const tx = stakingManager.connect(delegator0).delegate(amount, orchestrator0.address, constants.NULL_ADDRESS, constants.NULL_ADDRESS)
@@ -242,23 +247,23 @@ describe("StakingManager", () => {
                 })
             })
 
-            describe("change delegation", () => {
+            describe("changeDelegation", () => {
                 it("should change delegation to another orchestrator", async () => {})
 
                 it("should fail if change delegation amount = 0", async () => {})
             })
 
-            describe("undelegation", () => {
+            describe("undelegate", () => {
                 it("should undelegate amount from an orchestrator", async () => {})
 
                 it("should fire an Undelegate event when undelegating", async () => {})
             })
 
-            describe("redelegation", () => {
+            describe("redelegate", () => {
                 it("should redelegate amount to an orchestrator", async () => {})
             })
 
-            describe("withdraws", async () => {
+            describe("withdraw", async () => {
                 it("should withdraws stake", async () => {})
 
                 it("should fire a WithdrawStake event when withdrawing stake", async () => {})

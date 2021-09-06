@@ -896,15 +896,15 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
     }
 
     function _onlyTicketBroker() internal view {
-        require(msg.sender == controller.getContract(keccak256("TicketBroker")), "CALLER_MUST_BE_TicketBroker");
+        require(msg.sender == controller.getContract(keccak256("TicketBroker")), "ONLY_TICKETBROKER");
     }
 
     function _onlyRoundsManager() internal view {
-        require(msg.sender == controller.getContract(keccak256("RoundsManager")), "CALLER_MUST_BE_RoundsManager");
+        require(msg.sender == controller.getContract(keccak256("RoundsManager")), "ONLY_ROUNDSMANAGER");
     }
 
     function _onlyVerifier() internal view {
-        require(msg.sender == controller.getContract(keccak256("Verifier")), "CALLER_MUST_BE_Verifier");
+        require(msg.sender == controller.getContract(keccak256("Verifier")), "ONLY_VERIFIER");
     }
 
     function _currentRoundInitialized() internal view {
