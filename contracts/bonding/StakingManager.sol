@@ -13,6 +13,8 @@ import "../token/IMinter.sol";
 import "../rounds/IRoundsManager.sol";
 import "./IStakingManager.sol";
 
+import "hardhat/console.sol";
+
 uint256 constant MAX_FUTURE_ROUND = 2**256 - 1;
 
 contract StakingManager is ManagerProxyTarget, IStakingManager {
@@ -182,8 +184,8 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
         address _newPosPrev,
         address _newPosNext
     ) external {
-        _undelegate(_amount, msg.sender, msg.sender, _newPosPrev, _newPosNext);
-        emit Unstake(msg.sender, _amount);
+        uint256 lockID = _undelegate(_amount, msg.sender, msg.sender, _newPosPrev, _newPosNext);
+        emit Unstake(msg.sender, _amount, lockID);
     }
 
     /**
@@ -287,7 +289,7 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
 
         oldPool.unstake(msg.sender, _amount);
 
-        emit Undelegate(msg.sender, _oldOrchestrator, _amount);
+        emit Undelegate(msg.sender, _oldOrchestrator, _amount, 0);
 
         // cfr. undelegate
         // 2. Add stake to new orchestrator
@@ -321,8 +323,8 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
         address _newPosPrev,
         address _newPosNext
     ) external {
-        _undelegate(_amount, _orchestrator, msg.sender, _newPosPrev, _newPosNext);
-        emit Undelegate(msg.sender, _orchestrator, _amount);
+        uint256 lockID = _undelegate(_amount, _orchestrator, msg.sender, _newPosPrev, _newPosNext);
+        emit Undelegate(msg.sender, _orchestrator, _amount, lockID);
     }
 
     /**
@@ -361,8 +363,8 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
         delete unstakingLocks[_unstakingLockId];
 
         // Tell Minter to transfer stake (LPT) to the delegator
+        console.log("amount", amount);
         minter().trustedTransferTokens(msg.sender, amount);
-
         emit WithdrawStake(msg.sender, _unstakingLockId, amount, withdrawRound);
     }
 
@@ -663,7 +665,7 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
         address _for,
         address _newPosPrev,
         address _newPosNext
-    ) internal whenSystemNotPaused currentRoundInitialized autoClaimFees(_orchestrator, _for) {
+    ) internal whenSystemNotPaused currentRoundInitialized autoClaimFees(_orchestrator, _for) returns (uint256 id) {
         require(_amount > 0, "ZERO_UNSTAKE_AMOUNT");
 
         uint256 orchStake = orchestratorTotalStake(_orchestrator);
@@ -688,7 +690,7 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
         pool.unstake(_for, _amount);
 
         // Create unstaking lock for _amount
-        uint256 id = lastUnstakingLockID;
+        id = lastUnstakingLockID;
         lastUnstakingLockID++;
 
         uint256 currentRound = roundsManager().currentRound();

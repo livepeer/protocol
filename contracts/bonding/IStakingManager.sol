@@ -13,10 +13,10 @@ interface IStakingManager {
     event Reward(address indexed orchestrator, uint256 amount);
 
     event Stake(address indexed orchestrator, uint256 amount);
-    event Unstake(address indexed orchestrator, uint256 amount);
+    event Unstake(address indexed orchestrator, uint256 amount, uint256 lockID);
 
     event Delegate(address indexed delegator, address indexed orchestrator, uint256 amount);
-    event Undelegate(address indexed delegator, address indexed orchestrator, uint256 amount);
+    event Undelegate(address indexed delegator, address indexed orchestrator, uint256 amount, uint256 lockID);
 
     event WithdrawStake(address indexed delegator, uint256 unbondingLockId, uint256 amount, uint256 withdrawRound);
     event WithdrawFees(address indexed delegator);
