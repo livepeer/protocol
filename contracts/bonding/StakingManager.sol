@@ -13,8 +13,6 @@ import "../token/IMinter.sol";
 import "../rounds/IRoundsManager.sol";
 import "./IStakingManager.sol";
 
-import "hardhat/console.sol";
-
 uint256 constant MAX_FUTURE_ROUND = 2**256 - 1;
 
 contract StakingManager is ManagerProxyTarget, IStakingManager {
@@ -43,6 +41,7 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
 
     // Represents an amount of tokens that are being undelegate
     struct UnstakingLock {
+        address owner; // address which owns undelegated amount
         address orchestrator;
         uint256 amount; // Amount of tokens being ustaked
         uint256 withdrawRound; // Round at which undelegation period is over and tokens can be withdrawn
@@ -100,7 +99,6 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
      * should be used to initialize state variables post-deployment:
      * - setUnstakingPeriod()
      * - setNumActiveOrchestrators()
-     * - setMaxEarningsClaimsRounds()
      * @param _controller Address of Controller that this contract will be registered with
      */
     constructor(address _controller) Manager(_controller) {}
@@ -356,6 +354,7 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
             lock.withdrawRound <= roundsManager().currentRound(),
             "withdraw round must be before or equal to the current round"
         );
+        require(msg.sender == lock.owner, "CALLER_NOT_LOCK_OWNER");
 
         uint256 amount = lock.amount;
         uint256 withdrawRound = lock.withdrawRound;
@@ -363,7 +362,6 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
         delete unstakingLocks[_unstakingLockId];
 
         // Tell Minter to transfer stake (LPT) to the delegator
-        console.log("amount", amount);
         minter().trustedTransferTokens(msg.sender, amount);
         emit WithdrawStake(msg.sender, _unstakingLockId, amount, withdrawRound);
     }
@@ -409,6 +407,7 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
         Orchestrator storage o = orchestrators[msg.sender];
         uint256 currentRound = roundsManager().currentRound();
 
+        // caller can't be active or must have already called reward for the current round
         require(!isActiveOrchestrator(msg.sender) || o.lastRewardRound == currentRound, "COMMISSION_RATES_LOCKED");
 
         o.rewardShare = _rewardShare;
@@ -584,6 +583,36 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
     }
 
     /**
+     * @notice Return orchestrator information
+     * @param _orchestrator Address of orchestrator
+     * @return lastRewardRound Orchestrator's last reward round
+     * @return rewardShare Orchestrator's reward share
+     * @return feeShare Orchestrator's fee share
+     * @return activationRound Round in which orchestrator became active
+     * @return deactivationRound Round in which orchestrator will no longer be active
+     */
+    function getOrchestrator(address _orchestrator)
+        public
+        view
+        returns (
+            uint256 lastRewardRound,
+            uint256 rewardShare,
+            uint256 feeShare,
+            uint256 activationRound,
+            uint256 deactivationRound
+        )
+    {
+        Orchestrator storage o = orchestrators[_orchestrator];
+
+        lastRewardRound = o.lastRewardRound;
+        rewardShare = o.rewardShare;
+        feeShare = o.feeShare;
+        activationRound = o.activationRound;
+        deactivationRound = o.deactivationRound;
+        lastRewardRound = o.lastRewardRound;
+    }
+
+    /**
      * @notice Returns max size of orchestrator pool
      * @return orchestrator pool max size
      */
@@ -696,6 +725,7 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
         uint256 currentRound = roundsManager().currentRound();
 
         unstakingLocks[id] = UnstakingLock({
+            owner: _for,
             orchestrator: _orchestrator,
             amount: _amount,
             withdrawRound: currentRound + unstakingPeriod
@@ -711,6 +741,7 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
         UnstakingLock storage lock = unstakingLocks[_unstakingLockID];
 
         require(isValidUnstakingLock(_unstakingLockID), "INVALID_UNSTAKING_LOCK_ID");
+        require(msg.sender == lock.owner, "CALLER_NOT_LOCK_OWNER");
 
         address orchestrator = lock.orchestrator;
         uint256 amount = lock.amount;
