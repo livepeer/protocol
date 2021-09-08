@@ -28,7 +28,6 @@ export default class Fixture {
     public jobsManager?: GenericMock
     public ticketBroker?: GenericMock
     public merkleSnapshot?: GenericMock
-    public verifier?: GenericMock
 
     constructor(web3: Web3) {
         this.rpc = new RPC(web3)
@@ -63,7 +62,6 @@ export default class Fixture {
         // Register TicketBroker with JobsManager contract ID because in a production system the Minter likely will not be upgraded to be
         // aware of the TicketBroker contract ID and it will only be aware of the JobsManager contract ID
         await this.register("JobsManager", this.ticketBroker.address)
-        this.verifier = await this.deployAndRegister<GenericMock>(GenericMockFactory, "Verifier")
     }
 
     async register(name: string, addr: string) {

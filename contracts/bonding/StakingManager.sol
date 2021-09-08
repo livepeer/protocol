@@ -76,12 +76,6 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
         _;
     }
 
-    // Check if sender is Verifier
-    modifier onlyVerifier() {
-        _onlyVerifier();
-        _;
-    }
-
     // Check if current round is initialized
     modifier currentRoundInitialized() {
         _currentRoundInitialized();
@@ -934,10 +928,6 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
 
     function _onlyRoundsManager() internal view {
         require(msg.sender == controller.getContract(keccak256("RoundsManager")), "ONLY_ROUNDSMANAGER");
-    }
-
-    function _onlyVerifier() internal view {
-        require(msg.sender == controller.getContract(keccak256("Verifier")), "ONLY_VERIFIER");
     }
 
     function _currentRoundInitialized() internal view {
