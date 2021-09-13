@@ -8,7 +8,7 @@ import "../Manager.sol";
 import "./IMinter.sol";
 import "./ILivepeerToken.sol";
 import "../rounds/IRoundsManager.sol";
-import "../bonding/IStakingManager.sol";
+import "../bonding/deprecated/IBondingManager.sol";
 import "../utils/MathUtils.sol";
 
 /**
@@ -33,7 +33,7 @@ contract Minter is Manager {
 
     // Checks if caller is StakingManager
     modifier onlyStakingManager() {
-        require(msg.sender == controller.getContract(keccak256("StakingManager")), "msg.sender not StakingManager");
+        require(msg.sender == controller.getContract(keccak256("BondingManager")), "msg.sender not StakingManager");
         _;
     }
 
@@ -46,7 +46,7 @@ contract Minter is Manager {
     // Checks if caller is either StakingManager or JobsManager
     modifier onlyStakingManagerOrJobsManager() {
         require(
-            msg.sender == controller.getContract(keccak256("StakingManager")) ||
+            msg.sender == controller.getContract(keccak256("BondingManager")) ||
                 msg.sender == controller.getContract(keccak256("JobsManager")),
             "msg.sender not StakingManager or JobsManager"
         );
@@ -227,7 +227,7 @@ contract Minter is Manager {
         uint256 totalSupply = livepeerToken().totalSupply();
 
         if (totalSupply > 0) {
-            uint256 totalBonded = stakingManager().getTotalStaked();
+            uint256 totalBonded = stakingManager().getTotalBonded();
             currentBondingRate = MathUtils.percPoints(totalBonded, totalSupply);
         }
 
@@ -254,7 +254,7 @@ contract Minter is Manager {
     /**
      * @dev Returns StakingManager interface
      */
-    function stakingManager() internal view returns (IStakingManager) {
-        return IStakingManager(controller.getContract(keccak256("StakingManager")));
+    function stakingManager() internal view returns (IBondingManager) {
+        return IBondingManager(controller.getContract(keccak256("BondingManager")));
     }
 }

@@ -1,7 +1,7 @@
 pragma solidity 0.8.4;
 
 import "../../ManagerProxyTarget.sol";
-import "../../bonding/IStakingManager.sol";
+import "../../bonding/deprecated/IBondingManager.sol";
 import "../../token/IMinter.sol";
 import "../../rounds/IRoundsManager.sol";
 
@@ -19,8 +19,8 @@ contract MixinContractRegistry is ManagerProxyTarget {
     /**
      * @dev Returns an instance of the IStakingManager interface
      */
-    function stakingManager() internal view returns (IStakingManager) {
-        return IStakingManager(controller.getContract(keccak256("StakingManager")));
+    function stakingManager() internal view returns (IBondingManager) {
+        return IBondingManager(controller.getContract(keccak256("BondingManager")));
     }
 
     /**

@@ -158,7 +158,7 @@ describe("RoundsManager", () => {
         })
 
         it("should fail if provided roundLockAmount is an invalid percentage (> 100%)", async () => {
-            await expect(roundsManager.setRoundLockAmount(PERC_DIVISOR + 1)).to.be.revertedWith("round lock amount must be a valid percentage")
+            await expect(roundsManager.setRoundLockAmount(constants.PERC_DIVISOR_PRECISE.add(1))).to.be.revertedWith("round lock amount must be a valid percentage")
         })
 
         it("should set roundLockAmount", async () => {
@@ -435,14 +435,16 @@ describe("RoundsManager", () => {
         let roundLength
 
         beforeEach(async () => {
-            roundLength = (await roundsManager.roundLength()).toNumber()
-            await fixture.rpc.waitUntilNextBlockMultiple(roundLength)
+            roundLength = await roundsManager.roundLength()
+            await fixture.rpc.waitUntilNextBlockMultiple(roundLength.toNumber())
         })
 
         it("should return true if the current round is locked", async () => {
-            const roundLockAmount = (await roundsManager.roundLockAmount()).toNumber()
-            const roundLockBlocks = Math.floor((roundLength * roundLockAmount) / PERC_DIVISOR)
-            await fixture.rpc.wait(roundLength - roundLockBlocks)
+            const roundLockAmount = await roundsManager.roundLockAmount()
+            const roundLockBlocks = roundLength.mul(roundLockAmount).div(constants.PERC_DIVISOR_PRECISE)
+            await fixture.rpc.wait(roundLength.sub(roundLockBlocks).toNumber())
+
+            console.log(await roundsManager.currentRoundLocked(), roundLength.sub(roundLockBlocks).toNumber())
 
             assert.isOk(await roundsManager.currentRoundLocked(), "not true when in lock period")
         })

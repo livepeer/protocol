@@ -6,7 +6,7 @@ pragma solidity 0.8.4;
 
 import "../ManagerProxyTarget.sol";
 import "./IRoundsManager.sol";
-import "../bonding/IStakingManager.sol";
+import "../bonding/deprecated/IBondingManager.sol";
 import "../token/IMinter.sol";
 import "../utils/MathUtils.sol";
 
@@ -159,7 +159,7 @@ contract RoundsManager is IRoundsManager, ManagerProxyTarget {
         // Compute # of rounds since roundLength was last updated
         uint256 roundsSinceUpdate = _roundsSinceUpdate();
         // Current round start block = start block of round that roundLength was last updated + (# of rounds since roundLenght was last updated * roundLength)
-        return lastRoundLengthUpdateStartBlock + roundsSinceUpdate * roundLength;
+        return lastRoundLengthUpdateStartBlock + (roundsSinceUpdate * roundLength);
     }
 
     /**
@@ -180,12 +180,12 @@ contract RoundsManager is IRoundsManager, ManagerProxyTarget {
     /**
      * @dev Return StakingManager interface
      */
-    function stakingManager() internal view returns (IStakingManager) {
-        return IStakingManager(controller.getContract(keccak256("StakingManager")));
+    function stakingManager() internal view returns (IBondingManager) {
+        return IBondingManager(controller.getContract(keccak256("BondingManager")));
     }
 
     function _roundsSinceUpdate() internal view returns (uint256) {
-        return blockNum() - lastRoundLengthUpdateStartBlock / roundLength;
+        return (blockNum() - lastRoundLengthUpdateStartBlock) / roundLength;
     }
 
     /**

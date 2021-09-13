@@ -26,17 +26,17 @@ describe("Minter", () => {
     })
     describe("constructor", () => {
         it("should fail if provided inflation is invalid percentage > 100%", async () => {
-            await expect(minterFac.deploy(signers[0].address, PERC_DIVISOR + 1, INFLATION_CHANGE, TARGET_BONDING_RATE))
+            await expect(minterFac.deploy(signers[0].address, constants.PERC_DIVISOR_PRECISE.add(1), INFLATION_CHANGE, TARGET_BONDING_RATE))
                 .to.be.revertedWith("_inflation is invalid percentage")
         })
 
         it("should fail if provided inflationChange is invalid percentage > 100%", async () => {
-            await expect(minterFac.deploy(signers[0].address, INFLATION, PERC_DIVISOR + 1, TARGET_BONDING_RATE))
+            await expect(minterFac.deploy(signers[0].address, INFLATION, constants.PERC_DIVISOR_PRECISE.add(1), TARGET_BONDING_RATE))
                 .to.be.revertedWith("_inflationChange is invalid percentage")
         })
 
         it("should fail if provided targetBondingRate is invalid percentage > 100%", async () => {
-            await expect(minterFac.deploy(signers[0].address, INFLATION, INFLATION_CHANGE, PERC_DIVISOR + 1))
+            await expect(minterFac.deploy(signers[0].address, INFLATION, INFLATION_CHANGE, constants.PERC_DIVISOR_PRECISE.add(1)))
                 .to.be.revertedWith("_targetBondingRate is invalid percentage")
         })
 
@@ -72,7 +72,7 @@ describe("Minter", () => {
 
         it("should fail if provided targetBondingRate is not a valid percentage", async () => {
             await expect(
-                minter.setTargetBondingRate(PERC_DIVISOR + 1)
+                minter.setTargetBondingRate(constants.PERC_DIVISOR_PRECISE.add(1))
             ).to.be.revertedWith("_targetBondingRate is invalid percentage")
         })
 
@@ -90,7 +90,7 @@ describe("Minter", () => {
 
         it("should fail if provided inflationChange is not a valid percentage", async () => {
             await expect(
-                minter.setInflationChange(PERC_DIVISOR + 1)
+                minter.setInflationChange(constants.PERC_DIVISOR_PRECISE.add(1))
             ).to.be.revertedWith("_inflationChange is invalid percentage")
         })
 
@@ -186,7 +186,7 @@ describe("Minter", () => {
             await fixture.controller.pause()
 
             await expect(
-                fixture.stakingManager.execute(
+                fixture.bondingManager.execute(
                     minter.address,
                     functionEncodedABI(
                         "createReward(uint256,uint256)",
@@ -199,7 +199,7 @@ describe("Minter", () => {
 
         it("should update currentMintedTokens with computed reward", async () => {
             // Set up reward call via StakingManager
-            await fixture.stakingManager.execute(minter.address, functionEncodedABI("createReward(uint256,uint256)", ["uint256", "uint256"], [10, 100]))
+            await fixture.bondingManager.execute(minter.address, functionEncodedABI("createReward(uint256,uint256)", ["uint256", "uint256"], [10, 100]))
             const currentMintableTokens = await minter.currentMintableTokens()
             const expCurrentMintedTokens = Math.floor((currentMintableTokens.toNumber() * Math.floor((10 * PERC_DIVISOR) / 100) / PERC_DIVISOR))
 
@@ -209,7 +209,7 @@ describe("Minter", () => {
 
         it("should compute reward correctly for fraction = 1", async () => {
             // Set up reward call via StakingManager
-            await fixture.stakingManager.execute(minter.address, functionEncodedABI("createReward(uint256,uint256)", ["uint256", "uint256"], [100, 100]))
+            await fixture.bondingManager.execute(minter.address, functionEncodedABI("createReward(uint256,uint256)", ["uint256", "uint256"], [100, 100]))
             const currentMintableTokens = await minter.currentMintableTokens()
             const expCurrentMintedTokens = Math.floor((currentMintableTokens.toNumber() * Math.floor((100 * PERC_DIVISOR) / 100) / PERC_DIVISOR))
 
@@ -225,7 +225,7 @@ describe("Minter", () => {
 
             const bigAmount = BigNumber.from("10000000000000000000000000000000000000000000000")
             // Set up reward call via StakingManager
-            await fixture.stakingManager.execute(minter.address, functionEncodedABI("createReward(uint256,uint256)", ["uint256", "uint256"], [bigAmount.toString(), bigAmount.toString()]))
+            await fixture.bondingManager.execute(minter.address, functionEncodedABI("createReward(uint256,uint256)", ["uint256", "uint256"], [bigAmount.toString(), bigAmount.toString()]))
             const currentMintableTokens = await minter.currentMintableTokens()
             const expCurrentMintedTokens = BigNumber.from(currentMintableTokens.toString()).mul(bigAmount.mul(BigNumber.from(PERC_DIVISOR)).div(bigAmount)).div(BigNumber.from(PERC_DIVISOR)).toNumber()
 
@@ -235,9 +235,9 @@ describe("Minter", () => {
 
         it("should compute rewards correctly for multiple valid calls", async () => {
             // Set up reward call via StakingManager
-            await fixture.stakingManager.execute(minter.address, functionEncodedABI("createReward(uint256,uint256)", ["uint256", "uint256"], [10, 100]))
+            await fixture.bondingManager.execute(minter.address, functionEncodedABI("createReward(uint256,uint256)", ["uint256", "uint256"], [10, 100]))
             // Set up second reward call via StakingManager
-            await fixture.stakingManager.execute(minter.address, functionEncodedABI("createReward(uint256,uint256)", ["uint256", "uint256"], [20, 100]))
+            await fixture.bondingManager.execute(minter.address, functionEncodedABI("createReward(uint256,uint256)", ["uint256", "uint256"], [20, 100]))
 
             const currentMintableTokens = await minter.currentMintableTokens()
             const expMintedTokens0 = Math.floor((currentMintableTokens.toNumber() * Math.floor((10 * PERC_DIVISOR) / 100) / PERC_DIVISOR))
@@ -249,10 +249,10 @@ describe("Minter", () => {
 
         it("should fail if all mintable tokens for current round have been minted", async () => {
             // Set up reward call via StakingManager
-            await fixture.stakingManager.execute(minter.address, functionEncodedABI("createReward(uint256,uint256)", ["uint256", "uint256"], [100, 100]))
+            await fixture.bondingManager.execute(minter.address, functionEncodedABI("createReward(uint256,uint256)", ["uint256", "uint256"], [100, 100]))
 
             await expect(
-                fixture.stakingManager.execute(minter.address, functionEncodedABI("createReward(uint256,uint256)", ["uint256", "uint256"], [10, 100]))
+                fixture.bondingManager.execute(minter.address, functionEncodedABI("createReward(uint256,uint256)", ["uint256", "uint256"], [10, 100]))
             ).to.be.revertedWith("minted tokens cannot exceed mintable tokens")
         })
     })
@@ -268,7 +268,7 @@ describe("Minter", () => {
             await fixture.controller.pause()
 
             await expect(
-                fixture.stakingManager.execute(
+                fixture.bondingManager.execute(
                     minter.address,
                     functionEncodedABI(
                         "trustedTransferTokens(address,uint256)",
@@ -281,7 +281,7 @@ describe("Minter", () => {
 
         it("should transfer tokens to receiving address", async () => {
             // Just make sure that this does not fail
-            await fixture.stakingManager.execute(minter.address, functionEncodedABI("trustedTransferTokens(address,uint256)", ["address", "uint256"], [signers[1].address, 100]))
+            await fixture.bondingManager.execute(minter.address, functionEncodedABI("trustedTransferTokens(address,uint256)", ["address", "uint256"], [signers[1].address, 100]))
         })
     })
 
@@ -296,7 +296,7 @@ describe("Minter", () => {
             await fixture.controller.pause()
 
             await expect(
-                fixture.stakingManager.execute(
+                fixture.bondingManager.execute(
                     minter.address,
                     functionEncodedABI(
                         "trustedBurnTokens(uint256)",
@@ -309,7 +309,7 @@ describe("Minter", () => {
 
         it("should burn tokens", async () => {
             // Just make sure that this does not fail
-            await fixture.stakingManager.execute(minter.address, functionEncodedABI("trustedBurnTokens(uint256)", ["uint256"], [100]))
+            await fixture.bondingManager.execute(minter.address, functionEncodedABI("trustedBurnTokens(uint256)", ["uint256"], [100]))
         })
     })
 
@@ -324,7 +324,7 @@ describe("Minter", () => {
             await fixture.controller.pause()
 
             await expect(
-                fixture.stakingManager.execute(
+                fixture.bondingManager.execute(
                     minter.address,
                     functionEncodedABI(
                         "trustedWithdrawETH(address,uint256)",
@@ -336,7 +336,7 @@ describe("Minter", () => {
         })
 
         it("should fail if insufficient balance when caller is StakingManager", async () => {
-            await expect(fixture.stakingManager.execute(minter.address, functionEncodedABI("trustedWithdrawETH(address,uint256)", ["address", "uint256"], [signers[1].address, 100]))).to.be.reverted
+            await expect(fixture.bondingManager.execute(minter.address, functionEncodedABI("trustedWithdrawETH(address,uint256)", ["address", "uint256"], [signers[1].address, 100]))).to.be.reverted
         })
 
         it("should fail if insufficient balance when caller is JobsManager", async () => {
@@ -346,7 +346,7 @@ describe("Minter", () => {
         it("should transfer ETH to receiving address when caller is StakingManager", async () => {
             await fixture.ticketBroker.connect(signers[1]).execute(minter.address, functionSig("depositETH()"), {value: 100})
             const startBalance = BigNumber.from(await web3.eth.getBalance(signers[1].address))
-            await fixture.stakingManager.execute(minter.address, functionEncodedABI("trustedWithdrawETH(address,uint256)", ["address", "uint256"], [signers[1].address, 100]))
+            await fixture.bondingManager.execute(minter.address, functionEncodedABI("trustedWithdrawETH(address,uint256)", ["address", "uint256"], [signers[1].address, 100]))
             const endBalance = BigNumber.from(await web3.eth.getBalance(signers[1].address))
 
             assert.equal(await web3.eth.getBalance(minter.address), 0, "wrong minter balance")
@@ -431,7 +431,7 @@ describe("Minter", () => {
             const startInflation = await minter.inflation()
 
             // Set total bonded tokens
-            await fixture.stakingManager.setMockUint256(functionSig("getTotalBonded()"), 400)
+            await fixture.bondingManager.setMockUint256(functionSig("getTotalBonded()"), 400)
             // Call setCurrentRewardTokens via RoundsManager
             await fixture.roundsManager.execute(minter.address, functionSig("setCurrentRewardTokens()"))
 
@@ -444,7 +444,7 @@ describe("Minter", () => {
             const startInflation = await minter.inflation()
 
             // Set total bonded tokens
-            await fixture.stakingManager.setMockUint256(functionSig("getTotalBonded()"), 600)
+            await fixture.bondingManager.setMockUint256(functionSig("getTotalBonded()"), 600)
             // Call setCurrentRewardTokens via RoundsManager
             await fixture.roundsManager.execute(minter.address, functionSig("setCurrentRewardTokens()"))
 
@@ -456,7 +456,7 @@ describe("Minter", () => {
         it("should set the inflation rate to 0 if the inflation change is greater than the inflation and the current bonding rate is above the target bonding rate", async () => {
             await minter.setInflationChange(INFLATION + 1)
             // Set total bonded tokens
-            await fixture.stakingManager.setMockUint256(functionSig("getTotalBonded()"), 600)
+            await fixture.bondingManager.setMockUint256(functionSig("getTotalBonded()"), 600)
             // Call setCurrentRewardTokens via RoundsManager
             await fixture.roundsManager.execute(minter.address, functionSig("setCurrentRewardTokens()"))
 
@@ -468,25 +468,27 @@ describe("Minter", () => {
         it("should maintain the inflation rate if the current bonding rate is equal to the target bonding rate", async () => {
             const startInflation = await minter.inflation()
 
-            await fixture.stakingManager.setMockUint256(functionSig("getTotalBonded()"), 500)
+            await fixture.bondingManager.setMockUint256(functionSig("getTotalBonded()"), 500)
             // Call setCurrentRewardTokens via RoundsManager
             await fixture.roundsManager.execute(minter.address, functionSig("setCurrentRewardTokens()"))
 
             const endInflation = await minter.inflation()
+
+            console.log(startInflation.toString(), endInflation.toString())
 
             assert.equal(startInflation.sub(endInflation).toNumber(), 0, "inflation rate did not stay the same")
         })
 
         it("should set currentMintableTokens based on the current inflation and current total token supply", async () => {
             // Set total bonded tokens - we are at the target bonding rate so inflation does not move
-            await fixture.stakingManager.setMockUint256(functionSig("getTotalBonded()"), 500)
+            await fixture.bondingManager.setMockUint256(functionSig("getTotalBonded()"), 500)
             // Call setCurrentRewardTokens via RoundsManager
             await fixture.roundsManager.execute(minter.address, functionSig("setCurrentRewardTokens()"))
 
             const inflation = await minter.inflation()
-            const expCurrentMintableTokens = Math.floor((1000 * inflation.toNumber()) / PERC_DIVISOR)
+            const expCurrentMintableTokens = Math.floor(inflation.toNumber() / PERC_DIVISOR)
 
-            assert.equal(await minter.currentMintableTokens(), expCurrentMintableTokens, "wrong currentMintableTokens")
+            assert.equal((await minter.currentMintableTokens()).toString(), expCurrentMintableTokens, "wrong currentMintableTokens")
         })
 
         it("should set currentMintableTokens and inflation correctly for different inflationChange values", async () => {
@@ -498,7 +500,7 @@ describe("Minter", () => {
 
             await fixture.token.setMockUint256(functionSig("totalSupply()"), totalSupply.toString())
             // Set total bonded tokens - we are above the target bonding rate so inflation decreases
-            await fixture.stakingManager.setMockUint256(functionSig("getTotalBonded()"), totalBonded.toString())
+            await fixture.bondingManager.setMockUint256(functionSig("getTotalBonded()"), totalBonded.toString())
 
             let inflationChange = Math.ceil(.0003 * PERC_MULTIPLIER)
             let newMinter = await fixture.deployAndRegister(minterFac, "Minter", fixture.controller.address, inflation, inflationChange, targetBondingRate)
@@ -522,7 +524,7 @@ describe("Minter", () => {
 
         it("should set currentMintedTokens = 0", async () => {
             // Set total bonded tokens - we are at the target bonding rate so inflation does not move
-            await fixture.stakingManager.setMockUint256(functionSig("getTotalBonded()"), 500)
+            await fixture.bondingManager.setMockUint256(functionSig("getTotalBonded()"), 500)
             // Call setCurrentRewardTokens via RoundsManager
             await fixture.roundsManager.execute(minter.address, functionSig("setCurrentRewardTokens()"))
 

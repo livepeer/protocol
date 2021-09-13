@@ -14,7 +14,7 @@ describe("MinterUpgrade", () => {
     let broadcaster2
 
     let controller
-    let stakingManager
+    let bondingManager
     let roundsManager
     let token
     let minter
@@ -55,7 +55,7 @@ describe("MinterUpgrade", () => {
         controller = await ethers.getContractAt("Controller", fixture.Controller.address)
         await controller.unpause()
 
-        stakingManager = await ethers.getContractAt("StakingManager", fixture.StakingManager.address)
+        bondingManager = await ethers.getContractAt("BondingManager", fixture.BondingManager.address)
 
         roundsManager = await ethers.getContractAt("AdjustableRoundsManager", fixture.AdjustableRoundsManager.address)
 
@@ -73,12 +73,12 @@ describe("MinterUpgrade", () => {
         await token.transfer(transcoder2.address, amount)
 
         // Register transcoder 1
-        await token.connect(transcoder1).approve(stakingManager.address, amount)
-        await stakingManager.connect(transcoder1).bond(amount, transcoder1.address)
+        await token.connect(transcoder1).approve(bondingManager.address, amount)
+        await bondingManager.connect(transcoder1).bond(amount, transcoder1.address)
 
         // Register transcoder 2
-        await token.connect(transcoder2).approve(stakingManager.address, amount)
-        await stakingManager.connect(transcoder2).bond(amount, transcoder2.address)
+        await token.connect(transcoder2).approve(bondingManager.address, amount)
+        await bondingManager.connect(transcoder2).bond(amount, transcoder2.address)
 
         const deposit = ethers.utils.parseEther("1")
 
@@ -104,11 +104,11 @@ describe("MinterUpgrade", () => {
     })
 
     it("transcoder 1 calls reward pre-upgrade and receives tokens", async () => {
-        const startStake = await stakingManager.transcoderTotalStake(transcoder1.address)
+        const startStake = await bondingManager.transcoderTotalStake(transcoder1.address)
 
-        await stakingManager.connect(transcoder1).reward()
+        await bondingManager.connect(transcoder1).reward()
 
-        const endStake = await stakingManager.transcoderTotalStake(transcoder1.address)
+        const endStake = await bondingManager.transcoderTotalStake(transcoder1.address)
         expect(endStake.sub(startStake)).to.be.gt(ethers.constants.Zero)
     })
 
@@ -156,11 +156,11 @@ describe("MinterUpgrade", () => {
     })
 
     it("transcoder 2 calls reward post-upgrade in the same round and receives nothing", async () => {
-        const startStake = await stakingManager.transcoderTotalStake(transcoder2.address)
+        const startStake = await bondingManager.transcoderTotalStake(transcoder2.address)
 
-        await stakingManager.connect(transcoder2).reward()
+        await bondingManager.connect(transcoder2).reward()
 
-        const endStake = await stakingManager.transcoderTotalStake(transcoder2.address)
+        const endStake = await bondingManager.transcoderTotalStake(transcoder2.address)
 
         assert.equal(endStake.sub(startStake).toString(), "0")
     })
@@ -179,21 +179,21 @@ describe("MinterUpgrade", () => {
     })
 
     it("transcoder 1 calls reward in the round after the upgrade round and receives tokens", async () => {
-        const startStake = await stakingManager.transcoderTotalStake(transcoder1.address)
+        const startStake = await bondingManager.transcoderTotalStake(transcoder1.address)
 
-        await stakingManager.connect(transcoder1).reward()
+        await bondingManager.connect(transcoder1).reward()
 
-        const endStake = await stakingManager.transcoderTotalStake(transcoder1.address)
+        const endStake = await bondingManager.transcoderTotalStake(transcoder1.address)
 
         expect(endStake.sub(startStake)).gt(ethers.constants.Zero)
     })
 
     it("transcoder 2 calls reward in the round after the upgrade round and receives tokens", async () => {
-        const startStake = await stakingManager.transcoderTotalStake(transcoder2.address)
+        const startStake = await bondingManager.transcoderTotalStake(transcoder2.address)
 
-        await stakingManager.connect(transcoder2).reward()
+        await bondingManager.connect(transcoder2).reward()
 
-        const endStake = await stakingManager.transcoderTotalStake(transcoder2.address)
+        const endStake = await bondingManager.transcoderTotalStake(transcoder2.address)
 
         assert.ok(endStake.sub(startStake).gt(ethers.constants.Zero))
     })

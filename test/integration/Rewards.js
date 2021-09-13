@@ -9,7 +9,7 @@ chai.use(solidity)
 
 describe("Rewards", () => {
     let controller
-    let stakingManager
+    let bondingManager
     let roundsManager
     let token
 
@@ -40,7 +40,7 @@ describe("Rewards", () => {
         controller = await ethers.getContractAt("Controller", fixture.Controller.address)
         await controller.unpause()
 
-        stakingManager = await ethers.getContractAt("StakingManager", fixture.StakingManager.address)
+        bondingManager = await ethers.getContractAt("BondingManager", fixture.BondingManager.address)
         roundsManager = await ethers.getContractAt("AdjustableRoundsManager", fixture.AdjustableRoundsManager.address)
         token = await ethers.getContractAt("LivepeerToken", fixture.LivepeerToken.address)
 
@@ -62,23 +62,23 @@ describe("Rewards", () => {
         delegator3StartStake = 3000
 
         // Register transcoder 1
-        await token.connect(transcoder1).approve(stakingManager.address, transcoder1StartStake)
-        await stakingManager.connect(transcoder1).bond(transcoder1StartStake, transcoder1.address)
-        await stakingManager
+        await token.connect(transcoder1).approve(bondingManager.address, transcoder1StartStake)
+        await bondingManager.connect(transcoder1).bond(transcoder1StartStake, transcoder1.address)
+        await bondingManager
             .connect(transcoder1)
             .transcoder(rewardCut * constants.PERC_MULTIPLIER, feeShare * constants.PERC_MULTIPLIER)
 
         // Delegator 1 delegates to transcoder 1
-        await token.connect(delegator1).approve(stakingManager.address, delegator1StartStake)
-        await stakingManager.connect(delegator1).bond(delegator1StartStake, transcoder1.address)
+        await token.connect(delegator1).approve(bondingManager.address, delegator1StartStake)
+        await bondingManager.connect(delegator1).bond(delegator1StartStake, transcoder1.address)
 
         // Delegator 2 delegates to transcoder 1
-        await token.connect(delegator2).approve(stakingManager.address, delegator2StartStake)
-        await stakingManager.connect(delegator2).bond(delegator2StartStake, transcoder1.address)
+        await token.connect(delegator2).approve(bondingManager.address, delegator2StartStake)
+        await bondingManager.connect(delegator2).bond(delegator2StartStake, transcoder1.address)
 
         // Delegator 3 delegates to transcoder 1
-        await token.connect(delegator3).approve(stakingManager.address, delegator3StartStake)
-        await stakingManager.connect(delegator3).bond(delegator3StartStake, transcoder1.address)
+        await token.connect(delegator3).approve(bondingManager.address, delegator3StartStake)
+        await bondingManager.connect(delegator3).bond(delegator3StartStake, transcoder1.address)
 
         await roundsManager.mineBlocks(roundLength)
         await roundsManager.initializeRound()
@@ -97,24 +97,24 @@ describe("Rewards", () => {
             }
             const acceptableDelta = ethers.BigNumber.from(constants.TOKEN_UNIT.toString()).div(1000) // .001
 
-            const t1StartStake = (await stakingManager.getDelegator(transcoder1.address)).bondedAmount
-            const d1StartStake = (await stakingManager.getDelegator(delegator1.address)).bondedAmount
-            const d2StartStake = (await stakingManager.getDelegator(delegator2.address)).bondedAmount
-            const d3StartStake = (await stakingManager.getDelegator(delegator3.address)).bondedAmount
+            const t1StartStake = (await bondingManager.getDelegator(transcoder1.address)).bondedAmount
+            const d1StartStake = (await bondingManager.getDelegator(delegator1.address)).bondedAmount
+            const d2StartStake = (await bondingManager.getDelegator(delegator2.address)).bondedAmount
+            const d3StartStake = (await bondingManager.getDelegator(delegator3.address)).bondedAmount
 
-            await stakingManager.connect(transcoder1).reward()
+            await bondingManager.connect(transcoder1).reward()
 
             const currentRound = await roundsManager.currentRound()
 
-            const lastClaimRoundT1 = (await stakingManager.getDelegator(transcoder1.address)).lastClaimRound
+            const lastClaimRoundT1 = (await bondingManager.getDelegator(transcoder1.address)).lastClaimRound
             let startRewardFactor = (
-                await stakingManager.getTranscoderEarningsPoolForRound(transcoder1.address, lastClaimRoundT1)
+                await bondingManager.getTranscoderEarningsPoolForRound(transcoder1.address, lastClaimRoundT1)
             ).cumulativeRewardFactor
             startRewardFactor = startRewardFactor.toString() != "0" ? startRewardFactor : constants.PERC_DIVISOR_PRECISE
             const endRewardFactor = (
-                await stakingManager.getTranscoderEarningsPoolForRound(transcoder1.address, currentRound)
+                await bondingManager.getTranscoderEarningsPoolForRound(transcoder1.address, currentRound)
             ).cumulativeRewardFactor
-            const transcoderRewards = (await stakingManager.getTranscoder(transcoder1.address)).cumulativeRewards
+            const transcoderRewards = (await bondingManager.getTranscoder(transcoder1.address)).cumulativeRewards
 
             const expT1RewardShare = calcRewardShare(t1StartStake, startRewardFactor, endRewardFactor).add(
                 transcoderRewards
@@ -123,10 +123,10 @@ describe("Rewards", () => {
             const expD2RewardShare = calcRewardShare(d2StartStake, startRewardFactor, endRewardFactor)
             const expD3RewardShare = calcRewardShare(d3StartStake, startRewardFactor, endRewardFactor)
 
-            const t1Stake = await stakingManager.pendingStake(transcoder1.address, currentRound)
-            const d1Stake = await stakingManager.pendingStake(delegator1.address, currentRound)
-            const d2Stake = await stakingManager.pendingStake(delegator2.address, currentRound)
-            const d3Stake = await stakingManager.pendingStake(delegator3.address, currentRound)
+            const t1Stake = await bondingManager.pendingStake(transcoder1.address, currentRound)
+            const d1Stake = await bondingManager.pendingStake(delegator1.address, currentRound)
+            const d2Stake = await bondingManager.pendingStake(delegator2.address, currentRound)
+            const d3Stake = await bondingManager.pendingStake(delegator3.address, currentRound)
 
             const t1RewardShare = t1Stake.sub(t1StartStake.toString())
             const d1RewardShare = d1Stake.sub(d1StartStake.toString())
@@ -144,20 +144,20 @@ describe("Rewards", () => {
 
             const currentRound = await roundsManager.currentRound()
 
-            const t1StartStake = await stakingManager.pendingStake(transcoder1.address, currentRound)
-            const d1StartStake = await stakingManager.pendingStake(delegator1.address, currentRound)
-            const d2StartStake = await stakingManager.pendingStake(delegator2.address, currentRound)
-            const d3StartStake = await stakingManager.pendingStake(delegator3.address, currentRound)
+            const t1StartStake = await bondingManager.pendingStake(transcoder1.address, currentRound)
+            const d1StartStake = await bondingManager.pendingStake(delegator1.address, currentRound)
+            const d2StartStake = await bondingManager.pendingStake(delegator2.address, currentRound)
+            const d3StartStake = await bondingManager.pendingStake(delegator3.address, currentRound)
 
-            await stakingManager.connect(transcoder1).claimEarnings(currentRound)
-            await stakingManager.connect(delegator1).claimEarnings(currentRound)
-            await stakingManager.connect(delegator2).claimEarnings(currentRound)
-            await stakingManager.connect(delegator3).claimEarnings(currentRound)
+            await bondingManager.connect(transcoder1).claimEarnings(currentRound)
+            await bondingManager.connect(delegator1).claimEarnings(currentRound)
+            await bondingManager.connect(delegator2).claimEarnings(currentRound)
+            await bondingManager.connect(delegator3).claimEarnings(currentRound)
 
-            const t1Stake = (await stakingManager.getDelegator(transcoder1.address)).bondedAmount
-            const d1Stake = (await stakingManager.getDelegator(delegator1.address)).bondedAmount
-            const d2Stake = (await stakingManager.getDelegator(delegator2.address)).bondedAmount
-            const d3Stake = (await stakingManager.getDelegator(delegator3.address)).bondedAmount
+            const t1Stake = (await bondingManager.getDelegator(transcoder1.address)).bondedAmount
+            const d1Stake = (await bondingManager.getDelegator(delegator1.address)).bondedAmount
+            const d2Stake = (await bondingManager.getDelegator(delegator2.address)).bondedAmount
+            const d3Stake = (await bondingManager.getDelegator(delegator3.address)).bondedAmount
 
             expect(t1Stake.sub(t1StartStake)).to.be.lte(acceptableDelta)
             expect(d1Stake.sub(d1StartStake)).to.be.lte(acceptableDelta)

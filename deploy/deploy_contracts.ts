@@ -14,9 +14,7 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
 
     const {deployer} = await getNamedAccounts() // Fetch named accounts from hardhat.config.ts
 
-    const contractDeployer = new ContractDeployer(
-        deploy, deployer, deployments
-    )
+    const contractDeployer = new ContractDeployer(deploy, deployer, deployments)
 
     const Controller: Controller = await contractDeployer.deployController()
 
@@ -60,6 +58,16 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
         args: [Controller.address]
     })
 
+    // const stakingManager = await contractDeployer.deployAndRegister({
+    //     contract: "StakingManager",
+    //     name: "StakingManager",
+    //     proxy: true,
+    //     libraries: {
+    //         SortedDoublyLL: sortedDoublyLL.address
+    //     },
+    //     args: [Controller.address]
+    // })
+
     // rounds manager
     let roundsManager
     if (hre.network.name !== "mainnet") {
@@ -95,9 +103,15 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
     // Set BondingManager parameters
     const BondingManager: BondingManager = (await ethers.getContractAt("BondingManager", bondingManager.address)) as BondingManager
 
-    await BondingManager.setUnbondingPeriod(config.bondingManager.unbondingPeriod)
-    await BondingManager.setNumActiveTranscoders(config.bondingManager.numActiveTranscoders)
-    await BondingManager.setMaxEarningsClaimsRounds(config.bondingManager.maxEarningsClaimsRounds)
+    await BondingManager.setUnbondingPeriod(config.stakingManager.unbondingPeriod)
+    await BondingManager.setNumActiveTranscoders(config.stakingManager.numActiveOrchestrators)
+    await BondingManager.setMaxEarningsClaimsRounds(config.stakingManager.maxEarningsClaimsRounds)
+
+    // Set StakingManager parameters
+    // const StakingManager: StakingManager = (await ethers.getContractAt("StakingManager", stakingManager.address)) as StakingManager
+
+    // await StakingManager.setUnstakingPeriod(config.stakingManager.unbondingPeriod)
+    // await StakingManager.setNumActiveOrchestrators(config.stakingManager.numActiveOrchestrators)
 
     // Set RoundsManager parameters
     const RoundsManager: RoundsManager = (await ethers.getContractAt("RoundsManager", roundsManager.address)) as RoundsManager
