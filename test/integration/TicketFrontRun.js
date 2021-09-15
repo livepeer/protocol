@@ -169,7 +169,7 @@ describe("TicketFrontRun", () => {
         // This results in division by zero when calculating earnings cumulatively (LIP-36)
         await expect(
             broker.connect(evilNonActiveTranscoder).redeemWinningTicket(secondTicket, secondTicketSig, recipientRand)
-        ).to.be.revertedWith("SafeMath: division by zero")
+        ).to.be.revertedWith("reverted with panic code 0x12 (Division or modulo division by zero)")
 
         let info = await broker.getSenderInfo(broadcaster.address)
 

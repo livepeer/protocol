@@ -3,12 +3,12 @@ import chai, {expect, assert} from "chai"
 import {solidity} from "ethereum-waffle"
 chai.use(solidity)
 
-describe("VariableSupplyToken", () => {
+describe("LivepeerToken", () => {
     let token
     let signers
     before(async () => {
         signers = await ethers.getSigners()
-        token = await (await ethers.getContractFactory("VariableSupplyToken")).deploy()
+        token = await (await ethers.getContractFactory("LivepeerToken")).deploy()
     })
 
     describe("burn", () => {
