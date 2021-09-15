@@ -9,7 +9,7 @@ import "./IMinter.sol";
 import "./ILivepeerToken.sol";
 import "../rounds/IRoundsManager.sol";
 import "../bonding/IBondingManager.sol";
-import "../utils/MathUtils.sol";
+import "../bonding/libraries/MathUtilsV2.sol"; // deprecated
 
 /**
  * @title Minter

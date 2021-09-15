@@ -8,7 +8,7 @@ import "../ManagerProxyTarget.sol";
 import "./IRoundsManager.sol";
 import "../bonding/IBondingManager.sol";
 import "../token/IMinter.sol";
-import "../utils/MathUtils.sol";
+import "../bonding/libraries/MathUtils.sol"; // deprecated
 
 /**
  * @title RoundsManager
@@ -185,7 +185,7 @@ contract RoundsManager is IRoundsManager, ManagerProxyTarget {
     }
 
     function _roundsSinceUpdate() internal view returns (uint256) {
-        return blockNum() - lastRoundLengthUpdateStartBlock / roundLength;
+        return (blockNum() - lastRoundLengthUpdateStartBlock) / roundLength;
     }
 
     /**
