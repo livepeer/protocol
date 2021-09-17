@@ -111,14 +111,14 @@ describe("RoundsManager", () => {
             await fixture.rpc.waitUntilNextBlockMultiple(50)
             await roundsManager.setRoundLength(100)
 
-            const lastUpdateRound1 = lastUpdateRound0 + Math.floor((await web3.eth.getBlockNumber() - lastUpdateStartBlock0) / 50)
-            const lastUpdateStartBlock1 = lastUpdateStartBlock0 + Math.floor((await web3.eth.getBlockNumber() - lastUpdateStartBlock0) / 50) * 50
+            const lastUpdateRound1 = lastUpdateRound0 + Math.floor(((await web3.eth.getBlockNumber()) - lastUpdateStartBlock0) / 50)
+            const lastUpdateStartBlock1 = lastUpdateStartBlock0 + Math.floor(((await web3.eth.getBlockNumber()) - lastUpdateStartBlock0) / 50) * 50
 
             await fixture.rpc.wait(50)
             await roundsManager.setRoundLength(50)
 
-            const lastUpdateRound2 = lastUpdateRound1 + Math.floor((await web3.eth.getBlockNumber() - lastUpdateStartBlock1) / 100)
-            const lastUpdateStartBlock2 = lastUpdateStartBlock1 + Math.floor((await web3.eth.getBlockNumber() - lastUpdateStartBlock1) / 100) * 100
+            const lastUpdateRound2 = lastUpdateRound1 + Math.floor(((await web3.eth.getBlockNumber()) - lastUpdateStartBlock1) / 100)
+            const lastUpdateStartBlock2 = lastUpdateStartBlock1 + Math.floor(((await web3.eth.getBlockNumber()) - lastUpdateStartBlock1) / 100) * 100
 
             assert.isAtLeast(lastUpdateRound2, lastUpdateRound1, "lastRoundLengthUpdateRound cannot decrease")
             assert.isAtLeast(lastUpdateStartBlock2, lastUpdateStartBlock1, "lastRoundLengthUpdateStartBlock cannot decrease")
@@ -129,8 +129,8 @@ describe("RoundsManager", () => {
             await fixture.rpc.wait(20)
             await roundsManager.setRoundLength(20)
 
-            const lastUpdateRound3 = lastUpdateRound2 + Math.floor((await web3.eth.getBlockNumber() - lastUpdateStartBlock2) / 50)
-            const lastUpdateStartBlock3 = lastUpdateStartBlock2 + Math.floor((await web3.eth.getBlockNumber() - lastUpdateStartBlock2) / 50) * 50
+            const lastUpdateRound3 = lastUpdateRound2 + Math.floor(((await web3.eth.getBlockNumber()) - lastUpdateStartBlock2) / 50)
+            const lastUpdateStartBlock3 = lastUpdateStartBlock2 + Math.floor(((await web3.eth.getBlockNumber()) - lastUpdateStartBlock2) / 50) * 50
 
             assert.isAtLeast(lastUpdateRound3, lastUpdateRound2, "lastRoundLengthUpdateRound cannot decrease")
             assert.isAtLeast(lastUpdateStartBlock3, lastUpdateStartBlock2, "lastRoundLengthUpdateStartBlock cannot decrease")
@@ -141,8 +141,8 @@ describe("RoundsManager", () => {
             await fixture.rpc.wait(30)
             await roundsManager.setRoundLength(100)
 
-            const lastUpdateRound4 = lastUpdateRound3 + Math.floor((await web3.eth.getBlockNumber() - lastUpdateStartBlock3) / 20)
-            const lastUpdateStartBlock4 = lastUpdateStartBlock3 + Math.floor((await web3.eth.getBlockNumber() - lastUpdateStartBlock3) / 20) * 20
+            const lastUpdateRound4 = lastUpdateRound3 + Math.floor(((await web3.eth.getBlockNumber()) - lastUpdateStartBlock3) / 20)
+            const lastUpdateStartBlock4 = lastUpdateStartBlock3 + Math.floor(((await web3.eth.getBlockNumber()) - lastUpdateStartBlock3) / 20) * 20
 
             assert.isAtLeast(lastUpdateRound4, lastUpdateRound3, "lastRoundLengthUpdateRound cannot decrease")
             assert.isAtLeast(lastUpdateStartBlock4, lastUpdateStartBlock3, "lastRoundLengthUpdateStartBlock cannot decrease")
@@ -267,7 +267,7 @@ describe("RoundsManager", () => {
         it("should return the block hash if the current block is >= 256 and the block is not more than 256 blocks in the past", async () => {
             await fixture.rpc.wait(256)
 
-            const pastBlock = await web3.eth.getBlockNumber() - 1
+            const pastBlock = (await web3.eth.getBlockNumber()) - 1
             const pastBlockHash = (await web3.eth.getBlock(pastBlock)).hash
 
             const blockHash = await roundsManager.blockHash(pastBlock)
