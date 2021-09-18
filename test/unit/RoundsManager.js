@@ -13,11 +13,11 @@ describe("RoundsManager", () => {
     let roundsManager
     let signers
 
-    const PERC_DIVISOR = 1000000
-    const PERC_MULTIPLIER = PERC_DIVISOR / 100
+    const PERC_DIVISOR = ethers.BigNumber.from(10).pow(27)
+    const PERC_MULTIPLIER = PERC_DIVISOR.div(100)
 
     const ROUND_LENGTH = 50
-    const ROUND_LOCK_AMOUNT = 10 * PERC_MULTIPLIER
+    const ROUND_LOCK_AMOUNT = PERC_MULTIPLIER.mul(10)
 
     before(async () => {
         signers = await ethers.getSigners()
@@ -435,14 +435,14 @@ describe("RoundsManager", () => {
         let roundLength
 
         beforeEach(async () => {
-            roundLength = (await roundsManager.roundLength()).toNumber()
-            await fixture.rpc.waitUntilNextBlockMultiple(roundLength)
+            roundLength = await roundsManager.roundLength()
+            await fixture.rpc.waitUntilNextBlockMultiple(roundLength.toNumber())
         })
 
         it("should return true if the current round is locked", async () => {
-            const roundLockAmount = (await roundsManager.roundLockAmount()).toNumber()
-            const roundLockBlocks = Math.floor((roundLength * roundLockAmount) / PERC_DIVISOR)
-            await fixture.rpc.wait(roundLength - roundLockBlocks)
+            const roundLockAmount = await roundsManager.roundLockAmount()
+            const roundLockBlocks = roundLength.mul(roundLockAmount).div(PERC_DIVISOR)
+            await fixture.rpc.wait(roundLength.sub(roundLockBlocks).toNumber())
 
             assert.isOk(await roundsManager.currentRoundLocked(), "not true when in lock period")
         })

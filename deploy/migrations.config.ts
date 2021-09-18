@@ -1,9 +1,9 @@
 import {ethers} from "hardhat"
 
 export default {
-    bondingManager: {
-        numTranscoders: 20,
-        numActiveTranscoders: 10,
+    stakingManager: {
+        numOrchestrators: 20,
+        numActiveOrchestrators: 10,
         unbondingPeriod: 7,
         maxEarningsClaimsRounds: 20
     },

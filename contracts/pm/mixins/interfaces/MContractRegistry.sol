@@ -1,6 +1,6 @@
 pragma solidity 0.8.4;
 
-import "../../../bonding/IBondingManager.sol";
+import "../../../bonding/IStakingManager.sol";
 import "../../../token/IMinter.sol";
 import "../../../rounds/IRoundsManager.sol";
 
@@ -24,7 +24,7 @@ abstract contract MContractRegistry {
     /**
      * @dev Returns an instance of the IBondingManager interface
      */
-    function bondingManager() internal view virtual returns (IBondingManager);
+    function stakingManager() internal view virtual returns (IStakingManager);
 
     /**
      * @dev Returns an instance of the IMinter interface

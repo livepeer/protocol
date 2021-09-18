@@ -38,9 +38,9 @@ abstract contract MixinTicketProcessor is MixinContractRegistry {
     ) internal {
         (uint256 creationRound, ) = getCreationRoundAndBlockHash(_auxData);
 
-        // Ask BondingManager to update fee pool for recipient with
+        // Ask StakingManager to update fee pool for recipient with
         // winning ticket funds
-        bondingManager().updateTranscoderWithFees(_recipient, _amount, creationRound);
+        stakingManager().updateOrchestratorWithFees(_recipient, _amount);
     }
 
     /**
