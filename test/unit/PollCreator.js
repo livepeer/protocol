@@ -56,7 +56,7 @@ describe("PollCreator", () => {
             const end = start + POLL_PERIOD + 1 // + 1 because createPoll tx will mine a new block
             const tx = await pollCreator.createPoll(hash)
             const receipt = await tx.wait()
-            expect(tx).to.emit(pollCreator, "PollCreated").withArgs(
+            await expect(tx.hash).to.emit(pollCreator, "PollCreated").withArgs(
                 receipt.events[0].args[0], hash, end, QUORUM, QUOTA
             )
         })

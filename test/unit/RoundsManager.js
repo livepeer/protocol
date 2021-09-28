@@ -214,7 +214,7 @@ describe("RoundsManager", () => {
             const tx = await roundsManager.initializeRound()
 
             const currentRound = await roundsManager.currentRound()
-            expect(tx).to.emit(roundsManager, "NewRound").withArgs(currentRound, blockHash)
+            await expect(tx).to.emit(roundsManager, "NewRound").withArgs(currentRound.toString(), blockHash)
         })
 
         it("emits a NewRound event with indexed round", async () => {
