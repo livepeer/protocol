@@ -41,14 +41,14 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
 
     // Represents an amount of tokens that are being undelegate
     struct UnstakingLock {
-        address owner; // address which owns undelegated amount
+        address delegator; // address of the delegator owning the unstaking lock
         address orchestrator;
-        uint256 amount; // Amount of tokens being ustaked
-        uint256 withdrawRound; // Round at which undelegation period is over and tokens can be withdrawn
+        uint256 amount; // Amount of tokens being unstaked
+        uint256 withdrawRound; // Round at which unstaking period is over and tokens can be withdrawn
     }
 
     // Time between unstaking and possible withdrawal in rounds
-    uint64 public unstakingPeriod;
+    uint256 public unstakingPeriod;
 
     mapping(address => Orchestrator) private orchestrators;
     mapping(uint256 => UnstakingLock) public unstakingLocks;
@@ -102,10 +102,10 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
      */
 
     /**
-     * @notice Set undelegation period. Only callable by Controller owner
+     * @notice Set unstaking period. Only callable by Controller owner
      * @param _unstakingPeriod Rounds between unstaking and possible withdrawal
      */
-    function setUnstakingPeriod(uint64 _unstakingPeriod) external onlyControllerOwner {
+    function setUnstakingPeriod(uint256 _unstakingPeriod) external onlyControllerOwner {
         unstakingPeriod = _unstakingPeriod;
 
         emit ParameterUpdate("unstakingPeriod");
@@ -337,7 +337,7 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
     }
 
     /**
-     * @notice Withdraws tokens for an unstaking lock that has existed through an undelegation period
+     * @notice Withdraws tokens for an unstaking lock that has existed through an unstaking period
      * @param _unstakingLockId ID of unstaking lock to withdraw with
      */
     function withdrawStake(uint256 _unstakingLockId) external whenSystemNotPaused currentRoundInitialized {
@@ -348,7 +348,7 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
             lock.withdrawRound <= roundsManager().currentRound(),
             "withdraw round must be before or equal to the current round"
         );
-        require(msg.sender == lock.owner, "CALLER_NOT_LOCK_OWNER");
+        require(msg.sender == lock.delegator, "CALLER_NOT_LOCK_OWNER");
 
         uint256 amount = lock.amount;
         uint256 withdrawRound = lock.withdrawRound;
@@ -719,7 +719,7 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
         uint256 currentRound = roundsManager().currentRound();
 
         unstakingLocks[id] = UnstakingLock({
-            owner: _for,
+            delegator: _for,
             orchestrator: _orchestrator,
             amount: _amount,
             withdrawRound: currentRound + unstakingPeriod
@@ -735,7 +735,7 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
         UnstakingLock storage lock = unstakingLocks[_unstakingLockID];
 
         require(isValidUnstakingLock(_unstakingLockID), "INVALID_UNSTAKING_LOCK_ID");
-        require(msg.sender == lock.owner, "CALLER_NOT_LOCK_OWNER");
+        require(msg.sender == lock.delegator, "CALLER_NOT_LOCK_OWNER");
 
         address orchestrator = lock.orchestrator;
         uint256 amount = lock.amount;
