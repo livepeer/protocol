@@ -64,10 +64,12 @@ describe("Governor update", () => {
             }
             await governor.stage(update, 0)
 
-            const tx = await governor.execute(update)
-            assert.equal((await bondingManager.getTranscoderPoolMaxSize()).toNumber(), 30)
+            const tx = governor.execute(update)
+            await expect(tx)
+                .to.emit(governor, "UpdateExecuted")
+                .withArgs([...update])
 
-            expect(tx).to.emit(governor, "UpdateExecuted").withArgs([...update])
+            assert.equal((await bondingManager.getTranscoderPoolMaxSize()).toNumber(), 30)
         })
     })
 
@@ -104,7 +106,6 @@ describe("Governor update", () => {
             unpauseData = controller.interface.encodeFunctionData("unpause", [])
             unpauseTarget = controller.address
         })
-
 
         it("step 1 'pause' fails: the protocol is already paused", async () => {
             // pause twice
@@ -169,7 +170,6 @@ describe("Governor update", () => {
 
         it("step 3 'setContractInfo' fails: wrong target", async () => {
             migrateData = minter.interface.encodeFunctionData("migrateToNewMinter", [newMinter.address])
-
 
             const update = {
                 target: [pauseTarget, migrateTarget, migrateTarget, unpauseTarget],
