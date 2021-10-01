@@ -116,8 +116,8 @@ describe("StakingManager", () => {
                 })
 
                 it("should fire a Bond event when bonding", async () => {
-                    const txRes = await stakingManager.connect(delegator0).bond(1000, orchestrator0.address, constants.NULL_ADDRESS, constants.NULL_ADDRESS, constants.NULL_ADDRESS, constants.NULL_ADDRESS)
-                    expect(txRes).to.emit(stakingManager, "Bond").withArgs(orchestrator0.address, delegator0.address, 1000, 1000)
+                    const txRes = stakingManager.connect(delegator0).bond(1000, orchestrator0.address, constants.NULL_ADDRESS, constants.NULL_ADDRESS, constants.NULL_ADDRESS, constants.NULL_ADDRESS)
+                    await expect(txRes).to.emit(stakingManager, "Bond").withArgs(orchestrator0.address, delegator0.address, 1000, 1000)
                 })
 
                 it("delegator stakes funds to orchestrator on behalf of second delegator", async () => {

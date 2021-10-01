@@ -152,9 +152,9 @@ describe("BondingManager", () => {
             describe("transcoder pool is not full", () => {
                 it("should add new transcoder to the pool", async () => {
                     await bondingManager.bond(1000, signers[0].address)
-                    const txRes = await bondingManager.transcoder(5, 10)
+                    const txRes = bondingManager.transcoder(5, 10)
 
-                    expect(txRes).to.emit(bondingManager, "TranscoderUpdate").withArgs(signers[0].address, 5, 10)
+                    await expect(txRes).to.emit(bondingManager, "TranscoderUpdate").withArgs(signers[0].address, 5, 10)
 
                     assert.equal(await bondingManager.nextRoundTotalActiveStake(), 1000, "wrong next total stake")
                     assert.equal(await bondingManager.getTranscoderPoolSize(), 1, "wrong transcoder pool size")
@@ -222,8 +222,8 @@ describe("BondingManager", () => {
 
                         // Caller bonds 6000 which is more than transcoder with least delegated stake
                         await bondingManager.connect(newTranscoder).bond(6000, newTranscoder.address)
-                        const txRes = await bondingManager.connect(newTranscoder).transcoder(5, 10)
-                        expect(txRes).to.emit(bondingManager, "TranscoderUpdate").withArgs(newTranscoder.address, 5, 10)
+                        const txRes = bondingManager.connect(newTranscoder).transcoder(5, 10)
+                        await expect(txRes).to.emit(bondingManager, "TranscoderUpdate").withArgs(newTranscoder.address, 5, 10)
                         await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 1)
 
                         // Subtract evicted transcoder's delegated stake and add new transcoder's delegated stake
@@ -266,8 +266,8 @@ describe("BondingManager", () => {
                         // Caller bonds 600 - less than transcoder with least delegated stake
                         await bondingManager.connect(newTranscoder).bond(600, newTranscoder.address)
                         await bondingManager.connect(newTranscoder).transcoder(5, 10)
-                        const txRes = await bondingManager.connect(newTranscoder).transcoder(5, 10)
-                        expect(txRes).to.emit(bondingManager, "TranscoderUpdate").withArgs(newTranscoder.address, 5, 10)
+                        const txRes = bondingManager.connect(newTranscoder).transcoder(5, 10)
+                        await expect(txRes).to.emit(bondingManager, "TranscoderUpdate").withArgs(newTranscoder.address, 5, 10)
                         await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 1)
 
                         assert.isFalse(
@@ -293,8 +293,8 @@ describe("BondingManager", () => {
 
                         // Caller bonds 2000 - same as transcoder with least delegated stake
                         await bondingManager.connect(newTranscoder).bond(2000, newTranscoder.address)
-                        const txRes = await bondingManager.connect(newTranscoder).transcoder(5, 10)
-                        expect(txRes).to.emit(bondingManager, "TranscoderUpdate").withArgs(newTranscoder.address, 5, 10)
+                        const txRes = bondingManager.connect(newTranscoder).transcoder(5, 10)
+                        await expect(txRes).to.emit(bondingManager, "TranscoderUpdate").withArgs(newTranscoder.address, 5, 10)
                         await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 1)
                         assert.isFalse(
                             await bondingManager.isActiveTranscoder(newTranscoder.address),
@@ -453,8 +453,8 @@ describe("BondingManager", () => {
 
             describe("evicts a transcoder from the pool", () => {
                 it("last transcoder gets evicted and new transcoder gets inserted", async () => {
-                    const txRes = await bondingManager.connect(delegator).bond(2000, transcoder2.address)
-                    expect(txRes)
+                    const txRes = bondingManager.connect(delegator).bond(2000, transcoder2.address)
+                    await expect(txRes)
                         .to.emit(bondingManager, "TranscoderDeactivated")
                         .withArgs(transcoder0.address, currentRound + 2)
                     await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 2)
@@ -475,8 +475,8 @@ describe("BondingManager", () => {
                 })
 
                 it("fires a TranscoderActivated event for the new transcoder", async () => {
-                    const txRes = await bondingManager.connect(delegator).bond(2000, transcoder2.address)
-                    expect(txRes)
+                    const txRes = bondingManager.connect(delegator).bond(2000, transcoder2.address)
+                    await expect(txRes)
                         .to.emit(bondingManager, "TranscoderActivated")
                         .withArgs(transcoder2.address, currentRound + 2)
                 })
@@ -539,25 +539,25 @@ describe("BondingManager", () => {
             })
 
             it("should fire a Bond event when bonding from unbonded", async () => {
-                const txRes = await bondingManager.connect(delegator).bond(1000, transcoder0.address)
-                expect(txRes)
+                const txRes = bondingManager.connect(delegator).bond(1000, transcoder0.address)
+                await expect(txRes)
                     .to.emit(bondingManager, "Bond")
                     .withArgs(transcoder0.address, constants.NULL_ADDRESS, delegator.address, 1000, 1000)
             })
 
             it("fires an EarningsClaimed event when bonding from unbonded", async () => {
-                const txResult = await bondingManager.connect(delegator).bond(1000, transcoder0.address)
+                const txResult = bondingManager.connect(delegator).bond(1000, transcoder0.address)
 
-                expect(txResult)
+                await expect(txResult)
                     .to.emit(bondingManager, "EarningsClaimed")
                     .withArgs(constants.NULL_ADDRESS, delegator.address, 0, 0, 1, currentRound)
             })
 
             it("it doesn't fire an EarningsClaimed event when bonding twice in the same round", async () => {
                 await bondingManager.connect(delegator).bond(1000, transcoder0.address)
-                const txResult = await bondingManager.connect(delegator).bond(1000, transcoder0.address)
+                const txResult = bondingManager.connect(delegator).bond(1000, transcoder0.address)
 
-                expect(txResult).to.not.emit(bondingManager, "EarningsClaimed").withArgs(delegator.address)
+                await expect(txResult).to.not.emit(bondingManager, "EarningsClaimed").withArgs(delegator.address)
             })
 
             describe("delegate is a registered transcoder", () => {
@@ -764,9 +764,9 @@ describe("BondingManager", () => {
                         assert.equal(endBondedAmount.sub(startBondedAmount), 0, "bondedAmount change should be 0")
                     })
                     it("should fire a Bond event when changing delegates", async () => {
-                        const txRes = await bondingManager.connect(delegator).bond(0, transcoder1.address)
+                        const txRes = bondingManager.connect(delegator).bond(0, transcoder1.address)
 
-                        expect(txRes)
+                        await expect(txRes)
                             .to.emit(bondingManager, "Bond")
                             .withArgs(transcoder1.address, transcoder0.address, delegator.address, 0, 2000)
                     })
@@ -853,9 +853,9 @@ describe("BondingManager", () => {
                         assert.equal(endTotalStake.sub(startTotalStake), 1000, "wrong change in total next round stake")
                     })
                     it("should fire a Bond event when increasing bonded stake and changing delegates", async () => {
-                        const txRes = await bondingManager.connect(delegator).bond(1000, transcoder1.address)
+                        const txRes = bondingManager.connect(delegator).bond(1000, transcoder1.address)
 
-                        expect(txRes)
+                        await expect(txRes)
                             .to.emit(bondingManager, "Bond")
                             .withArgs(transcoder1.address, transcoder0.address, delegator.address, 1000, 3000)
                     })
@@ -976,8 +976,8 @@ describe("BondingManager", () => {
                     })
                 })
                 it("should fire a Bond event when increasing bonded amount", async () => {
-                    const txRes = await bondingManager.connect(delegator).bond(1000, transcoder0.address)
-                    expect(txRes)
+                    const txRes = bondingManager.connect(delegator).bond(1000, transcoder0.address)
+                    await expect(txRes)
                         .to.emit(bondingManager, "Bond")
                         .withArgs(transcoder0.address, transcoder0.address, delegator.address, 1000, 3000)
                 })
@@ -1147,9 +1147,9 @@ describe("BondingManager", () => {
                 const unbondingLockID = (await bondingManager.getDelegator(delegator.address))[6]
                 const unbondingPeriod = (await bondingManager.unbondingPeriod.call()).toNumber()
 
-                const txRes = await bondingManager.connect(delegator).unbond(500)
+                const txRes = bondingManager.connect(delegator).unbond(500)
 
-                expect(txRes)
+                await expect(txRes)
                     .to.emit(bondingManager, "Unbond")
                     .withArgs(
                         transcoder.address,
@@ -1258,8 +1258,8 @@ describe("BondingManager", () => {
                 const unbondingLockID = (await bondingManager.getDelegator(delegator.address))[6]
                 const unbondingPeriod = (await bondingManager.unbondingPeriod.call()).toNumber()
 
-                const txRes = await bondingManager.connect(delegator).unbond(1000)
-                expect(txRes)
+                const txRes = bondingManager.connect(delegator).unbond(1000)
+                await expect(txRes)
                     .to.emit(bondingManager, "Unbond")
                     .withArgs(
                         transcoder.address,
@@ -1292,8 +1292,8 @@ describe("BondingManager", () => {
                 })
 
                 it("should fire a TranscoderDeactivated event", async () => {
-                    const txRes = await bondingManager.connect(transcoder).unbond(1000)
-                    expect(txRes)
+                    const txRes = bondingManager.connect(transcoder).unbond(1000)
+                    await expect(txRes)
                         .to.emit(bondingManager, "TranscoderDeactivated")
                         .withArgs(transcoder.address, currentRound + 2)
                 })
@@ -1416,8 +1416,8 @@ describe("BondingManager", () => {
                 await bondingManager.connect(transcoder2).bond(1800, transcoder2.address)
                 await bondingManager.connect(transcoder2).transcoder(5, 10)
 
-                const txRes = await bondingManager.connect(delegator).rebond(unbondingLockID)
-                expect(txRes)
+                const txRes = bondingManager.connect(delegator).rebond(unbondingLockID)
+                await expect(txRes)
                     .to.emit(bondingManager, "TranscoderDeactivated")
                     .withArgs(transcoder2.address, currentRound + 2)
 
@@ -1450,8 +1450,8 @@ describe("BondingManager", () => {
         })
 
         it("should create an Rebond event", async () => {
-            const txRes = await bondingManager.connect(delegator).rebond(unbondingLockID)
-            expect(txRes)
+            const txRes = bondingManager.connect(delegator).rebond(unbondingLockID)
+            await expect(txRes)
                 .to.emit(bondingManager, "Rebond")
                 .withArgs(transcoder.address, delegator.address, unbondingLockID, 500)
         })
@@ -1601,8 +1601,8 @@ describe("BondingManager", () => {
             // Delegator unbonds rest of tokens transitioning to the Unbonded state
             await bondingManager.connect(delegator).unbond(500)
 
-            const txRes = await bondingManager.connect(delegator).rebondFromUnbonded(transcoder.address, unbondingLockID)
-            expect(txRes)
+            const txRes = bondingManager.connect(delegator).rebondFromUnbonded(transcoder.address, unbondingLockID)
+            await expect(txRes)
                 .to.emit(bondingManager, "Rebond")
                 .withArgs(transcoder.address, delegator.address, unbondingLockID, 500)
         })
@@ -1676,8 +1676,8 @@ describe("BondingManager", () => {
             const unbondingPeriod = (await bondingManager.unbondingPeriod.call()).toNumber()
             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 1 + unbondingPeriod)
 
-            const txRes = await bondingManager.connect(delegator).withdrawStake(unbondingLockID)
-            expect(txRes)
+            const txRes = bondingManager.connect(delegator).withdrawStake(unbondingLockID)
+            await expect(txRes)
                 .to.emit(bondingManager, "WithdrawStake")
                 .withArgs(delegator.address, unbondingLockID, 500, currentRound + 1 + unbondingPeriod)
         })
@@ -1890,8 +1890,8 @@ describe("BondingManager", () => {
         })
 
         it("Should emit a Reward event", async () => {
-            const txRes = await bondingManager.connect(transcoder).reward()
-            expect(txRes).to.emit(bondingManager, "Reward").withArgs(transcoder.address, 1000)
+            const txRes = bondingManager.connect(transcoder).reward()
+            await expect(txRes).to.emit(bondingManager, "Reward").withArgs(transcoder.address, 1000)
         })
 
         describe("previous cumulative factors rescaling", () => {
@@ -2431,7 +2431,7 @@ describe("BondingManager", () => {
             })
 
             it("fires a TranscoderDeactivated event", async () => {
-                const txRes = await fixture.verifier.execute(
+                const txRes = fixture.verifier.execute(
                     bondingManager.address,
                     functionEncodedABI(
                         "slashTranscoder(address,address,uint256,uint256)",
@@ -2439,7 +2439,7 @@ describe("BondingManager", () => {
                         [transcoder.address, constants.NULL_ADDRESS, PERC_DIVISOR / 2, 0]
                     )
                 )
-                expect(txRes)
+                await expect(txRes)
                     .to.emit(bondingManager, "TranscoderDeactivated")
                     .withArgs(transcoder.address, currentRound + 2)
             })
@@ -2534,7 +2534,7 @@ describe("BondingManager", () => {
 
         describe("invoked with a finder", () => {
             it("slashes transcoder and rewards finder", async () => {
-                const txRes = await fixture.verifier.execute(
+                const txRes = fixture.verifier.execute(
                     bondingManager.address,
                     functionEncodedABI(
                         "slashTranscoder(address,address,uint256,uint256)",
@@ -2543,7 +2543,7 @@ describe("BondingManager", () => {
                     )
                 )
 
-                expect(txRes)
+                await expect(txRes)
                     .to.emit(bondingManager, "TranscoderSlashed")
                     .withArgs(transcoder.address, finder.address, 500, 250)
             })
@@ -2551,7 +2551,7 @@ describe("BondingManager", () => {
 
         describe("invoked without a finder", () => {
             it("slashes transcoder", async () => {
-                const txRes = await fixture.verifier.execute(
+                const txRes = fixture.verifier.execute(
                     bondingManager.address,
                     functionEncodedABI(
                         "slashTranscoder(address,address,uint256,uint256)",
@@ -2560,7 +2560,7 @@ describe("BondingManager", () => {
                     )
                 )
 
-                expect(txRes)
+                await expect(txRes)
                     .to.emit(bondingManager, "TranscoderSlashed")
                     .withArgs(transcoder.address, constants.NULL_ADDRESS, 500, 0)
             })
@@ -2578,7 +2578,7 @@ describe("BondingManager", () => {
             })
 
             it("fires a TranscoderSlashed event, but transcoder is not penalized because it does not have a bonded amount", async () => {
-                const txRes = await fixture.verifier.execute(
+                const txRes = fixture.verifier.execute(
                     bondingManager.address,
                     functionEncodedABI(
                         "slashTranscoder(address,address,uint256,uint256)",
@@ -2587,7 +2587,7 @@ describe("BondingManager", () => {
                     )
                 )
 
-                expect(txRes)
+                await expect(txRes)
                     .to.emit(bondingManager, "TranscoderSlashed")
                     .withArgs(transcoder.address, constants.NULL_ADDRESS, 0, 0)
             })
@@ -3160,8 +3160,8 @@ describe("BondingManager", () => {
 
         it("emits an EarningsClaimed event", async () => {
             const lastClaimRound = (await bondingManager.getDelegator(delegator.address)).lastClaimRound
-            const txRes = await bondingManager.claimSnapshotEarnings(1500, 1000, [], [])
-            expect(txRes)
+            const txRes = bondingManager.claimSnapshotEarnings(1500, 1000, [], [])
+            await expect(txRes)
                 .to.emit(bondingManager, "EarningsClaimed")
                 .withArgs(delegator.address, delegator.address, 500, 1000, lastClaimRound.toNumber() + 1, currentRound)
         })

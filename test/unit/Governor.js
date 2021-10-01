@@ -100,7 +100,7 @@ describe("Governor", () => {
                 "0"
             )
 
-            const tx = await governor.execute(
+            const tx = governor.execute(
                 {
                     target: [governor.address],
                     value: ["0"],
@@ -109,8 +109,8 @@ describe("Governor", () => {
                 }
             )
 
+            await expect(tx).to.emit(governor, "OwnershipTransferred").withArgs(signers[0].address, signers[1].address)
             assert.equal(await governor.owner(), signers[1].address)
-            expect(tx).to.emit(governor, "OwnershipTransferred").withArgs(signers[0].address, signers[1].address)
         })
     })
 
@@ -193,16 +193,16 @@ describe("Governor", () => {
             const updateHash = getUpdateHash(update)
             const blockNum = await fixture.rpc.getBlockNumberAsync()
 
-            const tx = await governor.stage(
+            const tx = governor.stage(
                 update,
                 "5"
             )
 
-            assert.equal((await governor.updates(updateHash)).toNumber(), blockNum + 5 + 1) // + 1 because stage() mines a block
 
-            expect(tx).to.emit(governor, "UpdateStaged").withArgs(
+            await expect(tx).to.emit(governor, "UpdateStaged").withArgs(
                 [...update], 5
             )
+            assert.equal((await governor.updates(updateHash)).toNumber(), blockNum + 5 + 1) // + 1 because stage() mines a block
         })
     })
 
@@ -273,17 +273,17 @@ describe("Governor", () => {
             const updateHash = getUpdateHash(update)
             const blockNum = await fixture.rpc.getBlockNumberAsync()
 
-            const tx = await governor.stage(
+            const tx = governor.stage(
                 update,
                 "5"
             )
 
-            assert.equal((await governor.updates(updateHash)).toNumber(), blockNum + 5 + 1) // + 1 because stage() mines a block
 
-            expect(tx).to.emit(governor, "UpdateStaged").withArgs(
+            await expect(tx).to.emit(governor, "UpdateStaged").withArgs(
                 [...update],
                 5
             )
+            assert.equal((await governor.updates(updateHash)).toNumber(), blockNum + 5 + 1) // + 1 because stage() mines a block
         })
     })
 
@@ -333,23 +333,23 @@ describe("Governor", () => {
             const updateHash = getUpdateHash(update)
             const blockNum = await fixture.rpc.getBlockNumberAsync()
 
-            let tx = await governor.stage(
+            let tx = governor.stage(
                 update,
                 "5"
             )
 
-            assert.equal((await governor.updates(updateHash)).toNumber(), blockNum + 5 + 1) // + 1 because stage() mines a block
-            expect(tx).to.emit(governor, "UpdateStaged").withArgs(
+            await expect(tx).to.emit(governor, "UpdateStaged").withArgs(
                 [...update], 5
             )
+            assert.equal((await governor.updates(updateHash)).toNumber(), blockNum + 5 + 1) // + 1 because stage() mines a block
 
-            tx = await governor.cancel(update)
+            tx = governor.cancel(update)
 
-            assert.equal((await governor.updates(updateHash)).toNumber(), 0)
 
-            expect(tx).to.emit(governor, "UpdateCancelled").withArgs(
+            await expect(tx).to.emit(governor, "UpdateCancelled").withArgs(
                 [...update]
             )
+            assert.equal((await governor.updates(updateHash)).toNumber(), 0)
         })
     })
 
@@ -406,23 +406,22 @@ describe("Governor", () => {
             const updateHash = getUpdateHash(update)
             const blockNum = await fixture.rpc.getBlockNumberAsync()
 
-            let tx = await governor.stage(
+            let tx = governor.stage(
                 update,
                 "5"
             )
 
-            assert.equal((await governor.updates(updateHash)).toNumber(), blockNum + 5 + 1) // + 1 because stage() mines a block
-            expect(tx).to.emit(governor, "UpdateStaged").withArgs(
+            await expect(tx).to.emit(governor, "UpdateStaged").withArgs(
                 [...update], 5
             )
+            assert.equal((await governor.updates(updateHash)).toNumber(), blockNum + 5 + 1) // + 1 because stage() mines a block
 
-            tx = await governor.cancel(update)
+            tx = governor.cancel(update)
 
-            assert.equal((await governor.updates(updateHash)).toNumber(), 0)
-
-            expect(tx).to.emit(governor, "UpdateCancelled").withArgs(
+            await expect(tx).to.emit(governor, "UpdateCancelled").withArgs(
                 [...update]
             )
+            assert.equal((await governor.updates(updateHash)).toNumber(), 0)
         })
     })
 
@@ -518,13 +517,13 @@ describe("Governor", () => {
 
             await fixture.rpc.wait(100)
 
-            const tx = await governor.connect(signers[0]).execute(update, {value: BigNumber.from("1000")})
+            const tx = governor.connect(signers[0]).execute(update, {value: BigNumber.from("1000")})
 
-            assert.equal((await governor.updates(updateHash)).toNumber(), 0)
 
-            expect(tx).to.emit(governor, "UpdateExecuted").withArgs(
+            await expect(tx).to.emit(governor, "UpdateExecuted").withArgs(
                 [...update]
             )
+            assert.equal((await governor.updates(updateHash)).toNumber(), 0)
 
             // check that ETH balance of target is updated
             assert.equal((await web3.eth.getBalance(update.target[0])).toString(), update.value[0])
@@ -633,12 +632,12 @@ describe("Governor", () => {
 
             await fixture.rpc.wait(100)
 
-            const tx = await governor.execute(update)
+            const tx = governor.execute(update)
 
-            assert.equal((await governor.updates(updateHash)), 0)
-            expect(tx).to.emit(governor, "UpdateExecuted").withArgs(
+            await expect(tx).to.emit(governor, "UpdateExecuted").withArgs(
                 [...update]
             )
+            assert.equal((await governor.updates(updateHash)), 0)
         })
     })
 })
