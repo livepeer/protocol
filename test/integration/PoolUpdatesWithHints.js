@@ -157,7 +157,7 @@ describe("PoolUpdatesWithHints", () => {
         // Get gas cost of transcoder()
         let tx = await bondingManager.connect(newTranscoder).transcoder(0, 0)
         const txResNoHint = await tx.wait()
-        expect(tx).to.emit(bondingManager, "TranscoderDeactivated").withArgs(transcoders[size - 1].address, dr)
+        await expect(tx.hash).to.emit(bondingManager, "TranscoderDeactivated").withArgs(transcoders[size - 1].address, dr)
 
         assert.equal(await transcoderAtPoolPos(size - 1), newTranscoder.address)
 
