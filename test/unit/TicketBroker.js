@@ -163,8 +163,8 @@ describe("TicketBroker", () => {
         })
 
         it("emits a DepositFunded event", async () => {
-            const tx = await broker.fundDeposit({value: 1000})
-            expect(tx).to.emit(broker, "DepositFunded").withArgs(
+            const tx = broker.fundDeposit({value: 1000})
+            await expect(tx).to.emit(broker, "DepositFunded").withArgs(
                 sender, "1000"
             )
         })
@@ -304,9 +304,9 @@ describe("TicketBroker", () => {
         })
 
         it("emits a ReserveFunded event", async () => {
-            const tx = await broker.fundReserve({value: 1000})
+            const tx = broker.fundReserve({value: 1000})
 
-            expect(tx).to.emit(broker, "ReserveFunded").withArgs(sender, "1000")
+            await expect(tx).to.emit(broker, "ReserveFunded").withArgs(sender, "1000")
         })
 
         it("emits a ReserveFunded event with indexed sender", async () => {
@@ -717,9 +717,9 @@ describe("TicketBroker", () => {
                     const senderSig = await signMsg(getTicketHash(ticket), sender)
 
                     // There are no registered recipients so the recipients should not be able to claim
-                    const tx = await broker.connect(signers[1]).redeemWinningTicket(ticket, senderSig, recipientRand)
-                    expect(tx).to.emit(broker, "WinningTicketRedeemed")
-                    expect(tx).to.not.emit(broker, "ReserveClaimed")
+                    const tx = broker.connect(signers[1]).redeemWinningTicket(ticket, senderSig, recipientRand)
+                    await expect(tx).to.emit(broker, "WinningTicketRedeemed")
+                    await expect(tx).to.not.emit(broker, "ReserveClaimed")
                     assert.equal((await broker.claimedReserve(sender, recipient)).toString(), "0")
                 })
 
@@ -736,9 +736,9 @@ describe("TicketBroker", () => {
                     const senderSig = await signMsg(getTicketHash(ticket), sender)
 
                     // Recipient is not registered so it should not be able to claim from the reserve
-                    const tx = await broker.connect(signers[1]).redeemWinningTicket(ticket, senderSig, recipientRand)
-                    expect(tx).to.emit(broker, "WinningTicketRedeemed")
-                    expect(tx).to.not.emit(broker, "ReserveClaimed")
+                    const tx = broker.connect(signers[1]).redeemWinningTicket(ticket, senderSig, recipientRand)
+                    await expect(tx).to.emit(broker, "WinningTicketRedeemed")
+                    await expect(tx).to.not.emit(broker, "ReserveClaimed")
                     assert.equal((await broker.claimedReserve(sender, recipient)).toString(), "0")
                 })
 
@@ -764,9 +764,9 @@ describe("TicketBroker", () => {
                     const senderSig2 = await signMsg(getTicketHash(ticket2), sender)
 
                     // Should not claim anything because recipient has already claimed the max allocation
-                    const tx = await broker.connect(signers[1]).redeemWinningTicket(ticket2, senderSig2, recipientRand)
+                    const tx = broker.connect(signers[1]).redeemWinningTicket(ticket2, senderSig2, recipientRand)
 
-                    expect(tx).to.not.emit(broker, "ReserveClaimed")
+                    await expect(tx).to.not.emit(broker, "ReserveClaimed")
                 })
 
                 it("allows a partial claim for a registered recipient trying to claim an amount that would exceed the max allocation", async () => {
@@ -792,9 +792,9 @@ describe("TicketBroker", () => {
                     const senderSig2 = await signMsg(getTicketHash(ticket2), sender)
 
                     // Claim the remaining partialAmount
-                    const tx = await broker.connect(signers[1]).redeemWinningTicket(ticket2, senderSig2, recipientRand)
+                    const tx = broker.connect(signers[1]).redeemWinningTicket(ticket2, senderSig2, recipientRand)
 
-                    expect(tx).to.emit(broker, "ReserveClaimed").withArgs(sender, recipient, partialAmount)
+                    await expect(tx).to.emit(broker, "ReserveClaimed").withArgs(sender, recipient, partialAmount)
                 })
 
                 it("allows a claim from a registered recipient", async () => {
@@ -810,9 +810,9 @@ describe("TicketBroker", () => {
                     const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
                     const senderSig = await signMsg(getTicketHash(ticket), sender)
 
-                    const tx = await broker.connect(signers[1]).redeemWinningTicket(ticket, senderSig, recipientRand)
+                    const tx = broker.connect(signers[1]).redeemWinningTicket(ticket, senderSig, recipientRand)
 
-                    expect(tx).to.emit(broker, "ReserveClaimed").withArgs(sender, recipient, ticket.faceValue.toString())
+                    await expect(tx).to.emit(broker, "ReserveClaimed").withArgs(sender, recipient, ticket.faceValue.toString())
 
                     // Check that fee pool in BondingManager is updated
                     const filter = await fixture.bondingManager.filters.UpdateTranscoderWithFees()
@@ -843,8 +843,8 @@ describe("TicketBroker", () => {
                     ticket2.senderNonce++
                     const senderSig2 = await signMsg(getTicketHash(ticket2), sender)
 
-                    const tx = await broker.connect(signers[1]).redeemWinningTicket(ticket2, senderSig2, recipientRand)
-                    expect(tx).to.emit(broker, "ReserveClaimed").withArgs(sender, recipient, ticket2.faceValue.toString())
+                    const tx = broker.connect(signers[1]).redeemWinningTicket(ticket2, senderSig2, recipientRand)
+                    await expect(tx).to.emit(broker, "ReserveClaimed").withArgs(sender, recipient, ticket2.faceValue.toString())
 
                     assert.equal((await broker.claimedReserve(sender, recipient)).toString(), (ticket.faceValue + ticket2.faceValue).toString())
                 })
@@ -867,9 +867,9 @@ describe("TicketBroker", () => {
                     const ticket2 = createWinningTicket(recipient2.address, sender, recipientRand, faceValue + 15)
                     const senderSig2 = await signMsg(getTicketHash(ticket2), sender)
 
-                    const tx = await broker.connect(recipient2).redeemWinningTicket(ticket2, senderSig2, recipientRand)
+                    const tx = broker.connect(recipient2).redeemWinningTicket(ticket2, senderSig2, recipientRand)
 
-                    expect(tx).to.emit(broker, "ReserveClaimed").withArgs(sender, recipient2.address, ticket2.faceValue.toString())
+                    await expect(tx).to.emit(broker, "ReserveClaimed").withArgs(sender, recipient2.address, ticket2.faceValue.toString())
 
                     assert.equal((await broker.claimedReserve(sender, recipient)).toString(), ticket.faceValue.toString())
                     assert.equal((await broker.claimedReserve(sender, recipient2.address)).toString(), ticket2.faceValue.toString())
@@ -992,10 +992,10 @@ describe("TicketBroker", () => {
             const senderSig = await signMsg(getTicketHash(ticket), sender)
 
             // Redeem with ticket faceValue = 0
-            const tx = await broker.connect(signers[1]).redeemWinningTicket(ticket, senderSig, recipientRand)
+            const tx = broker.connect(signers[1]).redeemWinningTicket(ticket, senderSig, recipientRand)
 
-            expect(tx).to.not.emit(broker, "WinningTicketTransfer")
-            expect(tx).to.not.emit(fixture.bondingManager, "UpdateTranscoderWithFees")
+            await expect(tx).to.not.emit(broker, "WinningTicketTransfer")
+            await expect(tx).to.not.emit(fixture.bondingManager, "UpdateTranscoderWithFees")
             const endDeposit = (await broker.getSenderInfo(sender)).sender.deposit.toString()
             assert.equal(endDeposit, deposit)
         })
@@ -1080,8 +1080,8 @@ describe("TicketBroker", () => {
             const ticket = createWinningTicket(recipient, sender, recipientRand, faceValue)
             const senderSig = await signMsg(getTicketHash(ticket), sender)
 
-            const tx = await broker.connect(signers[1]).redeemWinningTicket(ticket, senderSig, recipientRand)
-            expect(tx).to.emit(broker, "WinningTicketRedeemed").withArgs(
+            const tx = broker.connect(signers[1]).redeemWinningTicket(ticket, senderSig, recipientRand)
+            await expect(tx).to.emit(broker, "WinningTicketRedeemed").withArgs(
                 sender, recipient, ticket.faceValue.toString(), ticket.winProb.toString(), ticket.senderNonce.toString(), recipientRand.toString(), ticket.auxData
             )
         })
@@ -1306,13 +1306,13 @@ describe("TicketBroker", () => {
             const senderSig = await signMsg(getTicketHash(ticket), sender)
             const senderSig2 = await signMsg(getTicketHash(ticket2), sender)
 
-            const tx = await broker.connect(signers[1]).batchRedeemWinningTickets(
+            const tx = broker.connect(signers[1]).batchRedeemWinningTickets(
                 [ticket, ticket2],
                 [senderSig, senderSig2],
                 [recipientRand, recipientRand]
             )
 
-            expect(tx).to.not.emit(broker, "WinningTicketRedeemed")
+            await expect(tx).to.not.emit(broker, "WinningTicketRedeemed")
         })
     })
 
@@ -1369,9 +1369,9 @@ describe("TicketBroker", () => {
             const expectedStartRound = currentRound
             const expectedEndRound = expectedStartRound + unlockPeriod
 
-            const tx = await broker.unlock()
+            const tx = broker.unlock()
 
-            expect(tx).to.emit(broker, "Unlock").withArgs(sender, expectedStartRound.toString(), expectedEndRound.toString())
+            await expect(tx).to.emit(broker, "Unlock").withArgs(sender, expectedStartRound.toString(), expectedEndRound.toString())
         })
 
         it("emits an Unlock event indexed by sender", async () => {
@@ -1424,9 +1424,9 @@ describe("TicketBroker", () => {
             await broker.fundDeposit({value: 1000})
             await broker.unlock()
 
-            const tx = await broker.cancelUnlock()
+            const tx = broker.cancelUnlock()
 
-            expect(tx).to.emit(broker, "UnlockCancelled").withArgs(sender)
+            await expect(tx).to.emit(broker, "UnlockCancelled").withArgs(sender)
         })
 
         it("emits an UnlockCancelled event with an indexed sender", async () => {
@@ -1551,9 +1551,9 @@ describe("TicketBroker", () => {
             await broker.unlock()
             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + unlockPeriod)
 
-            const tx = await broker.withdraw()
+            const tx = broker.withdraw()
 
-            expect(tx).to.emit(broker, "Withdrawal").withArgs(sender, deposit.toString(), reserve.toString())
+            await expect(tx).to.emit(broker, "Withdrawal").withArgs(sender, deposit.toString(), reserve.toString())
         })
 
         it("emits a Withdrawal event with indexed sender", async () => {

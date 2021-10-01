@@ -46,8 +46,8 @@ describe("ServiceRegistry", () => {
         })
 
         it("fires ServiceURIUpdate event", async () => {
-            const tx = await registry.setServiceURI("foo")
-            expect(tx).to.emit(registry, "ServiceURIUpdate").withArgs(
+            const tx = registry.setServiceURI("foo")
+            await expect(tx).to.emit(registry, "ServiceURIUpdate").withArgs(
                 signers[0].address, "foo"
             )
         })
