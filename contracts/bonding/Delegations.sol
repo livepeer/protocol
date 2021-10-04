@@ -22,25 +22,43 @@ import "../utils/MathUtils.sol";
  */
 
 library Delegations {
+    struct Accumulators {
+        uint256 rewardPerShare;
+        uint256 feePerShare;
+    }
+
     /**
      @notice Delegation holds the necessary info for delegations to a delegation pool
      */
     struct Delegation {
-        uint256 shares; // nominal amount of shares held by the Delegation
-        uint256 lastCFF; // amount of fees in the pool after last claim
+        uint256 shares;
+        uint256 pendingFees;
+        uint256 lastUpdateRound;
+        uint256 rewardPerShareCheckpoint;
+        uint256 feePerShareCheckpoint;
+        uint256 lookbackShares;
     }
 
     /**
      @notice A delegation pool accrues delegator rewards and fees for an orchestrator and handles accounting
      */
     struct Pool {
-        uint256 totalShares; // total amount of outstanding shares
-        uint256 activeFeeShares; // amount of shares active for fees
-        uint256 totalStake; // total amount of tokens held by the EarningsPool
-        uint256 CFF; // total amount of available fees (claimed or unclaimed, but not withdrawn)
-        // mapping of a delegate's address to a Delegation
+        uint256 shares;
+        uint256 nextShares;
+        uint256 principle;
+        uint256 stake;
+        uint256 nextStake;
+        uint128 rewardCut;
+        uint128 feeCut;
+        uint256 lastRewardRound; // Q : can we remove and use lastUpdateRound ?
+        uint256 lastFeeRound; // Q: can we remove and use lastUpdateRound ?
+        uint256 lastUpdateRound;
+        address owner;
+        mapping(uint256 => Accumulators) accumulators;
         mapping(address => Delegation) delegations;
     }
+
+    // POOL ACTIONS
 
     /**
      * @notice Stake an amount of tokens in the pool. Calculates the amount of shares to mint based on the current
@@ -49,15 +67,26 @@ library Delegations {
      * @param _pool storage pointer to the delegation pool
      * @param _delegator address of the delegator that is staking to the pool
      * @param _amount amount of tokens being staked by the delegator
+     * @param _currentRound currentRound
      */
-    function stake(
+    function delegate(
         Pool storage _pool,
         address _delegator,
-        uint256 _amount
+        uint256 _amount,
+        uint256 _currentRound
     ) internal {
-        uint256 sharesToMint = tokensToShares(_pool, _amount);
-        mintShares(_pool, _delegator, sharesToMint);
-        _pool.totalStake += _amount;
+        // set first delegator as pool owner i.e when orchestrator creates a pool
+        if (_pool.owner == address(0)) {
+            _pool.owner = _delegator;
+        }
+
+        _updatePool(_pool, _currentRound);
+
+        uint256 shares = _tokensToShares(_pool, _amount);
+        _updateDelegation(_pool, _delegator, int256(shares), _currentRound);
+
+        _pool.nextStake += _amount;
+        _pool.principle += _amount;
     }
 
     /**
@@ -67,15 +96,92 @@ library Delegations {
      * @param _pool storage pointer to the delegation pool
      * @param _delegator address of the delegator that is unstaking from the pool
      * @param _amount amount of tokens being unstaked by the delegator
+     * @param _currentRound currentRound
      */
-    function unstake(
+    function undelegate(
         Pool storage _pool,
         address _delegator,
-        uint256 _amount
+        uint256 _amount,
+        uint256 _currentRound
     ) internal {
-        uint256 sharesToBurn = tokensToShares(_pool, _amount);
-        burnShares(_pool, _delegator, sharesToBurn);
-        _pool.totalStake -= _amount;
+        _updatePool(_pool, _currentRound);
+
+        uint256 shares = _tokensToShares(_pool, _amount);
+        _updateDelegation(_pool, _delegator, -int256(shares), _currentRound);
+
+        _pool.nextStake -= _amount;
+        _pool.principle -= _amount;
+    }
+
+    function _updatePool(Pool storage _pool, uint256 _currentRound) internal {
+        uint256 _lastUpdateRound = _pool.lastUpdateRound;
+        if (_lastUpdateRound >= _currentRound) {
+            return;
+        }
+
+        _pool.lastUpdateRound = _currentRound;
+
+        _pool.shares = _pool.nextShares;
+        _pool.stake = _pool.nextStake;
+
+        _pool.accumulators[_currentRound] = _pool.accumulators[_lastUpdateRound];
+    }
+
+    function _updateDelegation(
+        Pool storage _pool,
+        address _delegator,
+        int256 _sharesDelta,
+        uint256 _currentRound
+    ) internal {
+        Delegation storage _delegation = _pool.delegations[_delegator];
+
+        // convert outstanding rewards to shares
+        uint256 rewards = _rewards(_pool, _delegation);
+        uint256 sharesDeltaFromRewards = _tokensToShares(_pool, rewards);
+        _pool.principle += rewards;
+
+        // add to pending fees
+        _delegation.pendingFees += _fees(_pool, _delegation);
+
+        // checkpoint accumulators
+        _delegation.rewardPerShareCheckpoint = _pool.accumulators[_pool.lastRewardRound].rewardPerShare;
+        _delegation.feePerShareCheckpoint = _pool.accumulators[_pool.lastFeeRound].feePerShare;
+
+        // set eligible shares for current round
+        _delegation.lookbackShares = _delegation.shares;
+
+        //
+        _delegation.lastUpdateRound = _currentRound;
+        int256 totalSharesDelta = _sharesDelta + int256(sharesDeltaFromRewards);
+        _delegation.shares = _addDelta(_delegation.shares, totalSharesDelta);
+
+        // update nextShares
+        _pool.nextShares = _addDelta(_pool.nextShares, totalSharesDelta);
+    }
+
+    // REWARDS ACCOUNTING
+
+    /**
+     * @notice calculates the pending rewards for the delegation
+     * @param _pool storage pointer to the delegation pool
+     * @param _delegation delegation
+     */
+    function _rewards(Pool storage _pool, Delegation storage _delegation) internal view returns (uint256 rewards) {
+        uint256 lookback = _pool.accumulators[_delegation.lastUpdateRound].rewardPerShare;
+        uint256 checkpoint = _delegation.rewardPerShareCheckpoint;
+        uint256 lookbackShares = _delegation.lookbackShares;
+
+        uint256 lookbackRewards;
+        if (lookbackShares > 0) {
+            lookbackRewards = MathUtils.percOf(lookbackShares, lookback - checkpoint);
+        }
+
+        uint256 otherRewards = MathUtils.percOf(
+            _delegation.shares,
+            _pool.accumulators[_pool.lastRewardRound].rewardPerShare - lookback
+        );
+
+        rewards = lookbackRewards + otherRewards;
     }
 
     /**
@@ -83,45 +189,58 @@ library Delegations {
         Returns the new amount of total stake in the pool.
      * @param _pool storage pointer to the delegation pool
      * @param _amount amount of tokens to add to the total stake
-     * @return totalStake new total stake in the delegation pool
      */
-    function addRewards(Pool storage _pool, uint256 _amount) internal returns (uint256 totalStake) {
-        totalStake = _pool.totalStake + _amount;
-        _pool.totalStake = totalStake;
+    function addRewards(
+        Pool storage _pool,
+        uint256 _amount,
+        uint256 _currentRound
+    ) internal {
+        _updatePool(_pool, _currentRound);
+
+        // calculate reward cut
+        uint256 rewardCutAmount = MathUtils.percOf(_amount, _pool.rewardCut);
+        uint256 rewardShareAmount = _amount - rewardCutAmount;
+
+        uint256 _shares = _pool.shares;
+        if (_shares > 0) {
+            _pool.accumulators[_currentRound].rewardPerShare += MathUtils.percPoints(rewardShareAmount, _shares);
+        }
+        // convert rewardCutAmount to shares for pool owner (orchestrator)
+        // TODO: double check this works
+        _updateDelegation(_pool, _pool.owner, int256(rewardCutAmount), _currentRound);
+        _pool.lastRewardRound = _currentRound;
+        _pool.nextStake += _amount;
     }
 
-    /**
-     * @notice Mint a specified amount of new shares for the delegator.
-        Increases the delegator's delegation share amount and total shares.
-     * @param _pool storage pointer to the delegation pool
-     * @param _delegator address of the delegator to mint shares for
-     * @param _amount amount of shares to mint
-     * @dev updates totalShares used for stake accounting but not activeFeeShares for fee accounting
-     */
-    function mintShares(
-        Pool storage _pool,
-        address _delegator,
-        uint256 _amount
-    ) internal {
-        _pool.delegations[_delegator].shares = _pool.delegations[_delegator].shares + _amount;
-        _pool.totalShares = _pool.totalShares + _amount;
-    }
+    // FEES ACCOUNTING
 
     /**
-     * @notice Burn existing shares from a delegator. 
-        Subtracts the amount of shares to burn from the delegator's delegation and decreases the amount of total shares.
+     * @notice calculates the pending fees for the delegation
      * @param _pool storage pointer to the delegation pool
-     * @param _delegator address of the delegator to burn shares from
-     * @param _amount amount of shares to burn
+     * @param _delegation delegation
      */
-    function burnShares(
-        Pool storage _pool,
-        address _delegator,
-        uint256 _amount
-    ) internal {
-        _pool.delegations[_delegator].shares = _pool.delegations[_delegator].shares - _amount;
-        _pool.totalShares = _pool.totalShares - _amount;
-        // _pool.activeFeeShares -= _amount;
+    function _fees(Pool storage _pool, Delegation storage _delegation) internal view returns (uint256 fees) {
+        uint256 lookback = _pool.accumulators[_delegation.lastUpdateRound].feePerShare;
+        uint256 checkpoint = _delegation.feePerShareCheckpoint;
+        uint256 lookbackShares = _delegation.lookbackShares;
+
+        uint256 lookbackFees;
+        if (lookbackShares > 0) {
+            lookbackFees = MathUtils.percOf(lookbackShares, lookback - checkpoint);
+        }
+
+        uint256 otherFees = MathUtils.percOf(
+            _delegation.shares,
+            _pool.accumulators[_pool.lastFeeRound].feePerShare - lookback
+        );
+
+        fees = lookbackFees + otherFees;
+    }
+
+    function feesOf(Pool storage _pool, address _delegator) internal view returns (uint256) {
+        // TODO
+        Delegation storage _delegation = _pool.delegations[_delegator];
+        return _fees(_pool, _delegation);
     }
 
     /**
@@ -129,39 +248,30 @@ library Delegations {
         Increases the fees by the specified amount and returns the new total amount of fees earned by the pool.
      * @param _pool storage pointer to the delegation pool
      * @param _amount amount of fees to add to the pool
-     * @return fees new total amount of fees in the delegation pool
+     * @param _currentRound currentRound
      */
-    function addFees(Pool storage _pool, uint256 _amount) internal returns (uint256 fees) {
-        uint256 activeFeeShares = _pool.activeFeeShares;
-        _pool.activeFeeShares = _pool.totalShares;
-        _pool.CFF += MathUtils.percPoints(_amount, activeFeeShares);
-    }
+    function addFees(
+        Pool storage _pool,
+        uint256 _amount,
+        uint256 _currentRound
+    ) internal {
+        _updatePool(_pool, _currentRound);
 
-    /**
-     * @notice Claim all available fees for a delegator from the delegation pool, returns the claimable amount.
-     * @dev This only handles state updates to the delegation pool, 
-        actual transferring of funds should be handled by the caller
-     * @param _pool storage pointer to the delegation pool
-     * @param _delegator address of the delegator to claim fees for
-     * @return claimedFees amount of fees claimed
-     */
-    function claimFees(Pool storage _pool, address _delegator) internal returns (uint256 claimedFees) {
-        claimedFees = feesOf(_pool, _delegator);
+        // calculate fee cut
+        uint256 feeCutAmount = MathUtils.percOf(_amount, _pool.feeCut);
 
-        // Checkpoint CFF
-        _pool.delegations[_delegator].lastCFF = _pool.CFF;
-    }
+        uint256 feeShareAmount = _amount - feeCutAmount;
 
-    /**
-     * @notice Returns the total stake of a delegator
-     * @dev Sum of principal and staking rewards
-     * @param _pool storage pointer to the delegation pool
-     * @param _delegator address of the delegator
-     * @return stake total stake of the delegator
-     */
-    function stakeOf(Pool storage _pool, address _delegator) internal view returns (uint256 stake) {
-        if (_pool.totalStake == 0 || _pool.totalShares == 0) return 0;
-        stake = MathUtils.percOf(_pool.totalStake, _pool.delegations[_delegator].shares, _pool.totalShares);
+        uint256 _shares = _pool.shares;
+
+        if (_shares > 0) {
+            _pool.accumulators[_currentRound].feePerShare += MathUtils.percPoints(feeShareAmount, _shares);
+        }
+
+        // add feeCutAmount to fees for Pool owner (orchestrator)
+        _pool.delegations[_pool.owner].pendingFees += feeCutAmount;
+
+        _pool.lastFeeRound = _currentRound;
     }
 
     /**
@@ -175,51 +285,19 @@ library Delegations {
     }
 
     /**
-     * @notice Returns the amount of claimable fees from a delegation pool for a delegator
-     * @param _pool storage pointer to the delegation pool
-     * @param _delegator address of the delegator
-     * @return fees claimable from the delegation pool for the delegator
-     */
-    function feesOf(Pool storage _pool, address _delegator) internal view returns (uint256 fees) {
-        Delegation storage delegation = _pool.delegations[_delegator];
-
-        uint256 currentCFF = _pool.CFF;
-
-        // If CFF is 0 there are no rewards, return early to avoid division by 0
-        if (currentCFF == 0) return 0;
-
-        fees = currentCFF != 0 ? MathUtils.percOf(delegation.shares, currentCFF - delegation.lastCFF) : 0;
-    }
-
-    /**
-     * @param _pool storage pointer to the delegation pool
-     * @param _delegator address of the delegator
-     * @return stake of the delegator
-     * @return fees claimable from the delegation pool for the delegator
-     */
-    function stakeAndFeesOf(Pool storage _pool, address _delegator)
-        internal
-        view
-        returns (uint256 stake, uint256 fees)
-    {
-        Delegation storage delegation = _pool.delegations[_delegator];
-        uint256 shares = delegation.shares;
-        uint256 totalShares = _pool.totalShares;
-
-        stake = MathUtils.percOf(_pool.totalStake, shares, totalShares);
-
-        uint256 currentCFF = _pool.CFF;
-
-        fees = currentCFF != 0 ? MathUtils.percOf(delegation.shares, currentCFF - delegation.lastCFF) : 0;
-    }
-
-    /**
      * @notice Returns the total stake in the delegation pool
      * @param _pool storage pointer to the delegation pool
      * @return total stake in the pool
      */
     function poolTotalStake(Pool storage _pool) internal view returns (uint256) {
-        return _pool.totalStake;
+        return _pool.principle;
+    }
+
+    function stakeOf(Pool storage _pool, address _delegator) internal view returns (uint256) {
+        Delegation storage _delegation = _pool.delegations[_delegator];
+        // principle * ( share / totalShares ) + rewards
+        if (_pool.principle == 0 || _delegation.shares == 0) return 0;
+        return MathUtils.percOf(_pool.principle, _delegation.shares, _pool.nextShares) + _rewards(_pool, _delegation);
     }
 
     /**
@@ -228,16 +306,18 @@ library Delegations {
      * @param _tokens amount of tokens to calculate share amount for
      * @return shares amount of shares that represent the underlying tokens
      */
-    function tokensToShares(Pool storage _pool, uint256 _tokens) internal view returns (uint256 shares) {
-        uint256 totalStake = _pool.totalStake;
-        uint256 totalShares = _pool.totalShares;
+    function _tokensToShares(Pool storage _pool, uint256 _tokens) internal view returns (uint256 shares) {
+        uint256 totalStake = _pool.nextStake;
+        uint256 totalShares = _pool.nextShares;
+
+        if (_tokens == 0) return 0;
 
         if (totalShares == 0) {
             return _tokens;
         } else if (totalStake == 0) {
             return 0;
         } else {
-            shares = MathUtils.percOf(_tokens, totalShares, _pool.totalStake);
+            shares = MathUtils.percOf(_tokens, totalShares, totalStake);
         }
     }
 
@@ -247,12 +327,21 @@ library Delegations {
      * @param _shares amount of shares to calculate token amount for
      * @return tokens amount of tokens represented by the shares
      */
-    function sharesToTokens(Pool storage _pool, uint256 _shares) internal view returns (uint256 tokens) {
-        uint256 totalShares = _pool.totalShares;
-        if (totalShares == 0) {
+    function _sharesToTokens(Pool storage _pool, uint256 _shares) internal view returns (uint256 tokens) {
+        uint256 totalShares = _pool.nextShares;
+
+        if (_shares == 0 || totalShares == 0) {
             return 0;
         }
 
-        tokens = MathUtils.percOf(_pool.totalStake, _shares, _pool.totalShares);
+        tokens = MathUtils.percOf(_pool.nextStake, _shares, totalShares);
+    }
+
+    function _addDelta(uint256 _x, int256 _y) internal pure returns (uint256 z) {
+        if (_y < 0) {
+            z = _x - uint256(-_y);
+        } else {
+            z = _x + uint256(_y);
+        }
     }
 }

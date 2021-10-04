@@ -279,14 +279,14 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
             );
         }
 
-        oldPool.unstake(msg.sender, _amount);
+        uint256 currentRound = roundsManager().currentRound();
 
+        oldPool.undelegate(msg.sender, _amount, currentRound);
         emit Undelegate(msg.sender, _oldOrchestrator, _amount, 0);
 
-        // cfr. undelegate
         // 2. Add stake to new orchestrator
         Delegations.Pool storage newPool = orchestrators[_newOrchestrator].delegationPool;
-        newPool.stake(msg.sender, _amount);
+        newPool.delegate(msg.sender, _amount, currentRound);
         uint256 newOrchestratorStake = newPool.poolTotalStake();
 
         _increaseOrchTotalStake(
@@ -497,13 +497,13 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
         return unstakingLocks[_unstakingLockId].withdrawRound > 0;
     }
 
-    function getDelegation(address _orchestrator, address _delegator)
-        public
-        view
-        returns (uint256 stake, uint256 fees)
-    {
-        (stake, fees) = orchestrators[_orchestrator].delegationPool.stakeAndFeesOf(_delegator);
-    }
+    // function getDelegation(address _orchestrator, address _delegator)
+    //     public
+    //     view
+    //     returns (uint256 stake, uint256 fees)
+    // {
+    //     (stake, fees) = orchestrators[_orchestrator].delegationPool.stakeAndFeesOf(_delegator);
+    // }
 
     /**
      * @notice Calculate the total stake for an address
@@ -514,8 +514,7 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
         and repurpose this to 'orchestratorStake(address _orchestrator)'
      */
     function getDelegatedStake(address _orchestrator, address _delegator) public view returns (uint256 delegatedStake) {
-        Orchestrator storage orch = orchestrators[_orchestrator];
-        delegatedStake = orch.delegationPool.stakeOf(_delegator);
+        return orchestrators[_orchestrator].delegationPool.stakeOf(_delegator);
     }
 
     /**
@@ -537,12 +536,12 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
     }
 
     /**
-     * @notice Returns total stake for a orchestrator
+     * @notice Returns total amount staked towards an orchestrator
      * @param _orchestrator Address of orchestrator
-     * @return total stake for an orchestrator
+     * @return total stake in the pool
      */
     function orchestratorTotalStake(address _orchestrator) public view returns (uint256) {
-        return orchestrators[_orchestrator].delegationPool.poolTotalStake();
+        return orchestrators[_orchestrator].delegationPool.principle;
     }
 
     /**
@@ -674,7 +673,7 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
         // Delegate stake to _orchestrator for account "_for"
         Delegations.Pool storage _pool = orchestrators[_orchestrator].delegationPool;
         uint256 oldTotalStake = _pool.poolTotalStake();
-        _pool.stake(_for, _amount);
+        _pool.delegate(_for, _amount, roundsManager().currentRound());
 
         _increaseOrchTotalStake(_orchestrator, oldTotalStake, _amount, _newPosPrev, _newPosNext);
 
@@ -710,13 +709,12 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
         }
 
         Delegations.Pool storage pool = orchestrators[_orchestrator].delegationPool;
-        pool.unstake(_for, _amount);
+        uint256 currentRound = roundsManager().currentRound();
+        pool.undelegate(_for, _amount, currentRound);
 
         // Create unstaking lock for _amount
         id = lastUnstakingLockID;
         lastUnstakingLockID++;
-
-        uint256 currentRound = roundsManager().currentRound();
 
         unstakingLocks[id] = UnstakingLock({
             delegator: _for,
@@ -737,36 +735,32 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
         require(isValidUnstakingLock(_unstakingLockID), "INVALID_UNSTAKING_LOCK_ID");
         require(msg.sender == lock.delegator, "CALLER_NOT_LOCK_OWNER");
 
-        address orchestrator = lock.orchestrator;
+        address _orchestrator = lock.orchestrator;
         uint256 amount = lock.amount;
 
         // Claim outstanding fees and checkpoint fee factor
-        _claimFees(orchestrator, payable(_for));
+        _claimFees(_orchestrator, payable(_for));
 
-        uint256 oldStake = orchestratorTotalStake(orchestrator);
+        uint256 oldStake = orchestratorTotalStake(_orchestrator);
 
         // Increase delegator's staked amount
-        orchestrators[orchestrator].delegationPool.stake(_for, amount);
+        orchestrators[_orchestrator].delegationPool.delegate(_for, amount, roundsManager().currentRound());
 
         // Delete lock
         delete unstakingLocks[_unstakingLockID];
 
-        _increaseOrchTotalStake(orchestrator, oldStake, amount, _newPosPrev, _newPosNext);
+        _increaseOrchTotalStake(_orchestrator, oldStake, amount, _newPosPrev, _newPosNext);
 
-        if (_for == orchestrator) {
-            emit Stake(orchestrator, amount);
+        if (_for == _orchestrator) {
+            emit Stake(_orchestrator, amount);
         } else {
-            emit Delegate(_for, orchestrator, amount);
+            emit Delegate(_for, _orchestrator, amount);
         }
     }
 
     function _updateOrchestratorWithFees(address _orchestrator, uint256 _fees) internal {
         Orchestrator storage orch = orchestrators[_orchestrator];
-
-        uint256 feeShare = MathUtils.percOf(_fees, orch.feeShare);
-
-        orch.feeCommissions = _fees - feeShare;
-        orch.delegationPool.addFees(feeShare);
+        orch.delegationPool.addFees(_fees, roundsManager().currentRound());
     }
 
     /**
@@ -779,12 +773,7 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
      */
     function _updateOrchestratorWithRewards(address _orchestrator, uint256 _rewards) internal {
         Orchestrator storage orch = orchestrators[_orchestrator];
-
-        uint256 rewardShare = MathUtils.percOf(_rewards, orch.rewardShare);
-
-        uint256 rewardCut = _rewards - rewardShare;
-        orch.delegationPool.stake(_orchestrator, rewardCut);
-        orch.delegationPool.addRewards(rewardShare);
+        orch.delegationPool.addRewards(_rewards, roundsManager().currentRound());
     }
 
     function _increaseOrchTotalStake(
@@ -890,7 +879,7 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
      */
     function _claimFees(address _orchestrator, address payable _for) internal {
         Orchestrator storage orch = orchestrators[_orchestrator];
-        uint256 fees = orch.delegationPool.claimFees(_for);
+        uint256 fees = orch.delegationPool.feesOf(_for);
         if (_for == _orchestrator) {
             fees += orch.feeCommissions;
             orch.feeCommissions = 0;
