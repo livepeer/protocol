@@ -56,6 +56,7 @@ describe("StakingManager", () => {
         let orchestrator2: SignerWithAddress
         let delegator0: SignerWithAddress
         let delegator1: SignerWithAddress
+        let delegator2: SignerWithAddress
         let thirdParty: SignerWithAddress
         let notControllerOwner: SignerWithAddress
         let controllerOwner: SignerWithAddress
@@ -74,9 +75,10 @@ describe("StakingManager", () => {
 
             delegator0 = signers[4]
             delegator1 = signers[5]
+            delegator2 = signers[6]
 
             // migrator contract
-            thirdParty = signers[6]
+            thirdParty = signers[7]
 
             const lptMintAmount = 1000000
             await lpt.mint(orchestrator0.address, lptMintAmount)
@@ -84,6 +86,7 @@ describe("StakingManager", () => {
             await lpt.mint(orchestrator2.address, lptMintAmount)
             await lpt.mint(delegator0.address, lptMintAmount)
             await lpt.mint(delegator1.address, lptMintAmount)
+            await lpt.mint(delegator2.address, lptMintAmount)
             await lpt.mint(thirdParty.address, lptMintAmount)
 
             await lpt.connect(orchestrator0).approve(stakingManager.address, ethers.constants.MaxUint256)
@@ -91,6 +94,7 @@ describe("StakingManager", () => {
             await lpt.connect(orchestrator2).approve(stakingManager.address, ethers.constants.MaxUint256)
             await lpt.connect(delegator0).approve(stakingManager.address, ethers.constants.MaxUint256)
             await lpt.connect(delegator1).approve(stakingManager.address, ethers.constants.MaxUint256)
+            await lpt.connect(delegator2).approve(stakingManager.address, ethers.constants.MaxUint256)
             await lpt.connect(thirdParty).approve(stakingManager.address, ethers.constants.MaxUint256)
         })
 
@@ -169,6 +173,58 @@ describe("StakingManager", () => {
                     expect(orchestrator).to.equal(orchestrator0.address)
                 })
 
+                it("should check orchestrator status", async () => {
+                    const status1 = await stakingManager.orchestratorStatus(orchestrator2.address)
+                    const status2 = await stakingManager.orchestratorStatus(orchestrator0.address)
+
+                    // 0 = NotRegistered = none of 1 or 2
+                    // 1 = Registered = deactivated but stake of orch > 0
+                    // 2 = Active = activationRound <= currentRound and deactivationRound > currentRound
+                    expect(status1).to.equal(0)
+                    expect(status2).to.equal(2)
+                })
+
+                describe("evict orchestrator when pool full", async () => {
+                    let upcomingOrchestrator: SignerWithAddress
+
+                    beforeEach(async () => {
+                        await stakingManager.connect(orchestrator2).stake(stakeAmount, constants.NULL_ADDRESS, constants.NULL_ADDRESS)
+                        await stakingManager.connect(orchestrator2).orchestrator(5, 10, constants.NULL_ADDRESS, constants.NULL_ADDRESS)
+
+                        upcomingOrchestrator = signers[9]
+                        await lpt.mint(upcomingOrchestrator.address, 1000000)
+                        await lpt.connect(upcomingOrchestrator).approve(stakingManager.address, ethers.constants.MaxUint256)
+                    })
+
+                    it("new orchestrator has less or equal stake than max staked orchestrator", async () => {
+                        await stakingManager.connect(upcomingOrchestrator).stake(stakeAmount, constants.NULL_ADDRESS, constants.NULL_ADDRESS)
+                        await stakingManager.connect(upcomingOrchestrator).orchestrator(5, 10, constants.NULL_ADDRESS, constants.NULL_ADDRESS)
+
+                        const poolSizeLater = await stakingManager.getOrchestratorPoolSize()
+                        expect(poolSizeLater).to.equal(ethers.BigNumber.from(3))
+
+                        // 0 = NotRegistered = none of 1 or 2
+                        // 1 = Registered = deactivated but stake of orch > 0
+                        // 2 = Active = activationRound <= currentRound and deactivationRound > currentRound
+                        const status = await stakingManager.orchestratorStatus(upcomingOrchestrator.address)
+                        expect(status).to.equal(1)
+                    })
+
+                    it("new orchestrator has more stake than max staked orchestrator", async () => {
+                        await stakingManager.connect(upcomingOrchestrator).stake(stakeAmount + 1, constants.NULL_ADDRESS, constants.NULL_ADDRESS)
+                        await stakingManager.connect(upcomingOrchestrator).orchestrator(5, 10, constants.NULL_ADDRESS, constants.NULL_ADDRESS)
+
+                        const poolSizeLater = await stakingManager.getOrchestratorPoolSize()
+                        expect(poolSizeLater).to.equal(ethers.BigNumber.from(3))
+
+                        // 0 = NotRegistered = none of 1 or 2
+                        // 1 = Registered = deactivated but stake of orch > 0
+                        // 2 = Active = activationRound <= currentRound and deactivationRound > currentRound
+                        const status = await stakingManager.orchestratorStatus(orchestrator2.address)
+                        expect(status).to.equal(1)
+                    })
+                })
+
                 it("should get total stake for the round", async () => {
                     const stake0 = await stakingManager.orchestratorTotalStake(orchestrator0.address)
                     const stake1 = await stakingManager.orchestratorTotalStake(orchestrator1.address)
@@ -245,8 +301,12 @@ describe("StakingManager", () => {
                 it("should increases stake for itself", async () => {
                     const currentStake = await stakingManager.orchestratorTotalStake(orchestrator0.address)
                     await stakingManager.connect(orchestrator0).stake(stakeAmount, constants.NULL_ADDRESS, constants.NULL_ADDRESS)
+                    // orchestrators stake towards itself
+                    const orchestratorsStake = await stakingManager.getDelegatedStake(orchestrator0.address, orchestrator0.address)
+                    // total tokens staked towards orchestrator
                     const newStake = await stakingManager.orchestratorTotalStake(orchestrator0.address)
 
+                    expect(orchestratorsStake).to.equal(currentStake.add(stakeAmount))
                     expect(newStake).to.equal(currentStake.add(stakeAmount))
                 })
 
@@ -296,8 +356,10 @@ describe("StakingManager", () => {
                     const partialAmount = stakeAmount - 1000
                     const currentStake = await stakingManager.orchestratorTotalStake(orchestrator0.address)
                     await stakingManager.connect(orchestrator0).unstake(partialAmount, constants.NULL_ADDRESS, constants.NULL_ADDRESS)
+                    const orchestratorsStake = await stakingManager.getDelegatedStake(orchestrator0.address, orchestrator0.address)
                     const newStake = await stakingManager.orchestratorTotalStake(orchestrator0.address)
 
+                    expect(orchestratorsStake).to.equal(currentStake.sub(partialAmount))
                     expect(newStake).to.equal(currentStake.sub(partialAmount))
                 })
 
@@ -317,6 +379,19 @@ describe("StakingManager", () => {
                         .withArgs(orchestrator0.address, currentRound + 1)
                 })
 
+                it("should deactivate after unstaking fully in the next round", async () => {
+                    const fullAmount = await stakingManager.orchestratorTotalStake(orchestrator0.address)
+                    await stakingManager.connect(orchestrator0).unstake(fullAmount, constants.NULL_ADDRESS, constants.NULL_ADDRESS)
+
+                    await fixture?.roundsManager?.setMockUint256(functionSig("currentRound()"), currentRound + 1)
+                    const status = await stakingManager.orchestratorStatus(orchestrator0.address)
+
+                    // 0 = NotRegistered,
+                    // 1 = Registered,
+                    // 2 = Active
+                    expect(status).to.equal(0)
+                })
+
                 it("should fail if no stakes", async () => {
                     const fullAmount = await stakingManager.orchestratorTotalStake(orchestrator0.address)
                     await stakingManager.connect(orchestrator0).unstake(fullAmount, constants.NULL_ADDRESS, constants.NULL_ADDRESS)
@@ -324,6 +399,33 @@ describe("StakingManager", () => {
                     const tx = stakingManager.connect(orchestrator0).unstake(fullAmount, constants.NULL_ADDRESS, constants.NULL_ADDRESS)
 
                     await expect(tx).to.be.revertedWith("CALLER_NOT_STAKED")
+                })
+
+                describe("when orchestrator not in active set", async () => {
+                    let upcomingOrchestrator: SignerWithAddress
+
+                    beforeEach(async () => {
+                        await stakingManager.connect(orchestrator2).stake(stakeAmount, constants.NULL_ADDRESS, constants.NULL_ADDRESS)
+                        await stakingManager.connect(orchestrator2).orchestrator(5, 10, constants.NULL_ADDRESS, constants.NULL_ADDRESS)
+
+                        upcomingOrchestrator = signers[9]
+                        await lpt.mint(upcomingOrchestrator.address, 1000000)
+                        await lpt.connect(upcomingOrchestrator).approve(stakingManager.address, ethers.constants.MaxUint256)
+
+                        await stakingManager.connect(upcomingOrchestrator).stake(stakeAmount, constants.NULL_ADDRESS, constants.NULL_ADDRESS)
+                        await stakingManager.connect(upcomingOrchestrator).orchestrator(5, 10, constants.NULL_ADDRESS, constants.NULL_ADDRESS)
+                    })
+
+                    it("should partially unstake", async () => {
+                        const partialAmount = stakeAmount - 1000
+                        const currentStake = await stakingManager.orchestratorTotalStake(upcomingOrchestrator.address)
+                        await stakingManager.connect(upcomingOrchestrator).unstake(partialAmount, constants.NULL_ADDRESS, constants.NULL_ADDRESS)
+                        const orchestratorsStake = await stakingManager.getDelegatedStake(upcomingOrchestrator.address, upcomingOrchestrator.address)
+                        const newStake = await stakingManager.orchestratorTotalStake(upcomingOrchestrator.address)
+
+                        expect(orchestratorsStake).to.equal(currentStake.sub(partialAmount))
+                        expect(newStake).to.equal(currentStake.sub(partialAmount))
+                    })
                 })
             })
 
