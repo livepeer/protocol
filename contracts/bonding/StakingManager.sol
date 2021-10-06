@@ -19,7 +19,7 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
     using SortedDoublyLL for SortedDoublyLL.Data;
     using Delegations for Delegations.Pool;
 
-    // The various states a transcoder can be in
+    // The various states a orchestrator can be in
     enum OrchestratorStatus {
         NotRegistered,
         Registered,
@@ -28,39 +28,39 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
 
     struct Orchestrator {
         // Time-keeping
-        uint256 activationRound; // Round in which the transcoder became active - 0 if inactive
+        uint256 activationRound; // Round in which the orchestrator became active - 0 if inactive
         uint256 deactivationRound;
         // Commission accounting
         uint256 rewardShare; // % of reward shared with delegations
         uint256 feeShare; // % of fees shared with delegations
-        uint256 rewardCommissions; // reward earned from commission (not shared with delegators)
         uint256 feeCommissions; // fees earned from commission (not shared with delegators)
         uint256 lastRewardRound;
         // Delegation Pool
         Delegations.Pool delegationPool;
     }
 
-    // Represents an amount of tokens that are being unbonded
-    struct UnbondingLock {
+    // Represents an amount of tokens that are being undelegate
+    struct UnstakingLock {
+        address delegator; // address of the delegator owning the unstaking lock
         address orchestrator;
-        uint256 amount; // Amount of tokens being unbonded
-        uint256 withdrawRound; // Round at which unbonding period is over and tokens can be withdrawn
+        uint256 amount; // Amount of tokens being unstaked
+        uint256 withdrawRound; // Round at which unstaking period is over and tokens can be withdrawn
     }
 
-    // Time between unbonding and possible withdrawl in rounds
-    uint64 public unbondingPeriod;
+    // Time between unstaking and possible withdrawal in rounds
+    uint256 public unstakingPeriod;
 
     mapping(address => Orchestrator) private orchestrators;
-    mapping(uint256 => UnbondingLock) public unbondingLocks;
-    uint256 private lastUnbondingLockID;
+    mapping(uint256 => UnstakingLock) public unstakingLocks;
+    uint256 private lastUnstakingLockID;
 
     // The total active stake (sum of the stake of active set members) for the current round
     uint256 public currentRoundTotalActiveStake;
     // The total active stake (sum of the stake of active set members) for the next round
     uint256 public nextRoundTotalActiveStake;
 
-    // The transcoder pool is used to keep track of the transcoders that are eligible for activation.
-    // The pool keeps track of the pending active set in round N and the start of round N + 1 transcoders
+    // The orchestrator pool is used to keep track of the orchestrators that are eligible for activation.
+    // The pool keeps track of the pending active set in round N and the start of round N + 1 orchestrators
     // in the pool are locked into the active set for round N + 1
     SortedDoublyLL.Data private orchestratorPoolV2;
 
@@ -76,30 +76,23 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
         _;
     }
 
-    // Check if sender is Verifier
-    modifier onlyVerifier() {
-        _onlyVerifier();
-        _;
-    }
-
     // Check if current round is initialized
     modifier currentRoundInitialized() {
         _currentRoundInitialized();
         _;
     }
 
-    modifier autoClaimFees(address _delegate) {
-        _claimFees(_delegate, payable(msg.sender));
+    modifier autoClaimFees(address _orchestrator, address _delegator) {
+        _claimFees(_orchestrator, payable(_delegator));
         _;
     }
 
     /**
-     * @notice BondingManager constructor. Only invokes constructor of base Manager contract with provided Controller address
+     * @notice StakingManager constructor. Only invokes constructor of base Manager contract with provided Controller address
      * @dev This constructor will not initialize any state variables besides `controller`. The following setter functions
      * should be used to initialize state variables post-deployment:
-     * - setUnbondingPeriod()
-     * - setNumActiveTranscoders()
-     * - setMaxEarningsClaimsRounds()
+     * - setUnstakingPeriod()
+     * - setNumActiveOrchestrators()
      * @param _controller Address of Controller that this contract will be registered with
      */
     constructor(address _controller) Manager(_controller) {}
@@ -107,299 +100,276 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
     /**
      * PROTOCOL PARAMETERRS
      */
-    /**
-     * @notice Set unbonding period. Only callable by Controller owner
-     * @param _unbondingPeriod Rounds between unbonding and possible withdrawal
-     */
-    function setUnbondingPeriod(uint64 _unbondingPeriod) external onlyControllerOwner {
-        unbondingPeriod = _unbondingPeriod;
 
-        emit ParameterUpdate("unbondingPeriod");
+    /**
+     * @notice Set unstaking period. Only callable by Controller owner
+     * @param _unstakingPeriod Rounds between unstaking and possible withdrawal
+     */
+    function setUnstakingPeriod(uint256 _unstakingPeriod) external onlyControllerOwner {
+        unstakingPeriod = _unstakingPeriod;
+
+        emit ParameterUpdate("unstakingPeriod");
     }
 
     /**
-     * @notice Set maximum number of active transcoders. Only callable by Controller owner
-     * @param _numActiveTranscoders Number of active transcoders
+     * @notice Set maximum number of active orchestrators. Only callable by Controller owner
+     * @param _numActiveOrchestrators Number of active orchestrators
      */
-    function setNumActiveTranscoders(uint256 _numActiveTranscoders) external onlyControllerOwner {
-        orchestratorPoolV2.setMaxSize(_numActiveTranscoders);
+    function setNumActiveOrchestrators(uint256 _numActiveOrchestrators) external onlyControllerOwner {
+        orchestratorPoolV2.setMaxSize(_numActiveOrchestrators);
 
-        emit ParameterUpdate("numActiveTranscoders");
+        emit ParameterUpdate("numActiveOrchestrators");
     }
 
     /**
-     * STAKING & DELEGATION ACTIONS
+     * STAKING & DELEGATION
      */
 
     /**
-     * @notice Delegate stake towards a specific address
-     * @param _amount The amount of tokens to stake
-     * @param _orchestrator The address of the transcoder to stake towards
-     * @param _oldDelegateNewPosPrev The address of the previous transcoder in the pool for the old delegate
-     * @param _oldDelegateNewPosNext The address of the next transcoder in the pool for the old delegate
-     * @param _currDelegateNewPosPrev The address of the previous transcoder in the pool for the current delegate
-     * @param _currDelegateNewPosNext The address of the next transcoder in the pool for the current delegate
+     * @notice Stake an _amount of LPT for the caller and registers the account as an Orchestrator.
+     * @dev If the caller enters, or is already in the orchestrator pool, the caller can provide an optional hint for its insertion position in the
+     * pool via the `_newPosPrev` and `_newPosNext` params. A linear search will be executed starting at the hint to find the correct position.
+     * In the best case, the hint is the correct position so no search is executed. See SortedDoublyLL.sol details on list hints
+     * @param _amount Amount of tokens to stake
+     * @param _newPosPrev Address of previous orchestrator in pool if the caller enters or is in the pool
+     * @param _newPosNext Address of next orchestrator in pool if the caller enters or is in the pool
      */
-    function bond(
+    function stake(
+        uint256 _amount,
+        address _newPosPrev,
+        address _newPosNext
+    ) external {
+        _delegate(_amount, msg.sender, msg.sender, _newPosPrev, _newPosNext);
+        emit Stake(msg.sender, _amount);
+    }
+
+    /**
+     * @notice Stake an _amount of LPT on behalf of another account '_for'. It transfers custody of the staked LPT to '_for' and registers the account as an Orchestrator.
+     * @dev If the caller enters, or is already in the orchestrator pool, the caller can provide an optional hint for its insertion position in the
+     * pool via the `_newPosPrev` and `_newPosNext` params. A linear search will be executed starting at the hint to find the correct position.
+     * In the best case, the hint is the correct position so no search is executed. See SortedDoublyLL.sol details on list hints
+     * @param _amount Amount of tokens to stake
+     * @param _newPosPrev Address of previous orchestrator in pool if the enters or is in the pool
+     * @param _newPosNext Address of next orchestrator in pool if the caller enters or is in the pool
+     */
+    function stakeFor(
+        uint256 _amount,
+        address _for,
+        address _newPosPrev,
+        address _newPosNext
+    ) external {
+        _delegate(_amount, _for, _for, _newPosPrev, _newPosNext);
+        emit Stake(_for, _amount);
+    }
+
+    /**
+     * @notice Unstake an amount of LPT from the caller. If the caller fully unstakes it resigns its status as an Orchestrator.
+     * @dev If the caller remains in the orchestrator pool, the caller can provide an optional hint for its insertion position in the
+     * pool via the `_newPosPrev` and `_newPosNext` params. A linear search will be executed starting at the hint to find the correct position.
+     * In the best case, the hint is the correct position so no search is executed. See SortedDoublyLL.sol details on list hints
+     * @param _amount Amount of tokens to unstake
+     * @param _newPosPrev Address of previous orchestrator in pool if the caller remains in the pool
+     * @param _newPosNext Address of next orchestrator in pool if the caller remains in the pool
+     */
+    function unstake(
+        uint256 _amount,
+        address _newPosPrev,
+        address _newPosNext
+    ) external {
+        uint256 lockID = _undelegate(_amount, msg.sender, msg.sender, _newPosPrev, _newPosNext);
+        emit Unstake(msg.sender, _amount, lockID);
+    }
+
+    /**
+     * @notice Restake LPT that was previously unstaked, but is still pending withdrawal, for the caller using an unstaking lock.
+     * @dev If the caller is in the orchestrator pool, the caller can provide an optional hint for the delegate's insertion position in the
+     * pool via the `_newPosPrev` and `_newPosNext` params. A linear search will be executed starting at the hint to find the correct position.
+     * In the best case, the hint is the correct position so no search is executed. See SortedDoublyLL.sol details on list hints
+     * @param _unstakingLockID ID of unstaking lock to restake with
+     * @param _newPosPrev Address of previous orchestrator in pool if the caller enters or is in the pool
+     * @param _newPosNext Address of next orchestrator in pool if the caller enters or is in the pool
+     */
+    function restake(
+        uint256 _unstakingLockID,
+        address _newPosPrev,
+        address _newPosNext
+    ) external {
+        _redelegate(_unstakingLockID, msg.sender, _newPosPrev, _newPosNext);
+    }
+
+    /**
+     * @notice Delegate an _amount of LPT for the caller to an Orchestrator to earn a share of its rewards and fees.
+     * @dev If the Orchestrator being delegated to enters, or is already in the orchestrator pool, the caller can provide an optional hint for its insertion position in the
+     * pool via the `_newPosPrev` and `_newPosNext` params. A linear search will be executed starting at the hint to find the correct position.
+     * In the best case, the hint is the correct position so no search is executed. See SortedDoublyLL.sol details on list hints
+     * @param _amount Amount of tokens to delegate
+     * @param _newPosPrev Address of previous orchestrator in pool if the delegate enters, or is already in the pool
+     * @param _newPosNext Address of next orchestrator in pool if the delegate enters, or is already in the pool
+     */
+    function delegate(
         uint256 _amount,
         address _orchestrator,
-        address _oldDelegateNewPosPrev,
-        address _oldDelegateNewPosNext,
-        address _currDelegateNewPosPrev,
-        address _currDelegateNewPosNext
+        address _newPosPrev,
+        address _newPosNext
     ) external {
-        _bond(
-            _amount,
-            _orchestrator,
-            msg.sender,
-            _oldDelegateNewPosPrev,
-            _oldDelegateNewPosNext,
-            _currDelegateNewPosPrev,
-            _currDelegateNewPosNext
-        );
+        require(_orchestrator != msg.sender, "CANNOT_SELF_DELEGATE");
+        _delegate(_amount, _orchestrator, msg.sender, _newPosPrev, _newPosNext);
+        emit Delegate(msg.sender, _orchestrator, _amount);
     }
 
     /**
-     * @notice Delegate stake towards a specific address on behalf of another address
-     * @param _amount The amount of tokens to stake
-     * @param _orchestrator The address of the transcoder to stake towards
-     * @param _for The address which will own the stake
-     * @param _oldDelegateNewPosPrev The address of the previous transcoder in the pool for the old delegate
-     * @param _oldDelegateNewPosNext The address of the next transcoder in the pool for the old delegate
-     * @param _currDelegateNewPosPrev The address of the previous transcoder in the pool for the current delegate
-     * @param _currDelegateNewPosNext The address of the next transcoder in the pool for the current delegate
+     * @notice Delegate an _amount of LPT  for another account '_for' to an Orchestrator. This transfers the custody of the staked LPT to '_for' and makes the account eligible to earn a share of the Orchestrator's rewards and fees.
+     * @dev If the Orchestrator being delegated to enters, or is already in the orchestrator pool, the caller can provide an optional hint for its insertion position in the
+     * pool via the `_newPosPrev` and `_newPosNext` params. A linear search will be executed starting at the hint to find the correct position.
+     * In the best case, the hint is the correct position so no search is executed. See SortedDoublyLL.sol details on list hints
+     * @param _amount Amount of tokens to delegate
+     * @param _newPosPrev Address of previous orchestrator in pool if the delegate enters, or is already  in the pool
+     * @param _newPosNext Address of next orchestrator in pool if the delegate enters, or is already in the pool
      */
-    function bondFor(
+    function delegateFor(
         uint256 _amount,
         address _orchestrator,
         address _for,
-        address _oldDelegateNewPosPrev,
-        address _oldDelegateNewPosNext,
-        address _currDelegateNewPosPrev,
-        address _currDelegateNewPosNext
+        address _newPosPrev,
+        address _newPosNext
     ) external {
-        _bond(
-            _amount,
-            _orchestrator,
-            _for,
-            _oldDelegateNewPosPrev,
-            _oldDelegateNewPosNext,
-            _currDelegateNewPosPrev,
-            _currDelegateNewPosNext
-        );
+        require(_orchestrator != _for, "CANNOT_SELF_DELEGATE");
+        _delegate(_amount, _orchestrator, _for, _newPosPrev, _newPosNext);
+        emit Delegate(_for, _orchestrator, _amount);
     }
 
     /**
-     * @notice Delegate stake towards a specific address and updates the transcoder pool using optional list hints if needed
-     * @dev If the caller is decreasing the stake of its old delegate in the transcoder pool, the caller can provide an optional hint
-     * for the insertion position of the old delegate via the `_oldDelegateNewPosPrev` and `_oldDelegateNewPosNext` params.
-     * If the caller is delegating to a delegate that is in the transcoder pool, the caller can provide an optional hint for the
-     * insertion position of the delegate via the `_currDelegateNewPosPrev` and `_currDelegateNewPosNext` params.
-     * In both cases, a linear search will be executed starting at the hint to find the correct position. In the best case, the hint
-     * is the correct position so no search is executed. See SortedDoublyLL.sol for details on list hints
-     * @param _amount The amount of tokens to stake.
-     * @param _orchestrator The address of the transcoder to stake towards
-     * @param _for The address which will own the stake
-     * @param _oldDelegateNewPosPrev The address of the previous transcoder in the pool for the old delegate
-     * @param _oldDelegateNewPosNext The address of the next transcoder in the pool for the old delegate
-     * @param _currDelegateNewPosPrev The address of the previous transcoder in the pool for the current delegate
-     * @param _currDelegateNewPosNext The address of the next transcoder in the pool for the current delegate
+     * @notice Partially or completely change a delegation from one Orchestrator to another. Only delegations whereby the existing orchestrator is not the caller can be changed.
+     * @dev If the Orchestrator being delegated to enters, or is already in the orchestrator pool, the caller can provide an optional hint for its insertion position in the
+     * pool via the `_newPosPrev` and `_newPosNext` params. A linear search will be executed starting at the hint to find the correct position.
+     * In the best case, the hint is the correct position so no search is executed. See SortedDoublyLL.sol details on list hints
+     * @param _amount Amount of tokens to change for the delegation
+     * @param _oldOrchestrator Address of the Orchestrator to delegate LPT away from
+     * @param _newOrchestrator Address of the Orchestrator to delegate LPT to
+     * @param _oldOrchestratorNewPosPrev Address of the previous orchestrator in pool for '_oldOrchestrator' if it remains in the pool
+     * @param _oldOrchestratorNewPosNext Address of the next orchestrator in pool for '_oldOrchestrator' if it remains in the pool
+     * @param _newOrchestratorNewPosPrev Address of the previous orchestrator in the pool for '_newOrchestrator' if it enters or is in the pool
+     * @param _newOrchestratorNewPosNext Address of the next orchestrator in the pool for '_newOrchestrator' if it enters or is in the pool
      */
-    function _bond(
+    function changeDelegation(
         uint256 _amount,
-        address _orchestrator,
-        address _for,
-        address _oldDelegateNewPosPrev,
-        address _oldDelegateNewPosNext,
-        address _currDelegateNewPosPrev,
-        address _currDelegateNewPosNext
-    ) internal whenSystemNotPaused currentRoundInitialized autoClaimFees(_orchestrator) {
-        if (_orchestrator != _for) {
-            require(!isRegisteredOrchestrator(_for), "ORCHESTRATOR_CAN_NOT_DELEGATE");
+        address _oldOrchestrator,
+        address _newOrchestrator,
+        address _oldOrchestratorNewPosPrev,
+        address _oldOrchestratorNewPosNext,
+        address _newOrchestratorNewPosPrev,
+        address _newOrchestratorNewPosNext
+    ) external {
+        // If _oldOrchestrator == msg.sender , revert
+        require(msg.sender != _oldOrchestrator, "CANNOT_CHANGE_DELEGATION_FOR_SELF");
+        // cannot change zero amount
+        require(_amount > 0, "ZERO_CHANGE_DELEGATION_AMOUNT");
+
+        // 1. Subtract stake for oldOrchestrator
+        Delegations.Pool storage oldPool = orchestrators[_oldOrchestrator].delegationPool;
+
+        if (orchestratorPoolV2.contains(_oldOrchestrator)) {
+            uint256 oldOrchestratorStake = oldPool.poolTotalStake();
+            _decreaseOrchTotalStake(
+                _oldOrchestrator,
+                oldOrchestratorStake,
+                _amount,
+                _oldOrchestratorNewPosPrev,
+                _oldOrchestratorNewPosNext
+            );
         }
 
-        // cannot delegate zero amount
-        require(_amount > 0, "ZERO_DELEGATION_AMOUNT");
+        oldPool.unstake(msg.sender, _amount);
 
-        // Bond total to stake to new orchestrator
-        Delegations.Pool storage newPool = orchestrators[_orchestrator].delegationPool;
-        uint256 oldTotalStake = newPool.poolTotalStake();
-        newPool.stake(_for, _amount);
+        emit Undelegate(msg.sender, _oldOrchestrator, _amount, 0);
+
+        // cfr. undelegate
+        // 2. Add stake to new orchestrator
+        Delegations.Pool storage newPool = orchestrators[_newOrchestrator].delegationPool;
+        newPool.stake(msg.sender, _amount);
+        uint256 newOrchestratorStake = newPool.poolTotalStake();
 
         _increaseOrchTotalStake(
-            _orchestrator,
-            oldTotalStake,
+            _newOrchestrator,
+            newOrchestratorStake,
             _amount,
-            _currDelegateNewPosPrev,
-            _currDelegateNewPosNext
+            _newOrchestratorNewPosPrev,
+            _newOrchestratorNewPosNext
         );
 
-        // Transfer the LPT to the Minter
-        livepeerToken().transferFrom(_for, address(minter()), _amount);
-
-        emit Bond(_orchestrator, _for, _amount, newPool.stakeOf(_for));
+        emit Delegate(msg.sender, _newOrchestrator, _amount);
     }
 
     /**
-     * @notice Unbond an amount of the delegator's bonded stake
-     * @param _amount Amount of tokens to unbond
-     */
-    function unbond(uint256 _amount) external {
-        unbondWithHint(msg.sender, _amount, address(0), address(0));
-    }
-
-    /**
-     * @notice Unbond an amount of the delegator's bonded stake and updates the transcoder pool using an optional list hint if needed
-     * @dev If the caller remains in the transcoder pool, the caller can provide an optional hint for its insertion position in the
+     * @notice Undelegate an amount of LPT for the caller from the provided '_orchestrator'.
+     * @dev If the Orchestrator being undelegated from remains in the orchestrator pool, the caller can provide an optional hint for its insertion position in the
      * pool via the `_newPosPrev` and `_newPosNext` params. A linear search will be executed starting at the hint to find the correct position.
      * In the best case, the hint is the correct position so no search is executed. See SortedDoublyLL.sol details on list hints
-     * @param _amount Amount of tokens to unbond
-     * @param _newPosPrev Address of previous transcoder in pool if the caller remains in the pool
-     * @param _newPosNext Address of next transcoder in pool if the caller remains in the pool
+     * @param _amount Amount of tokens to undelegate
+     * @param _newPosPrev Address of previous orchestrator in pool if '_orchestrator' remains in the pool
+     * @param _newPosNext Address of next orchestrator in pool if '_orchestrator' remains in the pool
      */
-    function unbondWithHint(
-        address _delegate,
+    function undelegate(
         uint256 _amount,
+        address _orchestrator,
         address _newPosPrev,
         address _newPosNext
-    ) public whenSystemNotPaused currentRoundInitialized autoClaimFees(_delegate) {
-        require(_amount > 0, "ZERO_UNBOND_AMOUNT");
-
-        uint256 delegatorStake = stakeOf(_delegate, msg.sender);
-        require(delegatorStake > 0, "CALLER_NOT_BONDED");
-        require(_amount <= delegatorStake, "AMOUNT_EXCEEDS_STAKE");
-
-        uint256 amount = _amount;
-
-        // If the delegator is an orchestrator, draw from commission first
-        if (msg.sender == _delegate) {
-            Orchestrator storage orch = orchestrators[_delegate];
-            uint256 rewardCommissions = orch.rewardCommissions;
-            uint256 fromCommission = MathUtils.min(rewardCommissions, amount);
-            amount -= fromCommission;
-
-            if (orchestratorPoolV2.contains(msg.sender)) {
-                if (_amount == delegatorStake) {
-                    _resignOrchestrator(msg.sender);
-                } else {
-                    _decreaseOrchTotalStake(msg.sender, delegatorStake, _amount, _newPosPrev, _newPosNext);
-                }
-            }
-
-            orch.rewardCommissions -= fromCommission;
-        }
-
-        if (amount > 0) {
-            Delegations.Pool storage pool = orchestrators[_delegate].delegationPool;
-            pool.unstake(msg.sender, amount);
-        }
-
-        // Create unbonding lock for _amount
-        uint256 id = lastUnbondingLockID;
-        lastUnbondingLockID++;
-
-        uint256 currentRound = roundsManager().currentRound();
-
-        unbondingLocks[id] = UnbondingLock({ orchestrator: _delegate, amount: _amount, withdrawRound: currentRound });
-
-        emit Unbond(_delegate, msg.sender, id, _amount, currentRound);
+    ) external {
+        uint256 lockID = _undelegate(_amount, _orchestrator, msg.sender, _newPosPrev, _newPosNext);
+        emit Undelegate(msg.sender, _orchestrator, _amount, lockID);
     }
 
     /**
-     * @notice Rebond tokens for an unbonding lock to a delegator's current 
-        delegate while a delegator is in the Bonded or Pending status
-     * @param _unbondingLockId ID of unbonding lock to rebond with
-     */
-    function rebond(uint256 _unbondingLockId) external {
-        rebondWithHint(_unbondingLockId, address(0), address(0));
-    }
-
-    /**
-     * @notice Rebond tokens for an unbonding lock to a delegator's current delegate while a delegator is in the Bonded or Pending status and updates
-     * the transcoder pool using an optional list hint if needed
-     * @dev If the delegate is in the transcoder pool, the caller can provide an optional hint for the delegate's insertion position in the
+     * @notice Redelegate LPT that was previously undelegated, but is still pending withdrawal, for the caller using an unstaking lock.
+     * @dev If the orchestrator being redelegated to is in the orchestrator pool, the caller can provide an optional hint for the delegate's insertion position in the
      * pool via the `_newPosPrev` and `_newPosNext` params. A linear search will be executed starting at the hint to find the correct position.
      * In the best case, the hint is the correct position so no search is executed. See SortedDoublyLL.sol details on list hints
-     * @param _unbondingLockId ID of unbonding lock to rebond with
-     * @param _newPosPrev Address of previous transcoder in pool if the delegate is in the pool
-     * @param _newPosNext Address of next transcoder in pool if the delegate is in the pool
+     * @param _unstakingLockID ID of unstaking lock to redelegate with
+     * @param _newPosPrev Address of previous orchestrator in pool if the orchestrator being redelegated to enters or is in the pool
+     * @param _newPosNext Address of next orchestrator in pool if the orchestrator being redelegated to enters or is in the pool
      */
-    function rebondWithHint(
-        uint256 _unbondingLockId,
+    function redelegate(
+        uint256 _unstakingLockID,
         address _newPosPrev,
         address _newPosNext
-    ) public whenSystemNotPaused currentRoundInitialized {
-        // Process rebond using unbonding lock
-        _processRebond(msg.sender, _unbondingLockId, _newPosPrev, _newPosNext);
+    ) external {
+        _redelegate(_unstakingLockID, msg.sender, _newPosPrev, _newPosNext);
     }
 
     /**
-     * @notice Rebond tokens for an unbonding lock to a delegate while a delegator is in the Unbonded status
-     * @param _to Address of delegate
-     * @param _unbondingLockId ID of unbonding lock to rebond with
+     * @notice Withdraws tokens for an unstaking lock that has existed through an unstaking period
+     * @param _unstakingLockId ID of unstaking lock to withdraw with
      */
-    function rebondFromUnbonded(address _to, uint256 _unbondingLockId) external {
-        rebondFromUnbondedWithHint(_to, _unbondingLockId, address(0), address(0));
-    }
+    function withdrawStake(uint256 _unstakingLockId) external whenSystemNotPaused currentRoundInitialized {
+        UnstakingLock storage lock = unstakingLocks[_unstakingLockId];
 
-    /**
-     * @notice Rebond tokens for an unbonding lock to a delegate while a delegator is in the Unbonded status and updates the transcoder pool using
-     * an optional list hint if needed
-     * @dev If the delegate joins the transcoder pool, the caller can provide an optional hint for the delegate's insertion position in the
-     * pool via the `_newPosPrev` and `_newPosNext` params. A linear search will be executed starting at the hint to find the correct position.
-     * In the best case, the hint is the correct position so no search is executed. See SortedDoublyLL.sol for details on list hints
-     * @param _delegate Address of delegate
-     * @param _unbondingLockId ID of unbonding lock to rebond with
-     * @param _newPosPrev Address of previous transcoder in pool if the delegate joins the pool
-     * @param _newPosNext Address of next transcoder in pool if the delegate joins the pool
-     */
-    function rebondFromUnbondedWithHint(
-        address _delegate,
-        uint256 _unbondingLockId,
-        address _newPosPrev,
-        address _newPosNext
-    ) public whenSystemNotPaused currentRoundInitialized {
-        require(stakeOf(_delegate, msg.sender) == 0, "CALLER_NOT_UNBONDED");
-
-        unbondingLocks[_unbondingLockId].orchestrator = _delegate;
-        // Process rebond using unbonding lock
-        _processRebond(msg.sender, _unbondingLockId, _newPosPrev, _newPosNext);
-    }
-
-    /**
-     * @notice Withdraws tokens for an unbonding lock that has existed through an unbonding period
-     * @param _unbondingLockId ID of unbonding lock to withdraw with
-     */
-    function withdrawStake(uint256 _unbondingLockId) external whenSystemNotPaused currentRoundInitialized {
-        UnbondingLock storage lock = unbondingLocks[_unbondingLockId];
-
-        require(isValidUnbondingLock(_unbondingLockId), "invalid unbonding lock ID");
+        require(isValidUnstakingLock(_unstakingLockId), "INVALID_UNSTAKING_LOCK_ID");
         require(
             lock.withdrawRound <= roundsManager().currentRound(),
             "withdraw round must be before or equal to the current round"
         );
+        require(msg.sender == lock.delegator, "CALLER_NOT_LOCK_OWNER");
 
         uint256 amount = lock.amount;
         uint256 withdrawRound = lock.withdrawRound;
-        // Delete unbonding lock
-        delete unbondingLocks[_unbondingLockId];
+        // Delete unstaking lock
+        delete unstakingLocks[_unstakingLockId];
 
         // Tell Minter to transfer stake (LPT) to the delegator
         minter().trustedTransferTokens(msg.sender, amount);
-
-        emit WithdrawStake(msg.sender, _unbondingLockId, amount, withdrawRound);
+        emit WithdrawStake(msg.sender, _unstakingLockId, amount, withdrawRound);
     }
 
     /**
      * @notice Withdraw fees for an address
-     * @param _delegate Address of the delegate to claim fees from
+     * @param _orchestrator Address of the orchestrator to claim fees from
      * @dev Calculates amount of fees to claim using `feesOf`
      * @dev Updates Delegation.feeCheckpoint for the address to the current total amount of fees in the delegation pool
      * @dev If the claimer is an orchestator, reset its commission
      * @dev Transfers funds
      */
-    function withdrawFees(address _delegate) external whenSystemNotPaused currentRoundInitialized {
-        _claimFees(_delegate, payable(msg.sender));
+    function withdrawFees(address _orchestrator) external whenSystemNotPaused currentRoundInitialized {
+        _claimFees(_orchestrator, payable(msg.sender));
     }
 
     /**
@@ -407,32 +377,22 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
      */
 
     /**
-     * @notice Sets commission rates as a transcoder and if the caller is not in the transcoder pool tries to add it
+     * @notice Sets commission rates as a orchestrator and if the caller is not in the orchestrator pool tries to add it
      * @dev Percentages are represented as numerators of fractions over MathUtils.PERC_DIVISOR
+     * @dev caller can provide an optional hint for the insertion position in the pool via the `_newPosPrev` and `_newPosNext` params. A linear search will
+        be executed starting at the hint to find the correct position - in the best case, the hint is the correct position so no search is executed.
+        See SortedDoublyLL.sol for details on list hints
      * @param _rewardShare % of rewards paid to delegators by an orchestrator
-     * @param _feeShare % of fees paid to delegators by a transcoder
+     * @param _feeShare % of fees paid to delegators by a orchestrator
+     * @param _newPosPrev Address of previous orchestrator in pool if the caller joins the pool
+     * @param _newPosNext Address of next orchestrator in pool if the caller joins the pool
      */
-    function transcoder(uint256 _rewardShare, uint256 _feeShare) external {
-        transcoderWithHint(_rewardShare, _feeShare, address(0), address(0));
-    }
-
-    /**
-     * @notice Sets commission rates as a transcoder and if the caller is not in the transcoder pool tries to add it using an optional list hint
-     * @dev Percentages are represented as numerators of fractions over MathUtils.PERC_DIVISOR. If the caller is going to be added to the pool, the
-     * caller can provide an optional hint for the insertion position in the pool via the `_newPosPrev` and `_newPosNext` params. A linear search will
-     * be executed starting at the hint to find the correct position - in the best case, the hint is the correct position so no search is executed.
-     * See SortedDoublyLL.sol for details on list hints
-     * @param _rewardShare % of reward paid to delegators by an orchestrator
-     * @param _feeShare % of fees paid to delegators by a transcoder
-     * @param _newPosPrev Address of previous transcoder in pool if the caller joins the pool
-     * @param _newPosNext Address of next transcoder in pool if the caller joins the pool
-     */
-    function transcoderWithHint(
+    function orchestrator(
         uint256 _rewardShare,
         uint256 _feeShare,
         address _newPosPrev,
         address _newPosNext
-    ) public whenSystemNotPaused currentRoundInitialized {
+    ) external whenSystemNotPaused currentRoundInitialized {
         require(!roundsManager().currentRoundLocked(), "CURRENT_ROUND_LOCKED");
         require(MathUtils.validPerc(_rewardShare), "REWARDSHARE_INVALID_PERC");
         require(MathUtils.validPerc(_feeShare), "FEESHARE_INVALID_PERC");
@@ -441,7 +401,8 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
         Orchestrator storage o = orchestrators[msg.sender];
         uint256 currentRound = roundsManager().currentRound();
 
-        require(!isActiveTranscoder(msg.sender) || o.lastRewardRound == currentRound, "COMMISSION_RATES_LOCKED");
+        // caller can't be active or must have already called reward for the current round
+        require(!isActiveOrchestrator(msg.sender) || o.lastRewardRound == currentRound, "COMMISSION_RATES_LOCKED");
 
         o.rewardShare = _rewardShare;
         o.feeShare = _feeShare;
@@ -456,46 +417,35 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
             );
         }
 
-        emit TranscoderUpdate(msg.sender, _rewardShare, _feeShare);
+        emit OrchestratorUpdate(msg.sender, _rewardShare, _feeShare);
     }
 
     /**
-     * @notice Mint token rewards for an active transcoder and its delegators
-     */
-    function reward() external {
-        rewardWithHint(address(0), address(0));
-    }
-
-    /**
-     * @notice Mint token rewards for an active transcoder and its delegators and update the transcoder pool using an optional list hint if needed
-     * @dev If the caller is in the transcoder pool, the caller can provide an optional hint for its insertion position in the
+     * @notice Mint token rewards for an active orchestrator and its delegators and update the orchestrator pool using an optional list hint if needed
+     * @dev If the caller is in the orchestrator pool, the caller can provide an optional hint for its insertion position in the
      * pool via the `_newPosPrev` and `_newPosNext` params. A linear search will be executed starting at the hint to find the correct position.
      * In the best case, the hint is the correct position so no search is executed. See SortedDoublyLL.sol for details on list hints
-     * @param _newPosPrev Address of previous transcoder in pool if the caller is in the pool
-     * @param _newPosNext Address of next transcoder in pool if the caller is in the pool
+     * @param _newPosPrev Address of previous orchestrator in pool if the caller is in the pool
+     * @param _newPosNext Address of next orchestrator in pool if the caller is in the pool
      */
-    function rewardWithHint(address _newPosPrev, address _newPosNext)
-        public
-        whenSystemNotPaused
-        currentRoundInitialized
-    {
+    function reward(address _newPosPrev, address _newPosNext) public whenSystemNotPaused currentRoundInitialized {
         uint256 currentRound = roundsManager().currentRound();
 
-        require(isActiveTranscoder(msg.sender), "caller must be an active transcoder");
+        require(isActiveOrchestrator(msg.sender), "ORCHESTRATOR_NOT_ACTIVE");
 
         Orchestrator storage o = orchestrators[msg.sender];
 
-        require(o.lastRewardRound != currentRound, "caller has already called reward for the current round");
+        require(o.lastRewardRound != currentRound, "ALREADY_CALLED_REWARD_FOR_CURRENT_ROUND");
 
-        // Create reward based on active transcoder's stake relative to the total active stake
-        // rewardTokens = (current mintable tokens for the round * active transcoder stake) / total active stake
+        // Create reward based on active orchestrator's stake relative to the total active stake
+        // rewardTokens = (current mintable tokens for the round * active orchestrator stake) / total active stake
         uint256 totalStake = o.delegationPool.poolTotalStake();
         uint256 rewardTokens = minter().createReward(totalStake, currentRoundTotalActiveStake);
 
         _updateOrchestratorWithRewards(msg.sender, rewardTokens);
         _increaseOrchTotalStake(msg.sender, totalStake, rewardTokens, _newPosPrev, _newPosNext);
 
-        // Set last round that transcoder called reward
+        // Set last round that orchestrator called reward
         o.lastRewardRound = currentRound;
 
         emit Reward(msg.sender, rewardTokens);
@@ -516,11 +466,12 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
      * @dev Reverts if system is paused
      * @dev Reverts if caller is not TicketBroker
      */
-    function updateTranscoderWithFees(
-        address _orchestrator,
-        uint256 _fees,
-        uint256 /*_round*/
-    ) external override whenSystemNotPaused onlyTicketBroker {
+    function updateOrchestratorWithFees(address _orchestrator, uint256 _fees)
+        external
+        override
+        whenSystemNotPaused
+        onlyTicketBroker
+    {
         _updateOrchestratorWithFees(_orchestrator, _fees);
     }
 
@@ -537,17 +488,21 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
      */
 
     /**
-     * @notice Return whether an unbonding lock for a delegator is valid
-     * @param _unbondingLockId ID of unbonding lock
-     * @return true if unbondingLock for ID has a non-zero withdraw round
+     * @notice Return whether an unstaking lock for a delegator is valid
+     * @param _unstakingLockId ID of unstaking lock
+     * @return true if unstakingLock for ID has a non-zero withdraw round
      */
-    function isValidUnbondingLock(uint256 _unbondingLockId) public view returns (bool) {
-        // A unbonding lock is only valid if it has a non-zero withdraw round (the default value is zero)
-        return unbondingLocks[_unbondingLockId].withdrawRound > 0;
+    function isValidUnstakingLock(uint256 _unstakingLockId) public view returns (bool) {
+        // A unstaking lock is only valid if it has a non-zero withdraw round (the default value is zero)
+        return unstakingLocks[_unstakingLockId].withdrawRound > 0;
     }
 
-    function getDelegation(address _delegate, address _delegator) public view returns (uint256 stake, uint256 fees) {
-        (stake, fees) = orchestrators[_delegate].delegationPool.stakeAndFeesOf(_delegator);
+    function getDelegation(address _orchestrator, address _delegator)
+        public
+        view
+        returns (uint256 stake, uint256 fees)
+    {
+        (stake, fees) = orchestrators[_orchestrator].delegationPool.stakeAndFeesOf(_delegator);
     }
 
     /**
@@ -558,12 +513,9 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
         so for multi-delegation we can do calculations off chain
         and repurpose this to 'orchestratorStake(address _orchestrator)'
      */
-    function stakeOf(address _delegate, address _delegator) public view returns (uint256 stake) {
-        Orchestrator storage orch = orchestrators[_delegate];
-        stake = orch.delegationPool.stakeOf(_delegator);
-        if (_delegate == _delegator) {
-            stake += orch.rewardCommissions;
-        }
+    function getDelegatedStake(address _orchestrator, address _delegator) public view returns (uint256 delegatedStake) {
+        Orchestrator storage orch = orchestrators[_orchestrator];
+        delegatedStake = orch.delegationPool.stakeOf(_delegator);
     }
 
     /**
@@ -576,93 +528,236 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
         so for multi-delegation we can do calculations off chain
         and repurpose this to 'orchestratorFees(address _orchestrator)'
      */
-    function feesOf(address _delegate, address _delegator) public view returns (uint256 fees) {
-        Orchestrator storage orch = orchestrators[_delegate];
+    function feesOf(address _orchestrator, address _delegator) public view returns (uint256 fees) {
+        Orchestrator storage orch = orchestrators[_orchestrator];
         fees = orch.delegationPool.feesOf(_delegator);
-        if (_delegate == _delegator) {
+        if (_orchestrator == _delegator) {
             fees += orch.feeCommissions;
         }
     }
 
     /**
-     * @notice Returns total bonded stake for a transcoder
-     * @param _orchestrator Address of transcoder
-     * @return total bonded stake for a delegator
+     * @notice Returns total stake for a orchestrator
+     * @param _orchestrator Address of orchestrator
+     * @return total stake for an orchestrator
      */
     function orchestratorTotalStake(address _orchestrator) public view returns (uint256) {
         return orchestrators[_orchestrator].delegationPool.poolTotalStake();
     }
 
     /**
-     * @notice Return whether a transcoder is registered
-     * @param _orchestrator Transcoder address
-     * @return true if transcoder is self-bonded
+     * @notice Return whether a orchestrator is registered
+     * @param _orchestrator orchestrator address
+     * @return true if orchestrator is self-delegated
      */
     function isRegisteredOrchestrator(address _orchestrator) public view returns (bool) {
         return orchestrators[_orchestrator].delegationPool.stakeOf(_orchestrator) > 0;
     }
 
     /**
-     * @notice Return whether a transcoder is active for the current round
-     * @param _orchestrator Transcoder address
-     * @return true if transcoder is active
+     * @notice Return whether a orchestrator is active for the current round
+     * @param _orchestrator orchestrator address
+     * @return true if orchestrator is active
      */
-    function isActiveTranscoder(address _orchestrator) public view override returns (bool) {
+    function isActiveOrchestrator(address _orchestrator) public view override returns (bool) {
         Orchestrator storage o = orchestrators[_orchestrator];
         uint256 currentRound = roundsManager().currentRound();
         return o.activationRound <= currentRound && currentRound < o.deactivationRound;
     }
 
     /**
-     * @notice Computes transcoder status
-     * @param _orchestrator Address of transcoder
-     * @return active, registered or not registered transcoder status
+     * @notice Computes orchestrator status
+     * @param _orchestrator Address of orchestrator
+     * @return active, registered or not registered orchestrator status
      */
     function orchestratorStatus(address _orchestrator) public view returns (OrchestratorStatus) {
-        if (isActiveTranscoder(_orchestrator)) return OrchestratorStatus.Active;
+        if (isActiveOrchestrator(_orchestrator)) return OrchestratorStatus.Active;
         if (isRegisteredOrchestrator(_orchestrator)) return OrchestratorStatus.Registered;
         return OrchestratorStatus.NotRegistered;
     }
 
     /**
-     * @notice Returns max size of transcoder pool
-     * @return transcoder pool max size
+     * @notice Return orchestrator information
+     * @param _orchestrator Address of orchestrator
+     * @return lastRewardRound Orchestrator's last reward round
+     * @return rewardShare Orchestrator's reward share
+     * @return feeShare Orchestrator's fee share
+     * @return activationRound Round in which orchestrator became active
+     * @return deactivationRound Round in which orchestrator will no longer be active
      */
-    function getTranscoderPoolMaxSize() public view returns (uint256) {
+    function getOrchestrator(address _orchestrator)
+        public
+        view
+        returns (
+            uint256 lastRewardRound,
+            uint256 rewardShare,
+            uint256 feeShare,
+            uint256 activationRound,
+            uint256 deactivationRound
+        )
+    {
+        Orchestrator storage o = orchestrators[_orchestrator];
+
+        lastRewardRound = o.lastRewardRound;
+        rewardShare = o.rewardShare;
+        feeShare = o.feeShare;
+        activationRound = o.activationRound;
+        deactivationRound = o.deactivationRound;
+        lastRewardRound = o.lastRewardRound;
+    }
+
+    /**
+     * @notice Returns max size of orchestrator pool
+     * @return orchestrator pool max size
+     */
+    function getOrchestratorPoolMaxSize() public view returns (uint256) {
         return orchestratorPoolV2.getMaxSize();
     }
 
     /**
-     * @notice Returns size of transcoder pool
-     * @return transcoder pool current size
+     * @notice Returns size of orchestrator pool
+     * @return orchestrator pool current size
      */
-    function getTranscoderPoolSize() public view override returns (uint256) {
+    function getOrchestratorPoolSize() public view override returns (uint256) {
         return orchestratorPoolV2.getSize();
     }
 
     /**
-     * @notice Returns transcoder with most stake in pool
-     * @return address for transcoder with highest stake in transcoder pool
+     * @notice Returns orchestrator with most stake in pool
+     * @return address for orchestrator with highest stake in orchestrator pool
      */
-    function getFirstTranscoderInPool() public view returns (address) {
+    function getFirstOrchestratorInPool() public view returns (address) {
         return orchestratorPoolV2.getFirst();
     }
 
     /**
-     * @notice Returns next transcoder in pool for a given transcoder
-     * @param _orchestrator Address of a transcoder in the pool
-     * @return address for the transcoder after '_transcoder' in transcoder pool
+     * @notice Returns next orchestrator in pool for a given orchestrator
+     * @param _orchestrator Address of a orchestrator in the pool
+     * @return address for the orchestrator after '_orchestrator' in orchestrator pool
      */
-    function getNextTranscoderInPool(address _orchestrator) public view returns (address) {
+    function getNextOrchestratorInPool(address _orchestrator) public view returns (address) {
         return orchestratorPoolV2.getNext(_orchestrator);
     }
 
     /**
-     * @notice Return total bonded tokens
+     * @notice Return total staked tokens
      * @return total active stake for the current round
      */
-    function getTotalBonded() public view override returns (uint256) {
+    function getTotalStaked() public view override returns (uint256) {
         return currentRoundTotalActiveStake;
+    }
+
+    /**
+     * @notice Delegate stake towards a specific address and updates the orchestrator pool using optional list hints if needed
+     * @dev If the caller is decreasing the stake of its old delegate in the orchestrator pool, the caller can provide an optional hint
+     * for the insertion position of the old delegate via the `_oldDelegateNewPosPrev` and `_oldDelegateNewPosNext` params.
+     * If the caller is delegating to a delegate that is in the orchestrator pool, the caller can provide an optional hint for the
+     * insertion position of the delegate via the `_newPosPrev` and `_newPosNext` params.
+     * In both cases, a linear search will be executed starting at the hint to find the correct position. In the best case, the hint
+     * is the correct position so no search is executed. See SortedDoublyLL.sol for details on list hints
+     * @param _amount The amount of tokens to stake.
+     * @param _orchestrator The address of the orchestrator to stake towards
+     * @param _for The address which will own the stake
+     * @param _newPosPrev The address of the previous orchestrator in the pool for the current delegate
+     * @param _newPosNext The address of the next orchestrator in the pool for the current delegate
+     */
+    function _delegate(
+        uint256 _amount,
+        address _orchestrator,
+        address _for,
+        address _newPosPrev,
+        address _newPosNext
+    ) internal whenSystemNotPaused currentRoundInitialized autoClaimFees(_orchestrator, _for) {
+        // cannot delegate zero amount
+        require(_amount > 0, "ZERO_DELEGATION_AMOUNT");
+
+        // Delegate stake to _orchestrator for account "_for"
+        Delegations.Pool storage _pool = orchestrators[_orchestrator].delegationPool;
+        uint256 oldTotalStake = _pool.poolTotalStake();
+        _pool.stake(_for, _amount);
+
+        _increaseOrchTotalStake(_orchestrator, oldTotalStake, _amount, _newPosPrev, _newPosNext);
+
+        // Transfer the LPT to the Minter
+        livepeerToken().transferFrom(_for, address(minter()), _amount);
+    }
+
+    function _undelegate(
+        uint256 _amount,
+        address _orchestrator,
+        address _for,
+        address _newPosPrev,
+        address _newPosNext
+    ) internal whenSystemNotPaused currentRoundInitialized autoClaimFees(_orchestrator, _for) returns (uint256 id) {
+        require(_amount > 0, "ZERO_UNSTAKE_AMOUNT");
+
+        uint256 orchStake = orchestratorTotalStake(_orchestrator);
+        uint256 delegatorStake = getDelegatedStake(_orchestrator, _for);
+
+        require(delegatorStake > 0, "CALLER_NOT_STAKED");
+        require(_amount <= delegatorStake, "AMOUNT_EXCEEDS_STAKE");
+
+        // If the orchestrator is in the orchestrator pool, update the pool
+        if (orchestratorPoolV2.contains(_orchestrator)) {
+            // If the caller is the orchestrator itself and the amount to undelegate
+            // equals the self-staked amount, resign the orchestrator
+            if (_orchestrator == _for && _amount == delegatorStake) {
+                _resignOrchestrator(_orchestrator);
+            } else {
+                // Otherwise decrease the orchestrator's stake and update its position in the orchestrator pool
+                _decreaseOrchTotalStake(_orchestrator, orchStake, _amount, _newPosPrev, _newPosNext);
+            }
+        }
+
+        Delegations.Pool storage pool = orchestrators[_orchestrator].delegationPool;
+        pool.unstake(_for, _amount);
+
+        // Create unstaking lock for _amount
+        id = lastUnstakingLockID;
+        lastUnstakingLockID++;
+
+        uint256 currentRound = roundsManager().currentRound();
+
+        unstakingLocks[id] = UnstakingLock({
+            delegator: _for,
+            orchestrator: _orchestrator,
+            amount: _amount,
+            withdrawRound: currentRound + unstakingPeriod
+        });
+    }
+
+    function _redelegate(
+        uint256 _unstakingLockID,
+        address _for,
+        address _newPosPrev,
+        address _newPosNext
+    ) internal whenSystemNotPaused currentRoundInitialized {
+        UnstakingLock storage lock = unstakingLocks[_unstakingLockID];
+
+        require(isValidUnstakingLock(_unstakingLockID), "INVALID_UNSTAKING_LOCK_ID");
+        require(msg.sender == lock.delegator, "CALLER_NOT_LOCK_OWNER");
+
+        address orchestrator = lock.orchestrator;
+        uint256 amount = lock.amount;
+
+        // Claim outstanding fees and checkpoint fee factor
+        _claimFees(orchestrator, payable(_for));
+
+        uint256 oldStake = orchestratorTotalStake(orchestrator);
+
+        // Increase delegator's staked amount
+        orchestrators[orchestrator].delegationPool.stake(_for, amount);
+
+        // Delete lock
+        delete unstakingLocks[_unstakingLockID];
+
+        _increaseOrchTotalStake(orchestrator, oldStake, amount, _newPosPrev, _newPosNext);
+
+        if (_for == orchestrator) {
+            emit Stake(orchestrator, amount);
+        } else {
+            emit Delegate(_for, orchestrator, amount);
+        }
     }
 
     function _updateOrchestratorWithFees(address _orchestrator, uint256 _fees) internal {
@@ -687,7 +782,8 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
 
         uint256 rewardShare = MathUtils.percOf(_rewards, orch.rewardShare);
 
-        orch.rewardCommissions = _rewards - rewardShare;
+        uint256 rewardCut = _rewards - rewardShare;
+        orch.delegationPool.stake(_orchestrator, rewardCut);
         orch.delegationPool.addRewards(rewardShare);
     }
 
@@ -724,25 +820,25 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
     }
 
     /**
-     * @dev Remove a transcoder from the pool and deactivate it
+     * @dev Remove a orchestrator from the pool and deactivate it
      */
     function _resignOrchestrator(address _orchestrator) internal {
-        // Not zeroing 'Transcoder.lastActiveStakeUpdateRound' saves gas (5k when transcoder is evicted and 20k when transcoder is reinserted)
+        // Not zeroing 'Orchestrator.lastActiveStakeUpdateRound' saves gas (5k when orchestrator is evicted and 20k when orchestrator is reinserted)
         // There should be no side-effects as long as the value is properly updated on stake updates
         // Not zeroing the stake on the current round's 'EarningsPool' saves gas and should have no side effects as long as
-        // 'EarningsPool.setStake()' is called whenever a transcoder becomes active again.
+        // 'EarningsPool.setStake()' is called whenever a orchestrator becomes active again.
         orchestratorPoolV2.remove(_orchestrator);
         nextRoundTotalActiveStake -= orchestratorTotalStake(_orchestrator);
         uint256 deactivationRound = roundsManager().currentRound() + 1;
         orchestrators[_orchestrator].deactivationRound = deactivationRound;
-        emit TranscoderDeactivated(_orchestrator, deactivationRound);
+        emit OrchestratorDeactivated(_orchestrator, deactivationRound);
     }
 
     /**
-     * @dev Tries to add a transcoder to active transcoder pool, evicts the active transcoder with the lowest stake if the pool is full
-     * @param _orchestrator The transcoder to insert into the transcoder pool
-     * @param _totalStake The total stake for '_transcoder'
-     * @param _activationRound The round in which the transcoder should become active
+     * @dev Tries to add a orchestrator to active orchestrator pool, evicts the active orchestrator with the lowest stake if the pool is full
+     * @param _orchestrator The orchestrator to insert into the orchestrator pool
+     * @param _totalStake The total stake for '_orchestrator'
+     * @param _activationRound The round in which the orchestrator should become active
      */
     function _tryToJoinActiveSet(
         address _orchestrator,
@@ -757,22 +853,22 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
             address lastOrchestrator = orchestratorPoolV2.getLast();
             uint256 lastStake = orchestrators[lastOrchestrator].delegationPool.poolTotalStake();
 
-            // If the pool is full and the transcoder has less stake than the least stake transcoder in the pool
-            // then the transcoder is unable to join the active set for the next round
+            // If the pool is full and the orchestrator has less stake than the least stake orchestrator in the pool
+            // then the orchestrator is unable to join the active set for the next round
             if (_totalStake <= lastStake) {
                 return;
             }
 
-            // Evict the least stake transcoder from the active set for the next round
-            // Not zeroing 'Transcoder.lastActiveStakeUpdateRound' saves gas (5k when transcoder is evicted and 20k when transcoder is reinserted)
+            // Evict the least stake orchestrator from the active set for the next round
+            // Not zeroing 'Orchestrator.lastActiveStakeUpdateRound' saves gas (5k when orchestrator is evicted and 20k when orchestrator is reinserted)
             // There should be no side-effects as long as the value is properly updated on stake updates
             // Not zeroing the stake on the current round's 'EarningsPool' saves gas and should have no side effects as long as
-            // 'EarningsPool.setStake()' is called whenever a transcoder becomes active again.
+            // 'EarningsPool.setStake()' is called whenever a orchestrator becomes active again.
             orchestratorPoolV2.remove(lastOrchestrator);
             orchestrators[lastOrchestrator].deactivationRound = _activationRound;
             pendingNextRoundTotalActiveStake = pendingNextRoundTotalActiveStake - lastStake;
 
-            emit TranscoderDeactivated(lastOrchestrator, _activationRound);
+            emit OrchestratorDeactivated(lastOrchestrator, _activationRound);
         }
 
         orchestratorPoolV2.insert(_orchestrator, _totalStake, _newPosPrev, _newPosNext);
@@ -781,44 +877,7 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
         o.activationRound = _activationRound;
         o.deactivationRound = MAX_FUTURE_ROUND;
         nextRoundTotalActiveStake = pendingNextRoundTotalActiveStake;
-        emit TranscoderActivated(_orchestrator, _activationRound);
-    }
-
-    /**
-     * @dev Update the state of a delegator and its delegate by processing a rebond using an unbonding lock and update the transcoder pool with an optional
-     * list hint if needed. See SortedDoublyLL.sol for details on list hints
-     * @param _delegator Address of delegator
-     * @param _unbondingLockId ID of unbonding lock to rebond with
-     * @param _newPosPrev Address of previous transcoder in pool if the delegate is already in or joins the pool
-     * @param _newPosNext Address of next transcoder in pool if the delegate is already in or joins the pool
-     */
-    function _processRebond(
-        address _delegator,
-        uint256 _unbondingLockId,
-        address _newPosPrev,
-        address _newPosNext
-    ) internal {
-        UnbondingLock storage lock = unbondingLocks[_unbondingLockId];
-
-        require(isValidUnbondingLock(_unbondingLockId), "invalid unbonding lock ID");
-
-        uint256 amount = lock.amount;
-        address delegate = lock.orchestrator;
-
-        require(amount > 0, "ZERO_AMOUNT");
-
-        // Claim outstanding fees
-        _claimFees(delegate, payable(_delegator));
-
-        // Increase delegator's bonded amount
-        uint256 oldStake = stakeOf(delegate, _delegator);
-        orchestrators[delegate].delegationPool.stake(_delegator, amount);
-
-        // Delete lock
-        delete unbondingLocks[_unbondingLockId];
-
-        _increaseOrchTotalStake(delegate, oldStake, amount, _newPosPrev, _newPosNext);
-        emit Rebond(delegate, _delegator, _unbondingLockId, amount);
+        emit OrchestratorActivated(_orchestrator, _activationRound);
     }
 
     /**
@@ -829,10 +888,10 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
      * @dev Transfer funds
      * @dev NOTE: currently doesn't support multi-delegation, would have to add an orchestrator address param
      */
-    function _claimFees(address _delegate, address payable _for) internal {
-        Orchestrator storage orch = orchestrators[_delegate];
+    function _claimFees(address _orchestrator, address payable _for) internal {
+        Orchestrator storage orch = orchestrators[_orchestrator];
         uint256 fees = orch.delegationPool.claimFees(_for);
-        if (_for == _delegate) {
+        if (_for == _orchestrator) {
             fees += orch.feeCommissions;
             orch.feeCommissions = 0;
         }
@@ -864,18 +923,14 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
     }
 
     function _onlyTicketBroker() internal view {
-        require(msg.sender == controller.getContract(keccak256("TicketBroker")), "caller must be TicketBroker");
+        require(msg.sender == controller.getContract(keccak256("TicketBroker")), "ONLY_TICKETBROKER");
     }
 
     function _onlyRoundsManager() internal view {
-        require(msg.sender == controller.getContract(keccak256("RoundsManager")), "caller must be RoundsManager");
-    }
-
-    function _onlyVerifier() internal view {
-        require(msg.sender == controller.getContract(keccak256("Verifier")), "caller must be Verifier");
+        require(msg.sender == controller.getContract(keccak256("RoundsManager")), "ONLY_ROUNDSMANAGER");
     }
 
     function _currentRoundInitialized() internal view {
-        require(roundsManager().currentRoundInitialized(), "current round is not initialized");
+        require(roundsManager().currentRoundInitialized(), "CURRENT_ROUND_NOT_INITIALIZED");
     }
 }

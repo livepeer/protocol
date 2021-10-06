@@ -121,7 +121,7 @@ library Delegations {
     ) internal {
         _pool.delegations[_delegator].shares = _pool.delegations[_delegator].shares - _amount;
         _pool.totalShares = _pool.totalShares - _amount;
-        _pool.activeFeeShares -= _amount;
+        // _pool.activeFeeShares -= _amount;
     }
 
     /**
