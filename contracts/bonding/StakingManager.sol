@@ -13,7 +13,9 @@ import "../token/IMinter.sol";
 import "../rounds/IRoundsManager.sol";
 import "./IStakingManager.sol";
 
-uint256 constant MAX_FUTURE_ROUND = 2**256 - 1;
+uint256 constant MAX_UINT256 = type(uint256).max;
+uint256 constant MAX_FUTURE_ROUND = MAX_UINT256;
+uint256 constant MAX_INT256 = uint256(type(int256).max);
 
 contract StakingManager is ManagerProxyTarget, IStakingManager {
     using SortedDoublyLL for SortedDoublyLL.Data;
@@ -484,169 +486,6 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
     }
 
     /**
-     * GETTERS
-     */
-
-    /**
-     * @notice Return whether an unstaking lock for a delegator is valid
-     * @param _unstakingLockId ID of unstaking lock
-     * @return true if unstakingLock for ID has a non-zero withdraw round
-     */
-    function isValidUnstakingLock(uint256 _unstakingLockId) public view returns (bool) {
-        // A unstaking lock is only valid if it has a non-zero withdraw round (the default value is zero)
-        return unstakingLocks[_unstakingLockId].withdrawRound > 0;
-    }
-
-    // function getDelegation(address _orchestrator, address _delegator)
-    //     public
-    //     view
-    //     returns (uint256 stake, uint256 fees)
-    // {
-    //     (stake, fees) = orchestrators[_orchestrator].delegationPool.stakeAndFeesOf(_delegator);
-    // }
-
-    /**
-     * @notice Calculate the total stake for an address
-     * @dev Calculates the amount of tokens represented by the address' share of the delegation pool
-     * @dev If the address is an orchestrator, add its commission
-     * @dev Delegators don't need support fetching on-chain stake directly,
-        so for multi-delegation we can do calculations off chain
-        and repurpose this to 'orchestratorStake(address _orchestrator)'
-     */
-    function getDelegatedStake(address _orchestrator, address _delegator) public view returns (uint256 delegatedStake) {
-        return orchestrators[_orchestrator].delegationPool.stakeOf(_delegator);
-    }
-
-    /**
-     * @notice Calculate the withdrawable fees for an address
-     * @dev Calculates the amount of ETH fees represented by the address'
-        share of the delegation pool and its last fee checkpoint
-     * @dev If the address is an orchestrator, add its commission
-     * @dev NOTE: currently doesn't support multi-delegation
-     * @dev Delegators don't need support fetching on-chain fees directly,
-        so for multi-delegation we can do calculations off chain
-        and repurpose this to 'orchestratorFees(address _orchestrator)'
-     */
-    function feesOf(address _orchestrator, address _delegator) public view returns (uint256 fees) {
-        Orchestrator storage orch = orchestrators[_orchestrator];
-        fees = orch.delegationPool.feesOf(_delegator);
-        if (_orchestrator == _delegator) {
-            fees += orch.feeCommissions;
-        }
-    }
-
-    /**
-     * @notice Returns total amount staked towards an orchestrator
-     * @param _orchestrator Address of orchestrator
-     * @return total stake in the pool
-     */
-    function orchestratorTotalStake(address _orchestrator) public view returns (uint256) {
-        return orchestrators[_orchestrator].delegationPool.principle;
-    }
-
-    /**
-     * @notice Return whether a orchestrator is registered
-     * @param _orchestrator orchestrator address
-     * @return true if orchestrator is self-delegated
-     */
-    function isRegisteredOrchestrator(address _orchestrator) public view returns (bool) {
-        return orchestrators[_orchestrator].delegationPool.stakeOf(_orchestrator) > 0;
-    }
-
-    /**
-     * @notice Return whether a orchestrator is active for the current round
-     * @param _orchestrator orchestrator address
-     * @return true if orchestrator is active
-     */
-    function isActiveOrchestrator(address _orchestrator) public view override returns (bool) {
-        Orchestrator storage o = orchestrators[_orchestrator];
-        uint256 currentRound = roundsManager().currentRound();
-        return o.activationRound <= currentRound && currentRound < o.deactivationRound;
-    }
-
-    /**
-     * @notice Computes orchestrator status
-     * @param _orchestrator Address of orchestrator
-     * @return active, registered or not registered orchestrator status
-     */
-    function orchestratorStatus(address _orchestrator) public view returns (OrchestratorStatus) {
-        if (isActiveOrchestrator(_orchestrator)) return OrchestratorStatus.Active;
-        if (isRegisteredOrchestrator(_orchestrator)) return OrchestratorStatus.Registered;
-        return OrchestratorStatus.NotRegistered;
-    }
-
-    /**
-     * @notice Return orchestrator information
-     * @param _orchestrator Address of orchestrator
-     * @return lastRewardRound Orchestrator's last reward round
-     * @return rewardShare Orchestrator's reward share
-     * @return feeShare Orchestrator's fee share
-     * @return activationRound Round in which orchestrator became active
-     * @return deactivationRound Round in which orchestrator will no longer be active
-     */
-    function getOrchestrator(address _orchestrator)
-        public
-        view
-        returns (
-            uint256 lastRewardRound,
-            uint256 rewardShare,
-            uint256 feeShare,
-            uint256 activationRound,
-            uint256 deactivationRound
-        )
-    {
-        Orchestrator storage o = orchestrators[_orchestrator];
-
-        lastRewardRound = o.lastRewardRound;
-        rewardShare = o.rewardShare;
-        feeShare = o.feeShare;
-        activationRound = o.activationRound;
-        deactivationRound = o.deactivationRound;
-        lastRewardRound = o.lastRewardRound;
-    }
-
-    /**
-     * @notice Returns max size of orchestrator pool
-     * @return orchestrator pool max size
-     */
-    function getOrchestratorPoolMaxSize() public view returns (uint256) {
-        return orchestratorPoolV2.getMaxSize();
-    }
-
-    /**
-     * @notice Returns size of orchestrator pool
-     * @return orchestrator pool current size
-     */
-    function getOrchestratorPoolSize() public view override returns (uint256) {
-        return orchestratorPoolV2.getSize();
-    }
-
-    /**
-     * @notice Returns orchestrator with most stake in pool
-     * @return address for orchestrator with highest stake in orchestrator pool
-     */
-    function getFirstOrchestratorInPool() public view returns (address) {
-        return orchestratorPoolV2.getFirst();
-    }
-
-    /**
-     * @notice Returns next orchestrator in pool for a given orchestrator
-     * @param _orchestrator Address of a orchestrator in the pool
-     * @return address for the orchestrator after '_orchestrator' in orchestrator pool
-     */
-    function getNextOrchestratorInPool(address _orchestrator) public view returns (address) {
-        return orchestratorPoolV2.getNext(_orchestrator);
-    }
-
-    /**
-     * @notice Return total staked tokens
-     * @return total active stake for the current round
-     */
-    function getTotalStaked() public view override returns (uint256) {
-        return currentRoundTotalActiveStake;
-    }
-
-    /**
      * @notice Delegate stake towards a specific address and updates the orchestrator pool using optional list hints if needed
      * @dev If the caller is decreasing the stake of its old delegate in the orchestrator pool, the caller can provide an optional hint
      * for the insertion position of the old delegate via the `_oldDelegateNewPosPrev` and `_oldDelegateNewPosNext` params.
@@ -669,7 +508,7 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
     ) internal whenSystemNotPaused currentRoundInitialized autoClaimFees(_orchestrator, _for) {
         // cannot delegate zero amount
         require(_amount > 0, "ZERO_DELEGATION_AMOUNT");
-
+        require(_amount < MAX_INT256, "AMOUNT_OVERFLOW");
         // Delegate stake to _orchestrator for account "_for"
         Delegations.Pool storage _pool = orchestrators[_orchestrator].delegationPool;
         uint256 oldTotalStake = _pool.poolTotalStake();
@@ -689,6 +528,7 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
         address _newPosNext
     ) internal whenSystemNotPaused currentRoundInitialized autoClaimFees(_orchestrator, _for) returns (uint256 id) {
         require(_amount > 0, "ZERO_UNSTAKE_AMOUNT");
+        require(_amount < MAX_INT256, "AMOUNT_OVERFLOW");
 
         uint256 orchStake = orchestratorTotalStake(_orchestrator);
         uint256 delegatorStake = getDelegatedStake(_orchestrator, _for);
@@ -759,6 +599,7 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
     }
 
     function _updateOrchestratorWithFees(address _orchestrator, uint256 _fees) internal {
+        require(isRegisteredOrchestrator(_orchestrator), "ORCHESTRATOR_NOT_REGISTERED");
         Orchestrator storage orch = orchestrators[_orchestrator];
         orch.delegationPool.addFees(_fees, roundsManager().currentRound());
     }
@@ -772,6 +613,7 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
      * @dev This in turn increases the amount of LPT represented by a nominal share amount held by delegators
      */
     function _updateOrchestratorWithRewards(address _orchestrator, uint256 _rewards) internal {
+        require(isRegisteredOrchestrator(_orchestrator), "ORCHESTRATOR_NOT_REGISTERED");
         Orchestrator storage orch = orchestrators[_orchestrator];
         orch.delegationPool.addRewards(_rewards, roundsManager().currentRound());
     }
@@ -885,6 +727,178 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
             orch.feeCommissions = 0;
         }
         minter().trustedWithdrawETH(_for, fees);
+    }
+
+    /**
+     * GETTERS
+     */
+
+    /**
+     * @notice Return whether an unstaking lock for a delegator is valid
+     * @param _unstakingLockId ID of unstaking lock
+     * @return true if unstakingLock for ID has a non-zero withdraw round
+     */
+    function isValidUnstakingLock(uint256 _unstakingLockId) public view returns (bool) {
+        // A unstaking lock is only valid if it has a non-zero withdraw round (the default value is zero)
+        return unstakingLocks[_unstakingLockId].withdrawRound > 0;
+    }
+
+    // function getDelegation(address _orchestrator, address _delegator)
+    //     public
+    //     view
+    //     returns (uint256 stake, uint256 fees)
+    // {
+    //     (stake, fees) = orchestrators[_orchestrator].delegationPool.stakeAndFeesOf(_delegator);
+    // }
+
+    /**
+     * @notice Calculate the total stake for an address
+     * @dev Calculates the amount of tokens represented by the address' share of the delegation pool
+     * @dev If the address is an orchestrator, add its commission
+     * @dev Delegators don't need support fetching on-chain stake directly,
+        so for multi-delegation we can do calculations off chain
+        and repurpose this to 'orchestratorStake(address _orchestrator)'
+     */
+    function getDelegatedStake(address _orchestrator, address _delegator) public view returns (uint256 delegatedStake) {
+        return orchestrators[_orchestrator].delegationPool.stakeOf(_delegator);
+    }
+
+    /**
+     * @notice Calculate the withdrawable fees for an address
+     * @dev Calculates the amount of ETH fees represented by the address'
+        share of the delegation pool and its last fee checkpoint
+     * @dev If the address is an orchestrator, add its commission
+     * @dev NOTE: currently doesn't support multi-delegation
+     * @dev Delegators don't need support fetching on-chain fees directly,
+        so for multi-delegation we can do calculations off chain
+        and repurpose this to 'orchestratorFees(address _orchestrator)'
+     */
+    function feesOf(address _orchestrator, address _delegator) public view returns (uint256 fees) {
+        Orchestrator storage orch = orchestrators[_orchestrator];
+        fees = orch.delegationPool.feesOf(_delegator);
+        if (_orchestrator == _delegator) {
+            fees += orch.feeCommissions;
+        }
+    }
+
+    /**
+     * @notice Returns total amount staked towards an orchestrator
+     * @param _orchestrator Address of orchestrator
+     * @return total stake in the pool
+     */
+    function orchestratorTotalStake(address _orchestrator) public view returns (uint256) {
+        return orchestrators[_orchestrator].delegationPool.nextStake;
+    }
+
+    /**
+     * @notice Returns active amount staked towards an orchestrator
+     * @param _orchestrator Address of orchestrator
+     * @return total active stake in the pool
+     */
+    function orchestratorActiveStake(address _orchestrator) public view returns (uint256) {
+        return orchestrators[_orchestrator].delegationPool.stake;
+    }
+
+    /**
+     * @notice Return whether a orchestrator is registered
+     * @param _orchestrator orchestrator address
+     * @return true if orchestrator is self-delegated
+     */
+    function isRegisteredOrchestrator(address _orchestrator) public view returns (bool) {
+        return orchestrators[_orchestrator].delegationPool.stakeOf(_orchestrator) > 0;
+    }
+
+    /**
+     * @notice Return whether a orchestrator is active for the current round
+     * @param _orchestrator orchestrator address
+     * @return true if orchestrator is active
+     */
+    function isActiveOrchestrator(address _orchestrator) public view override returns (bool) {
+        Orchestrator storage o = orchestrators[_orchestrator];
+        uint256 currentRound = roundsManager().currentRound();
+        return o.activationRound <= currentRound && currentRound < o.deactivationRound;
+    }
+
+    /**
+     * @notice Computes orchestrator status
+     * @param _orchestrator Address of orchestrator
+     * @return active, registered or not registered orchestrator status
+     */
+    function orchestratorStatus(address _orchestrator) public view returns (OrchestratorStatus) {
+        if (isActiveOrchestrator(_orchestrator)) return OrchestratorStatus.Active;
+        if (isRegisteredOrchestrator(_orchestrator)) return OrchestratorStatus.Registered;
+        return OrchestratorStatus.NotRegistered;
+    }
+
+    /**
+     * @notice Return orchestrator information
+     * @param _orchestrator Address of orchestrator
+     * @return lastRewardRound Orchestrator's last reward round
+     * @return rewardShare Orchestrator's reward share
+     * @return feeShare Orchestrator's fee share
+     * @return activationRound Round in which orchestrator became active
+     * @return deactivationRound Round in which orchestrator will no longer be active
+     */
+    function getOrchestrator(address _orchestrator)
+        public
+        view
+        returns (
+            uint256 lastRewardRound,
+            uint256 rewardShare,
+            uint256 feeShare,
+            uint256 activationRound,
+            uint256 deactivationRound
+        )
+    {
+        Orchestrator storage o = orchestrators[_orchestrator];
+
+        lastRewardRound = o.lastRewardRound;
+        rewardShare = o.rewardShare;
+        feeShare = o.feeShare;
+        activationRound = o.activationRound;
+        deactivationRound = o.deactivationRound;
+        lastRewardRound = o.lastRewardRound;
+    }
+
+    /**
+     * @notice Returns max size of orchestrator pool
+     * @return orchestrator pool max size
+     */
+    function getOrchestratorPoolMaxSize() public view returns (uint256) {
+        return orchestratorPoolV2.getMaxSize();
+    }
+
+    /**
+     * @notice Returns size of orchestrator pool
+     * @return orchestrator pool current size
+     */
+    function getOrchestratorPoolSize() public view override returns (uint256) {
+        return orchestratorPoolV2.getSize();
+    }
+
+    /**
+     * @notice Returns orchestrator with most stake in pool
+     * @return address for orchestrator with highest stake in orchestrator pool
+     */
+    function getFirstOrchestratorInPool() public view returns (address) {
+        return orchestratorPoolV2.getFirst();
+    }
+
+    /**
+     * @notice Returns next orchestrator in pool for a given orchestrator
+     * @param _orchestrator Address of a orchestrator in the pool
+     * @return address for the orchestrator after '_orchestrator' in orchestrator pool
+     */
+    function getNextOrchestratorInPool(address _orchestrator) public view returns (address) {
+        return orchestratorPoolV2.getNext(_orchestrator);
+    }
+
+    /**
+     * @notice Return total staked tokens
+     * @return total active stake for the current round
+     */
+    function getTotalStaked() public view override returns (uint256) {
+        return currentRoundTotalActiveStake;
     }
 
     /**

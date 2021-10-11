@@ -2,7 +2,7 @@ import Fixture from "./helpers/Fixture"
 import {web3, ethers} from "hardhat"
 import {StakingManager, StakingManager__factory, LivepeerToken, LivepeerToken__factory} from "../../typechain"
 import {SignerWithAddress} from "@nomiclabs/hardhat-ethers/dist/src/signers"
-import {functionSig} from "../../utils/helpers"
+import {functionEncodedABI, functionSig} from "../../utils/helpers"
 import chai from "chai"
 import {solidity} from "ethereum-waffle"
 import {constants} from "../../utils/constants"
@@ -103,7 +103,7 @@ describe("StakingManager", () => {
                 it("should fail if caller is not Controller owner", async () => {
                     const tx = stakingManager.connect(notControllerOwner).setUnstakingPeriod(5)
 
-                    await expect(tx).to.be.revertedWith("caller must be Controller owner")
+                    await expect(tx).to.be.revertedWith("ONLY_CONTROLLER_OWNER")
                 })
 
                 it("should set unstakingPeriod", async () => {
@@ -118,7 +118,7 @@ describe("StakingManager", () => {
                 it("should fail if caller is not Controller owner", async () => {
                     const tx = stakingManager.connect(notControllerOwner).setNumActiveOrchestrators(7)
 
-                    await expect(tx).to.be.revertedWith("caller must be Controller owner")
+                    await expect(tx).to.be.revertedWith("ONLY_CONTROLLER_OWNER")
                 })
 
                 it("should set numActiveTranscoders", async () => {
@@ -184,6 +184,19 @@ describe("StakingManager", () => {
                     expect(status2).to.equal(2)
                 })
 
+                it("should get total stake for the current round", async () => {
+                    // await stakingManager.connect(orchestrator0).stake(0, constants.NULL_ADDRESS, constants.NULL_ADDRESS)
+                    // await stakingManager.connect(orchestrator1).stake(0, constants.NULL_ADDRESS, constants.NULL_ADDRESS)
+
+                    const stake0 = await stakingManager.orchestratorTotalStake(orchestrator0.address)
+                    const stake1 = await stakingManager.orchestratorTotalStake(orchestrator1.address)
+                    const total = stake0.add(stake1)
+
+                    const roundTotalStake = await stakingManager.getTotalStaked()
+
+                    expect(roundTotalStake).to.equal(total)
+                })
+
                 describe("evict orchestrator when pool full", async () => {
                     let upcomingOrchestrator: SignerWithAddress
 
@@ -224,19 +237,7 @@ describe("StakingManager", () => {
                         expect(status).to.equal(1)
                     })
                 })
-
-                it("should get total stake for the round", async () => {
-                    const stake0 = await stakingManager.orchestratorTotalStake(orchestrator0.address)
-                    const stake1 = await stakingManager.orchestratorTotalStake(orchestrator1.address)
-                    const total = stake0.add(stake1)
-
-                    const roundTotalStake = await stakingManager.getTotalStaked()
-
-                    expect(roundTotalStake).to.equal(total)
-                })
             })
-
-            // Todo - when orchestrator pool is full
 
             describe("parameter updates", async () => {
                 it("should fail if current round is not initialized", async () => {
@@ -417,6 +418,8 @@ describe("StakingManager", () => {
                     })
 
                     it("should partially unstake", async () => {
+                        // new round
+                        //
                         const partialAmount = stakeAmount - 1000
                         const currentStake = await stakingManager.orchestratorTotalStake(upcomingOrchestrator.address)
                         await stakingManager.connect(upcomingOrchestrator).unstake(partialAmount, constants.NULL_ADDRESS, constants.NULL_ADDRESS)
@@ -481,7 +484,7 @@ describe("StakingManager", () => {
                         await fixture?.controller?.pause()
                         const tx = stakingManager.connect(orchestrator0).withdrawStake(unstakingLockID)
 
-                        await expect(tx).to.be.revertedWith("system is paused")
+                        await expect(tx).to.be.revertedWith("SYSTEM_PAUSED")
                     })
 
                     it("should fail if current round is not initialized", async () => {
@@ -539,6 +542,48 @@ describe("StakingManager", () => {
 
                 describe("withdraw fees", async () => {
                     // TODO
+                })
+            })
+
+            describe("reward", async () => {
+                it("should fail if system is paused", async () => {
+                    await fixture?.controller?.pause()
+
+                    await expect(stakingManager.connect(orchestrator0).reward(constants.NULL_ADDRESS, constants.NULL_ADDRESS)).to.be.revertedWith("SYSTEM_PAUSED")
+                })
+
+                it("should fail if current round is not initialized", async () => {
+                    await fixture?.roundsManager?.setMockBool(functionSig("currentRoundInitialized()"), false)
+
+                    await expect(stakingManager.connect(orchestrator0).reward(constants.NULL_ADDRESS, constants.NULL_ADDRESS)).to.be.revertedWith("CURRENT_ROUND_NOT_INITIALIZED")
+                })
+
+                it("should fail if caller is not an active transcoder for the current round", async () => {
+                    await expect(stakingManager.connect(thirdParty).reward(constants.NULL_ADDRESS, constants.NULL_ADDRESS)).to.be.revertedWith("ORCHESTRATOR_NOT_ACTIVE")
+                })
+
+                it("should fail if caller already called reward during the current round", async () => {
+                    await stakingManager.connect(orchestrator0).reward(constants.NULL_ADDRESS, constants.NULL_ADDRESS)
+                    // This should fail because transcoder already called reward during the current round
+                    await expect(stakingManager.connect(orchestrator0).reward(constants.NULL_ADDRESS, constants.NULL_ADDRESS)).to.be.revertedWith("ALREADY_CALLED_REWARD_FOR_CURRENT_ROUND")
+                })
+            })
+
+            describe("updateTranscoderWithFees", async () => {
+                it("should fail if system is paused", async () => {
+                    await fixture?.controller?.pause()
+                    const tx = fixture?.ticketBroker?.execute(stakingManager.address, functionEncodedABI("updateOrchestratorWithFees(address,uint256)", ["address", "uint256"], [orchestrator0.address, 1000]))
+                    await expect(tx).to.be.revertedWith("SYSTEM_PAUSED")
+                })
+
+                it("should fail if caller is not TicketBroker", async () => {
+                    const tx = stakingManager.updateOrchestratorWithFees(orchestrator0.address, 1000)
+                    await expect(tx).to.be.revertedWith("ONLY_TICKETBROKER")
+                })
+
+                it("should fail if orchestrator is not registered", async () => {
+                    const tx = fixture?.ticketBroker?.execute(stakingManager.address, functionEncodedABI("updateOrchestratorWithFees(address,uint256)", ["address", "uint256"], [thirdParty.address, 1000]))
+                    await expect(tx).to.be.revertedWith("ORCHESTRATOR_NOT_REGISTERED")
                 })
             })
 
@@ -713,7 +758,7 @@ describe("StakingManager", () => {
                     await fixture?.controller?.pause()
                     const tx = stakingManager.connect(delegator0).withdrawStake(unstakingLockID)
 
-                    await expect(tx).to.be.revertedWith("system is paused")
+                    await expect(tx).to.be.revertedWith("SYSTEM_PAUSED")
                 })
 
                 it("should fail if current round is not initialized", async () => {

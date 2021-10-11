@@ -49,18 +49,18 @@ contract Manager is IManager {
     }
 
     function _onlyController() internal view {
-        require(msg.sender == address(controller), "caller must be Controller");
+        require(msg.sender == address(controller), "ONLY_CONTROLLER");
     }
 
     function _onlyControllerOwner() internal view {
-        require(msg.sender == controller.owner(), "caller must be Controller owner");
+        require(msg.sender == controller.owner(), "ONLY_CONTROLLER_OWNER");
     }
 
     function _whenSystemNotPaused() internal view {
-        require(!controller.paused(), "system is paused");
+        require(!controller.paused(), "SYSTEM_PAUSED");
     }
 
     function _whenSystemPaused() internal view {
-        require(controller.paused(), "system is not paused");
+        require(controller.paused(), "SYSTEM_NOT_PAUSED");
     }
 }
