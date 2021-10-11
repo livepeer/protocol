@@ -4,7 +4,6 @@
 pragma solidity 0.8.4;
 
 import "../utils/MathUtils.sol";
-import "hardhat/console.sol";
 
 /**
  * @title Delegations

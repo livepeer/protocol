@@ -38,7 +38,7 @@ describe("Governor update", () => {
 
     describe("single param change", () => {
         it("reverts when the param change is not initiated through the governor", async () => {
-            await expect(bondingManager.setNumActiveTranscoders(20)).to.be.revertedWith("caller must be Controller owner")
+            await expect(bondingManager.setNumActiveTranscoders(20)).to.be.revertedWith("ONLY_CONTROLLER_OWNER")
         })
 
         it("reverts when the delay for the staged update has not expired", async () => {
@@ -132,7 +132,7 @@ describe("Governor update", () => {
 
             // run the migrate to new minter update
             await governor.stage(update, "0")
-            await expect(governor.execute(update)).to.be.revertedWith("system is not paused")
+            await expect(governor.execute(update)).to.be.revertedWith("SYSTEM_NOT_PAUSED")
         })
 
         it("step 2 'migrateToNewMinter' fails: new Minter cannot be current Minter", async () => {

@@ -32,7 +32,7 @@ describe("MerkleSnapshot", () => {
             expect(
                 merkleSnapshot.connect(signers[1]).setSnapshot(ethers.utils.formatBytes32String("1"), ethers.utils.formatBytes32String("helloworld"))
             ).to.be.revertedWith(
-                "caller must be Controller owner"
+                "ONLY_CONTROLLER_OWNER"
             )
         })
 

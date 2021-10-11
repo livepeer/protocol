@@ -53,7 +53,7 @@ describe("BondingManager", () => {
 
     describe("setController", () => {
         it("should fail if caller is not Controller", async () => {
-            await expect(bondingManager.setController(signers[0].address)).to.be.revertedWith("caller must be Controller")
+            await expect(bondingManager.setController(signers[0].address)).to.be.revertedWith("ONLY_CONTROLLER")
         })
 
         it("should set new Controller", async () => {
@@ -66,7 +66,7 @@ describe("BondingManager", () => {
     describe("setUnbondingPeriod", () => {
         it("should fail if caller is not Controller owner", async () => {
             await expect(bondingManager.connect(signers[2]).setUnbondingPeriod(5)).to.be.revertedWith(
-                "caller must be Controller owner"
+                "ONLY_CONTROLLER_OWNER"
             )
         })
 
@@ -80,7 +80,7 @@ describe("BondingManager", () => {
     describe("setNumActiveTranscoders", () => {
         it("should fail if caller is not Controller owner", async () => {
             await expect(bondingManager.connect(signers[2]).setNumActiveTranscoders(7)).to.be.revertedWith(
-                "caller must be Controller owner"
+                "ONLY_CONTROLLER_OWNER"
             )
         })
 
@@ -94,7 +94,7 @@ describe("BondingManager", () => {
     describe("setMaxEarningsClaimsRounds", () => {
         it("should fail if caller is not Controller owner", async () => {
             await expect(bondingManager.connect(signers[2]).setMaxEarningsClaimsRounds(2)).to.be.revertedWith(
-                "caller must be Controller owner"
+                "ONLY_CONTROLLER_OWNER"
             )
         })
 
@@ -1343,7 +1343,7 @@ describe("BondingManager", () => {
         it("should fail if system is paused", async () => {
             await fixture.controller.pause()
 
-            await expect(bondingManager.connect(delegator).rebond(unbondingLockID)).to.be.revertedWith("system is paused")
+            await expect(bondingManager.connect(delegator).rebond(unbondingLockID)).to.be.revertedWith("SYSTEM_PAUSED")
         })
 
         it("should fail if current round is not initialized", async () => {
@@ -1490,7 +1490,7 @@ describe("BondingManager", () => {
 
             await expect(
                 bondingManager.connect(delegator).rebondFromUnbonded(transcoder.address, unbondingLockID)
-            ).to.be.revertedWith("system is paused")
+            ).to.be.revertedWith("SYSTEM_PAUSED")
         })
 
         it("should fail if current round is not initialized", async () => {
@@ -1636,7 +1636,7 @@ describe("BondingManager", () => {
             await fixture.controller.pause()
 
             await expect(bondingManager.connect(delegator).withdrawStake(unbondingLockID)).to.be.revertedWith(
-                "system is paused"
+                "SYSTEM_PAUSED"
             )
         })
 
@@ -1716,7 +1716,7 @@ describe("BondingManager", () => {
         it("should fail if system is paused", async () => {
             await fixture.controller.pause()
 
-            await expect(bondingManager.connect(transcoder0).withdrawFees()).to.be.revertedWith("system is paused")
+            await expect(bondingManager.connect(transcoder0).withdrawFees()).to.be.revertedWith("SYSTEM_PAUSED")
         })
 
         it("should fail if current round is not initialized", async () => {
@@ -1771,7 +1771,7 @@ describe("BondingManager", () => {
         it("should fail if system is paused", async () => {
             await fixture.controller.pause()
 
-            await expect(bondingManager.connect(transcoder).reward()).to.be.revertedWith("system is paused")
+            await expect(bondingManager.connect(transcoder).reward()).to.be.revertedWith("SYSTEM_PAUSED")
         })
 
         it("should fail if current round is not initialized", async () => {
@@ -1967,7 +1967,7 @@ describe("BondingManager", () => {
                         [transcoder.address, 1000, currentRound + 1]
                     )
                 )
-            ).to.be.revertedWith("system is paused")
+            ).to.be.revertedWith("SYSTEM_PAUSED")
         })
 
         it("should fail if caller is not TicketBroker", async () => {
@@ -2309,7 +2309,7 @@ describe("BondingManager", () => {
                         [transcoder.address, constants.NULL_ADDRESS, PERC_DIVISOR / 2, PERC_DIVISOR / 2]
                     )
                 )
-            ).to.be.revertedWith("system is paused")
+            ).to.be.revertedWith("SYSTEM_PAUSED")
         })
 
         it("should fail if caller is not Verifier", async () => {
@@ -2648,7 +2648,7 @@ describe("BondingManager", () => {
             await fixture.controller.pause()
 
             await expect(bondingManager.connect(delegator1).claimEarnings(currentRound + 1)).to.be.revertedWith(
-                "system is paused"
+                "SYSTEM_PAUSED"
             )
         })
 
@@ -3114,7 +3114,7 @@ describe("BondingManager", () => {
         it("reverts if system is paused", async () => {
             await fixture.controller.pause()
 
-            await expect(bondingManager.claimSnapshotEarnings(500, 1000, [], [])).to.be.revertedWith("system is paused")
+            await expect(bondingManager.claimSnapshotEarnings(500, 1000, [], [])).to.be.revertedWith("SYSTEM_PAUSED")
         })
 
         it("reverts if current round is not initialized", async () => {

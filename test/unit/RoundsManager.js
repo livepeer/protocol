@@ -40,7 +40,7 @@ describe("RoundsManager", () => {
 
     describe("setController", () => {
         it("should fail if caller is not Controller", async () => {
-            await expect(roundsManager.setController(signers[0].address)).to.be.revertedWith("caller must be Controller")
+            await expect(roundsManager.setController(signers[0].address)).to.be.revertedWith("ONLY_CONTROLLER")
         })
 
         it("should set new Controller", async () => {
@@ -52,7 +52,7 @@ describe("RoundsManager", () => {
 
     describe("setRoundLength", () => {
         it("should fail if caller is not the Controller owner", async () => {
-            await expect(roundsManager.connect(signers[2]).setRoundLength(10)).to.be.revertedWith("caller must be Controller owner")
+            await expect(roundsManager.connect(signers[2]).setRoundLength(10)).to.be.revertedWith("ONLY_CONTROLLER_OWNER")
         })
 
         it("should fail if provided roundLength == 0", async () => {
@@ -154,7 +154,7 @@ describe("RoundsManager", () => {
 
     describe("setRoundLockAmount", () => {
         it("should fail if caller is not the Controller owner", async () => {
-            await expect(roundsManager.connect(signers[2]).setRoundLockAmount(50)).to.be.revertedWith("caller must be Controller owner")
+            await expect(roundsManager.connect(signers[2]).setRoundLockAmount(50)).to.be.revertedWith("ONLY_CONTROLLER_OWNER")
         })
 
         it("should fail if provided roundLockAmount is an invalid percentage (> 100%)", async () => {
@@ -174,7 +174,7 @@ describe("RoundsManager", () => {
             await fixture.rpc.waitUntilNextBlockMultiple(roundLength.toNumber())
             await fixture.controller.pause()
 
-            await expect(roundsManager.initializeRound()).to.be.revertedWith("system is paused")
+            await expect(roundsManager.initializeRound()).to.be.revertedWith("SYSTEM_PAUSED")
         })
 
         it("should fail if current round is already initialized", async () => {
@@ -462,7 +462,7 @@ describe("RoundsManager", () => {
 
         it("reverts when msg.sender is not the controller owner", async () => {
             const currentRound = (await roundsManager.currentRound()).toNumber()
-            await expect(roundsManager.connect(signers[1]).setLIPUpgradeRound(50, currentRound + 100)).to.be.revertedWith("caller must be Controller owner")
+            await expect(roundsManager.connect(signers[1]).setLIPUpgradeRound(50, currentRound + 100)).to.be.revertedWith("ONLY_CONTROLLER_OWNER")
         })
 
         it("sets LIP upgrade round for a LIP to the provided round", async () => {

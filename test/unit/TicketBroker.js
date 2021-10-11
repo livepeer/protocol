@@ -64,7 +64,7 @@ describe("TicketBroker", () => {
             await expect(
                 broker.connect(signers[1]).setUnlockPeriod(200)
             ).to.be.revertedWith(
-                "caller must be Controller owner"
+                "ONLY_CONTROLLER_OWNER"
             )
         })
 
@@ -80,7 +80,7 @@ describe("TicketBroker", () => {
             await expect(
                 broker.connect(signers[1]).setTicketValidityPeriod(200)
             ).to.be.revertedWith(
-                "caller must be Controller owner"
+                "ONLY_CONTROLLER_OWNER"
             )
         })
 
@@ -102,7 +102,7 @@ describe("TicketBroker", () => {
     describe("fundDeposit", () => {
         it("should fail if the system is paused", async () => {
             await fixture.controller.pause()
-            await expect(broker.fundDeposit({value: 1000})).to.be.revertedWith("system is paused")
+            await expect(broker.fundDeposit({value: 1000})).to.be.revertedWith("SYSTEM_PAUSED")
         })
 
         it("grows the Minter ETH balance", async () => {
@@ -191,7 +191,7 @@ describe("TicketBroker", () => {
     describe("fundReserve", () => {
         it("should fail if the system is paused", async () => {
             await fixture.controller.pause()
-            await expect(broker.fundReserve({value: 1000})).to.be.revertedWith("system is paused")
+            await expect(broker.fundReserve({value: 1000})).to.be.revertedWith("SYSTEM_PAUSED")
         })
 
         it("grows the Minter ETH balance", async () => {
@@ -335,7 +335,7 @@ describe("TicketBroker", () => {
             await fixture.controller.pause()
             await expect(
                 broker.fundDepositAndReserve(deposit, reserve, {value: 1000})
-            ).to.be.revertedWith("system is paused")
+            ).to.be.revertedWith("SYSTEM_PAUSED")
         })
 
         it("reverts if msg.value < sum of deposit amount and reserve amount", async () => {
@@ -489,7 +489,7 @@ describe("TicketBroker", () => {
 
             await expect(
                 broker.connect(signers[1]).redeemWinningTicket(ticket, senderSig, recipientRand)
-            ).to.be.revertedWith("system is paused")
+            ).to.be.revertedWith("SYSTEM_PAUSED")
         })
 
         it("should fail if the current round is not initialized", async () => {
@@ -1159,7 +1159,7 @@ describe("TicketBroker", () => {
                     [senderSig, senderSig2],
                     [recipientRand, recipientRand]
                 )
-            ).to.be.revertedWith("system is paused")
+            ).to.be.revertedWith("SYSTEM_PAUSED")
         })
 
         it("should fail if the current round is not initialized", async () => {
@@ -1321,7 +1321,7 @@ describe("TicketBroker", () => {
         it("fails if the system is paused", async () => {
             await broker.fundDeposit({value: 1000})
             await fixture.controller.pause()
-            await expect(broker.unlock()).to.be.revertedWith("system is paused")
+            await expect(broker.unlock()).to.be.revertedWith("SYSTEM_PAUSED")
         })
 
         it("reverts when both deposit and reserve are zero", async () => {
@@ -1395,7 +1395,7 @@ describe("TicketBroker", () => {
             await broker.fundDeposit({value: 1000})
             await broker.unlock()
             await fixture.controller.pause()
-            await expect(broker.cancelUnlock()).to.be.revertedWith("system is paused")
+            await expect(broker.cancelUnlock()).to.be.revertedWith("SYSTEM_PAUSED")
         })
 
         it("reverts if sender is not in an unlocking state", async () => {
@@ -1452,7 +1452,7 @@ describe("TicketBroker", () => {
             await broker.unlock()
             await fixture.rpc.wait(unlockPeriod)
             await fixture.controller.pause()
-            await expect(broker.withdraw()).to.be.revertedWith("system is paused")
+            await expect(broker.withdraw()).to.be.revertedWith("SYSTEM_PAUSED")
         })
 
         it("reverts when both deposit and reserve are zero", async () => {
