@@ -215,7 +215,9 @@ library Delegations {
         uint256 rewardPerStakeNew = _getAccRewardPerStake(_pool, _pool.lastUpdateRound);
         uint256 rewardPerStakeOld = _getAccRewardPerStake(_pool, _delegation.lastUpdateRound);
 
-        uint256 checkpoint = _delegation.accRewardPerStakeCheckpoint != 0 ? _delegation.accRewardPerStakeCheckpoint : 1;
+        uint256 checkpoint = _delegation.accRewardPerStakeCheckpoint != 0
+            ? _delegation.accRewardPerStakeCheckpoint
+            : MathUtils.percPoints(1, 1);
 
         uint256 lookbackRewards = MathUtils.percOf(_delegation.stakeCheckpoint, rewardPerStakeOld, checkpoint) -
             _delegation.stakeCheckpoint;
@@ -229,10 +231,12 @@ library Delegations {
         uint256 feePerStakeNew = _getAccFeePerStake(_pool, _pool.lastUpdateRound);
         uint256 feePerStakeOld = _getAccFeePerStake(_pool, _delegation.lastUpdateRound);
 
-        uint256 feeCheckpoint = _delegation.accFeePerStakeCheckpoint != 0 ? _delegation.accFeePerStakeCheckpoint : 1;
+        uint256 feeCheckpoint = _delegation.accFeePerStakeCheckpoint != 0
+            ? _delegation.accFeePerStakeCheckpoint
+            : MathUtils.percPoints(1, 1);
         uint256 rewardCheckpoint = _delegation.accRewardPerStakeCheckpoint != 0
             ? _delegation.accRewardPerStakeCheckpoint
-            : 1;
+            : MathUtils.percPoints(1, 1);
 
         uint256 rewardPerStakeOld = _getAccRewardPerStake(_pool, _delegation.lastUpdateRound);
 
@@ -241,14 +245,14 @@ library Delegations {
     }
 
     function _getAccRewardPerStake(Pool storage _pool, uint256 _round) internal view returns (uint256 _rewardPerStake) {
-        _rewardPerStake = 1;
+        _rewardPerStake = MathUtils.percPoints(1, 1);
         if (_pool.accumulators[_round].rewardPerStake != 0) {
             _rewardPerStake = _pool.accumulators[_round].rewardPerStake;
         }
     }
 
     function _getAccFeePerStake(Pool storage _pool, uint256 _round) internal view returns (uint256 _feePerStake) {
-        _feePerStake = 1;
+        _feePerStake = MathUtils.percPoints(1, 1);
         if (_pool.accumulators[_round].feePerStake != 0) {
             _feePerStake = _pool.accumulators[_round].feePerStake;
         }
@@ -260,7 +264,7 @@ library Delegations {
      * @return total stake in the pool
      */
     function poolTotalStake(Pool storage _pool) internal view returns (uint256) {
-        return _pool.stake;
+        return _pool.nextStake;
     }
 
     /**

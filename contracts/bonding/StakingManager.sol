@@ -68,24 +68,19 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
 
     // Check if sender is TicketBroker
     modifier onlyTicketBroker() {
-        _onlyTicketBroker();
+        require(msg.sender == controller.getContract(keccak256("TicketBroker")), "ONLY_TICKETBROKER");
         _;
     }
 
     // Check if sender is RoundsManager
     modifier onlyRoundsManager() {
-        _onlyRoundsManager();
+        require(msg.sender == controller.getContract(keccak256("RoundsManager")), "ONLY_ROUNDSMANAGER");
         _;
     }
 
     // Check if current round is initialized
     modifier currentRoundInitialized() {
-        _currentRoundInitialized();
-        _;
-    }
-
-    modifier autoClaimFees(address _orchestrator, address _delegator) {
-        _claimFees(_orchestrator, payable(_delegator));
+        require(roundsManager().currentRoundInitialized(), "CURRENT_ROUND_NOT_INITIALIZED");
         _;
     }
 
@@ -271,7 +266,7 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
         Delegations.Pool storage oldPool = orchestrators[_oldOrchestrator].delegationPool;
 
         if (orchestratorPoolV2.contains(_oldOrchestrator)) {
-            uint256 oldOrchestratorStake = oldPool.poolTotalStake();
+            uint256 oldOrchestratorStake = oldPool.nextStake;
             _decreaseOrchTotalStake(
                 _oldOrchestrator,
                 oldOrchestratorStake,
@@ -289,7 +284,7 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
         // 2. Add stake to new orchestrator
         Delegations.Pool storage newPool = orchestrators[_newOrchestrator].delegationPool;
         newPool.delegate(msg.sender, _amount, currentRound);
-        uint256 newOrchestratorStake = newPool.poolTotalStake();
+        uint256 newOrchestratorStake = newPool.nextStake;
 
         _increaseOrchTotalStake(
             _newOrchestrator,
@@ -346,10 +341,7 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
         UnstakingLock storage lock = unstakingLocks[_unstakingLockId];
 
         require(isValidUnstakingLock(_unstakingLockId), "INVALID_UNSTAKING_LOCK_ID");
-        require(
-            lock.withdrawRound <= roundsManager().currentRound(),
-            "withdraw round must be before or equal to the current round"
-        );
+        require(lock.withdrawRound <= roundsManager().currentRound(), "WITHDRAW_ROUND_NOT_REACHED_YET");
         require(msg.sender == lock.delegator, "CALLER_NOT_LOCK_OWNER");
 
         uint256 amount = lock.amount;
@@ -371,7 +363,13 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
      * @dev Transfers funds
      */
     function withdrawFees(address _orchestrator) external whenSystemNotPaused currentRoundInitialized {
-        _claimFees(_orchestrator, payable(msg.sender));
+        Orchestrator storage orch = orchestrators[_orchestrator];
+        uint256 fees = orch.delegationPool.feesOf(msg.sender);
+        if (msg.sender == _orchestrator) {
+            fees += orch.feeCommissions;
+            orch.feeCommissions = 0;
+        }
+        minter().trustedWithdrawETH(payable(msg.sender), fees);
     }
 
     /**
@@ -505,9 +503,8 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
         address _for,
         address _newPosPrev,
         address _newPosNext
-    ) internal whenSystemNotPaused currentRoundInitialized autoClaimFees(_orchestrator, _for) {
+    ) internal whenSystemNotPaused currentRoundInitialized {
         // cannot delegate zero amount
-        require(_amount > 0, "ZERO_DELEGATION_AMOUNT");
         require(_amount < MAX_INT256, "AMOUNT_OVERFLOW");
         // Delegate stake to _orchestrator for account "_for"
         Delegations.Pool storage _pool = orchestrators[_orchestrator].delegationPool;
@@ -526,8 +523,7 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
         address _for,
         address _newPosPrev,
         address _newPosNext
-    ) internal whenSystemNotPaused currentRoundInitialized autoClaimFees(_orchestrator, _for) returns (uint256 id) {
-        require(_amount > 0, "ZERO_UNSTAKE_AMOUNT");
+    ) internal whenSystemNotPaused currentRoundInitialized returns (uint256 id) {
         require(_amount < MAX_INT256, "AMOUNT_OVERFLOW");
 
         uint256 orchStake = orchestratorTotalStake(_orchestrator);
@@ -577,9 +573,6 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
 
         address _orchestrator = lock.orchestrator;
         uint256 amount = lock.amount;
-
-        // Claim outstanding fees and checkpoint fee factor
-        _claimFees(_orchestrator, payable(_for));
 
         uint256 oldStake = orchestratorTotalStake(_orchestrator);
 
@@ -682,7 +675,7 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
 
         if (orchestratorPoolV2.isFull()) {
             address lastOrchestrator = orchestratorPoolV2.getLast();
-            uint256 lastStake = orchestrators[lastOrchestrator].delegationPool.poolTotalStake();
+            uint256 lastStake = orchestrators[lastOrchestrator].delegationPool.nextStake;
 
             // If the pool is full and the orchestrator has less stake than the least stake orchestrator in the pool
             // then the orchestrator is unable to join the active set for the next round
@@ -712,24 +705,6 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
     }
 
     /**
-     * @notice Withdraw fees for an address
-     * @dev Calculates amount of fees to claim using `feesOf`
-     * @dev Updates Delegation.feeCheckpoint for the address to the current total amount of fees in the delegation pool
-     * @dev If the claimer is an orchestator, reset its commission
-     * @dev Transfer funds
-     * @dev NOTE: currently doesn't support multi-delegation, would have to add an orchestrator address param
-     */
-    function _claimFees(address _orchestrator, address payable _for) internal {
-        Orchestrator storage orch = orchestrators[_orchestrator];
-        uint256 fees = orch.delegationPool.feesOf(_for);
-        if (_for == _orchestrator) {
-            fees += orch.feeCommissions;
-            orch.feeCommissions = 0;
-        }
-        minter().trustedWithdrawETH(_for, fees);
-    }
-
-    /**
      * GETTERS
      */
 
@@ -742,14 +717,6 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
         // A unstaking lock is only valid if it has a non-zero withdraw round (the default value is zero)
         return unstakingLocks[_unstakingLockId].withdrawRound > 0;
     }
-
-    // function getDelegation(address _orchestrator, address _delegator)
-    //     public
-    //     view
-    //     returns (uint256 stake, uint256 fees)
-    // {
-    //     (stake, fees) = orchestrators[_orchestrator].delegationPool.stakeAndFeesOf(_delegator);
-    // }
 
     /**
      * @notice Calculate the total stake for an address
@@ -857,7 +824,35 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
         feeShare = o.feeShare;
         activationRound = o.activationRound;
         deactivationRound = o.deactivationRound;
-        lastRewardRound = o.lastRewardRound;
+    }
+
+    /**
+     * @notice Return delegation information
+     * @param _orchestrator Address of orchestrator
+     * @param _delegator Address of delegator
+     */
+    function getDelegation(address _orchestrator, address _delegator)
+        public
+        view
+        returns (
+            uint256 totalStake,
+            uint256 fees,
+            uint256 stakeCheckpoint,
+            uint256 accRewardPerStakeCheckpoint,
+            uint256 accFeePerStakeCheckpoint,
+            uint256 lastUpdateRound
+        )
+    {
+        Delegations.Delegation storage _delegation = orchestrators[_orchestrator].delegationPool.delegations[
+            _delegator
+        ];
+
+        totalStake = _delegation.stake;
+        fees = _delegation.fees;
+        stakeCheckpoint = _delegation.stakeCheckpoint;
+        accRewardPerStakeCheckpoint = _delegation.accRewardPerStakeCheckpoint;
+        accFeePerStakeCheckpoint = _delegation.accFeePerStakeCheckpoint;
+        lastUpdateRound = _delegation.lastUpdateRound;
     }
 
     /**
@@ -923,17 +918,5 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
      */
     function roundsManager() internal view returns (IRoundsManager) {
         return IRoundsManager(controller.getContract(keccak256("RoundsManager")));
-    }
-
-    function _onlyTicketBroker() internal view {
-        require(msg.sender == controller.getContract(keccak256("TicketBroker")), "ONLY_TICKETBROKER");
-    }
-
-    function _onlyRoundsManager() internal view {
-        require(msg.sender == controller.getContract(keccak256("RoundsManager")), "ONLY_ROUNDSMANAGER");
-    }
-
-    function _currentRoundInitialized() internal view {
-        require(roundsManager().currentRoundInitialized(), "CURRENT_ROUND_NOT_INITIALIZED");
     }
 }
