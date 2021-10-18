@@ -746,94 +746,177 @@ describe("StakingManager", () => {
                 })
             })
 
-            describe("withdraw", async () => {
-                describe("withdrawStake", async () => {
-                    let unstakingLockID: BigNumberish
-                    const withdrawAmount = stakeAmount / 2
+            describe("withdrawStake", async () => {
+                let unstakingLockID: BigNumberish
+                const withdrawAmount = stakeAmount / 2
 
-                    beforeEach(async () => {
-                        await fixture?.roundsManager?.setMockUint256(functionSig("currentRound()"), currentRound + 1)
-                        const tx = await stakingManager.connect(orchestrator0).unstake(withdrawAmount, constants.NULL_ADDRESS, constants.NULL_ADDRESS)
+                beforeEach(async () => {
+                    await fixture?.roundsManager?.setMockUint256(functionSig("currentRound()"), currentRound + 1)
+                    const tx = await stakingManager.connect(orchestrator0).unstake(withdrawAmount, constants.NULL_ADDRESS, constants.NULL_ADDRESS)
 
-                        const events = await stakingManager.queryFilter(stakingManager.filters.Unstake(), tx.blockHash)
-                        unstakingLockID = events[0].args.lockID
+                    const events = await stakingManager.queryFilter(stakingManager.filters.Unstake(), tx.blockHash)
+                    unstakingLockID = events[0].args.lockID
+                })
+
+                it("should fail if system is paused", async () => {
+                    await fixture?.controller?.pause()
+                    const tx = stakingManager.connect(orchestrator0).withdrawStake(unstakingLockID)
+
+                    await expect(tx).to.be.revertedWith("SYSTEM_PAUSED")
+                })
+
+                it("should fail if current round is not initialized", async () => {
+                    await fixture?.roundsManager?.setMockBool(functionSig("currentRoundInitialized()"), false)
+                    const tx = stakingManager.connect(orchestrator0).withdrawStake(unstakingLockID)
+
+                    await expect(tx).to.be.revertedWith("CURRENT_ROUND_NOT_INITIALIZED")
+                })
+
+                it("should fail for invalid unstakingLockID", async () => {
+                    const unstakingLockID = 1234
+                    const tx = stakingManager.connect(orchestrator0).withdrawStake(unstakingLockID)
+
+                    await expect(tx).to.be.revertedWith("INVALID_UNSTAKING_LOCK_ID")
+                })
+
+                it("should fail if unbonding lock withdraw round is in the future", async () => {
+                    const tx = stakingManager.connect(orchestrator0).withdrawStake(unstakingLockID)
+
+                    await expect(tx).revertedWith("WITHDRAW_ROUND_NOT_REACHED_YET")
+                })
+
+                it("should fail if not lock owner", async () => {
+                    const unstakingPeriod = await stakingManager.unstakingPeriod()
+                    await fixture?.roundsManager?.setMockUint256(functionSig("currentRound()"), currentRound + 1 + unstakingPeriod.toNumber())
+
+                    const tx = stakingManager.connect(orchestrator1).withdrawStake(unstakingLockID)
+
+                    await expect(tx).to.be.revertedWith("CALLER_NOT_LOCK_OWNER")
+                })
+
+                it("should withdraw stake", async () => {
+                    const unstakingPeriod = await stakingManager.unstakingPeriod()
+                    await fixture?.roundsManager?.setMockUint256(functionSig("currentRound()"), currentRound + 1 + unstakingPeriod.toNumber())
+
+                    const prevLock = await stakingManager.unstakingLocks(unstakingLockID)
+                    await stakingManager.connect(orchestrator0).withdrawStake(unstakingLockID)
+                    const newLock = await stakingManager.unstakingLocks(unstakingLockID)
+
+                    expect(prevLock.amount).to.eq(withdrawAmount)
+                    expect(newLock.amount).to.eq(0)
+                })
+
+                it("should fire a WithdrawStake event when withdrawing stake", async () => {
+                    const unstakingPeriod = await stakingManager.unstakingPeriod()
+                    await fixture?.roundsManager?.setMockUint256(functionSig("currentRound()"), currentRound + 1 + unstakingPeriod.toNumber())
+
+                    const tx = stakingManager.connect(orchestrator0).withdrawStake(unstakingLockID)
+
+                    await expect(tx)
+                        .to.emit(stakingManager, "WithdrawStake")
+                        .withArgs(orchestrator0.address, unstakingLockID, withdrawAmount, currentRound + 1 + unstakingPeriod.toNumber())
+                })
+            })
+
+            describe("Fees", async () => {
+                beforeEach(async () => {
+                    await fixture?.roundsManager?.setMockUint256(functionSig("currentRound()"), currentRound + 1)
+                })
+
+                describe("updateOrchestratorWithFees", async () => {
+                    it("should fail if caller is not ticketbroker", async () => {
+                        const tx = stakingManager.connect(orchestrator0).updateOrchestratorWithFees(orchestrator0.address, 1000)
+                        await expect(tx).to.be.revertedWith("ONLY_TICKETBROKER")
                     })
 
+                    it("should fail if orchestrator not registered", async () => {
+                        const tx = fixture?.ticketBroker?.execute(stakingManager.address, functionEncodedABI("updateOrchestratorWithFees(address,uint256)", ["address", "uint256"], [thirdParty.address, 1000]))
+                        await expect(tx).to.be.revertedWith("ORCHESTRATOR_NOT_REGISTERED")
+                    })
+
+                    it("should correctly update orchestrator with fees", async () => {
+                        await fixture?.ticketBroker?.execute(stakingManager.address, functionEncodedABI("updateOrchestratorWithFees(address,uint256)", ["address", "uint256"], [orchestrator0.address, 1000]))
+                        await fixture?.ticketBroker?.execute(stakingManager.address, functionEncodedABI("updateOrchestratorWithFees(address,uint256)", ["address", "uint256"], [orchestrator1.address, 500]))
+
+                        await fixture?.roundsManager?.setMockUint256(functionSig("currentRound()"), currentRound + 2)
+
+                        const fees0 = await stakingManager.feesOf(orchestrator0.address, orchestrator0.address)
+                        const fees1 = await stakingManager.feesOf(orchestrator1.address, orchestrator1.address)
+
+                        expect(fees0).to.equal(1000)
+                        expect(fees1).to.equal(500)
+                    })
+                })
+
+                describe("withdrawFees", async () => {
                     it("should fail if system is paused", async () => {
                         await fixture?.controller?.pause()
-                        const tx = stakingManager.connect(orchestrator0).withdrawStake(unstakingLockID)
 
+                        const tx = stakingManager.connect(orchestrator0).withdrawFees(orchestrator0.address)
                         await expect(tx).to.be.revertedWith("SYSTEM_PAUSED")
                     })
 
                     it("should fail if current round is not initialized", async () => {
                         await fixture?.roundsManager?.setMockBool(functionSig("currentRoundInitialized()"), false)
-                        const tx = stakingManager.connect(orchestrator0).withdrawStake(unstakingLockID)
 
+                        const tx = stakingManager.connect(orchestrator0).withdrawFees(orchestrator0.address)
                         await expect(tx).to.be.revertedWith("CURRENT_ROUND_NOT_INITIALIZED")
                     })
 
-                    it("should fail for invalid unstakingLockID", async () => {
-                        const unstakingLockID = 1234
-                        const tx = stakingManager.connect(orchestrator0).withdrawStake(unstakingLockID)
+                    describe("fees not updated", async () => {
+                        it("should get correct amount of fees", async () => {
+                            await fixture?.roundsManager?.setMockUint256(functionSig("currentRound()"), currentRound + 2)
+                            const fees = await stakingManager.connect(orchestrator0).feesOf(orchestrator0.address, orchestrator0.address)
+                            expect(fees).to.equal(0)
+                        })
 
-                        await expect(tx).to.be.revertedWith("INVALID_UNSTAKING_LOCK_ID")
+                        it("should fail to withdraw fees", async () => {
+                            await fixture?.roundsManager?.setMockUint256(functionSig("currentRound()"), currentRound + 2)
+                            const tx = stakingManager.connect(orchestrator1).withdrawFees(orchestrator1.address)
+
+                            await expect(tx).to.be.revertedWith("NO_FEES_TO_WITHDRAW")
+                        })
                     })
 
-                    it("should fail if unbonding lock withdraw round is in the future", async () => {
-                        const tx = stakingManager.connect(orchestrator0).withdrawStake(unstakingLockID)
+                    describe("fees added for orchestrator", async () => {
+                        beforeEach(async () => {
+                            await fixture?.roundsManager?.setMockUint256(functionSig("currentRound()"), currentRound + 1)
+                            await fixture?.ticketBroker?.execute(stakingManager.address, functionEncodedABI("updateOrchestratorWithFees(address,uint256)", ["address", "uint256"], [orchestrator0.address, 1000]))
+                        })
 
-                        await expect(tx).revertedWith("WITHDRAW_ROUND_NOT_REACHED_YET")
-                    })
+                        it("should get correct amount of fees", async () => {
+                            await fixture?.roundsManager?.setMockUint256(functionSig("currentRound()"), currentRound + 2)
+                            const fees = await stakingManager.connect(orchestrator0).feesOf(orchestrator0.address, orchestrator0.address)
+                            expect(fees).to.equal(1000)
+                        })
 
-                    it("should fail if not lock owner", async () => {
-                        const unstakingPeriod = await stakingManager.unstakingPeriod()
-                        await fixture?.roundsManager?.setMockUint256(functionSig("currentRound()"), currentRound + 1 + unstakingPeriod.toNumber())
-
-                        const tx = stakingManager.connect(orchestrator1).withdrawStake(unstakingLockID)
-
-                        await expect(tx).to.be.revertedWith("CALLER_NOT_LOCK_OWNER")
-                    })
-
-                    it("should withdraw stake", async () => {
-                        const unstakingPeriod = await stakingManager.unstakingPeriod()
-                        await fixture?.roundsManager?.setMockUint256(functionSig("currentRound()"), currentRound + 1 + unstakingPeriod.toNumber())
-
-                        const prevLock = await stakingManager.unstakingLocks(unstakingLockID)
-                        await stakingManager.connect(orchestrator0).withdrawStake(unstakingLockID)
-                        const newLock = await stakingManager.unstakingLocks(unstakingLockID)
-
-                        expect(prevLock.amount).to.eq(withdrawAmount)
-                        expect(newLock.amount).to.eq(0)
-                    })
-
-                    it("should fire a WithdrawStake event when withdrawing stake", async () => {
-                        const unstakingPeriod = await stakingManager.unstakingPeriod()
-                        await fixture?.roundsManager?.setMockUint256(functionSig("currentRound()"), currentRound + 1 + unstakingPeriod.toNumber())
-
-                        const tx = stakingManager.connect(orchestrator0).withdrawStake(unstakingLockID)
-
-                        await expect(tx)
-                            .to.emit(stakingManager, "WithdrawStake")
-                            .withArgs(orchestrator0.address, unstakingLockID, withdrawAmount, currentRound + 1 + unstakingPeriod.toNumber())
+                        it("should withdraw fees", async () => {
+                            await fixture?.roundsManager?.setMockUint256(functionSig("currentRound()"), currentRound + 2)
+                            await stakingManager.connect(orchestrator0).withdrawFees(orchestrator0.address)
+                        })
                     })
                 })
 
-                describe("withdrawFees", async () => {
-                    beforeEach(async () => {
-                        await fixture?.roundsManager?.setMockUint256(functionSig("currentRound()"), currentRound + 1)
-                        await expect(fixture?.ticketBroker?.execute(stakingManager.address, functionEncodedABI("updateOrchestratorWithFees(address,uint256)", ["address", "uint256"], [orchestrator0.address, 1000])))
-                    })
+                describe("fee accounting", async () => {
+                    describe("fee added multiple times in same round", async () => {
+                        it("should get correct amount of fees", async () => {
+                            await fixture?.roundsManager?.setMockUint256(functionSig("currentRound()"), currentRound + 2)
 
-                    it("should get correct amount of fees", async () => {
-                        await fixture?.roundsManager?.setMockUint256(functionSig("currentRound()"), currentRound + 2)
-                        const fees = await stakingManager.feesOf(orchestrator0.address, orchestrator0.address)
-                        expect(fees).to.equal(1000)
-                    })
+                            await fixture?.ticketBroker?.execute(stakingManager.address, functionEncodedABI("updateOrchestratorWithFees(address,uint256)", ["address", "uint256"], [orchestrator0.address, 1000]))
+                            const fees0 = await stakingManager.connect(orchestrator0).feesOf(orchestrator0.address, orchestrator0.address)
+                            // expect(fees0).to.equal(1000)
+                            console.log(fees0.toString())
 
-                    it("should withdraw fees", async () => {
-                        await fixture?.roundsManager?.setMockUint256(functionSig("currentRound()"), currentRound + 2)
-                        await stakingManager.withdrawFees(orchestrator0.address)
+                            await fixture?.ticketBroker?.execute(stakingManager.address, functionEncodedABI("updateOrchestratorWithFees(address,uint256)", ["address", "uint256"], [orchestrator0.address, 1000]))
+                            const fees1 = await stakingManager.connect(orchestrator0).feesOf(orchestrator0.address, orchestrator0.address)
+                            // expect(fees1).to.equal(2000)
+                            console.log(fees1.toString())
+
+                            await fixture?.ticketBroker?.execute(stakingManager.address, functionEncodedABI("updateOrchestratorWithFees(address,uint256)", ["address", "uint256"], [orchestrator0.address, 1000]))
+                            const fees2 = await stakingManager.connect(orchestrator0).feesOf(orchestrator0.address, orchestrator0.address)
+                            // expect(fees2).to.equal(3000)
+                            console.log(fees2.toString())
+                        })
                     })
                 })
             })
@@ -875,8 +958,8 @@ describe("StakingManager", () => {
                     await stakingManager.connect(delegator0).delegate(stakeAmount, orchestrator0.address, constants.NULL_ADDRESS, constants.NULL_ADDRESS)
                     const newStake = await stakingManager.orchestratorTotalStake(orchestrator0.address)
 
-                    expect(newStake).to.gte(currentStake.add(stakeAmount).sub(1))
-                    expect(await stakingManager.getDelegatedStake(orchestrator0.address, delegator0.address)).to.be.gte(ethers.BigNumber.from(stakeAmount).sub(1))
+                    expect(newStake).to.equal(currentStake.add(stakeAmount))
+                    expect(await stakingManager.getDelegatedStake(orchestrator0.address, delegator0.address)).to.equal(stakeAmount)
                 })
 
                 it("should fire a Delegate event when delegating", async () => {
@@ -936,8 +1019,8 @@ describe("StakingManager", () => {
 
                         expect(newStake0).to.equal(currentStake0.sub(changeAmount))
                         expect(newStake1).to.equal(currentStake1.add(changeAmount))
-                        expect(await stakingManager.getDelegatedStake(orchestrator0.address, delegator0.address)).to.be.gte(delegatorShare0.sub(changeAmount).sub(1))
-                        expect(await stakingManager.getDelegatedStake(orchestrator1.address, delegator0.address)).to.be.gte(delegatorShare1.add(changeAmount).sub(1))
+                        expect(await stakingManager.getDelegatedStake(orchestrator0.address, delegator0.address)).to.equal(delegatorShare0.sub(changeAmount))
+                        expect(await stakingManager.getDelegatedStake(orchestrator1.address, delegator0.address)).to.equal(delegatorShare1.add(changeAmount))
                     })
                 })
 
@@ -978,8 +1061,8 @@ describe("StakingManager", () => {
 
                         expect(newStake0).to.equal(currentStake0.sub(changeAmount))
                         expect(newStake1).to.equal(currentStake1.add(changeAmount))
-                        expect(await stakingManager.getDelegatedStake(orchestrator0.address, delegator0.address)).to.be.gte(delegatorShare0.sub(changeAmount).sub(1))
-                        expect(await stakingManager.getDelegatedStake(orchestrator1.address, delegator0.address)).to.be.gte(delegatorShare1.add(changeAmount).sub(1))
+                        expect(await stakingManager.getDelegatedStake(orchestrator0.address, delegator0.address)).to.equal(delegatorShare0.sub(changeAmount))
+                        expect(await stakingManager.getDelegatedStake(orchestrator1.address, delegator0.address)).to.equal(delegatorShare1.add(changeAmount))
                     })
                 })
             })
@@ -994,7 +1077,7 @@ describe("StakingManager", () => {
                     await stakingManager.connect(delegator0).undelegate(stakeAmount, orchestrator0.address, constants.NULL_ADDRESS, constants.NULL_ADDRESS)
                     const newStake = await stakingManager.getDelegatedStake(orchestrator0.address, delegator0.address)
 
-                    expect(newStake).to.gte(currentStake.sub(stakeAmount).sub(1))
+                    expect(newStake).to.equal(currentStake.sub(stakeAmount))
                 })
 
                 it("should fire an Undelegate event when undelegating", async () => {
@@ -1034,12 +1117,12 @@ describe("StakingManager", () => {
                     await stakingManager.connect(delegator0).redelegate(unstakingLockID, constants.NULL_ADDRESS, constants.NULL_ADDRESS)
                     const newStake = await stakingManager.getDelegatedStake(orchestrator0.address, delegator0.address)
 
-                    expect(prevStake).to.gte(ethers.BigNumber.from(undelegateAmount).sub(1))
-                    expect(newStake).to.gte(ethers.BigNumber.from(stakeAmount).sub(1))
+                    expect(prevStake).to.equal(undelegateAmount)
+                    expect(newStake).to.equal(stakeAmount)
                 })
             })
 
-            describe("withdraw", async () => {
+            describe("withdrawStake", async () => {
                 let unstakingLockID: BigNumberish
                 const withdrawAmount = stakeAmount / 2
 
@@ -1113,6 +1196,31 @@ describe("StakingManager", () => {
                 })
             })
 
+            describe("withdrawFees", async () => {
+                beforeEach(async () => {
+                    await fixture?.roundsManager?.setMockUint256(functionSig("currentRound()"), currentRound + 1)
+                    await expect(fixture?.ticketBroker?.execute(stakingManager.address, functionEncodedABI("updateOrchestratorWithFees(address,uint256)", ["address", "uint256"], [orchestrator0.address, 1000])))
+                })
+
+                it("should get correct amount of fees", async () => {
+                    await fixture?.roundsManager?.setMockUint256(functionSig("currentRound()"), currentRound + 2)
+                    const fees = await stakingManager.connect(orchestrator0).feesOf(orchestrator0.address, orchestrator0.address)
+                    expect(fees).to.equal(1000)
+                })
+
+                it("should not withdraw if fees is zero", async () => {
+                    await fixture?.roundsManager?.setMockUint256(functionSig("currentRound()"), currentRound + 2)
+                    const tx = stakingManager.connect(orchestrator1).withdrawFees(orchestrator0.address)
+
+                    await expect(tx).to.be.revertedWith("NO_FEES_TO_WITHDRAW")
+                })
+
+                it("should withdraw fees", async () => {
+                    await fixture?.roundsManager?.setMockUint256(functionSig("currentRound()"), currentRound + 2)
+                    await stakingManager.connect(orchestrator0).withdrawFees(orchestrator0.address)
+                })
+            })
+
             describe("third party", async () => {
                 it("should delegate on behalf of delegator", async () => {
                     const currentStake = await stakingManager.orchestratorTotalStake(orchestrator0.address)
@@ -1120,8 +1228,8 @@ describe("StakingManager", () => {
                     const newStake = await stakingManager.orchestratorTotalStake(orchestrator0.address)
 
                     expect(newStake).to.equal(currentStake.add(stakeAmount))
-                    expect(await stakingManager.getDelegatedStake(orchestrator0.address, delegator0.address)).to.be.gte(ethers.BigNumber.from(stakeAmount).sub(1))
-                    expect(await stakingManager.getDelegatedStake(orchestrator0.address, thirdParty.address)).to.be.gte(ethers.BigNumber.from(0).sub(1))
+                    expect(await stakingManager.getDelegatedStake(orchestrator0.address, delegator0.address)).to.equal(stakeAmount)
+                    expect(await stakingManager.getDelegatedStake(orchestrator0.address, thirdParty.address)).to.equal(0)
                 })
             })
         })

@@ -365,6 +365,7 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
     function withdrawFees(address _orchestrator) external whenSystemNotPaused currentRoundInitialized {
         Orchestrator storage orch = orchestrators[_orchestrator];
         uint256 fees = orch.delegationPool.feesOf(msg.sender);
+        require(fees > 0, "NO_FEES_TO_WITHDRAW");
         if (msg.sender == _orchestrator) {
             fees += orch.feeCommissions;
             orch.feeCommissions = 0;
@@ -634,9 +635,9 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
         address _newPosPrev,
         address _newPosNext
     ) internal {
-        if (!orchestratorPoolV2.contains(_orchestrator)) {
-            return;
-        }
+        // if (!orchestratorPoolV2.contains(_orchestrator)) {
+        //     return;
+        // }
 
         uint256 newStake = _oldStake - _decrease;
         orchestratorPoolV2.updateKey(_orchestrator, newStake, _newPosPrev, _newPosNext);

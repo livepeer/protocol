@@ -195,7 +195,7 @@ library Delegations {
         uint256 currentAcc = _getAccRewardPerStake(_pool, _pool.lastUpdateRound);
         _pool.accumulators[_currentRound].rewardPerStake =
             currentAcc +
-            MathUtils.percOf(currentAcc, _amount, _pool.stake);
+            MathUtils.percOf(_amount, currentAcc, _pool.stake);
         _pool.nextStake += _amount;
     }
 
@@ -210,7 +210,7 @@ library Delegations {
         _pool.accumulators[_currentRound].feePerStake += MathUtils.percOf(currentAcc, _amount, _pool.stake);
     }
 
-    function _rewards(Pool storage _pool, Delegation storage _delegation) internal view returns (uint256 stake) {
+    function _rewards(Pool storage _pool, Delegation storage _delegation) internal view returns (uint256) {
         // accRewardPerShare only changes when rewards are earned
         uint256 rewardPerStakeNew = _getAccRewardPerStake(_pool, _pool.lastUpdateRound);
         uint256 rewardPerStakeOld = _getAccRewardPerStake(_pool, _delegation.lastUpdateRound);
@@ -222,8 +222,8 @@ library Delegations {
         uint256 lookbackRewards = MathUtils.percOf(_delegation.stakeCheckpoint, rewardPerStakeOld, checkpoint) -
             _delegation.stakeCheckpoint;
 
-        stake = _delegation.stake + MathUtils.percOf(lookbackRewards, rewardPerStakeNew, rewardPerStakeOld);
-        stake -= _delegation.stake;
+        uint256 stake = MathUtils.percOf(_delegation.stake + lookbackRewards, rewardPerStakeNew, rewardPerStakeOld);
+        return stake - _delegation.stake;
     }
 
     function _fees(Pool storage _pool, Delegation storage _delegation) internal view returns (uint256 fees) {
