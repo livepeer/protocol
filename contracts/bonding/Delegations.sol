@@ -24,6 +24,13 @@ library Delegations {
         uint256 feePerStake;
     }
 
+    struct CommissionRates {
+        uint128 rewardCut;
+        uint128 nextRewardCut;
+        uint128 feeCut;
+        uint128 nextFeeCut;
+    }
+
     /**
      @notice Delegation holds the necessary info for delegations to a delegation pool
      */
@@ -45,6 +52,9 @@ library Delegations {
         uint256 stake; // total amount of tokens active in the current round
         uint256 nextStake; // tokens which will become active for rewards in the next round
         uint256 lastUpdateRound; // round in which the pool was last updated
+
+        CommissionRates commissionRates; // commission rates for the pool
+
         mapping(uint256 => Accumulator) accumulators;
         mapping(address => Delegation) delegations;
     }
@@ -107,6 +117,13 @@ library Delegations {
         _pool.nextStake -= _amount;
     }
 
+    function setCommissions(Pool storage _pool, uint128 _rewardCut, uint128 _feeCut, uint256 _currentRound) internal {
+        _updatePool(_pool, _currentRound);
+
+        _pool.commissionRates.nextRewardCut = _rewardCut;
+        _pool.commissionRates.nextFeeCut = _feeCut;
+    }
+
     /**
      * @notice updates the orchestrator's pool for the current round
      *  the stake which was accumulated after the round started is made active for rewards
@@ -125,6 +142,10 @@ library Delegations {
 
         _pool.accumulators[_currentRound].rewardPerStake = _getAccRewardPerStake(_pool, _pool.lastUpdateRound);
         _pool.accumulators[_currentRound].feePerStake = _getAccFeePerStake(_pool, _pool.lastUpdateRound);
+
+        // Update commission rates
+        _pool.commissionRates.rewardCut = _pool.commissionRates.nextRewardCut;
+        _pool.commissionRates.feeCut = _pool.commissionRates.nextFeeCut;
 
         // mark the pool as recently updated
         _pool.lastUpdateRound = _currentRound;
@@ -192,10 +213,21 @@ library Delegations {
 
         if (_pool.stake == 0) return;
 
+        // calculate reward cut
+        uint256 rewardCut = MathUtils.percOf(_amount, uint256(_pool.commissionRates.rewardCut));
+        // update the pool owner's delegation with the commission
+        _updateDelegation(_pool, _pool.owner, int256(rewardCut), _currentRound);
+
+        // calculate portion of rewards shared with pool
+        uint256 rewardShare = _amount - rewardCut;
+
+        // Calculate the next reward per stake accumulator using the 'rewardShare'
         uint256 currentAcc = _getAccRewardPerStake(_pool, _pool.lastUpdateRound);
         _pool.accumulators[_currentRound].rewardPerStake =
             currentAcc +
-            MathUtils.percOf(currentAcc, _amount, _pool.stake);
+            MathUtils.percOf(currentAcc, rewardShare, _pool.stake);
+
+        // Add the total amount of rewards to the pool's next stake
         _pool.nextStake += _amount;
     }
 
@@ -206,8 +238,15 @@ library Delegations {
     ) internal {
         _updatePool(_pool, _currentRound);
 
+        // calculate fee cut
+        uint256 feeCut = MathUtils.percOf(_amount, uint256(_pool.commissionRates.feeCut));
+        // update the pool owner's delegation with the fee cut
+        _pool.delegations[_pool.owner].fees += feeCut;
+        // calculate fee share
+        uint256 feeShare = _amount - feeCut;
+
         uint256 currentAcc = _getAccFeePerStake(_pool, _currentRound);
-        _pool.accumulators[_currentRound].feePerStake += MathUtils.percOf(currentAcc, _amount, _pool.stake);
+        _pool.accumulators[_currentRound].feePerStake += MathUtils.percOf(currentAcc, feeShare, _pool.stake);
     }
 
     function _rewards(Pool storage _pool, Delegation storage _delegation) internal view returns (uint256 stake) {

@@ -32,11 +32,8 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
         // Time-keeping
         uint256 activationRound; // Round in which the orchestrator became active - 0 if inactive
         uint256 deactivationRound;
-        // Commission accounting
-        uint256 rewardShare; // % of reward shared with delegations
-        uint256 feeShare; // % of fees shared with delegations
-        uint256 feeCommissions; // fees earned from commission (not shared with delegators)
         uint256 lastRewardRound;
+
         // Delegation Pool
         Delegations.Pool delegationPool;
     }
@@ -384,20 +381,20 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
      * @dev caller can provide an optional hint for the insertion position in the pool via the `_newPosPrev` and `_newPosNext` params. A linear search will
         be executed starting at the hint to find the correct position - in the best case, the hint is the correct position so no search is executed.
         See SortedDoublyLL.sol for details on list hints
-     * @param _rewardShare % of rewards paid to delegators by an orchestrator
-     * @param _feeShare % of fees paid to delegators by a orchestrator
+     * @param _rewardCut % of commission on rewards paid to orchestrator
+     * @param _feeCut % of commission on fees paid to orchestrator
      * @param _newPosPrev Address of previous orchestrator in pool if the caller joins the pool
      * @param _newPosNext Address of next orchestrator in pool if the caller joins the pool
      */
     function orchestrator(
-        uint256 _rewardShare,
-        uint256 _feeShare,
+        uint128 _rewardCut,
+        uint128 _feeCut,
         address _newPosPrev,
         address _newPosNext
     ) external whenSystemNotPaused currentRoundInitialized {
         require(!roundsManager().currentRoundLocked(), "CURRENT_ROUND_LOCKED");
-        require(MathUtils.validPerc(_rewardShare), "REWARDSHARE_INVALID_PERC");
-        require(MathUtils.validPerc(_feeShare), "FEESHARE_INVALID_PERC");
+        require(MathUtils.validPerc(_rewardCut), "REWARD_CUT_INVALID_PERC");
+        require(MathUtils.validPerc(_feeCut), "FEE_CUT_INVALID_PERC");
         require(isRegisteredOrchestrator(msg.sender), "ORCHESTRATOR_NOT_REGISTERED");
 
         Orchestrator storage o = orchestrators[msg.sender];
@@ -405,9 +402,6 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
 
         // caller can't be active or must have already called reward for the current round
         require(!isActiveOrchestrator(msg.sender) || o.lastRewardRound == currentRound, "COMMISSION_RATES_LOCKED");
-
-        o.rewardShare = _rewardShare;
-        o.feeShare = _feeShare;
 
         if (!orchestratorPoolV2.contains(msg.sender)) {
             _tryToJoinActiveSet(
@@ -419,7 +413,9 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
             );
         }
 
-        emit OrchestratorUpdate(msg.sender, _rewardShare, _feeShare);
+        orchestrators[msg.sender].delegationPool.setCommissions(_rewardCut, _feeCut, currentRound);
+
+        emit OrchestratorUpdate(msg.sender, _rewardCut, _feeCut);
     }
 
     /**
@@ -722,10 +718,6 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
     function _claimFees(address _orchestrator, address payable _for) internal {
         Orchestrator storage orch = orchestrators[_orchestrator];
         uint256 fees = orch.delegationPool.feesOf(_for);
-        if (_for == _orchestrator) {
-            fees += orch.feeCommissions;
-            orch.feeCommissions = 0;
-        }
         minter().trustedWithdrawETH(_for, fees);
     }
 
@@ -776,9 +768,6 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
     function feesOf(address _orchestrator, address _delegator) public view returns (uint256 fees) {
         Orchestrator storage orch = orchestrators[_orchestrator];
         fees = orch.delegationPool.feesOf(_delegator);
-        if (_orchestrator == _delegator) {
-            fees += orch.feeCommissions;
-        }
     }
 
     /**
@@ -834,27 +823,27 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
      * @notice Return orchestrator information
      * @param _orchestrator Address of orchestrator
      * @return lastRewardRound Orchestrator's last reward round
-     * @return rewardShare Orchestrator's reward share
-     * @return feeShare Orchestrator's fee share
      * @return activationRound Round in which orchestrator became active
      * @return deactivationRound Round in which orchestrator will no longer be active
+     * @return rewardCut Orchestrator's reward cut
+     * @return feeCut Orchestrator's fee cut
      */
     function getOrchestrator(address _orchestrator)
         public
         view
         returns (
             uint256 lastRewardRound,
-            uint256 rewardShare,
-            uint256 feeShare,
             uint256 activationRound,
-            uint256 deactivationRound
+            uint256 deactivationRound,
+            uint128 rewardCut,
+            uint128 feeCut
         )
     {
         Orchestrator storage o = orchestrators[_orchestrator];
 
         lastRewardRound = o.lastRewardRound;
-        rewardShare = o.rewardShare;
-        feeShare = o.feeShare;
+        rewardCut = o.delegationPool.commissionRates.rewardCut;
+        feeCut = o.delegationPool.commissionRates.feeCut;
         activationRound = o.activationRound;
         deactivationRound = o.deactivationRound;
         lastRewardRound = o.lastRewardRound;

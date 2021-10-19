@@ -7,7 +7,7 @@ pragma solidity 0.8.4;
  * @title Interface for StakingManager
  */
 interface IStakingManager {
-    event OrchestratorUpdate(address indexed orchestrator, uint256 rewardCut, uint256 feeShare);
+    event OrchestratorUpdate(address indexed orchestrator, uint128 rewardCut, uint128 feeCut);
     event OrchestratorActivated(address indexed orchestrator, uint256 activationRound);
     event OrchestratorDeactivated(address indexed orchestrator, uint256 deactivationRound);
     event Reward(address indexed orchestrator, uint256 amount);
