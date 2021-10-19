@@ -52,9 +52,7 @@ library Delegations {
         uint256 stake; // total amount of tokens active in the current round
         uint256 nextStake; // tokens which will become active for rewards in the next round
         uint256 lastUpdateRound; // round in which the pool was last updated
-
         CommissionRates commissionRates; // commission rates for the pool
-
         mapping(uint256 => Accumulator) accumulators;
         mapping(address => Delegation) delegations;
     }
@@ -117,7 +115,12 @@ library Delegations {
         _pool.nextStake -= _amount;
     }
 
-    function setCommissions(Pool storage _pool, uint128 _rewardCut, uint128 _feeCut, uint256 _currentRound) internal {
+    function setCommissions(
+        Pool storage _pool,
+        uint128 _rewardCut,
+        uint128 _feeCut,
+        uint256 _currentRound
+    ) internal {
         _updatePool(_pool, _currentRound);
 
         _pool.commissionRates.nextRewardCut = _rewardCut;

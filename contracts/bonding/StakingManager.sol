@@ -33,7 +33,6 @@ contract StakingManager is ManagerProxyTarget, IStakingManager {
         uint256 activationRound; // Round in which the orchestrator became active - 0 if inactive
         uint256 deactivationRound;
         uint256 lastRewardRound;
-
         // Delegation Pool
         Delegations.Pool delegationPool;
     }
