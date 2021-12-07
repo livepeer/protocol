@@ -1,6 +1,4 @@
 import {constants} from "../../utils/constants"
-import {contractId} from "../../utils/helpers"
-import executeLIP36Upgrade from "../helpers/executeLIP36Upgrade"
 import {createWinningTicket, getTicketHash} from "../helpers/ticket"
 import signMsg from "../helpers/signMsg"
 import math from "../helpers/math"
@@ -11,10 +9,9 @@ import chai, {assert, expect} from "chai"
 import {solidity} from "ethereum-waffle"
 chai.use(solidity)
 
-describe("Earnings", accounts => {
+describe("Earnings", () => {
     let controller
     let bondingManager
-    let bondingProxy
     let roundsManager
     let token
     let broker
@@ -33,9 +30,7 @@ describe("Earnings", accounts => {
 
     let roundLength
 
-    const NUM_ACTIVE_TRANSCODERS = 2
     const UNBONDING_PERIOD = 2
-    const MAX_EARNINGS_CLAIMS_ROUNDS = 20
 
     const faceValue = ethers.utils.parseEther("0.1")
 
@@ -65,19 +60,9 @@ describe("Earnings", accounts => {
         controller = await ethers.getContractAt("Controller", fixture.Controller.address)
         await controller.unpause()
 
-        const bondingTarget = await (await ethers.getContractFactory("BondingManagerPreLIP36", {
-            libraries: {
-                SortedDoublyLL: fixture.SortedDoublyLL.address
-            }
-        })).deploy(controller.address)
-        await controller.setContractInfo(contractId("BondingManagerTarget"), bondingTarget.address, "0x3031323334353637383930313233343536373839")
-        bondingProxy = await (await ethers.getContractFactory("ManagerProxy")).deploy(controller.address, contractId("BondingManagerTarget"))
-        await controller.setContractInfo(contractId("BondingManager"), bondingProxy.address, "0x3031323334353637383930313233343536373839")
-        bondingManager = await ethers.getContractAt("BondingManagerPreLIP36", bondingProxy.address)
+        bondingManager = await ethers.getContractAt("BondingManager", fixture.BondingManager.address)
 
         await bondingManager.setUnbondingPeriod(UNBONDING_PERIOD)
-        await bondingManager.setNumActiveTranscoders(NUM_ACTIVE_TRANSCODERS)
-        await bondingManager.setMaxEarningsClaimsRounds(MAX_EARNINGS_CLAIMS_ROUNDS)
 
         roundsManager = await ethers.getContractAt("AdjustableRoundsManager", fixture.AdjustableRoundsManager.address)
 
@@ -118,48 +103,6 @@ describe("Earnings", accounts => {
     const getFees = async addr => {
         const currentRound = await roundsManager.currentRound()
         return await bondingManager.pendingFees(addr, currentRound)
-    }
-
-    const oldEarningsAndCheck = async () => {
-        const acceptableDelta = ethers.utils.parseEther("0.001")
-
-        const transcoderStartStake = await getStake(transcoder.address)
-        const delegatorStartStake = await getStake(delegator.address)
-        const totalStartStake = transcoderStartStake.add(delegatorStartStake)
-
-        const transcoderStartFees = await getFees(transcoder.address)
-        const delegatorStartFees = await getFees(delegator.address)
-
-        await bondingManager.connect(transcoder).reward()
-        await redeemWinningTicket(transcoder, broadcaster, faceValue)
-
-        const currentRound = await roundsManager.currentRound()
-
-        const earningsPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder.address, currentRound)
-        const delegatorRewardPool = earningsPool.rewardPool
-        const transcoderRewardPool = earningsPool.transcoderRewardPool
-        const delegatorFeePool = earningsPool.feePool
-        const transcoderFeePool = earningsPool.transcoderFeePool
-
-        const expTRewardShare = delegatorRewardPool.mul(transcoderStartStake).div(totalStartStake).add(transcoderRewardPool)
-        const expDRewardShare = delegatorRewardPool.mul(delegatorStartStake).div(totalStartStake)
-        const expTFees = delegatorFeePool.mul(transcoderStartStake).div(totalStartStake).add(transcoderFeePool)
-        const expDFees = delegatorFeePool.mul(delegatorStartStake).div(totalStartStake)
-
-        const transcoderEndStake = await bondingManager.pendingStake(transcoder.address, currentRound)
-        const delegatorEndStake = await bondingManager.pendingStake(delegator.address, currentRound)
-        const transcoderEndFees = await bondingManager.pendingFees(transcoder.address, currentRound)
-        const delegatorEndFees = await bondingManager.pendingFees(delegator.address, currentRound)
-
-        const transcoderRewardShare = transcoderEndStake.sub(transcoderStartStake)
-        const delegatorRewardShare = delegatorEndStake.sub(delegatorStartStake)
-        const transcoderFees = transcoderEndFees.sub(transcoderStartFees)
-        const delegatorFees = delegatorEndFees.sub(delegatorStartFees)
-
-        assert.isOk(transcoderRewardShare.sub(expTRewardShare).abs().lte(acceptableDelta))
-        assert.isOk(delegatorRewardShare.sub(expDRewardShare).abs().lte(acceptableDelta))
-        assert.isOk(transcoderFees.sub(expTFees).abs().lte(acceptableDelta))
-        assert.isOk(delegatorFees.sub(expDFees).abs().lte(acceptableDelta))
     }
 
     const cumulativeEarningsAndCheck = async () => {
@@ -269,49 +212,6 @@ describe("Earnings", accounts => {
         assert.equal(transcoderDel.lastClaimRound.toString(), currentRound.toString())
         assert.equal(delegatorDel.lastClaimRound.toString(), currentRound.toString())
     }
-
-    describe("earnings before LIP-36", async () => {
-        beforeEach(async () => {
-            await roundsManager.mineBlocks(roundLength.toNumber())
-            await roundsManager.initializeRound()
-        })
-
-        it("calculates earnings for one round before LIP-36", async () => {
-            await oldEarningsAndCheck()
-        })
-
-        it("calculates earnings for two rounds before LIP-36", async () => {
-            await oldEarningsAndCheck()
-        })
-
-        it("claims earnings for rounds before LIP-36", async () => {
-            await claimEarningsAndCheckStakes()
-        })
-    })
-
-    describe("earnings before and after LIP-36 combined", async () => {
-        beforeEach(async () => {
-            await roundsManager.mineBlocks(roundLength.toNumber())
-            await roundsManager.initializeRound()
-        })
-
-        it("calculates earnings before LIP-36", async () => {
-            await oldEarningsAndCheck()
-        })
-
-        it("calculates earnings and deploys LIP-36", async () => {
-            await oldEarningsAndCheck()
-            bondingManager = await executeLIP36Upgrade(controller, roundsManager, bondingProxy.address)
-        })
-
-        it("calculates earnings after LIP-36", async () => {
-            await cumulativeEarningsAndCheck()
-        })
-
-        it("claims earnings for rounds before and after LIP-36 combined", async () => {
-            await claimEarningsAndCheckStakes()
-        })
-    })
 
     describe("earnings after LIP-36", async () => {
         it("calculates earnings after LIP-36 for multiple rounds", async () => {
