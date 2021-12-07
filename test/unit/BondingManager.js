@@ -18,7 +18,6 @@ describe("BondingManager", () => {
 
     const NUM_ACTIVE_TRANSCODERS = 2
     const UNBONDING_PERIOD = 2
-    const MAX_EARNINGS_CLAIMS_ROUNDS = 20
 
     const PERC_DIVISOR = 1000000
     const PERC_MULTIPLIER = PERC_DIVISOR / 100
@@ -40,7 +39,6 @@ describe("BondingManager", () => {
 
         await bondingManager.setUnbondingPeriod(UNBONDING_PERIOD)
         await bondingManager.setNumActiveTranscoders(NUM_ACTIVE_TRANSCODERS)
-        await bondingManager.setMaxEarningsClaimsRounds(MAX_EARNINGS_CLAIMS_ROUNDS)
     })
 
     beforeEach(async () => {
@@ -88,20 +86,6 @@ describe("BondingManager", () => {
             await bondingManager.setNumActiveTranscoders(4)
 
             assert.equal(await bondingManager.getTranscoderPoolMaxSize(), 4, "wrong numActiveTranscoders")
-        })
-    })
-
-    describe("setMaxEarningsClaimsRounds", () => {
-        it("should fail if caller is not Controller owner", async () => {
-            await expect(bondingManager.connect(signers[2]).setMaxEarningsClaimsRounds(2)).to.be.revertedWith(
-                "caller must be Controller owner"
-            )
-        })
-
-        it("should set maxEarningsClaimsRounds", async () => {
-            await bondingManager.setMaxEarningsClaimsRounds(2)
-
-            assert.equal(await bondingManager.maxEarningsClaimsRounds(), 2, "wrong maxEarningsClaimsRounds")
         })
     })
 
@@ -1893,46 +1877,6 @@ describe("BondingManager", () => {
             const txRes = bondingManager.connect(transcoder).reward()
             await expect(txRes).to.emit(bondingManager, "Reward").withArgs(transcoder.address, 1000)
         })
-
-        describe("previous cumulative factors rescaling", () => {
-            it("should rescale previous cumulativeRewardFactor stored before LIP-71 round", async () => {
-                await fixture.roundsManager.setMockUint256(functionSig("lipUpgradeRound(uint256)"), currentRound + 2)
-                await bondingManager.connect(transcoder).reward()
-                await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 2)
-                await bondingManager.connect(transcoder).reward()
-
-                const prevPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder.address, currentRound + 1)
-                const pool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder.address, currentRound + 2)
-
-                // Since we cannot store cumulativeRewardFactor values using the old PERC_DIVISOR value we just check
-                // that rescaling occurs
-                const rescaleFactor = constants.PERC_DIVISOR_PRECISE.div(constants.PERC_DIVISOR.toString())
-                assert.ok(
-                    prevPool.cumulativeRewardFactor
-                        .mul(rescaleFactor)
-                        .lt(pool.cumulativeRewardFactor)
-                )
-            })
-
-            it("should not rescale previous cumulativeRewardFactor stored LIP-71 round and onwards", async () => {
-                await fixture.roundsManager.setMockUint256(functionSig("lipUpgradeRound(uint256)"), currentRound + 1)
-                await bondingManager.connect(transcoder).reward()
-                await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 2)
-                await bondingManager.connect(transcoder).reward()
-
-                const prevPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder.address, currentRound + 1)
-                const pool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder.address, currentRound + 2)
-
-                // Since we cannot store cumulativeRewardFactor values using the old PERC_DIVISOR value we just check
-                // that rescaling did not occur
-                const rescaleFactor = constants.PERC_DIVISOR_PRECISE.div(constants.PERC_DIVISOR.toString())
-                assert.ok(
-                    prevPool.cumulativeRewardFactor
-                        .mul(rescaleFactor)
-                        .gt(pool.cumulativeRewardFactor)
-                )
-            })
-        })
     })
 
     describe("updateTranscoderWithFees", () => {
@@ -2201,74 +2145,6 @@ describe("BondingManager", () => {
                 )
             )
             assert.equal((await bondingManager.getTranscoder(transcoder.address)).lastFeeRound.toNumber(), round)
-        })
-
-        describe("previous cumulative factors rescaling", () => {
-            it("should rescale previous cumulativeRewardFactor and cumulativeFeeFactor if stored before LIP-71 round", async () => {
-                await fixture.roundsManager.setMockUint256(functionSig("lipUpgradeRound(uint256)"), currentRound + 2)
-                await fixture.ticketBroker.execute(
-                    bondingManager.address,
-                    functionEncodedABI(
-                        "updateTranscoderWithFees(address,uint256,uint256)",
-                        ["address", "uint256", "uint256"],
-                        [transcoder.address, 1000, currentRound + 1]
-                    )
-                )
-                await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 2)
-                await fixture.ticketBroker.execute(
-                    bondingManager.address,
-                    functionEncodedABI(
-                        "updateTranscoderWithFees(address,uint256,uint256)",
-                        ["address", "uint256", "uint256"],
-                        [transcoder.address, 1000, currentRound + 2]
-                    )
-                )
-
-                const prevPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder.address, currentRound + 1)
-                const pool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder.address, currentRound + 2)
-
-                // Since we cannot store cumulative factor values using the old PERC_DIVISOR value we just check
-                // that rescaling occured
-                const rescaleFactor = constants.PERC_DIVISOR_PRECISE.div(constants.PERC_DIVISOR)
-                assert.ok(
-                    BigNumber.from(prevPool.cumulativeFeeFactor.toString())
-                        .mul(rescaleFactor)
-                        .lt(BigNumber.from(pool.cumulativeFeeFactor.toString()))
-                )
-            })
-
-            it("should not rescale previous cumulativeRewardFactor and cumulativeFeeFactor if stored in LIP-71 round and onwards", async () => {
-                await fixture.roundsManager.setMockUint256(functionSig("lipUpgradeRound(uint256)"), currentRound + 1)
-                await fixture.ticketBroker.execute(
-                    bondingManager.address,
-                    functionEncodedABI(
-                        "updateTranscoderWithFees(address,uint256,uint256)",
-                        ["address", "uint256", "uint256"],
-                        [transcoder.address, 1000, currentRound + 1]
-                    )
-                )
-                await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 2)
-                await fixture.ticketBroker.execute(
-                    bondingManager.address,
-                    functionEncodedABI(
-                        "updateTranscoderWithFees(address,uint256,uint256)",
-                        ["address", "uint256", "uint256"],
-                        [transcoder.address, 1000, currentRound + 2]
-                    )
-                )
-
-                const prevPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder.address, currentRound + 1)
-                const pool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder.address, currentRound + 2)
-
-                // Since we cannot store cumulative factor values using the old PERC_DIVISOR value we just check
-                // that rescaling did not occur
-                const rescaleFactor = constants.PERC_DIVISOR_PRECISE.div(constants.PERC_DIVISOR)
-                assert.ok(
-                    prevPool.cumulativeFeeFactor
-                        .mul(rescaleFactor)
-                        .gt(pool.cumulativeFeeFactor)
-                )
-            })
         })
     })
 
@@ -2660,32 +2536,6 @@ describe("BondingManager", () => {
             )
         })
 
-        it("should fail if provided endRound is before caller's lastClaimRound", async () => {
-            await expect(bondingManager.connect(delegator1).claimEarnings(currentRound - 1)).to.be.revertedWith(
-                "end round must be after last claim round"
-            )
-        })
-
-        it("should fail if provided endRound is in the future", async () => {
-            await expect(bondingManager.connect(delegator1).claimEarnings(currentRound + 2)).to.be.revertedWith(
-                "end round must be equal to the current round or before the LIP-36 upgrade round"
-            )
-        })
-
-        it("should fail if provided endRound is in the past and equal to or after the LIP-36 upgrade round", async () => {
-            await fixture.roundsManager.setMockUint256(functionSig("lipUpgradeRound(uint256)"), currentRound + 5)
-            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 10)
-
-            // Revert when _endRound > LIP-36 upgrade round
-            await expect(bondingManager.connect(delegator1).claimEarnings(currentRound + 6)).to.be.revertedWith(
-                "end round must be equal to the current round or before the LIP-36 upgrade round"
-            )
-            // Revert when _endRound == LIP-36 upgrade round
-            await expect(bondingManager.connect(delegator1).claimEarnings(currentRound + 5)).to.be.revertedWith(
-                "end round must be equal to the current round or before the LIP-36 upgrade round"
-            )
-        })
-
         it("updates caller's lastClaimRound", async () => {
             await bondingManager.connect(delegator1).claimEarnings(currentRound + 1)
 
@@ -2696,84 +2546,7 @@ describe("BondingManager", () => {
             )
         })
 
-        it("does not update transcoders cumulativeRewardFactor for _endRound EarningsPool if reward is not called for _endRound yet when _endRound < LIP-36 upgrade round", async () => {
-            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 2)
-            await fixture.roundsManager.setMockUint256(functionSig("lipUpgradeRound(uint256)"), currentRound + 3)
-
-            await bondingManager.connect(delegator1).claimEarnings(currentRound + 2)
-
-            const lastRewardPool = await bondingManager.getTranscoderEarningsPoolForRound(
-                transcoder.address,
-                currentRound + 1
-            )
-            assert.notOk(lastRewardPool.cumulativeRewardFactor.isZero())
-            assert.notEqual(
-                lastRewardPool.cumulativeRewardFactor.toString(),
-                (
-                    await bondingManager.getTranscoderEarningsPoolForRound(transcoder.address, currentRound + 2)
-                ).cumulativeRewardFactor.toString()
-            )
-        })
-
-        it("does not update transcoders cumulativeFeeFactor for _endRound EarningsPool if no fees for _endRound yet when _endRound < LIP-36 upgrade round", async () => {
-            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 2)
-            await fixture.roundsManager.setMockUint256(functionSig("lipUpgradeRound(uint256)"), currentRound + 3)
-
-            await bondingManager.connect(delegator1).claimEarnings(currentRound + 2)
-
-            const lastFeePool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder.address, currentRound + 1)
-            assert.notOk(lastFeePool.cumulativeFeeFactor.isZero())
-            assert.notEqual(
-                lastFeePool.cumulativeFeeFactor.toString(),
-                (
-                    await bondingManager.getTranscoderEarningsPoolForRound(transcoder.address, currentRound + 2)
-                ).cumulativeFeeFactor.toString()
-            )
-        })
-
-        it("updates transcoders cumulativeRewardFactor for _endRound EarningsPool if reward is not called for _endRound yet when _endRound == LIP-36 upgrade round", async () => {
-            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 2)
-            const iface = (await ethers.getContractFactory("RoundsManager")).interface
-            const fnName = "lipUpgradeRound(uint256)"
-            await fixture.roundsManager.setMockUint256WithParam(
-                functionSig(fnName),
-                ethers.utils.solidityKeccak256(["bytes"], [iface.encodeFunctionData(fnName, [36])]),
-                currentRound + 2
-            )
-
-            await bondingManager.connect(delegator1).claimEarnings(currentRound + 2)
-
-            assert.equal(
-                (
-                    await bondingManager.getTranscoderEarningsPoolForRound(transcoder.address, currentRound + 2)
-                ).cumulativeRewardFactor.toString(),
-                (await bondingManager.getTranscoderEarningsPoolForRound(transcoder.address, currentRound + 1))
-                    .cumulativeRewardFactor
-            )
-        })
-
-        it("updates transcoders cumulativeFeeFactor for _endRound EarningsPool if no fees for _endRound yet when _endRound == LIP-36 upgrade round", async () => {
-            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 2)
-            const iface = (await ethers.getContractFactory("RoundsManager")).interface
-            const fnName = "lipUpgradeRound(uint256)"
-            await fixture.roundsManager.setMockUint256WithParam(
-                functionSig(fnName),
-                ethers.utils.solidityKeccak256(["bytes"], [iface.encodeFunctionData(fnName, [36])]),
-                currentRound + 2
-            )
-
-            await bondingManager.connect(delegator1).claimEarnings(currentRound + 2)
-
-            assert.equal(
-                (
-                    await bondingManager.getTranscoderEarningsPoolForRound(transcoder.address, currentRound + 2)
-                ).cumulativeFeeFactor.toString(),
-                (await bondingManager.getTranscoderEarningsPoolForRound(transcoder.address, currentRound + 1))
-                    .cumulativeFeeFactor
-            )
-        })
-
-        it("updates transcoders cumulativeRewardFactor for _endRound EarningsPool if reward is not called for _endRound yet when _endRound > LIP-36 upgrade round", async () => {
+        it("updates transcoders cumulativeRewardFactor for _endRound EarningsPool if reward is not called for _endRound yet", async () => {
             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 2)
 
             await bondingManager.connect(delegator1).claimEarnings(currentRound + 2)
@@ -2787,7 +2560,7 @@ describe("BondingManager", () => {
             )
         })
 
-        it("updates transcoders cumulativeFeeFactor for _endRound EarningsPool if no fees for _endRound yet when _endRound LIP-36 upgrade round", async () => {
+        it("updates transcoders cumulativeFeeFactor for _endRound EarningsPool if no fees for _endRound yet", async () => {
             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 2)
 
             await bondingManager.connect(delegator1).claimEarnings(currentRound + 2)
@@ -2798,44 +2571,6 @@ describe("BondingManager", () => {
                 ).cumulativeFeeFactor.toString(),
                 (await bondingManager.getTranscoderEarningsPoolForRound(transcoder.address, currentRound + 1))
                     .cumulativeFeeFactor
-            )
-        })
-
-        it("updates transcoders cumulativeRewardFactor for _endRound EarningsPool with rescaled value when lastRewardRound < LIP-71 round", async () => {
-            await fixture.roundsManager.setMockUint256(functionSig("lipUpgradeRound(uint256)"), currentRound + 2)
-            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 2)
-
-            await bondingManager.connect(delegator1).claimEarnings(currentRound + 2)
-
-            const lrrPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder.address, currentRound + 1)
-            const pool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder.address, currentRound + 2)
-
-            // Since we cannot store cumulativeRewardFactor values using the old PERC_DIVISOR value we just check
-            // that rescaling occurred
-            const rescaleFactor = constants.PERC_DIVISOR_PRECISE.div(constants.PERC_DIVISOR)
-            assert.ok(
-                lrrPool.cumulativeRewardFactor
-                    .mul(rescaleFactor)
-                    .eq(pool.cumulativeRewardFactor)
-            )
-        })
-
-        it("updates transcoders cumulativeFeeFactor for _endRound EarningsPool with rescaled value when lastFeeRound < LIP-71 round", async () => {
-            await fixture.roundsManager.setMockUint256(functionSig("lipUpgradeRound(uint256)"), currentRound + 2)
-            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 2)
-
-            await bondingManager.connect(delegator1).claimEarnings(currentRound + 2)
-
-            const lrrPool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder.address, currentRound + 1)
-            const pool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder.address, currentRound + 2)
-
-            // Since we cannot store cumulativeFeeFactor values using the old PERC_DIVISOR value we just check
-            // that rescaling occurred
-            const rescaleFactor = constants.PERC_DIVISOR_PRECISE.div(constants.PERC_DIVISOR)
-            assert.ok(
-                lrrPool.cumulativeFeeFactor
-                    .mul(rescaleFactor)
-                    .eq(pool.cumulativeFeeFactor)
             )
         })
 
@@ -2916,17 +2651,6 @@ describe("BondingManager", () => {
         })
 
         describe("caller has a delegate", () => {
-            it("should fail if endRound - lastClaimRound > maxEarningsClaimsRounds (too many rounds to claim through)", async () => {
-                await fixture.roundsManager.setMockUint256(functionSig("lipUpgradeRound(uint256)"), currentRound + 5000)
-                const maxEarningsClaimsRounds = await bondingManager.maxEarningsClaimsRounds.call()
-                const maxClaimRound = currentRound + 1 + maxEarningsClaimsRounds.toNumber()
-                await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), maxClaimRound + 1)
-
-                await expect(bondingManager.connect(delegator1).claimEarnings(maxClaimRound + 1)).to.be.revertedWith(
-                    "too many rounds to claim through"
-                )
-            })
-
             it("should claim earnings for 1 round", async () => {
                 const expRewards = BigNumber.from(delegatorRewards * 0.3) // 30%
                 const expFees = BigNumber.from(delegatorFees * 0.3) // 30%
@@ -3093,101 +2817,6 @@ describe("BondingManager", () => {
         })
     })
 
-    describe("claimSnapshotEarnings", () => {
-        let currentRound
-        let delegator
-
-        beforeEach(async () => {
-            delegator = signers[0]
-            currentRound = 100
-
-            await fixture.roundsManager.setMockBool(functionSig("currentRoundInitialized()"), true)
-            await fixture.roundsManager.setMockBool(functionSig("currentRoundLocked()"), false)
-            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound - 2)
-            await bondingManager.connect(delegator).bond(1000, delegator.address)
-
-            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
-            await fixture.roundsManager.setMockUint256(functionSig("lipUpgradeRound(uint256)"), currentRound)
-            await fixture.merkleSnapshot.setMockBool(functionSig("verify(bytes32,bytes32[],bytes32)"), true)
-        })
-
-        it("reverts if system is paused", async () => {
-            await fixture.controller.pause()
-
-            await expect(bondingManager.claimSnapshotEarnings(500, 1000, [], [])).to.be.revertedWith("system is paused")
-        })
-
-        it("reverts if current round is not initialized", async () => {
-            await fixture.roundsManager.setMockBool(functionSig("currentRoundInitialized()"), false)
-
-            await expect(bondingManager.claimSnapshotEarnings(1500, 1000, [], [])).to.be.revertedWith(
-                "current round is not initialized"
-            )
-        })
-
-        it("reverts if the delegator has already claimed past the LIP-52 upgrade round", async () => {
-            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 1)
-
-            // claim earnings up until and including snapshot round
-            await bondingManager.claimEarnings(currentRound + 1)
-
-            await expect(bondingManager.claimSnapshotEarnings(1500, 1000, [], [])).to.be.revertedWith(
-                "Already claimed for LIP-52"
-            )
-        })
-
-        it("reverts if proof is invalid", async () => {
-            await fixture.merkleSnapshot.setMockBool(functionSig("verify(bytes32,bytes32[],bytes32)"), false)
-
-            await expect(bondingManager.claimSnapshotEarnings(1500, 1000, [], [])).to.be.revertedWith(
-                "Merkle proof is invalid"
-            )
-        })
-
-        it("sets delegators lastClaimRound to the LIP-52 upgrade round", async () => {
-            await bondingManager.claimSnapshotEarnings(1500, 1000, [], [])
-
-            assert.equal((await bondingManager.getDelegator(delegator.address)).lastClaimRound.toNumber(), currentRound)
-        })
-
-        it("updates a delegator's stake and fees", async () => {
-            await bondingManager.claimSnapshotEarnings(1500, 1000, [], [])
-
-            const del = await bondingManager.getDelegator(delegator.address)
-            assert.equal(del.bondedAmount.toNumber(), 1500)
-            assert.equal(del.fees.toNumber(), 1000)
-        })
-
-        it("emits an EarningsClaimed event", async () => {
-            const lastClaimRound = (await bondingManager.getDelegator(delegator.address)).lastClaimRound
-            const txRes = bondingManager.claimSnapshotEarnings(1500, 1000, [], [])
-            await expect(txRes)
-                .to.emit(bondingManager, "EarningsClaimed")
-                .withArgs(delegator.address, delegator.address, 500, 1000, lastClaimRound.toNumber() + 1, currentRound)
-        })
-
-        it("executes an unbonding operation as additional call through the 'data' argument", async () => {
-            const data = bondingManager.interface.encodeFunctionData("unbond", [500])
-            await bondingManager.claimSnapshotEarnings(1500, 1000, [], data)
-            const del = await bondingManager.getDelegator(delegator.address)
-            assert.equal(del.bondedAmount.toNumber(), 1000)
-        })
-
-        it("executes a bond operation as additional call through the 'data' argument", async () => {
-            const data = bondingManager.interface.encodeFunctionData("bond", [500, delegator.address])
-            await bondingManager.claimSnapshotEarnings(1500, 1000, [], data)
-            const del = await bondingManager.getDelegator(delegator.address)
-            assert.equal(del.bondedAmount.toNumber(), 2000)
-        })
-
-        it("reverts when executing a claimEarnings operation that is not past the lastClaimRound as additional call through the 'data' argument", async () => {
-            const data = bondingManager.interface.encodeFunctionData("claimEarnings", [currentRound - 1])
-            await expect(bondingManager.claimSnapshotEarnings(1500, 1000, [], data)).to.be.revertedWith(
-                "end round must be after last claim round"
-            )
-        })
-    })
-
     describe("pendingStake", () => {
         let transcoder
         let delegator
@@ -3201,14 +2830,6 @@ describe("BondingManager", () => {
             await fixture.roundsManager.setMockBool(functionSig("currentRoundInitialized()"), true)
             await fixture.roundsManager.setMockBool(functionSig("currentRoundLocked()"), false)
             await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound - 2)
-
-            const iface = (await ethers.getContractFactory("RoundsManager")).interface
-            const fnName = "lipUpgradeRound(uint256)"
-            await fixture.roundsManager.setMockUint256WithParam(
-                functionSig(fnName),
-                ethers.utils.solidityKeccak256(["bytes"], [iface.encodeFunctionData(fnName, [71])]),
-                currentRound + 2
-            )
 
             await bondingManager.connect(transcoder).bond(1000, transcoder.address)
             await bondingManager.connect(transcoder).transcoder(50 * PERC_MULTIPLIER, 25 * PERC_MULTIPLIER)
@@ -3224,71 +2845,20 @@ describe("BondingManager", () => {
             await bondingManager.connect(transcoder).reward()
         })
 
-        it("should return pending rewards for 1 round when endRound < LIP-36 upgrade round", async () => {
-            await fixture.roundsManager.setMockUint256(functionSig("lipUpgradeRound(uint256)"), currentRound + 1)
-
-            // Cannot actually calculate the correct pending rewards since the contract does not have pre LIP-36 state
-            // Instead just make sure that the returned value is different from the returned value when using endRound == currentRound
-            // to check that the currentRound is not being used under the hood
-            assert.notEqual(
-                (await bondingManager.pendingStake(delegator.address, currentRound)).toString(),
-                (await bondingManager.pendingStake(delegator.address, currentRound + 1)).toString()
-            )
-        })
-
-        it("should return pending rewards for all rounds since lastClaimRound when endRound < currentRound and endRound > LIP-36 upgrade round", async () => {
+        it("should return pending rewards for all rounds since lastClaimRound", async () => {
             const pendingRewards0 = 250
             const pendingRewards1 = Math.floor((500 * ((1250 * PERC_DIVISOR) / 3000)) / PERC_DIVISOR)
 
-            const ps = await bondingManager.pendingStake(delegator.address, currentRound)
+            const ps = await bondingManager.pendingStake(delegator.address, currentRound + 1)
             assert.equal(
                 ps.toString(),
                 1000 + pendingRewards0 + pendingRewards1,
                 "should return sum of bondedAmount and pending rewards for 2 rounds"
             )
-            assert.equal(ps.toString(), (await bondingManager.pendingStake(delegator.address, currentRound + 1)).toString())
-        })
-
-        it("should return pending rewards for all rounds since lastClaimRound when endRound == currentRound and endRound > LIP-36 upgrade round", async () => {
-            const pendingRewards0 = 250
-            const pendingRewards1 = Math.floor((500 * ((1250 * PERC_DIVISOR) / 3000)) / PERC_DIVISOR)
-
-            assert.equal(
-                (await bondingManager.pendingStake(delegator.address, currentRound + 1)).toString(),
-                1000 + pendingRewards0 + pendingRewards1,
-                "should return sum of bondedAmount and pending rewards for 2 rounds"
-            )
-        })
-
-        it("should return pending rewards for all rounds since lastClaimRound when endRound == LIP-36 upgrade round", async () => {
-            const iface = (await ethers.getContractFactory("RoundsManager")).interface
-            const fnName = "lipUpgradeRound(uint256)"
-            await fixture.roundsManager.setMockUint256WithParam(
-                functionSig(fnName),
-                ethers.utils.solidityKeccak256(["bytes"], [iface.encodeFunctionData(fnName, [36])]),
-                currentRound
-            )
-
-            const pendingRewards0 = 250
-            const pendingRewards1 = Math.floor((500 * ((1250 * PERC_DIVISOR) / 3000)) / PERC_DIVISOR)
-
-            const ps = await bondingManager.pendingStake(delegator.address, currentRound)
-            assert.equal(
-                ps.toString(),
-                1000 + pendingRewards0 + pendingRewards1,
-                "should return sum of bondedAmount and pending rewards for 2 rounds"
-            )
-            assert.equal(ps.toString(), (await bondingManager.pendingStake(delegator.address, currentRound + 1)).toString())
-        })
-
-        it("should return pending rewards for > 1 round when endRound > currentRound", async () => {
-            const pendingRewards0 = 250
-            const pendingRewards1 = Math.floor((500 * ((1250 * PERC_DIVISOR) / 3000)) / PERC_DIVISOR)
-
-            assert.equal(
-                (await bondingManager.pendingStake(delegator.address, currentRound + 2)).toString(),
-                (1000 + pendingRewards0 + pendingRewards1).toString()
-            )
+            // When endRound > currentRound
+            assert.equal(ps.toString(), (await bondingManager.pendingStake(delegator.address, currentRound + 2)).toString())
+            // When endRound < currentRound
+            assert.equal(ps.toString(), (await bondingManager.pendingStake(delegator.address, currentRound)).toString())
         })
 
         it("should return delegator.bondedAmount when endRound < lastClaimRound", async () => {
@@ -3376,58 +2946,6 @@ describe("BondingManager", () => {
                 )
             })
         })
-
-        describe("cumulative factors rescaling", () => {
-            it("should rescale cumulativeRewardFactor based on whether it was stored before or after the LIP-71 round", async () => {
-                const stake = 1000
-                const rewards0 = 250
-                const rewards1 = Math.floor((500 * ((1250 * PERC_DIVISOR) / 3000)) / PERC_DIVISOR)
-                const rewards2 = Math.floor((500 * (((1000 + rewards0 + rewards1) * PERC_DIVISOR) / 4000)) / PERC_DIVISOR)
-                const rewards3 = Math.floor(
-                    (500 * (((1000 + rewards0 + rewards1 + rewards2) * PERC_DIVISOR) / 5000)) / PERC_DIVISOR
-                )
-                const rewards4 = Math.floor(
-                    (500 * (((1000 + rewards0 + rewards1 + rewards2 + rewards3) * PERC_DIVISOR) / 6000)) / PERC_DIVISOR
-                )
-
-                // Before LIP-71 round, do not rescale start or end cumulative factors
-                const pendingStake0 = await bondingManager.pendingStake(delegator.address, currentRound + 1)
-                assert.equal(pendingStake0.toString(), stake + rewards0 + rewards1)
-
-                await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 2)
-
-                // LIP-71 round, do not rescale start and end cumulative factors
-                const pendingStake1 = await bondingManager.pendingStake(delegator.address, currentRound + 2)
-                assert.equal(pendingStake1.toString(), stake + rewards0 + rewards1)
-
-                await bondingManager.connect(transcoder).reward()
-
-                // LIP-71 round, rescale start cumulative factors, do not rescale end cumulative factors
-                const pendingStake2 = await bondingManager.pendingStake(delegator.address, currentRound + 2)
-                assert.equal(pendingStake2.toString(), stake + rewards0 + rewards1 + rewards2)
-
-                await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 3)
-                await bondingManager.connect(transcoder).reward()
-
-                // After LIP-71 round, rescale start cumulative factors, do not rescale end cumulative factors
-                const pendingStake3 = await bondingManager.pendingStake(delegator.address, currentRound + 3)
-                assert.equal(pendingStake3.toString(), stake + rewards0 + rewards1 + rewards2 + rewards3)
-
-                // Set delegator lastClaimRound to be after LIP-71 round
-                await bondingManager.connect(delegator).claimEarnings(currentRound + 3)
-
-                // After LIP-71 round, do not rescale start or end cumulative factors
-                const pendingStake4 = await bondingManager.pendingStake(delegator.address, currentRound + 3)
-                assert.equal(pendingStake4.toString(), stake + rewards0 + rewards1 + rewards2 + rewards3)
-
-                await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 4)
-                await bondingManager.connect(transcoder).reward()
-
-                // After LIP-71 round, do not rescale start or end cumulative factors
-                const pendingStake5 = await bondingManager.pendingStake(delegator.address, currentRound + 4)
-                assert.equal(pendingStake5.toString(), stake + rewards0 + rewards1 + rewards2 + rewards3 + rewards4)
-            })
-        })
     })
 
     describe("pendingFees", () => {
@@ -3482,24 +3000,6 @@ describe("BondingManager", () => {
             await bondingManager.connect(transcoder).reward()
         })
 
-        it("should return pending fees for 1 round when endRound < LIP-36 upgrade round", async () => {
-            const iface = (await ethers.getContractFactory("RoundsManager")).interface
-            const fnName = "lipUpgradeRound(uint256)"
-            await fixture.roundsManager.setMockUint256WithParam(
-                functionSig(fnName),
-                ethers.utils.solidityKeccak256(["bytes"], [iface.encodeFunctionData(fnName, [36])]),
-                currentRound + 2
-            )
-
-            // Cannot actually calculate the correct pending fees since the contract does not have pre LIP-36 state
-            // Instead just make sure that the returned value is different from the returned value when using endRound == currentRound
-            // to check that the currentRound is not being used under the hood
-            assert.notEqual(
-                (await bondingManager.pendingFees(delegator.address, currentRound + 1)).toString(),
-                (await bondingManager.pendingFees(delegator.address, currentRound + 2)).toString()
-            )
-        })
-
         it("should return pending fees for all rounds since lastClaimRound when endRound < currentRound and endRound > LIP-36 upgrade round", async () => {
             const pendingFees0 = 125
             const pendingFees1 = Math.floor((250 * ((1250 * PERC_DIVISOR) / 3000)) / PERC_DIVISOR)
@@ -3548,63 +3048,6 @@ describe("BondingManager", () => {
             assert.equal(
                 (await bondingManager.pendingFees(delegator.address, currentRound + 3)).toString(),
                 (pendingFees0 + pendingFees1).toString()
-            )
-        })
-
-        it("should return delegator.fees when endRound < lastClaimRound", async () => {
-            await bondingManager.connect(delegator).claimEarnings(currentRound + 2)
-
-            const fees = (await bondingManager.getDelegator(delegator.address)).fees
-            assert.equal((await bondingManager.pendingFees(delegator.address, currentRound + 1)).toString(), fees.toString())
-        })
-
-        it("should return delegator.fees when endRound = lastClaimRound", async () => {
-            await bondingManager.connect(delegator).claimEarnings(currentRound + 2)
-
-            const fees = (await bondingManager.getDelegator(delegator.address)).fees
-            assert.equal((await bondingManager.pendingFees(delegator.address, currentRound + 2)).toString(), fees.toString())
-        })
-
-        it("should return pending fees when transcoder has claimed earnings since LIP36", async () => {
-            const pendingFees0 = 125
-            const pendingFees1 = Math.floor((250 * ((1250 * PERC_DIVISOR) / 3000)) / PERC_DIVISOR)
-            const pendingFees2 = Math.floor((250 * ((1458 * PERC_DIVISOR) / 4000)) / PERC_DIVISOR)
-
-            await bondingManager.connect(delegator).claimEarnings(currentRound + 2)
-            const fees = (await bondingManager.getDelegator(delegator.address)).fees
-            assert.equal(pendingFees0 + pendingFees1, fees.toNumber(), "delegator fees not correct")
-
-            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 3)
-
-            await fixture.ticketBroker.execute(
-                bondingManager.address,
-                functionEncodedABI(
-                    "updateTranscoderWithFees(address,uint256,uint256)",
-                    ["address", "uint256", "uint256"],
-                    [transcoder.address, 1000, currentRound + 3]
-                )
-            )
-
-            assert.equal(
-                (await bondingManager.pendingFees(delegator.address, currentRound + 3)).toString(),
-                (fees.toNumber() + pendingFees2).toString()
-            )
-
-            await bondingManager.connect(delegator).withdrawFees()
-
-            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 4)
-
-            await fixture.ticketBroker.execute(
-                bondingManager.address,
-                functionEncodedABI(
-                    "updateTranscoderWithFees(address,uint256,uint256)",
-                    ["address", "uint256", "uint256"],
-                    [transcoder.address, 1000, currentRound + 4]
-                )
-            )
-            assert.equal(
-                (await bondingManager.pendingFees(delegator.address, currentRound + 4)).toString(),
-                pendingFees2.toString()
             )
         })
 
@@ -3735,72 +3178,6 @@ describe("BondingManager", () => {
                     pendingFees,
                     "should return sum of collected fees and pending fees as both a delegator and transcoder for 2 rounds"
                 )
-            })
-        })
-
-        describe("cumulative factor rescaling", () => {
-            it("should rescale cumulative factors based on whether they were stored before or after the LIP-71 round", async () => {
-                const fees0 = 125
-                const fees1 = Math.floor((250 * ((1250 * PERC_DIVISOR) / 3000)) / PERC_DIVISOR)
-                const fees2 = Math.floor((250 * ((1458 * PERC_DIVISOR) / 4000)) / PERC_DIVISOR)
-
-                // Before LIP-71 round, do not rescale start or end cumulative factors
-                const pendingFees0 = await bondingManager.pendingFees(delegator.address, currentRound + 2)
-                assert.equal(pendingFees0.toString(), fees0 + fees1)
-
-                await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 3)
-
-                // LIP-71 round, do not rescale start and end cumulative factors
-                const pendingFees1 = await bondingManager.pendingFees(delegator.address, currentRound + 3)
-                assert.equal(pendingFees1.toString(), fees0 + fees1)
-
-                await fixture.ticketBroker.execute(
-                    bondingManager.address,
-                    functionEncodedABI(
-                        "updateTranscoderWithFees(address,uint256,uint256)",
-                        ["address", "uint256", "uint256"],
-                        [transcoder.address, 1000, currentRound + 3]
-                    )
-                )
-
-                // LIP-71 round, rescale start cumulative factors, do not rescale end cumulative factors
-                const pendingFees2 = await bondingManager.pendingFees(delegator.address, currentRound + 3)
-                assert.equal(pendingFees2.toString(), fees0 + fees1 + fees2)
-
-                await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 4)
-                await fixture.ticketBroker.execute(
-                    bondingManager.address,
-                    functionEncodedABI(
-                        "updateTranscoderWithFees(address,uint256,uint256)",
-                        ["address", "uint256", "uint256"],
-                        [transcoder.address, 1000, currentRound + 4]
-                    )
-                )
-
-                // After LIP-71 round, rescale start cumulative factors, do not rescale end cumulative factors
-                const pendingFees3 = await bondingManager.pendingFees(delegator.address, currentRound + 4)
-                assert.equal(pendingFees3.toString(), fees0 + fees1 + fees2 * 2)
-
-                // Set delegator lastClaimRound to be after LIP-71 round
-                await bondingManager.connect(delegator).claimEarnings(currentRound + 4)
-
-                // After LIP-71 round, do not rescale start or end cumulative factors
-                const pendingFees4 = await bondingManager.pendingFees(delegator.address, currentRound + 4)
-                assert.equal(pendingFees4.toString(), fees0 + fees1 + fees2 * 2)
-
-                await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 5)
-                await fixture.ticketBroker.execute(
-                    bondingManager.address,
-                    functionEncodedABI(
-                        "updateTranscoderWithFees(address,uint256,uint256)",
-                        ["address", "uint256", "uint256"],
-                        [transcoder.address, 1000, currentRound + 5]
-                    )
-                )
-
-                // After LIP-71 round, do not rescale start or end cumulative factors
-                const pendingFees5 = await bondingManager.pendingFees(delegator.address, currentRound + 5)
-                assert.equal(pendingFees5.toString(), fees0 + fees1 + fees2 * 3)
             })
         })
     })

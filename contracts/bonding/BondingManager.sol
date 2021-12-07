@@ -28,30 +28,15 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     // Occurances are replaced at compile time
     // and computed to a single value if possible by the optimizer
     uint256 constant MAX_FUTURE_ROUND = 2**256 - 1;
-    uint256 constant MAX_LOOKBACK_ROUNDS = 100;
-    // PreciseMathUtils.percPoints(1, 1) / MathUtils.percPoints(1, 1) => (10 ** 27) / 1000000
-    uint256 constant RESCALE_FACTOR = 10**21;
-    // Address for LIP-77 execution
-    address constant LIP_77_ADDRESS = 0xB47D8F87c0113827d44Ad0Bc32D53823C477a89d;
-    // Maximum CFF used to check whether to down scale CFF values prior to the LIP-78 round
-    uint256 constant LIP_78_MAX_CFF = 10**32;
 
     // Time between unbonding and possible withdrawl in rounds
     uint64 public unbondingPeriod;
-    // DEPRECATED - DO NOT USE
-    uint256 public numActiveTranscodersDEPRECATED;
-    // Max number of rounds that a caller can claim earnings for at once
-    uint256 public maxEarningsClaimsRounds;
 
     // Represents a transcoder's current state
     struct Transcoder {
         uint256 lastRewardRound; // Last round that the transcoder called reward
         uint256 rewardCut; // % of reward paid to transcoder by a delegator
         uint256 feeShare; // % of fees paid to delegators by transcoder
-        uint256 pricePerSegmentDEPRECATED; // DEPRECATED - DO NOT USE
-        uint256 pendingRewardCutDEPRECATED; // DEPRECATED - DO NOT USE
-        uint256 pendingFeeShareDEPRECATED; // DEPRECATED - DO NOT USE
-        uint256 pendingPricePerSegmentDEPRECATED; // DEPRECATED - DO NOT USE
         mapping(uint256 => EarningsPool.Data) earningsPoolPerRound; // Mapping of round => earnings pool for the round
         uint256 lastActiveStakeUpdateRound; // Round for which the stake was last updated while the transcoder is active
         uint256 activationRound; // Round in which the transcoder became active - 0 if inactive
@@ -75,7 +60,6 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         address delegateAddress; // The address delegated to
         uint256 delegatedAmount; // The amount of tokens delegated to the delegator
         uint256 startRound; // The round the delegator transitions to bonded phase and is delegated to someone
-        uint256 withdrawRoundDEPRECATED; // DEPRECATED - DO NOT USE
         uint256 lastClaimRound; // The last round during which the delegator claimed its earnings
         uint256 nextUnbondingLockId; // ID for the next unbonding lock created
         mapping(uint256 => UnbondingLock) unbondingLocks; // Mapping of unbonding lock ID => unbonding lock
@@ -98,24 +82,6 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     mapping(address => Delegator) private delegators;
     mapping(address => Transcoder) private transcoders;
 
-    // DEPRECATED - DO NOT USE
-    // The function getTotalBonded() no longer uses this variable
-    // and instead calculates the total bonded value separately
-    uint256 private totalBondedDEPRECATED;
-
-    // DEPRECATED - DO NOT USE
-    SortedDoublyLL.Data private transcoderPoolDEPRECATED;
-
-    // DEPRECATED - DO NOT USE
-    struct ActiveTranscoderSetDEPRECATED {
-        address[] transcoders;
-        mapping(address => bool) isActive;
-        uint256 totalStake;
-    }
-
-    // DEPRECATED - DO NOT USE
-    mapping(uint256 => ActiveTranscoderSetDEPRECATED) public activeTranscoderSetDEPRECATED;
-
     // The total active stake (sum of the stake of active set members) for the current round
     uint256 public currentRoundTotalActiveStake;
     // The total active stake (sum of the stake of active set members) for the next round
@@ -125,9 +91,6 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     // The pool keeps track of the pending active set in round N and the start of round N + 1 transcoders
     // in the pool are locked into the active set for round N + 1
     SortedDoublyLL.Data private transcoderPoolV2;
-
-    // Flag for whether LIP-77 has been executed
-    bool private lip77Executed;
 
     // Check if sender is TicketBroker
     modifier onlyTicketBroker() {
@@ -188,32 +151,6 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         transcoderPoolV2.setMaxSize(_numActiveTranscoders);
 
         emit ParameterUpdate("numActiveTranscoders");
-    }
-
-    /**
-     * @notice Set max number of rounds a caller can claim earnings for at once. Only callable by Controller owner
-     * @param _maxEarningsClaimsRounds Max number of rounds a caller can claim earnings for at once
-     */
-    function setMaxEarningsClaimsRounds(uint256 _maxEarningsClaimsRounds) external onlyControllerOwner {
-        maxEarningsClaimsRounds = _maxEarningsClaimsRounds;
-
-        emit ParameterUpdate("maxEarningsClaimsRounds");
-    }
-
-    /**
-     * @notice Execute LIP-77. Can only be called once by Controller owner
-     * @param _bondedAmount The bonded amount for the LIP-77 address
-     */
-    function executeLIP77(uint256 _bondedAmount) external onlyControllerOwner {
-        require(!lip77Executed, "LIP-77 already executed");
-
-        lip77Executed = true;
-
-        delegators[LIP_77_ADDRESS].bondedAmount = _bondedAmount;
-
-        address delegate = delegators[LIP_77_ADDRESS].delegateAddress;
-
-        emit Bond(delegate, delegate, LIP_77_ADDRESS, 0, _bondedAmount);
     }
 
     /**
@@ -372,13 +309,6 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             );
         }
 
-        // If the previous cumulativeRewardFactor is 0 and the current round is before the LIP-71 round, set the default value to
-        // MathUtils.percPoints(1, 1) because we only set the default value to PreciseMathUtils.percPoints(1, 1) when storing for
-        // the LIP-71 round and onwards (see updateCumulativeFeeFactor() in EarningsPoolLIP36.sol)
-        if (prevEarningsPool.cumulativeRewardFactor == 0 && currentRound < roundsManager().lipUpgradeRound(71)) {
-            prevEarningsPool.cumulativeRewardFactor = MathUtils.percPoints(1, 1);
-        }
-
         uint256 delegatorsFees = MathUtils.percOf(_fees, earningsPool.transcoderFeeShare);
         uint256 transcoderCommissionFees = _fees.sub(delegatorsFees);
         // Calculate the fees earned by the transcoder's earned rewards
@@ -459,71 +389,10 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * @param _endRound The last round for which to claim token pools shares for a delegator
      */
     function claimEarnings(uint256 _endRound) external whenSystemNotPaused currentRoundInitialized {
-        uint256 lastClaimRound = delegators[msg.sender].lastClaimRound;
-        require(lastClaimRound < _endRound, "end round must be after last claim round");
-        // _endRound should be equal to the current round because after LIP-36 using a past _endRound can result
-        // in incorrect cumulative factor values used/stored for the _endRound in updateDelegatorWithEarnings().
-        // The exception is when claiming through an _endRound before the LIP-36 upgrade round because cumulative factor
-        // values will not be used/stored in updateDelegatorWithEarnings() before the LIP-36 upgrade round.
-        require(
-            _endRound == roundsManager().currentRound() || _endRound < roundsManager().lipUpgradeRound(36),
-            "end round must be equal to the current round or before the LIP-36 upgrade round"
-        );
+        // Silence unused param compiler warning
+        _endRound;
 
-        updateDelegatorWithEarnings(msg.sender, _endRound, lastClaimRound);
-    }
-
-    /**
-     * @notice Claim earnings for a delegator based on the snapshot taken in LIP-52
-     * @dev https://github.com/livepeer/LIPs/blob/master/LIPs/LIP-52.md
-     * @param _pendingStake the amount of pending stake for the delegator (current stake + pending rewards)
-     * @param _pendingFees the amount of pending fees for the delegator (current fees + pending fees)
-     * @param _earningsProof array of keccak256 sibling hashes on the branch of the leaf for the delegator up to the root
-     * @param _data (optional) raw transaction data to be executed on behalf of msg.sender after claiming snapshot earnings
-     */
-    function claimSnapshotEarnings(
-        uint256 _pendingStake,
-        uint256 _pendingFees,
-        bytes32[] calldata _earningsProof,
-        bytes calldata _data
-    ) external whenSystemNotPaused currentRoundInitialized {
-        Delegator storage del = delegators[msg.sender];
-
-        uint256 lip52Round = roundsManager().lipUpgradeRound(52);
-
-        uint256 lastClaimRound = del.lastClaimRound;
-
-        require(lastClaimRound < lip52Round, "Already claimed for LIP-52");
-
-        bytes32 leaf = keccak256(abi.encode(msg.sender, _pendingStake, _pendingFees));
-
-        require(
-            IMerkleSnapshot(controller.getContract(keccak256("MerkleSnapshot"))).verify(
-                keccak256("LIP-52"),
-                _earningsProof,
-                leaf
-            ),
-            "Merkle proof is invalid"
-        );
-
-        emit EarningsClaimed(
-            del.delegateAddress,
-            msg.sender,
-            _pendingStake.sub(del.bondedAmount),
-            _pendingFees.sub(del.fees),
-            lastClaimRound.add(1),
-            lip52Round
-        );
-
-        del.lastClaimRound = lip52Round;
-        del.bondedAmount = _pendingStake;
-        del.fees = _pendingFees;
-
-        // allow for execution of subsequent claiming or staking operations
-        if (_data.length > 0) {
-            (bool success, bytes memory returnData) = address(this).delegatecall(_data);
-            require(success, string(returnData));
-        }
+        _autoClaimEarnings();
     }
 
     /**
@@ -817,15 +686,10 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * @return Pending bonded stake for '_delegator' since last claiming rewards
      */
     function pendingStake(address _delegator, uint256 _endRound) public view returns (uint256) {
-        // _endRound should be equal to the current round because after LIP-36 using a past _endRound can result
-        // in incorrect cumulative factor values used for the _endRound in pendingStakeAndFees().
-        // The exception is when calculating stake through an _endRound before the LIP-36 upgrade round because cumulative factor
-        // values will not be used in pendingStakeAndFees() before the LIP-36 upgrade round.
-        uint256 endRound = _endRound;
-        if (endRound >= roundsManager().lipUpgradeRound(36)) {
-            endRound = roundsManager().currentRound();
-        }
+        // Silence unused param compiler warning
+        _endRound;
 
+        uint256 endRound = roundsManager().currentRound();
         (uint256 stake, ) = pendingStakeAndFees(_delegator, endRound);
         return stake;
     }
@@ -837,15 +701,10 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * @return Pending fees for '_delegator' since last claiming fees
      */
     function pendingFees(address _delegator, uint256 _endRound) public view returns (uint256) {
-        // _endRound should be equal to the current round because after LIP-36 using a past _endRound can result
-        // in incorrect cumulative factor values used for the _endRound in pendingStakeAndFees().
-        // The exception is when calculating fees through an _endRound before the LIP-36 upgrade round because cumulative factor
-        // values will not be used in pendingStakeAndFees() before the LIP-36 upgrade round.
-        uint256 endRound = _endRound;
-        if (endRound >= roundsManager().lipUpgradeRound(36)) {
-            endRound = roundsManager().currentRound();
-        }
+        // Silence unused param compiler warning
+        _endRound;
 
+        uint256 endRound = roundsManager().currentRound();
         (, uint256 fees) = pendingStakeAndFees(_delegator, endRound);
         return fees;
     }
@@ -1121,45 +980,6 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         pool.cumulativeRewardFactor = _transcoder.earningsPoolPerRound[_round].cumulativeRewardFactor;
         pool.cumulativeFeeFactor = _transcoder.earningsPoolPerRound[_round].cumulativeFeeFactor;
 
-        uint256 lip71Round = roundsManager().lipUpgradeRound(71);
-        // If we are at or after the LIP-71 round then all cumulative factor values should be scaled using PreciseMathUtils.percPoints(1, 1)
-        // If a cumulative factor was stored before the LIP-71 round it will still be scaled using MathUtils.percPoints(1, 1)
-        // So, once we are at or after the LIP-71 round, if we read a cumulative factor for a round before the LIP-71 round, we rescale
-        // the value by RESCALE_FACTOR so that the end value is scaled by PreciseMathUtils.percPoints(1, 1)
-        if (roundsManager().currentRound() >= lip71Round) {
-            if (_round < lip71Round) {
-                pool.cumulativeRewardFactor = pool.cumulativeRewardFactor.mul(RESCALE_FACTOR);
-                pool.cumulativeFeeFactor = pool.cumulativeFeeFactor.mul(RESCALE_FACTOR);
-            } else {
-                // There was a bug in bondWithHint() that allowed cumulative factors to be stored after LIP-71 round to still be scaled using MathUtils.percPoints(1, 1)
-                // If we read a cumulativeRewardFactor for a round after the LIP-71 round and it is less than PreciseMathUtils.percPoints(1, 1), it was
-                // affected by this bug so we rescale it by RESCALE_FACTOR
-                if (pool.cumulativeRewardFactor < PreciseMathUtils.percPoints(1, 1)) {
-                    pool.cumulativeRewardFactor = pool.cumulativeRewardFactor.mul(RESCALE_FACTOR);
-                }
-
-                if (_round <= roundsManager().lipUpgradeRound(78)) {
-                    if (
-                        // As of the LIP-78 round, the only post LIP-71 round CFF values that are below MathUtils.percPoints(1, 1)
-                        // are CFF values that were copied from pre LIP-71 round without multiplying by RESCALE_FACTOR due to a bug.
-                        pool.cumulativeFeeFactor < MathUtils.percPoints(1, 1)
-                    ) {
-                        // At this point, we know that the CFF was copied from pre LIP-71 round without multiplying by RESCALE_FACTOR due to a bug.
-                        // Correct this by multiplying by RESCALE_FACTOR.
-                        pool.cumulativeFeeFactor = pool.cumulativeFeeFactor.mul(RESCALE_FACTOR);
-                    } else if (
-                        // As of the LIP-78 round, the only CFF values > 10 ** 32 are ones that were corrupted due to a bug
-                        // that caused CFF values to be multiplied by RESCALE_FACTOR unnecessarily.
-                        pool.cumulativeFeeFactor > LIP_78_MAX_CFF
-                    ) {
-                        // At this point, we know that the CFF was multiplied by RESCALE_FACTOR unnecessarily.
-                        // Correct this by dividing by RESCALE_FACTOR.
-                        pool.cumulativeFeeFactor = pool.cumulativeFeeFactor.div(RESCALE_FACTOR);
-                    }
-                }
-            }
-        }
-
         return pool;
     }
 
@@ -1210,56 +1030,11 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // Fetch start cumulative factors
         EarningsPool.Data memory startPool = cumulativeFactorsPool(_transcoder, _startRound);
 
-        // We can lookback for a cumulativeRewardFactor if the start cumulativeRewardFactor is 0
-        // Do not lookback if the latest cumulativeRewardFactor is 0 because that indicates that the factor was never > 0 for the transcoder in the past
-        bool lookbackCumulativeRewardFactor = _transcoder
-            .earningsPoolPerRound[_transcoder.lastRewardRound]
-            .cumulativeRewardFactor >
-            0 &&
-            startPool.cumulativeRewardFactor == 0;
-        // We can lookback for a cumulativeFeeFactor if the start cumulativeFeeFactor is 0
-        // Do not lookback if the latest cumulativeFeeFactor is 0 because that indicates that the factor was never > 0 for the transcoder in the past
-        bool lookbackCumulativeFeeFactor = _transcoder
-            .earningsPoolPerRound[_transcoder.lastFeeRound]
-            .cumulativeFeeFactor >
-            0 &&
-            startPool.cumulativeFeeFactor == 0;
-        // The lookback loop will only be needed for a few accounts delegated to transcoders before the update that ensures start factors are always initialized
-        // If we need a cumulativeRewardFactor OR cumulativeFeeFactor lookback up to min(MAX_LOOKBACK_ROUNDS, _startRound) # of rounds
-        uint256 lip36Round = roundsManager().lipUpgradeRound(36);
-        for (
-            uint256 lookback = 1;
-            lookback <= MAX_LOOKBACK_ROUNDS &&
-                lookback <= _startRound &&
-                (lookbackCumulativeRewardFactor || lookbackCumulativeFeeFactor);
-            lookback++
-        ) {
-            uint256 lookbackRound = _startRound.sub(lookback);
-            // Cannot lookback past the LIP-36 upgrade round
-            if (lookbackRound < lip36Round) {
-                break;
-            }
-
-            EarningsPool.Data storage pool = _transcoder.earningsPoolPerRound[lookbackRound];
-            // Short-circuit in the following conditionals by running the boolean check before the storage check
-            if (lookbackCumulativeRewardFactor && pool.cumulativeRewardFactor > 0) {
-                startPool.cumulativeRewardFactor = cumulativeFactorsPool(_transcoder, lookbackRound)
-                    .cumulativeRewardFactor;
-                lookbackCumulativeRewardFactor = false;
-            }
-            if (lookbackCumulativeFeeFactor && pool.cumulativeFeeFactor > 0) {
-                startPool.cumulativeFeeFactor = cumulativeFactorsPool(_transcoder, lookbackRound).cumulativeFeeFactor;
-                lookbackCumulativeFeeFactor = false;
-            }
-        }
-
         // If the start cumulativeRewardFactor is 0 and we are before the LIP-71 round, set the default value to
         // MathUtils.percPoints(1, 1) because we only set the default value to PreciseMathUtils.percPoints(1, 1) from LIP-71 round
         // and onward
         if (startPool.cumulativeRewardFactor == 0) {
-            startPool.cumulativeRewardFactor = roundsManager().currentRound() < roundsManager().lipUpgradeRound(71)
-                ? MathUtils.percPoints(1, 1)
-                : PreciseMathUtils.percPoints(1, 1);
+            startPool.cumulativeRewardFactor = PreciseMathUtils.percPoints(1, 1);
         }
 
         // Fetch end cumulative factors
@@ -1269,9 +1044,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // MathUtils.percPoints(1, 1) because we only set the default value to PreciseMathUtils.percPoints(1, 1) from LIP-71 round
         // and onward
         if (endPool.cumulativeRewardFactor == 0) {
-            endPool.cumulativeRewardFactor = roundsManager().currentRound() < roundsManager().lipUpgradeRound(71)
-                ? MathUtils.percPoints(1, 1)
-                : PreciseMathUtils.percPoints(1, 1);
+            endPool.cumulativeRewardFactor = PreciseMathUtils.percPoints(1, 1);
         }
 
         cFees = _fees.add(
@@ -1308,51 +1081,16 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         address delegateAddr = del.delegateAddress;
         bool isTranscoder = _delegator == delegateAddr;
 
-        uint256 lip36Round = roundsManager().lipUpgradeRound(36);
-        while (startRound <= _endRound && startRound <= lip36Round) {
-            EarningsPool.Data storage earningsPool = t.earningsPoolPerRound[startRound];
-
-            // If earningsPool.hasTranscoderRewardFeePool is not set during lip36Round then the transcoder did not call
-            // reward during lip36Round before the upgrade. In this case, if the transcoder calls reward in lip36Round
-            // the delegator can use the LIP-36 earnings claiming algorithm to claim for lip36Round
-            if (startRound == lip36Round && !earningsPool.hasTranscoderRewardFeePool) {
-                break;
-            }
-
-            if (earningsPool.hasClaimableShares()) {
-                // Calculate and add fee pool share from this round
-                fees = fees.add(earningsPool.feePoolShare(stake, isTranscoder));
-                // Calculate new bonded amount with rewards from this round. Updated bonded amount used
-                // to calculate fee pool share in next round
-                stake = stake.add(earningsPool.rewardPoolShare(stake, isTranscoder));
-            }
-
-            startRound = startRound.add(1);
+        // Make sure there is a round to claim i.e. end round - (start round - 1) > 0
+        if (startRound <= _endRound) {
+            (stake, fees) = delegatorCumulativeStakeAndFees(t, startRound.sub(1), _endRound, stake, fees);
         }
-
-        // If the transcoder called reward during lip36Round the upgrade, then startRound = lip36Round
-        // Otherwise, startRound = lip36Round + 1
-
-        // If the start round is greater than the end round, we've already claimed for the end round so we do not
-        // need to execute the LIP-36 earnings claiming algorithm. This could be the case if:
-        // - _endRound < lip36Round i.e. we are not claiming through the lip36Round
-        // - _endRound == lip36Round AND startRound = lip36Round + 1 i.e we already claimed through the lip36Round
-
-        // The LIP-36 earnings claiming algorithm uses the cumulative factors from the delegator's lastClaimRound i.e. startRound - 1
-        // and from the specified _endRound
-        // We only need to execute this algorithm if the end round >= lip36Round
-        if (_endRound >= lip36Round) {
-            // Make sure there is a round to claim i.e. end round - (start round - 1) > 0
-            if (startRound <= _endRound) {
-                (stake, fees) = delegatorCumulativeStakeAndFees(t, startRound.sub(1), _endRound, stake, fees);
-            }
-            // cumulativeRewards and cumulativeFees will track *all* rewards/fees earned by the transcoder
-            // so it is important that this is only executed with the end round as the current round or else
-            // the returned stake and fees will reflect rewards/fees earned in the future relative to the end round
-            if (isTranscoder) {
-                stake = stake.add(t.cumulativeRewards);
-                fees = fees.add(t.cumulativeFees);
-            }
+        // cumulativeRewards and cumulativeFees will track *all* rewards/fees earned by the transcoder
+        // so it is important that this is only executed with the end round as the current round or else
+        // the returned stake and fees will reflect rewards/fees earned in the future relative to the end round
+        if (isTranscoder) {
+            stake = stake.add(t.cumulativeRewards);
+            fees = fees.add(t.cumulativeFees);
         }
 
         return (stake, fees);
@@ -1521,13 +1259,6 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         EarningsPool.Data storage earningsPool = t.earningsPoolPerRound[_round];
         EarningsPool.Data memory prevEarningsPool = cumulativeFactorsPool(t, t.lastRewardRound);
 
-        // If the previous cumulativeRewardFactor is 0 and we are before the LIP-71 round, set the default value to
-        // MathUtils.percPoints(1, 1) because we only set the default value to PreciseMathUtils.percPoints(1, 1) when storing for
-        // the LIP-71 round and onwards (see updateCumulativeRewardFactor() in EarningsPoolLIP36.sol)
-        if (prevEarningsPool.cumulativeRewardFactor == 0 && _round < roundsManager().lipUpgradeRound(71)) {
-            prevEarningsPool.cumulativeRewardFactor = MathUtils.percPoints(1, 1);
-        }
-
         t.activeCumulativeRewards = t.cumulativeRewards;
 
         uint256 transcoderCommissionRewards = MathUtils.percOf(_rewards, earningsPool.transcoderRewardCut);
@@ -1565,55 +1296,34 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         uint256 currentBondedAmount = del.bondedAmount;
         uint256 currentFees = del.fees;
 
-        uint256 lip36Round = roundsManager().lipUpgradeRound(36);
-
         // Only will have earnings to claim if you have a delegate
         // If not delegated, skip the earnings claim process
         if (del.delegateAddress != address(0)) {
-            if (startRound <= lip36Round) {
-                // Cannot claim earnings for more than maxEarningsClaimsRounds before LIP-36
-                // This is a number to cause transactions to fail early if
-                // we know they will require too much gas to loop through all the necessary rounds to claim earnings
-                // The user should instead manually invoke `claimEarnings` to split up the claiming process
-                // across multiple transactions
-                uint256 endLoopRound = _endRound <= lip36Round ? _endRound : lip36Round;
-                require(
-                    endLoopRound.sub(_lastClaimRound) <= maxEarningsClaimsRounds,
-                    "too many rounds to claim through"
-                );
-            }
-
             (currentBondedAmount, currentFees) = pendingStakeAndFees(_delegator, _endRound);
 
-            // Only execute cumulative factor logic after LIP-36 upgrade round
-            // After LIP-36 upgrade round the following code block should only be executed if _endRound is the current round
-            // See claimEarnings() and autoClaimEarnings()
-            if (_endRound >= lip36Round) {
-                // Check whether the endEarningsPool is initialised
-                // If it is not initialised set it's cumulative factors so that they can be used when a delegator
-                // next claims earnings as the start cumulative factors (see delegatorCumulativeStakeAndFees())
-                Transcoder storage t = transcoders[del.delegateAddress];
-                EarningsPool.Data storage endEarningsPool = t.earningsPoolPerRound[_endRound];
-                if (endEarningsPool.cumulativeRewardFactor == 0) {
-                    uint256 lastRewardRound = t.lastRewardRound;
-                    if (lastRewardRound < _endRound) {
-                        endEarningsPool.cumulativeRewardFactor = cumulativeFactorsPool(t, lastRewardRound)
-                            .cumulativeRewardFactor;
-                    }
+            // Check whether the endEarningsPool is initialised
+            // If it is not initialised set it's cumulative factors so that they can be used when a delegator
+            // next claims earnings as the start cumulative factors (see delegatorCumulativeStakeAndFees())
+            Transcoder storage t = transcoders[del.delegateAddress];
+            EarningsPool.Data storage endEarningsPool = t.earningsPoolPerRound[_endRound];
+            if (endEarningsPool.cumulativeRewardFactor == 0) {
+                uint256 lastRewardRound = t.lastRewardRound;
+                if (lastRewardRound < _endRound) {
+                    endEarningsPool.cumulativeRewardFactor = cumulativeFactorsPool(t, lastRewardRound)
+                        .cumulativeRewardFactor;
                 }
-                if (endEarningsPool.cumulativeFeeFactor == 0) {
-                    uint256 lastFeeRound = t.lastFeeRound;
-                    if (lastFeeRound < _endRound) {
-                        endEarningsPool.cumulativeFeeFactor = cumulativeFactorsPool(t, lastFeeRound)
-                            .cumulativeFeeFactor;
-                    }
+            }
+            if (endEarningsPool.cumulativeFeeFactor == 0) {
+                uint256 lastFeeRound = t.lastFeeRound;
+                if (lastFeeRound < _endRound) {
+                    endEarningsPool.cumulativeFeeFactor = cumulativeFactorsPool(t, lastFeeRound).cumulativeFeeFactor;
                 }
+            }
 
-                if (del.delegateAddress == _delegator) {
-                    t.cumulativeFees = 0;
-                    t.cumulativeRewards = 0;
-                    // activeCumulativeRewards is not cleared here because the next reward() call will set it to cumulativeRewards
-                }
+            if (del.delegateAddress == _delegator) {
+                t.cumulativeFees = 0;
+                t.cumulativeRewards = 0;
+                // activeCumulativeRewards is not cleared here because the next reward() call will set it to cumulativeRewards
             }
         }
 

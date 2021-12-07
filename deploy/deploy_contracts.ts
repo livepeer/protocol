@@ -97,7 +97,6 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
 
     await BondingManager.setUnbondingPeriod(config.bondingManager.unbondingPeriod)
     await BondingManager.setNumActiveTranscoders(config.bondingManager.numActiveTranscoders)
-    await BondingManager.setMaxEarningsClaimsRounds(config.bondingManager.maxEarningsClaimsRounds)
 
     // Set RoundsManager parameters
     const RoundsManager: RoundsManager = (await ethers.getContractAt("RoundsManager", roundsManager.address)) as RoundsManager
