@@ -460,6 +460,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * @param _amount The amount of tokens to stake.
      * @param _owner The address of the owner of the bond
      * @param _to The address of the transcoder to stake towards
+     * @param _owner The address of the owner of the bond
      * @param _oldDelegateNewPosPrev The address of the previous transcoder in the pool for the old delegate
      * @param _oldDelegateNewPosNext The address of the next transcoder in the pool for the old delegate
      * @param _currDelegateNewPosPrev The address of the previous transcoder in the pool for the current delegate
@@ -529,7 +530,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
         if (_amount > 0) {
             // Transfer the LPT to the Minter
-            livepeerToken().transferFrom(msg.sender, address(minter()), _amount);
+            livepeerToken().transferFrom(_owner, address(minter()), _amount);
         }
 
         emit Bond(_to, currentDelegate, _owner, _amount, del.bondedAmount);
