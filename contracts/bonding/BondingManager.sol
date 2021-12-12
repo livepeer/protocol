@@ -458,20 +458,22 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * is the correct position so no search is executed. See SortedDoublyLL.sol for details on list hints
      * @param _amount The amount of tokens to stake.
      * @param _to The address of the transcoder to stake towards
+     * @param _owner The address of the owner of the bond
      * @param _oldDelegateNewPosPrev The address of the previous transcoder in the pool for the old delegate
      * @param _oldDelegateNewPosNext The address of the next transcoder in the pool for the old delegate
      * @param _currDelegateNewPosPrev The address of the previous transcoder in the pool for the current delegate
      * @param _currDelegateNewPosNext The address of the next transcoder in the pool for the current delegate
      */
-    function bondWithHint(
+    function bondForWithHint(
         uint256 _amount,
+        address _owner,
         address _to,
         address _oldDelegateNewPosPrev,
         address _oldDelegateNewPosNext,
         address _currDelegateNewPosPrev,
         address _currDelegateNewPosNext
     ) public whenSystemNotPaused currentRoundInitialized autoClaimEarnings {
-        Delegator storage del = delegators[msg.sender];
+        Delegator storage del = delegators[_owner];
 
         uint256 currentRound = roundsManager().currentRound();
         // Amount to delegate
@@ -479,7 +481,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // Current delegate
         address currentDelegate = del.delegateAddress;
 
-        if (delegatorStatus(msg.sender) == DelegatorStatus.Unbonded) {
+        if (delegatorStatus(_owner) == DelegatorStatus.Unbonded) {
             // New delegate
             // Set start round
             // Don't set start round if delegator is in pending state because the start round would not change
@@ -492,10 +494,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             // In the future, if delegation towards another registered transcoder as an already
             // registered transcoder becomes useful (i.e. for transitive delegation), this restriction
             // could be removed
-            require(
-                !isRegisteredTranscoder(msg.sender),
-                "registered transcoders can't delegate towards other addresses"
-            );
+            require(!isRegisteredTranscoder(_owner), "registered transcoders can't delegate towards other addresses");
             // Changing delegate
             // Set start round
             del.startRound = currentRound.add(1);
@@ -505,15 +504,17 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             decreaseTotalStake(currentDelegate, del.bondedAmount, _oldDelegateNewPosPrev, _oldDelegateNewPosNext);
         }
 
-        Transcoder storage newDelegate = transcoders[_to];
-        EarningsPool.Data storage currPool = newDelegate.earningsPoolPerRound[currentRound];
-        if (currPool.cumulativeRewardFactor == 0) {
-            currPool.cumulativeRewardFactor = cumulativeFactorsPool(newDelegate, newDelegate.lastRewardRound)
-                .cumulativeRewardFactor;
-        }
-        if (currPool.cumulativeFeeFactor == 0) {
-            currPool.cumulativeFeeFactor = cumulativeFactorsPool(newDelegate, newDelegate.lastFeeRound)
-                .cumulativeFeeFactor;
+        {
+            Transcoder storage newDelegate = transcoders[_to];
+            EarningsPool.Data storage currPool = newDelegate.earningsPoolPerRound[currentRound];
+            if (currPool.cumulativeRewardFactor == 0) {
+                currPool.cumulativeRewardFactor = cumulativeFactorsPool(newDelegate, newDelegate.lastRewardRound)
+                    .cumulativeRewardFactor;
+            }
+            if (currPool.cumulativeFeeFactor == 0) {
+                currPool.cumulativeFeeFactor = cumulativeFactorsPool(newDelegate, newDelegate.lastFeeRound)
+                    .cumulativeFeeFactor;
+            }
         }
 
         // cannot delegate to someone without having bonded stake
@@ -527,10 +528,29 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
         if (_amount > 0) {
             // Transfer the LPT to the Minter
-            livepeerToken().transferFrom(msg.sender, address(minter()), _amount);
+            livepeerToken().transferFrom(_owner, address(minter()), _amount);
         }
 
-        emit Bond(_to, currentDelegate, msg.sender, _amount, del.bondedAmount);
+        emit Bond(_to, currentDelegate, _owner, _amount, del.bondedAmount);
+    }
+
+    function bondWithHint(
+        uint256 _amount,
+        address _to,
+        address _oldDelegateNewPosPrev,
+        address _oldDelegateNewPosNext,
+        address _currDelegateNewPosPrev,
+        address _currDelegateNewPosNext
+    ) public {
+        bondForWithHint(
+            _amount,
+            msg.sender,
+            _to,
+            _oldDelegateNewPosPrev,
+            _oldDelegateNewPosNext,
+            _currDelegateNewPosPrev,
+            _currDelegateNewPosNext
+        );
     }
 
     /**
