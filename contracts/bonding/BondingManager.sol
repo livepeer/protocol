@@ -595,7 +595,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // Rebond lock for new owner
         address delegate = newDel.delegateAddress;
         if (delegate == address(0)) {
-            delegate = oldDel.delegateAddress;
+            newDel.delegateAddress = oldDel.delegateAddress;
         }
 
         _rebondWithHint(_delegator, newDelUnbondingLockId, address(0), address(0));
