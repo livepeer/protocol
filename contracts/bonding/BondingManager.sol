@@ -569,6 +569,38 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         );
     }
 
+    function transferBond(address _delegator, uint256 _amount)
+        public
+        whenSystemNotPaused
+        currentRoundInitialized
+        autoClaimEarnings
+    {
+        unbondWithHint(_amount, address(0), address(0));
+
+        Delegator storage oldDel = delegators[msg.sender];
+        Delegator storage newDel = delegators[_delegator];
+
+        uint256 oldDelUnbondingLockId = oldDel.nextUnbondingLockId.sub(1);
+        uint256 withdrawRound = oldDel.unbondingLocks[oldDelUnbondingLockId].withdrawRound;
+
+        // Burn lock for current owner
+        delete oldDel.unbondingLocks[oldDelUnbondingLockId];
+
+        // Create lock for new owner
+        uint256 newDelUnbondingLockId = newDel.nextUnbondingLockId;
+
+        newDel.unbondingLocks[newDelUnbondingLockId] = UnbondingLock({ amount: _amount, withdrawRound: withdrawRound });
+        newDel.nextUnbondingLockId.add(1);
+
+        // Rebond lock for new owner
+        address delegate = newDel.delegateAddress;
+        if (delegate == address(0)) {
+            delegate = oldDel.delegateAddress;
+        }
+
+        _rebondWithHint(_delegator, newDelUnbondingLockId, address(0), address(0));
+    }
+
     /**
      * @notice Unbond an amount of the delegator's bonded stake and updates the transcoder pool using an optional list hint if needed
      * @dev If the caller remains in the transcoder pool, the caller can provide an optional hint for its insertion position in the
@@ -619,6 +651,16 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         emit Unbond(currentDelegate, msg.sender, unbondingLockId, _amount, withdrawRound);
     }
 
+    function rebondWithHint(
+        uint256 _unbondingLockId,
+        address _newPosPrev,
+        address _newPosNext
+    ) public whenSystemNotPaused currentRoundInitialized autoClaimEarnings {
+        require(delegatorStatus(msg.sender) != DelegatorStatus.Unbonded, "caller must be bonded");
+
+        _rebondWithHint(msg.sender, _unbondingLockId, _newPosPrev, _newPosNext);
+    }
+
     /**
      * @notice Rebond tokens for an unbonding lock to a delegator's current delegate while a delegator is in the Bonded or Pending status and updates
      * the transcoder pool using an optional list hint if needed
@@ -629,15 +671,14 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * @param _newPosPrev Address of previous transcoder in pool if the delegate is in the pool
      * @param _newPosNext Address of next transcoder in pool if the delegate is in the pool
      */
-    function rebondWithHint(
+    function _rebondWithHint(
+        address _delegator,
         uint256 _unbondingLockId,
         address _newPosPrev,
         address _newPosNext
-    ) public whenSystemNotPaused currentRoundInitialized autoClaimEarnings {
-        require(delegatorStatus(msg.sender) != DelegatorStatus.Unbonded, "caller must be bonded");
-
+    ) internal {
         // Process rebond using unbonding lock
-        processRebond(msg.sender, _unbondingLockId, _newPosPrev, _newPosNext);
+        processRebond(_delegator, _unbondingLockId, _newPosPrev, _newPosNext);
     }
 
     /**

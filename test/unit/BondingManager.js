@@ -604,6 +604,27 @@ describe("BondingManager", () => {
             beforeEach(async () => {
                 await bondingManager.connect(delegator).bond(2000, transcoder0.address)
             })
+
+            describe("caller is transferring bond", () => {
+                it("should transfer all the bond to different address", async () => {
+                    await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 2)
+
+                    const startDelegatedAmountD1 = (await bondingManager.getDelegator(delegator.address))[0]
+                    const startDelegatedAmountD2 = (await bondingManager.getDelegator(delegator2.address))[0]
+
+                    expect(startDelegatedAmountD1).to.equal(2000)
+                    expect(startDelegatedAmountD2).to.equal(0)
+
+                    await bondingManager.connect(delegator).transferBond(delegator2.address, 1800)
+
+                    const endDelegatedAmountD1 = (await bondingManager.getDelegator(delegator.address))[0]
+                    const endDelegatedAmountD2 = (await bondingManager.getDelegator(delegator2.address))[0]
+
+                    expect(endDelegatedAmountD1).to.equal(200)
+                    expect(endDelegatedAmountD2).to.equal(1800)
+                })
+            })
+
             describe("caller is changing delegate", () => {
                 it("should fail if caller is a registered transcoder", async () => {
                     await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 1)
