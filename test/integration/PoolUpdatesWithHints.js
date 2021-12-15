@@ -160,7 +160,7 @@ describe("PoolUpdatesWithHints", () => {
         await expect(tx.hash).to.emit(bondingManager, "TranscoderDeactivated").withArgs(transcoders[size - 1].address, dr)
 
         assert.equal(await transcoderAtPoolPos(size - 1), newTranscoder.address)
-        expect(tx).to.emit(bondingManager, "TranscoderDeactivated").withArgs(transcoders[size - 1].address, dr)
+        await expect(tx).to.emit(bondingManager, "TranscoderDeactivated").withArgs(transcoders[size - 1].address, dr)
 
         await rpc.revert(testSnapshotId)
 
@@ -170,7 +170,7 @@ describe("PoolUpdatesWithHints", () => {
 
         const txResHint = await tx.wait()
         assert.equal(await transcoderAtPoolPos(size - 1), newTranscoder.address)
-        expect(tx).to.emit(bondingManager, "TranscoderDeactivated").withArgs(transcoders[size - 1].address, dr)
+        await expect(tx).to.emit(bondingManager, "TranscoderDeactivated").withArgs(transcoders[size - 1].address, dr)
 
         // Gas cost of transcoderWithHint() should be less than gas cost of transcoder()
         assert.isBelow(txResHint.cumulativeGasUsed, txResNoHint.cumulativeGasUsed)
