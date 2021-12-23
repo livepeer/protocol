@@ -513,44 +513,9 @@ describe("BondingManager", () => {
                 )
             })
 
-            it("should set delegate for different address", async () => {
-                await bondingManager.connect(transcoder2).bondForWithHint(
-                    1000,
-                    delegator.address,
-                    transcoder0.address,
-                    ethers.constants.AddressZero,
-                    ethers.constants.AddressZero,
-                    ethers.constants.AddressZero,
-                    ethers.constants.AddressZero
-                )
-
-                assert.equal(
-                    (await bondingManager.getDelegator(delegator.address))[2],
-                    transcoder0.address,
-                    "wrong delegateAddress"
-                )
-            })
-
             it("should update delegate and bonded amount", async () => {
                 const startDelegatedAmount = (await bondingManager.getDelegator(transcoder0.address))[3]
                 await bondingManager.connect(delegator).bond(1000, transcoder0.address)
-                const endDelegatedAmount = (await bondingManager.getDelegator(transcoder0.address))[3]
-
-                assert.equal(endDelegatedAmount.sub(startDelegatedAmount), 1000, "wrong change in delegatedAmount")
-                assert.equal((await bondingManager.getDelegator(delegator.address))[0], 1000, "wrong bondedAmount")
-            })
-
-            it("should update delegate and bonded amount for a different address", async () => {
-                const startDelegatedAmount = (await bondingManager.getDelegator(transcoder0.address))[3]
-                await bondingManager.connect(transcoder2).bondForWithHint(
-                    1000,
-                    delegator.address,
-                    transcoder0.address,
-                    ethers.constants.AddressZero,
-                    ethers.constants.AddressZero,
-                    ethers.constants.AddressZero,
-                    ethers.constants.AddressZero
-                )
                 const endDelegatedAmount = (await bondingManager.getDelegator(transcoder0.address))[3]
 
                 assert.equal(endDelegatedAmount.sub(startDelegatedAmount), 1000, "wrong change in delegatedAmount")
@@ -643,21 +608,6 @@ describe("BondingManager", () => {
                 it("should fail if caller is a registered transcoder", async () => {
                     await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 1)
                     await expect(bondingManager.connect(transcoder0).bond(0, transcoder1.address)).to.be.revertedWith(
-                        "registered transcoders can't delegate towards other addresses"
-                    )
-                })
-                it("should fail if bond owner address is a registered transcoder", async () => {
-                    await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 1)
-                    const tx = bondingManager.connect(transcoder2).bondForWithHint(
-                        0,
-                        transcoder0.address,
-                        transcoder1.address,
-                        ethers.constants.AddressZero,
-                        ethers.constants.AddressZero,
-                        ethers.constants.AddressZero,
-                        ethers.constants.AddressZero
-                    )
-                    await expect(tx).to.be.revertedWith(
                         "registered transcoders can't delegate towards other addresses"
                     )
                 })
@@ -1044,6 +994,109 @@ describe("BondingManager", () => {
                 const ep1 = await bondingManager.getTranscoderEarningsPoolForRound(transcoder1.address, currentRound + 1)
                 assert.notEqual(ep0.cumulativeFeeFactor.toString(), "0")
                 assert.equal(ep0.cumulativeFeeFactor.toString(), ep1.cumulativeFeeFactor.toString())
+            })
+        })
+    })
+
+    describe("bondFor", () => {
+        let transcoder0
+        let transcoder1
+        let delegator1
+        let delegator2
+        const currentRound = 100
+
+        beforeEach(async () => {
+            transcoder0 = signers[0]
+            transcoder1 = signers[1]
+            delegator1 = signers[2]
+            delegator2 = signers[3]
+
+            await fixture.roundsManager.setMockBool(functionSig("currentRoundInitialized()"), true)
+            await fixture.roundsManager.setMockBool(functionSig("currentRoundLocked()"), false)
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound - 1)
+            await bondingManager.connect(transcoder0).bond(1000, transcoder0.address)
+            await bondingManager.connect(transcoder0).transcoder(5, 10)
+            await bondingManager.connect(transcoder1).bond(2000, transcoder1.address)
+            await bondingManager.connect(transcoder1).transcoder(5, 10)
+            await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound)
+        })
+
+        describe("caller is unbonded", () => {
+            it("should set delegate for different address", async () => {
+                await bondingManager.connect(delegator1).bondForWithHint(
+                    1000,
+                    delegator2.address,
+                    transcoder0.address,
+                    ethers.constants.AddressZero,
+                    ethers.constants.AddressZero,
+                    ethers.constants.AddressZero,
+                    ethers.constants.AddressZero
+                )
+
+                assert.equal(
+                    (await bondingManager.getDelegator(delegator2.address))[2],
+                    transcoder0.address,
+                    "wrong delegateAddress"
+                )
+            })
+
+            it("should update delegate and bonded amount for a different address", async () => {
+                const startDelegatedAmount = (await bondingManager.getDelegator(transcoder0.address))[3]
+                await bondingManager.connect(delegator1).bondForWithHint(
+                    1000,
+                    delegator2.address,
+                    transcoder0.address,
+                    ethers.constants.AddressZero,
+                    ethers.constants.AddressZero,
+                    ethers.constants.AddressZero,
+                    ethers.constants.AddressZero
+                )
+                const endDelegatedAmount = (await bondingManager.getDelegator(transcoder0.address))[3]
+
+                assert.equal(endDelegatedAmount.sub(startDelegatedAmount), 1000, "wrong change in delegatedAmount")
+                assert.equal((await bondingManager.getDelegator(delegator2.address))[0], 1000, "wrong bondedAmount")
+            })
+        })
+
+        describe("caller is bonded", () => {
+            beforeEach(async () => {
+                await bondingManager.connect(delegator1).bond(2000, transcoder0.address)
+            })
+
+            it("should fail if bond owner address is a registered transcoder", async () => {
+                await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 1)
+                const tx = bondingManager.connect(delegator1).bondForWithHint(
+                    0,
+                    transcoder0.address,
+                    transcoder1.address,
+                    ethers.constants.AddressZero,
+                    ethers.constants.AddressZero,
+                    ethers.constants.AddressZero,
+                    ethers.constants.AddressZero
+                )
+                await expect(tx).to.be.revertedWith(
+                    "registered transcoders can't delegate towards other addresses"
+                )
+            })
+
+            it("should increase stake for receiver without affecting self", async () => {
+                const startDelegatedAmount = (await bondingManager.getDelegator(transcoder0.address))[3]
+
+                await bondingManager.connect(delegator1).bondForWithHint(
+                    1000,
+                    delegator2.address,
+                    transcoder0.address,
+                    ethers.constants.AddressZero,
+                    ethers.constants.AddressZero,
+                    ethers.constants.AddressZero,
+                    ethers.constants.AddressZero
+                )
+
+                const endDelegatedAmount = (await bondingManager.getDelegator(transcoder0.address))[3]
+
+                assert.equal(endDelegatedAmount.sub(startDelegatedAmount), 1000, "wrong change in delegatedAmount")
+                assert.equal((await bondingManager.getDelegator(delegator1.address))[0], 2000, "wrong bondedAmount")
+                assert.equal((await bondingManager.getDelegator(delegator2.address))[0], 1000, "wrong bondedAmount")
             })
         })
     })

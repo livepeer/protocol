@@ -544,7 +544,6 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * In both cases, a linear search will be executed starting at the hint to find the correct position. In the best case, the hint
      * is the correct position so no search is executed. See SortedDoublyLL.sol for details on list hints
      * @param _amount The amount of tokens to stake.
-     * @param _owner The address of the owner of the bond
      * @param _to The address of the transcoder to stake towards
      * @param _oldDelegateNewPosPrev The address of the previous transcoder in the pool for the old delegate
      * @param _oldDelegateNewPosNext The address of the next transcoder in the pool for the old delegate
