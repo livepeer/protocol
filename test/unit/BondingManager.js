@@ -1699,7 +1699,7 @@ describe("BondingManager", () => {
     describe("transferBond", () => {
         let transcoder0
         let transcoder1
-        let delegator
+        let delegator1
         let delegator2
         const currentRound = 100
         const ZERO_ADDRESS = ethers.constants.AddressZero
@@ -1707,7 +1707,7 @@ describe("BondingManager", () => {
         beforeEach(async () => {
             transcoder0 = signers[0]
             transcoder1 = signers[1]
-            delegator = signers[3]
+            delegator1 = signers[3]
             delegator2 = signers[4]
 
             await fixture.roundsManager.setMockBool(functionSig("currentRoundInitialized()"), true)
@@ -1722,19 +1722,19 @@ describe("BondingManager", () => {
 
         describe("caller is transferring bond to another address", () => {
             beforeEach(async () => {
-                await bondingManager.connect(delegator).bond(2000, transcoder0.address)
+                await bondingManager.connect(delegator1).bond(2000, transcoder0.address)
                 await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 2)
             })
 
             describe("receiver is not bonded", () => {
                 it("should transfer the bond to receiver", async () => {
-                    const startDelegatedAmountD1 = (await bondingManager.getDelegator(delegator.address))[0]
-                    const startDelegatedAmountD2 = (await bondingManager.getDelegator(delegator2.address))[0]
+                    const d1BondedAmountStart = (await bondingManager.getDelegator(delegator1.address)).bondedAmount
+                    const d2BondedAmountStart = (await bondingManager.getDelegator(delegator2.address)).bondedAmount
 
-                    expect(startDelegatedAmountD1).to.equal(2000)
-                    expect(startDelegatedAmountD2).to.equal(0)
+                    expect(d1BondedAmountStart).to.equal(2000)
+                    expect(d2BondedAmountStart).to.equal(0)
 
-                    await bondingManager.connect(delegator).transferBond(
+                    await bondingManager.connect(delegator1).transferBond(
                         delegator2.address,
                         1800,
                         ZERO_ADDRESS,
@@ -1743,17 +1743,17 @@ describe("BondingManager", () => {
                         ZERO_ADDRESS
                     )
 
-                    const endDelegatedAmountD1 = (await bondingManager.getDelegator(delegator.address))[0]
-                    const endDelegatedAmountD2 = (await bondingManager.getDelegator(delegator2.address))[0]
+                    const d1BondedAmount = (await bondingManager.getDelegator(delegator1.address)).bondedAmount
+                    const d2BondedAmount = (await bondingManager.getDelegator(delegator2.address)).bondedAmount
 
-                    const delegateD1 = (await bondingManager.getDelegator(delegator.address))[2]
-                    const delegateD2 = (await bondingManager.getDelegator(delegator2.address))[2]
+                    const d1DelegateAddress = (await bondingManager.getDelegator(delegator1.address)).delegateAddress
+                    const d2DelegateAddress = (await bondingManager.getDelegator(delegator2.address)).delegateAddress
 
-                    expect(endDelegatedAmountD1).to.equal(200)
-                    expect(endDelegatedAmountD2).to.equal(1800)
+                    expect(d1BondedAmount).to.equal(200, "wrong bonded amount for delegator 1")
+                    expect(d2BondedAmount).to.equal(1800, "wrong bonded amount for delegator 2")
 
-                    expect(delegateD1).to.equal(transcoder0.address)
-                    expect(delegateD2).to.equal(transcoder0.address)
+                    expect(d1DelegateAddress).to.equal(transcoder0.address, "wrong delegate for delegator 1")
+                    expect(d2DelegateAddress).to.equal(transcoder0.address, "wrong delegate for delegator 2")
                 })
             })
 
@@ -1763,13 +1763,15 @@ describe("BondingManager", () => {
                 })
 
                 it("should transfer the bond to receiver", async () => {
-                    const startDelegatedAmountD1 = (await bondingManager.getDelegator(delegator.address))[0]
-                    const startDelegatedAmountD2 = (await bondingManager.getDelegator(delegator2.address))[0]
+                    const d1BondedAmountStart = (await bondingManager.getDelegator(delegator1.address)).bondedAmount
+                    const d2BondedAmountStart = (await bondingManager.getDelegator(delegator2.address)).bondedAmount
 
-                    expect(startDelegatedAmountD1).to.equal(2000)
-                    expect(startDelegatedAmountD2).to.equal(2000)
+                    const delegatedAmountStart = (await bondingManager.getDelegator(transcoder0.address)).delegatedAmount
 
-                    await bondingManager.connect(delegator).transferBond(
+                    expect(d1BondedAmountStart).to.equal(2000)
+                    expect(d2BondedAmountStart).to.equal(2000)
+
+                    await bondingManager.connect(delegator1).transferBond(
                         delegator2.address,
                         1800,
                         ZERO_ADDRESS,
@@ -1778,17 +1780,20 @@ describe("BondingManager", () => {
                         ZERO_ADDRESS
                     )
 
-                    const endDelegatedAmountD1 = (await bondingManager.getDelegator(delegator.address))[0]
-                    const endDelegatedAmountD2 = (await bondingManager.getDelegator(delegator2.address))[0]
+                    const delegatedAmountEnd = (await bondingManager.getDelegator(transcoder0.address)).delegatedAmount
+                    expect(delegatedAmountEnd).to.equal(delegatedAmountStart)
 
-                    const delegateD1 = (await bondingManager.getDelegator(delegator.address))[2]
-                    const delegateD2 = (await bondingManager.getDelegator(delegator2.address))[2]
+                    const d1BondedAmount = (await bondingManager.getDelegator(delegator1.address)).bondedAmount
+                    const d2BondedAmount = (await bondingManager.getDelegator(delegator2.address)).bondedAmount
 
-                    expect(endDelegatedAmountD1).to.equal(200)
-                    expect(endDelegatedAmountD2).to.equal(3800)
+                    expect(d1BondedAmount).to.equal(200, "wrong bonded amount for delegator 1")
+                    expect(d2BondedAmount).to.equal(3800, "wrong bonded amount for delegator 2")
 
-                    expect(delegateD1).to.equal(transcoder0.address)
-                    expect(delegateD2).to.equal(transcoder0.address)
+                    const d1DelegateAddress = (await bondingManager.getDelegator(delegator1.address)).delegateAddress
+                    const d2DelegateAddress = (await bondingManager.getDelegator(delegator2.address)).delegateAddress
+
+                    expect(d1DelegateAddress).to.equal(transcoder0.address, "wrong delegate for delegator 1")
+                    expect(d2DelegateAddress).to.equal(transcoder0.address, "wrong delegate for delegator 2")
                 })
             })
 
@@ -1798,13 +1803,16 @@ describe("BondingManager", () => {
                 })
 
                 it("should transfer the bond to receiver", async () => {
-                    const startDelegatedAmountD1 = (await bondingManager.getDelegator(delegator.address))[0]
-                    const startDelegatedAmountD2 = (await bondingManager.getDelegator(delegator2.address))[0]
+                    const d1BondedAmountStart = (await bondingManager.getDelegator(delegator1.address)).bondedAmount
+                    const d2BondedAmountStart = (await bondingManager.getDelegator(delegator2.address)).bondedAmount
 
-                    expect(startDelegatedAmountD1).to.equal(2000)
-                    expect(startDelegatedAmountD2).to.equal(2000)
+                    const t0DelegatedAmountStart = (await bondingManager.getDelegator(transcoder0.address)).delegatedAmount
+                    const t1DelegatedAmountStart = (await bondingManager.getDelegator(transcoder1.address)).delegatedAmount
 
-                    await bondingManager.connect(delegator).transferBond(
+                    expect(d1BondedAmountStart).to.equal(2000)
+                    expect(d2BondedAmountStart).to.equal(2000)
+
+                    await bondingManager.connect(delegator1).transferBond(
                         delegator2.address,
                         1800,
                         ZERO_ADDRESS,
@@ -1813,17 +1821,23 @@ describe("BondingManager", () => {
                         ZERO_ADDRESS
                     )
 
-                    const endDelegatedAmountD1 = (await bondingManager.getDelegator(delegator.address))[0]
-                    const endDelegatedAmountD2 = (await bondingManager.getDelegator(delegator2.address))[0]
+                    const d1BondedAmount = (await bondingManager.getDelegator(delegator1.address)).bondedAmount
+                    const d2BondedAmount = (await bondingManager.getDelegator(delegator2.address)).bondedAmount
 
-                    const delegateD1 = (await bondingManager.getDelegator(delegator.address))[2]
-                    const delegateD2 = (await bondingManager.getDelegator(delegator2.address))[2]
+                    expect(d1BondedAmount).to.equal(200, "wrong bonded amount for delegator 1")
+                    expect(d2BondedAmount).to.equal(3800, "wrong bonded amount for delegator 2")
 
-                    expect(endDelegatedAmountD1).to.equal(200)
-                    expect(endDelegatedAmountD2).to.equal(3800)
+                    const d1DelegateAddress = (await bondingManager.getDelegator(delegator1.address)).delegateAddress
+                    const d2DelegateAddress = (await bondingManager.getDelegator(delegator2.address)).delegateAddress
 
-                    expect(delegateD1).to.equal(transcoder0.address)
-                    expect(delegateD2).to.equal(transcoder1.address)
+                    expect(d1DelegateAddress).to.equal(transcoder0.address, "wrong delegate for delegator 1")
+                    expect(d2DelegateAddress).to.equal(transcoder1.address, "wrong delegate for delegator 2")
+
+                    const t0DelegatedAmountEnd = (await bondingManager.getDelegator(transcoder0.address)).delegatedAmount
+                    const t1DelegatedAmountEnd = (await bondingManager.getDelegator(transcoder1.address)).delegatedAmount
+
+                    expect(t0DelegatedAmountEnd.sub(t0DelegatedAmountStart)).to.equal(-1800, "incorrect t0 delegatedAmount")
+                    expect(t1DelegatedAmountEnd.sub(t1DelegatedAmountStart)).to.equal(1800, "incorrect t1 delegatedAmount")
                 })
             })
         })

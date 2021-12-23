@@ -620,7 +620,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         }
 
         // Process rebond using unbonding lock
-        _processRebond(_delegator, newDelUnbondingLockId, _newDelegateNewPosPrev, _newDelegateNewPosNext);
+        processRebond(_delegator, newDelUnbondingLockId, _newDelegateNewPosPrev, _newDelegateNewPosNext);
     }
 
     /**
@@ -691,7 +691,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         require(delegatorStatus(msg.sender) != DelegatorStatus.Unbonded, "caller must be bonded");
 
         // Process rebond using unbonding lock
-        _processRebond(msg.sender, _unbondingLockId, _newPosPrev, _newPosNext);
+        processRebond(msg.sender, _unbondingLockId, _newPosPrev, _newPosNext);
     }
 
     /**
@@ -718,7 +718,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // Set delegator's delegate
         delegators[msg.sender].delegateAddress = _to;
         // Process rebond using unbonding lock
-        _processRebond(msg.sender, _unbondingLockId, _newPosPrev, _newPosNext);
+        processRebond(msg.sender, _unbondingLockId, _newPosPrev, _newPosNext);
     }
 
     /**
@@ -1440,7 +1440,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * @param _newPosPrev Address of previous transcoder in pool if the delegate is already in or joins the pool
      * @param _newPosNext Address of next transcoder in pool if the delegate is already in or joins the pool
      */
-    function _processRebond(
+    function processRebond(
         address _delegator,
         uint256 _unbondingLockId,
         address _newPosPrev,
