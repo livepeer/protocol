@@ -449,7 +449,94 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     }
 
     /**
-     * @notice Delegate stake towards a specific address and updates the transcoder pool using optional list hints if needed
+     * @notice Delegates stake "on behalf of" another address towards a specific address
+     * and updates the transcoder pool using optional list hints if needed
+     * @dev If the caller is decreasing the stake of its old delegate in the transcoder pool, the caller can provide an optional hint
+     * for the insertion position of the old delegate via the `_oldDelegateNewPosPrev` and `_oldDelegateNewPosNext` params.
+     * If the caller is delegating to a delegate that is in the transcoder pool, the caller can provide an optional hint for the
+     * insertion position of the delegate via the `_currDelegateNewPosPrev` and `_currDelegateNewPosNext` params.
+     * In both cases, a linear search will be executed starting at the hint to find the correct position. In the best case, the hint
+     * is the correct position so no search is executed. See SortedDoublyLL.sol for details on list hints
+     * @param _amount The amount of tokens to stake.
+     * @param _owner The address of the owner of the bond
+     * @param _to The address of the transcoder to stake towards
+     * @param _oldDelegateNewPosPrev The address of the previous transcoder in the pool for the old delegate
+     * @param _oldDelegateNewPosNext The address of the next transcoder in the pool for the old delegate
+     * @param _currDelegateNewPosPrev The address of the previous transcoder in the pool for the current delegate
+     * @param _currDelegateNewPosNext The address of the next transcoder in the pool for the current delegate
+     */
+    function bondForWithHint(
+        uint256 _amount,
+        address _owner,
+        address _to,
+        address _oldDelegateNewPosPrev,
+        address _oldDelegateNewPosNext,
+        address _currDelegateNewPosPrev,
+        address _currDelegateNewPosNext
+    ) public whenSystemNotPaused currentRoundInitialized autoClaimEarnings {
+        Delegator storage del = delegators[_owner];
+
+        uint256 currentRound = roundsManager().currentRound();
+        // Amount to delegate
+        uint256 delegationAmount = _amount;
+        // Current delegate
+        address currentDelegate = del.delegateAddress;
+
+        if (delegatorStatus(_owner) == DelegatorStatus.Unbonded) {
+            // New delegate
+            // Set start round
+            // Don't set start round if delegator is in pending state because the start round would not change
+            del.startRound = currentRound.add(1);
+            // Unbonded state = no existing delegate and no bonded stake
+            // Thus, delegation amount = provided amount
+        } else if (currentDelegate != address(0) && currentDelegate != _to) {
+            // A registered transcoder cannot delegate its bonded stake toward another address
+            // because it can only be delegated toward itself
+            // In the future, if delegation towards another registered transcoder as an already
+            // registered transcoder becomes useful (i.e. for transitive delegation), this restriction
+            // could be removed
+            require(!isRegisteredTranscoder(_owner), "registered transcoders can't delegate towards other addresses");
+            // Changing delegate
+            // Set start round
+            del.startRound = currentRound.add(1);
+            // Update amount to delegate with previous delegation amount
+            delegationAmount = delegationAmount.add(del.bondedAmount);
+
+            decreaseTotalStake(currentDelegate, del.bondedAmount, _oldDelegateNewPosPrev, _oldDelegateNewPosNext);
+        }
+
+        {
+            Transcoder storage newDelegate = transcoders[_to];
+            EarningsPool.Data storage currPool = newDelegate.earningsPoolPerRound[currentRound];
+            if (currPool.cumulativeRewardFactor == 0) {
+                currPool.cumulativeRewardFactor = cumulativeFactorsPool(newDelegate, newDelegate.lastRewardRound)
+                    .cumulativeRewardFactor;
+            }
+            if (currPool.cumulativeFeeFactor == 0) {
+                currPool.cumulativeFeeFactor = cumulativeFactorsPool(newDelegate, newDelegate.lastFeeRound)
+                    .cumulativeFeeFactor;
+            }
+        }
+
+        // cannot delegate to someone without having bonded stake
+        require(delegationAmount > 0, "delegation amount must be greater than 0");
+        // Update delegate
+        del.delegateAddress = _to;
+        // Update bonded amount
+        del.bondedAmount = del.bondedAmount.add(_amount);
+
+        increaseTotalStake(_to, delegationAmount, _currDelegateNewPosPrev, _currDelegateNewPosNext);
+
+        if (_amount > 0) {
+            // Transfer the LPT to the Minter
+            livepeerToken().transferFrom(msg.sender, address(minter()), _amount);
+        }
+
+        emit Bond(_to, currentDelegate, _owner, _amount, del.bondedAmount);
+    }
+
+    /**
+     * @notice Delegates stake towards a specific address and updates the transcoder pool using optional list hints if needed
      * @dev If the caller is decreasing the stake of its old delegate in the transcoder pool, the caller can provide an optional hint
      * for the insertion position of the old delegate via the `_oldDelegateNewPosPrev` and `_oldDelegateNewPosNext` params.
      * If the caller is delegating to a delegate that is in the transcoder pool, the caller can provide an optional hint for the
@@ -470,67 +557,16 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         address _oldDelegateNewPosNext,
         address _currDelegateNewPosPrev,
         address _currDelegateNewPosNext
-    ) public whenSystemNotPaused currentRoundInitialized autoClaimEarnings {
-        Delegator storage del = delegators[msg.sender];
-
-        uint256 currentRound = roundsManager().currentRound();
-        // Amount to delegate
-        uint256 delegationAmount = _amount;
-        // Current delegate
-        address currentDelegate = del.delegateAddress;
-
-        if (delegatorStatus(msg.sender) == DelegatorStatus.Unbonded) {
-            // New delegate
-            // Set start round
-            // Don't set start round if delegator is in pending state because the start round would not change
-            del.startRound = currentRound.add(1);
-            // Unbonded state = no existing delegate and no bonded stake
-            // Thus, delegation amount = provided amount
-        } else if (currentDelegate != address(0) && currentDelegate != _to) {
-            // A registered transcoder cannot delegate its bonded stake toward another address
-            // because it can only be delegated toward itself
-            // In the future, if delegation towards another registered transcoder as an already
-            // registered transcoder becomes useful (i.e. for transitive delegation), this restriction
-            // could be removed
-            require(
-                !isRegisteredTranscoder(msg.sender),
-                "registered transcoders can't delegate towards other addresses"
-            );
-            // Changing delegate
-            // Set start round
-            del.startRound = currentRound.add(1);
-            // Update amount to delegate with previous delegation amount
-            delegationAmount = delegationAmount.add(del.bondedAmount);
-
-            decreaseTotalStake(currentDelegate, del.bondedAmount, _oldDelegateNewPosPrev, _oldDelegateNewPosNext);
-        }
-
-        Transcoder storage newDelegate = transcoders[_to];
-        EarningsPool.Data storage currPool = newDelegate.earningsPoolPerRound[currentRound];
-        if (currPool.cumulativeRewardFactor == 0) {
-            currPool.cumulativeRewardFactor = cumulativeFactorsPool(newDelegate, newDelegate.lastRewardRound)
-                .cumulativeRewardFactor;
-        }
-        if (currPool.cumulativeFeeFactor == 0) {
-            currPool.cumulativeFeeFactor = cumulativeFactorsPool(newDelegate, newDelegate.lastFeeRound)
-                .cumulativeFeeFactor;
-        }
-
-        // cannot delegate to someone without having bonded stake
-        require(delegationAmount > 0, "delegation amount must be greater than 0");
-        // Update delegate
-        del.delegateAddress = _to;
-        // Update bonded amount
-        del.bondedAmount = del.bondedAmount.add(_amount);
-
-        increaseTotalStake(_to, delegationAmount, _currDelegateNewPosPrev, _currDelegateNewPosNext);
-
-        if (_amount > 0) {
-            // Transfer the LPT to the Minter
-            livepeerToken().transferFrom(msg.sender, address(minter()), _amount);
-        }
-
-        emit Bond(_to, currentDelegate, msg.sender, _amount, del.bondedAmount);
+    ) public {
+        bondForWithHint(
+            _amount,
+            msg.sender,
+            _to,
+            _oldDelegateNewPosPrev,
+            _oldDelegateNewPosNext,
+            _currDelegateNewPosPrev,
+            _currDelegateNewPosNext
+        );
     }
 
     /**
