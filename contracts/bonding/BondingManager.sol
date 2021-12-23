@@ -570,6 +570,60 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     }
 
     /**
+     * @notice Transfers ownership of a bond to a new delegator using optional hints if needed
+     *
+     * If the receiver is already bonded to a different delegate than the bond owner then the stake goes
+     * to the receiver's delegate otherwise the receiver's delegate is set as the owner's delegate
+     *
+     * @dev If the original delegate is in the transcoder pool, the caller can provide an optional hint for the
+     * insertion position of the delegate via the `_oldDelegateNewPosPrev` and `_oldDelegateNewPosNext` params.
+     * If the target delegate is in the transcoder pool, the caller can provide an optional hint for the
+     * insertion position of the delegate via the `_newDelegateNewPosPrev` and `_newDelegateNewPosNext` params.
+     *
+     * In both cases, a linear search will be executed starting at the hint to find the correct position. In the best case, the hint
+     * is the correct position so no search is executed. See SortedDoublyLL.sol for details on list hints
+     * @param _delegator Receiver of the bond
+     * @param _amount Portion of the bond to transfer to receiver
+     * @param _oldDelegateNewPosPrev Address of previous transcoder in pool if the delegate remains in the pool
+     * @param _oldDelegateNewPosNext Address of next transcoder in pool if the delegate remains in the pool
+     * @param _newDelegateNewPosPrev Address of previous transcoder in pool if the delegate is in the pool
+     * @param _newDelegateNewPosNext Address of next transcoder in pool if the delegate is in the pool
+     */
+    function transferBond(
+        address _delegator,
+        uint256 _amount,
+        address _oldDelegateNewPosPrev,
+        address _oldDelegateNewPosNext,
+        address _newDelegateNewPosPrev,
+        address _newDelegateNewPosNext
+    ) public whenSystemNotPaused currentRoundInitialized autoClaimEarnings {
+        unbondWithHint(_amount, _oldDelegateNewPosPrev, _oldDelegateNewPosNext);
+
+        Delegator storage oldDel = delegators[msg.sender];
+        Delegator storage newDel = delegators[_delegator];
+
+        uint256 oldDelUnbondingLockId = oldDel.nextUnbondingLockId.sub(1);
+        uint256 withdrawRound = oldDel.unbondingLocks[oldDelUnbondingLockId].withdrawRound;
+
+        // Burn lock for current owner
+        delete oldDel.unbondingLocks[oldDelUnbondingLockId];
+
+        // Create lock for new owner
+        uint256 newDelUnbondingLockId = newDel.nextUnbondingLockId;
+
+        newDel.unbondingLocks[newDelUnbondingLockId] = UnbondingLock({ amount: _amount, withdrawRound: withdrawRound });
+        newDel.nextUnbondingLockId.add(1);
+
+        // Rebond lock for new owner
+        if (newDel.delegateAddress == address(0)) {
+            newDel.delegateAddress = oldDel.delegateAddress;
+        }
+
+        // Process rebond using unbonding lock
+        processRebond(_delegator, newDelUnbondingLockId, _newDelegateNewPosPrev, _newDelegateNewPosNext);
+    }
+
+    /**
      * @notice Unbond an amount of the delegator's bonded stake and updates the transcoder pool using an optional list hint if needed
      * @dev If the caller remains in the transcoder pool, the caller can provide an optional hint for its insertion position in the
      * pool via the `_newPosPrev` and `_newPosNext` params. A linear search will be executed starting at the hint to find the correct position.
