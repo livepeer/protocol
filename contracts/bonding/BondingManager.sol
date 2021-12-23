@@ -449,7 +449,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     }
 
     /**
-     * @notice Delegate stake towards a specific address and updates the transcoder pool using optional list hints if needed
+     * @notice Delegates stake "on behalf of" another address towards a specific address
+     * and updates the transcoder pool using optional list hints if needed
      * @dev If the caller is decreasing the stake of its old delegate in the transcoder pool, the caller can provide an optional hint
      * for the insertion position of the old delegate via the `_oldDelegateNewPosPrev` and `_oldDelegateNewPosNext` params.
      * If the caller is delegating to a delegate that is in the transcoder pool, the caller can provide an optional hint for the
@@ -457,8 +458,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * In both cases, a linear search will be executed starting at the hint to find the correct position. In the best case, the hint
      * is the correct position so no search is executed. See SortedDoublyLL.sol for details on list hints
      * @param _amount The amount of tokens to stake.
-     * @param _to The address of the transcoder to stake towards
      * @param _owner The address of the owner of the bond
+     * @param _to The address of the transcoder to stake towards
      * @param _oldDelegateNewPosPrev The address of the previous transcoder in the pool for the old delegate
      * @param _oldDelegateNewPosNext The address of the next transcoder in the pool for the old delegate
      * @param _currDelegateNewPosPrev The address of the previous transcoder in the pool for the current delegate
@@ -528,12 +529,28 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
         if (_amount > 0) {
             // Transfer the LPT to the Minter
-            livepeerToken().transferFrom(_owner, address(minter()), _amount);
+            livepeerToken().transferFrom(msg.sender, address(minter()), _amount);
         }
 
         emit Bond(_to, currentDelegate, _owner, _amount, del.bondedAmount);
     }
 
+    /**
+     * @notice Delegates stake towards a specific address and updates the transcoder pool using optional list hints if needed
+     * @dev If the caller is decreasing the stake of its old delegate in the transcoder pool, the caller can provide an optional hint
+     * for the insertion position of the old delegate via the `_oldDelegateNewPosPrev` and `_oldDelegateNewPosNext` params.
+     * If the caller is delegating to a delegate that is in the transcoder pool, the caller can provide an optional hint for the
+     * insertion position of the delegate via the `_currDelegateNewPosPrev` and `_currDelegateNewPosNext` params.
+     * In both cases, a linear search will be executed starting at the hint to find the correct position. In the best case, the hint
+     * is the correct position so no search is executed. See SortedDoublyLL.sol for details on list hints
+     * @param _amount The amount of tokens to stake.
+     * @param _owner The address of the owner of the bond
+     * @param _to The address of the transcoder to stake towards
+     * @param _oldDelegateNewPosPrev The address of the previous transcoder in the pool for the old delegate
+     * @param _oldDelegateNewPosNext The address of the next transcoder in the pool for the old delegate
+     * @param _currDelegateNewPosPrev The address of the previous transcoder in the pool for the current delegate
+     * @param _currDelegateNewPosNext The address of the next transcoder in the pool for the current delegate
+     */
     function bondWithHint(
         uint256 _amount,
         address _to,
