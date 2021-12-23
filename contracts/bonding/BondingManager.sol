@@ -569,13 +569,35 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         );
     }
 
-    function transferBond(address _delegator, uint256 _amount)
-        public
-        whenSystemNotPaused
-        currentRoundInitialized
-        autoClaimEarnings
-    {
-        unbondWithHint(_amount, address(0), address(0));
+    /**
+     * @notice Transfers ownership of a bond to a new delegator using optional hints if needed
+     *
+     * If the receiver is already bonded to a different delegate than the bond owner then the stake goes
+     * to the receiver's delegate otherwise the receiver's delegate is set as the owner's delegate
+     *
+     * @dev If the original delegate is in the transcoder pool, the caller can provide an optional hint for the
+     * insertion position of the delegate via the `_oldDelegateNewPosPrev` and `_oldDelegateNewPosNext` params.
+     * If the target delegate is in the transcoder pool, the caller can provide an optional hint for the
+     * insertion position of the delegate via the `_newDelegateNewPosPrev` and `_newDelegateNewPosNext` params.
+     *
+     * In both cases, a linear search will be executed starting at the hint to find the correct position. In the best case, the hint
+     * is the correct position so no search is executed. See SortedDoublyLL.sol for details on list hints
+     * @param _delegator Receiver of the bond
+     * @param _amount Portion of the bond to transfer to receiver
+     * @param _oldDelegateNewPosPrev Address of previous transcoder in pool if the delegate remains in the pool
+     * @param _oldDelegateNewPosNext Address of next transcoder in pool if the delegate remains in the pool
+     * @param _newDelegateNewPosPrev Address of previous transcoder in pool if the delegate is in the pool
+     * @param _newDelegateNewPosNext Address of next transcoder in pool if the delegate is in the pool
+     */
+    function transferBond(
+        address _delegator,
+        uint256 _amount,
+        address _oldDelegateNewPosPrev,
+        address _oldDelegateNewPosNext,
+        address _newDelegateNewPosPrev,
+        address _newDelegateNewPosNext
+    ) public whenSystemNotPaused currentRoundInitialized autoClaimEarnings {
+        unbondWithHint(_amount, _oldDelegateNewPosPrev, _oldDelegateNewPosNext);
 
         Delegator storage oldDel = delegators[msg.sender];
         Delegator storage newDel = delegators[_delegator];
@@ -597,7 +619,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             newDel.delegateAddress = oldDel.delegateAddress;
         }
 
-        _rebondWithHint(_delegator, newDelUnbondingLockId, address(0), address(0));
+        // Process rebond using unbonding lock
+        _processRebond(_delegator, newDelUnbondingLockId, _newDelegateNewPosPrev, _newDelegateNewPosNext);
     }
 
     /**
@@ -650,16 +673,6 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         emit Unbond(currentDelegate, msg.sender, unbondingLockId, _amount, withdrawRound);
     }
 
-    function rebondWithHint(
-        uint256 _unbondingLockId,
-        address _newPosPrev,
-        address _newPosNext
-    ) public whenSystemNotPaused currentRoundInitialized autoClaimEarnings {
-        require(delegatorStatus(msg.sender) != DelegatorStatus.Unbonded, "caller must be bonded");
-
-        _rebondWithHint(msg.sender, _unbondingLockId, _newPosPrev, _newPosNext);
-    }
-
     /**
      * @notice Rebond tokens for an unbonding lock to a delegator's current delegate while a delegator is in the Bonded or Pending status and updates
      * the transcoder pool using an optional list hint if needed
@@ -670,14 +683,15 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * @param _newPosPrev Address of previous transcoder in pool if the delegate is in the pool
      * @param _newPosNext Address of next transcoder in pool if the delegate is in the pool
      */
-    function _rebondWithHint(
-        address _delegator,
+    function rebondWithHint(
         uint256 _unbondingLockId,
         address _newPosPrev,
         address _newPosNext
-    ) internal {
+    ) public whenSystemNotPaused currentRoundInitialized autoClaimEarnings {
+        require(delegatorStatus(msg.sender) != DelegatorStatus.Unbonded, "caller must be bonded");
+
         // Process rebond using unbonding lock
-        processRebond(_delegator, _unbondingLockId, _newPosPrev, _newPosNext);
+        _processRebond(msg.sender, _unbondingLockId, _newPosPrev, _newPosNext);
     }
 
     /**
@@ -704,7 +718,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // Set delegator's delegate
         delegators[msg.sender].delegateAddress = _to;
         // Process rebond using unbonding lock
-        processRebond(msg.sender, _unbondingLockId, _newPosPrev, _newPosNext);
+        _processRebond(msg.sender, _unbondingLockId, _newPosPrev, _newPosNext);
     }
 
     /**
@@ -1426,7 +1440,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * @param _newPosPrev Address of previous transcoder in pool if the delegate is already in or joins the pool
      * @param _newPosNext Address of next transcoder in pool if the delegate is already in or joins the pool
      */
-    function processRebond(
+    function _processRebond(
         address _delegator,
         uint256 _unbondingLockId,
         address _newPosPrev,
