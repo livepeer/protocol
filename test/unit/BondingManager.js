@@ -998,7 +998,7 @@ describe("BondingManager", () => {
         })
     })
 
-    describe("bondFor", () => {
+    describe("bondForWithHint", () => {
         let transcoder0
         let transcoder1
         let delegator1
@@ -1033,15 +1033,12 @@ describe("BondingManager", () => {
                     ethers.constants.AddressZero
                 )
 
-                assert.equal(
-                    (await bondingManager.getDelegator(delegator2.address))[2],
-                    transcoder0.address,
-                    "wrong delegateAddress"
-                )
+                const delegateAddress = (await bondingManager.getDelegator(delegator2.address)).delegateAddress
+                expect(delegateAddress).to.equal(transcoder0.address, "wrong delegateAddress")
             })
 
             it("should update delegate and bonded amount for a different address", async () => {
-                const startDelegatedAmount = (await bondingManager.getDelegator(transcoder0.address))[3]
+                const startDelegatedAmount = (await bondingManager.getDelegator(transcoder0.address)).delegatedAmount
                 await bondingManager.connect(delegator1).bondForWithHint(
                     1000,
                     delegator2.address,
@@ -1051,20 +1048,21 @@ describe("BondingManager", () => {
                     ethers.constants.AddressZero,
                     ethers.constants.AddressZero
                 )
-                const endDelegatedAmount = (await bondingManager.getDelegator(transcoder0.address))[3]
+                const endDelegatedAmount = (await bondingManager.getDelegator(transcoder0.address)).delegatedAmount
+                expect(endDelegatedAmount.sub(startDelegatedAmount)).to.equal(1000, "wrong change in delegatedAmount")
 
-                assert.equal(endDelegatedAmount.sub(startDelegatedAmount), 1000, "wrong change in delegatedAmount")
-                assert.equal((await bondingManager.getDelegator(delegator2.address))[0], 1000, "wrong bondedAmount")
+                const bondedAmount = (await bondingManager.getDelegator(delegator2.address)).bondedAmount
+                expect(bondedAmount).to.equal(1000, "wrong bondedAmount")
             })
         })
 
         describe("caller is bonded", () => {
             beforeEach(async () => {
                 await bondingManager.connect(delegator1).bond(2000, transcoder0.address)
+                await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 1)
             })
 
             it("should fail if bond owner address is a registered transcoder", async () => {
-                await fixture.roundsManager.setMockUint256(functionSig("currentRound()"), currentRound + 1)
                 const tx = bondingManager.connect(delegator1).bondForWithHint(
                     0,
                     transcoder0.address,
@@ -1080,7 +1078,7 @@ describe("BondingManager", () => {
             })
 
             it("should increase stake for receiver without affecting self", async () => {
-                const startDelegatedAmount = (await bondingManager.getDelegator(transcoder0.address))[3]
+                const startDelegatedAmount = (await bondingManager.getDelegator(transcoder0.address)).delegatedAmount
 
                 await bondingManager.connect(delegator1).bondForWithHint(
                     1000,
@@ -1092,11 +1090,13 @@ describe("BondingManager", () => {
                     ethers.constants.AddressZero
                 )
 
-                const endDelegatedAmount = (await bondingManager.getDelegator(transcoder0.address))[3]
+                const endDelegatedAmount = (await bondingManager.getDelegator(transcoder0.address)).delegatedAmount
+                expect(endDelegatedAmount.sub(startDelegatedAmount), 1000, "wrong change in delegatedAmount")
 
-                assert.equal(endDelegatedAmount.sub(startDelegatedAmount), 1000, "wrong change in delegatedAmount")
-                assert.equal((await bondingManager.getDelegator(delegator1.address))[0], 2000, "wrong bondedAmount")
-                assert.equal((await bondingManager.getDelegator(delegator2.address))[0], 1000, "wrong bondedAmount")
+                const d1BondedAmount = (await bondingManager.getDelegator(delegator1.address)).bondedAmount
+                const d2BondedAmount = (await bondingManager.getDelegator(delegator2.address)).bondedAmount
+                expect(d1BondedAmount).to.equal(2000, "wrong bondedAmount for delegator 1")
+                expect(d2BondedAmount).to.equal(1000, "wrong bondedAmount for delegator 2")
             })
         })
     })
