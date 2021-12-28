@@ -79,13 +79,26 @@ contract MixinTicketBrokerCore is MContractRegistry, MReserve, MTicketProcessor,
      * @param _depositAmount Amount of ETH to add to the caller's deposit
      * @param _reserveAmount Amount of ETH to add to the caller's reserve
      */
-    function fundDepositAndReserve(uint256 _depositAmount, uint256 _reserveAmount)
-        external
+    function fundDepositAndReserve(uint256 _depositAmount, uint256 _reserveAmount) external payable {
+        fundDepositAndReserveFor(msg.sender, _depositAmount, _reserveAmount);
+    }
+
+    /**
+     * @notice Adds ETH to the address' deposit and reserve
+     * @param _depositAmount Amount of ETH to add to the address' deposit
+     * @param _reserveAmount Amount of ETH to add to the address' reserve
+     */
+    function fundDepositAndReserveFor(
+        address _addr,
+        uint256 _depositAmount,
+        uint256 _reserveAmount
+    )
+        public
         payable
         whenSystemNotPaused
         checkDepositReserveETHValueSplit(_depositAmount, _reserveAmount)
-        processDeposit(msg.sender, _depositAmount)
-        processReserve(msg.sender, _reserveAmount)
+        processDeposit(_addr, _depositAmount)
+        processReserve(_addr, _reserveAmount)
     {
         processFunding(msg.value);
     }

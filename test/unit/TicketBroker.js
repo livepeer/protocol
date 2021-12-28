@@ -26,6 +26,7 @@ describe("TicketBroker", () => {
     let signers
     let sender
     let recipient
+    let funder
 
     const unlockPeriod = 20
     const ticketValidityPeriod = 2
@@ -36,6 +37,7 @@ describe("TicketBroker", () => {
         signers = await ethers.getSigners()
         sender = signers[0].address
         recipient = signers[1].address
+        funder = signers[3]
         fixture = new Fixture(web3)
         await fixture.deploy()
 
@@ -585,6 +587,66 @@ describe("TicketBroker", () => {
                 ).reserve.fundsRemaining.toString(),
                 (remainingReserve + additionalFunds).toString()
             )
+        })
+    })
+
+    describe("fundDepositAndReserveFor", () => {
+        it("should fail if the system is paused", async () => {
+            const deposit = 500
+            const reserve = 1000
+            await fixture.controller.pause()
+            await expect(
+                broker.connect(funder).fundDepositAndReserveFor(sender, deposit, reserve, {value: 1000})
+            ).to.be.revertedWith("system is paused")
+        })
+
+        it("reverts if msg.value < sum of deposit amount and reserve amount", async () => {
+            const deposit = 500
+            const reserve = 1000
+
+            await expect(
+                broker.connect(funder).fundDepositAndReserveFor(
+                    sender,
+                    deposit,
+                    reserve,
+                    {value: deposit + reserve - 1}
+                )
+            ).to.be.revertedWith("msg.value does not equal sum of deposit amount and reserve amount")
+        })
+
+        it("reverts if msg.value > sum of deposit amount and reserve amount", async () => {
+            const deposit = 500
+            const reserve = 1000
+
+            await expect(
+                broker.connect(funder).fundDepositAndReserveFor(
+                    sender,
+                    deposit,
+                    reserve,
+                    {value: deposit + reserve + 1}
+                )
+            ).to.be.revertedWith("msg.value does not equal sum of deposit amount and reserve amount")
+        })
+
+        it("updates deposit and reserve for specified address", async () => {
+            const deposit = 500
+            const reserve = 1000
+
+            expect(funder.address).to.not.equal(sender)
+
+            const tx = await broker.connect(funder).fundDepositAndReserveFor(
+                sender,
+                deposit,
+                reserve,
+                {value: deposit + reserve}
+            )
+
+            const endSenderInfo = await broker.getSenderInfo(sender)
+            expect(endSenderInfo.sender.deposit).to.be.equal(deposit)
+            expect(endSenderInfo.reserve.fundsRemaining).to.be.equal(reserve)
+
+            expect(tx).to.changeEtherBalance(funder, -(deposit + reserve))
+            expect(tx).to.changeEtherBalance(fixture.minter, deposit + reserve)
         })
     })
 
