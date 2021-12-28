@@ -2,7 +2,11 @@ const hre = require("hardhat")
 const ethers = hre.ethers
 const utils = ethers.utils
 const BigNumber = ethers.BigNumber
-const {createWinningTicket, createAuxData, getTicketHash} = require("../../test/helpers/ticket")
+const {
+    createWinningTicket,
+    createAuxData,
+    getTicketHash
+} = require("../../test/helpers/ticket")
 const {default: RPC} = require("../../utils/rpc")
 
 const ACCEPTABLE_DELTA = BigNumber.from("100")
@@ -38,12 +42,14 @@ async function main() {
     // Fork from mainnet
     await hre.network.provider.request({
         method: "hardhat_reset",
-        params: [{
-            forking: {
-                blockNumber: 11816685,
-                jsonRpcUrl: process.env.MAINNET_FORK_URL
+        params: [
+            {
+                forking: {
+                    blockNumber: 11816685,
+                    jsonRpcUrl: process.env.MAINNET_FORK_URL
+                }
             }
-        }]
+        ]
     })
 
     // Mainnet addresses
@@ -55,9 +61,18 @@ async function main() {
     const roundsManagerAddr = "0x3984fc4ceeef1739135476f625d36d6c35c40dc3"
     const ticketBrokerAddr = "0x5b1ce829384eebfa30286f12d1e7a695ca45f5d2"
 
-    const roundsManager = await ethers.getContractAt("RoundsManager", roundsManagerAddr)
-    const bondingManager = await ethers.getContractAt("BondingManager", bondingManagerAddr)
-    const ticketBroker = await ethers.getContractAt("TicketBroker", ticketBrokerAddr)
+    const roundsManager = await ethers.getContractAt(
+        "RoundsManager",
+        roundsManagerAddr
+    )
+    const bondingManager = await ethers.getContractAt(
+        "BondingManager",
+        bondingManagerAddr
+    )
+    const ticketBroker = await ethers.getContractAt(
+        "TicketBroker",
+        ticketBrokerAddr
+    )
 
     // Deploy new BondingManager target implementation
     const BondingManager = await ethers.getContractFactory("BondingManager", {
@@ -83,7 +98,9 @@ async function main() {
     const gov = await ethers.getContractAt("Governor", govAddr, multisigSigner)
     const controller = await ethers.getContractAt("Controller", controllerAddr)
 
-    const lip71Round = (await roundsManager.currentRound()).add(BigNumber.from("1"))
+    const lip71Round = (await roundsManager.currentRound()).add(
+        BigNumber.from("1")
+    )
     const setLIPUpgradeRoundData = utils.hexlify(
         utils.arrayify(
             roundsManager.interface.encodeFunctionData(
@@ -93,7 +110,10 @@ async function main() {
         )
     )
 
-    const contractID = utils.solidityKeccak256(["string"], ["BondingManagerTarget"])
+    const contractID = utils.solidityKeccak256(
+        ["string"],
+        ["BondingManagerTarget"]
+    )
     const gitCommitHash = "0x40eb67080550bacd6f0a2f8590beb0db463bff29"
     const setInfoData = utils.hexlify(
         utils.arrayify(
@@ -118,8 +138,13 @@ async function main() {
         throw new Error(`LIP-71 upgrade round not set to ${lip71Round}`)
     }
 
-    if ((await controller.getContract(contractID)) != bondingManagerTarget.address) {
-        throw new Error("new BondingManager target implementation not registered with Controller")
+    if (
+        (await controller.getContract(contractID)) !=
+        bondingManagerTarget.address
+    ) {
+        throw new Error(
+            "new BondingManager target implementation not registered with Controller"
+        )
     }
 
     await ticketBroker.fundDepositAndReserve(
@@ -130,7 +155,9 @@ async function main() {
 
     const newWinningTicket = async (recipient, recipientRand) => {
         const currentRound = await roundsManager.currentRound()
-        const currentRoundBlockHash = await roundsManager.blockHashForRound(currentRound)
+        const currentRoundBlockHash = await roundsManager.blockHashForRound(
+            currentRound
+        )
         const faceValue = ethers.utils.parseUnits(".17", "ether")
         const ticket = createWinningTicket(
             recipient,
@@ -144,14 +171,21 @@ async function main() {
 
     const expDelEarnedFees = async (recipient, delegator, expAll) => {
         const PERC_DIVISOR = BigNumber.from("1000000")
-        const PERC_DIVISOR_PRECISE = BigNumber.from("10").pow(BigNumber.from("18"))
-        const allDelFeeShare = ethers.utils.parseUnits(".17", "ether").mul(
-            (await bondingManager.getTranscoder(recipient)).feeShare
-        ).div(PERC_DIVISOR)
+        const PERC_DIVISOR_PRECISE = BigNumber.from("10").pow(
+            BigNumber.from("18")
+        )
+        const allDelFeeShare = ethers.utils
+            .parseUnits(".17", "ether")
+            .mul((await bondingManager.getTranscoder(recipient)).feeShare)
+            .div(PERC_DIVISOR)
 
-        return allDelFeeShare.mul(
-            (await bondingManager.pendingStake(delegator, currentRound)).mul(PERC_DIVISOR_PRECISE).div(await bondingManager.transcoderTotalStake(recipient))
-        ).div(PERC_DIVISOR_PRECISE)
+        return allDelFeeShare
+            .mul(
+                (await bondingManager.pendingStake(delegator, currentRound))
+                    .mul(PERC_DIVISOR_PRECISE)
+                    .div(await bondingManager.transcoderTotalStake(recipient))
+            )
+            .div(PERC_DIVISOR_PRECISE)
     }
 
     let currentRound = await roundsManager.currentRound()
@@ -168,7 +202,10 @@ async function main() {
         throw new Error("current cumulativeFeeFactor != 0")
     }
 
-    const startPendingFees = await bondingManager.pendingFees(delegator, currentRound)
+    const startPendingFees = await bondingManager.pendingFees(
+        delegator,
+        currentRound
+    )
 
     let ticket = await newWinningTicket(recipient, 0)
     let sig = await ethersSign(getTicketHash(ticket), signer)
@@ -182,9 +219,14 @@ async function main() {
         throw new Error("current cumulativeFeeFactor != 0")
     }
 
-    const endPendingFees = await bondingManager.pendingFees(delegator, currentRound)
+    const endPendingFees = await bondingManager.pendingFees(
+        delegator,
+        currentRound
+    )
     if (!startPendingFees.eq(endPendingFees)) {
-        throw new Error("start pendingFees != end pendingFees before LIP-71 round")
+        throw new Error(
+            "start pendingFees != end pendingFees before LIP-71 round"
+        )
     }
 
     const rpc = new RPC(hre.web3)
@@ -196,7 +238,9 @@ async function main() {
     // Ensure that the new cumulativeFeeFactor is > 0 when the previous cumulativeFeeFactor = 0
     let lffPool = await bondingManager.getTranscoderEarningsPoolForRound(
         recipient,
-        (await bondingManager.getTranscoder(recipient)).lastFeeRound
+        (
+            await bondingManager.getTranscoder(recipient)
+        ).lastFeeRound
     )
     if (!lffPool.cumulativeFeeFactor.isZero()) {
         throw new Error("previous cumulativeFeeFactor != 0")
@@ -220,7 +264,11 @@ async function main() {
     let delEarnedFees = delEndFees.sub(delStartFees)
     let expEarnedFees = await expDelEarnedFees(recipient, delegator)
     if (!delEarnedFees.eq(expEarnedFees)) {
-        throw new Error(`delegator earned fees ${delEarnedFees.toString} != expected earned fees ${expEarnedFees.toString()}`)
+        throw new Error(
+            `delegator earned fees ${
+                delEarnedFees.toString
+            } != expected earned fees ${expEarnedFees.toString()}`
+        )
     }
 
     // Ensure that the new cumulativeFeeFactor is scaled correctly when the previous cumulativeFeeFactor > 0
@@ -229,7 +277,9 @@ async function main() {
 
     lffPool = await bondingManager.getTranscoderEarningsPoolForRound(
         recipient,
-        (await bondingManager.getTranscoder(recipient)).lastFeeRound
+        (
+            await bondingManager.getTranscoder(recipient)
+        ).lastFeeRound
     )
     if (lffPool.cumulativeFeeFactor.isZero()) {
         throw new Error("previous cumulativeFeeFactor = 0")
@@ -253,7 +303,9 @@ async function main() {
     delEarnedFees = delEndFees.sub(delStartFees)
     expEarnedFees = await expDelEarnedFees(recipient, delegator)
     if (delEarnedFees.sub(expEarnedFees).abs().gt(ACCEPTABLE_DELTA)) {
-        throw new Error(`delegator earned fees ${delEarnedFees.toString()} too far from expected earned fees ${expEarnedFees.toString()}`)
+        throw new Error(
+            `delegator earned fees ${delEarnedFees.toString()} too far from expected earned fees ${expEarnedFees.toString()}`
+        )
     }
 
     // Ensure calculations are correct after a second redemption for the same recipient in the same round
@@ -267,7 +319,9 @@ async function main() {
     delEarnedFees = delEndFees.sub(delStartFees)
     expEarnedFees = await expDelEarnedFees(recipient, delegator)
     if (delEarnedFees.sub(expEarnedFees).abs().gt(ACCEPTABLE_DELTA)) {
-        throw new Error(`delegator earned fees ${delEarnedFees.toString()} too far from expected earned fees ${expEarnedFees.toString()}`)
+        throw new Error(
+            `delegator earned fees ${delEarnedFees.toString()} too far from expected earned fees ${expEarnedFees.toString()}`
+        )
     }
 
     // Ensure calculations are correct after another redemption for the same recipient in a new round
@@ -284,7 +338,9 @@ async function main() {
     delEarnedFees = delEndFees.sub(delStartFees)
     expEarnedFees = await expDelEarnedFees(recipient, delegator)
     if (delEarnedFees.sub(expEarnedFees).abs().gt(ACCEPTABLE_DELTA)) {
-        throw new Error(`delegator earned fees ${delEarnedFees.toString()} too far from expected earned fees ${expEarnedFees.toString()}`)
+        throw new Error(
+            `delegator earned fees ${delEarnedFees.toString()} too far from expected earned fees ${expEarnedFees.toString()}`
+        )
     }
 
     console.log("Upgrade simulation checks passed!")

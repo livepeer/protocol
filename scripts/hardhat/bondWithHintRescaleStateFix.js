@@ -8,12 +8,14 @@ async function main() {
     // Fork from mainnet
     await hre.network.provider.request({
         method: "hardhat_reset",
-        params: [{
-            forking: {
-                blockNumber: 12123681,
-                jsonRpcUrl: process.env.MAINNET_FORK_URL
+        params: [
+            {
+                forking: {
+                    blockNumber: 12123681,
+                    jsonRpcUrl: process.env.MAINNET_FORK_URL
+                }
             }
-        }]
+        ]
     })
 
     // Mainnet addresses
@@ -29,12 +31,25 @@ async function main() {
 
     const lip78Round = 2109
 
-    const bondingManager = await ethers.getContractAt("BondingManager", bondingManagerAddr)
+    const bondingManager = await ethers.getContractAt(
+        "BondingManager",
+        bondingManagerAddr
+    )
 
-    const preUpgradeStake = await bondingManager.pendingStake(delegatorBadStake, 2104)
-    const preUpgradeFees = await bondingManager.pendingFees(delegatorBadFees, 2104)
-    console.log(`Delegator ${delegatorBadStake} pre-upgrade pendingStake ${preUpgradeStake.toString()}`)
-    console.log(`Delegator ${delegatorBadFees} pre-upgrade pendingFees ${preUpgradeFees.toString()}`)
+    const preUpgradeStake = await bondingManager.pendingStake(
+        delegatorBadStake,
+        2104
+    )
+    const preUpgradeFees = await bondingManager.pendingFees(
+        delegatorBadFees,
+        2104
+    )
+    console.log(
+        `Delegator ${delegatorBadStake} pre-upgrade pendingStake ${preUpgradeStake.toString()}`
+    )
+    console.log(
+        `Delegator ${delegatorBadFees} pre-upgrade pendingFees ${preUpgradeFees.toString()}`
+    )
 
     // Deploy new BondingManager target implementation
     const BondingManager = await ethers.getContractFactory("BondingManager", {
@@ -59,7 +74,10 @@ async function main() {
     const multisigSigner = await ethers.provider.getSigner(multisigAddr)
     const gov = await ethers.getContractAt("Governor", govAddr, multisigSigner)
     const controller = await ethers.getContractAt("Controller", controllerAddr)
-    const roundsManager = await ethers.getContractAt("RoundsManager", roundsManagerAddr)
+    const roundsManager = await ethers.getContractAt(
+        "RoundsManager",
+        roundsManagerAddr
+    )
 
     const setLIPUpgradeRoundData = utils.hexlify(
         utils.arrayify(
@@ -70,7 +88,10 @@ async function main() {
         )
     )
 
-    const contractID = utils.solidityKeccak256(["string"], ["BondingManagerTarget"])
+    const contractID = utils.solidityKeccak256(
+        ["string"],
+        ["BondingManagerTarget"]
+    )
     const gitCommitHash = "0x522ef6cf6eb3c3b411a4c16517ad78ebe8a08032" // Placeholder
     const setInfoData = utils.hexlify(
         utils.arrayify(
@@ -90,20 +111,39 @@ async function main() {
     await gov.stage(update, 0)
     await gov.execute(update)
 
-    if ((await controller.getContract(contractID)) != bondingManagerTarget.address) {
-        throw new Error("new BondingManager target implementation not registered with Controller")
+    if (
+        (await controller.getContract(contractID)) !=
+        bondingManagerTarget.address
+    ) {
+        throw new Error(
+            "new BondingManager target implementation not registered with Controller"
+        )
     }
 
-    const postUpgradeStake = await bondingManager.pendingStake(delegatorBadStake, 2104)
-    const postUpgradeFees = await bondingManager.pendingFees(delegatorBadFees, 2104)
-    console.log(`Delegator ${delegatorBadStake} post-upgrade pendingStake ${postUpgradeStake.toString()}`)
-    console.log(`Delegator ${delegatorBadFees} post-upgrade pendingFees ${postUpgradeFees.toString()}`)
+    const postUpgradeStake = await bondingManager.pendingStake(
+        delegatorBadStake,
+        2104
+    )
+    const postUpgradeFees = await bondingManager.pendingFees(
+        delegatorBadFees,
+        2104
+    )
+    console.log(
+        `Delegator ${delegatorBadStake} post-upgrade pendingStake ${postUpgradeStake.toString()}`
+    )
+    console.log(
+        `Delegator ${delegatorBadFees} post-upgrade pendingFees ${postUpgradeFees.toString()}`
+    )
 
     if (postUpgradeStake.gte(preUpgradeStake)) {
-        throw new Error(`Delegator ${delegatorBadStake} post-upgrade pendingStake should be less than pre-upgrade pendingStake`)
+        throw new Error(
+            `Delegator ${delegatorBadStake} post-upgrade pendingStake should be less than pre-upgrade pendingStake`
+        )
     }
     if (postUpgradeFees.gte(preUpgradeFees)) {
-        throw new Error(`Delegator ${delegatorBadFees} post-upgrade pendingFees should be less than pre-upgrade pendingFees`)
+        throw new Error(
+            `Delegator ${delegatorBadFees} post-upgrade pendingFees should be less than pre-upgrade pendingFees`
+        )
     }
 }
 

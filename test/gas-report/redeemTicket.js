@@ -7,7 +7,6 @@ import {
 } from "../helpers/ticket"
 import signMsg from "../helpers/signMsg"
 
-
 import {deployments, ethers} from "hardhat"
 
 import chai from "chai"
@@ -40,15 +39,30 @@ describe("redeem ticket gas report", () => {
         broadcaster = signers[1]
 
         const fixture = await deployments.fixture(["Contracts"])
-        controller = await ethers.getContractAt("Controller", fixture.Controller.address)
+        controller = await ethers.getContractAt(
+            "Controller",
+            fixture.Controller.address
+        )
 
-        bondingManager = await ethers.getContractAt("BondingManager", fixture.BondingManager.address)
+        bondingManager = await ethers.getContractAt(
+            "BondingManager",
+            fixture.BondingManager.address
+        )
 
-        roundsManager = await ethers.getContractAt("AdjustableRoundsManager", fixture.AdjustableRoundsManager.address)
+        roundsManager = await ethers.getContractAt(
+            "AdjustableRoundsManager",
+            fixture.AdjustableRoundsManager.address
+        )
 
-        token = await ethers.getContractAt("LivepeerToken", fixture.LivepeerToken.address)
+        token = await ethers.getContractAt(
+            "LivepeerToken",
+            fixture.LivepeerToken.address
+        )
 
-        broker = await ethers.getContractAt("TicketBroker", fixture.TicketBroker.address)
+        broker = await ethers.getContractAt(
+            "TicketBroker",
+            fixture.TicketBroker.address
+        )
 
         roundLength = await roundsManager.roundLength()
 
@@ -61,11 +75,9 @@ describe("redeem ticket gas report", () => {
         await bondingManager.bond(stake, transcoder.address)
 
         // Deposit funds for broadcaster
-        await broker.connect(broadcaster).fundDepositAndReserve(
-            deposit,
-            1000,
-            {value: deposit + 1000}
-        )
+        await broker
+            .connect(broadcaster)
+            .fundDepositAndReserve(deposit, 1000, {value: deposit + 1000})
 
         // Fast forward to start of new round to lock in active set
         const roundLength = await roundsManager.roundLength()
@@ -76,7 +88,10 @@ describe("redeem ticket gas report", () => {
 
         // Construct ticketAuxData (creation round + creation round block hash)
         const currentRound = await roundsManager.currentRound()
-        ticketAuxData = createAuxData(currentRound.toNumber(), DUMMY_TICKET_CREATION_ROUND_BLOCK_HASH)
+        ticketAuxData = createAuxData(
+            currentRound.toNumber(),
+            DUMMY_TICKET_CREATION_ROUND_BLOCK_HASH
+        )
     })
 
     beforeEach(async () => {
@@ -91,8 +106,17 @@ describe("redeem ticket gas report", () => {
         const recipientRand = 5
         // Set faceValue equal to broadcaster's deposit
         const faceValue = deposit
-        const ticket = createWinningTicket(transcoder.address, broadcaster.address, recipientRand, faceValue, ticketAuxData)
-        const senderSig = await signMsg(getTicketHash(ticket), broadcaster.address)
+        const ticket = createWinningTicket(
+            transcoder.address,
+            broadcaster.address,
+            recipientRand,
+            faceValue,
+            ticketAuxData
+        )
+        const senderSig = await signMsg(
+            getTicketHash(ticket),
+            broadcaster.address
+        )
 
         // Ticket faceValue is equal to broadcaster's deposit so will only draw from deposit
         await broker.redeemWinningTicket(ticket, senderSig, recipientRand)
@@ -102,8 +126,17 @@ describe("redeem ticket gas report", () => {
         const recipientRand = 5
         // Set faceValue greater than broadcaster's current deposit
         const faceValue = deposit + 500
-        const ticket = createWinningTicket(transcoder.address, broadcaster.address, recipientRand, faceValue, ticketAuxData)
-        const senderSig = await signMsg(getTicketHash(ticket), broadcaster.address)
+        const ticket = createWinningTicket(
+            transcoder.address,
+            broadcaster.address,
+            recipientRand,
+            faceValue,
+            ticketAuxData
+        )
+        const senderSig = await signMsg(
+            getTicketHash(ticket),
+            broadcaster.address
+        )
 
         // Ticket faceValue is greater than broadcaster's deposit so will draw from both deposit and reserve
         await broker.redeemWinningTicket(ticket, senderSig, recipientRand)
