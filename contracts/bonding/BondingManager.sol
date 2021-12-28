@@ -225,15 +225,20 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     /**
      * @notice Withdraws fees to the caller
      */
-    function withdrawFees() external whenSystemNotPaused currentRoundInitialized autoClaimEarnings {
+    function withdrawFees(address payable _recipient, uint256 _amount)
+        external
+        whenSystemNotPaused
+        currentRoundInitialized
+        autoClaimEarnings
+    {
         uint256 fees = delegators[msg.sender].fees;
-        require(fees > 0, "no fees to withdraw");
-        delegators[msg.sender].fees = 0;
+        require(fees >= _amount, "insufficient fees to withdraw");
+        delegators[msg.sender].fees = fees.sub(_amount);
 
-        // Tell Minter to transfer fees (ETH) to the delegator
-        minter().trustedWithdrawETH(msg.sender, fees);
+        // Tell Minter to transfer fees (ETH) to the address
+        minter().trustedWithdrawETH(_recipient, _amount);
 
-        emit WithdrawFees(msg.sender);
+        emit WithdrawFees(msg.sender, _recipient, _amount);
     }
 
     /**

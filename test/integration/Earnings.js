@@ -481,8 +481,12 @@ describe("Earnings", () => {
                 await Promise.all([
                     bondingManager.connect(transcoder2).withdrawStake(0),
                     bondingManager.connect(delegator).withdrawStake(0),
-                    bondingManager.connect(transcoder2).withdrawFees(),
-                    bondingManager.connect(delegator).withdrawFees()
+                    bondingManager
+                        .connect(transcoder2)
+                        .withdrawFees(transcoder2.address, 0),
+                    bondingManager
+                        .connect(delegator)
+                        .withdrawFees(delegator.address, 0)
                 ])
             )
         })
@@ -572,14 +576,18 @@ describe("Earnings", () => {
                 await Promise.all([
                     bondingManager.connect(transcoder).withdrawStake(0),
                     bondingManager.connect(delegator4).withdrawStake(0),
-                    bondingManager.connect(transcoder).withdrawFees()
+                    bondingManager
+                        .connect(transcoder)
+                        .withdrawFees(transcoder.address, 0)
                 ])
             )
 
             // delegator hasn't earned fees so should revert
             await expect(
-                bondingManager.connect(delegator4).withdrawFees()
-            ).to.be.revertedWith("no fees to withdraw")
+                bondingManager
+                    .connect(delegator4)
+                    .withdrawFees(delegator4.address, 1)
+            ).to.be.revertedWith("insufficient fees to withdraw")
         })
     })
 })

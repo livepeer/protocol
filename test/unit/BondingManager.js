@@ -3225,11 +3225,13 @@ describe("BondingManager", () => {
     describe("withdrawFees", () => {
         let transcoder0
         let transcoder1
+        let recipient
         let currentRound
 
         beforeEach(async () => {
             transcoder0 = signers[0]
             transcoder1 = signers[1]
+            recipient = signers[2]
             currentRound = 100
 
             await fixture.roundsManager.setMockBool(
@@ -3272,7 +3274,9 @@ describe("BondingManager", () => {
             await fixture.controller.pause()
 
             await expect(
-                bondingManager.connect(transcoder0).withdrawFees()
+                bondingManager
+                    .connect(transcoder0)
+                    .withdrawFees(transcoder0.address, 1)
             ).to.be.revertedWith("system is paused")
         })
 
@@ -3283,37 +3287,46 @@ describe("BondingManager", () => {
             )
 
             await expect(
-                bondingManager.connect(transcoder0).withdrawFees()
+                bondingManager
+                    .connect(transcoder0)
+                    .withdrawFees(transcoder0.address, 1)
             ).to.be.revertedWith("current round is not initialized")
         })
 
         it("should fail if there are no fees to withdraw", async () => {
+            const fees = (
+                await bondingManager.getDelegator(transcoder0.address)
+            ).fees
+
             await expect(
-                bondingManager.connect(transcoder1).withdrawFees()
-            ).to.be.revertedWith("no fees to withdraw")
+                bondingManager
+                    .connect(transcoder1)
+                    .withdrawFees(transcoder0.address, fees.add(1))
+            ).to.be.revertedWith("insufficient fees to withdraw")
         })
 
         it("should withdraw caller's fees", async () => {
             await bondingManager
                 .connect(transcoder0)
                 .claimEarnings(currentRound + 1)
-            assert.isAbove(
-                (
-                    await bondingManager.getDelegator(transcoder0.address)
-                )[1].toNumber(),
-                0,
-                "caller should have non-zero fees"
-            )
 
-            await bondingManager.connect(transcoder0).withdrawFees()
+            const startFees = (
+                await bondingManager.getDelegator(transcoder0.address)
+            ).fees
+            expect(startFees).to.be.not.equal(0)
+
+            const amount = 500
+            const tx = await bondingManager
+                .connect(transcoder0)
+                .withdrawFees(recipient.address, amount)
 
             const dInfo = await bondingManager.getDelegator(transcoder0.address)
-            assert.equal(
-                dInfo[5],
-                currentRound + 1,
-                "should set caller's lastClaimRound"
-            )
-            assert.equal(dInfo[1], 0, "should set caller's fees to zero")
+            expect(dInfo.lastClaimRound).to.be.equal(currentRound + 1)
+            expect(dInfo.fees).to.be.equal(startFees.sub(amount))
+
+            await expect(tx)
+                .to.emit(bondingManager, "WithdrawFees")
+                .withArgs(transcoder0.address, recipient.address, amount)
         })
     })
 
