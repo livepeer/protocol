@@ -30,20 +30,20 @@ describe("MerkleSnapshot", () => {
     describe("setSnapshot", () => {
         it("reverts when caller is not controller owner", async () => {
             expect(
-                merkleSnapshot.connect(signers[1]).setSnapshot(ethers.utils.formatBytes32String("1"), ethers.utils.formatBytes32String("helloworld"))
-            ).to.be.revertedWith(
-                "caller must be Controller owner"
-            )
+                merkleSnapshot
+                    .connect(signers[1])
+                    .setSnapshot(
+                        ethers.utils.formatBytes32String("1"),
+                        ethers.utils.formatBytes32String("helloworld")
+                    )
+            ).to.be.revertedWith("caller must be Controller owner")
         })
 
         it("sets a snapshot root for an snapshot ID", async () => {
             const id = ethers.utils.formatBytes32String("1")
             const root = ethers.utils.formatBytes32String("helloworld")
             await merkleSnapshot.setSnapshot(id, root)
-            assert.equal(
-                await merkleSnapshot.snapshot(id),
-                root
-            )
+            assert.equal(await merkleSnapshot.snapshot(id), root)
         })
     })
 

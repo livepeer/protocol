@@ -19,7 +19,9 @@ describe("ServiceRegistry", () => {
         // Thus, we do not need an actual Controller for the tests
         controller = signers[0].address
 
-        registry = await (await ethers.getContractFactory("ServiceRegistry")).deploy(controller)
+        registry = await (
+            await ethers.getContractFactory("ServiceRegistry")
+        ).deploy(controller)
     })
 
     beforeEach(async () => {
@@ -32,7 +34,11 @@ describe("ServiceRegistry", () => {
 
     describe("constructor", () => {
         it("invokes base Manager contract constructor", async () => {
-            assert.equal(await registry.controller(), controller, "wrong Controller address")
+            assert.equal(
+                await registry.controller(),
+                controller,
+                "wrong Controller address"
+            )
         })
     })
 
@@ -41,15 +47,23 @@ describe("ServiceRegistry", () => {
             await registry.setServiceURI("foo")
             await registry.connect(signers[1]).setServiceURI("bar")
 
-            assert.equal(await registry.getServiceURI(signers[0].address), "foo", "wrong service URI stored for caller 1")
-            assert.equal(await registry.getServiceURI(signers[1].address), "bar", "wrong service URI stored for caller 2")
+            assert.equal(
+                await registry.getServiceURI(signers[0].address),
+                "foo",
+                "wrong service URI stored for caller 1"
+            )
+            assert.equal(
+                await registry.getServiceURI(signers[1].address),
+                "bar",
+                "wrong service URI stored for caller 2"
+            )
         })
 
         it("fires ServiceURIUpdate event", async () => {
             const tx = registry.setServiceURI("foo")
-            await expect(tx).to.emit(registry, "ServiceURIUpdate").withArgs(
-                signers[0].address, "foo"
-            )
+            await expect(tx)
+                .to.emit(registry, "ServiceURIUpdate")
+                .withArgs(signers[0].address, "foo")
         })
     })
 
@@ -58,12 +72,24 @@ describe("ServiceRegistry", () => {
             await registry.setServiceURI("foo")
             await registry.connect(signers[1]).setServiceURI("bar")
 
-            assert.equal(await registry.getServiceURI(signers[0].address), "foo", "wrong service URI stored for caller 1")
-            assert.equal(await registry.getServiceURI(signers[1].address), "bar", "wrong service URI stored for caller 2")
+            assert.equal(
+                await registry.getServiceURI(signers[0].address),
+                "foo",
+                "wrong service URI stored for caller 1"
+            )
+            assert.equal(
+                await registry.getServiceURI(signers[1].address),
+                "bar",
+                "wrong service URI stored for caller 2"
+            )
         })
 
         it("returns empty string for address without stored service URI endpoint", async () => {
-            assert.equal(await registry.getServiceURI(signers[5].address), "", "should return empty string for address without service URI")
+            assert.equal(
+                await registry.getServiceURI(signers[5].address),
+                "",
+                "should return empty string for address without service URI"
+            )
         })
     })
 })

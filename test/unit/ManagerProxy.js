@@ -18,10 +18,21 @@ describe("ManagerProxy", () => {
     describe("constructor", () => {
         it("should create contract", async () => {
             const targetContractId = contractId("ManagerProxyTarget")
-            const proxy = await managerProxyFac.deploy(signers[0].address, targetContractId)
+            const proxy = await managerProxyFac.deploy(
+                signers[0].address,
+                targetContractId
+            )
 
-            assert.equal(await proxy.controller(), signers[0].address, "should set Controller address")
-            assert.equal(await proxy.targetContractId(), targetContractId, "should set target contract ID")
+            assert.equal(
+                await proxy.controller(),
+                signers[0].address,
+                "should set Controller address"
+            )
+            assert.equal(
+                await proxy.targetContractId(),
+                targetContractId,
+                "should set target contract ID"
+            )
         })
     })
 
@@ -29,11 +40,21 @@ describe("ManagerProxy", () => {
         signers = await ethers.getSigners()
         fixture = new Fixture(web3)
         await fixture.deploy()
-        await fixture.deployAndRegister(await ethers.getContractFactory("ManagerProxyTargetMockV1"), "ManagerProxyTarget", fixture.controller.address)
+        await fixture.deployAndRegister(
+            await ethers.getContractFactory("ManagerProxyTargetMockV1"),
+            "ManagerProxyTarget",
+            fixture.controller.address
+        )
 
         managerProxyFac = await ethers.getContractFactory("ManagerProxy")
-        const proxy = await managerProxyFac.deploy(fixture.controller.address, contractId("ManagerProxyTarget"))
-        managerProxy = await ethers.getContractAt("ManagerProxyTargetMockV1", proxy.address)
+        const proxy = await managerProxyFac.deploy(
+            fixture.controller.address,
+            contractId("ManagerProxyTarget")
+        )
+        managerProxy = await ethers.getContractAt(
+            "ManagerProxyTargetMockV1",
+            proxy.address
+        )
     })
 
     beforeEach(async () => {
@@ -46,8 +67,14 @@ describe("ManagerProxy", () => {
 
     describe("fallback function", () => {
         it("should fail if there is no valid contract address registered with the Controller for the target contract ID", async () => {
-            const newProxy = await managerProxyFac.deploy(fixture.controller.address, contractId("foo"))
-            const target = await ethers.getContractAt("ManagerProxyTargetMockV1", newProxy.address)
+            const newProxy = await managerProxyFac.deploy(
+                fixture.controller.address,
+                contractId("foo")
+            )
+            const target = await ethers.getContractAt(
+                "ManagerProxyTargetMockV1",
+                newProxy.address
+            )
 
             await expect(target.setUint64(5)).to.be.reverted
         })
@@ -148,7 +175,11 @@ describe("ManagerProxy", () => {
         })
 
         it("should preserve state in proxy contract", async () => {
-            await fixture.deployAndRegister(await ethers.getContractFactory("ManagerProxyTargetMockV2"), "ManagerProxyTarget", fixture.controller.address)
+            await fixture.deployAndRegister(
+                await ethers.getContractFactory("ManagerProxyTargetMockV2"),
+                "ManagerProxyTarget",
+                fixture.controller.address
+            )
 
             const uint8Value = await managerProxy.uint8Value()
             assert.equal(uint8Value, 4, "uint8 value incorrect")
@@ -157,13 +188,25 @@ describe("ManagerProxy", () => {
             const uint256Value = await managerProxy.uint256Value()
             assert.equal(uint256Value, 6, "uint256 value incorrect")
             const bytes32Value = await managerProxy.bytes32Value()
-            assert.equal(bytes32Value, web3.utils.sha3("hello"), "bytes32 value incorrect")
+            assert.equal(
+                bytes32Value,
+                web3.utils.sha3("hello"),
+                "bytes32 value incorrect"
+            )
             const addressValue = await managerProxy.addressValue()
-            assert.equal(addressValue, signers[1].address, "address value incorrect")
+            assert.equal(
+                addressValue,
+                signers[1].address,
+                "address value incorrect"
+            )
         })
 
         it("should set a uint8 and add 5", async () => {
-            await fixture.deployAndRegister(await ethers.getContractFactory("ManagerProxyTargetMockV2"), "ManagerProxyTarget", fixture.controller.address)
+            await fixture.deployAndRegister(
+                await ethers.getContractFactory("ManagerProxyTargetMockV2"),
+                "ManagerProxyTarget",
+                fixture.controller.address
+            )
             await managerProxy.setUint8(10)
 
             const value = await managerProxy.uint8Value()
@@ -171,7 +214,11 @@ describe("ManagerProxy", () => {
         })
 
         it("should set a uint64 and add 5", async () => {
-            await fixture.deployAndRegister(await ethers.getContractFactory("ManagerProxyTargetMockV2"), "ManagerProxyTarget", fixture.controller.address)
+            await fixture.deployAndRegister(
+                await ethers.getContractFactory("ManagerProxyTargetMockV2"),
+                "ManagerProxyTarget",
+                fixture.controller.address
+            )
             await managerProxy.setUint64(10)
 
             const value = await managerProxy.uint64Value()
@@ -179,7 +226,11 @@ describe("ManagerProxy", () => {
         })
 
         it("should set a uint256 and add 5", async () => {
-            await fixture.deployAndRegister(await ethers.getContractFactory("ManagerProxyTargetMockV2"), "ManagerProxyTarget", fixture.controller.address)
+            await fixture.deployAndRegister(
+                await ethers.getContractFactory("ManagerProxyTargetMockV2"),
+                "ManagerProxyTarget",
+                fixture.controller.address
+            )
             await managerProxy.setUint256(10)
 
             const value = await managerProxy.uint256Value()
@@ -187,19 +238,40 @@ describe("ManagerProxy", () => {
         })
 
         it("should set a hashed bytes32", async () => {
-            await fixture.deployAndRegister(await ethers.getContractFactory("ManagerProxyTargetMockV2"), "ManagerProxyTarget", fixture.controller.address)
+            await fixture.deployAndRegister(
+                await ethers.getContractFactory("ManagerProxyTargetMockV2"),
+                "ManagerProxyTarget",
+                fixture.controller.address
+            )
             await managerProxy.setBytes32(web3.utils.sha3("bye"))
 
             const value = await managerProxy.bytes32Value()
-            assert.equal(value, bufferToHex(ethAbi.soliditySHA3(["bytes"], [toBuffer(web3.utils.sha3("bye"))])), "bytes32 value incorrect")
+            assert.equal(
+                value,
+                bufferToHex(
+                    ethAbi.soliditySHA3(
+                        ["bytes"],
+                        [toBuffer(web3.utils.sha3("bye"))]
+                    )
+                ),
+                "bytes32 value incorrect"
+            )
         })
 
         it("should set a null address", async () => {
-            await fixture.deployAndRegister(await ethers.getContractFactory("ManagerProxyTargetMockV2"), "ManagerProxyTarget", fixture.controller.address)
+            await fixture.deployAndRegister(
+                await ethers.getContractFactory("ManagerProxyTargetMockV2"),
+                "ManagerProxyTarget",
+                fixture.controller.address
+            )
             await managerProxy.setAddress(signers[1].address)
 
             const value = await managerProxy.addressValue()
-            assert.equal(value, "0x0000000000000000000000000000000000000000", "address value incorrect")
+            assert.equal(
+                value,
+                "0x0000000000000000000000000000000000000000",
+                "address value incorrect"
+            )
         })
     })
 
@@ -213,9 +285,16 @@ describe("ManagerProxy", () => {
         })
 
         it("should set a key value pair in mapping", async () => {
-            await fixture.deployAndRegister(await ethers.getContractFactory("ManagerProxyTargetMockV3"), "ManagerProxyTarget", fixture.controller.address)
+            await fixture.deployAndRegister(
+                await ethers.getContractFactory("ManagerProxyTargetMockV3"),
+                "ManagerProxyTarget",
+                fixture.controller.address
+            )
             // Need new contract binding since we added a new method
-            const managerProxyV3 = await ethers.getContractAt("ManagerProxyTargetMockV3", managerProxy.address)
+            const managerProxyV3 = await ethers.getContractAt(
+                "ManagerProxyTargetMockV3",
+                managerProxy.address
+            )
 
             await managerProxyV3.setKv(5, 6)
 
@@ -224,9 +303,16 @@ describe("ManagerProxy", () => {
         })
 
         it("should preserve old state in proxy contract after an update to a new storage variable", async () => {
-            await fixture.deployAndRegister(await ethers.getContractFactory("ManagerProxyTargetMockV3"), "ManagerProxyTarget", fixture.controller.address)
+            await fixture.deployAndRegister(
+                await ethers.getContractFactory("ManagerProxyTargetMockV3"),
+                "ManagerProxyTarget",
+                fixture.controller.address
+            )
             // Need new contract binding since we added a new method
-            const managerProxyV3 = await ethers.getContractAt("ManagerProxyTargetMockV3", managerProxy.address)
+            const managerProxyV3 = await ethers.getContractAt(
+                "ManagerProxyTargetMockV3",
+                managerProxy.address
+            )
             await managerProxyV3.setKv(5, 6)
 
             const uint8Value = await managerProxy.uint8Value()
@@ -236,9 +322,17 @@ describe("ManagerProxy", () => {
             const uint256Value = await managerProxy.uint256Value()
             assert.equal(uint256Value, 6, "uint256 value incorrect")
             const bytes32Value = await managerProxy.bytes32Value()
-            assert.equal(bytes32Value, web3.utils.sha3("hello"), "bytes32 value incorrect")
+            assert.equal(
+                bytes32Value,
+                web3.utils.sha3("hello"),
+                "bytes32 value incorrect"
+            )
             const addressValue = await managerProxy.addressValue()
-            assert.equal(addressValue, signers[1].address, "address value incorrect")
+            assert.equal(
+                addressValue,
+                signers[1].address,
+                "address value incorrect"
+            )
         })
     })
 })

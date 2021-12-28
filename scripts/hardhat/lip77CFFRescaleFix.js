@@ -8,12 +8,14 @@ async function main() {
     // Fork from mainnet
     await hre.network.provider.request({
         method: "hardhat_reset",
-        params: [{
-            forking: {
-                blockNumber: 12151147,
-                jsonRpcUrl: process.env.MAINNET_FORK_URL
+        params: [
+            {
+                forking: {
+                    blockNumber: 12151147,
+                    jsonRpcUrl: process.env.MAINNET_FORK_URL
+                }
             }
-        }]
+        ]
     })
 
     // Mainnet addresses
@@ -55,13 +57,21 @@ async function main() {
 
     const lip78Round = 2109
 
-    const bondingManager = await ethers.getContractAt("BondingManager", bondingManagerAddr)
+    const bondingManager = await ethers.getContractAt(
+        "BondingManager",
+        bondingManagerAddr
+    )
 
     const logPendingFees = async () => {
         for (const del of delegators) {
             try {
                 const pf = await bondingManager.pendingFees(del, lip78Round)
-                console.log(`Delegator ${del} pendingFees ${ethers.utils.formatUnits(pf, "ether")}`)
+                console.log(
+                    `Delegator ${del} pendingFees ${ethers.utils.formatUnits(
+                        pf,
+                        "ether"
+                    )}`
+                )
             } catch (err) {
                 console.log(`Delegator ${del} pendingFees error ${err}`)
             }
@@ -70,7 +80,12 @@ async function main() {
         for (const tr of transcoders) {
             try {
                 const pf = await bondingManager.pendingFees(tr, lip78Round)
-                console.log(`Transcoder ${tr} pendingFees ${ethers.utils.formatUnits(pf, "ether")}`)
+                console.log(
+                    `Transcoder ${tr} pendingFees ${ethers.utils.formatUnits(
+                        pf,
+                        "ether"
+                    )}`
+                )
             } catch (err) {
                 console.log(`Transcoder ${tr} pendingFees error ${err}`)
             }
@@ -103,7 +118,10 @@ async function main() {
     const multisigSigner = await ethers.provider.getSigner(multisigAddr)
     const gov = await ethers.getContractAt("Governor", govAddr, multisigSigner)
     const controller = await ethers.getContractAt("Controller", controllerAddr)
-    const roundsManager = await ethers.getContractAt("RoundsManager", roundsManagerAddr)
+    const roundsManager = await ethers.getContractAt(
+        "RoundsManager",
+        roundsManagerAddr
+    )
 
     const setLIPUpgradeRoundData = utils.hexlify(
         utils.arrayify(
@@ -114,7 +132,10 @@ async function main() {
         )
     )
 
-    const contractID = utils.solidityKeccak256(["string"], ["BondingManagerTarget"])
+    const contractID = utils.solidityKeccak256(
+        ["string"],
+        ["BondingManagerTarget"]
+    )
     const gitCommitHash = "0x522ef6cf6eb3c3b411a4c16517ad78ebe8a08032" // Placeholder
     const setInfoData = utils.hexlify(
         utils.arrayify(
@@ -134,8 +155,13 @@ async function main() {
     await gov.stage(update, 0)
     await gov.execute(update)
 
-    if ((await controller.getContract(contractID)) != bondingManagerTarget.address) {
-        throw new Error("new BondingManager target implementation not registered with Controller")
+    if (
+        (await controller.getContract(contractID)) !=
+        bondingManagerTarget.address
+    ) {
+        throw new Error(
+            "new BondingManager target implementation not registered with Controller"
+        )
     }
 
     console.log("POST UPGRADE")

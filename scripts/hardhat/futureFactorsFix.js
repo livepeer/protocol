@@ -8,12 +8,14 @@ async function main() {
     // Fork from mainnet
     await hre.network.provider.request({
         method: "hardhat_reset",
-        params: [{
-            forking: {
-                blockNumber: 11740749,
-                jsonRpcUrl: process.env.MAINNET_FORK_URL
+        params: [
+            {
+                forking: {
+                    blockNumber: 11740749,
+                    jsonRpcUrl: process.env.MAINNET_FORK_URL
+                }
             }
-        }]
+        ]
     })
 
     // Mainnet addresses
@@ -35,18 +37,33 @@ async function main() {
     // pendingStake values at the LIP-52 snapshot round before the upgrade
     const lip52BeforeStakes = {}
 
-    const roundsManager = await ethers.getContractAt("RoundsManager", roundsManagerAddr)
-    const bondingManager = await ethers.getContractAt("BondingManager", bondingManagerAddr)
+    const roundsManager = await ethers.getContractAt(
+        "RoundsManager",
+        roundsManagerAddr
+    )
+    const bondingManager = await ethers.getContractAt(
+        "BondingManager",
+        bondingManagerAddr
+    )
 
     const cr = await roundsManager.currentRound()
     const lip52Round = await roundsManager.lipUpgradeRound(52)
 
     for (const addr of affectedAddrs) {
         beforeStakes[addr] = await bondingManager.pendingStake(addr, cr)
-        console.log(`${addr} pre-upgrade stake ${beforeStakes[addr].toString()}`)
+        console.log(
+            `${addr} pre-upgrade stake ${beforeStakes[addr].toString()}`
+        )
 
-        lip52BeforeStakes[addr] = await bondingManager.pendingStake(addr, lip52Round)
-        console.log(`${addr} pre-upgrade LIP-52 stake ${lip52BeforeStakes[addr].toString()}`)
+        lip52BeforeStakes[addr] = await bondingManager.pendingStake(
+            addr,
+            lip52Round
+        )
+        console.log(
+            `${addr} pre-upgrade LIP-52 stake ${lip52BeforeStakes[
+                addr
+            ].toString()}`
+        )
     }
 
     // Deploy new BondingManager target implementation
@@ -73,7 +90,10 @@ async function main() {
     const gov = await ethers.getContractAt("Governor", govAddr, multisigSigner)
     const controller = await ethers.getContractAt("Controller", controllerAddr)
 
-    const contractID = utils.solidityKeccak256(["string"], ["BondingManagerTarget"])
+    const contractID = utils.solidityKeccak256(
+        ["string"],
+        ["BondingManagerTarget"]
+    )
     const gitCommitHash = "0x522ef6cf6eb3c3b411a4c16517ad78ebe8a08032"
     const setInfoData = utils.hexlify(
         utils.arrayify(
@@ -93,23 +113,41 @@ async function main() {
     await gov.stage(update, 0)
     await gov.execute(update)
 
-    if ((await controller.getContract(contractID)) != bondingManagerTarget.address) {
-        throw new Error("new BondingManager target implementation not registered with Controller")
+    if (
+        (await controller.getContract(contractID)) !=
+        bondingManagerTarget.address
+    ) {
+        throw new Error(
+            "new BondingManager target implementation not registered with Controller"
+        )
     }
 
     for (const addr of affectedAddrs) {
         const afterStake = await bondingManager.pendingStake(addr, cr)
         console.log(`${addr} post-upgrade stake ${afterStake.toString()}`)
 
-        const lip52AfterStake = await bondingManager.pendingStake(addr, lip52Round)
-        console.log(`${addr} post-upgrade LIP-52 stake ${lip52AfterStake.toString()}`)
+        const lip52AfterStake = await bondingManager.pendingStake(
+            addr,
+            lip52Round
+        )
+        console.log(
+            `${addr} post-upgrade LIP-52 stake ${lip52AfterStake.toString()}`
+        )
 
         if (afterStake.lt(beforeStakes[addr])) {
-            throw new Error(`${addr} post-upgrade stake ${afterStake.toString()} not greater than pre-upgrade stake ${beforeStakes[addr].toString()}`)
+            throw new Error(
+                `${addr} post-upgrade stake ${afterStake.toString()} not greater than pre-upgrade stake ${beforeStakes[
+                    addr
+                ].toString()}`
+            )
         }
 
         if (!lip52AfterStake.eq(lip52BeforeStakes[addr])) {
-            throw new Error(`${addr} post-upgrade LIP-52 stake ${lip52AfterStake.toString()} != pre-upgrade LIP-52 stake ${lip52BeforeStakes[addr].toString()}`)
+            throw new Error(
+                `${addr} post-upgrade LIP-52 stake ${lip52AfterStake.toString()} != pre-upgrade LIP-52 stake ${lip52BeforeStakes[
+                    addr
+                ].toString()}`
+            )
         }
     }
 

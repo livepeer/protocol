@@ -8,7 +8,9 @@ describe("VariableSupplyToken", () => {
     let signers
     before(async () => {
         signers = await ethers.getSigners()
-        token = await (await ethers.getContractFactory("VariableSupplyToken")).deploy()
+        token = await (
+            await ethers.getContractFactory("VariableSupplyToken")
+        ).deploy()
     })
 
     describe("burn", () => {

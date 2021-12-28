@@ -20,10 +20,19 @@ describe("BroadcasterWithdrawalFlow", () => {
         signers = await ethers.getSigners()
         broadcaster = signers[0].address
         const fixture = await deployments.fixture(["Contracts"])
-        broker = await ethers.getContractAt("TicketBroker", fixture.TicketBroker.address)
+        broker = await ethers.getContractAt(
+            "TicketBroker",
+            fixture.TicketBroker.address
+        )
         minter = await ethers.getContractAt("Minter", fixture.Minter.address)
-        roundsManager = await ethers.getContractAt("AdjustableRoundsManager", fixture.AdjustableRoundsManager.address)
-        const controller = await ethers.getContractAt("Controller", fixture.Controller.address)
+        roundsManager = await ethers.getContractAt(
+            "AdjustableRoundsManager",
+            fixture.AdjustableRoundsManager.address
+        )
+        const controller = await ethers.getContractAt(
+            "Controller",
+            fixture.Controller.address
+        )
 
         await controller.unpause()
 
@@ -44,18 +53,34 @@ describe("BroadcasterWithdrawalFlow", () => {
         const unlockPeriod = (await broker.unlockPeriod.call()).toNumber()
         const currentRound = (await roundsManager.currentRound()).toNumber()
         const roundLength = (await roundsManager.roundLength()).toNumber()
-        await roundsManager.setBlockNum((currentRound * roundLength) + (unlockPeriod * roundLength))
+        await roundsManager.setBlockNum(
+            currentRound * roundLength + unlockPeriod * roundLength
+        )
 
-        const startBroadcasterBalance = await ethers.provider.getBalance(broadcaster)
-        const startMinterBalance = await ethers.provider.getBalance(minter.address)
+        const startBroadcasterBalance = await ethers.provider.getBalance(
+            broadcaster
+        )
+        const startMinterBalance = await ethers.provider.getBalance(
+            minter.address
+        )
 
         const withdrawResult = await broker.withdraw()
 
-        const endMinterBalance = await ethers.provider.getBalance(minter.address)
-        expect(startMinterBalance.sub(endMinterBalance)).to.equal(withdrawalAmount)
+        const endMinterBalance = await ethers.provider.getBalance(
+            minter.address
+        )
+        expect(startMinterBalance.sub(endMinterBalance)).to.equal(
+            withdrawalAmount
+        )
 
         const txCost = await calcTxCost(withdrawResult)
-        const endBroadcasterBalance = await ethers.provider.getBalance(broadcaster)
-        expect(endBroadcasterBalance.sub(startBroadcasterBalance).add(txCost.toString())).to.equal(withdrawalAmount)
+        const endBroadcasterBalance = await ethers.provider.getBalance(
+            broadcaster
+        )
+        expect(
+            endBroadcasterBalance
+                .sub(startBroadcasterBalance)
+                .add(txCost.toString())
+        ).to.equal(withdrawalAmount)
     })
 })
