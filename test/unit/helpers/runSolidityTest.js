@@ -22,8 +22,14 @@ const processResult = async (txRes, mustAssert) => {
     }
 
     rawLogs.forEach(log => {
-        const result = abi.rawDecode(["bool"], Buffer.from(log.topics[1].slice(2), "hex"))[0]
-        const message = abi.rawDecode(["string"], Buffer.from(log.data.slice(2), "hex"))[0]
+        const result = abi.rawDecode(
+            ["bool"],
+            Buffer.from(log.topics[1].slice(2), "hex")
+        )[0]
+        const message = abi.rawDecode(
+            ["string"],
+            Buffer.from(log.data.slice(2), "hex")
+        )[0]
 
         if (!result) {
             assert.fail(message)
@@ -44,7 +50,9 @@ const processResult = async (txRes, mustAssert) => {
 async function runSolidityTest(c, libs, mochaContext) {
     const libraries = {}
     for (const libName of libs) {
-        libraries[libName] = (await (await ethers.getContractFactory(libName)).deploy()).address
+        libraries[libName] = (
+            await (await ethers.getContractFactory(libName)).deploy()
+        ).address
     }
 
     const artifact = await ethers.getContractFactory(c, {
@@ -58,7 +66,14 @@ async function runSolidityTest(c, libs, mochaContext) {
             const abi = artifact.interface.format()
             for (const iface of abi) {
                 const name = iface.split(" ")[1]
-                if (["beforeAll()", "beforeEach()", "afterEach()", "afterAll()"].includes(name)) {
+                if (
+                    [
+                        "beforeAll()",
+                        "beforeEach()",
+                        "afterEach()",
+                        "afterAll()"
+                    ].includes(name)
+                ) {
                     // Set up hooks
                     global[HOOKS_MAP[name.slice(0, -2)]](async () => {
                         const tx = await deployed[name.slice(0, -2)]()

@@ -6,7 +6,6 @@ import chai, {expect, assert} from "chai"
 import {solidity} from "ethereum-waffle"
 chai.use(solidity)
 
-
 const QUORUM = 333300
 const QUOTA = 500000
 const POLL_PERIOD = 10 * 5760
@@ -31,7 +30,9 @@ describe("PollCreator", () => {
 
     describe("constructor", () => {
         before(async () => {
-            pollCreator = await (await ethers.getContractFactory("PollCreator")).deploy(token.address)
+            pollCreator = await (
+                await ethers.getContractFactory("PollCreator")
+            ).deploy(token.address)
         })
 
         it("initialize state: token", async () => {
@@ -43,22 +44,29 @@ describe("PollCreator", () => {
         const hash = "0x1230000000000000000000000000000000000000"
 
         before(async () => {
-            pollCreator = await (await ethers.getContractFactory("PollCreator")).deploy(token.address)
+            pollCreator = await (
+                await ethers.getContractFactory("PollCreator")
+            ).deploy(token.address)
         })
 
         it("revert when not enough tokens approved", async () => {
-            await expect(pollCreator.createPoll(hash)).to.be.revertedWith("LivepeerToken transferFrom failed")
+            await expect(pollCreator.createPoll(hash)).to.be.revertedWith(
+                "LivepeerToken transferFrom failed"
+            )
         })
 
         it("creates a poll", async () => {
-            await token.setMockBool(functionSig("transferFrom(address,address,uint256)"), true)
+            await token.setMockBool(
+                functionSig("transferFrom(address,address,uint256)"),
+                true
+            )
             const start = await fixture.rpc.getBlockNumberAsync()
             const end = start + POLL_PERIOD + 1 // + 1 because createPoll tx will mine a new block
             const tx = await pollCreator.createPoll(hash)
             const receipt = await tx.wait()
-            await expect(tx.hash).to.emit(pollCreator, "PollCreated").withArgs(
-                receipt.events[0].args[0], hash, end, QUORUM, QUOTA
-            )
+            await expect(tx.hash)
+                .to.emit(pollCreator, "PollCreated")
+                .withArgs(receipt.events[0].args[0], hash, end, QUORUM, QUOTA)
         })
     })
 })

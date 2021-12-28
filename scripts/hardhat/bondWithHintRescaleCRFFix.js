@@ -13,12 +13,14 @@ async function main() {
     // i.e. 12081101 - 5 = 12081096
     await hre.network.provider.request({
         method: "hardhat_reset",
-        params: [{
-            forking: {
-                blockNumber: 12081096,
-                jsonRpcUrl: process.env.MAINNET_FORK_URL
+        params: [
+            {
+                forking: {
+                    blockNumber: 12081096,
+                    jsonRpcUrl: process.env.MAINNET_FORK_URL
+                }
             }
-        }]
+        ]
     })
 
     // Mainnet addresses
@@ -56,7 +58,10 @@ async function main() {
     const multisigSigner = await ethers.provider.getSigner(multisigAddr)
     const gov = await ethers.getContractAt("Governor", govAddr, multisigSigner)
     const controller = await ethers.getContractAt("Controller", controllerAddr)
-    const roundsManager = await ethers.getContractAt("RoundsManager", roundsManagerAddr)
+    const roundsManager = await ethers.getContractAt(
+        "RoundsManager",
+        roundsManagerAddr
+    )
 
     const setLIPUpgradeRoundData = utils.hexlify(
         utils.arrayify(
@@ -67,7 +72,10 @@ async function main() {
         )
     )
 
-    const contractID = utils.solidityKeccak256(["string"], ["BondingManagerTarget"])
+    const contractID = utils.solidityKeccak256(
+        ["string"],
+        ["BondingManagerTarget"]
+    )
     const gitCommitHash = "0x522ef6cf6eb3c3b411a4c16517ad78ebe8a08032" // Placeholder
     const setInfoData = utils.hexlify(
         utils.arrayify(
@@ -87,8 +95,13 @@ async function main() {
     await gov.stage(update, 0)
     await gov.execute(update)
 
-    if ((await controller.getContract(contractID)) != bondingManagerTarget.address) {
-        throw new Error("new BondingManager target implementation not registered with Controller")
+    if (
+        (await controller.getContract(contractID)) !=
+        bondingManagerTarget.address
+    ) {
+        throw new Error(
+            "new BondingManager target implementation not registered with Controller"
+        )
     }
 
     // Submit the original tx that triggered the bug by impersonating the delegator
@@ -97,7 +110,11 @@ async function main() {
         params: [delegator]
     })
     const delegatorSigner = await ethers.provider.getSigner(delegator)
-    const bondingManager = await ethers.getContractAt("BondingManager", bondingManagerAddr, delegatorSigner)
+    const bondingManager = await ethers.getContractAt(
+        "BondingManager",
+        bondingManagerAddr,
+        delegatorSigner
+    )
 
     // Original tx that triggered the bug https://etherscan.io/tx/0x0ba83ba7767ed666c73e7a81880d3370bcd2c72d52a0e2136881af7ab3af0858
     const transcoder = "0x599f9f49e2ef93f07dc98a89ffeeb254926a1986"
@@ -110,9 +127,18 @@ async function main() {
         "0x0000000000000000000000000000000000000000"
     )
 
-    const pool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder, 2097)
-    console.log(`cumulativeRewardFactor ${pool.cumulativeRewardFactor.toString()}`)
-    if (!pool.cumulativeRewardFactor.eq(BigNumber.from(constants.PERC_DIVISOR_PRECISE.toString()))) {
+    const pool = await bondingManager.getTranscoderEarningsPoolForRound(
+        transcoder,
+        2097
+    )
+    console.log(
+        `cumulativeRewardFactor ${pool.cumulativeRewardFactor.toString()}`
+    )
+    if (
+        !pool.cumulativeRewardFactor.eq(
+            BigNumber.from(constants.PERC_DIVISOR_PRECISE.toString())
+        )
+    ) {
         throw new Error("cumulativeRewardFactor not scaled by 10 ** 27")
     }
 

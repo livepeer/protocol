@@ -14,12 +14,14 @@ async function main() {
     // i.e. 11870331 - 3 = 11870328
     await hre.network.provider.request({
         method: "hardhat_reset",
-        params: [{
-            forking: {
-                blockNumber: 11870328,
-                jsonRpcUrl: process.env.MAINNET_FORK_URL
+        params: [
+            {
+                forking: {
+                    blockNumber: 11870328,
+                    jsonRpcUrl: process.env.MAINNET_FORK_URL
+                }
             }
-        }]
+        ]
     })
 
     // Mainnet addresses
@@ -57,7 +59,10 @@ async function main() {
     const multisigSigner = await ethers.provider.getSigner(multisigAddr)
     const gov = await ethers.getContractAt("Governor", govAddr, multisigSigner)
     const controller = await ethers.getContractAt("Controller", controllerAddr)
-    const roundsManager = await ethers.getContractAt("RoundsManager", roundsManagerAddr)
+    const roundsManager = await ethers.getContractAt(
+        "RoundsManager",
+        roundsManagerAddr
+    )
 
     const setLIPUpgradeRoundData = utils.hexlify(
         utils.arrayify(
@@ -68,7 +73,10 @@ async function main() {
         )
     )
 
-    const contractID = utils.solidityKeccak256(["string"], ["BondingManagerTarget"])
+    const contractID = utils.solidityKeccak256(
+        ["string"],
+        ["BondingManagerTarget"]
+    )
     const gitCommitHash = "0x522ef6cf6eb3c3b411a4c16517ad78ebe8a08032" // Placeholder
     const setInfoData = utils.hexlify(
         utils.arrayify(
@@ -88,8 +96,13 @@ async function main() {
     await gov.stage(update, 0)
     await gov.execute(update)
 
-    if ((await controller.getContract(contractID)) != bondingManagerTarget.address) {
-        throw new Error("new BondingManager target implementation not registered with Controller")
+    if (
+        (await controller.getContract(contractID)) !=
+        bondingManagerTarget.address
+    ) {
+        throw new Error(
+            "new BondingManager target implementation not registered with Controller"
+        )
     }
 
     // Submit the original tx that triggered the bug by impersonating the delegator
@@ -98,7 +111,11 @@ async function main() {
         params: [delegator]
     })
     const delegatorSigner = await ethers.provider.getSigner(delegator)
-    const bondingManager = await ethers.getContractAt("BondingManager", bondingManagerAddr, delegatorSigner)
+    const bondingManager = await ethers.getContractAt(
+        "BondingManager",
+        bondingManagerAddr,
+        delegatorSigner
+    )
 
     // Original tx that triggered the bug https://etherscan.io/tx/0xeaf928a43b65cc57a3a689fd73db46f9dbb4ef9d7a52b0b5f80d39ed1b66547b
     const transcoder = "0x3bbe84023c11c4874f493d70b370d26390e3c580"
@@ -111,9 +128,16 @@ async function main() {
         "0x0000000000000000000000000000000000000000"
     )
 
-    const pool = await bondingManager.getTranscoderEarningsPoolForRound(transcoder, 2060)
+    const pool = await bondingManager.getTranscoderEarningsPoolForRound(
+        transcoder,
+        2060
+    )
     console.log(`cumualativeFeeFactor: ${pool.cumulativeFeeFactor.toString()}`)
-    if (pool.cumulativeFeeFactor.lt(BigNumber.from(constants.RESCALE_FACTOR.toString()))) {
+    if (
+        pool.cumulativeFeeFactor.lt(
+            BigNumber.from(constants.RESCALE_FACTOR.toString())
+        )
+    ) {
         throw new Error("cumulativeFeeFactor not at least by 10 ** 21")
     }
 
