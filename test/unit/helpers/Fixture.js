@@ -20,15 +20,32 @@ export default class Fixture {
     async deployMocks() {
         const GenericMock = await ethers.getContractFactory("GenericMock")
         const MinterMock = await ethers.getContractFactory("MinterMock")
-        const BondingManagerMock = await ethers.getContractFactory("BondingManagerMock")
+        const BondingManagerMock = await ethers.getContractFactory(
+            "BondingManagerMock"
+        )
 
         this.token = await this.deployAndRegister(GenericMock, "LivepeerToken")
         this.minter = await this.deployAndRegister(MinterMock, "Minter")
-        this.bondingManager = await this.deployAndRegister(BondingManagerMock, "BondingManager")
-        this.roundsManager = await this.deployAndRegister(GenericMock, "RoundsManager")
-        this.jobsManager = await this.deployAndRegister(GenericMock, "JobsManager")
-        this.ticketBroker = await this.deployAndRegister(GenericMock, "TicketBroker")
-        this.merkleSnapshot = await this.deployAndRegister(GenericMock, "MerkleSnapshot")
+        this.bondingManager = await this.deployAndRegister(
+            BondingManagerMock,
+            "BondingManager"
+        )
+        this.roundsManager = await this.deployAndRegister(
+            GenericMock,
+            "RoundsManager"
+        )
+        this.jobsManager = await this.deployAndRegister(
+            GenericMock,
+            "JobsManager"
+        )
+        this.ticketBroker = await this.deployAndRegister(
+            GenericMock,
+            "TicketBroker"
+        )
+        this.merkleSnapshot = await this.deployAndRegister(
+            GenericMock,
+            "MerkleSnapshot"
+        )
         // Register TicketBroker with JobsManager contract ID because in a production system the Minter likely will not be upgraded to be
         // aware of the TicketBroker contract ID and it will only be aware of the JobsManager contract ID
         await this.register("JobsManager", this.ticketBroker.address)
@@ -37,7 +54,11 @@ export default class Fixture {
 
     async register(name, addr) {
         // Use dummy Git commit hash
-        await this.controller.setContractInfo(contractId(name), addr, this.commitHash)
+        await this.controller.setContractInfo(
+            contractId(name),
+            addr,
+            this.commitHash
+        )
     }
 
     async deployAndRegister(contractFactory, name, ...args) {

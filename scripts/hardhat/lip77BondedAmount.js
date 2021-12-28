@@ -11,12 +11,14 @@ async function main() {
     // i.e. 12125269 - 1 = 12125268
     await hre.network.provider.request({
         method: "hardhat_reset",
-        params: [{
-            forking: {
-                blockNumber: 12125268,
-                jsonRpcUrl: process.env.MAINNET_FORK_URL
+        params: [
+            {
+                forking: {
+                    blockNumber: 12125268,
+                    jsonRpcUrl: process.env.MAINNET_FORK_URL
+                }
             }
-        }]
+        ]
     })
 
     // Mainnet addresses
@@ -52,7 +54,10 @@ async function main() {
     const gov = await ethers.getContractAt("Governor", govAddr, multisigSigner)
     const controller = await ethers.getContractAt("Controller", controllerAddr)
 
-    const contractID = utils.solidityKeccak256(["string"], ["BondingManagerTarget"])
+    const contractID = utils.solidityKeccak256(
+        ["string"],
+        ["BondingManagerTarget"]
+    )
     const gitCommitHash = "0x522ef6cf6eb3c3b411a4c16517ad78ebe8a08032" // Placeholder
     const setInfoData = utils.hexlify(
         utils.arrayify(
@@ -72,8 +77,13 @@ async function main() {
     await gov.stage(update, 0)
     await gov.execute(update)
 
-    if ((await controller.getContract(contractID)) != bondingManagerTarget.address) {
-        throw new Error("new BondingManager target implementation not registered with Controller")
+    if (
+        (await controller.getContract(contractID)) !=
+        bondingManagerTarget.address
+    ) {
+        throw new Error(
+            "new BondingManager target implementation not registered with Controller"
+        )
     }
 
     // Submit the original tx that triggered the bug by impersonating the delegator
@@ -82,7 +92,11 @@ async function main() {
         params: [delegator]
     })
     const delegatorSigner = await ethers.provider.getSigner(delegator)
-    const bondingManager = await ethers.getContractAt("BondingManager", bondingManagerAddr, delegatorSigner)
+    const bondingManager = await ethers.getContractAt(
+        "BondingManager",
+        bondingManagerAddr,
+        delegatorSigner
+    )
 
     // Original tx that triggered the bug https://etherscan.io/tx/0xf5221628102f866a2cc1aa356a92ec6d2c9fd58d378e36328f398cccebc4645a
     const transcoder = "0x599f9f49e2ef93f07dc98a89ffeeb254926a1986"

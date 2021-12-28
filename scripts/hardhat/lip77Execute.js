@@ -8,12 +8,14 @@ async function main() {
 
     await hre.network.provider.request({
         method: "hardhat_reset",
-        params: [{
-            forking: {
-                blockNumber: 12125932,
-                jsonRpcUrl: process.env.MAINNET_FORK_URL
+        params: [
+            {
+                forking: {
+                    blockNumber: 12125932,
+                    jsonRpcUrl: process.env.MAINNET_FORK_URL
+                }
             }
-        }]
+        ]
     })
 
     // Mainnet addresses
@@ -46,17 +48,19 @@ async function main() {
     const multisigSigner = await ethers.provider.getSigner(multisigAddr)
     const gov = await ethers.getContractAt("Governor", govAddr, multisigSigner)
     const controller = await ethers.getContractAt("Controller", controllerAddr)
-    const bondingManager = await ethers.getContractAt("BondingManager", bondingManagerAddr)
-
-    const unpauseData = utils.hexlify(
-        utils.arrayify(
-            controller.interface.encodeFunctionData(
-                "unpause"
-            )
-        )
+    const bondingManager = await ethers.getContractAt(
+        "BondingManager",
+        bondingManagerAddr
     )
 
-    const contractID = utils.solidityKeccak256(["string"], ["BondingManagerTarget"])
+    const unpauseData = utils.hexlify(
+        utils.arrayify(controller.interface.encodeFunctionData("unpause"))
+    )
+
+    const contractID = utils.solidityKeccak256(
+        ["string"],
+        ["BondingManagerTarget"]
+    )
     const gitCommitHash = "0x522ef6cf6eb3c3b411a4c16517ad78ebe8a08032" // Placeholder
     const setInfoData = utils.hexlify(
         utils.arrayify(
@@ -87,12 +91,21 @@ async function main() {
     await gov.stage(update, 0)
     await gov.execute(update)
 
-    if ((await controller.getContract(contractID)) != bondingManagerTarget.address) {
-        throw new Error("new BondingManager target implementation not registered with Controller")
+    if (
+        (await controller.getContract(contractID)) !=
+        bondingManagerTarget.address
+    ) {
+        throw new Error(
+            "new BondingManager target implementation not registered with Controller"
+        )
     }
 
-    const delegator = utils.getAddress("0xb47d8f87c0113827d44ad0bc32d53823c477a89d")
-    const transcoder = utils.getAddress("0x599f9f49e2ef93f07dc98a89ffeeb254926a1986")
+    const delegator = utils.getAddress(
+        "0xb47d8f87c0113827d44ad0bc32d53823c477a89d"
+    )
+    const transcoder = utils.getAddress(
+        "0x599f9f49e2ef93f07dc98a89ffeeb254926a1986"
+    )
 
     const filter = bondingManager.filters.Bond(null, null, delegator)
     const events = await bondingManager.queryFilter(filter, 12125932)
@@ -111,14 +124,20 @@ async function main() {
 
     const del = await bondingManager.getDelegator(delegator)
     if (!del.bondedAmount.eq(BigNumber.from(lip77BondedAmount))) {
-        throw new Error(`Delegator ${delegator} bondedAmount != LIP-77 bondedAmount`)
+        throw new Error(
+            `Delegator ${delegator} bondedAmount != LIP-77 bondedAmount`
+        )
     }
 
-    console.log(`Delegator ${delegator} bondedAmount: ${del.bondedAmount.toString()}`)
+    console.log(
+        `Delegator ${delegator} bondedAmount: ${del.bondedAmount.toString()}`
+    )
 
     const stake = await bondingManager.pendingStake(delegator, 2105)
     if (!stake.eq(BigNumber.from(lip77BondedAmount))) {
-        throw new Error(`Delegator ${delegator} pendingStake != LIP-77 bondedAmount`)
+        throw new Error(
+            `Delegator ${delegator} pendingStake != LIP-77 bondedAmount`
+        )
     }
 
     console.log(`Delegator ${delegator} pendingStake: ${stake.toString()}`)
@@ -146,7 +165,11 @@ async function main() {
 
     let callerErr
     try {
-        const bondingManagerBadCaller = await ethers.getContractAt("BondingManager", bondingManagerAddr, signer)
+        const bondingManagerBadCaller = await ethers.getContractAt(
+            "BondingManager",
+            bondingManagerAddr,
+            signer
+        )
         await bondingManagerBadCaller.executeLIP77(1234)
     } catch (err) {
         callerErr = err
