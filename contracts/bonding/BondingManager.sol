@@ -231,6 +231,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         currentRoundInitialized
         autoClaimEarnings
     {
+        require(_recipient != address(0), "invalid recipient");
         uint256 fees = delegators[msg.sender].fees;
         require(fees >= _amount, "insufficient fees to withdraw");
         delegators[msg.sender].fees = fees.sub(_amount);

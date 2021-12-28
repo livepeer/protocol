@@ -3293,6 +3293,10 @@ describe("BondingManager", () => {
             ).to.be.revertedWith("current round is not initialized")
         })
 
+        it("should fail if the recipient is null", async () => {
+            await expect(bondingManager.connect(transcoder1).withdrawFees(ethers.constants.AddressZero, 1)).to.be.revertedWith("invalid recipient")
+        })
+
         it("should fail if there are no fees to withdraw", async () => {
             const fees = (
                 await bondingManager.getDelegator(transcoder0.address)
