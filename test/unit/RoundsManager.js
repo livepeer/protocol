@@ -382,6 +382,39 @@ describe("RoundsManager", () => {
             )
         })
 
+        it("should fail if current round == LIP-73 round", async () => {
+            const currRound = await roundsManager.currentRound()
+            const lip73Round = currRound.add(1)
+            await roundsManager.setLIPUpgradeRound(73, lip73Round)
+
+            const roundLength = await roundsManager.roundLength()
+            await fixture.rpc.waitUntilNextBlockMultiple(roundLength.toNumber())
+
+            expect(await roundsManager.currentRound()).to.be.equal(lip73Round)
+            await expect(roundsManager.initializeRound()).to.be.revertedWith(
+                "cannot initialize past LIP-73 round"
+            )
+        })
+
+        it("should fail if current round > LIP-73 round", async () => {
+            const currRound = await roundsManager.currentRound()
+            const lip73Round = currRound.add(1)
+            await roundsManager.setLIPUpgradeRound(73, lip73Round)
+
+            const roundLength = await roundsManager.roundLength()
+            await fixture.rpc.waitUntilNextBlockMultiple(
+                roundLength.toNumber(),
+                2
+            )
+
+            expect(await roundsManager.currentRound()).to.be.equal(
+                lip73Round.add(1)
+            )
+            await expect(roundsManager.initializeRound()).to.be.revertedWith(
+                "cannot initialize past LIP-73 round"
+            )
+        })
+
         it("should fail if current round is already initialized", async () => {
             const roundLength = await roundsManager.roundLength()
             await fixture.rpc.waitUntilNextBlockMultiple(roundLength.toNumber())

@@ -89,6 +89,9 @@ contract RoundsManager is ManagerProxyTarget, IRoundsManager {
     function initializeRound() external whenSystemNotPaused {
         uint256 currRound = currentRound();
 
+        uint256 lip73Round = lipUpgradeRound[73];
+        require(lip73Round == 0 || currRound < lip73Round, "cannot initialize past LIP-73 round");
+
         // Check if already called for the current round
         require(lastInitializedRound < currRound, "round already initialized");
 
