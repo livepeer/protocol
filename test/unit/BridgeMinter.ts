@@ -272,4 +272,12 @@ describe("BridgeMinter", () => {
             await expect(tx).to.changeEtherBalance(bridgeMinter, ethValue)
         })
     })
+
+    describe("getController", () => {
+        it("returns Controller address", async () => {
+            expect(await bridgeMinter.getController()).to.be.equal(
+                mockControllerEOA.address
+            )
+        })
+    })
 })

@@ -127,4 +127,12 @@ contract BridgeMinter is Manager {
     function depositETH() external payable returns (bool) {
         return true;
     }
+
+    /**
+     * @notice Returns Controller address. Required for migrateToNewMinter() from older Minter implementation
+     * @return Controller address
+     */
+    function getController() public view returns (address) {
+        return address(controller);
+    }
 }
