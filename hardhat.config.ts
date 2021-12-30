@@ -1,6 +1,7 @@
 import "@nomiclabs/hardhat-ethers"
 import "@nomiclabs/hardhat-web3"
 import "@typechain/hardhat"
+import "@nomiclabs/hardhat-waffle"
 import "hardhat-gas-reporter"
 import "@nomiclabs/hardhat-etherscan"
 import "hardhat-abi-exporter"

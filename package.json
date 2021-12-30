@@ -44,8 +44,10 @@
   },
   "homepage": "https://github.com/livepeer/protocol#readme",
   "devDependencies": {
+    "@defi-wonderland/smock": "^2.0.7",
     "@nomiclabs/hardhat-ethers": "npm:hardhat-deploy-ethers",
     "@nomiclabs/hardhat-etherscan": "^2.1.4",
+    "@nomiclabs/hardhat-waffle": "^2.0.1",
     "@nomiclabs/hardhat-web3": "^2.0.0",
     "@typechain/ethers-v5": "^7.0.1",
     "@typechain/hardhat": "^2.1.2",
