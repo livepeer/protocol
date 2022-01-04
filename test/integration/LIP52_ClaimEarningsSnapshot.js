@@ -410,7 +410,7 @@ describe("ClaimEarningsSnapshot", () => {
                     "fees not correctly updated after claiming"
                 )
 
-                expect(tx)
+                await expect(tx)
                     .to.emit(bondingManager, "EarningsClaimed")
                     .withArgs(
                         delegatorBefore.delegateAddress,
