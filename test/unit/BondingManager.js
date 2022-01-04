@@ -3294,7 +3294,11 @@ describe("BondingManager", () => {
         })
 
         it("should fail if the recipient is null", async () => {
-            await expect(bondingManager.connect(transcoder1).withdrawFees(ethers.constants.AddressZero, 1)).to.be.revertedWith("invalid recipient")
+            await expect(
+                bondingManager
+                    .connect(transcoder1)
+                    .withdrawFees(ethers.constants.AddressZero, 1)
+            ).to.be.revertedWith("invalid recipient")
         })
 
         it("should fail if there are no fees to withdraw", async () => {
@@ -3309,7 +3313,7 @@ describe("BondingManager", () => {
             ).to.be.revertedWith("insufficient fees to withdraw")
         })
 
-        it("should withdraw caller's fees", async () => {
+        it("should partially withdraw caller's fees", async () => {
             await bondingManager
                 .connect(transcoder0)
                 .claimEarnings(currentRound + 1)
@@ -3327,6 +3331,81 @@ describe("BondingManager", () => {
             const dInfo = await bondingManager.getDelegator(transcoder0.address)
             expect(dInfo.lastClaimRound).to.be.equal(currentRound + 1)
             expect(dInfo.fees).to.be.equal(startFees.sub(amount))
+
+            await expect(tx)
+                .to.emit(bondingManager, "WithdrawFees")
+                .withArgs(transcoder0.address, recipient.address, amount)
+        })
+
+        it("should fully withdraw caller's fees", async () => {
+            const fees = await bondingManager.pendingFees(
+                transcoder0.address,
+                currentRound + 1
+            )
+            expect(fees).to.be.not.equal(0)
+
+            const tx = await bondingManager
+                .connect(transcoder0)
+                .withdrawFees(recipient.address, fees)
+
+            expect(
+                await bondingManager.pendingFees(
+                    transcoder0.address,
+                    currentRound + 1
+                )
+            ).to.be.equal(0)
+            const dInfo = await bondingManager.getDelegator(transcoder0.address)
+            expect(dInfo.lastClaimRound).to.be.equal(currentRound + 1)
+            expect(dInfo.fees).to.be.equal(0)
+
+            await expect(tx)
+                .to.emit(bondingManager, "WithdrawFees")
+                .withArgs(transcoder0.address, recipient.address, fees)
+        })
+
+        it("should withdraw caller's fees after more are earned", async () => {
+            const startFees = await bondingManager.pendingFees(
+                transcoder0.address,
+                currentRound + 1
+            )
+            expect(startFees).to.be.not.equal(0)
+
+            const amount = 500
+            let tx = await bondingManager
+                .connect(transcoder0)
+                .withdrawFees(recipient.address, amount)
+
+            const endFees0 = await bondingManager.pendingFees(
+                transcoder0.address,
+                currentRound + 1
+            )
+            expect(endFees0).to.be.equal(startFees.sub(amount))
+
+            await expect(tx)
+                .to.emit(bondingManager, "WithdrawFees")
+                .withArgs(transcoder0.address, recipient.address, amount)
+
+            const newFees = 1000
+            await fixture.ticketBroker.execute(
+                bondingManager.address,
+                functionEncodedABI(
+                    "updateTranscoderWithFees(address,uint256,uint256)",
+                    ["address", "uint256", "uint256"],
+                    [transcoder0.address, newFees, currentRound + 1]
+                )
+            )
+
+            tx = await bondingManager
+                .connect(transcoder0)
+                .withdrawFees(recipient.address, amount)
+
+            const endFees1 = await bondingManager.pendingFees(
+                transcoder0.address,
+                currentRound + 1
+            )
+            expect(endFees1).to.be.equal(
+                startFees.sub(amount).add(newFees).sub(amount)
+            )
 
             await expect(tx)
                 .to.emit(bondingManager, "WithdrawFees")
