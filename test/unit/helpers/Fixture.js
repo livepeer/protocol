@@ -50,6 +50,10 @@ export default class Fixture {
         // aware of the TicketBroker contract ID and it will only be aware of the JobsManager contract ID
         await this.register("JobsManager", this.ticketBroker.address)
         this.verifier = await this.deployAndRegister(GenericMock, "Verifier")
+        this.l2LPTDataCache = await this.deployAndRegister(
+            GenericMock,
+            "L2LPTDataCache"
+        )
     }
 
     async register(name, addr) {

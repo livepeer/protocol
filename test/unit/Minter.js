@@ -5,6 +5,7 @@ import {
     functionSig,
     functionEncodedABI
 } from "../../utils/helpers"
+import math from "../helpers/math"
 
 import {web3, ethers} from "hardhat"
 const BigNumber = ethers.BigNumber
@@ -751,6 +752,50 @@ describe("Minter", () => {
             )
         })
 
+        it("should increase the inflation rate if current < target bonding rate (l1CirculatingSupply > 0)", async () => {
+            const totalSupply = BigNumber.from(1000)
+            const l1CirculatingSupply = BigNumber.from(300)
+            const totalBonded = BigNumber.from(600)
+
+            await fixture.bondingManager.setMockUint256(
+                functionSig("getTotalBonded()"),
+                totalBonded
+            )
+
+            const targetRate = await minter.targetBondingRate()
+            // If the bonding rate is just based on totalSupply then it is > target
+            expect(math.v2.percPoints(totalBonded, totalSupply)).to.be.gt(
+                targetRate
+            )
+            // Buf if the bonding rate includes l1CirculatingSupply then it is < target
+            expect(
+                math.v2.percPoints(
+                    totalBonded,
+                    totalSupply.add(l1CirculatingSupply)
+                )
+            ).to.be.lt(targetRate)
+
+            await fixture.l2LPTDataCache.setMockUint256(
+                functionSig("l1CirculatingSupply()"),
+                l1CirculatingSupply
+            )
+
+            const startInflation = await minter.inflation()
+
+            // Call setCurrentRewardTokens via RoundsManager
+            await fixture.roundsManager.execute(
+                minter.address,
+                functionSig("setCurrentRewardTokens()")
+            )
+
+            const endInflation = await minter.inflation()
+
+            // Should increase inflation when l1CirculatingSupply is added to totalSupply
+            expect(endInflation.sub(startInflation)).to.be.equal(
+                await minter.inflationChange()
+            )
+        })
+
         it("should decrease the inflation rate if the current bonding rate is above the target bonding rate", async () => {
             const startInflation = await minter.inflation()
 
@@ -925,6 +970,62 @@ describe("Minter", () => {
                 await minter.getController(),
                 fixture.controller.address,
                 "should return Controller address"
+            )
+        })
+    })
+
+    describe("getGlobalTotalSupply", () => {
+        it("calculates and returns global total supply", async () => {
+            const totalSupply = 100
+            const l1CirculatingSupply = 200
+
+            await fixture.token.setMockUint256(
+                functionSig("totalSupply()"),
+                totalSupply
+            )
+            await fixture.l2LPTDataCache.setMockUint256(
+                functionSig("l1CirculatingSupply()"),
+                l1CirculatingSupply
+            )
+
+            expect(await minter.getGlobalTotalSupply()).to.be.equal(
+                totalSupply + l1CirculatingSupply
+            )
+
+            // Increase totalSupply -> increase global total supply
+            await fixture.token.setMockUint256(
+                functionSig("totalSupply()"),
+                totalSupply + 1
+            )
+            expect(await minter.getGlobalTotalSupply()).to.be.equal(
+                totalSupply + l1CirculatingSupply + 1
+            )
+
+            // Decrease totalSupply -> decrease global total supply
+            await fixture.token.setMockUint256(
+                functionSig("totalSupply()"),
+                totalSupply
+            )
+            expect(await minter.getGlobalTotalSupply()).to.be.equal(
+                totalSupply + l1CirculatingSupply
+            )
+
+            // Increase l1CirculatingSupply -> increase global total supply
+            await fixture.l2LPTDataCache.setMockUint256(
+                functionSig("l1CirculatingSupply()"),
+                l1CirculatingSupply + 1
+            )
+            expect(await minter.getGlobalTotalSupply()).to.be.equal(
+                totalSupply + l1CirculatingSupply + 1
+            )
+
+            // Decrease l1CirculatingSupply -> decrease global total supply
+            await fixture.l2LPTDataCache.setMockUint256(
+                functionSig("l1CirculatingSupply()"),
+                l1CirculatingSupply
+            )
+            expect(await minter.getGlobalTotalSupply()).to.be.equal(
+                totalSupply + l1CirculatingSupply
             )
         })
     })
