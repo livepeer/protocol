@@ -1,5 +1,6 @@
 import {constants} from "../../utils/constants"
-import {deployments, ethers} from "hardhat"
+import {ethers} from "hardhat"
+import setupIntegrationTest from "../helpers/setupIntegrationTest"
 import {BigNumber} from "ethers"
 import chai, {expect, assert} from "chai"
 import {solidity} from "ethereum-waffle"
@@ -29,7 +30,7 @@ describe("Delegation", () => {
         transcoder2 = signers[1]
         delegator1 = signers[2]
         delegator2 = signers[3]
-        const fixture = await deployments.fixture(["Contracts"])
+        const fixture = await setupIntegrationTest()
         controller = await ethers.getContractAt(
             "Controller",
             fixture.Controller.address

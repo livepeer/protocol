@@ -3,7 +3,8 @@ import {createWinningTicket, getTicketHash} from "../helpers/ticket"
 import signMsg from "../helpers/signMsg"
 import math from "../helpers/math"
 
-import {deployments, ethers} from "hardhat"
+import {ethers} from "hardhat"
+import setupIntegrationTest from "../helpers/setupIntegrationTest"
 
 import chai, {assert, expect} from "chai"
 import {solidity} from "ethereum-waffle"
@@ -67,7 +68,7 @@ describe("Earnings", () => {
         delegator = signers[2]
         transcoder2 = signers[3]
 
-        const fixture = await deployments.fixture(["Contracts"])
+        const fixture = await setupIntegrationTest()
         controller = await ethers.getContractAt(
             "Controller",
             fixture.Controller.address

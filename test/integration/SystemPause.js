@@ -3,6 +3,8 @@ import {constants} from "../../utils/constants"
 import chai, {assert, expect} from "chai"
 import {solidity} from "ethereum-waffle"
 import {ethers} from "hardhat"
+import setupIntegrationTest from "../helpers/setupIntegrationTest"
+
 chai.use(solidity)
 
 describe("System Pause", () => {
@@ -24,7 +26,7 @@ describe("System Pause", () => {
         delegator1 = signers[2]
         delegator2 = signers[3]
 
-        const fixture = await deployments.fixture(["Contracts"])
+        const fixture = await setupIntegrationTest()
 
         controller = await ethers.getContractAt(
             "Controller",

@@ -3,6 +3,7 @@ import {constants} from "../../utils/constants"
 import chai, {expect} from "chai"
 import {solidity} from "ethereum-waffle"
 import {ethers} from "hardhat"
+import setupIntegrationTest from "../helpers/setupIntegrationTest"
 
 chai.use(solidity)
 
@@ -41,7 +42,7 @@ describe("RoundInitialization", () => {
     before(async () => {
         signers = await ethers.getSigners()
 
-        const fixture = await deployments.fixture(["Contracts"])
+        const fixture = await setupIntegrationTest()
 
         controller = await ethers.getContractAt(
             "Controller",
