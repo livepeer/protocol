@@ -1,4 +1,4 @@
-// Taken from https://github.com/aragon/aragonOS/blob/ae3b1bde5da14fd5f696d04111d7c5cf57ad7dd1/test/helpers/runSolidityTest.js
+// Based on https://github.com/aragon/aragonOS/blob/4bbe3e96fc5a3aa6340b11ec67e6550029da7af9/test/helpers/runSolidityTest.js
 import abi from "ethereumjs-abi"
 import {ethers} from "hardhat"
 import {eventSig} from "../../../utils/helpers"
@@ -10,16 +10,12 @@ const HOOKS_MAP = {
     afterAll: "afterAll"
 }
 
-const processResult = async (txRes, mustAssert) => {
+const processResult = async txRes => {
     const receipt = await txRes.wait()
     const eventSignature = eventSig("TestEvent(bool,string)")
     const rawLogs = receipt.logs.filter(log => log.topics[0] === eventSignature)
 
     // Event defined in the libraries used by contracts/test/helpers/truffle/Assert.sol
-
-    if (mustAssert && !rawLogs.length) {
-        throw new Error("No assertions made")
-    }
 
     rawLogs.forEach(log => {
         const result = abi.rawDecode(
@@ -32,7 +28,7 @@ const processResult = async (txRes, mustAssert) => {
         )[0]
 
         if (!result) {
-            assert.fail(message)
+            assert.fail(message || "No assertions made")
         } else {
             assert.isOk(result)
         }
@@ -47,45 +43,53 @@ const processResult = async (txRes, mustAssert) => {
  * @param {Array} libs Array of names of Solidity libraries to link with test file
  * @param {Object} mochaContext Mocha context
  */
-async function runSolidityTest(c, libs, mochaContext) {
-    const libraries = {}
-    for (const libName of libs) {
-        libraries[libName] = (
-            await (await ethers.getContractFactory(libName)).deploy()
-        ).address
-    }
-
-    const artifact = await ethers.getContractFactory(c, {
-        libraries: libraries
-    })
-
-    const deployed = await artifact.deploy()
-
+function runSolidityTest(c, libs, mochaContext) {
     describe(c, () => {
-        mochaContext("> Solidity test", async () => {
-            const abi = artifact.interface.format()
-            for (const iface of abi) {
-                const name = iface.split(" ")[1]
-                if (
-                    [
-                        "beforeAll()",
-                        "beforeEach()",
-                        "afterEach()",
-                        "afterAll()"
-                    ].includes(name)
-                ) {
-                    // Set up hooks
-                    global[HOOKS_MAP[name.slice(0, -2)]](async () => {
-                        const tx = await deployed[name.slice(0, -2)]()
-                        await processResult(tx, false)
-                    })
-                } else if (name.startsWith("test")) {
-                    it(name, async () => {
-                        const tx = await deployed[name]()
-                        await processResult(tx, false)
-                    })
-                }
+        const artifact = hre.artifacts.readArtifactSync(c)
+
+        let deployed
+
+        before(async () => {
+            const libraries = {}
+            for (const libName of libs) {
+                libraries[libName] = (
+                    await (await ethers.getContractFactory(libName)).deploy()
+                ).address
             }
+
+            const fac = await ethers.getContractFactory(c, {
+                libraries: libraries
+            })
+
+            deployed = await fac.deploy()
+        })
+
+        mochaContext("> Solidity test", () => {
+            artifact.abi.forEach(itf => {
+                const name = itf.name
+
+                if (itf.type === "function") {
+                    if (
+                        [
+                            "beforeAll",
+                            "beforeEach",
+                            "afterEach",
+                            "afterAll"
+                        ].includes(itf.name)
+                    ) {
+                        // Set up hooks
+                        global[HOOKS_MAP[name]](async () => {
+                            const tx = await deployed[name]()
+                            await processResult(tx)
+                        })
+                    } else if (itf.name.startsWith("test")) {
+                        it(itf.name, async () => {
+                            const tx = await deployed[name]()
+                            await processResult(tx)
+                        })
+                    }
+                }
+            })
         })
     })
 }
