@@ -1,7 +1,9 @@
 import RPC from "../../utils/rpc"
-import {deployments, ethers} from "hardhat"
+import {ethers} from "hardhat"
 import chai, {assert, expect} from "chai"
 import {solidity} from "ethereum-waffle"
+import setupIntegrationTest from "../helpers/setupIntegrationTest"
+
 chai.use(solidity)
 
 describe("PoolUpdatesWithHints", () => {
@@ -80,7 +82,7 @@ describe("PoolUpdatesWithHints", () => {
         newTranscoder = signers[12]
         rpc = new RPC(web3)
 
-        const fixture = await deployments.fixture(["Contracts"])
+        const fixture = await setupIntegrationTest()
         controller = await ethers.getContractAt(
             "Controller",
             fixture.Controller.address

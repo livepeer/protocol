@@ -4,6 +4,7 @@ import math from "../helpers/math"
 import chai, {expect} from "chai"
 import {solidity} from "ethereum-waffle"
 import {ethers} from "hardhat"
+import setupIntegrationTest from "../helpers/setupIntegrationTest"
 
 chai.use(solidity)
 
@@ -35,7 +36,7 @@ describe("Rewards", () => {
         delegator2 = signers[3]
         delegator3 = signers[4]
 
-        const fixture = await deployments.fixture(["Contracts"])
+        const fixture = await setupIntegrationTest()
 
         controller = await ethers.getContractAt(
             "Controller",

@@ -1,5 +1,6 @@
 import RPC from "../../utils/rpc"
 import {web3, ethers} from "hardhat"
+import setupIntegrationTest from "../helpers/setupIntegrationTest"
 
 import chai from "chai"
 import {solidity} from "ethereum-waffle"
@@ -41,7 +42,7 @@ describe("transcoder pool size gas report", () => {
     before(async () => {
         rpc = new RPC(web3)
 
-        const fixture = await deployments.fixture(["Contracts"])
+        const fixture = await setupIntegrationTest()
         controller = await ethers.getContractAt(
             "Controller",
             fixture.Controller.address
