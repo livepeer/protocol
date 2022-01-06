@@ -21,6 +21,15 @@ const precise = {
     }
 }
 
+const v2 = {
+    percPoints: (a, b) => {
+        return _percPoints(a, b, constants.PERC_DIVISOR_V2)
+    },
+    percOf: (a, b, c) => {
+        return _percOf(a, b, c, constants.PERC_DIVISOR_V2)
+    }
+}
+
 const _percPoints = (a, b, percDivisor) => {
     return a.mul(percDivisor).div(b)
 }
@@ -32,5 +41,6 @@ const _percOf = (a, b, c, percDivisor) => {
 module.exports = {
     percPoints,
     percOf,
-    precise
+    precise,
+    v2
 }

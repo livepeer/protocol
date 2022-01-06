@@ -9,6 +9,10 @@ import "../libraries/MathUtilsV2.sol";
 
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
+interface IL2LPTDataCache {
+    function l1CirculatingSupply() external view returns (uint256);
+}
+
 /**
  * @title Minter
  * @dev Manages inflation rate and the minting of new tokens for each round of the Livepeer protocol
@@ -217,11 +221,20 @@ contract Minter is Manager, IMinter {
     }
 
     /**
+     * @notice Calculate and return global LPT total supply
+     * @return Global LPT total supply
+     */
+    function getGlobalTotalSupply() public view returns (uint256) {
+        // Global total supply = L2 total supply + L1 circulating supply
+        return livepeerToken().totalSupply().add(l2LPTDataCache().l1CirculatingSupply());
+    }
+
+    /**
      * @dev Set inflation based upon the current bonding rate and target bonding rate
      */
     function setInflation() internal {
         uint256 currentBondingRate = 0;
-        uint256 totalSupply = livepeerToken().totalSupply();
+        uint256 totalSupply = getGlobalTotalSupply();
 
         if (totalSupply > 0) {
             uint256 totalBonded = bondingManager().getTotalBonded();
@@ -253,5 +266,12 @@ contract Minter is Manager, IMinter {
      */
     function bondingManager() internal view returns (IBondingManager) {
         return IBondingManager(controller.getContract(keccak256("BondingManager")));
+    }
+
+    /**
+     * @dev Returns L2LPTDataCache interface
+     */
+    function l2LPTDataCache() internal view returns (IL2LPTDataCache) {
+        return IL2LPTDataCache(controller.getContract(keccak256("L2LPTDataCache")));
     }
 }

@@ -7,6 +7,7 @@ export const constants = {
     PERC_DIVISOR: 1000000,
     PERC_MULTIPLIER: 10000,
     PERC_DIVISOR_PRECISE: BigNumber.from(10).pow(27),
+    PERC_DIVISOR_V2: BigNumber.from(1000000000),
     RESCALE_FACTOR: BigNumber.from(10).pow(21),
     MAX_UINT256: ethers.constants.MaxUint256,
     DelegatorStatus: {
