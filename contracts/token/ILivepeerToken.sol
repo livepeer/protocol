@@ -6,5 +6,5 @@ import "../zeppelin/Ownable.sol";
 contract ILivepeerToken is ERC20, Ownable {
     function mint(address _to, uint256 _amount) public returns (bool);
 
-    function burn(uint256 _amount) public;
+    function burn(address _from, uint256 _amount) public;
 }

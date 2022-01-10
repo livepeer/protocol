@@ -9,9 +9,12 @@ import math from "../helpers/math"
 
 import {web3, ethers} from "hardhat"
 const BigNumber = ethers.BigNumber
-import chai, {expect, assert} from "chai"
+import {use, expect, assert} from "chai"
 import {solidity} from "ethereum-waffle"
-chai.use(solidity)
+import {smock} from "@defi-wonderland/smock"
+
+use(solidity)
+use(smock.matchers)
 
 describe("Minter", () => {
     let fixture
@@ -510,14 +513,33 @@ describe("Minter", () => {
         })
 
         it("should burn tokens", async () => {
+            const tokenMock = await smock.fake("ILivepeerToken")
+
+            const info = await fixture.controller.getContractInfo(
+                contractId("LivepeerToken")
+            )
+            const gitCommitHash = info[1]
+            await fixture.controller.setContractInfo(
+                contractId("LivepeerToken"),
+                tokenMock.address,
+                gitCommitHash
+            )
+
+            const burnAmount = 100
+
             // Just make sure that this does not fail
             await fixture.bondingManager.execute(
                 minter.address,
                 functionEncodedABI(
                     "trustedBurnTokens(uint256)",
                     ["uint256"],
-                    [100]
+                    [burnAmount]
                 )
+            )
+
+            expect(tokenMock.burn).to.be.calledOnceWith(
+                minter.address,
+                burnAmount
             )
         })
     })
