@@ -30,15 +30,15 @@ contract PollCreator {
      * @param _proposal The IPFS multihash for the proposal.
      */
     function createPoll(bytes calldata _proposal) external {
-        uint256 endBlock = block.number + POLL_PERIOD;
-        Poll poll = new Poll(endBlock);
-
         require(
             // pendingStake() ignores the second arg
             bondingManager.pendingStake(msg.sender, 0) >= POLL_CREATION_COST ||
                 bondingManager.transcoderTotalStake(msg.sender) >= POLL_CREATION_COST,
             "PollCreator#createPoll: INSUFFICIENT_STAKE"
         );
+
+        uint256 endBlock = block.number + POLL_PERIOD;
+        Poll poll = new Poll(endBlock);
 
         emit PollCreated(address(poll), _proposal, endBlock, QUORUM, QUOTA);
     }
