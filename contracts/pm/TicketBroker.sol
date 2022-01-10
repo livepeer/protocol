@@ -37,6 +37,8 @@ contract TicketBroker is
      */
     function setUnlockPeriod(uint256 _unlockPeriod) external onlyControllerOwner {
         unlockPeriod = _unlockPeriod;
+
+        emit ParameterUpdate("unlockPeriod");
     }
 
     /**
@@ -47,5 +49,7 @@ contract TicketBroker is
         require(_ticketValidityPeriod > 0, "ticketValidityPeriod must be greater than 0");
 
         ticketValidityPeriod = _ticketValidityPeriod;
+
+        emit ParameterUpdate("ticketValidityPeriod");
     }
 }

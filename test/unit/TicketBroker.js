@@ -77,9 +77,13 @@ describe("TicketBroker", () => {
         })
 
         it("sets unlockPeriod", async () => {
-            await broker.setUnlockPeriod(200)
+            const unlockPeriod = 200
 
-            assert.equal("200", (await broker.unlockPeriod()).toString())
+            const tx = await broker.setUnlockPeriod(unlockPeriod)
+            expect(await broker.unlockPeriod()).to.be.equal(unlockPeriod)
+            await expect(tx)
+                .to.emit(broker, "ParameterUpdate")
+                .withArgs("unlockPeriod")
         })
     })
 
@@ -97,12 +101,17 @@ describe("TicketBroker", () => {
         })
 
         it("sets ticketValidityPeriod", async () => {
-            await broker.setTicketValidityPeriod(200)
+            const ticketValidityPeriod = 200
 
-            assert.equal(
-                "200",
-                (await broker.ticketValidityPeriod()).toString()
+            const tx = await broker.setTicketValidityPeriod(
+                ticketValidityPeriod
             )
+            expect(await broker.ticketValidityPeriod()).to.be.equal(
+                ticketValidityPeriod
+            )
+            await expect(tx)
+                .to.emit(broker, "ParameterUpdate")
+                .withArgs("ticketValidityPeriod")
         })
     })
 
