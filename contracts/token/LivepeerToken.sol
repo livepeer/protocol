@@ -4,7 +4,7 @@ import "./ILivepeerToken.sol";
 import "./VariableSupplyToken.sol";
 
 // Livepeer Token
-contract LivepeerToken is ILivepeerToken, VariableSupplyToken {
+contract LivepeerToken is VariableSupplyToken {
     string public name = "Livepeer Token";
     uint8 public decimals = 18;
     string public symbol = "LPT";

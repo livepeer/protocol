@@ -177,7 +177,7 @@ contract Minter is Manager, IMinter {
      * @param _amount Amount of tokens to burn
      */
     function trustedBurnTokens(uint256 _amount) external onlyBondingManager whenSystemNotPaused {
-        livepeerToken().burn(_amount);
+        livepeerToken().burn(address(this), _amount);
     }
 
     /**
