@@ -5109,52 +5109,6 @@ describe("BondingManager", () => {
                         acceptableDelta
                     )
                 })
-
-                it("should claim earnings and empty remaining earnings in pool as both a delegator and a transcoder", async () => {
-                    await bondingManager
-                        .connect(delegator1)
-                        .claimEarnings(currentRound + 1)
-                    await bondingManager
-                        .connect(delegator2)
-                        .claimEarnings(currentRound + 1)
-                    await bondingManager
-                        .connect(delegator3)
-                        .claimEarnings(currentRound + 1)
-                    await bondingManager
-                        .connect(transcoder)
-                        .claimEarnings(currentRound + 1)
-
-                    const earningsPool =
-                        await bondingManager.getTranscoderEarningsPoolForRound(
-                            transcoder.address,
-                            currentRound + 1
-                        )
-                    assert.equal(
-                        earningsPool[0],
-                        0,
-                        "should set delegator reward pool for round to 0 after all delegators have claimed earnings"
-                    )
-                    assert.equal(
-                        earningsPool[1],
-                        0,
-                        "should set delegator fee pool for round to 0 after all delegators have claimed earnings"
-                    )
-                    assert.equal(
-                        earningsPool[6],
-                        0,
-                        "should set transcoder reward pool for round to 0"
-                    )
-                    assert.equal(
-                        earningsPool[7],
-                        0,
-                        "should set transcoder fee pool for round to 0"
-                    )
-                    assert.equal(
-                        earningsPool[3],
-                        0,
-                        "should set claimableStake to 0 in earningsPool for round after all delegators have claimed earnings"
-                    )
-                })
             })
         })
     })

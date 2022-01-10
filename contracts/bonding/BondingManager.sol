@@ -894,15 +894,9 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * @notice Return transcoder's earnings pool for a given round
      * @param _transcoder Address of transcoder
      * @param _round Round number
-     * @return rewardPool Reward pool for delegators (only used before LIP-36)
-     * @return feePool Fee pool for delegators (only used before LIP-36)
      * @return totalStake Transcoder's total stake in '_round'
-     * @return claimableStake Remaining stake that can be used to claim from the pool (only used before LIP-36)
      * @return transcoderRewardCut Transcoder's reward cut for '_round'
      * @return transcoderFeeShare Transcoder's fee share for '_round'
-     * @return transcoderRewardPool Transcoder's rewards for '_round' (only used before LIP-36)
-     * @return transcoderFeePool Transcoder's fees for '_round' (only used before LIP-36)
-     * @return hasTranscoderRewardFeePool True if there is a split reward/fee pool for the transcoder (only used before LIP-36)
      * @return cumulativeRewardFactor The cumulative reward factor for delegator rewards calculation (only used after LIP-36)
      * @return cumulativeFeeFactor The cumulative fee factor for delegator fees calculation (only used after LIP-36)
      */
@@ -910,30 +904,18 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         public
         view
         returns (
-            uint256 rewardPool,
-            uint256 feePool,
             uint256 totalStake,
-            uint256 claimableStake,
             uint256 transcoderRewardCut,
             uint256 transcoderFeeShare,
-            uint256 transcoderRewardPool,
-            uint256 transcoderFeePool,
-            bool hasTranscoderRewardFeePool,
             uint256 cumulativeRewardFactor,
             uint256 cumulativeFeeFactor
         )
     {
         EarningsPool.Data storage earningsPool = transcoders[_transcoder].earningsPoolPerRound[_round];
 
-        rewardPool = earningsPool.rewardPool;
-        feePool = earningsPool.feePool;
         totalStake = earningsPool.totalStake;
-        claimableStake = earningsPool.claimableStake;
         transcoderRewardCut = earningsPool.transcoderRewardCut;
         transcoderFeeShare = earningsPool.transcoderFeeShare;
-        transcoderRewardPool = earningsPool.transcoderRewardPool;
-        transcoderFeePool = earningsPool.transcoderFeePool;
-        hasTranscoderRewardFeePool = earningsPool.hasTranscoderRewardFeePool;
         cumulativeRewardFactor = earningsPool.cumulativeRewardFactor;
         cumulativeFeeFactor = earningsPool.cumulativeFeeFactor;
     }
@@ -1126,9 +1108,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // Fetch start cumulative factors
         EarningsPool.Data memory startPool = cumulativeFactorsPool(_transcoder, _startRound);
 
-        // If the start cumulativeRewardFactor is 0 and we are before the LIP-71 round, set the default value to
-        // MathUtils.percPoints(1, 1) because we only set the default value to PreciseMathUtils.percPoints(1, 1) from LIP-71 round
-        // and onward
+        // If the start cumulativeRewardFactor is 0 set the default value to PreciseMathUtils.percPoints(1, 1)
         if (startPool.cumulativeRewardFactor == 0) {
             startPool.cumulativeRewardFactor = PreciseMathUtils.percPoints(1, 1);
         }
@@ -1136,9 +1116,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // Fetch end cumulative factors
         EarningsPool.Data memory endPool = latestCumulativeFactorsPool(_transcoder, _endRound);
 
-        // If the end cumulativeRewardFactor is 0 and we are before the LIP-71 round, set the default value to
-        // MathUtils.percPoints(1, 1) because we only set the default value to PreciseMathUtils.percPoints(1, 1) from LIP-71 round
-        // and onward
+        // If the end cumulativeRewardFactor is 0 set the default value to PreciseMathUtils.percPoints(1, 1)
         if (endPool.cumulativeRewardFactor == 0) {
             endPool.cumulativeRewardFactor = PreciseMathUtils.percPoints(1, 1);
         }
