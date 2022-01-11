@@ -2,7 +2,13 @@ import {HardhatRuntimeEnvironment} from "hardhat/types"
 import {DeployFunction} from "hardhat-deploy/types"
 import {ethers} from "hardhat"
 
-import {Controller, BondingManager, RoundsManager, TicketBroker, LivepeerToken} from "../typechain"
+import {
+    Controller,
+    BondingManager,
+    RoundsManager,
+    TicketBroker,
+    LivepeerToken
+} from "../typechain"
 
 import ContractDeployer from "./deployer"
 import getNetworkConfig from "./migrations.config"
@@ -38,9 +44,7 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
 
     const config = getNetworkConfig(hre.network.name)
 
-    const contractDeployer = new ContractDeployer(
-        deploy, deployer, deployments
-    )
+    const contractDeployer = new ContractDeployer(deploy, deployer, deployments)
 
     const Controller: Controller = await contractDeployer.deployController()
 
@@ -53,7 +57,12 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
     const minter = await contractDeployer.deployAndRegister({
         contract: "Minter",
         name: "Minter",
-        args: [Controller.address, config.minter.inflation, config.minter.inflationChange, config.minter.targetBondingRate]
+        args: [
+            Controller.address,
+            config.minter.inflation,
+            config.minter.inflationChange,
+            config.minter.targetBondingRate
+        ]
     })
 
     // ticket broker
@@ -117,27 +126,47 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
     })
 
     // Set BondingManager parameters
-    const BondingManager: BondingManager = (await ethers.getContractAt("BondingManager", bondingManager.address)) as BondingManager
+    const BondingManager: BondingManager = (await ethers.getContractAt(
+        "BondingManager",
+        bondingManager.address
+    )) as BondingManager
 
-    await BondingManager.setUnbondingPeriod(config.bondingManager.unbondingPeriod)
-    await BondingManager.setNumActiveTranscoders(config.bondingManager.numActiveTranscoders)
+    await BondingManager.setUnbondingPeriod(
+        config.bondingManager.unbondingPeriod
+    )
+    await BondingManager.setNumActiveTranscoders(
+        config.bondingManager.numActiveTranscoders
+    )
 
     // Set RoundsManager parameters
-    const RoundsManager: RoundsManager = (await ethers.getContractAt("RoundsManager", roundsManager.address)) as RoundsManager
+    const RoundsManager: RoundsManager = (await ethers.getContractAt(
+        "RoundsManager",
+        roundsManager.address
+    )) as RoundsManager
     await RoundsManager.setRoundLength(config.roundsManager.roundLength)
     await RoundsManager.setRoundLockAmount(config.roundsManager.roundLockAmount)
 
     // Set TicketBroker parameters
-    const Broker: TicketBroker = (await ethers.getContractAt("TicketBroker", ticketBroker.address)) as TicketBroker
+    const Broker: TicketBroker = (await ethers.getContractAt(
+        "TicketBroker",
+        ticketBroker.address
+    )) as TicketBroker
     await Broker.setUnlockPeriod(config.broker.unlockPeriod)
     await Broker.setTicketValidityPeriod(config.broker.ticketValidityPeriod)
 
-    const Token: LivepeerToken = (await ethers.getContractAt("LivepeerToken", livepeerToken.address)) as LivepeerToken
+    const Token: LivepeerToken = (await ethers.getContractAt(
+        "LivepeerToken",
+        livepeerToken.address
+    )) as LivepeerToken
     if (!isProdNetwork(hre.network.name)) {
         const faucet = await contractDeployer.deployAndRegister({
             contract: "LivepeerTokenFaucet",
             name: "LivepeerTokenFaucet",
-            args: [livepeerToken.address, config.faucet.requestAmount, config.faucet.requestWait]
+            args: [
+                livepeerToken.address,
+                config.faucet.requestAmount,
+                config.faucet.requestWait
+            ]
         })
         // If not in production, send the crowd supply to the faucet and the company supply to the deployment account
 
@@ -151,7 +180,9 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
     } else {
         Controller.transferOwnership(genesis.governanceMultisig)
         const newOwner = await Controller.owner()
-        console.log(`Controller at ${Controller.address} is now owned by ${newOwner}`)
+        console.log(
+            `Controller at ${Controller.address} is now owned by ${newOwner}`
+        )
     }
 
     await Token.grantRole(MINTER_ROLE, minter.address)
