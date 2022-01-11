@@ -3,7 +3,11 @@ import childProcess from "child_process"
 const exec = util.promisify(childProcess.exec)
 
 import {ethers} from "hardhat"
-import {DeployOptions, DeployResult, DeploymentsExtension} from "hardhat-deploy/types"
+import {
+    DeployOptions,
+    DeployResult,
+    DeploymentsExtension
+} from "hardhat-deploy/types"
 import {deployments} from "hardhat"
 import {Controller} from "../typechain"
 import {Libraries} from "hardhat/types"
@@ -47,7 +51,7 @@ export default class ContractDeployer {
     }
 
     async deployController(): Promise<Controller> {
-        if (this.controller && await deployments.get("Controller")) {
+        if (this.controller && (await deployments.get("Controller"))) {
             console.log("Controller already deployed")
         } else {
             const controller = await this.deploy("Controller", {
@@ -55,12 +59,21 @@ export default class ContractDeployer {
                 args: [], // constructor arguments
                 log: true // display the address and gas used in the console (not when run in test though)
             })
-            this.controller = (await ethers.getContractAt("Controller", controller.address)) as Controller
+            this.controller = (await ethers.getContractAt(
+                "Controller",
+                controller.address
+            )) as Controller
         }
         return this.controller
     }
 
-    async deployAndRegister(config: {contract: string, name: string, proxy?: boolean, args: Array<any>, libraries?: Libraries | undefined}): Promise<DeployResult> {
+    async deployAndRegister(config: {
+        contract: string
+        name: string
+        proxy?: boolean
+        args: Array<any>
+        libraries?: Libraries | undefined
+    }): Promise<DeployResult> {
         const {contract, name, proxy, args, libraries} = config
         const targetName = `${name}Target`
 
@@ -74,9 +87,17 @@ export default class ContractDeployer {
         })
 
         if (proxy) {
-            await this.controller?.setContractInfo(this.contractId(targetName), target.address, gitHash)
+            await this.controller?.setContractInfo(
+                this.contractId(targetName),
+                target.address,
+                gitHash
+            )
         } else {
-            await this.controller?.setContractInfo(this.contractId(name), target.address, gitHash)
+            await this.controller?.setContractInfo(
+                this.contractId(name),
+                target.address,
+                gitHash
+            )
             await deployments.save(name, target)
             return target
         }
@@ -88,7 +109,11 @@ export default class ContractDeployer {
             args: [this.controller?.address, this.contractId(targetName)]
         })
 
-        await this.controller?.setContractInfo(this.contractId(name), managerProxy.address, gitHash)
+        await this.controller?.setContractInfo(
+            this.contractId(name),
+            managerProxy.address,
+            gitHash
+        )
         await deployments.save(`${contract}Target`, target)
         await deployments.save(`${contract}Proxy`, managerProxy)
         await deployments.save(contract, managerProxy)
