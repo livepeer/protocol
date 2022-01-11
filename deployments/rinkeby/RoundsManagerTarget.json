@@ -1,0 +1,482 @@
+{
+  "address": "0x3757DB506ECd9CBE643660C0F5b70db5b321202C",
+  "abi": [
+    {
+      "constant": false,
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_roundLockAmount",
+          "type": "uint256"
+        }
+      ],
+      "name": "setRoundLockAmount",
+      "outputs": [],
+      "payable": false,
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "constant": true,
+      "inputs": [],
+      "name": "lastRoundLengthUpdateRound",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "constant": false,
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_lip",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_round",
+          "type": "uint256"
+        }
+      ],
+      "name": "setLIPUpgradeRound",
+      "outputs": [],
+      "payable": false,
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "constant": true,
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "name": "lipUpgradeRound",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "constant": true,
+      "inputs": [],
+      "name": "currentRoundInitialized",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "constant": true,
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_round",
+          "type": "uint256"
+        }
+      ],
+      "name": "blockHashForRound",
+      "outputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "constant": true,
+      "inputs": [],
+      "name": "targetContractId",
+      "outputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "constant": true,
+      "inputs": [],
+      "name": "lastRoundLengthUpdateStartBlock",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "constant": false,
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_roundLength",
+          "type": "uint256"
+        }
+      ],
+      "name": "setRoundLength",
+      "outputs": [],
+      "payable": false,
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "constant": true,
+      "inputs": [],
+      "name": "currentRoundLocked",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "constant": true,
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_block",
+          "type": "uint256"
+        }
+      ],
+      "name": "blockHash",
+      "outputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "constant": true,
+      "inputs": [],
+      "name": "lastInitializedRound",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "constant": true,
+      "inputs": [],
+      "name": "currentRound",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "constant": true,
+      "inputs": [],
+      "name": "blockNum",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "constant": true,
+      "inputs": [],
+      "name": "roundLength",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "constant": true,
+      "inputs": [],
+      "name": "currentRoundStartBlock",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "constant": false,
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_controller",
+          "type": "address"
+        }
+      ],
+      "name": "setController",
+      "outputs": [],
+      "payable": false,
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "constant": false,
+      "inputs": [],
+      "name": "initializeRound",
+      "outputs": [],
+      "payable": false,
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "constant": true,
+      "inputs": [],
+      "name": "roundLockAmount",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "constant": true,
+      "inputs": [],
+      "name": "controller",
+      "outputs": [
+        {
+          "internalType": "contract IController",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_controller",
+          "type": "address"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "uint256",
+          "name": "round",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "bytes32",
+          "name": "blockHash",
+          "type": "bytes32"
+        }
+      ],
+      "name": "NewRound",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "controller",
+          "type": "address"
+        }
+      ],
+      "name": "SetController",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "string",
+          "name": "param",
+          "type": "string"
+        }
+      ],
+      "name": "ParameterUpdate",
+      "type": "event"
+    }
+  ],
+  "transactionHash": "0x3cb753f8b11ef6845502180ad112ee355ff373e51a42546976b568293e3e8538",
+  "receipt": {
+    "to": null,
+    "from": "0xB5Af4138f0f33be0D6414Eb25271B9C2Dc245fb5",
+    "contractAddress": "0x3757DB506ECd9CBE643660C0F5b70db5b321202C",
+    "transactionIndex": 55,
+    "gasUsed": "879646",
+    "logsBloom": "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+    "blockHash": "0xe882e9d6dbc11cbeab7a1ad1c630b575310ce9b65ea1e802dc25da5d575e4bc8",
+    "transactionHash": "0x3cb753f8b11ef6845502180ad112ee355ff373e51a42546976b568293e3e8538",
+    "logs": [],
+    "blockNumber": 9974933,
+    "cumulativeGasUsed": "9520182",
+    "status": 1,
+    "byzantium": true
+  },
+  "args": [
+    "0x9a9827455911a858E55f07911904fACC0D66027E"
+  ],
+  "solcInputHash": "315b0e7b40bf192e7f09195e0e84cba3",
+  "metadata": "{\"compiler\":{\"version\":\"0.5.11+commit.22be8592\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"constant\":false,\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"_roundLockAmount\",\"type\":\"uint256\"}],\"name\":\"setRoundLockAmount\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"lastRoundLengthUpdateRound\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"_lip\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"_round\",\"type\":\"uint256\"}],\"name\":\"setLIPUpgradeRound\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"lipUpgradeRound\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"currentRoundInitialized\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"_round\",\"type\":\"uint256\"}],\"name\":\"blockHashForRound\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"targetContractId\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"lastRoundLengthUpdateStartBlock\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"_roundLength\",\"type\":\"uint256\"}],\"name\":\"setRoundLength\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"currentRoundLocked\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"_block\",\"type\":\"uint256\"}],\"name\":\"blockHash\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"lastInitializedRound\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"currentRound\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"blockNum\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"roundLength\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"currentRoundStartBlock\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"internalType\":\"address\",\"name\":\"_controller\",\"type\":\"address\"}],\"name\":\"setController\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[],\"name\":\"initializeRound\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"roundLockAmount\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"controller\",\"outputs\":[{\"internalType\":\"contract IController\",\"name\":\"\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_controller\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"round\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"bytes32\",\"name\":\"blockHash\",\"type\":\"bytes32\"}],\"name\":\"NewRound\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"controller\",\"type\":\"address\"}],\"name\":\"SetController\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"string\",\"name\":\"param\",\"type\":\"string\"}],\"name\":\"ParameterUpdate\",\"type\":\"event\"}],\"devdoc\":{\"methods\":{\"blockHashForRound(uint256)\":{\"params\":{\"_round\":\"Round number\"},\"return\":\"Blockhash for `_round`\"},\"constructor\":{\"details\":\"This constructor will not initialize any state variables besides `controller`. The following setter functions should be used to initialize state variables post-deployment: - setRoundLength() - setRoundLockAmount()\",\"params\":{\"_controller\":\"Address of Controller that this contract will be registered with\"}},\"setController(address)\":{\"params\":{\"_controller\":\"Controller contract address\"}},\"setLIPUpgradeRound(uint256,uint256)\":{\"params\":{\"_lip\":\"the LIP number.\",\"_round\":\"(optional) the round in which the LIP becomes active\"}},\"setRoundLength(uint256)\":{\"params\":{\"_roundLength\":\"Round length in blocks\"}},\"setRoundLockAmount(uint256)\":{\"params\":{\"_roundLockAmount\":\"Round lock amount as a % of the number of blocks in a round\"}}},\"title\":\"RoundsManager\"},\"userdoc\":{\"methods\":{\"blockHash(uint256)\":{\"notice\":\"Return blockhash for a block\"},\"blockHashForRound(uint256)\":{\"notice\":\"Return blockhash for a round\"},\"blockNum()\":{\"notice\":\"Return current block number\"},\"constructor\":\"RoundsManager constructor. Only invokes constructor of base Manager contract with provided Controller address\",\"currentRound()\":{\"notice\":\"Return current round\"},\"currentRoundInitialized()\":{\"notice\":\"Check if current round is initialized\"},\"currentRoundLocked()\":{\"notice\":\"Check if we are in the lock period of the current round\"},\"currentRoundStartBlock()\":{\"notice\":\"Return start block of current round\"},\"initializeRound()\":{\"notice\":\"Initialize the current round. Called once at the start of any round\"},\"setController(address)\":{\"notice\":\"Set controller. Only callable by current controller\"},\"setLIPUpgradeRound(uint256,uint256)\":{\"notice\":\"setLIPUpgradeRound sets the round an LIP upgrade would become active.\"},\"setRoundLength(uint256)\":{\"notice\":\"Set round length. Only callable by the controller owner\"},\"setRoundLockAmount(uint256)\":{\"notice\":\"Set round lock amount. Only callable by the controller owner\"}},\"notice\":\"Manages round progression and other blockchain time related operations of the Livepeer protocol\"}},\"settings\":{\"compilationTarget\":{\"contracts/rounds/RoundsManager.sol\":\"RoundsManager\"},\"evmVersion\":\"petersburg\",\"libraries\":{},\"metadata\":{\"useLiteralContent\":true},\"optimizer\":{\"enabled\":true,\"runs\":200},\"remappings\":[]},\"sources\":{\"contracts/IController.sol\":{\"content\":\"pragma solidity ^0.5.11;\\n\\nimport \\\"./zeppelin/Pausable.sol\\\";\\n\\ncontract IController is Pausable {\\n    event SetContractInfo(bytes32 id, address contractAddress, bytes20 gitCommitHash);\\n\\n    function setContractInfo(\\n        bytes32 _id,\\n        address _contractAddress,\\n        bytes20 _gitCommitHash\\n    ) external;\\n\\n    function updateController(bytes32 _id, address _controller) external;\\n\\n    function getContract(bytes32 _id) public view returns (address);\\n}\\n\",\"keccak256\":\"0x591fcbcadc9cfee2d453ef4d5d71eaffb3132aba8f8c226c7d7fe557e12f6354\"},\"contracts/IManager.sol\":{\"content\":\"pragma solidity ^0.5.11;\\n\\ncontract IManager {\\n    event SetController(address controller);\\n    event ParameterUpdate(string param);\\n\\n    function setController(address _controller) external;\\n}\\n\",\"keccak256\":\"0xf9da2c6ac6b67f9e89831c6fbdf0855290681f2b9508df60f25540b07b8786ae\"},\"contracts/Manager.sol\":{\"content\":\"pragma solidity ^0.5.11;\\n\\nimport \\\"./IManager.sol\\\";\\nimport \\\"./IController.sol\\\";\\n\\ncontract Manager is IManager {\\n    // Controller that contract is registered with\\n    IController public controller;\\n\\n    // Check if sender is controller\\n    modifier onlyController() {\\n        _onlyController();\\n        _;\\n    }\\n\\n    // Check if sender is controller owner\\n    modifier onlyControllerOwner() {\\n        _onlyControllerOwner();\\n        _;\\n    }\\n\\n    // Check if controller is not paused\\n    modifier whenSystemNotPaused() {\\n        _whenSystemNotPaused();\\n        _;\\n    }\\n\\n    // Check if controller is paused\\n    modifier whenSystemPaused() {\\n        _whenSystemPaused();\\n        _;\\n    }\\n\\n    constructor(address _controller) public {\\n        controller = IController(_controller);\\n    }\\n\\n    /**\\n     * @notice Set controller. Only callable by current controller\\n     * @param _controller Controller contract address\\n     */\\n    function setController(address _controller) external onlyController {\\n        controller = IController(_controller);\\n\\n        emit SetController(_controller);\\n    }\\n\\n    function _onlyController() internal view {\\n        require(msg.sender == address(controller), \\\"caller must be Controller\\\");\\n    }\\n\\n    function _onlyControllerOwner() internal view {\\n        require(msg.sender == controller.owner(), \\\"caller must be Controller owner\\\");\\n    }\\n\\n    function _whenSystemNotPaused() internal view {\\n        require(!controller.paused(), \\\"system is paused\\\");\\n    }\\n\\n    function _whenSystemPaused() internal view {\\n        require(controller.paused(), \\\"system is not paused\\\");\\n    }\\n}\\n\",\"keccak256\":\"0xed96efae1e97d487666ec13d31f7ab7fff92345a7a4fe457056703603aa59b4e\"},\"contracts/ManagerProxyTarget.sol\":{\"content\":\"pragma solidity ^0.5.11;\\n\\nimport \\\"./Manager.sol\\\";\\n\\n/**\\n * @title ManagerProxyTarget\\n * @notice The base contract that target contracts used by a proxy contract should inherit from\\n * @dev Both the target contract and the proxy contract (implemented as ManagerProxy) MUST inherit from ManagerProxyTarget in order to guarantee\\n that both contracts have the same storage layout. Differing storage layouts in a proxy contract and target contract can\\n potentially break the delegate proxy upgradeability mechanism\\n */\\ncontract ManagerProxyTarget is Manager {\\n    // Used to look up target contract address in controller's registry\\n    bytes32 public targetContractId;\\n}\\n\",\"keccak256\":\"0xb47e47494032c5739dda5f83561cf0517fdf0fb94d2e2e4ba910c8ff63e0cb1d\"},\"contracts/bonding/IBondingManager.sol\":{\"content\":\"pragma solidity ^0.5.11;\\n\\n/**\\n * @title Interface for BondingManager\\n * TODO: switch to interface type\\n */\\ncontract IBondingManager {\\n    event TranscoderUpdate(address indexed transcoder, uint256 rewardCut, uint256 feeShare);\\n    event TranscoderActivated(address indexed transcoder, uint256 activationRound);\\n    event TranscoderDeactivated(address indexed transcoder, uint256 deactivationRound);\\n    event TranscoderSlashed(address indexed transcoder, address finder, uint256 penalty, uint256 finderReward);\\n    event Reward(address indexed transcoder, uint256 amount);\\n    event Bond(\\n        address indexed newDelegate,\\n        address indexed oldDelegate,\\n        address indexed delegator,\\n        uint256 additionalAmount,\\n        uint256 bondedAmount\\n    );\\n    event Unbond(\\n        address indexed delegate,\\n        address indexed delegator,\\n        uint256 unbondingLockId,\\n        uint256 amount,\\n        uint256 withdrawRound\\n    );\\n    event Rebond(address indexed delegate, address indexed delegator, uint256 unbondingLockId, uint256 amount);\\n    event WithdrawStake(address indexed delegator, uint256 unbondingLockId, uint256 amount, uint256 withdrawRound);\\n    event WithdrawFees(address indexed delegator);\\n    event EarningsClaimed(\\n        address indexed delegate,\\n        address indexed delegator,\\n        uint256 rewards,\\n        uint256 fees,\\n        uint256 startRound,\\n        uint256 endRound\\n    );\\n\\n    // Deprecated events\\n    // These event signatures can be used to construct the appropriate topic hashes to filter for past logs corresponding\\n    // to these deprecated events.\\n    // event Bond(address indexed delegate, address indexed delegator);\\n    // event Unbond(address indexed delegate, address indexed delegator);\\n    // event WithdrawStake(address indexed delegator);\\n    // event TranscoderUpdate(address indexed transcoder, uint256 pendingRewardCut, uint256 pendingFeeShare, uint256 pendingPricePerSegment, bool registered);\\n    // event TranscoderEvicted(address indexed transcoder);\\n    // event TranscoderResigned(address indexed transcoder);\\n\\n    // External functions\\n    function updateTranscoderWithFees(\\n        address _transcoder,\\n        uint256 _fees,\\n        uint256 _round\\n    ) external;\\n\\n    function slashTranscoder(\\n        address _transcoder,\\n        address _finder,\\n        uint256 _slashAmount,\\n        uint256 _finderFee\\n    ) external;\\n\\n    function setCurrentRoundTotalActiveStake() external;\\n\\n    // Public functions\\n    function getTranscoderPoolSize() public view returns (uint256);\\n\\n    function transcoderTotalStake(address _transcoder) public view returns (uint256);\\n\\n    function isActiveTranscoder(address _transcoder) public view returns (bool);\\n\\n    function getTotalBonded() public view returns (uint256);\\n}\\n\",\"keccak256\":\"0x3f7766da04745c6f53596106e62ebe50be6518cfc42cc7cdcc5fea1c5c148256\"},\"contracts/libraries/MathUtils.sol\":{\"content\":\"pragma solidity ^0.5.11;\\n\\nimport \\\"openzeppelin-solidity/contracts/math/SafeMath.sol\\\";\\n\\nlibrary MathUtils {\\n    using SafeMath for uint256;\\n\\n    // Divisor used for representing percentages\\n    uint256 public constant PERC_DIVISOR = 1000000;\\n\\n    /**\\n     * @dev Returns whether an amount is a valid percentage out of PERC_DIVISOR\\n     * @param _amount Amount that is supposed to be a percentage\\n     */\\n    function validPerc(uint256 _amount) internal pure returns (bool) {\\n        return _amount <= PERC_DIVISOR;\\n    }\\n\\n    /**\\n     * @dev Compute percentage of a value with the percentage represented by a fraction\\n     * @param _amount Amount to take the percentage of\\n     * @param _fracNum Numerator of fraction representing the percentage\\n     * @param _fracDenom Denominator of fraction representing the percentage\\n     */\\n    function percOf(\\n        uint256 _amount,\\n        uint256 _fracNum,\\n        uint256 _fracDenom\\n    ) internal pure returns (uint256) {\\n        return _amount.mul(percPoints(_fracNum, _fracDenom)).div(PERC_DIVISOR);\\n    }\\n\\n    /**\\n     * @dev Compute percentage of a value with the percentage represented by a fraction over PERC_DIVISOR\\n     * @param _amount Amount to take the percentage of\\n     * @param _fracNum Numerator of fraction representing the percentage with PERC_DIVISOR as the denominator\\n     */\\n    function percOf(uint256 _amount, uint256 _fracNum) internal pure returns (uint256) {\\n        return _amount.mul(_fracNum).div(PERC_DIVISOR);\\n    }\\n\\n    /**\\n     * @dev Compute percentage representation of a fraction\\n     * @param _fracNum Numerator of fraction represeting the percentage\\n     * @param _fracDenom Denominator of fraction represeting the percentage\\n     */\\n    function percPoints(uint256 _fracNum, uint256 _fracDenom) internal pure returns (uint256) {\\n        return _fracNum.mul(PERC_DIVISOR).div(_fracDenom);\\n    }\\n}\\n\",\"keccak256\":\"0x6ab4d4fd557e70e5d769fdaa51560c1884abcf89ca353f2363e7a86d1be2c44b\"},\"contracts/rounds/IRoundsManager.sol\":{\"content\":\"pragma solidity ^0.5.11;\\n\\n/**\\n * @title RoundsManager interface\\n */\\ncontract IRoundsManager {\\n    // Events\\n    event NewRound(uint256 indexed round, bytes32 blockHash);\\n\\n    // Deprecated events\\n    // These event signatures can be used to construct the appropriate topic hashes to filter for past logs corresponding\\n    // to these deprecated events.\\n    // event NewRound(uint256 round)\\n\\n    // External functions\\n    function initializeRound() external;\\n\\n    function lipUpgradeRound(uint256 _lip) external view returns (uint256);\\n\\n    // Public functions\\n    function blockNum() public view returns (uint256);\\n\\n    function blockHash(uint256 _block) public view returns (bytes32);\\n\\n    function blockHashForRound(uint256 _round) public view returns (bytes32);\\n\\n    function currentRound() public view returns (uint256);\\n\\n    function currentRoundStartBlock() public view returns (uint256);\\n\\n    function currentRoundInitialized() public view returns (bool);\\n\\n    function currentRoundLocked() public view returns (bool);\\n}\\n\",\"keccak256\":\"0xad97406674e411fa618c6e48f99ab01b0301c7212622426ea6ef72510c0d8e3d\"},\"contracts/rounds/RoundsManager.sol\":{\"content\":\"pragma solidity 0.5.11;\\n\\nimport \\\"../ManagerProxyTarget.sol\\\";\\nimport \\\"./IRoundsManager.sol\\\";\\nimport \\\"../bonding/IBondingManager.sol\\\";\\nimport \\\"../token/IMinter.sol\\\";\\nimport \\\"../libraries/MathUtils.sol\\\";\\n\\nimport \\\"openzeppelin-solidity/contracts/math/SafeMath.sol\\\";\\n\\n/**\\n * @title RoundsManager\\n * @notice Manages round progression and other blockchain time related operations of the Livepeer protocol\\n */\\ncontract RoundsManager is ManagerProxyTarget, IRoundsManager {\\n    using SafeMath for uint256;\\n\\n    // Round length in blocks\\n    uint256 public roundLength;\\n    // Lock period of a round as a % of round length\\n    // Transcoders cannot join the transcoder pool or change their rates during the lock period at the end of a round\\n    // The lock period provides delegators time to review transcoder information without changes\\n    // # of blocks in the lock period = (roundLength * roundLockAmount) / PERC_DIVISOR\\n    uint256 public roundLockAmount;\\n    // Last initialized round. After first round, this is the last round during which initializeRound() was called\\n    uint256 public lastInitializedRound;\\n    // Round in which roundLength was last updated\\n    uint256 public lastRoundLengthUpdateRound;\\n    // Start block of the round in which roundLength was last updated\\n    uint256 public lastRoundLengthUpdateStartBlock;\\n\\n    // Mapping round number => block hash for the round\\n    mapping(uint256 => bytes32) internal _blockHashForRound;\\n\\n    // LIP Upgrade Rounds\\n    // These can be used in conditionals to ensure backwards compatibility or skip such backwards compatibility logic\\n    // in case 'currentRound' > LIP-X upgrade round\\n    mapping(uint256 => uint256) public lipUpgradeRound; // mapping (LIP-number > round number)\\n\\n    /**\\n     * @notice RoundsManager constructor. Only invokes constructor of base Manager contract with provided Controller address\\n     * @dev This constructor will not initialize any state variables besides `controller`. The following setter functions\\n     * should be used to initialize state variables post-deployment:\\n     * - setRoundLength()\\n     * - setRoundLockAmount()\\n     * @param _controller Address of Controller that this contract will be registered with\\n     */\\n    constructor(address _controller) public Manager(_controller) {}\\n\\n    /**\\n     * @notice Set round length. Only callable by the controller owner\\n     * @param _roundLength Round length in blocks\\n     */\\n    function setRoundLength(uint256 _roundLength) external onlyControllerOwner {\\n        require(_roundLength > 0, \\\"round length cannot be 0\\\");\\n\\n        if (roundLength == 0) {\\n            // If first time initializing roundLength, set roundLength before\\n            // lastRoundLengthUpdateRound and lastRoundLengthUpdateStartBlock\\n            roundLength = _roundLength;\\n            lastRoundLengthUpdateRound = currentRound();\\n            lastRoundLengthUpdateStartBlock = currentRoundStartBlock();\\n        } else {\\n            // If updating roundLength, set roundLength after\\n            // lastRoundLengthUpdateRound and lastRoundLengthUpdateStartBlock\\n            lastRoundLengthUpdateRound = currentRound();\\n            lastRoundLengthUpdateStartBlock = currentRoundStartBlock();\\n            roundLength = _roundLength;\\n        }\\n\\n        emit ParameterUpdate(\\\"roundLength\\\");\\n    }\\n\\n    /**\\n     * @notice Set round lock amount. Only callable by the controller owner\\n     * @param _roundLockAmount Round lock amount as a % of the number of blocks in a round\\n     */\\n    function setRoundLockAmount(uint256 _roundLockAmount) external onlyControllerOwner {\\n        require(MathUtils.validPerc(_roundLockAmount), \\\"round lock amount must be a valid percentage\\\");\\n\\n        roundLockAmount = _roundLockAmount;\\n\\n        emit ParameterUpdate(\\\"roundLockAmount\\\");\\n    }\\n\\n    /**\\n     * @notice Initialize the current round. Called once at the start of any round\\n     */\\n    function initializeRound() external whenSystemNotPaused {\\n        uint256 currRound = currentRound();\\n\\n        uint256 lip73Round = lipUpgradeRound[73];\\n        require(lip73Round == 0 || currRound < lip73Round, \\\"cannot initialize past LIP-73 round\\\");\\n\\n        // Check if already called for the current round\\n        require(lastInitializedRound < currRound, \\\"round already initialized\\\");\\n\\n        // Set current round as initialized\\n        lastInitializedRound = currRound;\\n        // Store block hash for round\\n        bytes32 roundBlockHash = blockHash(blockNum().sub(1));\\n        _blockHashForRound[currRound] = roundBlockHash;\\n        // Set total active stake for the round\\n        bondingManager().setCurrentRoundTotalActiveStake();\\n        // Set mintable rewards for the round\\n        minter().setCurrentRewardTokens();\\n\\n        emit NewRound(currRound, roundBlockHash);\\n    }\\n\\n    /**\\n     * @notice setLIPUpgradeRound sets the round an LIP upgrade would become active.\\n     * @param _lip the LIP number.\\n     * @param _round (optional) the round in which the LIP becomes active\\n     */\\n    function setLIPUpgradeRound(uint256 _lip, uint256 _round) external onlyControllerOwner {\\n        require(lipUpgradeRound[_lip] == 0, \\\"LIP upgrade round already set\\\");\\n        lipUpgradeRound[_lip] = _round;\\n    }\\n\\n    /**\\n     * @notice Return current block number\\n     */\\n    function blockNum() public view returns (uint256) {\\n        return block.number;\\n    }\\n\\n    /**\\n     * @notice Return blockhash for a block\\n     */\\n    function blockHash(uint256 _block) public view returns (bytes32) {\\n        uint256 currentBlock = blockNum();\\n        require(_block < currentBlock, \\\"can only retrieve past block hashes\\\");\\n        require(currentBlock < 256 || _block >= currentBlock - 256, \\\"can only retrieve hashes for last 256 blocks\\\");\\n\\n        return blockhash(_block);\\n    }\\n\\n    /**\\n     * @notice Return blockhash for a round\\n     * @param _round Round number\\n     * @return Blockhash for `_round`\\n     */\\n    function blockHashForRound(uint256 _round) public view returns (bytes32) {\\n        return _blockHashForRound[_round];\\n    }\\n\\n    /**\\n     * @notice Return current round\\n     */\\n    function currentRound() public view returns (uint256) {\\n        // Compute # of rounds since roundLength was last updated\\n        uint256 roundsSinceUpdate = blockNum().sub(lastRoundLengthUpdateStartBlock).div(roundLength);\\n        // Current round = round that roundLength was last updated + # of rounds since roundLength was last updated\\n        return lastRoundLengthUpdateRound.add(roundsSinceUpdate);\\n    }\\n\\n    /**\\n     * @notice Return start block of current round\\n     */\\n    function currentRoundStartBlock() public view returns (uint256) {\\n        // Compute # of rounds since roundLength was last updated\\n        uint256 roundsSinceUpdate = blockNum().sub(lastRoundLengthUpdateStartBlock).div(roundLength);\\n        // Current round start block = start block of round that roundLength was last updated + (# of rounds since roundLenght was last updated * roundLength)\\n        return lastRoundLengthUpdateStartBlock.add(roundsSinceUpdate.mul(roundLength));\\n    }\\n\\n    /**\\n     * @notice Check if current round is initialized\\n     */\\n    function currentRoundInitialized() public view returns (bool) {\\n        return lastInitializedRound == currentRound();\\n    }\\n\\n    /**\\n     * @notice Check if we are in the lock period of the current round\\n     */\\n    function currentRoundLocked() public view returns (bool) {\\n        uint256 lockedBlocks = MathUtils.percOf(roundLength, roundLockAmount);\\n        return blockNum().sub(currentRoundStartBlock()) >= roundLength.sub(lockedBlocks);\\n    }\\n\\n    /**\\n     * @dev Return BondingManager interface\\n     */\\n    function bondingManager() internal view returns (IBondingManager) {\\n        return IBondingManager(controller.getContract(keccak256(\\\"BondingManager\\\")));\\n    }\\n\\n    /**\\n     * @dev Return Minter interface\\n     */\\n    function minter() internal view returns (IMinter) {\\n        return IMinter(controller.getContract(keccak256(\\\"Minter\\\")));\\n    }\\n}\\n\",\"keccak256\":\"0x4a4b6a28c6a473679dc43f10835bdeb8c4aff4269efec563bed6def48d2f21dd\"},\"contracts/token/IMinter.sol\":{\"content\":\"pragma solidity ^0.5.11;\\n\\nimport \\\"../IController.sol\\\";\\n\\n/**\\n * @title Minter interface\\n */\\ncontract IMinter {\\n    // Events\\n    event SetCurrentRewardTokens(uint256 currentMintableTokens, uint256 currentInflation);\\n\\n    // External functions\\n    function createReward(uint256 _fracNum, uint256 _fracDenom) external returns (uint256);\\n\\n    function trustedTransferTokens(address _to, uint256 _amount) external;\\n\\n    function trustedBurnTokens(uint256 _amount) external;\\n\\n    function trustedWithdrawETH(address payable _to, uint256 _amount) external;\\n\\n    function depositETH() external payable returns (bool);\\n\\n    function setCurrentRewardTokens() external;\\n\\n    function currentMintableTokens() external view returns (uint256);\\n\\n    function currentMintedTokens() external view returns (uint256);\\n\\n    // Public functions\\n    function getController() public view returns (IController);\\n}\\n\",\"keccak256\":\"0x1f1029f1ec069a31694e991f4e7f5c555b9e2eec14946242893bf4f25c4d0467\"},\"contracts/zeppelin/Ownable.sol\":{\"content\":\"pragma solidity ^0.5.11;\\n\\n/**\\n * @title Ownable\\n * @dev The Ownable contract has an owner address, and provides basic authorization control\\n * functions, this simplifies the implementation of \\\"user permissions\\\".\\n */\\ncontract Ownable {\\n    address public owner;\\n\\n    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);\\n\\n    /**\\n     * @dev The Ownable constructor sets the original `owner` of the contract to the sender\\n     * account.\\n     */\\n    constructor() public {\\n        owner = msg.sender;\\n    }\\n\\n    /**\\n     * @dev Throws if called by any account other than the owner.\\n     */\\n    modifier onlyOwner() {\\n        require(msg.sender == owner);\\n        _;\\n    }\\n\\n    /**\\n     * @dev Allows the current owner to transfer control of the contract to a newOwner.\\n     * @param newOwner The address to transfer ownership to.\\n     */\\n    function transferOwnership(address newOwner) public onlyOwner {\\n        require(newOwner != address(0));\\n        emit OwnershipTransferred(owner, newOwner);\\n        owner = newOwner;\\n    }\\n}\\n\",\"keccak256\":\"0x3689b5ecbe68f236d23bdc4e045274debc31e00bad129042d25185a4f7ee7675\"},\"contracts/zeppelin/Pausable.sol\":{\"content\":\"pragma solidity ^0.5.11;\\n\\nimport \\\"./Ownable.sol\\\";\\n\\n/**\\n * @title Pausable\\n * @dev Base contract which allows children to implement an emergency stop mechanism.\\n */\\ncontract Pausable is Ownable {\\n    event Pause();\\n    event Unpause();\\n\\n    bool public paused = false;\\n\\n    /**\\n     * @dev Modifier to make a function callable only when the contract is not paused.\\n     */\\n    modifier whenNotPaused() {\\n        require(!paused);\\n        _;\\n    }\\n\\n    /**\\n     * @dev Modifier to make a function callable only when the contract is paused.\\n     */\\n    modifier whenPaused() {\\n        require(paused);\\n        _;\\n    }\\n\\n    /**\\n     * @dev called by the owner to pause, triggers stopped state\\n     */\\n    function pause() public onlyOwner whenNotPaused {\\n        paused = true;\\n        emit Pause();\\n    }\\n\\n    /**\\n     * @dev called by the owner to unpause, returns to normal state\\n     */\\n    function unpause() public onlyOwner whenPaused {\\n        paused = false;\\n        emit Unpause();\\n    }\\n}\\n\",\"keccak256\":\"0x434f6e0c3521748aa10467786650458449a844a13eaa9dc9c60452a02b77034e\"},\"openzeppelin-solidity/contracts/math/SafeMath.sol\":{\"content\":\"pragma solidity ^0.5.0;\\n\\n/**\\n * @dev Wrappers over Solidity's arithmetic operations with added overflow\\n * checks.\\n *\\n * Arithmetic operations in Solidity wrap on overflow. This can easily result\\n * in bugs, because programmers usually assume that an overflow raises an\\n * error, which is the standard behavior in high level programming languages.\\n * `SafeMath` restores this intuition by reverting the transaction when an\\n * operation overflows.\\n *\\n * Using this library instead of the unchecked operations eliminates an entire\\n * class of bugs, so it's recommended to use it always.\\n */\\nlibrary SafeMath {\\n    /**\\n     * @dev Returns the addition of two unsigned integers, reverting on\\n     * overflow.\\n     *\\n     * Counterpart to Solidity's `+` operator.\\n     *\\n     * Requirements:\\n     * - Addition cannot overflow.\\n     */\\n    function add(uint256 a, uint256 b) internal pure returns (uint256) {\\n        uint256 c = a + b;\\n        require(c >= a, \\\"SafeMath: addition overflow\\\");\\n\\n        return c;\\n    }\\n\\n    /**\\n     * @dev Returns the subtraction of two unsigned integers, reverting on\\n     * overflow (when the result is negative).\\n     *\\n     * Counterpart to Solidity's `-` operator.\\n     *\\n     * Requirements:\\n     * - Subtraction cannot overflow.\\n     */\\n    function sub(uint256 a, uint256 b) internal pure returns (uint256) {\\n        require(b <= a, \\\"SafeMath: subtraction overflow\\\");\\n        uint256 c = a - b;\\n\\n        return c;\\n    }\\n\\n    /**\\n     * @dev Returns the multiplication of two unsigned integers, reverting on\\n     * overflow.\\n     *\\n     * Counterpart to Solidity's `*` operator.\\n     *\\n     * Requirements:\\n     * - Multiplication cannot overflow.\\n     */\\n    function mul(uint256 a, uint256 b) internal pure returns (uint256) {\\n        // Gas optimization: this is cheaper than requiring 'a' not being zero, but the\\n        // benefit is lost if 'b' is also tested.\\n        // See: https://github.com/OpenZeppelin/openzeppelin-solidity/pull/522\\n        if (a == 0) {\\n            return 0;\\n        }\\n\\n        uint256 c = a * b;\\n        require(c / a == b, \\\"SafeMath: multiplication overflow\\\");\\n\\n        return c;\\n    }\\n\\n    /**\\n     * @dev Returns the integer division of two unsigned integers. Reverts on\\n     * division by zero. The result is rounded towards zero.\\n     *\\n     * Counterpart to Solidity's `/` operator. Note: this function uses a\\n     * `revert` opcode (which leaves remaining gas untouched) while Solidity\\n     * uses an invalid opcode to revert (consuming all remaining gas).\\n     *\\n     * Requirements:\\n     * - The divisor cannot be zero.\\n     */\\n    function div(uint256 a, uint256 b) internal pure returns (uint256) {\\n        // Solidity only automatically asserts when dividing by 0\\n        require(b > 0, \\\"SafeMath: division by zero\\\");\\n        uint256 c = a / b;\\n        // assert(a == b * c + a % b); // There is no case in which this doesn't hold\\n\\n        return c;\\n    }\\n\\n    /**\\n     * @dev Returns the remainder of dividing two unsigned integers. (unsigned integer modulo),\\n     * Reverts when dividing by zero.\\n     *\\n     * Counterpart to Solidity's `%` operator. This function uses a `revert`\\n     * opcode (which leaves remaining gas untouched) while Solidity uses an\\n     * invalid opcode to revert (consuming all remaining gas).\\n     *\\n     * Requirements:\\n     * - The divisor cannot be zero.\\n     */\\n    function mod(uint256 a, uint256 b) internal pure returns (uint256) {\\n        require(b != 0, \\\"SafeMath: modulo by zero\\\");\\n        return a % b;\\n    }\\n}\\n\",\"keccak256\":\"0x4ccf2d7b51873db1ccfd54ca2adae5eac3b184f9699911ed4490438419f1c690\"}},\"version\":1}",
+  "bytecode": "0x608060405234801561001057600080fd5b50604051610eeb380380610eeb8339818101604052602081101561003357600080fd5b5051600080546001600160a01b039092166001600160a01b0319909216919091179055610e86806100656000396000f3fe608060405234801561001057600080fd5b506004361061012c5760003560e01c806385df51fd116100ad5780638fa148f2116100715780638fa148f21461025557806392eefe9b1461025d578063d4807fb214610283578063f5b490d51461028b578063f77c4791146102935761012c565b806385df51fd146102185780638807f36e146102355780638a19c8bc1461023d5780638ae63d6d146102455780638b649b941461024d5761012c565b80633aa4add4116100f45780633aa4add4146101c657806351720b41146101e3578063668abff7146101eb578063681312f5146101f35780636841f253146102105761012c565b80630b1573b8146101315780630fe1dfa81461015057806313013e7a1461016a5780631e6d4c221461018d578063219bc76c146101aa575b600080fd5b61014e6004803603602081101561014757600080fd5b50356102b7565b005b61015861035d565b60408051918252519081900360200190f35b61014e6004803603604081101561018057600080fd5b5080359060200135610363565b610158600480360360208110156101a357600080fd5b50356103de565b6101b26103f0565b604080519115158252519081900360200190f35b610158600480360360208110156101dc57600080fd5b5035610403565b610158610415565b61015861041b565b61014e6004803603602081101561020957600080fd5b5035610421565b6101b2610512565b6101586004803603602081101561022e57600080fd5b5035610560565b610158610600565b610158610606565b610158610645565b610158610649565b61015861064f565b61014e6004803603602081101561027357600080fd5b50356001600160a01b031661068f565b61014e6106eb565b6101586108e7565b61029b6108ed565b604080516001600160a01b039092168252519081900360200190f35b6102bf6108fc565b6102c8816109d3565b6103035760405162461bcd60e51b815260040180806020018281038252602c815260200180610dfa602c913960400191505060405180910390fd5b6003819055604080516020808252600f908201526e1c9bdd5b99131bd8dad05b5bdd5b9d608a1b8183015290517f9f5033568d78ae30f29f01e944f97b2216493bd19d1b46d429673acff3dcd6749181900360600190a150565b60055481565b61036b6108fc565b600082815260086020526040902054156103cc576040805162461bcd60e51b815260206004820152601d60248201527f4c4950207570677261646520726f756e6420616c726561647920736574000000604482015290519081900360640190fd5b60009182526008602052604090912055565b60086020526000908152604090205481565b60006103fa610606565b60045414905090565b60009081526007602052604090205490565b60015481565b60065481565b6104296108fc565b6000811161047e576040805162461bcd60e51b815260206004820152601860248201527f726f756e64206c656e6774682063616e6e6f7420626520300000000000000000604482015290519081900360640190fd5b6002546104a5576002819055610492610606565b60055561049d61064f565b6006556104c1565b6104ad610606565b6005556104b861064f565b60065560028190555b604080516020808252600b908201526a0e4deeadcc898cadccee8d60ab1b8183015290517f9f5033568d78ae30f29f01e944f97b2216493bd19d1b46d429673acff3dcd6749181900360600190a150565b6000806105236002546003546109dc565b600254909150610539908263ffffffff6109fe16565b61055861054461064f565b61054c610645565b9063ffffffff6109fe16565b101591505090565b60008061056b610645565b90508083106105ab5760405162461bcd60e51b8152600401808060200182810382526023815260200180610dd76023913960400191505060405180910390fd5b6101008110806105bf575061010081038310155b6105fa5760405162461bcd60e51b815260040180806020018281038252602c815260200180610e26602c913960400191505060405180910390fd5b50504090565b60045481565b60008061062960025461061d60065461054c610645565b9063ffffffff610a5b16565b60055490915061063f908263ffffffff610ac516565b91505090565b4390565b60025481565b60008061066660025461061d60065461054c610645565b905061063f61068060025483610b1f90919063ffffffff16565b6006549063ffffffff610ac516565b610697610b78565b600080546001600160a01b0383166001600160a01b0319909116811790915560408051918252517f4ff638452bbf33c012645d18ae6f05515ff5f2d1dfb0cece8cbf018c60903f709181900360200190a150565b6106f3610bd7565b60006106fd610606565b604960005260086020527f2a8e02c4d7c4d57484a214c83e3d280fa57590b439e7666df589c9122955524c5490915080158061073857508082105b6107735760405162461bcd60e51b8152600401808060200182810382526023815260200180610d936023913960400191505060405180910390fd5b81600454106107c9576040805162461bcd60e51b815260206004820152601960248201527f726f756e6420616c726561647920696e697469616c697a656400000000000000604482015290519081900360640190fd5b600482905560006107e56107e0600161054c610645565b610560565b60008481526007602052604090208190559050610800610c95565b6001600160a01b031663713f22166040518163ffffffff1660e01b8152600401600060405180830381600087803b15801561083a57600080fd5b505af115801561084e573d6000803e3d6000fd5b5050505061085a610d30565b6001600160a01b031663ece2064c6040518163ffffffff1660e01b8152600401600060405180830381600087803b15801561089457600080fd5b505af11580156108a8573d6000803e3d6000fd5b50506040805184815290518693507f22f2fc17c5daf07db2379b3a03a8ef20a183f761097a58fce219c8a14619e78692509081900360200190a2505050565b60035481565b6000546001600160a01b031681565b6000809054906101000a90046001600160a01b03166001600160a01b0316638da5cb5b6040518163ffffffff1660e01b815260040160206040518083038186803b15801561094957600080fd5b505afa15801561095d573d6000803e3d6000fd5b505050506040513d602081101561097357600080fd5b50516001600160a01b031633146109d1576040805162461bcd60e51b815260206004820152601f60248201527f63616c6c6572206d75737420626520436f6e74726f6c6c6572206f776e657200604482015290519081900360640190fd5b565b620f4240101590565b60006109f5620f424061061d858563ffffffff610b1f16565b90505b92915050565b600082821115610a55576040805162461bcd60e51b815260206004820152601e60248201527f536166654d6174683a207375627472616374696f6e206f766572666c6f770000604482015290519081900360640190fd5b50900390565b6000808211610ab1576040805162461bcd60e51b815260206004820152601a60248201527f536166654d6174683a206469766973696f6e206279207a65726f000000000000604482015290519081900360640190fd5b6000828481610abc57fe5b04949350505050565b6000828201838110156109f5576040805162461bcd60e51b815260206004820152601b60248201527f536166654d6174683a206164646974696f6e206f766572666c6f770000000000604482015290519081900360640190fd5b600082610b2e575060006109f8565b82820282848281610b3b57fe5b04146109f55760405162461bcd60e51b8152600401808060200182810382526021815260200180610db66021913960400191505060405180910390fd5b6000546001600160a01b031633146109d1576040805162461bcd60e51b815260206004820152601960248201527f63616c6c6572206d75737420626520436f6e74726f6c6c657200000000000000604482015290519081900360640190fd5b6000809054906101000a90046001600160a01b03166001600160a01b0316635c975abb6040518163ffffffff1660e01b815260040160206040518083038186803b158015610c2457600080fd5b505afa158015610c38573d6000803e3d6000fd5b505050506040513d6020811015610c4e57600080fd5b5051156109d1576040805162461bcd60e51b815260206004820152601060248201526f1cde5cdd195b481a5cc81c185d5cd95960821b604482015290519081900360640190fd5b60008054604080516d2137b73234b733a6b0b730b3b2b960911b8152815190819003600e018120631c2d8fb360e31b8252600482015290516001600160a01b039092169163e16c7d9891602480820192602092909190829003018186803b158015610cff57600080fd5b505afa158015610d13573d6000803e3d6000fd5b505050506040513d6020811015610d2957600080fd5b5051905090565b60008054604080516526b4b73a32b960d11b81528151908190036006018120631c2d8fb360e31b8252600482015290516001600160a01b039092169163e16c7d9891602480820192602092909190829003018186803b158015610cff57600080fdfe63616e6e6f7420696e697469616c697a652070617374204c49502d373320726f756e64536166654d6174683a206d756c7469706c69636174696f6e206f766572666c6f7763616e206f6e6c79207265747269657665207061737420626c6f636b20686173686573726f756e64206c6f636b20616d6f756e74206d75737420626520612076616c69642070657263656e7461676563616e206f6e6c792072657472696576652068617368657320666f72206c6173742032353620626c6f636b73a265627a7a72315820679eac56d5b7f8b79a241a0df99847c43cc0be80626b804b37952c101d8ed78b64736f6c634300050b0032",
+  "deployedBytecode": "0x608060405234801561001057600080fd5b506004361061012c5760003560e01c806385df51fd116100ad5780638fa148f2116100715780638fa148f21461025557806392eefe9b1461025d578063d4807fb214610283578063f5b490d51461028b578063f77c4791146102935761012c565b806385df51fd146102185780638807f36e146102355780638a19c8bc1461023d5780638ae63d6d146102455780638b649b941461024d5761012c565b80633aa4add4116100f45780633aa4add4146101c657806351720b41146101e3578063668abff7146101eb578063681312f5146101f35780636841f253146102105761012c565b80630b1573b8146101315780630fe1dfa81461015057806313013e7a1461016a5780631e6d4c221461018d578063219bc76c146101aa575b600080fd5b61014e6004803603602081101561014757600080fd5b50356102b7565b005b61015861035d565b60408051918252519081900360200190f35b61014e6004803603604081101561018057600080fd5b5080359060200135610363565b610158600480360360208110156101a357600080fd5b50356103de565b6101b26103f0565b604080519115158252519081900360200190f35b610158600480360360208110156101dc57600080fd5b5035610403565b610158610415565b61015861041b565b61014e6004803603602081101561020957600080fd5b5035610421565b6101b2610512565b6101586004803603602081101561022e57600080fd5b5035610560565b610158610600565b610158610606565b610158610645565b610158610649565b61015861064f565b61014e6004803603602081101561027357600080fd5b50356001600160a01b031661068f565b61014e6106eb565b6101586108e7565b61029b6108ed565b604080516001600160a01b039092168252519081900360200190f35b6102bf6108fc565b6102c8816109d3565b6103035760405162461bcd60e51b815260040180806020018281038252602c815260200180610dfa602c913960400191505060405180910390fd5b6003819055604080516020808252600f908201526e1c9bdd5b99131bd8dad05b5bdd5b9d608a1b8183015290517f9f5033568d78ae30f29f01e944f97b2216493bd19d1b46d429673acff3dcd6749181900360600190a150565b60055481565b61036b6108fc565b600082815260086020526040902054156103cc576040805162461bcd60e51b815260206004820152601d60248201527f4c4950207570677261646520726f756e6420616c726561647920736574000000604482015290519081900360640190fd5b60009182526008602052604090912055565b60086020526000908152604090205481565b60006103fa610606565b60045414905090565b60009081526007602052604090205490565b60015481565b60065481565b6104296108fc565b6000811161047e576040805162461bcd60e51b815260206004820152601860248201527f726f756e64206c656e6774682063616e6e6f7420626520300000000000000000604482015290519081900360640190fd5b6002546104a5576002819055610492610606565b60055561049d61064f565b6006556104c1565b6104ad610606565b6005556104b861064f565b60065560028190555b604080516020808252600b908201526a0e4deeadcc898cadccee8d60ab1b8183015290517f9f5033568d78ae30f29f01e944f97b2216493bd19d1b46d429673acff3dcd6749181900360600190a150565b6000806105236002546003546109dc565b600254909150610539908263ffffffff6109fe16565b61055861054461064f565b61054c610645565b9063ffffffff6109fe16565b101591505090565b60008061056b610645565b90508083106105ab5760405162461bcd60e51b8152600401808060200182810382526023815260200180610dd76023913960400191505060405180910390fd5b6101008110806105bf575061010081038310155b6105fa5760405162461bcd60e51b815260040180806020018281038252602c815260200180610e26602c913960400191505060405180910390fd5b50504090565b60045481565b60008061062960025461061d60065461054c610645565b9063ffffffff610a5b16565b60055490915061063f908263ffffffff610ac516565b91505090565b4390565b60025481565b60008061066660025461061d60065461054c610645565b905061063f61068060025483610b1f90919063ffffffff16565b6006549063ffffffff610ac516565b610697610b78565b600080546001600160a01b0383166001600160a01b0319909116811790915560408051918252517f4ff638452bbf33c012645d18ae6f05515ff5f2d1dfb0cece8cbf018c60903f709181900360200190a150565b6106f3610bd7565b60006106fd610606565b604960005260086020527f2a8e02c4d7c4d57484a214c83e3d280fa57590b439e7666df589c9122955524c5490915080158061073857508082105b6107735760405162461bcd60e51b8152600401808060200182810382526023815260200180610d936023913960400191505060405180910390fd5b81600454106107c9576040805162461bcd60e51b815260206004820152601960248201527f726f756e6420616c726561647920696e697469616c697a656400000000000000604482015290519081900360640190fd5b600482905560006107e56107e0600161054c610645565b610560565b60008481526007602052604090208190559050610800610c95565b6001600160a01b031663713f22166040518163ffffffff1660e01b8152600401600060405180830381600087803b15801561083a57600080fd5b505af115801561084e573d6000803e3d6000fd5b5050505061085a610d30565b6001600160a01b031663ece2064c6040518163ffffffff1660e01b8152600401600060405180830381600087803b15801561089457600080fd5b505af11580156108a8573d6000803e3d6000fd5b50506040805184815290518693507f22f2fc17c5daf07db2379b3a03a8ef20a183f761097a58fce219c8a14619e78692509081900360200190a2505050565b60035481565b6000546001600160a01b031681565b6000809054906101000a90046001600160a01b03166001600160a01b0316638da5cb5b6040518163ffffffff1660e01b815260040160206040518083038186803b15801561094957600080fd5b505afa15801561095d573d6000803e3d6000fd5b505050506040513d602081101561097357600080fd5b50516001600160a01b031633146109d1576040805162461bcd60e51b815260206004820152601f60248201527f63616c6c6572206d75737420626520436f6e74726f6c6c6572206f776e657200604482015290519081900360640190fd5b565b620f4240101590565b60006109f5620f424061061d858563ffffffff610b1f16565b90505b92915050565b600082821115610a55576040805162461bcd60e51b815260206004820152601e60248201527f536166654d6174683a207375627472616374696f6e206f766572666c6f770000604482015290519081900360640190fd5b50900390565b6000808211610ab1576040805162461bcd60e51b815260206004820152601a60248201527f536166654d6174683a206469766973696f6e206279207a65726f000000000000604482015290519081900360640190fd5b6000828481610abc57fe5b04949350505050565b6000828201838110156109f5576040805162461bcd60e51b815260206004820152601b60248201527f536166654d6174683a206164646974696f6e206f766572666c6f770000000000604482015290519081900360640190fd5b600082610b2e575060006109f8565b82820282848281610b3b57fe5b04146109f55760405162461bcd60e51b8152600401808060200182810382526021815260200180610db66021913960400191505060405180910390fd5b6000546001600160a01b031633146109d1576040805162461bcd60e51b815260206004820152601960248201527f63616c6c6572206d75737420626520436f6e74726f6c6c657200000000000000604482015290519081900360640190fd5b6000809054906101000a90046001600160a01b03166001600160a01b0316635c975abb6040518163ffffffff1660e01b815260040160206040518083038186803b158015610c2457600080fd5b505afa158015610c38573d6000803e3d6000fd5b505050506040513d6020811015610c4e57600080fd5b5051156109d1576040805162461bcd60e51b815260206004820152601060248201526f1cde5cdd195b481a5cc81c185d5cd95960821b604482015290519081900360640190fd5b60008054604080516d2137b73234b733a6b0b730b3b2b960911b8152815190819003600e018120631c2d8fb360e31b8252600482015290516001600160a01b039092169163e16c7d9891602480820192602092909190829003018186803b158015610cff57600080fd5b505afa158015610d13573d6000803e3d6000fd5b505050506040513d6020811015610d2957600080fd5b5051905090565b60008054604080516526b4b73a32b960d11b81528151908190036006018120631c2d8fb360e31b8252600482015290516001600160a01b039092169163e16c7d9891602480820192602092909190829003018186803b158015610cff57600080fdfe63616e6e6f7420696e697469616c697a652070617374204c49502d373320726f756e64536166654d6174683a206d756c7469706c69636174696f6e206f766572666c6f7763616e206f6e6c79207265747269657665207061737420626c6f636b20686173686573726f756e64206c6f636b20616d6f756e74206d75737420626520612076616c69642070657263656e7461676563616e206f6e6c792072657472696576652068617368657320666f72206c6173742032353620626c6f636b73a265627a7a72315820679eac56d5b7f8b79a241a0df99847c43cc0be80626b804b37952c101d8ed78b64736f6c634300050b0032",
+  "devdoc": {
+    "methods": {
+      "blockHashForRound(uint256)": {
+        "params": {
+          "_round": "Round number"
+        },
+        "return": "Blockhash for `_round`"
+      },
+      "constructor": {
+        "details": "This constructor will not initialize any state variables besides `controller`. The following setter functions should be used to initialize state variables post-deployment: - setRoundLength() - setRoundLockAmount()",
+        "params": {
+          "_controller": "Address of Controller that this contract will be registered with"
+        }
+      },
+      "setController(address)": {
+        "params": {
+          "_controller": "Controller contract address"
+        }
+      },
+      "setLIPUpgradeRound(uint256,uint256)": {
+        "params": {
+          "_lip": "the LIP number.",
+          "_round": "(optional) the round in which the LIP becomes active"
+        }
+      },
+      "setRoundLength(uint256)": {
+        "params": {
+          "_roundLength": "Round length in blocks"
+        }
+      },
+      "setRoundLockAmount(uint256)": {
+        "params": {
+          "_roundLockAmount": "Round lock amount as a % of the number of blocks in a round"
+        }
+      }
+    },
+    "title": "RoundsManager"
+  },
+  "userdoc": {
+    "methods": {
+      "blockHash(uint256)": {
+        "notice": "Return blockhash for a block"
+      },
+      "blockHashForRound(uint256)": {
+        "notice": "Return blockhash for a round"
+      },
+      "blockNum()": {
+        "notice": "Return current block number"
+      },
+      "constructor": "RoundsManager constructor. Only invokes constructor of base Manager contract with provided Controller address",
+      "currentRound()": {
+        "notice": "Return current round"
+      },
+      "currentRoundInitialized()": {
+        "notice": "Check if current round is initialized"
+      },
+      "currentRoundLocked()": {
+        "notice": "Check if we are in the lock period of the current round"
+      },
+      "currentRoundStartBlock()": {
+        "notice": "Return start block of current round"
+      },
+      "initializeRound()": {
+        "notice": "Initialize the current round. Called once at the start of any round"
+      },
+      "setController(address)": {
+        "notice": "Set controller. Only callable by current controller"
+      },
+      "setLIPUpgradeRound(uint256,uint256)": {
+        "notice": "setLIPUpgradeRound sets the round an LIP upgrade would become active."
+      },
+      "setRoundLength(uint256)": {
+        "notice": "Set round length. Only callable by the controller owner"
+      },
+      "setRoundLockAmount(uint256)": {
+        "notice": "Set round lock amount. Only callable by the controller owner"
+      }
+    },
+    "notice": "Manages round progression and other blockchain time related operations of the Livepeer protocol"
+  }
+}

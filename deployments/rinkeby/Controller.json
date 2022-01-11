@@ -1,0 +1,297 @@
+{
+  "address": "0x9a9827455911a858E55f07911904fACC0D66027E",
+  "abi": [
+    {
+      "constant": false,
+      "inputs": [],
+      "name": "unpause",
+      "outputs": [],
+      "payable": false,
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "constant": true,
+      "inputs": [],
+      "name": "paused",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "constant": true,
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "_id",
+          "type": "bytes32"
+        }
+      ],
+      "name": "getContractInfo",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        },
+        {
+          "internalType": "bytes20",
+          "name": "",
+          "type": "bytes20"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "constant": false,
+      "inputs": [],
+      "name": "pause",
+      "outputs": [],
+      "payable": false,
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "constant": true,
+      "inputs": [],
+      "name": "owner",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "constant": false,
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "_id",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "address",
+          "name": "_contractAddress",
+          "type": "address"
+        },
+        {
+          "internalType": "bytes20",
+          "name": "_gitCommitHash",
+          "type": "bytes20"
+        }
+      ],
+      "name": "setContractInfo",
+      "outputs": [],
+      "payable": false,
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "constant": true,
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "_id",
+          "type": "bytes32"
+        }
+      ],
+      "name": "getContract",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "constant": false,
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "_id",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "address",
+          "name": "_controller",
+          "type": "address"
+        }
+      ],
+      "name": "updateController",
+      "outputs": [],
+      "payable": false,
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "constant": false,
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "newOwner",
+          "type": "address"
+        }
+      ],
+      "name": "transferOwnership",
+      "outputs": [],
+      "payable": false,
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "payable": false,
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "bytes32",
+          "name": "id",
+          "type": "bytes32"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "contractAddress",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "bytes20",
+          "name": "gitCommitHash",
+          "type": "bytes20"
+        }
+      ],
+      "name": "SetContractInfo",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [],
+      "name": "Pause",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [],
+      "name": "Unpause",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "previousOwner",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "newOwner",
+          "type": "address"
+        }
+      ],
+      "name": "OwnershipTransferred",
+      "type": "event"
+    }
+  ],
+  "transactionHash": "0x8eb447f7709e8c337fe5d3a6c55bd880d9fe6e53acd8fbe98259e2262d89581b",
+  "receipt": {
+    "to": null,
+    "from": "0xB5Af4138f0f33be0D6414Eb25271B9C2Dc245fb5",
+    "contractAddress": "0x9a9827455911a858E55f07911904fACC0D66027E",
+    "transactionIndex": 38,
+    "gasUsed": "349252",
+    "logsBloom": "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+    "blockHash": "0x82b9a8190512aa36ee94c552d2bfa1d721b7e5287269f07a913fed36c801b8c3",
+    "transactionHash": "0x8eb447f7709e8c337fe5d3a6c55bd880d9fe6e53acd8fbe98259e2262d89581b",
+    "logs": [],
+    "blockNumber": 9974866,
+    "cumulativeGasUsed": "9462840",
+    "status": 1,
+    "byzantium": true
+  },
+  "args": [],
+  "solcInputHash": "315b0e7b40bf192e7f09195e0e84cba3",
+  "metadata": "{\"compiler\":{\"version\":\"0.5.11+commit.22be8592\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"constant\":false,\"inputs\":[],\"name\":\"unpause\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"paused\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"_id\",\"type\":\"bytes32\"}],\"name\":\"getContractInfo\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"},{\"internalType\":\"bytes20\",\"name\":\"\",\"type\":\"bytes20\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[],\"name\":\"pause\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"owner\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"_id\",\"type\":\"bytes32\"},{\"internalType\":\"address\",\"name\":\"_contractAddress\",\"type\":\"address\"},{\"internalType\":\"bytes20\",\"name\":\"_gitCommitHash\",\"type\":\"bytes20\"}],\"name\":\"setContractInfo\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"_id\",\"type\":\"bytes32\"}],\"name\":\"getContract\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"_id\",\"type\":\"bytes32\"},{\"internalType\":\"address\",\"name\":\"_controller\",\"type\":\"address\"}],\"name\":\"updateController\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"internalType\":\"address\",\"name\":\"newOwner\",\"type\":\"address\"}],\"name\":\"transferOwnership\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"bytes32\",\"name\":\"id\",\"type\":\"bytes32\"},{\"indexed\":false,\"internalType\":\"address\",\"name\":\"contractAddress\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"bytes20\",\"name\":\"gitCommitHash\",\"type\":\"bytes20\"}],\"name\":\"SetContractInfo\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[],\"name\":\"Pause\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[],\"name\":\"Unpause\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"previousOwner\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"newOwner\",\"type\":\"address\"}],\"name\":\"OwnershipTransferred\",\"type\":\"event\"}],\"devdoc\":{\"methods\":{\"getContract(bytes32)\":{\"params\":{\"_id\":\"Contract id\"}},\"getContractInfo(bytes32)\":{\"params\":{\"_id\":\"Contract id (keccak256 hash of contract name)\"}},\"pause()\":{\"details\":\"called by the owner to pause, triggers stopped state\"},\"setContractInfo(bytes32,address,bytes20)\":{\"params\":{\"_contractAddress\":\"Contract address\",\"_id\":\"Contract id (keccak256 hash of contract name)\"}},\"transferOwnership(address)\":{\"details\":\"Allows the current owner to transfer control of the contract to a newOwner.\",\"params\":{\"newOwner\":\"The address to transfer ownership to.\"}},\"unpause()\":{\"details\":\"called by the owner to unpause, returns to normal state\"},\"updateController(bytes32,address)\":{\"params\":{\"_controller\":\"Controller address\",\"_id\":\"Contract id (keccak256 hash of contract name)\"}}}},\"userdoc\":{\"methods\":{\"getContract(bytes32)\":{\"notice\":\"Get contract address for an id\"},\"getContractInfo(bytes32)\":{\"notice\":\"Return contract info for a given contract id\"},\"setContractInfo(bytes32,address,bytes20)\":{\"notice\":\"Register contract id and mapped address\"},\"updateController(bytes32,address)\":{\"notice\":\"Update contract's controller\"}}}},\"settings\":{\"compilationTarget\":{\"contracts/Controller.sol\":\"Controller\"},\"evmVersion\":\"petersburg\",\"libraries\":{},\"metadata\":{\"useLiteralContent\":true},\"optimizer\":{\"enabled\":true,\"runs\":200},\"remappings\":[]},\"sources\":{\"contracts/Controller.sol\":{\"content\":\"pragma solidity ^0.5.11;\\n\\nimport \\\"./IController.sol\\\";\\nimport \\\"./IManager.sol\\\";\\n\\nimport \\\"./zeppelin/Pausable.sol\\\";\\n\\ncontract Controller is Pausable, IController {\\n    // Track information about a registered contract\\n    struct ContractInfo {\\n        address contractAddress; // Address of contract\\n        bytes20 gitCommitHash; // SHA1 hash of head Git commit during registration of this contract\\n    }\\n\\n    // Track contract ids and contract info\\n    mapping(bytes32 => ContractInfo) private registry;\\n\\n    constructor() public {\\n        // Start system as paused\\n        paused = true;\\n    }\\n\\n    /**\\n     * @notice Register contract id and mapped address\\n     * @param _id Contract id (keccak256 hash of contract name)\\n     * @param _contractAddress Contract address\\n     */\\n    function setContractInfo(\\n        bytes32 _id,\\n        address _contractAddress,\\n        bytes20 _gitCommitHash\\n    ) external onlyOwner {\\n        registry[_id].contractAddress = _contractAddress;\\n        registry[_id].gitCommitHash = _gitCommitHash;\\n\\n        emit SetContractInfo(_id, _contractAddress, _gitCommitHash);\\n    }\\n\\n    /**\\n     * @notice Update contract's controller\\n     * @param _id Contract id (keccak256 hash of contract name)\\n     * @param _controller Controller address\\n     */\\n    function updateController(bytes32 _id, address _controller) external onlyOwner {\\n        return IManager(registry[_id].contractAddress).setController(_controller);\\n    }\\n\\n    /**\\n     * @notice Return contract info for a given contract id\\n     * @param _id Contract id (keccak256 hash of contract name)\\n     */\\n    function getContractInfo(bytes32 _id) public view returns (address, bytes20) {\\n        return (registry[_id].contractAddress, registry[_id].gitCommitHash);\\n    }\\n\\n    /**\\n     * @notice Get contract address for an id\\n     * @param _id Contract id\\n     */\\n    function getContract(bytes32 _id) public view returns (address) {\\n        return registry[_id].contractAddress;\\n    }\\n}\\n\",\"keccak256\":\"0xfff6071c548c98469a7310a649a5132313ae1178cc1a6db15a9869c3b7c16dae\"},\"contracts/IController.sol\":{\"content\":\"pragma solidity ^0.5.11;\\n\\nimport \\\"./zeppelin/Pausable.sol\\\";\\n\\ncontract IController is Pausable {\\n    event SetContractInfo(bytes32 id, address contractAddress, bytes20 gitCommitHash);\\n\\n    function setContractInfo(\\n        bytes32 _id,\\n        address _contractAddress,\\n        bytes20 _gitCommitHash\\n    ) external;\\n\\n    function updateController(bytes32 _id, address _controller) external;\\n\\n    function getContract(bytes32 _id) public view returns (address);\\n}\\n\",\"keccak256\":\"0x591fcbcadc9cfee2d453ef4d5d71eaffb3132aba8f8c226c7d7fe557e12f6354\"},\"contracts/IManager.sol\":{\"content\":\"pragma solidity ^0.5.11;\\n\\ncontract IManager {\\n    event SetController(address controller);\\n    event ParameterUpdate(string param);\\n\\n    function setController(address _controller) external;\\n}\\n\",\"keccak256\":\"0xf9da2c6ac6b67f9e89831c6fbdf0855290681f2b9508df60f25540b07b8786ae\"},\"contracts/zeppelin/Ownable.sol\":{\"content\":\"pragma solidity ^0.5.11;\\n\\n/**\\n * @title Ownable\\n * @dev The Ownable contract has an owner address, and provides basic authorization control\\n * functions, this simplifies the implementation of \\\"user permissions\\\".\\n */\\ncontract Ownable {\\n    address public owner;\\n\\n    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);\\n\\n    /**\\n     * @dev The Ownable constructor sets the original `owner` of the contract to the sender\\n     * account.\\n     */\\n    constructor() public {\\n        owner = msg.sender;\\n    }\\n\\n    /**\\n     * @dev Throws if called by any account other than the owner.\\n     */\\n    modifier onlyOwner() {\\n        require(msg.sender == owner);\\n        _;\\n    }\\n\\n    /**\\n     * @dev Allows the current owner to transfer control of the contract to a newOwner.\\n     * @param newOwner The address to transfer ownership to.\\n     */\\n    function transferOwnership(address newOwner) public onlyOwner {\\n        require(newOwner != address(0));\\n        emit OwnershipTransferred(owner, newOwner);\\n        owner = newOwner;\\n    }\\n}\\n\",\"keccak256\":\"0x3689b5ecbe68f236d23bdc4e045274debc31e00bad129042d25185a4f7ee7675\"},\"contracts/zeppelin/Pausable.sol\":{\"content\":\"pragma solidity ^0.5.11;\\n\\nimport \\\"./Ownable.sol\\\";\\n\\n/**\\n * @title Pausable\\n * @dev Base contract which allows children to implement an emergency stop mechanism.\\n */\\ncontract Pausable is Ownable {\\n    event Pause();\\n    event Unpause();\\n\\n    bool public paused = false;\\n\\n    /**\\n     * @dev Modifier to make a function callable only when the contract is not paused.\\n     */\\n    modifier whenNotPaused() {\\n        require(!paused);\\n        _;\\n    }\\n\\n    /**\\n     * @dev Modifier to make a function callable only when the contract is paused.\\n     */\\n    modifier whenPaused() {\\n        require(paused);\\n        _;\\n    }\\n\\n    /**\\n     * @dev called by the owner to pause, triggers stopped state\\n     */\\n    function pause() public onlyOwner whenNotPaused {\\n        paused = true;\\n        emit Pause();\\n    }\\n\\n    /**\\n     * @dev called by the owner to unpause, returns to normal state\\n     */\\n    function unpause() public onlyOwner whenPaused {\\n        paused = false;\\n        emit Unpause();\\n    }\\n}\\n\",\"keccak256\":\"0x434f6e0c3521748aa10467786650458449a844a13eaa9dc9c60452a02b77034e\"}},\"version\":1}",
+  "bytecode": "0x60806040526000805460ff60a01b1916905534801561001d57600080fd5b506000805460ff60a01b196001600160a01b0319909116331716740100000000000000000000000000000000000000001790556104f08061005f6000396000f3fe608060405234801561001057600080fd5b50600436106100935760003560e01c80638da5cb5b116100665780638da5cb5b1461010f578063d737c2b014610133578063e16c7d981461016f578063eb5dd94f1461018c578063f2fde38b146101b857610093565b80633f4ba83a146100985780635c975abb146100a2578063613e2de2146100be5780638456cb5914610107575b600080fd5b6100a06101de565b005b6100aa610241565b604080519115158252519081900360200190f35b6100db600480360360208110156100d457600080fd5b5035610251565b604080516001600160a01b0390931683526001600160601b031990911660208301528051918290030190f35b6100a061027b565b6101176102e5565b604080516001600160a01b039092168252519081900360200190f35b6100a06004803603606081101561014957600080fd5b5080359060208101356001600160a01b031690604001356001600160601b0319166102f4565b6101176004803603602081101561018557600080fd5b5035610394565b6100a0600480360360408110156101a257600080fd5b50803590602001356001600160a01b03166103af565b6100a0600480360360208110156101ce57600080fd5b50356001600160a01b0316610436565b6000546001600160a01b031633146101f557600080fd5b600054600160a01b900460ff1661020b57600080fd5b6000805460ff60a01b191681556040517f7805862f689e2f13df9f062ff482ad3ad112aca9e0847911ed832e158c525b339190a1565b600054600160a01b900460ff1681565b600081815260016020819052604090912080549101546001600160a01b039091169060601b915091565b6000546001600160a01b0316331461029257600080fd5b600054600160a01b900460ff16156102a957600080fd5b6000805460ff60a01b1916600160a01b1781556040517f6985a02210a168e66602d3235cb6db0e70f92b3ba4d376a33c0f3d9434bff6259190a1565b6000546001600160a01b031681565b6000546001600160a01b0316331461030b57600080fd5b60008381526001602081815260409283902080546001600160a01b0387166001600160a01b031991821681178355919093018054606087811c919095161790558351878152918201526001600160601b031984168184015291517ff9a6cf519167d81bc5cb3d26c60c0c9a19704aa908c148e82a861b570f4cd2d79281900390910190a1505050565b6000908152600160205260409020546001600160a01b031690565b6000546001600160a01b031633146103c657600080fd5b6000828152600160205260408082205481516392eefe9b60e01b81526001600160a01b038581166004830152925192909116926392eefe9b9260248084019382900301818387803b15801561041a57600080fd5b505af115801561042e573d6000803e3d6000fd5b505050505050565b6000546001600160a01b0316331461044d57600080fd5b6001600160a01b03811661046057600080fd5b600080546040516001600160a01b03808516939216917f8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e091a3600080546001600160a01b0319166001600160a01b039290921691909117905556fea265627a7a72315820eb7b6f3369703fd39bc4dfbf2b4ef0aec73c21eef5060c703cef6a6daf15226464736f6c634300050b0032",
+  "deployedBytecode": "0x608060405234801561001057600080fd5b50600436106100935760003560e01c80638da5cb5b116100665780638da5cb5b1461010f578063d737c2b014610133578063e16c7d981461016f578063eb5dd94f1461018c578063f2fde38b146101b857610093565b80633f4ba83a146100985780635c975abb146100a2578063613e2de2146100be5780638456cb5914610107575b600080fd5b6100a06101de565b005b6100aa610241565b604080519115158252519081900360200190f35b6100db600480360360208110156100d457600080fd5b5035610251565b604080516001600160a01b0390931683526001600160601b031990911660208301528051918290030190f35b6100a061027b565b6101176102e5565b604080516001600160a01b039092168252519081900360200190f35b6100a06004803603606081101561014957600080fd5b5080359060208101356001600160a01b031690604001356001600160601b0319166102f4565b6101176004803603602081101561018557600080fd5b5035610394565b6100a0600480360360408110156101a257600080fd5b50803590602001356001600160a01b03166103af565b6100a0600480360360208110156101ce57600080fd5b50356001600160a01b0316610436565b6000546001600160a01b031633146101f557600080fd5b600054600160a01b900460ff1661020b57600080fd5b6000805460ff60a01b191681556040517f7805862f689e2f13df9f062ff482ad3ad112aca9e0847911ed832e158c525b339190a1565b600054600160a01b900460ff1681565b600081815260016020819052604090912080549101546001600160a01b039091169060601b915091565b6000546001600160a01b0316331461029257600080fd5b600054600160a01b900460ff16156102a957600080fd5b6000805460ff60a01b1916600160a01b1781556040517f6985a02210a168e66602d3235cb6db0e70f92b3ba4d376a33c0f3d9434bff6259190a1565b6000546001600160a01b031681565b6000546001600160a01b0316331461030b57600080fd5b60008381526001602081815260409283902080546001600160a01b0387166001600160a01b031991821681178355919093018054606087811c919095161790558351878152918201526001600160601b031984168184015291517ff9a6cf519167d81bc5cb3d26c60c0c9a19704aa908c148e82a861b570f4cd2d79281900390910190a1505050565b6000908152600160205260409020546001600160a01b031690565b6000546001600160a01b031633146103c657600080fd5b6000828152600160205260408082205481516392eefe9b60e01b81526001600160a01b038581166004830152925192909116926392eefe9b9260248084019382900301818387803b15801561041a57600080fd5b505af115801561042e573d6000803e3d6000fd5b505050505050565b6000546001600160a01b0316331461044d57600080fd5b6001600160a01b03811661046057600080fd5b600080546040516001600160a01b03808516939216917f8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e091a3600080546001600160a01b0319166001600160a01b039290921691909117905556fea265627a7a72315820eb7b6f3369703fd39bc4dfbf2b4ef0aec73c21eef5060c703cef6a6daf15226464736f6c634300050b0032",
+  "devdoc": {
+    "methods": {
+      "getContract(bytes32)": {
+        "params": {
+          "_id": "Contract id"
+        }
+      },
+      "getContractInfo(bytes32)": {
+        "params": {
+          "_id": "Contract id (keccak256 hash of contract name)"
+        }
+      },
+      "pause()": {
+        "details": "called by the owner to pause, triggers stopped state"
+      },
+      "setContractInfo(bytes32,address,bytes20)": {
+        "params": {
+          "_contractAddress": "Contract address",
+          "_id": "Contract id (keccak256 hash of contract name)"
+        }
+      },
+      "transferOwnership(address)": {
+        "details": "Allows the current owner to transfer control of the contract to a newOwner.",
+        "params": {
+          "newOwner": "The address to transfer ownership to."
+        }
+      },
+      "unpause()": {
+        "details": "called by the owner to unpause, returns to normal state"
+      },
+      "updateController(bytes32,address)": {
+        "params": {
+          "_controller": "Controller address",
+          "_id": "Contract id (keccak256 hash of contract name)"
+        }
+      }
+    }
+  },
+  "userdoc": {
+    "methods": {
+      "getContract(bytes32)": {
+        "notice": "Get contract address for an id"
+      },
+      "getContractInfo(bytes32)": {
+        "notice": "Return contract info for a given contract id"
+      },
+      "setContractInfo(bytes32,address,bytes20)": {
+        "notice": "Register contract id and mapped address"
+      },
+      "updateController(bytes32,address)": {
+        "notice": "Update contract's controller"
+      }
+    }
+  }
+}
