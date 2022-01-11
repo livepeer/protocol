@@ -25,15 +25,13 @@ const defaultConfig = {
         inflation: 137,
         inflationChange: 3,
         targetBondingRate: 500000
-    },
-    rinkeby: {
-        arbitrumLivepeerToken: {
-            router: "0x70C143928eCfFaf9F5b406f7f4fC28Dc43d68380"
-        }
     }
 }
 
 const rinkeby = {
+    arbitrumLivepeerToken: {
+        router: "0x70C143928eCfFaf9F5b406f7f4fC28Dc43d68380"
+    },
     bondingManager: {
         numActiveTranscoders: 100,
         unbondingPeriod: 2
