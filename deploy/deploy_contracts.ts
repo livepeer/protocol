@@ -8,6 +8,26 @@ import ContractDeployer from "./deployer"
 import config from "./migrations.config"
 import genesis from "./genesis.config"
 
+const PROD_NETWORKS = [
+    "mainnet",
+    "arbitrumMainnet"
+]
+
+const LIVE_NETWORKS = [
+    "mainnet",
+    "arbitrumMainnet",
+    "rinkeby",
+    "arbitrumRinkeby"
+]
+
+const isProdNetwork = (name: string): boolean => {
+    return PROD_NETWORKS.indexOf(name) > -1
+}
+
+const isLiveNetwork = (name: string): boolean => {
+    return LIVE_NETWORKS.indexOf(name) > -1
+}
+
 const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
     const {deployments, getNamedAccounts} = hre // Get the deployments and getNamedAccounts which are provided by hardhat-deploy
     const {deploy} = deployments // the deployments object itself contains the deploy function
@@ -62,7 +82,7 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
 
     // rounds manager
     let roundsManager
-    if (hre.network.name !== "mainnet") {
+    if (!isLiveNetwork(hre.network.name)) {
         roundsManager = await contractDeployer.deployAndRegister({
             contract: "AdjustableRoundsManager",
             name: "RoundsManager",
@@ -109,7 +129,7 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
     await Broker.setTicketValidityPeriod(config.broker.ticketValidityPeriod)
 
     const Token: LivepeerToken = (await ethers.getContractAt("LivepeerToken", livepeerToken.address)) as LivepeerToken
-    if (hre.network.name !== "mainnet") {
+    if (!isProdNetwork(hre.network.name)) {
         const faucet = await contractDeployer.deployAndRegister({
             contract: "LivepeerTokenFaucet",
             name: "LivepeerTokenFaucet",
