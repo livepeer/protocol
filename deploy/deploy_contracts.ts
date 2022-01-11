@@ -152,6 +152,17 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
     await RoundsManager.setRoundLength(config.roundsManager.roundLength)
     await RoundsManager.setRoundLockAmount(config.roundsManager.roundLockAmount)
 
+    const currentRound = await RoundsManager.currentRound()
+    if (config.roundsManager.lipUpgradeRounds) {
+        for (const lipUpgradeRound of config.roundsManager.lipUpgradeRounds) {
+            let round = lipUpgradeRound.round
+            if (round == 0) {
+                round = currentRound
+            }
+            await RoundsManager.setLIPUpgradeRound(lipUpgradeRound.lip, round)
+        }
+    }
+
     // Set TicketBroker parameters
     const Broker: TicketBroker = (await ethers.getContractAt(
         "TicketBroker",
