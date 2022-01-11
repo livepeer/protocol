@@ -43,11 +43,20 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
 
     const Controller: Controller = await contractDeployer.deployController()
 
-    const livepeerToken = await contractDeployer.deployAndRegister({
-        contract: "LivepeerToken",
-        name: "LivepeerToken",
-        args: []
-    })
+    let livepeerToken
+    if (hre.network.name === "rinkeby") {
+        livepeerToken = await contractDeployer.deployAndRegister({
+            contract: "ArbitrumLivepeerToken",
+            name: "LivepeerToken",
+            args: [config.arbitrumLivepeerToken.router]
+        })
+    } else {
+        livepeerToken = await contractDeployer.deployAndRegister({
+            contract: "LivepeerToken",
+            name: "LivepeerToken",
+            args: []
+        })
+    }
 
     const minter = await contractDeployer.deployAndRegister({
         contract: "Minter",
