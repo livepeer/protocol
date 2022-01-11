@@ -43,11 +43,13 @@ export default class ContractDeployer {
 
     async register(name: string, address: string) {
         const gitHash = await this.getGitHeadCommitHash()
-        await this.controller?.setContractInfo(
-            this.contractId(name),
-            address,
-            gitHash
-        )
+        await (
+            await this.controller?.setContractInfo(
+                this.contractId(name),
+                address,
+                gitHash
+            )
+        )?.wait()
     }
 
     async deployController(): Promise<Controller> {
@@ -87,17 +89,21 @@ export default class ContractDeployer {
         })
 
         if (proxy) {
-            await this.controller?.setContractInfo(
-                this.contractId(targetName),
-                target.address,
-                gitHash
-            )
+            await (
+                await this.controller?.setContractInfo(
+                    this.contractId(targetName),
+                    target.address,
+                    gitHash
+                )
+            )?.wait()
         } else {
-            await this.controller?.setContractInfo(
-                this.contractId(name),
-                target.address,
-                gitHash
-            )
+            await (
+                await this.controller?.setContractInfo(
+                    this.contractId(name),
+                    target.address,
+                    gitHash
+                )
+            )?.wait()
             await deployments.save(name, target)
             return target
         }
@@ -109,11 +115,13 @@ export default class ContractDeployer {
             args: [this.controller?.address, this.contractId(targetName)]
         })
 
-        await this.controller?.setContractInfo(
-            this.contractId(name),
-            managerProxy.address,
-            gitHash
-        )
+        await (
+            await this.controller?.setContractInfo(
+                this.contractId(name),
+                managerProxy.address,
+                gitHash
+            )
+        )?.wait()
         await deployments.save(`${contract}Target`, target)
         await deployments.save(`${contract}Proxy`, managerProxy)
         await deployments.save(contract, managerProxy)
