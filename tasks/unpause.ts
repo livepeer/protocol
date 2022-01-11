@@ -13,7 +13,7 @@ task("unpause", "Unpause the Controller").setAction(async (_, hre) => {
         throw new Error(`Controller ${controller.address} paused=${paused}`)
     }
 
-    await controller.pause()
+    await controller.unpause()
 
     console.log(
         `Controller ${controller.address} paused=${await controller.paused()}`
