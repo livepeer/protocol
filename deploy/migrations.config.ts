@@ -1,6 +1,6 @@
 import {ethers} from "hardhat"
 
-export default {
+const defaultConfig = {
     bondingManager: {
         numTranscoders: 20,
         numActiveTranscoders: 10,
@@ -26,4 +26,44 @@ export default {
         inflationChange: 3,
         targetBondingRate: 500000
     }
+}
+
+const rinkebyConfig = {
+    bondingManager: {
+        numActiveTranscoders: 100,
+        unbondingPeriod: 2
+    },
+    broker: {
+        unlockPeriod: 100,
+        ticketValidityPeriod: 2
+    },
+    roundsManager: {
+        roundLength: 50,
+        roundLockAmount: 100000
+    },
+    faucet: {
+        requestAmount: ethers.utils.parseEther("10"),
+        requestWait: 1,
+        whitelist: []
+    },
+    minter: {
+        inflation: 137,
+        inflationChange: 3,
+        targetBondingRate: 0
+    }
+}
+
+const arbitrumRinkebyConfig = rinkebyConfig
+
+const networkConfigs: any = {
+    "rinkeby": rinkebyConfig,
+    "arbitrumRinkeby": arbitrumRinkebyConfig
+}
+
+export default function getNetworkConfig(network: string) {
+    if (!(network in networkConfigs)) {
+        return defaultConfig
+    }
+
+    return networkConfigs[network]
 }

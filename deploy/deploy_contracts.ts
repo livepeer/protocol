@@ -5,7 +5,7 @@ import {ethers} from "hardhat"
 import {Controller, BondingManager, RoundsManager, TicketBroker, LivepeerToken} from "../typechain"
 
 import ContractDeployer from "./deployer"
-import config from "./migrations.config"
+import getNetworkConfig from "./migrations.config"
 import genesis from "./genesis.config"
 
 const PROD_NETWORKS = [
@@ -33,6 +33,8 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
     const {deploy} = deployments // the deployments object itself contains the deploy function
 
     const {deployer} = await getNamedAccounts() // Fetch named accounts from hardhat.config.ts
+
+    const config = getNetworkConfig(hre.network.name)
 
     const contractDeployer = new ContractDeployer(
         deploy, deployer, deployments
