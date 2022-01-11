@@ -11,11 +11,24 @@ import "hardhat-deploy"
 import "@nomiclabs/hardhat-ethers"
 
 import "solidity-coverage"
+import path from "path"
+import fs from "fs"
 
 import {HardhatUserConfig} from "hardhat/types/config"
 
 const PRIVATE_KEY = process.env.PRIVATE_KEY
 const INFURA_KEY = process.env.INFURA_KEY
+
+function loadTasks() {
+    const tasksPath = path.join(__dirname, "tasks")
+    fs.readdirSync(tasksPath).forEach(task => {
+        require(`${tasksPath}/${task}`)
+    })
+}
+
+if (fs.existsSync(path.join(__dirname, "artifacts"))) {
+    loadTasks()
+}
 
 const config: HardhatUserConfig = {
     solidity: {
