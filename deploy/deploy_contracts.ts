@@ -137,20 +137,30 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
         bondingManager.address
     )) as BondingManager
 
-    await BondingManager.setUnbondingPeriod(
-        config.bondingManager.unbondingPeriod
-    )
-    await BondingManager.setNumActiveTranscoders(
-        config.bondingManager.numActiveTranscoders
-    )
+    await (
+        await BondingManager.setUnbondingPeriod(
+            config.bondingManager.unbondingPeriod
+        )
+    ).wait()
+    await (
+        await BondingManager.setNumActiveTranscoders(
+            config.bondingManager.numActiveTranscoders
+        )
+    ).wait()
 
     // Set RoundsManager parameters
     const RoundsManager: RoundsManager = (await ethers.getContractAt(
         "RoundsManager",
         roundsManager.address
     )) as RoundsManager
-    await RoundsManager.setRoundLength(config.roundsManager.roundLength)
-    await RoundsManager.setRoundLockAmount(config.roundsManager.roundLockAmount)
+    await (
+        await RoundsManager.setRoundLength(config.roundsManager.roundLength)
+    ).wait()
+    await (
+        await RoundsManager.setRoundLockAmount(
+            config.roundsManager.roundLockAmount
+        )
+    ).wait()
 
     const currentRound = await RoundsManager.currentRound()
     if (config.roundsManager.lipUpgradeRounds) {
@@ -159,7 +169,12 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
             if (round == 0) {
                 round = currentRound
             }
-            await RoundsManager.setLIPUpgradeRound(lipUpgradeRound.lip, round)
+            await (
+                await RoundsManager.setLIPUpgradeRound(
+                    lipUpgradeRound.lip,
+                    round
+                )
+            ).wait()
         }
     }
 
@@ -168,8 +183,10 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
         "TicketBroker",
         ticketBroker.address
     )) as TicketBroker
-    await Broker.setUnlockPeriod(config.broker.unlockPeriod)
-    await Broker.setTicketValidityPeriod(config.broker.ticketValidityPeriod)
+    await (await Broker.setUnlockPeriod(config.broker.unlockPeriod)).wait()
+    await (
+        await Broker.setTicketValidityPeriod(config.broker.ticketValidityPeriod)
+    ).wait()
 
     const Token: LivepeerToken = (await ethers.getContractAt(
         "LivepeerToken",
@@ -187,18 +204,20 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
         })
         // If not in production, send the crowd supply to the faucet and the company supply to the deployment account
 
-        await Token.mint(faucet.address, genesis.crowdSupply)
+        await (await Token.mint(faucet.address, genesis.crowdSupply)).wait()
 
-        await Token.mint(deployer, genesis.companySupply)
+        await (await Token.mint(deployer, genesis.companySupply)).wait()
     } else {
-        Controller.transferOwnership(genesis.governanceMultisig)
+        await (
+            await Controller.transferOwnership(genesis.governanceMultisig)
+        ).wait()
         const newOwner = await Controller.owner()
         console.log(
             `Controller at ${Controller.address} is now owned by ${newOwner}`
         )
     }
 
-    await Token.transferOwnership(minter.address)
+    await (await Token.transferOwnership(minter.address)).wait()
 }
 
 func.tags = ["Contracts"]
