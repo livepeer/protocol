@@ -10,7 +10,8 @@ export default {
     governanceMultisig: "0x04746b890d090ae3c4c5df0101cfd089a4faca6c",
     timeToGrantsStart: BigNumber.from(60).mul(60).mul(4),
     merkleMine: {
-        genesisRoot: "0x53f35a304a1e1e20d6648e09bb3073ccd44a5bf1638a01355897a71e801879f8",
+        genesisRoot:
+            "0x53f35a304a1e1e20d6648e09bb3073ccd44a5bf1638a01355897a71e801879f8",
         totalGenesisRecipients: 2598071,
         balanceThreshold: 100000000000000000,
         genesisBlock: 5264265,
@@ -54,7 +55,12 @@ export default {
         }
     ],
     investorsTimeToCliff: 0,
-    investorsVestingDuration: BigNumber.from(60).mul(60).mul(24).mul(365).mul(3).div(2),
+    investorsVestingDuration: BigNumber.from(60)
+        .mul(60)
+        .mul(24)
+        .mul(365)
+        .mul(3)
+        .div(2),
     investorGrants: [
         {
             receiver: "0x2e0EEaEB1aF7565bd5381aaEDEb8EEB0B1082d02",
