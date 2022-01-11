@@ -33,7 +33,42 @@ const defaultConfig = {
     }
 }
 
-const rinkebyConfig = {
+const rinkeby = {
+    bondingManager: {
+        numActiveTranscoders: 100,
+        unbondingPeriod: 2
+    },
+    broker: {
+        unlockPeriod: 100,
+        ticketValidityPeriod: 2
+    },
+    roundsManager: {
+        roundLength: 50,
+        roundLockAmount: 100000,
+        lipUpgradeRounds: [
+            {
+                lip: 36,
+                round: 0
+            },
+            {
+                lip: 71,
+                round: 0
+            }
+        ]
+    },
+    faucet: {
+        requestAmount: ethers.utils.parseEther("10"),
+        requestWait: 1,
+        whitelist: []
+    },
+    minter: {
+        inflation: 137,
+        inflationChange: 3,
+        targetBondingRate: 0
+    }
+}
+
+const arbitrumRinkeby = {
     bondingManager: {
         numActiveTranscoders: 100,
         unbondingPeriod: 2
@@ -58,11 +93,9 @@ const rinkebyConfig = {
     }
 }
 
-const arbitrumRinkebyConfig = rinkebyConfig
-
 const networkConfigs: any = {
-    "rinkeby": rinkebyConfig,
-    "arbitrumRinkeby": arbitrumRinkebyConfig
+    rinkeby,
+    arbitrumRinkeby
 }
 
 export default function getNetworkConfig(network: string) {
