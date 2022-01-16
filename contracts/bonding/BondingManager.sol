@@ -1304,8 +1304,13 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         fees = del.fees;
         stake = del.bondedAmount;
 
-        uint256 startRound = del.lastClaimRound.add(1);
         address delegateAddr = del.delegateAddress;
+        // No rewards and fees to calculate without a delegate
+        if (delegateAddr == address(0)) {
+            return (stake, fees);
+        }
+
+        uint256 startRound = del.lastClaimRound.add(1);
         bool isTranscoder = _delegator == delegateAddr;
 
         uint256 lip36Round = roundsManager().lipUpgradeRound(36);

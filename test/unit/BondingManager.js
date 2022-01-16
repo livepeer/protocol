@@ -5257,12 +5257,14 @@ describe("BondingManager", () => {
     describe("pendingStake", () => {
         let transcoder
         let delegator
+        let notDelegator
         let currentRound
 
         beforeEach(async () => {
             transcoder = signers[0]
             delegator = signers[1]
-            currentRound = 100
+            notDelegator = signers[2]
+            currentRound = 1000000
 
             await fixture.roundsManager.setMockBool(
                 functionSig("currentRoundInitialized()"),
@@ -5544,6 +5546,23 @@ describe("BondingManager", () => {
             )
         })
 
+        it("should return bondedAmount without additional computation when delegateAddress is null", async () => {
+            await fixture.roundsManager.setMockUint256(
+                functionSig("lipUpgradeRound(uint256)"),
+                currentRound + 1
+            )
+
+            // Set a fixed gasLimit to make sure that the function does not perform additional computation for this case
+            // If additional computation for looping through many rounds is performed, the call should fail with an out-of-gas error
+            const gasLimit = 200000
+            const stake = await bondingManager.pendingStake(
+                notDelegator.address,
+                currentRound + 1,
+                {gasLimit}
+            )
+            expect(stake).to.be.equal(0)
+        })
+
         describe("no rewards since last claim round", async () => {
             const bondedAmount =
                 1000 +
@@ -5730,12 +5749,14 @@ describe("BondingManager", () => {
     describe("pendingFees", () => {
         let transcoder
         let delegator
+        let notDelegator
         let currentRound
 
         beforeEach(async () => {
             transcoder = signers[0]
             delegator = signers[1]
-            currentRound = 100
+            notDelegator = signers[2]
+            currentRound = 1000000
 
             await fixture.roundsManager.setMockBool(
                 functionSig("currentRoundInitialized()"),
@@ -6202,6 +6223,23 @@ describe("BondingManager", () => {
                     pendingFees3
                 ).toString()
             )
+        })
+
+        it("should return fees without additional computation when delegateAddress is null", async () => {
+            await fixture.roundsManager.setMockUint256(
+                functionSig("lipUpgradeRound(uint256)"),
+                currentRound + 1
+            )
+
+            // Set a fixed gasLimit to make sure that the function does not perform additional computation for this case
+            // If additional computation for looping through many rounds is performed, the call should fail with an out-of-gas error
+            const gasLimit = 200000
+            const fees = await bondingManager.pendingFees(
+                notDelegator.address,
+                currentRound + 1,
+                {gasLimit}
+            )
+            expect(fees).to.be.equal(0)
         })
 
         describe("no fees since lastClaimRound", async () => {
