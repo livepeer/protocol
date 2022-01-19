@@ -4,7 +4,7 @@ import {contractId} from "../utils/helpers"
 task("set-contract-info", "Set contract info in the Controller")
     .addParam("name", "Contract name")
     .addParam("address", "Contract address")
-    .addParam("gitCommitHash", "Git commit hash")
+    .addParam("gitcommithash", "Git commit hash")
     .setAction(async (taskArgs, hre) => {
         const {deployments, ethers} = hre
         const controllerDeployment = await deployments.get("Controller")
@@ -17,7 +17,7 @@ task("set-contract-info", "Set contract info in the Controller")
         await controller.setContractInfo(
             id,
             taskArgs.address,
-            taskArgs.gitCommitHash
+            taskArgs.gitcommithash
         )
 
         const info = await controller.getContractInfo(id)
