@@ -56,8 +56,8 @@ const rinkebyConfig = {
 const arbitrumRinkebyConfig = rinkebyConfig
 
 const networkConfigs: any = {
-    "rinkeby": rinkebyConfig,
-    "arbitrumRinkeby": arbitrumRinkebyConfig
+    rinkeby: rinkebyConfig,
+    arbitrumRinkeby: arbitrumRinkebyConfig
 }
 
 export default function getNetworkConfig(network: string) {
