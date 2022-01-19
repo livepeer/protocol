@@ -64,6 +64,9 @@ const rinkeby = {
 }
 
 const arbitrumRinkeby = {
+    arbitrumLivepeerToken: {
+        address: "0x9147ECe0B5f07D2bbe9ea17DE3B674C87FaC0706"
+    },
     bondingManager: {
         numActiveTranscoders: 100,
         unbondingPeriod: 2
