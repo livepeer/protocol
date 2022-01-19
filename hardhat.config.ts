@@ -66,6 +66,10 @@ const config: HardhatUserConfig = {
             accounts: PRIVATE_KEY ? [`0x${PRIVATE_KEY}`] : undefined,
             blockGasLimit: 12000000
         },
+        rinkebyDevnet: {
+            url: `https://rinkeby.infura.io/v3/${INFURA_KEY}`,
+            accounts: PRIVATE_KEY ? [`0x${PRIVATE_KEY}`] : undefined
+        },
         arbitrumMainnet: {
             url: `https://arbitrum-mainnet.infura.io/v3/${INFURA_KEY}`,
             accounts: PRIVATE_KEY ? [`0x${PRIVATE_KEY}`] : undefined

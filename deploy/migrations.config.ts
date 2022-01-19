@@ -66,6 +66,8 @@ const rinkeby = {
     }
 }
 
+const rinkebyDevnet = rinkeby
+
 const arbitrumRinkeby = {
     bondingManager: {
         numActiveTranscoders: 100,
@@ -93,6 +95,7 @@ const arbitrumRinkeby = {
 
 const networkConfigs: any = {
     rinkeby,
+    rinkebyDevnet,
     arbitrumRinkeby
 }
 
