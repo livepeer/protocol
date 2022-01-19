@@ -9,5 +9,7 @@ module.exports = {
         "rounds/AdjustableRoundsManager.sol",
         "pm/mixins/interfaces",
         "bonding/deprecated",
+        "token/ArbitrumLivepeerToken.sol", // testnet only,
+        "arbitrum",
     ],
 };
