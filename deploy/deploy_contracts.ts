@@ -20,8 +20,11 @@ const LIVE_NETWORKS = [
     "mainnet",
     "arbitrumMainnet",
     "rinkeby",
+    "rinkebyDevnet",
     "arbitrumRinkeby"
 ]
+
+const RINKEBY_NETWORKS = ["rinkeby", "rinkebyDevnet"]
 
 const isProdNetwork = (name: string): boolean => {
     return PROD_NETWORKS.indexOf(name) > -1
@@ -29,6 +32,10 @@ const isProdNetwork = (name: string): boolean => {
 
 const isLiveNetwork = (name: string): boolean => {
     return LIVE_NETWORKS.indexOf(name) > -1
+}
+
+const isRinkebyNetwork = (name: string): boolean => {
+    return RINKEBY_NETWORKS.indexOf(name) > -1
 }
 
 const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
@@ -44,7 +51,7 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
     const Controller: Controller = await contractDeployer.deployController()
 
     let livepeerToken
-    if (hre.network.name === "rinkeby") {
+    if (isRinkebyNetwork(hre.network.name)) {
         livepeerToken = await contractDeployer.deployAndRegister({
             contract: "ArbitrumLivepeerToken",
             name: "LivepeerToken",
