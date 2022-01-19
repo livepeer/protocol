@@ -50,6 +50,21 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
             name: "LivepeerToken",
             args: [config.arbitrumLivepeerToken.router]
         })
+    } else if (hre.network.name === "arbitrumRinkeby") {
+        await contractDeployer.register(
+            "LivepeerToken",
+            config.arbitrumLivepeerToken.address
+        )
+
+        livepeerToken = await ethers.getContractAt(
+            "LivepeerToken",
+            config.arbitrumLivepeerToken.address
+        )
+
+        await livepeerToken.grantRole(
+            ethers.utils.solidityKeccak256(["string"], ["MINTER_ROLE"]),
+            deployer
+        )
     } else {
         livepeerToken = await contractDeployer.deployAndRegister({
             contract: "LivepeerToken",
@@ -215,7 +230,15 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
         )
     }
 
-    await (await Token.transferOwnership(minter.address)).wait()
+    if (hre.network.name === "arbitrumRinkeby") {
+        const extendedToken: any = Token
+        await extendedToken.revokeRole(
+            ethers.utils.solidityKeccak256(["string"], ["MINTER_ROLE"]),
+            deployer
+        )
+    } else {
+        await (await Token.transferOwnership(minter.address)).wait()
+    }
 }
 
 func.tags = ["Contracts"]
