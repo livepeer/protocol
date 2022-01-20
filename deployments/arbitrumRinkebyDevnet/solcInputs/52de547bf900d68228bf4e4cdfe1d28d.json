@@ -1,0 +1,38 @@
+{
+  "language": "Solidity",
+  "sources": {
+    "contracts/polling/Poll.sol": {
+      "content": "pragma solidity ^0.5.11;\n\ncontract Poll {\n    // The block at which the poll ends and votes can no longer be submitted.\n    uint256 public endBlock;\n\n    // Vote is emitted when an account submits a vote with 'choiceID'.\n    // This event can be indexed to tally all votes for each choiceID\n    event Vote(address indexed voter, uint256 choiceID);\n\n    modifier isActive() {\n        require(block.number <= endBlock, \"poll is over\");\n        _;\n    }\n\n    constructor(uint256 _endBlock) public {\n        endBlock = _endBlock;\n    }\n\n    /**\n     * @dev Vote for the poll's proposal.\n     *      Reverts if the poll period is over.\n     * @param _choiceID the ID of the option to vote for\n     */\n    function vote(uint256 _choiceID) external isActive {\n        emit Vote(msg.sender, _choiceID);\n    }\n\n    /**\n     * @dev Destroy the Poll contract after the poll has finished\n     *      Reverts if the poll is still active\n     */\n    function destroy() external {\n        require(block.number > endBlock, \"poll is active\");\n        selfdestruct(msg.sender);\n    }\n}\n"
+    },
+    "contracts/polling/PollCreator.sol": {
+      "content": "pragma solidity ^0.5.11;\n\nimport \"./Poll.sol\";\n\ninterface IBondingManager {\n    function transcoderTotalStake(address _addr) external view returns (uint256);\n\n    function pendingStake(address _addr, uint256 _endRound) external view returns (uint256);\n}\n\ncontract PollCreator {\n    // 33.33%\n    uint256 public constant QUORUM = 333300;\n    // 50%\n    uint256 public constant QUOTA = 500000;\n    // 10 rounds\n    uint256 public constant POLL_PERIOD = 10 * 5760;\n    uint256 public constant POLL_CREATION_COST = 100 * 1 ether;\n\n    IBondingManager public bondingManager;\n\n    event PollCreated(address indexed poll, bytes proposal, uint256 endBlock, uint256 quorum, uint256 quota);\n\n    constructor(address _bondingManagerAddr) public {\n        bondingManager = IBondingManager(_bondingManagerAddr);\n    }\n\n    /**\n     * @notice Create a poll if caller has POLL_CREATION_COST LPT stake (own stake or stake delegated to it).\n     * @param _proposal The IPFS multihash for the proposal.\n     */\n    function createPoll(bytes calldata _proposal) external {\n        require(\n            // pendingStake() ignores the second arg\n            bondingManager.pendingStake(msg.sender, 0) >= POLL_CREATION_COST ||\n                bondingManager.transcoderTotalStake(msg.sender) >= POLL_CREATION_COST,\n            \"PollCreator#createPoll: INSUFFICIENT_STAKE\"\n        );\n\n        uint256 endBlock = block.number + POLL_PERIOD;\n        Poll poll = new Poll(endBlock);\n\n        emit PollCreated(address(poll), _proposal, endBlock, QUORUM, QUOTA);\n    }\n}\n"
+    }
+  },
+  "settings": {
+    "optimizer": {
+      "enabled": true,
+      "runs": 200
+    },
+    "outputSelection": {
+      "*": {
+        "*": [
+          "abi",
+          "evm.bytecode",
+          "evm.deployedBytecode",
+          "evm.methodIdentifiers",
+          "metadata",
+          "devdoc",
+          "userdoc",
+          "storageLayout",
+          "evm.gasEstimates"
+        ],
+        "": [
+          "ast"
+        ]
+      }
+    },
+    "metadata": {
+      "useLiteralContent": true
+    }
+  }
+}
