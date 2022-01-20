@@ -93,10 +93,13 @@ const arbitrumRinkeby = {
     }
 }
 
+const arbitrumRinkebyDevnet = arbitrumRinkeby
+
 const networkConfigs: any = {
     rinkeby,
     rinkebyDevnet,
-    arbitrumRinkeby
+    arbitrumRinkeby,
+    arbitrumRinkebyDevnet
 }
 
 export default function getNetworkConfig(network: string) {

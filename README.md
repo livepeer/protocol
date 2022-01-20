@@ -103,5 +103,6 @@ yarn test:coverage
 Make sure that an ETH node is accessible and that the network being deployed to is supported by the `hardhat.config.ts` configuration.
 
 ```
+export LPT_DEPLOYMENT_EXPORT_PATH=~/Development/lpt_contracts.json
 yarn deploy
 ```
