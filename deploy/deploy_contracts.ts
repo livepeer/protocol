@@ -1,6 +1,9 @@
 import {HardhatRuntimeEnvironment} from "hardhat/types"
 import {DeployFunction} from "hardhat-deploy/types"
 import {ethers} from "hardhat"
+import {Contract} from "ethers"
+import {DeployResult, Export} from "hardhat-deploy/dist/types"
+import fs from "fs"
 
 import {
     Controller,
@@ -26,10 +29,15 @@ const LIVE_NETWORKS = [
     "arbitrumMainnet",
     "rinkeby",
     "rinkebyDevnet",
-    "arbitrumRinkeby"
+    "arbitrumRinkeby",
+    "arbitrumRinkebyDevnet"
 ]
 
-const RINKEBY_NETWORKS = ["rinkeby", "rinkebyDevnet"]
+const ARBITRUM_NETWORKS = [
+    "arbitrumMainnet",
+    "arbitrumRinkeby",
+    "arbitrumRinkebyDevnet"
+]
 
 const isProdNetwork = (name: string): boolean => {
     return PROD_NETWORKS.indexOf(name) > -1
@@ -39,12 +47,16 @@ const isLiveNetwork = (name: string): boolean => {
     return LIVE_NETWORKS.indexOf(name) > -1
 }
 
-const isRinkebyNetwork = (name: string): boolean => {
-    return RINKEBY_NETWORKS.indexOf(name) > -1
+const isArbitrumNetwork = (name: string): boolean => {
+    return ARBITRUM_NETWORKS.indexOf(name) > -1
+}
+
+const loadDeploymentExport = (filename: string): Export => {
+    return JSON.parse(fs.readFileSync(filename).toString())
 }
 
 const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
-    const {deployments, getNamedAccounts} = hre // Get the deployments and getNamedAccounts which are provided by hardhat-deploy
+    const {deployments, getNamedAccounts, getChainId} = hre // Get the deployments and getNamedAccounts which are provided by hardhat-deploy
     const {deploy} = deployments // the deployments object itself contains the deploy function
 
     const {deployer} = await getNamedAccounts() // Fetch named accounts from hardhat.config.ts
@@ -54,21 +66,6 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
     const contractDeployer = new ContractDeployer(deploy, deployer, deployments)
 
     const Controller: Controller = await contractDeployer.deployController()
-
-    let livepeerToken
-    if (isRinkebyNetwork(hre.network.name)) {
-        livepeerToken = await contractDeployer.deployAndRegister({
-            contract: "ArbitrumLivepeerToken",
-            name: "LivepeerToken",
-            args: [config.arbitrumLivepeerToken.router]
-        })
-    } else {
-        livepeerToken = await contractDeployer.deployAndRegister({
-            contract: "LivepeerToken",
-            name: "LivepeerToken",
-            args: []
-        })
-    }
 
     const minter = await contractDeployer.deployAndRegister({
         contract: "Minter",
@@ -80,6 +77,52 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
             config.minter.targetBondingRate
         ]
     })
+
+    let livepeerToken: Contract | DeployResult
+    if (isArbitrumNetwork(hre.network.name)) {
+        if (!process.env.LPT_DEPLOYMENT_EXPORT_PATH) {
+            throw new Error("LPT_DEPLOYMENT_EXPORT_PATH is not set")
+        }
+
+        const deploymentExport = loadDeploymentExport(
+            process.env.LPT_DEPLOYMENT_EXPORT_PATH
+        )
+
+        if (deploymentExport.chainId !== (await getChainId())) {
+            throw new Error("chainId mismatch with LPT deployment export")
+        }
+
+        const livepeerTokenAddr =
+            deploymentExport.contracts.LivepeerToken.address
+        const livepeerTokenABI = deploymentExport.contracts.LivepeerToken.abi
+
+        await contractDeployer.register("LivepeerToken", livepeerTokenAddr)
+
+        livepeerToken = await ethers.getContractAt(
+            livepeerTokenABI,
+            livepeerTokenAddr
+        )
+
+        // The deployer needs to be the admin of LPT
+        const defaultAdminRole = await livepeerToken.DEFAULT_ADMIN_ROLE()
+        if (!(await livepeerToken.hasRole(defaultAdminRole, deployer))) {
+            throw new Error("deployer is not admin for LPT")
+        }
+
+        // Grant MINTER_ROLE to protocol Minter
+        await (
+            await livepeerToken.grantRole(MINTER_ROLE, minter.address)
+        ).wait()
+
+        // Grant MINTER_ROLE to deployer in order to mint tokens as a part of deployment
+        await (await livepeerToken.grantRole(MINTER_ROLE, deployer)).wait()
+    } else {
+        livepeerToken = await contractDeployer.deployAndRegister({
+            contract: "LivepeerToken",
+            name: "LivepeerToken",
+            args: []
+        })
+    }
 
     // ticket broker
     const ticketBroker = await contractDeployer.deployAndRegister({
@@ -231,7 +274,7 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
         )
     }
 
-    await Token.grantRole(MINTER_ROLE, minter.address)
+    await (await Token.grantRole(MINTER_ROLE, minter.address)).wait()
 }
 
 func.tags = ["Contracts"]
