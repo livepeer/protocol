@@ -11,12 +11,12 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
 
     const contractDeployer = new ContractDeployer(deploy, deployer, deployments)
 
-    const livepeerToken = await get("LivepeerToken")
+    const bondingManager = await get("BondingManager")
 
     await contractDeployer.deployAndRegister({
         contract: "PollCreator",
         name: "PollCreator",
-        args: [livepeerToken.address]
+        args: [bondingManager.address]
     })
 }
 
