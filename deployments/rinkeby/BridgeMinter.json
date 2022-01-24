@@ -1,0 +1,379 @@
+{
+  "address": "0x527416c2AE642e3e1b24C1d10816551183885BBA",
+  "abi": [
+    {
+      "constant": false,
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_tokenAddr",
+          "type": "address"
+        }
+      ],
+      "name": "setToken",
+      "outputs": [],
+      "payable": false,
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "constant": false,
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_newMinterAddr",
+          "type": "address"
+        }
+      ],
+      "name": "migrateToNewMinter",
+      "outputs": [],
+      "payable": false,
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "constant": true,
+      "inputs": [],
+      "name": "getController",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "constant": false,
+      "inputs": [],
+      "name": "withdrawLPTToL1Migrator",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "constant": true,
+      "inputs": [],
+      "name": "l1MigratorAddr",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "constant": true,
+      "inputs": [],
+      "name": "l1LPTGatewayAddr",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "constant": true,
+      "inputs": [],
+      "name": "tokenAddr",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "constant": false,
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_to",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "bridgeMint",
+      "outputs": [],
+      "payable": false,
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "constant": false,
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_controller",
+          "type": "address"
+        }
+      ],
+      "name": "setController",
+      "outputs": [],
+      "payable": false,
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "constant": false,
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_l1LPTGatewayAddr",
+          "type": "address"
+        }
+      ],
+      "name": "setL1LPTGateway",
+      "outputs": [],
+      "payable": false,
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "constant": false,
+      "inputs": [],
+      "name": "withdrawETHToL1Migrator",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "constant": false,
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_l1MigratorAddr",
+          "type": "address"
+        }
+      ],
+      "name": "setL1Migrator",
+      "outputs": [],
+      "payable": false,
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "constant": false,
+      "inputs": [],
+      "name": "depositETH",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "payable": true,
+      "stateMutability": "payable",
+      "type": "function"
+    },
+    {
+      "constant": true,
+      "inputs": [],
+      "name": "controller",
+      "outputs": [
+        {
+          "internalType": "contract IController",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_controller",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "_tokenAddr",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "_l1MigratorAddr",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "_l1LPTGatewayAddr",
+          "type": "address"
+        }
+      ],
+      "payable": false,
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "controller",
+          "type": "address"
+        }
+      ],
+      "name": "SetController",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "string",
+          "name": "param",
+          "type": "string"
+        }
+      ],
+      "name": "ParameterUpdate",
+      "type": "event"
+    }
+  ],
+  "transactionHash": "0x390e1d3b2973af81624e9518cbb612ea06ba0f257bd278e30cae4db18c6c1771",
+  "receipt": {
+    "to": null,
+    "from": "0xB5Af4138f0f33be0D6414Eb25271B9C2Dc245fb5",
+    "contractAddress": "0x527416c2AE642e3e1b24C1d10816551183885BBA",
+    "transactionIndex": 29,
+    "gasUsed": "772991",
+    "logsBloom": "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+    "blockHash": "0x803b8b0c4140d979683b091933e6f419f4765cd96b71579ade570c8c581176ba",
+    "transactionHash": "0x390e1d3b2973af81624e9518cbb612ea06ba0f257bd278e30cae4db18c6c1771",
+    "logs": [],
+    "blockNumber": 10049320,
+    "cumulativeGasUsed": "5570508",
+    "status": 1,
+    "byzantium": true
+  },
+  "args": [
+    "0x9a9827455911a858E55f07911904fACC0D66027E",
+    "0xEf5F154eb0261CB0331a28BC0fB60CA73E716617",
+    "0xc4EA3243FE6eFA01020133C2f956C149C5a63e33",
+    "0x831C51Cd8A38C3E42D98Acd77F06BF537D29800e"
+  ],
+  "numDeployments": 1,
+  "solcInputHash": "ebcc0ae727048c8076751259a562c240",
+  "metadata": "{\"compiler\":{\"version\":\"0.5.11+commit.22be8592\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"constant\":false,\"inputs\":[{\"internalType\":\"address\",\"name\":\"_tokenAddr\",\"type\":\"address\"}],\"name\":\"setToken\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"internalType\":\"address\",\"name\":\"_newMinterAddr\",\"type\":\"address\"}],\"name\":\"migrateToNewMinter\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"getController\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[],\"name\":\"withdrawLPTToL1Migrator\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"l1MigratorAddr\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"l1LPTGatewayAddr\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"tokenAddr\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"internalType\":\"address\",\"name\":\"_to\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"_amount\",\"type\":\"uint256\"}],\"name\":\"bridgeMint\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"internalType\":\"address\",\"name\":\"_controller\",\"type\":\"address\"}],\"name\":\"setController\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"internalType\":\"address\",\"name\":\"_l1LPTGatewayAddr\",\"type\":\"address\"}],\"name\":\"setL1LPTGateway\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[],\"name\":\"withdrawETHToL1Migrator\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"internalType\":\"address\",\"name\":\"_l1MigratorAddr\",\"type\":\"address\"}],\"name\":\"setL1Migrator\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[],\"name\":\"depositETH\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"payable\":true,\"stateMutability\":\"payable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"controller\",\"outputs\":[{\"internalType\":\"contract IController\",\"name\":\"\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_controller\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"_tokenAddr\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"_l1MigratorAddr\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"_l1LPTGatewayAddr\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"controller\",\"type\":\"address\"}],\"name\":\"SetController\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"string\",\"name\":\"param\",\"type\":\"string\"}],\"name\":\"ParameterUpdate\",\"type\":\"event\"}],\"devdoc\":{\"methods\":{\"bridgeMint(address,uint256)\":{\"details\":\"Relies on L1LPTGateway for minting rules\",\"params\":{\"_amount\":\"Amount of LPT to mint\",\"_to\":\"Address to receive LPT\"}},\"getController()\":{\"return\":\"Controller address\"},\"migrateToNewMinter(address)\":{\"params\":{\"_newMinterAddr\":\"New Minter address\"}},\"setController(address)\":{\"params\":{\"_controller\":\"Controller contract address\"}},\"setL1LPTGateway(address)\":{\"params\":{\"_l1LPTGatewayAddr\":\"L1LPTGateway address\"}},\"setL1Migrator(address)\":{\"params\":{\"_l1MigratorAddr\":\"L1Migrator address\"}},\"setToken(address)\":{\"params\":{\"_tokenAddr\":\"LPT address\"}},\"withdrawETHToL1Migrator()\":{\"return\":\"Amount of ETH sent\"},\"withdrawLPTToL1Migrator()\":{\"return\":\"Amount of LPT sent\"}}},\"userdoc\":{\"methods\":{\"bridgeMint(address,uint256)\":{\"notice\":\"Mint LPT to address. Only callable by L1LPTGateway\"},\"depositETH()\":{\"notice\":\"Deposit ETH. Required for migrateToNewMinter() from older Minter implementation\"},\"getController()\":{\"notice\":\"Returns Controller address. Required for migrateToNewMinter() from older Minter implementation\"},\"migrateToNewMinter(address)\":{\"notice\":\"Migrate to a new Minter. Only callable by Controller owner\"},\"setController(address)\":{\"notice\":\"Set controller. Only callable by current controller\"},\"setL1LPTGateway(address)\":{\"notice\":\"Set L1LPTGateway address. Only callable by Controller owner\"},\"setL1Migrator(address)\":{\"notice\":\"Set L1Migrator address. Only callable by Controller owner\"},\"setToken(address)\":{\"notice\":\"Set LPT address. Only callable by Controller owner\"},\"withdrawETHToL1Migrator()\":{\"notice\":\"Send contract's ETH to L1Migrator. Only callable by L1Migrator\"},\"withdrawLPTToL1Migrator()\":{\"notice\":\"Send contract's LPT to L1Migrator. Only callable by L1Migrator\"}}}},\"settings\":{\"compilationTarget\":{\"contracts/token/BridgeMinter.sol\":\"BridgeMinter\"},\"evmVersion\":\"petersburg\",\"libraries\":{},\"metadata\":{\"useLiteralContent\":true},\"optimizer\":{\"enabled\":true,\"runs\":200},\"remappings\":[]},\"sources\":{\"contracts/IController.sol\":{\"content\":\"pragma solidity ^0.5.11;\\n\\nimport \\\"./zeppelin/Pausable.sol\\\";\\n\\ncontract IController is Pausable {\\n    event SetContractInfo(bytes32 id, address contractAddress, bytes20 gitCommitHash);\\n\\n    function setContractInfo(\\n        bytes32 _id,\\n        address _contractAddress,\\n        bytes20 _gitCommitHash\\n    ) external;\\n\\n    function updateController(bytes32 _id, address _controller) external;\\n\\n    function getContract(bytes32 _id) public view returns (address);\\n}\\n\",\"keccak256\":\"0x591fcbcadc9cfee2d453ef4d5d71eaffb3132aba8f8c226c7d7fe557e12f6354\"},\"contracts/IManager.sol\":{\"content\":\"pragma solidity ^0.5.11;\\n\\ncontract IManager {\\n    event SetController(address controller);\\n    event ParameterUpdate(string param);\\n\\n    function setController(address _controller) external;\\n}\\n\",\"keccak256\":\"0xf9da2c6ac6b67f9e89831c6fbdf0855290681f2b9508df60f25540b07b8786ae\"},\"contracts/Manager.sol\":{\"content\":\"pragma solidity ^0.5.11;\\n\\nimport \\\"./IManager.sol\\\";\\nimport \\\"./IController.sol\\\";\\n\\ncontract Manager is IManager {\\n    // Controller that contract is registered with\\n    IController public controller;\\n\\n    // Check if sender is controller\\n    modifier onlyController() {\\n        _onlyController();\\n        _;\\n    }\\n\\n    // Check if sender is controller owner\\n    modifier onlyControllerOwner() {\\n        _onlyControllerOwner();\\n        _;\\n    }\\n\\n    // Check if controller is not paused\\n    modifier whenSystemNotPaused() {\\n        _whenSystemNotPaused();\\n        _;\\n    }\\n\\n    // Check if controller is paused\\n    modifier whenSystemPaused() {\\n        _whenSystemPaused();\\n        _;\\n    }\\n\\n    constructor(address _controller) public {\\n        controller = IController(_controller);\\n    }\\n\\n    /**\\n     * @notice Set controller. Only callable by current controller\\n     * @param _controller Controller contract address\\n     */\\n    function setController(address _controller) external onlyController {\\n        controller = IController(_controller);\\n\\n        emit SetController(_controller);\\n    }\\n\\n    function _onlyController() internal view {\\n        require(msg.sender == address(controller), \\\"caller must be Controller\\\");\\n    }\\n\\n    function _onlyControllerOwner() internal view {\\n        require(msg.sender == controller.owner(), \\\"caller must be Controller owner\\\");\\n    }\\n\\n    function _whenSystemNotPaused() internal view {\\n        require(!controller.paused(), \\\"system is paused\\\");\\n    }\\n\\n    function _whenSystemPaused() internal view {\\n        require(controller.paused(), \\\"system is not paused\\\");\\n    }\\n}\\n\",\"keccak256\":\"0xed96efae1e97d487666ec13d31f7ab7fff92345a7a4fe457056703603aa59b4e\"},\"contracts/token/BridgeMinter.sol\":{\"content\":\"pragma solidity ^0.5.11;\\n\\nimport \\\"../Manager.sol\\\";\\n\\ninterface IBridgeMinterToken {\\n    function transfer(address _to, uint256 _amount) external;\\n\\n    function mint(address _to, uint256 _amount) external;\\n\\n    function transferOwnership(address _owner) external;\\n\\n    function balanceOf(address _addr) external view returns (uint256);\\n}\\n\\ncontract BridgeMinter is Manager {\\n    address public tokenAddr;\\n    address public l1MigratorAddr;\\n    address public l1LPTGatewayAddr;\\n\\n    modifier onlyL1Migrator() {\\n        require(msg.sender == l1MigratorAddr, \\\"NOT_L1_MIGRATOR\\\");\\n        _;\\n    }\\n\\n    modifier onlyL1LPTGateway() {\\n        require(msg.sender == l1LPTGatewayAddr, \\\"NOT_L1_LPT_GATEWAY\\\");\\n        _;\\n    }\\n\\n    constructor(\\n        address _controller,\\n        address _tokenAddr,\\n        address _l1MigratorAddr,\\n        address _l1LPTGatewayAddr\\n    ) public Manager(_controller) {\\n        tokenAddr = _tokenAddr;\\n        l1MigratorAddr = _l1MigratorAddr;\\n        l1LPTGatewayAddr = _l1LPTGatewayAddr;\\n    }\\n\\n    /**\\n     * @notice Set LPT address. Only callable by Controller owner\\n     * @param _tokenAddr LPT address\\n     */\\n    function setToken(address _tokenAddr) external onlyControllerOwner {\\n        tokenAddr = _tokenAddr;\\n    }\\n\\n    /**\\n     * @notice Set L1Migrator address. Only callable by Controller owner\\n     * @param _l1MigratorAddr L1Migrator address\\n     */\\n    function setL1Migrator(address _l1MigratorAddr) external onlyControllerOwner {\\n        l1MigratorAddr = _l1MigratorAddr;\\n    }\\n\\n    /**\\n     * @notice Set L1LPTGateway address. Only callable by Controller owner\\n     * @param _l1LPTGatewayAddr L1LPTGateway address\\n     */\\n    function setL1LPTGateway(address _l1LPTGatewayAddr) external onlyControllerOwner {\\n        l1LPTGatewayAddr = _l1LPTGatewayAddr;\\n    }\\n\\n    /**\\n     * @notice Migrate to a new Minter. Only callable by Controller owner\\n     * @param _newMinterAddr New Minter address\\n     */\\n    function migrateToNewMinter(address _newMinterAddr) external onlyControllerOwner {\\n        require(\\n            _newMinterAddr != address(this) && _newMinterAddr != address(0),\\n            \\\"BridgeMinter#migrateToNewMinter: INVALID_MINTER\\\"\\n        );\\n\\n        IBridgeMinterToken token = IBridgeMinterToken(tokenAddr);\\n        // Transfer ownership of token to new Minter\\n        token.transferOwnership(_newMinterAddr);\\n        // Transfer current Minter's LPT balance to new Minter\\n        token.transfer(_newMinterAddr, token.balanceOf(address(this)));\\n        // Transfer current Minter's ETH balance to new Minter\\n        // call() should be safe from re-entrancy here because the Controller owner and _newMinterAddr are trusted\\n        (bool ok, ) = _newMinterAddr.call.value(address(this).balance)(\\\"\\\");\\n        require(ok, \\\"BridgeMinter#migrateToNewMinter: FAIL_CALL\\\");\\n    }\\n\\n    /**\\n     * @notice Send contract's ETH to L1Migrator. Only callable by L1Migrator\\n     * @return Amount of ETH sent\\n     */\\n    function withdrawETHToL1Migrator() external onlyL1Migrator returns (uint256) {\\n        uint256 balance = address(this).balance;\\n\\n        // call() should be safe from re-entrancy here because the L1Migrator and l1MigratorAddr are trusted\\n        (bool ok, ) = l1MigratorAddr.call.value(address(this).balance)(\\\"\\\");\\n        require(ok, \\\"BridgeMinter#withdrawETHToL1Migrator: FAIL_CALL\\\");\\n\\n        return balance;\\n    }\\n\\n    /**\\n     * @notice Send contract's LPT to L1Migrator. Only callable by L1Migrator\\n     * @return Amount of LPT sent\\n     */\\n    function withdrawLPTToL1Migrator() external onlyL1Migrator returns (uint256) {\\n        IBridgeMinterToken token = IBridgeMinterToken(tokenAddr);\\n\\n        uint256 balance = token.balanceOf(address(this));\\n\\n        token.transfer(l1MigratorAddr, balance);\\n\\n        return balance;\\n    }\\n\\n    /**\\n     * @notice Mint LPT to address. Only callable by L1LPTGateway\\n     * @dev Relies on L1LPTGateway for minting rules\\n     * @param _to Address to receive LPT\\n     * @param _amount Amount of LPT to mint\\n     */\\n    function bridgeMint(address _to, uint256 _amount) external onlyL1LPTGateway {\\n        IBridgeMinterToken(tokenAddr).mint(_to, _amount);\\n    }\\n\\n    /**\\n     * @notice Deposit ETH. Required for migrateToNewMinter() from older Minter implementation\\n     */\\n    function depositETH() external payable returns (bool) {\\n        return true;\\n    }\\n\\n    /**\\n     * @notice Returns Controller address. Required for migrateToNewMinter() from older Minter implementation\\n     * @return Controller address\\n     */\\n    function getController() public view returns (address) {\\n        return address(controller);\\n    }\\n}\\n\",\"keccak256\":\"0x7b78b062f27f90919fe59ed7a369eddd3b8c7d90c06929d57942f73e952b049e\"},\"contracts/zeppelin/Ownable.sol\":{\"content\":\"pragma solidity ^0.5.11;\\n\\n/**\\n * @title Ownable\\n * @dev The Ownable contract has an owner address, and provides basic authorization control\\n * functions, this simplifies the implementation of \\\"user permissions\\\".\\n */\\ncontract Ownable {\\n    address public owner;\\n\\n    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);\\n\\n    /**\\n     * @dev The Ownable constructor sets the original `owner` of the contract to the sender\\n     * account.\\n     */\\n    constructor() public {\\n        owner = msg.sender;\\n    }\\n\\n    /**\\n     * @dev Throws if called by any account other than the owner.\\n     */\\n    modifier onlyOwner() {\\n        require(msg.sender == owner);\\n        _;\\n    }\\n\\n    /**\\n     * @dev Allows the current owner to transfer control of the contract to a newOwner.\\n     * @param newOwner The address to transfer ownership to.\\n     */\\n    function transferOwnership(address newOwner) public onlyOwner {\\n        require(newOwner != address(0));\\n        emit OwnershipTransferred(owner, newOwner);\\n        owner = newOwner;\\n    }\\n}\\n\",\"keccak256\":\"0x3689b5ecbe68f236d23bdc4e045274debc31e00bad129042d25185a4f7ee7675\"},\"contracts/zeppelin/Pausable.sol\":{\"content\":\"pragma solidity ^0.5.11;\\n\\nimport \\\"./Ownable.sol\\\";\\n\\n/**\\n * @title Pausable\\n * @dev Base contract which allows children to implement an emergency stop mechanism.\\n */\\ncontract Pausable is Ownable {\\n    event Pause();\\n    event Unpause();\\n\\n    bool public paused = false;\\n\\n    /**\\n     * @dev Modifier to make a function callable only when the contract is not paused.\\n     */\\n    modifier whenNotPaused() {\\n        require(!paused);\\n        _;\\n    }\\n\\n    /**\\n     * @dev Modifier to make a function callable only when the contract is paused.\\n     */\\n    modifier whenPaused() {\\n        require(paused);\\n        _;\\n    }\\n\\n    /**\\n     * @dev called by the owner to pause, triggers stopped state\\n     */\\n    function pause() public onlyOwner whenNotPaused {\\n        paused = true;\\n        emit Pause();\\n    }\\n\\n    /**\\n     * @dev called by the owner to unpause, returns to normal state\\n     */\\n    function unpause() public onlyOwner whenPaused {\\n        paused = false;\\n        emit Unpause();\\n    }\\n}\\n\",\"keccak256\":\"0x434f6e0c3521748aa10467786650458449a844a13eaa9dc9c60452a02b77034e\"}},\"version\":1}",
+  "bytecode": "0x608060405234801561001057600080fd5b50604051610bfd380380610bfd8339818101604052608081101561003357600080fd5b50805160208201516040830151606090930151600080546001600160a01b039485166001600160a01b0319918216179091556001805493851693821693909317909255600280549484169483169490941790935560038054929093169116179055610b5a806100a36000396000f3fe6080604052600436106100dd5760003560e01c80638c2a993e1161007f578063aa0946cd11610059578063aa0946cd14610280578063b760873614610295578063f6326fb3146102c8578063f77c4791146102e4576100dd565b80638c2a993e146101e157806392eefe9b1461021a578063a86268691461024d576100dd565b80634235dfbc116100bb5780634235dfbc1461017b5780634413a2e7146101a257806359d95915146101b75780635fbe4d1d146101cc576100dd565b8063144fa6d7146100e257806318d217ad146101175780633018205f1461014a575b600080fd5b3480156100ee57600080fd5b506101156004803603602081101561010557600080fd5b50356001600160a01b03166102f9565b005b34801561012357600080fd5b506101156004803603602081101561013a57600080fd5b50356001600160a01b0316610323565b34801561015657600080fd5b5061015f610569565b604080516001600160a01b039092168252519081900360200190f35b34801561018757600080fd5b50610190610578565b60408051918252519081900360200190f35b3480156101ae57600080fd5b5061015f6106bf565b3480156101c357600080fd5b5061015f6106ce565b3480156101d857600080fd5b5061015f6106dd565b3480156101ed57600080fd5b506101156004803603604081101561020457600080fd5b506001600160a01b0381351690602001356106ec565b34801561022657600080fd5b506101156004803603602081101561023d57600080fd5b50356001600160a01b03166107b1565b34801561025957600080fd5b506101156004803603602081101561027057600080fd5b50356001600160a01b031661080d565b34801561028c57600080fd5b50610190610837565b3480156102a157600080fd5b50610115600480360360208110156102b857600080fd5b50356001600160a01b0316610929565b6102d0610953565b604080519115158252519081900360200190f35b3480156102f057600080fd5b5061015f610958565b610301610967565b600180546001600160a01b0319166001600160a01b0392909216919091179055565b61032b610967565b6001600160a01b038116301480159061034c57506001600160a01b03811615155b6103875760405162461bcd60e51b815260040180806020018281038252602f815260200180610af7602f913960400191505060405180910390fd5b6001546040805163f2fde38b60e01b81526001600160a01b03848116600483015291519190921691829163f2fde38b9160248082019260009290919082900301818387803b1580156103d857600080fd5b505af11580156103ec573d6000803e3d6000fd5b5050604080516370a0823160e01b815230600482015290516001600160a01b038516935063a9059cbb9250859184916370a0823191602480820192602092909190829003018186803b15801561044157600080fd5b505afa158015610455573d6000803e3d6000fd5b505050506040513d602081101561046b57600080fd5b5051604080516001600160e01b031960e086901b1681526001600160a01b039093166004840152602483019190915251604480830192600092919082900301818387803b1580156104bb57600080fd5b505af11580156104cf573d6000803e3d6000fd5b5050604051600092506001600160a01b03851691503031908381818185875af1925050503d806000811461051f576040519150601f19603f3d011682016040523d82523d6000602084013e610524565b606091505b50509050806105645760405162461bcd60e51b815260040180806020018281038252602a815260200180610a9e602a913960400191505060405180910390fd5b505050565b6000546001600160a01b031690565b6002546000906001600160a01b031633146105cc576040805162461bcd60e51b815260206004820152600f60248201526e2727aa2fa618afa6a4a3a920aa27a960891b604482015290519081900360640190fd5b600154604080516370a0823160e01b815230600482015290516001600160a01b039092169160009183916370a0823191602480820192602092909190829003018186803b15801561061c57600080fd5b505afa158015610630573d6000803e3d6000fd5b505050506040513d602081101561064657600080fd5b50516002546040805163a9059cbb60e01b81526001600160a01b0392831660048201526024810184905290519293509084169163a9059cbb9160448082019260009290919082900301818387803b1580156106a057600080fd5b505af11580156106b4573d6000803e3d6000fd5b509294505050505090565b6002546001600160a01b031681565b6003546001600160a01b031681565b6001546001600160a01b031681565b6003546001600160a01b03163314610740576040805162461bcd60e51b81526020600482015260126024820152714e4f545f4c315f4c50545f4741544557415960701b604482015290519081900360640190fd5b600154604080516340c10f1960e01b81526001600160a01b03858116600483015260248201859052915191909216916340c10f1991604480830192600092919082900301818387803b15801561079557600080fd5b505af11580156107a9573d6000803e3d6000fd5b505050505050565b6107b9610a3e565b600080546001600160a01b0383166001600160a01b0319909116811790915560408051918252517f4ff638452bbf33c012645d18ae6f05515ff5f2d1dfb0cece8cbf018c60903f709181900360200190a150565b610815610967565b600380546001600160a01b0319166001600160a01b0392909216919091179055565b6002546000906001600160a01b0316331461088b576040805162461bcd60e51b815260206004820152600f60248201526e2727aa2fa618afa6a4a3a920aa27a960891b604482015290519081900360640190fd5b600254604051308031926000926001600160a01b039091169131908381818185875af1925050503d80600081146108de576040519150601f19603f3d011682016040523d82523d6000602084013e6108e3565b606091505b50509050806109235760405162461bcd60e51b815260040180806020018281038252602f815260200180610ac8602f913960400191505060405180910390fd5b50905090565b610931610967565b600280546001600160a01b0319166001600160a01b0392909216919091179055565b600190565b6000546001600160a01b031681565b6000809054906101000a90046001600160a01b03166001600160a01b0316638da5cb5b6040518163ffffffff1660e01b815260040160206040518083038186803b1580156109b457600080fd5b505afa1580156109c8573d6000803e3d6000fd5b505050506040513d60208110156109de57600080fd5b50516001600160a01b03163314610a3c576040805162461bcd60e51b815260206004820152601f60248201527f63616c6c6572206d75737420626520436f6e74726f6c6c6572206f776e657200604482015290519081900360640190fd5b565b6000546001600160a01b03163314610a3c576040805162461bcd60e51b815260206004820152601960248201527f63616c6c6572206d75737420626520436f6e74726f6c6c657200000000000000604482015290519081900360640190fdfe4272696467654d696e746572236d696772617465546f4e65774d696e7465723a204641494c5f43414c4c4272696467654d696e746572237769746864726177455448546f4c314d69677261746f723a204641494c5f43414c4c4272696467654d696e746572236d696772617465546f4e65774d696e7465723a20494e56414c49445f4d494e544552a265627a7a723158207d933355be59ceed1b24ce3a7ad5478394d349816ea5b33685291dc4c4e5b42864736f6c634300050b0032",
+  "deployedBytecode": "0x6080604052600436106100dd5760003560e01c80638c2a993e1161007f578063aa0946cd11610059578063aa0946cd14610280578063b760873614610295578063f6326fb3146102c8578063f77c4791146102e4576100dd565b80638c2a993e146101e157806392eefe9b1461021a578063a86268691461024d576100dd565b80634235dfbc116100bb5780634235dfbc1461017b5780634413a2e7146101a257806359d95915146101b75780635fbe4d1d146101cc576100dd565b8063144fa6d7146100e257806318d217ad146101175780633018205f1461014a575b600080fd5b3480156100ee57600080fd5b506101156004803603602081101561010557600080fd5b50356001600160a01b03166102f9565b005b34801561012357600080fd5b506101156004803603602081101561013a57600080fd5b50356001600160a01b0316610323565b34801561015657600080fd5b5061015f610569565b604080516001600160a01b039092168252519081900360200190f35b34801561018757600080fd5b50610190610578565b60408051918252519081900360200190f35b3480156101ae57600080fd5b5061015f6106bf565b3480156101c357600080fd5b5061015f6106ce565b3480156101d857600080fd5b5061015f6106dd565b3480156101ed57600080fd5b506101156004803603604081101561020457600080fd5b506001600160a01b0381351690602001356106ec565b34801561022657600080fd5b506101156004803603602081101561023d57600080fd5b50356001600160a01b03166107b1565b34801561025957600080fd5b506101156004803603602081101561027057600080fd5b50356001600160a01b031661080d565b34801561028c57600080fd5b50610190610837565b3480156102a157600080fd5b50610115600480360360208110156102b857600080fd5b50356001600160a01b0316610929565b6102d0610953565b604080519115158252519081900360200190f35b3480156102f057600080fd5b5061015f610958565b610301610967565b600180546001600160a01b0319166001600160a01b0392909216919091179055565b61032b610967565b6001600160a01b038116301480159061034c57506001600160a01b03811615155b6103875760405162461bcd60e51b815260040180806020018281038252602f815260200180610af7602f913960400191505060405180910390fd5b6001546040805163f2fde38b60e01b81526001600160a01b03848116600483015291519190921691829163f2fde38b9160248082019260009290919082900301818387803b1580156103d857600080fd5b505af11580156103ec573d6000803e3d6000fd5b5050604080516370a0823160e01b815230600482015290516001600160a01b038516935063a9059cbb9250859184916370a0823191602480820192602092909190829003018186803b15801561044157600080fd5b505afa158015610455573d6000803e3d6000fd5b505050506040513d602081101561046b57600080fd5b5051604080516001600160e01b031960e086901b1681526001600160a01b039093166004840152602483019190915251604480830192600092919082900301818387803b1580156104bb57600080fd5b505af11580156104cf573d6000803e3d6000fd5b5050604051600092506001600160a01b03851691503031908381818185875af1925050503d806000811461051f576040519150601f19603f3d011682016040523d82523d6000602084013e610524565b606091505b50509050806105645760405162461bcd60e51b815260040180806020018281038252602a815260200180610a9e602a913960400191505060405180910390fd5b505050565b6000546001600160a01b031690565b6002546000906001600160a01b031633146105cc576040805162461bcd60e51b815260206004820152600f60248201526e2727aa2fa618afa6a4a3a920aa27a960891b604482015290519081900360640190fd5b600154604080516370a0823160e01b815230600482015290516001600160a01b039092169160009183916370a0823191602480820192602092909190829003018186803b15801561061c57600080fd5b505afa158015610630573d6000803e3d6000fd5b505050506040513d602081101561064657600080fd5b50516002546040805163a9059cbb60e01b81526001600160a01b0392831660048201526024810184905290519293509084169163a9059cbb9160448082019260009290919082900301818387803b1580156106a057600080fd5b505af11580156106b4573d6000803e3d6000fd5b509294505050505090565b6002546001600160a01b031681565b6003546001600160a01b031681565b6001546001600160a01b031681565b6003546001600160a01b03163314610740576040805162461bcd60e51b81526020600482015260126024820152714e4f545f4c315f4c50545f4741544557415960701b604482015290519081900360640190fd5b600154604080516340c10f1960e01b81526001600160a01b03858116600483015260248201859052915191909216916340c10f1991604480830192600092919082900301818387803b15801561079557600080fd5b505af11580156107a9573d6000803e3d6000fd5b505050505050565b6107b9610a3e565b600080546001600160a01b0383166001600160a01b0319909116811790915560408051918252517f4ff638452bbf33c012645d18ae6f05515ff5f2d1dfb0cece8cbf018c60903f709181900360200190a150565b610815610967565b600380546001600160a01b0319166001600160a01b0392909216919091179055565b6002546000906001600160a01b0316331461088b576040805162461bcd60e51b815260206004820152600f60248201526e2727aa2fa618afa6a4a3a920aa27a960891b604482015290519081900360640190fd5b600254604051308031926000926001600160a01b039091169131908381818185875af1925050503d80600081146108de576040519150601f19603f3d011682016040523d82523d6000602084013e6108e3565b606091505b50509050806109235760405162461bcd60e51b815260040180806020018281038252602f815260200180610ac8602f913960400191505060405180910390fd5b50905090565b610931610967565b600280546001600160a01b0319166001600160a01b0392909216919091179055565b600190565b6000546001600160a01b031681565b6000809054906101000a90046001600160a01b03166001600160a01b0316638da5cb5b6040518163ffffffff1660e01b815260040160206040518083038186803b1580156109b457600080fd5b505afa1580156109c8573d6000803e3d6000fd5b505050506040513d60208110156109de57600080fd5b50516001600160a01b03163314610a3c576040805162461bcd60e51b815260206004820152601f60248201527f63616c6c6572206d75737420626520436f6e74726f6c6c6572206f776e657200604482015290519081900360640190fd5b565b6000546001600160a01b03163314610a3c576040805162461bcd60e51b815260206004820152601960248201527f63616c6c6572206d75737420626520436f6e74726f6c6c657200000000000000604482015290519081900360640190fdfe4272696467654d696e746572236d696772617465546f4e65774d696e7465723a204641494c5f43414c4c4272696467654d696e746572237769746864726177455448546f4c314d69677261746f723a204641494c5f43414c4c4272696467654d696e746572236d696772617465546f4e65774d696e7465723a20494e56414c49445f4d494e544552a265627a7a723158207d933355be59ceed1b24ce3a7ad5478394d349816ea5b33685291dc4c4e5b42864736f6c634300050b0032",
+  "devdoc": {
+    "methods": {
+      "bridgeMint(address,uint256)": {
+        "details": "Relies on L1LPTGateway for minting rules",
+        "params": {
+          "_amount": "Amount of LPT to mint",
+          "_to": "Address to receive LPT"
+        }
+      },
+      "getController()": {
+        "return": "Controller address"
+      },
+      "migrateToNewMinter(address)": {
+        "params": {
+          "_newMinterAddr": "New Minter address"
+        }
+      },
+      "setController(address)": {
+        "params": {
+          "_controller": "Controller contract address"
+        }
+      },
+      "setL1LPTGateway(address)": {
+        "params": {
+          "_l1LPTGatewayAddr": "L1LPTGateway address"
+        }
+      },
+      "setL1Migrator(address)": {
+        "params": {
+          "_l1MigratorAddr": "L1Migrator address"
+        }
+      },
+      "setToken(address)": {
+        "params": {
+          "_tokenAddr": "LPT address"
+        }
+      },
+      "withdrawETHToL1Migrator()": {
+        "return": "Amount of ETH sent"
+      },
+      "withdrawLPTToL1Migrator()": {
+        "return": "Amount of LPT sent"
+      }
+    }
+  },
+  "userdoc": {
+    "methods": {
+      "bridgeMint(address,uint256)": {
+        "notice": "Mint LPT to address. Only callable by L1LPTGateway"
+      },
+      "depositETH()": {
+        "notice": "Deposit ETH. Required for migrateToNewMinter() from older Minter implementation"
+      },
+      "getController()": {
+        "notice": "Returns Controller address. Required for migrateToNewMinter() from older Minter implementation"
+      },
+      "migrateToNewMinter(address)": {
+        "notice": "Migrate to a new Minter. Only callable by Controller owner"
+      },
+      "setController(address)": {
+        "notice": "Set controller. Only callable by current controller"
+      },
+      "setL1LPTGateway(address)": {
+        "notice": "Set L1LPTGateway address. Only callable by Controller owner"
+      },
+      "setL1Migrator(address)": {
+        "notice": "Set L1Migrator address. Only callable by Controller owner"
+      },
+      "setToken(address)": {
+        "notice": "Set LPT address. Only callable by Controller owner"
+      },
+      "withdrawETHToL1Migrator()": {
+        "notice": "Send contract's ETH to L1Migrator. Only callable by L1Migrator"
+      },
+      "withdrawLPTToL1Migrator()": {
+        "notice": "Send contract's LPT to L1Migrator. Only callable by L1Migrator"
+      }
+    }
+  }
+}
