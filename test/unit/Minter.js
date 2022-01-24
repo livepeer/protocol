@@ -537,10 +537,7 @@ describe("Minter", () => {
                 )
             )
 
-            expect(tokenMock.burn).to.be.calledOnceWith(
-                minter.address,
-                burnAmount
-            )
+            expect(tokenMock.burn).to.be.calledOnceWith(burnAmount)
         })
     })
 
