@@ -175,11 +175,6 @@ describe("Minter", () => {
             ).to.be.reverted
         })
 
-        it("should fail if the system is not paused", async () => {
-            await expect(minter.migrateToNewMinter(signers[1].address)).to.be
-                .reverted
-        })
-
         it("should fail if provided new minter is the current minter", async () => {
             await fixture.controller.pause()
             await expect(

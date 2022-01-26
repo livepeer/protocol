@@ -116,10 +116,10 @@ contract Minter is Manager, IMinter {
 
     /**
      * @notice Migrate to a new Minter by transferring the current Minter's LPT + ETH balance to the new Minter
-     * @dev Only callable by Controller when system is paused
+     * @dev Only callable by Controller owner
      * @param _newMinter Address of new Minter
      */
-    function migrateToNewMinter(IMinter _newMinter) external onlyControllerOwner whenSystemPaused {
+    function migrateToNewMinter(IMinter _newMinter) external onlyControllerOwner {
         // New Minter cannot be the current Minter
         require(_newMinter != this, "new Minter cannot be current Minter");
         // Check for null address
