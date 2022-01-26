@@ -115,8 +115,8 @@ contract Minter is Manager, IMinter {
     }
 
     /**
-     * @notice Migrate to a new Minter by transferring ownership of the token as well
-     * as the current Minter's token balance to the new Minter. Only callable by Controller when system is paused
+     * @notice Migrate to a new Minter by transferring the current Minter's LPT + ETH balance to the new Minter
+     * @dev Only callable by Controller when system is paused
      * @param _newMinter Address of new Minter
      */
     function migrateToNewMinter(IMinter _newMinter) external onlyControllerOwner whenSystemPaused {
@@ -131,8 +131,6 @@ contract Minter is Manager, IMinter {
         // New Minter's Controller must have the current Minter registered
         require(newMinterController.getContract(keccak256("Minter")) == address(this), "new Minter must be registered");
 
-        // Transfer ownership of token to new Minter
-        livepeerToken().transferOwnership(address(_newMinter));
         // Transfer current Minter's token balance to new Minter
         livepeerToken().transfer(address(_newMinter), livepeerToken().balanceOf(address(this)));
         // Transfer current Minter's ETH balance to new Minter

@@ -239,7 +239,7 @@ describe("Minter", () => {
             ).to.be.revertedWith("new Minter must be registered")
         })
 
-        it("should transfer ownership of the token, current token balance and current ETH balance to new minter", async () => {
+        it("should transfer current token balance and current ETH balance to new minter", async () => {
             await fixture.ticketBroker
                 .connect(signers[1])
                 .execute(minter.address, functionSig("depositETH()"), {
