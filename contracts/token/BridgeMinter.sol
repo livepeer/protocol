@@ -43,9 +43,15 @@ contract BridgeMinter is Manager {
     /**
      * @notice Set LPT address. Only callable by Controller owner
      * @param _tokenAddr LPT address
+     * @param _destination address where old tokens will be transferred to
      */
-    function setToken(address _tokenAddr) external onlyControllerOwner {
+    function setToken(address _tokenAddr, address _destination) external onlyControllerOwner {
+        address oldTokenAddr = tokenAddr;
         tokenAddr = _tokenAddr;
+
+        // Transfer current LPT balance to new destination
+        IBridgeMinterToken oldToken = IBridgeMinterToken(oldTokenAddr);
+        oldToken.transfer(_destination, oldToken.balanceOf(address(this)));
     }
 
     /**
