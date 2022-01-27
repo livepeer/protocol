@@ -28,8 +28,28 @@ const config: HardhatUserConfig = {
                         runs: 200
                     }
                 }
+            },
+            {
+                version: "0.8.8",
+                settings: {
+                    optimizer: {
+                        enabled: true,
+                        runs: 200
+                    }
+                }
             }
-        ]
+        ],
+        overrides: {
+            "contracts/token/LivepeerToken.sol": {
+                version: "0.8.8",
+                settings: {
+                    optimizer: {
+                        enabled: true,
+                        runs: 200
+                    }
+                }
+            }
+        }
     },
     namedAccounts: {
         deployer: 0

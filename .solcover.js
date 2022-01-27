@@ -8,6 +8,7 @@ module.exports = {
         "zeppelin",
         "rounds/AdjustableRoundsManager.sol",
         "pm/mixins/interfaces",
-        "bonding/deprecated",
+        "bonding/deprecated",,
+        "token/LivepeerToken.sol" // https://github.com/livepeer/arbitrum-lpt-bridge/blob/main/test/unit/L2/livepeerToken.test.ts
     ],
 };
