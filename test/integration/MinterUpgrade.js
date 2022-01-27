@@ -166,9 +166,6 @@ describe("MinterUpgrade", () => {
             targetBondingRate
         )
 
-        // Pause the Controller so migrateToNewMinter() can be called
-        await controller.pause()
-
         // Migrate from old Minter to new Minter
         await minter.migrateToNewMinter(newMinter.address)
 
@@ -178,9 +175,6 @@ describe("MinterUpgrade", () => {
             newMinter.address,
             "0x3031323334353637383930313233343536373839"
         )
-
-        // Unpause the Controller after migrateToNewMinter() has been called
-        await controller.unpause()
 
         // Check new Minter parameters and balances
         assert.equal(
@@ -208,8 +202,11 @@ describe("MinterUpgrade", () => {
         assert.equal((await newMinter.currentMintableTokens()).toString(), "0")
         assert.equal((await newMinter.currentMintedTokens()).toString(), "0")
 
-        // Check that new Minter can mint tokens
-        assert.equal(await token.owner.call(), newMinter.address)
+        // Grant new Minter minting rights
+        await token.grantRole(
+            ethers.utils.solidityKeccak256(["string"], ["MINTER_ROLE"]),
+            newMinter.address
+        )
 
         // Set minter var to new Minter
         minter = newMinter
