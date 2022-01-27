@@ -27,6 +27,10 @@ describe("LivepeerTokenFaucet", () => {
             requestWait
         )
 
+        await token.grantRole(
+            ethers.utils.solidityKeccak256(["string"], ["MINTER_ROLE"]),
+            signers[0].address
+        )
         await token.mint(faucet.address, faucetAmount)
     })
 

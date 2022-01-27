@@ -8,6 +8,8 @@ import ContractDeployer from "./deployer"
 import config from "./migrations.config"
 import genesis from "./genesis.config"
 
+const MINTER_ROLE = ethers.utils.solidityKeccak256(["string"], ["MINTER_ROLE"])
+
 const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
     const {deployments, getNamedAccounts} = hre // Get the deployments and getNamedAccounts which are provided by hardhat-deploy
     const {deploy} = deployments // the deployments object itself contains the deploy function
@@ -117,16 +119,20 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
         })
         // If not in production, send the crowd supply to the faucet and the company supply to the deployment account
 
+        await Token.grantRole(MINTER_ROLE, deployer)
+
         await Token.mint(faucet.address, genesis.crowdSupply)
 
         await Token.mint(deployer, genesis.companySupply)
+
+        await Token.revokeRole(MINTER_ROLE, deployer)
     } else {
         Controller.transferOwnership(genesis.governanceMultisig)
         const newOwner = await Controller.owner()
         console.log(`Controller at ${Controller.address} is now owned by ${newOwner}`)
     }
 
-    await Token.transferOwnership(minter.address)
+    await Token.grantRole(MINTER_ROLE, minter.address)
 }
 
 func.tags = ["Contracts"]
