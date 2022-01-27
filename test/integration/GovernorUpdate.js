@@ -101,14 +101,10 @@ describe("Governor update", () => {
         // 4. Unpause the protocol
         let newMinter
 
-        let pauseData
-        let pauseTarget
         let migrateData
         let migrateTarget
         let setInfoData
         let setInfoTarget
-        let unpauseData
-        let unpauseTarget
 
         before(async () => {
             const minterFac = await ethers.getContractFactory("Minter")
@@ -118,9 +114,6 @@ describe("Governor update", () => {
                 "1",
                 "500000"
             )
-
-            pauseData = controller.interface.encodeFunctionData("pause", [])
-            pauseTarget = controller.address
 
             migrateData = minter.interface.encodeFunctionData(
                 "migrateToNewMinter",
@@ -137,83 +130,18 @@ describe("Governor update", () => {
                 ]
             )
             setInfoTarget = controller.address
-
-            unpauseData = controller.interface.encodeFunctionData("unpause", [])
-            unpauseTarget = controller.address
         })
 
-        it("step 1 'pause' fails: the protocol is already paused", async () => {
-            // pause twice
-            const update = {
-                target: [
-                    pauseTarget,
-                    pauseTarget,
-                    migrateTarget,
-                    setInfoTarget,
-                    unpauseTarget
-                ],
-                value: ["0", "0", "0", "0", "0"],
-                data: [
-                    pauseData,
-                    pauseData,
-                    migrateData,
-                    setInfoData,
-                    unpauseData
-                ],
-                nonce: 0
-            }
-
-            // run the migrate to new minter update
-            await governor.stage(update, "0")
-            await expect(governor.execute(update)).to.be.reverted
-        })
-
-        it("step 2 'migrateToNewMinter' fails: the protocol is not paused", async () => {
-            // omit pausing from the update
-            const update = {
-                target: [
-                    pauseTarget,
-                    unpauseTarget,
-                    migrateTarget,
-                    setInfoTarget,
-                    unpauseTarget
-                ],
-                value: ["0", "0", "0", "0", "0"],
-                data: [
-                    pauseData,
-                    unpauseData,
-                    migrateData,
-                    setInfoData,
-                    unpauseData
-                ],
-                nonce: 0
-            }
-
-            // run the migrate to new minter update
-            await governor.stage(update, "0")
-            await expect(governor.execute(update)).to.be.revertedWith(
-                "system is not paused"
-            )
-        })
-
-        it("step 2 'migrateToNewMinter' fails: new Minter cannot be current Minter", async () => {
-            // the previous test should have reverted in it's entirety
-            // so we should not run into an "already paused" error
-
+        it("step 1 'migrateToNewMinter' fails: new Minter cannot be current Minter", async () => {
             migrateData = minter.interface.encodeFunctionData(
                 "migrateToNewMinter",
                 [minter.address]
             )
 
             const update = {
-                target: [
-                    pauseTarget,
-                    migrateTarget,
-                    setInfoTarget,
-                    unpauseTarget
-                ],
-                value: ["0", "0", "0", "0"],
-                data: [pauseData, migrateData, setInfoData, unpauseData],
+                target: [migrateTarget, setInfoTarget],
+                value: ["0", "0"],
+                data: [migrateData, setInfoData],
                 nonce: 0
             }
 
@@ -224,21 +152,16 @@ describe("Governor update", () => {
             )
         })
 
-        it("step 2 'migrateToNewMinter' fails: new Minter cannot be null address", async () => {
+        it("step 1 'migrateToNewMinter' fails: new Minter cannot be null address", async () => {
             migrateData = minter.interface.encodeFunctionData(
                 "migrateToNewMinter",
                 [ethers.constants.AddressZero]
             )
 
             const update = {
-                target: [
-                    pauseTarget,
-                    migrateTarget,
-                    setInfoTarget,
-                    unpauseTarget
-                ],
-                value: ["0", "0", "0", "0"],
-                data: [pauseData, migrateData, setInfoData, unpauseData],
+                target: [migrateTarget, setInfoTarget],
+                value: ["0", "0"],
+                data: [migrateData, setInfoData],
                 nonce: 0
             }
 
@@ -249,47 +172,16 @@ describe("Governor update", () => {
             )
         })
 
-        it("step 3 'setContractInfo' fails: wrong target", async () => {
+        it("step 2 'setContractInfo' fails: wrong target", async () => {
             migrateData = minter.interface.encodeFunctionData(
                 "migrateToNewMinter",
                 [newMinter.address]
             )
 
             const update = {
-                target: [
-                    pauseTarget,
-                    migrateTarget,
-                    migrateTarget,
-                    unpauseTarget
-                ],
-                value: ["0", "0", "0", "0"],
-                data: [pauseData, migrateData, setInfoData, unpauseData],
-                nonce: 0
-            }
-
-            // run the migrate to new minter update
-            await governor.stage(update, "0")
-            await expect(governor.execute(update)).to.be.reverted
-        })
-
-        it("step 4 'unpause' fails: system is already unpaused", async () => {
-            // call unpause twice in the update
-            const update = {
-                target: [
-                    pauseTarget,
-                    migrateTarget,
-                    setInfoTarget,
-                    unpauseTarget,
-                    unpauseTarget
-                ],
-                value: ["0", "0", "0", "0", "0"],
-                data: [
-                    pauseData,
-                    migrateData,
-                    setInfoData,
-                    unpauseData,
-                    unpauseData
-                ],
+                target: [migrateTarget, migrateTarget],
+                value: ["0", "0"],
+                data: [migrateData, setInfoData],
                 nonce: 0
             }
 
@@ -300,14 +192,9 @@ describe("Governor update", () => {
 
         it("succesfully executes all updates", async () => {
             const update = {
-                target: [
-                    pauseTarget,
-                    migrateTarget,
-                    setInfoTarget,
-                    unpauseTarget
-                ],
-                value: ["0", "0", "0", "0"],
-                data: [pauseData, migrateData, setInfoData, unpauseData],
+                target: [migrateTarget, setInfoTarget],
+                value: ["0", "0"],
+                data: [migrateData, setInfoData],
                 nonce: 0
             }
 
