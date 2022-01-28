@@ -618,7 +618,9 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         uint256 newDelUnbondingLockId = newDel.nextUnbondingLockId;
 
         newDel.unbondingLocks[newDelUnbondingLockId] = UnbondingLock({ amount: _amount, withdrawRound: withdrawRound });
-        newDel.nextUnbondingLockId.add(1);
+        newDel.nextUnbondingLockId = newDel.nextUnbondingLockId.add(1);
+
+        emit TransferBond(msg.sender, _delegator, oldDelUnbondingLockId, newDelUnbondingLockId, _amount);
 
         // Rebond lock for new owner
         if (newDel.delegateAddress == address(0)) {
