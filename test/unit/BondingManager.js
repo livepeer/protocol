@@ -2887,6 +2887,60 @@ describe("BondingManager", () => {
                 )
             })
 
+            it("should emit Unbond, TransferBond and Rebond events", async () => {
+                const expectEvents = async (
+                    expOldUnbondingLockId,
+                    expNewUnbondingLockId
+                ) => {
+                    const delegate = transcoder0.address
+                    const amount = 1
+                    const withdrawRound = currentRound + 2 + UNBONDING_PERIOD
+
+                    const tx = await bondingManager
+                        .connect(delegator1)
+                        .transferBond(
+                            delegator2.address,
+                            amount,
+                            ZERO_ADDRESS,
+                            ZERO_ADDRESS,
+                            ZERO_ADDRESS,
+                            ZERO_ADDRESS
+                        )
+
+                    await expect(tx)
+                        .to.emit(bondingManager, "Unbond")
+                        .withArgs(
+                            delegate,
+                            delegator1.address,
+                            expOldUnbondingLockId,
+                            amount,
+                            withdrawRound
+                        )
+                    await expect(tx)
+                        .to.emit(bondingManager, "TransferBond")
+                        .withArgs(
+                            delegator1.address,
+                            delegator2.address,
+                            expOldUnbondingLockId,
+                            expNewUnbondingLockId,
+                            amount
+                        )
+                    await expect(tx)
+                        .to.emit(bondingManager, "Rebond")
+                        .withArgs(
+                            delegate,
+                            delegator2.address,
+                            expNewUnbondingLockId,
+                            amount
+                        )
+                }
+
+                // nextUnbondingLockId should increase for each delegator after each transferBond() call
+                await expectEvents(0, 0)
+                await expectEvents(1, 1)
+                await expectEvents(2, 2)
+            })
+
             describe("receiver is not bonded", () => {
                 it("should transfer the bond to receiver", async () => {
                     const d1BondedAmountStart = (

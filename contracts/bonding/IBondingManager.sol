@@ -25,6 +25,13 @@ contract IBondingManager {
         uint256 withdrawRound
     );
     event Rebond(address indexed delegate, address indexed delegator, uint256 unbondingLockId, uint256 amount);
+    event TransferBond(
+        address indexed oldDelegator,
+        address indexed newDelegator,
+        uint256 oldUnbondingLockId,
+        uint256 newUnbondingLockId,
+        uint256 amount
+    );
     event WithdrawStake(address indexed delegator, uint256 unbondingLockId, uint256 amount, uint256 withdrawRound);
     event WithdrawFees(address indexed delegator, address recipient, uint256 amount);
     event EarningsClaimed(
