@@ -45,19 +45,19 @@ contract Manager is IManager {
         emit SetController(_controller);
     }
 
-    function _onlyController() internal view {
+    function _onlyController() private view {
         require(msg.sender == address(controller), "caller must be Controller");
     }
 
-    function _onlyControllerOwner() internal view {
+    function _onlyControllerOwner() private view {
         require(msg.sender == controller.owner(), "caller must be Controller owner");
     }
 
-    function _whenSystemNotPaused() internal view {
+    function _whenSystemNotPaused() private view {
         require(!controller.paused(), "system is paused");
     }
 
-    function _whenSystemPaused() internal view {
+    function _whenSystemPaused() private view {
         require(controller.paused(), "system is not paused");
     }
 }
