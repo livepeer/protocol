@@ -68,6 +68,25 @@ describe("BridgeMinter", () => {
         })
     })
 
+    describe("setController", () => {
+        it("reverts if msg.sender != Controller", async () => {
+            await expect(
+                bridgeMinter.setController(eoa.address)
+            ).to.be.revertedWith("caller must be Controller")
+        })
+
+        it("sets new Controller", async () => {
+            const tx = await bridgeMinter
+                .connect(mockControllerEOA)
+                .setController(eoa.address)
+
+            expect(await bridgeMinter.controller()).to.be.equal(eoa.address)
+            await expect(tx)
+                .to.emit(bridgeMinter, "SetController")
+                .withArgs(eoa.address)
+        })
+    })
+
     describe("setToken", () => {
         it("reverts if msg.sender != Controller owner", async () => {
             await expect(

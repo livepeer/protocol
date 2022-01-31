@@ -54,7 +54,9 @@ describe("Controller", () => {
 
         it("should set contract info", async () => {
             const id = contractId("Manager")
-            const managerFac = await ethers.getContractFactory("Manager")
+            const managerFac = await ethers.getContractFactory(
+                "contracts/Manager.sol:Manager"
+            )
             const manager = await fixture.deployAndRegister(
                 managerFac,
                 "Manager",
@@ -81,7 +83,9 @@ describe("Controller", () => {
 
         beforeEach(async () => {
             id = contractId("Manager")
-            const managerFac = await ethers.getContractFactory("Manager")
+            const managerFac = await ethers.getContractFactory(
+                "contracts/Manager.sol:Manager"
+            )
             manager = await fixture.deployAndRegister(
                 managerFac,
                 "Manager",

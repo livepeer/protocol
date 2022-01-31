@@ -1,6 +1,8 @@
-pragma solidity ^0.5.11;
+// SPDX-License-Identifier: MIT
+// solhint-disable-next-line
+pragma solidity 0.8.8;
 
-import "../Manager.sol";
+import "../solc-0.8.8/Manager.sol";
 
 interface IBridgeMinterToken {
     function transfer(address _to, uint256 _amount) external;
@@ -32,7 +34,7 @@ contract BridgeMinter is Manager {
         address _tokenAddr,
         address _l1MigratorAddr,
         address _l1LPTGatewayAddr
-    ) public Manager(_controller) {
+    ) Manager(_controller) {
         tokenAddr = _tokenAddr;
         l1MigratorAddr = _l1MigratorAddr;
         l1LPTGatewayAddr = _l1LPTGatewayAddr;
@@ -79,7 +81,7 @@ contract BridgeMinter is Manager {
         token.transfer(_newMinterAddr, token.balanceOf(address(this)));
         // Transfer current Minter's ETH balance to new Minter
         // call() should be safe from re-entrancy here because the Controller owner and _newMinterAddr are trusted
-        (bool ok, ) = _newMinterAddr.call.value(address(this).balance)("");
+        (bool ok, ) = _newMinterAddr.call{ value: address(this).balance }("");
         require(ok, "BridgeMinter#migrateToNewMinter: FAIL_CALL");
     }
 
@@ -91,7 +93,7 @@ contract BridgeMinter is Manager {
         uint256 balance = address(this).balance;
 
         // call() should be safe from re-entrancy here because the L1Migrator and l1MigratorAddr are trusted
-        (bool ok, ) = l1MigratorAddr.call.value(address(this).balance)("");
+        (bool ok, ) = l1MigratorAddr.call{ value: address(this).balance }("");
         require(ok, "BridgeMinter#withdrawETHToL1Migrator: FAIL_CALL");
 
         return balance;
