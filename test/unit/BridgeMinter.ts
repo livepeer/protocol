@@ -18,7 +18,6 @@ describe("BridgeMinter", () => {
     let mockTokenEOA: SignerWithAddress
     let mockL1MigratorEOA: SignerWithAddress
     let mockL1LPTGatewayEOA: SignerWithAddress
-    let mockEscowEOA: SignerWithAddress
 
     beforeEach(async () => {
         ;[
@@ -26,15 +25,13 @@ describe("BridgeMinter", () => {
             mockControllerEOA,
             mockTokenEOA,
             mockL1MigratorEOA,
-            mockL1LPTGatewayEOA,
-            mockEscowEOA
+            mockL1LPTGatewayEOA
         ] = await ethers.getSigners()
 
         const BridgeMinter: BridgeMinter__factory =
             await ethers.getContractFactory("BridgeMinter")
         bridgeMinter = await BridgeMinter.deploy(
             mockControllerEOA.address,
-            mockTokenEOA.address,
             mockL1MigratorEOA.address,
             mockL1LPTGatewayEOA.address
         )
@@ -43,6 +40,14 @@ describe("BridgeMinter", () => {
         controllerMock = await smock.fake("Controller", {
             address: mockControllerEOA.address
         })
+
+        const keccakLPT = ethers.utils.solidityKeccak256(
+            ["string"],
+            ["LivepeerToken"]
+        )
+        controllerMock.getContract
+            .whenCalledWith(keccakLPT)
+            .returns(mockTokenEOA.address)
 
         tokenMock = await smock.fake("IBridgeMinterToken", {
             address: mockTokenEOA.address
@@ -58,61 +63,11 @@ describe("BridgeMinter", () => {
 
     describe("constructor", () => {
         it("sets addresses", async () => {
-            expect(await bridgeMinter.tokenAddr()).to.be.equal(
-                mockTokenEOA.address
-            )
             expect(await bridgeMinter.l1MigratorAddr()).to.be.equal(
                 mockL1MigratorEOA.address
             )
             expect(await bridgeMinter.l1LPTGatewayAddr()).to.be.equal(
                 mockL1LPTGatewayEOA.address
-            )
-        })
-    })
-
-    describe("setController", () => {
-        it("reverts if msg.sender != Controller", async () => {
-            await expect(
-                bridgeMinter.setController(eoa.address)
-            ).to.be.revertedWith("caller must be Controller")
-        })
-
-        it("sets new Controller", async () => {
-            const tx = await bridgeMinter
-                .connect(mockControllerEOA)
-                .setController(eoa.address)
-
-            expect(await bridgeMinter.controller()).to.be.equal(eoa.address)
-            await expect(tx)
-                .to.emit(bridgeMinter, "SetController")
-                .withArgs(eoa.address)
-        })
-    })
-
-    describe("setToken", () => {
-        it("reverts if msg.sender != Controller owner", async () => {
-            await expect(
-                bridgeMinter
-                    .connect(eoa)
-                    .setToken(eoa.address, mockEscowEOA.address)
-            ).to.be.revertedWith("caller must be Controller owner")
-        })
-
-        it("sets token address and moves old tokens to new address", async () => {
-            controllerMock.owner.returns(eoa.address)
-            tokenMock.balanceOf
-                .whenCalledWith(bridgeMinter.address)
-                .returns(500)
-
-            await bridgeMinter
-                .connect(eoa)
-                .setToken(eoa.address, mockEscowEOA.address)
-
-            expect(await bridgeMinter.tokenAddr()).to.be.equal(eoa.address)
-
-            expect(tokenMock.transfer).to.be.calledOnceWith(
-                mockEscowEOA.address,
-                500
             )
         })
     })
@@ -124,7 +79,7 @@ describe("BridgeMinter", () => {
             ).to.be.revertedWith("caller must be Controller owner")
         })
 
-        it("sets token address", async () => {
+        it("sets L1 migrator address", async () => {
             controllerMock.owner.returns(eoa.address)
 
             await bridgeMinter.connect(eoa).setL1Migrator(eoa.address)
@@ -139,7 +94,7 @@ describe("BridgeMinter", () => {
             ).to.be.revertedWith("caller must be Controller owner")
         })
 
-        it("sets token address", async () => {
+        it("sets L1 LPT Gateway address", async () => {
             controllerMock.owner.returns(eoa.address)
 
             await bridgeMinter.connect(eoa).setL1LPTGateway(eoa.address)

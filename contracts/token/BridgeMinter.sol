@@ -15,7 +15,6 @@ interface IBridgeMinterToken {
 }
 
 contract BridgeMinter is Manager {
-    address public tokenAddr;
     address public l1MigratorAddr;
     address public l1LPTGatewayAddr;
 
@@ -31,27 +30,11 @@ contract BridgeMinter is Manager {
 
     constructor(
         address _controller,
-        address _tokenAddr,
         address _l1MigratorAddr,
         address _l1LPTGatewayAddr
     ) Manager(_controller) {
-        tokenAddr = _tokenAddr;
         l1MigratorAddr = _l1MigratorAddr;
         l1LPTGatewayAddr = _l1LPTGatewayAddr;
-    }
-
-    /**
-     * @notice Set LPT address. Only callable by Controller owner
-     * @param _tokenAddr LPT address
-     * @param _destination address where old tokens will be transferred to
-     */
-    function setToken(address _tokenAddr, address _destination) external onlyControllerOwner {
-        address oldTokenAddr = tokenAddr;
-        tokenAddr = _tokenAddr;
-
-        // Transfer current LPT balance to new destination
-        IBridgeMinterToken oldToken = IBridgeMinterToken(oldTokenAddr);
-        oldToken.transfer(_destination, oldToken.balanceOf(address(this)));
     }
 
     /**
@@ -80,7 +63,7 @@ contract BridgeMinter is Manager {
             "BridgeMinter#migrateToNewMinter: INVALID_MINTER"
         );
 
-        IBridgeMinterToken token = IBridgeMinterToken(tokenAddr);
+        IBridgeMinterToken token = livepeerToken();
         // Transfer ownership of token to new Minter
         token.transferOwnership(_newMinterAddr);
         // Transfer current Minter's LPT balance to new Minter
@@ -110,7 +93,7 @@ contract BridgeMinter is Manager {
      * @return Amount of LPT sent
      */
     function withdrawLPTToL1Migrator() external onlyL1Migrator returns (uint256) {
-        IBridgeMinterToken token = IBridgeMinterToken(tokenAddr);
+        IBridgeMinterToken token = livepeerToken();
 
         uint256 balance = token.balanceOf(address(this));
 
@@ -126,7 +109,7 @@ contract BridgeMinter is Manager {
      * @param _amount Amount of LPT to mint
      */
     function bridgeMint(address _to, uint256 _amount) external onlyL1LPTGateway {
-        IBridgeMinterToken(tokenAddr).mint(_to, _amount);
+        livepeerToken().mint(_to, _amount);
     }
 
     /**
@@ -142,5 +125,12 @@ contract BridgeMinter is Manager {
      */
     function getController() public view returns (address) {
         return address(controller);
+    }
+
+    /**
+     * @dev Returns IBridgeMinterToken interface
+     */
+    function livepeerToken() private view returns (IBridgeMinterToken) {
+        return IBridgeMinterToken(IController(controller).getContract(keccak256("LivepeerToken")));
     }
 }
