@@ -10,7 +10,7 @@ contract Pausable is Ownable {
     event Pause();
     event Unpause();
 
-    bool public paused = false;
+    bool public paused;
 
     /**
      * @dev Modifier to make a function callable only when the contract is not paused.

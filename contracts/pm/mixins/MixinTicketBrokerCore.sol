@@ -131,7 +131,7 @@ contract MixinTicketBrokerCore is MContractRegistry, MReserve, MTicketProcessor,
         // the same winning ticket multiple times
         usedTickets[ticketHash] = true;
 
-        uint256 amountToTransfer = 0;
+        uint256 amountToTransfer;
 
         if (_ticket.faceValue > sender.deposit) {
             // If ticket face value > sender's deposit then claim from
