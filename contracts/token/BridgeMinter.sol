@@ -93,7 +93,7 @@ contract BridgeMinter is Manager {
         uint256 balance = address(this).balance;
 
         // call() should be safe from re-entrancy here because the L1Migrator and l1MigratorAddr are trusted
-        (bool ok, ) = l1MigratorAddr.call{ value: address(this).balance }("");
+        (bool ok, ) = l1MigratorAddr.call{ value: balance }("");
         require(ok, "BridgeMinter#withdrawETHToL1Migrator: FAIL_CALL");
 
         return balance;
