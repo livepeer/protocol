@@ -131,6 +131,6 @@ contract BridgeMinter is Manager {
      * @dev Returns IBridgeMinterToken interface
      */
     function livepeerToken() private view returns (IBridgeMinterToken) {
-        return IBridgeMinterToken(IController(controller).getContract(keccak256("LivepeerToken")));
+        return IBridgeMinterToken(controller.getContract(keccak256("LivepeerToken")));
     }
 }
