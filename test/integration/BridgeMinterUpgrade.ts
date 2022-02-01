@@ -71,7 +71,6 @@ describe("BridgeMinterUpgrade", () => {
             await ethers.getContractFactory("BridgeMinter")
         ).deploy(
             controller.address,
-            token.address,
             ethers.constants.AddressZero,
             ethers.constants.AddressZero
         )
