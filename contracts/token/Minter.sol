@@ -231,7 +231,7 @@ contract Minter is Manager, IMinter {
      * @dev Set inflation based upon the current bonding rate and target bonding rate
      */
     function setInflation() internal {
-        uint256 currentBondingRate = 0;
+        uint256 currentBondingRate;
         uint256 totalSupply = getGlobalTotalSupply();
 
         if (totalSupply > 0) {
