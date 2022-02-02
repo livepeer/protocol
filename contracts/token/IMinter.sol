@@ -1,11 +1,12 @@
-pragma solidity ^0.5.11;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.8;
 
 import "../IController.sol";
 
 /**
  * @title Minter interface
  */
-contract IMinter {
+interface IMinter {
     // Events
     event SetCurrentRewardTokens(uint256 currentMintableTokens, uint256 currentInflation);
 
@@ -27,5 +28,5 @@ contract IMinter {
     function currentMintedTokens() external view returns (uint256);
 
     // Public functions
-    function getController() public view returns (IController);
+    function getController() external view returns (IController);
 }

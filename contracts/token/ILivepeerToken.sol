@@ -1,9 +1,10 @@
-pragma solidity ^0.5.11;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.8;
 
-import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-contract ILivepeerToken is ERC20 {
+interface ILivepeerToken is IERC20 {
     function mint(address _to, uint256 _amount) external;
 
-    function burn(uint256 _amount) public;
+    function burn(uint256 _amount) external;
 }
