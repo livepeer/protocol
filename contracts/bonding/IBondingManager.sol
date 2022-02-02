@@ -1,10 +1,11 @@
-pragma solidity ^0.5.11;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.8;
 
 /**
  * @title Interface for BondingManager
  * TODO: switch to interface type
  */
-contract IBondingManager {
+interface IBondingManager {
     event TranscoderUpdate(address indexed transcoder, uint256 rewardCut, uint256 feeShare);
     event TranscoderActivated(address indexed transcoder, uint256 activationRound);
     event TranscoderDeactivated(address indexed transcoder, uint256 deactivationRound);
@@ -70,11 +71,11 @@ contract IBondingManager {
     function setCurrentRoundTotalActiveStake() external;
 
     // Public functions
-    function getTranscoderPoolSize() public view returns (uint256);
+    function getTranscoderPoolSize() external view returns (uint256);
 
-    function transcoderTotalStake(address _transcoder) public view returns (uint256);
+    function transcoderTotalStake(address _transcoder) external view returns (uint256);
 
-    function isActiveTranscoder(address _transcoder) public view returns (bool);
+    function isActiveTranscoder(address _transcoder) external view returns (bool);
 
-    function getTotalBonded() public view returns (uint256);
+    function getTotalBonded() external view returns (uint256);
 }
