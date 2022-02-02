@@ -1,4 +1,5 @@
-pragma solidity 0.5.11;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.8;
 
 import "../ManagerProxyTarget.sol";
 import "./IRoundsManager.sol";
@@ -6,7 +7,7 @@ import "../bonding/IBondingManager.sol";
 import "../token/IMinter.sol";
 import "../libraries/MathUtils.sol";
 
-import "openzeppelin-solidity/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 /**
  * @title RoundsManager
@@ -45,7 +46,7 @@ contract RoundsManager is ManagerProxyTarget, IRoundsManager {
      * - setRoundLockAmount()
      * @param _controller Address of Controller that this contract will be registered with
      */
-    constructor(address _controller) public Manager(_controller) {}
+    constructor(address _controller) Manager(_controller) {}
 
     /**
      * @notice Set round length. Only callable by the controller owner
@@ -118,14 +119,14 @@ contract RoundsManager is ManagerProxyTarget, IRoundsManager {
     /**
      * @notice Return current block number
      */
-    function blockNum() public view returns (uint256) {
+    function blockNum() public view virtual returns (uint256) {
         return block.number;
     }
 
     /**
      * @notice Return blockhash for a block
      */
-    function blockHash(uint256 _block) public view returns (bytes32) {
+    function blockHash(uint256 _block) public view virtual returns (bytes32) {
         uint256 currentBlock = blockNum();
         require(_block < currentBlock, "can only retrieve past block hashes");
         require(currentBlock < 256 || _block >= currentBlock - 256, "can only retrieve hashes for last 256 blocks");
