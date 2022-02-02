@@ -1,6 +1,7 @@
-pragma solidity ^0.5.11;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.8;
 
-contract IMerkleSnapshot {
+interface IMerkleSnapshot {
     function verify(
         bytes32 _id,
         bytes32[] calldata _proof,

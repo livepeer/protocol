@@ -1,4 +1,5 @@
-pragma solidity ^0.5.11;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.8;
 
 import "../zeppelin/MerkleProof.sol";
 import "../Manager.sol";
@@ -6,7 +7,7 @@ import "../Manager.sol";
 contract MerkleSnapshot is Manager {
     mapping(bytes32 => bytes32) public snapshot;
 
-    constructor(address _controller) public Manager(_controller) {}
+    constructor(address _controller) Manager(_controller) {}
 
     function setSnapshot(bytes32 _id, bytes32 _root) external onlyControllerOwner {
         snapshot[_id] = _root;
