@@ -1,4 +1,5 @@
-pragma solidity ^0.5.11;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.8;
 
 import "./IManager.sol";
 import "./IController.sol";
@@ -31,7 +32,7 @@ contract Manager is IManager {
         _;
     }
 
-    constructor(address _controller) public {
+    constructor(address _controller) {
         controller = IController(_controller);
     }
 
