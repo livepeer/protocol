@@ -1,10 +1,11 @@
-pragma solidity ^0.5.11;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.8;
 
 import "../../libraries/MathUtils.sol";
 import "../../bonding/libraries/EarningsPool.sol";
 import "../../bonding/libraries/EarningsPoolLIP36.sol";
 
-import "openzeppelin-solidity/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 contract EarningsPoolFixture {
     using SafeMath for uint256;

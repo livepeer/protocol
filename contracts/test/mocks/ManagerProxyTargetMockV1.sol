@@ -1,4 +1,5 @@
-pragma solidity ^0.5.11;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.8;
 
 import "../../ManagerProxyTarget.sol";
 
@@ -15,7 +16,7 @@ contract ManagerProxyTargetMockV1 is ManagerProxyTarget {
     uint256 public tupleValue2;
     bytes32 public tupleValue3;
 
-    constructor(address _controller) public Manager(_controller) {}
+    constructor(address _controller) Manager(_controller) {}
 
     function setUint8(uint8 _value) external {
         uint8Value = _value;
