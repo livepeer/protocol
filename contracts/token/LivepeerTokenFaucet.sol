@@ -1,4 +1,5 @@
-pragma solidity ^0.5.11;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.8;
 
 import "./ILivepeerToken.sol";
 
@@ -41,7 +42,7 @@ contract LivepeerTokenFaucet is Ownable {
         address _token,
         uint256 _requestAmount,
         uint256 _requestWait
-    ) public {
+    ) {
         token = ILivepeerToken(_token);
         requestAmount = _requestAmount;
         requestWait = _requestWait;

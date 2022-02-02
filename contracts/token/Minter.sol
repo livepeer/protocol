@@ -1,4 +1,5 @@
-pragma solidity ^0.5.11;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.8;
 
 import "../Manager.sol";
 import "./IMinter.sol";
@@ -7,7 +8,7 @@ import "../rounds/IRoundsManager.sol";
 import "../bonding/IBondingManager.sol";
 import "../libraries/MathUtilsV2.sol";
 
-import "openzeppelin-solidity/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 interface IL2LPTDataCache {
     function l1CirculatingSupply() external view returns (uint256);
@@ -75,7 +76,7 @@ contract Minter is Manager, IMinter {
         uint256 _inflation,
         uint256 _inflationChange,
         uint256 _targetBondingRate
-    ) public Manager(_controller) {
+    ) Manager(_controller) {
         // Inflation must be valid percentage
         require(MathUtils.validPerc(_inflation), "_inflation is invalid percentage");
         // Inflation change must be valid percentage
@@ -134,7 +135,7 @@ contract Minter is Manager, IMinter {
         // Transfer current Minter's token balance to new Minter
         livepeerToken().transfer(address(_newMinter), livepeerToken().balanceOf(address(this)));
         // Transfer current Minter's ETH balance to new Minter
-        _newMinter.depositETH.value(address(this).balance)();
+        _newMinter.depositETH{ value: address(this).balance }();
     }
 
     /**
