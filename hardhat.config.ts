@@ -21,15 +21,6 @@ const config: HardhatUserConfig = {
     solidity: {
         compilers: [
             {
-                version: "0.5.11",
-                settings: {
-                    optimizer: {
-                        enabled: true,
-                        runs: 200
-                    }
-                }
-            },
-            {
                 version: "0.8.8",
                 settings: {
                     optimizer: {
@@ -38,18 +29,7 @@ const config: HardhatUserConfig = {
                     }
                 }
             }
-        ],
-        overrides: {
-            "contracts/token/LivepeerToken.sol": {
-                version: "0.8.8",
-                settings: {
-                    optimizer: {
-                        enabled: true,
-                        runs: 200
-                    }
-                }
-            }
-        }
+        ]
     },
     namedAccounts: {
         deployer: 0
