@@ -1,4 +1,5 @@
-pragma solidity 0.5.11;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.8;
 
 import "../ManagerProxyTarget.sol";
 import "./IBondingManager.sol";
@@ -12,7 +13,7 @@ import "../token/IMinter.sol";
 import "../rounds/IRoundsManager.sol";
 import "../snapshots/IMerkleSnapshot.sol";
 
-import "openzeppelin-solidity/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 /**
  * @title BondingManager
@@ -131,7 +132,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * - setMaxEarningsClaimsRounds()
      * @param _controller Address of Controller that this contract will be registered with
      */
-    constructor(address _controller) public Manager(_controller) {}
+    constructor(address _controller) Manager(_controller) {}
 
     /**
      * @notice Set unbonding period. Only callable by Controller owner
@@ -925,13 +926,13 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     /**
      * @notice Return delegator info
      * @param _delegator Address of delegator
-     * @return total amount bonded by '_delegator'
-     * @return amount of fees collected by '_delegator'
-     * @return address '_delegator' has bonded to
-     * @return total amount delegated to '_delegator'
-     * @return round in which bond for '_delegator' became effective
-     * @return round for which '_delegator' has last claimed earnings
-     * @return ID for the next unbonding lock created for '_delegator'
+     * @return bondedAmount total amount bonded by '_delegator'
+     * @return fees amount of fees collected by '_delegator'
+     * @return delegateAddress address '_delegator' has bonded to
+     * @return delegatedAmount total amount delegated to '_delegator'
+     * @return startRound round in which bond for '_delegator' became effective
+     * @return lastClaimRound round for which '_delegator' has last claimed earnings
+     * @return nextUnbondingLockId ID for the next unbonding lock created for '_delegator'
      */
     function getDelegator(address _delegator)
         public
@@ -962,7 +963,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * @param _delegator Address of delegator
      * @param _unbondingLockId ID of unbonding lock
      * @return amount of stake locked up by unbonding lock
-     * @return round in which 'amount' becomes available for withdrawal
+     * @return withdrawRound round in which 'amount' becomes available for withdrawal
      */
     function getDelegatorUnbondingLock(address _delegator, uint256 _unbondingLockId)
         public
@@ -1098,7 +1099,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * @param _endRound The round for the end cumulative factors
      * @param _stake The delegator's initial stake before including earned rewards
      * @param _fees The delegator's initial fees before including earned fees
-     * @return (cStake, cFees) where cStake is the delegator's cumulative stake including earned rewards and cFees is the delegator's cumulative fees including earned fees
+     * @return cStake , cFees where cStake is the delegator's cumulative stake including earned rewards and cFees is the delegator's cumulative fees including earned fees
      */
     function delegatorCumulativeStakeAndFees(
         Transcoder storage _transcoder,
@@ -1140,7 +1141,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * @notice Return the pending stake and fees for a delegator
      * @param _delegator Address of a delegator
      * @param _endRound The last round to claim earnings for when calculating the pending stake and fees
-     * @return (stake, fees) where stake is the delegator's pending stake and fees is the delegator's pending fees
+     * @return stake , fees where stake is the delegator's pending stake and fees is the delegator's pending fees
      */
     function pendingStakeAndFees(address _delegator, uint256 _endRound)
         internal
