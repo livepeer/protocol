@@ -1,4 +1,5 @@
-pragma solidity ^0.5.11;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.8;
 
 import "./ManagerProxyTarget.sol";
 
@@ -22,7 +23,7 @@ contract ManagerProxy is ManagerProxyTarget {
      * @param _controller Address of Controller that this contract will be registered with
      * @param _targetContractId contract ID of the target contract
      */
-    constructor(address _controller, bytes32 _targetContractId) public Manager(_controller) {
+    constructor(address _controller, bytes32 _targetContractId) Manager(_controller) {
         targetContractId = _targetContractId;
     }
 
@@ -32,7 +33,7 @@ contract ManagerProxy is ManagerProxyTarget {
      It will then use the calldata for a function call as the data payload for a delegatecall on the target contract. The return value
      of the executed function call will also be returned
      */
-    function() external payable {
+    fallback() external payable {
         address target = controller.getContract(targetContractId);
         require(target != address(0), "target contract must be registered");
 
@@ -42,29 +43,29 @@ contract ManagerProxy is ManagerProxyTarget {
             // Load the free memory pointer
             let calldataMemoryOffset := mload(freeMemoryPtrPosition)
             // Update free memory pointer to after memory space we reserve for calldata
-            mstore(freeMemoryPtrPosition, add(calldataMemoryOffset, calldatasize))
+            mstore(freeMemoryPtrPosition, add(calldataMemoryOffset, calldatasize()))
             // Copy calldata (method signature and params of the call) to memory
-            calldatacopy(calldataMemoryOffset, 0x0, calldatasize)
+            calldatacopy(calldataMemoryOffset, 0x0, calldatasize())
 
             // Call method on target contract using calldata which is loaded into memory
-            let ret := delegatecall(gas, target, calldataMemoryOffset, calldatasize, 0, 0)
+            let ret := delegatecall(gas(), target, calldataMemoryOffset, calldatasize(), 0, 0)
 
             // Load the free memory pointer
             let returndataMemoryOffset := mload(freeMemoryPtrPosition)
             // Update free memory pointer to after memory space we reserve for returndata
-            mstore(freeMemoryPtrPosition, add(returndataMemoryOffset, returndatasize))
+            mstore(freeMemoryPtrPosition, add(returndataMemoryOffset, returndatasize()))
             // Copy returndata (result of the method invoked by the delegatecall) to memory
-            returndatacopy(returndataMemoryOffset, 0x0, returndatasize)
+            returndatacopy(returndataMemoryOffset, 0x0, returndatasize())
 
             switch ret
             case 0 {
                 // Method call failed - revert
                 // Return any error message stored in mem[returndataMemoryOffset..(returndataMemoryOffset + returndatasize)]
-                revert(returndataMemoryOffset, returndatasize)
+                revert(returndataMemoryOffset, returndatasize())
             }
             default {
                 // Return result of method call stored in mem[returndataMemoryOffset..(returndataMemoryOffset + returndatasize)]
-                return(returndataMemoryOffset, returndatasize)
+                return(returndataMemoryOffset, returndatasize())
             }
         }
     }
