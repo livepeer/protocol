@@ -1,7 +1,7 @@
-pragma solidity 0.5.11;
-pragma experimental ABIEncoderV2;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.8;
 
-import "openzeppelin-solidity/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 /**
  * @title Governor
@@ -44,7 +44,7 @@ contract Governor {
     }
 
     /// @dev The Ownable constructor sets the original `owner` of the contract to the sender account.
-    constructor() public {
+    constructor() {
         owner = msg.sender;
         emit OwnershipTransferred(address(0), msg.sender);
     }
@@ -88,7 +88,9 @@ contract Governor {
         delete updates[updateHash];
         for (uint256 i = 0; i < _update.target.length; i++) {
             /* solium-disable-next-line */
-            (bool success, bytes memory returnData) = _update.target[i].call.value(_update.value[i])(_update.data[i]);
+            (bool success, bytes memory returnData) = _update.target[i].call{ value: _update.value[i] }(
+                _update.data[i]
+            );
             require(success, string(returnData));
         }
 
