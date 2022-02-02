@@ -1,12 +1,13 @@
-pragma solidity ^0.5.11;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.8;
 
 import "./RoundsManager.sol";
 
 contract AdjustableRoundsManager is RoundsManager {
-    uint256 num;
-    bytes32 hash;
+    uint256 public num;
+    bytes32 public hash;
 
-    constructor(address _controller) public RoundsManager(_controller) {}
+    constructor(address _controller) RoundsManager(_controller) {}
 
     function setBlockNum(uint256 _num) external {
         num = _num;
@@ -20,11 +21,11 @@ contract AdjustableRoundsManager is RoundsManager {
         num += _blocks;
     }
 
-    function blockNum() public view returns (uint256) {
+    function blockNum() public view override returns (uint256) {
         return num;
     }
 
-    function blockHash(uint256 _block) public view returns (bytes32) {
+    function blockHash(uint256 _block) public view override returns (bytes32) {
         require(_block >= blockNum() - 256);
 
         return hash;
