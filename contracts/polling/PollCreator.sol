@@ -1,4 +1,5 @@
-pragma solidity ^0.5.11;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.8;
 
 import "./Poll.sol";
 
@@ -21,7 +22,7 @@ contract PollCreator {
 
     event PollCreated(address indexed poll, bytes proposal, uint256 endBlock, uint256 quorum, uint256 quota);
 
-    constructor(address _bondingManagerAddr) public {
+    constructor(address _bondingManagerAddr) {
         bondingManager = IBondingManager(_bondingManagerAddr);
     }
 

@@ -1,4 +1,5 @@
-pragma solidity ^0.5.11;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.8;
 
 contract Poll {
     // The block at which the poll ends and votes can no longer be submitted.
@@ -13,7 +14,7 @@ contract Poll {
         _;
     }
 
-    constructor(uint256 _endBlock) public {
+    constructor(uint256 _endBlock) {
         endBlock = _endBlock;
     }
 
@@ -32,6 +33,6 @@ contract Poll {
      */
     function destroy() external {
         require(block.number > endBlock, "poll is active");
-        selfdestruct(msg.sender);
+        selfdestruct(payable(msg.sender));
     }
 }
