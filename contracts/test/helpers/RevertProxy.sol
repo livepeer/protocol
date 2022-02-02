@@ -1,9 +1,10 @@
-pragma solidity ^0.5.11;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.8;
 
 contract RevertProxy {
     bytes data;
 
-    function() external {
+    fallback() external {
         data = msg.data;
     }
 

@@ -1,4 +1,5 @@
-pragma solidity ^0.5.11;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.8;
 
 /**
  * @title A mock contract that can set/return mock values and execute functions
@@ -28,7 +29,7 @@ contract GenericMock {
     /**
      * @dev Return mock value for a functione
      */
-    function() external payable {
+    fallback() external payable {
         bytes4 func;
         assembly {
             func := calldataload(0)
@@ -65,7 +66,7 @@ contract GenericMock {
      */
     function execute(address _target, bytes calldata _data) external payable {
         // solium-disable-next-line
-        (bool ok, bytes memory res) = _target.call.value(msg.value)(_data);
+        (bool ok, bytes memory res) = _target.call{ value: msg.value }(_data);
         require(ok, string(res));
     }
 
@@ -74,7 +75,7 @@ contract GenericMock {
      * @param _func Function selector (bytes4(keccak256(FUNCTION_SIGNATURE)))
      * @param _value Mock uint256 value
      */
-    function setMockUint256(bytes4 _func, uint256 _value) external returns (bool) {
+    function setMockUint256(bytes4 _func, uint256 _value) external {
         mockValues[_func].valueType = MockValueType.Uint256;
         mockValues[_func].uint256Value = _value;
         mockValues[_func].set = true;
@@ -90,7 +91,7 @@ contract GenericMock {
         bytes4 _func,
         bytes32 _dataHash,
         uint256 _value
-    ) external returns (bool) {
+    ) external {
         mockValues[_func].valueType = MockValueType.Uint256;
         mockValues[_func].uint256Values[_dataHash] = _value;
         mockValues[_func].set = true;

@@ -1,4 +1,5 @@
-pragma solidity ^0.5.0;
+//SPDX-License-Identifier: MIT
+pragma solidity ^0.8.8;
 
 library AssertAddressPayableArray {
     uint8 constant ZERO = uint8(bytes1("0"));

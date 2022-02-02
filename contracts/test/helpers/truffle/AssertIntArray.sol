@@ -1,4 +1,5 @@
-pragma solidity >=0.4.15 <0.6.0;
+//SPDX-License-Identifier: MIT
+pragma solidity 0.8.8;
 
 library AssertIntArray {
     uint8 constant ZERO = uint8(bytes1("0"));
@@ -160,13 +161,10 @@ library AssertIntArray {
 
     /*
         Function: _itoa
-
         Convert a signed integer to a string. Negative numbers gets a '-' in front, e.g. "-54".
-
         Params:
             n (int) - The integer.
             radix (uint8) - A number between 2 and 16 (inclusive). Characters used are 0-9,a-f
-
         Returns:
             result (string) - The resulting string.
     */
@@ -180,8 +178,8 @@ library AssertIntArray {
             neg = true;
         }
         while (n > 0) {
-            bts[i++] = _utoa(uint8(n % radix)); // Turn it to ascii.
-            n /= radix;
+            bts[i++] = _utoa(uint8(uint256(n) % radix)); // Turn it to ascii.
+            n = int256(uint256(n) / radix);
         }
         // Reverse
         uint256 size = i;
