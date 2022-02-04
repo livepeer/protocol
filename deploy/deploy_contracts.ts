@@ -19,10 +19,7 @@ import genesis from "./genesis.config"
 
 const MINTER_ROLE = ethers.utils.solidityKeccak256(["string"], ["MINTER_ROLE"])
 
-const PROD_NETWORKS = [
-    "mainnet",
-    "arbitrumMainnet"
-]
+const PROD_NETWORKS = ["mainnet", "arbitrumMainnet"]
 
 const LIVE_NETWORKS = [
     "mainnet",
