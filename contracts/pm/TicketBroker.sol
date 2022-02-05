@@ -1,6 +1,5 @@
-pragma solidity ^0.5.11;
-// solium-disable-next-line
-pragma experimental ABIEncoderV2;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.8;
 
 import "./mixins/MixinContractRegistry.sol";
 import "./mixins/MixinReserve.sol";
@@ -24,7 +23,6 @@ contract TicketBroker is
      * @param _controller Address of Controller that this contract will be registered with
      */
     constructor(address _controller)
-        public
         MixinContractRegistry(_controller)
         MixinReserve()
         MixinTicketBrokerCore()

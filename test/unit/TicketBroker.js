@@ -884,6 +884,8 @@ describe("TicketBroker", () => {
             const recipientRand = 5
             const recipientRandHash = web3.utils.soliditySha3(recipientRand)
 
+            const sig = await signMsg("junk", sender)
+
             await expect(
                 broker.redeemWinningTicket(
                     createTicket({
@@ -891,7 +893,7 @@ describe("TicketBroker", () => {
                         sender,
                         recipientRandHash
                     }),
-                    web3.utils.asciiToHex("sig"),
+                    sig,
                     recipientRand
                 )
             ).to.be.revertedWith("invalid signature over ticket hash")

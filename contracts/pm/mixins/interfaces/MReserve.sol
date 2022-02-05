@@ -1,8 +1,7 @@
-pragma solidity ^0.5.11;
-// solium-disable-next-line
-pragma experimental ABIEncoderV2;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.8;
 
-contract MReserve {
+abstract contract MReserve {
     struct ReserveInfo {
         uint256 fundsRemaining; // Funds remaining in reserve
         uint256 claimedInCurrentRound; // Funds claimed from reserve in current round
@@ -16,9 +15,9 @@ contract MReserve {
     /**
      * @notice Returns info about a reserve
      * @param _reserveHolder Address of reserve holder
-     * @return Info about the reserve for `_reserveHolder`
+     * @return info Info about the reserve for `_reserveHolder`
      */
-    function getReserveInfo(address _reserveHolder) public view returns (ReserveInfo memory info);
+    function getReserveInfo(address _reserveHolder) public view virtual returns (ReserveInfo memory info);
 
     /**
      * @notice Returns the amount of funds claimed by a claimant from a reserve
@@ -26,20 +25,20 @@ contract MReserve {
      * @param _claimant Address of claimant
      * @return Amount of funds claimed by `_claimant` from the reserve for `_reserveHolder`
      */
-    function claimedReserve(address _reserveHolder, address _claimant) public view returns (uint256);
+    function claimedReserve(address _reserveHolder, address _claimant) public view virtual returns (uint256);
 
     /**
      * @dev Adds funds to a reserve
      * @param _reserveHolder Address of reserve holder
      * @param _amount Amount of funds to add to reserve
      */
-    function addReserve(address _reserveHolder, uint256 _amount) internal;
+    function addReserve(address _reserveHolder, uint256 _amount) internal virtual;
 
     /**
      * @dev Clears contract storage used for a reserve
      * @param _reserveHolder Address of reserve holder
      */
-    function clearReserve(address _reserveHolder) internal;
+    function clearReserve(address _reserveHolder) internal virtual;
 
     /**
      * @dev Claims funds from a reserve
@@ -52,12 +51,12 @@ contract MReserve {
         address _reserveHolder,
         address _claimant,
         uint256 _amount
-    ) internal returns (uint256);
+    ) internal virtual returns (uint256);
 
     /**
      * @dev Returns the amount of funds remaining in a reserve
      * @param _reserveHolder Address of reserve holder
      * @return Amount of funds remaining in the reserve for `_reserveHolder`
      */
-    function remainingReserve(address _reserveHolder) internal view returns (uint256);
+    function remainingReserve(address _reserveHolder) internal view virtual returns (uint256);
 }

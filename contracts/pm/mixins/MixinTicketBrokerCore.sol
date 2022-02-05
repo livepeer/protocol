@@ -1,15 +1,14 @@
-pragma solidity ^0.5.11;
-// solium-disable-next-line
-pragma experimental ABIEncoderV2;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.8;
 
 import "./interfaces/MReserve.sol";
 import "./interfaces/MTicketProcessor.sol";
 import "./interfaces/MTicketBrokerCore.sol";
-import "./interfaces/MContractRegistry.sol";
-import "openzeppelin-solidity/contracts/cryptography/ECDSA.sol";
-import "openzeppelin-solidity/contracts/math/SafeMath.sol";
+import "./MixinContractRegistry.sol";
+import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
-contract MixinTicketBrokerCore is MContractRegistry, MReserve, MTicketProcessor, MTicketBrokerCore {
+abstract contract MixinTicketBrokerCore is MixinContractRegistry, MReserve, MTicketProcessor, MTicketBrokerCore {
     using SafeMath for uint256;
 
     struct Sender {
@@ -207,7 +206,7 @@ contract MixinTicketBrokerCore is MContractRegistry, MReserve, MTicketProcessor,
         sender.deposit = 0;
         clearReserve(msg.sender);
 
-        withdrawTransfer(msg.sender, deposit.add(reserve));
+        withdrawTransfer(payable(msg.sender), deposit.add(reserve));
 
         emit Withdrawal(msg.sender, deposit, reserve);
     }
@@ -225,7 +224,8 @@ contract MixinTicketBrokerCore is MContractRegistry, MReserve, MTicketProcessor,
     /**
      * @notice Returns info about a sender
      * @param _sender Address of sender
-     * @return Info about the sender for `_sender`
+     * @return sender Info about the sender for `_sender`
+     * @return reserve Info about the reserve for `_sender`
      */
     function getSenderInfo(address _sender) public view returns (Sender memory sender, ReserveInfo memory reserve) {
         sender = senders[_sender];
