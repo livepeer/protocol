@@ -1,10 +1,11 @@
-pragma solidity ^0.5.11;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.8;
 
 import "./interfaces/MTicketProcessor.sol";
-import "./interfaces/MContractRegistry.sol";
-import "openzeppelin-solidity/contracts/math/SafeMath.sol";
+import "./MixinContractRegistry.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
-contract MixinTicketProcessor is MContractRegistry, MTicketProcessor {
+abstract contract MixinTicketProcessor is MixinContractRegistry, MTicketProcessor {
     using SafeMath for uint256;
 
     // Number of rounds that a ticket is valid for starting from
@@ -15,16 +16,16 @@ contract MixinTicketProcessor is MContractRegistry, MTicketProcessor {
      * @dev Process sent funds.
      * @param _amount Amount of funds sent
      */
-    function processFunding(uint256 _amount) internal {
+    function processFunding(uint256 _amount) internal override {
         // Send funds to Minter
-        minter().depositETH.value(_amount)();
+        minter().depositETH{ value: _amount }();
     }
 
     /**
      * @dev Transfer withdrawal funds for a ticket sender
      * @param _amount Amount of withdrawal funds
      */
-    function withdrawTransfer(address payable _sender, uint256 _amount) internal {
+    function withdrawTransfer(address payable _sender, uint256 _amount) internal override {
         // Ask Minter to send withdrawal funds to the ticket sender
         minter().trustedWithdrawETH(_sender, _amount);
     }
@@ -39,7 +40,7 @@ contract MixinTicketProcessor is MContractRegistry, MTicketProcessor {
         address _recipient,
         uint256 _amount,
         bytes memory _auxData
-    ) internal {
+    ) internal override {
         (uint256 creationRound, ) = getCreationRoundAndBlockHash(_auxData);
 
         // Ask BondingManager to update fee pool for recipient with
@@ -51,7 +52,7 @@ contract MixinTicketProcessor is MContractRegistry, MTicketProcessor {
      * @dev Validates a ticket's auxilary data (succeeds or reverts)
      * @param _auxData Auxilary data inclueded in a ticket
      */
-    function requireValidTicketAuxData(bytes memory _auxData) internal view {
+    function requireValidTicketAuxData(bytes memory _auxData) internal view override {
         (uint256 creationRound, bytes32 creationRoundBlockHash) = getCreationRoundAndBlockHash(_auxData);
         bytes32 blockHash = roundsManager().blockHashForRound(creationRound);
 
