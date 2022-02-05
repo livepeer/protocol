@@ -249,7 +249,9 @@ describe("TicketFrontRun", () => {
                     secondTicketSig,
                     recipientRand
                 )
-        ).to.be.revertedWith("SafeMath: division by zero")
+        ).to.be.revertedWith(
+            "panic code 0x12 (Division or modulo division by zero)"
+        )
 
         let info = await broker.getSenderInfo(broadcaster.address)
 

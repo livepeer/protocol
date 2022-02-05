@@ -1,6 +1,7 @@
-pragma solidity ^0.5.11;
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.8;
 
-contract MTicketBrokerCore {
+abstract contract MTicketBrokerCore {
     struct Ticket {
         address recipient; // Address of ticket recipient
         address sender; // Address of ticket sender
