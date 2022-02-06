@@ -18,6 +18,8 @@ contract ManagerProxyTargetMockV1 is ManagerProxyTarget {
 
     constructor(address _controller) Manager(_controller) {}
 
+    receive() external payable {}
+
     function setUint8(uint8 _value) external {
         uint8Value = _value;
     }
