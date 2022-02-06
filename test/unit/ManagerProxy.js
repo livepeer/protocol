@@ -65,6 +65,39 @@ describe("ManagerProxy", () => {
         await fixture.tearDown()
     })
 
+    describe("receive", () => {
+        describe("target implementation implements receive()", async () => {
+            it("should receive ETH", async () => {
+                const amount = ethers.utils.parseUnits("1", "ether")
+                const tx = await signers[0].sendTransaction({
+                    to: managerProxy.address,
+                    value: amount
+                })
+
+                await expect(tx).to.changeEtherBalance(managerProxy, amount)
+            })
+        })
+
+        describe("target implementation does not implement receive()", async () => {
+            it("should revert", async () => {
+                // Does not implement receive()
+                await fixture.deployAndRegister(
+                    await ethers.getContractFactory("ManagerProxyTargetMockV2"),
+                    "ManagerProxyTarget",
+                    fixture.controller.address
+                )
+
+                const amount = ethers.utils.parseUnits("1", "ether")
+                const tx = signers[0].sendTransaction({
+                    to: managerProxy.address,
+                    value: amount
+                })
+
+                await expect(tx).to.be.reverted
+            })
+        })
+    })
+
     describe("fallback function", () => {
         it("should fail if there is no valid contract address registered with the Controller for the target contract ID", async () => {
             const newProxy = await managerProxyFac.deploy(

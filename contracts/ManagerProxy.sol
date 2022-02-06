@@ -28,12 +28,26 @@ contract ManagerProxy is ManagerProxyTarget {
     }
 
     /**
-     * @notice Uses delegatecall to execute function calls on this proxy contract's target contract using its own storage context.
+     * @notice Fallback function that delegates calls to target contract when there is no msg.data
+     */
+    receive() external payable {
+        _fallback();
+    }
+
+    /**
+     * @notice Fallback function that delegates calls to target contract when there is msg.data
+     */
+    fallback() external payable {
+        _fallback();
+    }
+
+    /**
+     * @dev Uses delegatecall to execute function calls on this proxy contract's target contract using its own storage context.
      This fallback function will look up the address of the target contract using the Controller and the target contract ID.
      It will then use the calldata for a function call as the data payload for a delegatecall on the target contract. The return value
      of the executed function call will also be returned
      */
-    fallback() external payable {
+    function _fallback() private {
         address target = controller.getContract(targetContractId);
         require(target != address(0), "target contract must be registered");
 
