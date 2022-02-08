@@ -18,6 +18,9 @@ contract BridgeMinter is Manager {
     address public l1MigratorAddr;
     address public l1LPTGatewayAddr;
 
+    event L1MigratorUpdate(address l1MigratorAddr);
+    event L1LPTGatewayUpdate(address l1LPTGatewayAddr);
+
     modifier onlyL1Migrator() {
         require(msg.sender == l1MigratorAddr, "NOT_L1_MIGRATOR");
         _;
@@ -43,6 +46,8 @@ contract BridgeMinter is Manager {
      */
     function setL1Migrator(address _l1MigratorAddr) external onlyControllerOwner {
         l1MigratorAddr = _l1MigratorAddr;
+
+        emit L1MigratorUpdate(_l1MigratorAddr);
     }
 
     /**
@@ -51,6 +56,8 @@ contract BridgeMinter is Manager {
      */
     function setL1LPTGateway(address _l1LPTGatewayAddr) external onlyControllerOwner {
         l1LPTGatewayAddr = _l1LPTGatewayAddr;
+
+        emit L1LPTGatewayUpdate(_l1LPTGatewayAddr);
     }
 
     /**

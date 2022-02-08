@@ -82,8 +82,13 @@ describe("BridgeMinter", () => {
         it("sets L1 migrator address", async () => {
             controllerMock.owner.returns(eoa.address)
 
-            await bridgeMinter.connect(eoa).setL1Migrator(eoa.address)
+            const tx = await bridgeMinter
+                .connect(eoa)
+                .setL1Migrator(eoa.address)
             expect(await bridgeMinter.l1MigratorAddr()).to.be.equal(eoa.address)
+            await expect(tx)
+                .to.emit(bridgeMinter, "L1MigratorUpdate")
+                .withArgs(eoa.address)
         })
     })
 
@@ -97,10 +102,15 @@ describe("BridgeMinter", () => {
         it("sets L1 LPT Gateway address", async () => {
             controllerMock.owner.returns(eoa.address)
 
-            await bridgeMinter.connect(eoa).setL1LPTGateway(eoa.address)
+            const tx = await bridgeMinter
+                .connect(eoa)
+                .setL1LPTGateway(eoa.address)
             expect(await bridgeMinter.l1LPTGatewayAddr()).to.be.equal(
                 eoa.address
             )
+            await expect(tx)
+                .to.emit(bridgeMinter, "L1LPTGatewayUpdate")
+                .withArgs(eoa.address)
         })
     })
 
