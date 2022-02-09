@@ -9,16 +9,14 @@ import { ERC20Burnable } from "@openzeppelin/contracts/token/ERC20/extensions/ER
 // Copy of https://github.com/livepeer/arbitrum-lpt-bridge/blob/main/contracts/L2/token/LivepeerToken.sol
 // Tests at https://github.com/livepeer/arbitrum-lpt-bridge/blob/main/test/unit/L2/livepeerToken.test.ts
 contract LivepeerToken is AccessControl, ERC20Burnable, ERC20Permit {
-    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
-    bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE");
+    bytes32 private immutable MINTER_ROLE = keccak256("MINTER_ROLE");
+    bytes32 private immutable BURNER_ROLE = keccak256("BURNER_ROLE");
 
     event Mint(address indexed to, uint256 amount);
     event Burn(address indexed burner, uint256 amount);
 
     constructor() ERC20("Livepeer Token", "LPT") ERC20Permit("Livepeer Token") {
-        _setupRole(DEFAULT_ADMIN_ROLE, _msgSender());
-        _setRoleAdmin(MINTER_ROLE, DEFAULT_ADMIN_ROLE);
-        _setRoleAdmin(BURNER_ROLE, DEFAULT_ADMIN_ROLE);
+        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
     /**
