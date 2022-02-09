@@ -1,4 +1,5 @@
 import {BigNumber, utils} from "ethers"
+// Values for L1 for reference
 export default {
     initialSupply: utils.parseEther("10000000"),
     crowdSupply: utils.parseEther("6343700"),
