@@ -1,4 +1,5 @@
-pragma solidity ^0.5.11;
+//SPDX-License-Identifier: MIT
+pragma solidity 0.8.8;
 
 contract DummyGateway {
     function calculateL2TokenAddress(address _token) external pure returns (address) {
