@@ -63,6 +63,13 @@ const rinkeby = {
         inflation: 137,
         inflationChange: 3,
         targetBondingRate: 0
+    },
+    bridgeMinter: {
+        controller: "0x9a9827455911a858E55f07911904fACC0D66027E",
+        // TODO: Fill in once deployed
+        l1Migrator: "0x",
+        // TODO: Fill in once deployed
+        l1LPTGateway: "0x"
     }
 }
 
@@ -93,10 +100,21 @@ const arbitrumRinkeby = {
     }
 }
 
+const mainnet = {
+    bridgeMinter: {
+        controller: "0xf96d54e490317c557a967abfa5d6e33006be69b3",
+        // TODO: Fill in once deployed
+        l1Migrator: "0x",
+        // TODO: Fill in once deployed
+        l1LPTGateway: "0x"
+    }
+}
+
 const networkConfigs: any = {
     rinkeby,
     rinkebyDevnet,
-    arbitrumRinkeby
+    arbitrumRinkeby,
+    mainnet
 }
 
 export default function getNetworkConfig(network: string) {
