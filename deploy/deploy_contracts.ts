@@ -10,7 +10,8 @@ import {
     BondingManager,
     RoundsManager,
     TicketBroker,
-    LivepeerToken
+    LivepeerToken,
+    Governor
 } from "../typechain"
 
 import ContractDeployer from "./deployer"
@@ -175,6 +176,34 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
         name: "MerkleSnapshot",
         args: [Controller.address]
     })
+
+    // governor
+    const governor = await deploy("Governor", {
+        from: deployer,
+        args: [],
+        log: true
+    })
+
+    // Transfer ownership of Governor to governance multisig
+    const Governor: Governor = (await ethers.getContractAt(
+        "Governor",
+        governor.address
+    )) as Governor
+
+    const transferOwnershipUpdate = {
+        target: [governor.address],
+        value: ["0"],
+        data: [
+            Governor.interface.encodeFunctionData("transferOwnership", [
+                isProdNetwork(hre.network.name) ?
+                    config.governor.owner :
+                    deployer
+            ])
+        ],
+        nonce: 0
+    }
+    await (await Governor.stage(transferOwnershipUpdate, 0)).wait()
+    await (await Governor.execute(transferOwnershipUpdate)).wait()
 
     // Set BondingManager parameters
     const BondingManager: BondingManager = (await ethers.getContractAt(
