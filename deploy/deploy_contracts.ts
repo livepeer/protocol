@@ -17,6 +17,7 @@ import ContractDeployer from "./deployer"
 import getNetworkConfig from "./migrations.config"
 import genesis from "./genesis.config"
 
+const DEFAULT_ADMIN_ROLE = ethers.constants.HashZero
 const MINTER_ROLE = ethers.utils.solidityKeccak256(["string"], ["MINTER_ROLE"])
 
 const PROD_NETWORKS = ["mainnet", "arbitrumMainnet"]
@@ -101,15 +102,9 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
         )
 
         // The deployer needs to be the admin of LPT
-        const defaultAdminRole = await livepeerToken.DEFAULT_ADMIN_ROLE()
-        if (!(await livepeerToken.hasRole(defaultAdminRole, deployer))) {
+        if (!(await livepeerToken.hasRole(DEFAULT_ADMIN_ROLE, deployer))) {
             throw new Error("deployer is not admin for LPT")
         }
-
-        // Grant MINTER_ROLE to protocol Minter
-        await (
-            await livepeerToken.grantRole(MINTER_ROLE, minter.address)
-        ).wait()
 
         // Grant MINTER_ROLE to deployer in order to mint tokens as a part of deployment
         await (await livepeerToken.grantRole(MINTER_ROLE, deployer)).wait()
@@ -261,17 +256,12 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
         await (await Token.mint(deployer, genesis.companySupply)).wait()
 
         await (await Token.revokeRole(MINTER_ROLE, deployer)).wait()
-    } else {
-        await (
-            await Controller.transferOwnership(genesis.governanceMultisig)
-        ).wait()
-        const newOwner = await Controller.owner()
-        console.log(
-            `Controller at ${Controller.address} is now owned by ${newOwner}`
-        )
     }
 
     await (await Token.grantRole(MINTER_ROLE, minter.address)).wait()
+
+    // Controller is owned by the deployer at this point
+    // transferOwnership() needs to be called separately to give ownership to the Governor
 }
 
 func.tags = ["Contracts"]
