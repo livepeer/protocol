@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.8;
+pragma solidity 0.8.9;
 
 contract Poll {
     // The block at which the poll ends and votes can no longer be submitted.

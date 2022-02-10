@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.8;
+pragma solidity 0.8.9;
 
 /**
  * @dev These functions deal with verification of Merkle trees (hash trees),

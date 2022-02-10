@@ -1,5 +1,5 @@
 //SPDX-License-Identifier: MIT
-pragma solidity 0.8.8;
+pragma solidity 0.8.9;
 
 library AssertInt {
     uint8 constant ZERO = uint8(bytes1("0"));
