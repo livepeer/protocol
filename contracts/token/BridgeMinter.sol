@@ -2,7 +2,7 @@
 // solhint-disable-next-line
 pragma solidity 0.8.9;
 
-import "../solc-0.8.8/Manager.sol";
+import "../solc-0.8.9/Manager.sol";
 
 interface IBridgeMinterToken {
     function transfer(address _to, uint256 _amount) external;
