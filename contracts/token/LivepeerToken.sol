@@ -1,6 +1,6 @@
 //SPDX-License-Identifier: MIT
 // solhint-disable-next-line
-pragma solidity 0.8.8;
+pragma solidity 0.8.9;
 
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 import { ERC20, ERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/draft-ERC20Permit.sol";

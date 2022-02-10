@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.8;
+pragma solidity 0.8.9;
 
 import "./mocks/EarningsPoolFixture.sol";
 import "./helpers/truffle/Assert.sol";
