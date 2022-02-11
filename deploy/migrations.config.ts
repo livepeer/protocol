@@ -103,10 +103,8 @@ const arbitrumRinkeby = {
 const mainnet = {
     bridgeMinter: {
         controller: "0xf96d54e490317c557a967abfa5d6e33006be69b3",
-        // TODO: Fill in once deployed
-        l1Migrator: "0x",
-        // TODO: Fill in once deployed
-        l1LPTGateway: "0x"
+        l1Migrator: "0xC3ee6a18ACB2975E873fe106cB0E7132145616De",
+        l1LPTGateway: "0xD82c27966eBB293b2D8646D8eAcb293BC260698E"
     }
 }
 
