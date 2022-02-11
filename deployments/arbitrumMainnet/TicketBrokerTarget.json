@@ -1,0 +1,1116 @@
+{
+  "address": "0x7Beb84c52ce96DFd90431FAA97378994a8baa6df",
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_controller",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "sender",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "DepositFunded",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "string",
+          "name": "param",
+          "type": "string"
+        }
+      ],
+      "name": "ParameterUpdate",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "reserveHolder",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "claimant",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "ReserveClaimed",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "reserveHolder",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "ReserveFunded",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "controller",
+          "type": "address"
+        }
+      ],
+      "name": "SetController",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "sender",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "startRound",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "endRound",
+          "type": "uint256"
+        }
+      ],
+      "name": "Unlock",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "sender",
+          "type": "address"
+        }
+      ],
+      "name": "UnlockCancelled",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "sender",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "recipient",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "faceValue",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "winProb",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "senderNonce",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "recipientRand",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "bytes",
+          "name": "auxData",
+          "type": "bytes"
+        }
+      ],
+      "name": "WinningTicketRedeemed",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "sender",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "recipient",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "WinningTicketTransfer",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "sender",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "deposit",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "reserve",
+          "type": "uint256"
+        }
+      ],
+      "name": "Withdrawal",
+      "type": "event"
+    },
+    {
+      "inputs": [
+        {
+          "components": [
+            {
+              "internalType": "address",
+              "name": "recipient",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "sender",
+              "type": "address"
+            },
+            {
+              "internalType": "uint256",
+              "name": "faceValue",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "winProb",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "senderNonce",
+              "type": "uint256"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "recipientRandHash",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "bytes",
+              "name": "auxData",
+              "type": "bytes"
+            }
+          ],
+          "internalType": "struct MTicketBrokerCore.Ticket[]",
+          "name": "_tickets",
+          "type": "tuple[]"
+        },
+        {
+          "internalType": "bytes[]",
+          "name": "_sigs",
+          "type": "bytes[]"
+        },
+        {
+          "internalType": "uint256[]",
+          "name": "_recipientRands",
+          "type": "uint256[]"
+        }
+      ],
+      "name": "batchRedeemWinningTickets",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "cancelUnlock",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_reserveHolder",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "_claimant",
+          "type": "address"
+        }
+      ],
+      "name": "claimableReserve",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_reserveHolder",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "_claimant",
+          "type": "address"
+        }
+      ],
+      "name": "claimedReserve",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "controller",
+      "outputs": [
+        {
+          "internalType": "contract IController",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "fundDeposit",
+      "outputs": [],
+      "stateMutability": "payable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_depositAmount",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_reserveAmount",
+          "type": "uint256"
+        }
+      ],
+      "name": "fundDepositAndReserve",
+      "outputs": [],
+      "stateMutability": "payable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_addr",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_depositAmount",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_reserveAmount",
+          "type": "uint256"
+        }
+      ],
+      "name": "fundDepositAndReserveFor",
+      "outputs": [],
+      "stateMutability": "payable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "fundReserve",
+      "outputs": [],
+      "stateMutability": "payable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_reserveHolder",
+          "type": "address"
+        }
+      ],
+      "name": "getReserveInfo",
+      "outputs": [
+        {
+          "components": [
+            {
+              "internalType": "uint256",
+              "name": "fundsRemaining",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "claimedInCurrentRound",
+              "type": "uint256"
+            }
+          ],
+          "internalType": "struct MReserve.ReserveInfo",
+          "name": "info",
+          "type": "tuple"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_sender",
+          "type": "address"
+        }
+      ],
+      "name": "getSenderInfo",
+      "outputs": [
+        {
+          "components": [
+            {
+              "internalType": "uint256",
+              "name": "deposit",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "withdrawRound",
+              "type": "uint256"
+            }
+          ],
+          "internalType": "struct MixinTicketBrokerCore.Sender",
+          "name": "sender",
+          "type": "tuple"
+        },
+        {
+          "components": [
+            {
+              "internalType": "uint256",
+              "name": "fundsRemaining",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "claimedInCurrentRound",
+              "type": "uint256"
+            }
+          ],
+          "internalType": "struct MReserve.ReserveInfo",
+          "name": "reserve",
+          "type": "tuple"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "components": [
+            {
+              "internalType": "address",
+              "name": "recipient",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "sender",
+              "type": "address"
+            },
+            {
+              "internalType": "uint256",
+              "name": "faceValue",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "winProb",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "senderNonce",
+              "type": "uint256"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "recipientRandHash",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "bytes",
+              "name": "auxData",
+              "type": "bytes"
+            }
+          ],
+          "internalType": "struct MTicketBrokerCore.Ticket",
+          "name": "_ticket",
+          "type": "tuple"
+        }
+      ],
+      "name": "getTicketHash",
+      "outputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "stateMutability": "pure",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_sender",
+          "type": "address"
+        }
+      ],
+      "name": "isUnlockInProgress",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "components": [
+            {
+              "internalType": "address",
+              "name": "recipient",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "sender",
+              "type": "address"
+            },
+            {
+              "internalType": "uint256",
+              "name": "faceValue",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "winProb",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "senderNonce",
+              "type": "uint256"
+            },
+            {
+              "internalType": "bytes32",
+              "name": "recipientRandHash",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "bytes",
+              "name": "auxData",
+              "type": "bytes"
+            }
+          ],
+          "internalType": "struct MTicketBrokerCore.Ticket",
+          "name": "_ticket",
+          "type": "tuple"
+        },
+        {
+          "internalType": "bytes",
+          "name": "_sig",
+          "type": "bytes"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_recipientRand",
+          "type": "uint256"
+        }
+      ],
+      "name": "redeemWinningTicket",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_controller",
+          "type": "address"
+        }
+      ],
+      "name": "setController",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_ticketValidityPeriod",
+          "type": "uint256"
+        }
+      ],
+      "name": "setTicketValidityPeriod",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_unlockPeriod",
+          "type": "uint256"
+        }
+      ],
+      "name": "setUnlockPeriod",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "targetContractId",
+      "outputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "ticketValidityPeriod",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "unlock",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "unlockPeriod",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "name": "usedTickets",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "withdraw",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  ],
+  "transactionHash": "0x4a8616020e1883bcb5fb88ad16ca619255d59b718ad20d58358b7c6acbe06cff",
+  "receipt": {
+    "to": null,
+    "from": "0xB5Af4138f0f33be0D6414Eb25271B9C2Dc245fb5",
+    "contractAddress": "0x7Beb84c52ce96DFd90431FAA97378994a8baa6df",
+    "transactionIndex": 0,
+    "gasUsed": "41421177",
+    "logsBloom": "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+    "blockHash": "0x442b27e8a7182deeec6190ce130a1c61aa87db7f5fea16c961251b82e37e6efb",
+    "transactionHash": "0x4a8616020e1883bcb5fb88ad16ca619255d59b718ad20d58358b7c6acbe06cff",
+    "logs": [],
+    "blockNumber": 5856351,
+    "cumulativeGasUsed": "19139697",
+    "status": 1,
+    "byzantium": true
+  },
+  "args": [
+    "0xD8E8328501E9645d16Cf49539efC04f734606ee4"
+  ],
+  "numDeployments": 1,
+  "solcInputHash": "fbb7c6c031c5ea66d51283bdfeec92b9",
+  "metadata": "{\"compiler\":{\"version\":\"0.8.9+commit.e5eed63a\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_controller\",\"type\":\"address\"}],\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"DepositFunded\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"string\",\"name\":\"param\",\"type\":\"string\"}],\"name\":\"ParameterUpdate\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"reserveHolder\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"address\",\"name\":\"claimant\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"ReserveClaimed\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"reserveHolder\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"ReserveFunded\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"controller\",\"type\":\"address\"}],\"name\":\"SetController\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"startRound\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"endRound\",\"type\":\"uint256\"}],\"name\":\"Unlock\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"}],\"name\":\"UnlockCancelled\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"recipient\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"faceValue\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"winProb\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"senderNonce\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"recipientRand\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"bytes\",\"name\":\"auxData\",\"type\":\"bytes\"}],\"name\":\"WinningTicketRedeemed\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"recipient\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"WinningTicketTransfer\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"deposit\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"reserve\",\"type\":\"uint256\"}],\"name\":\"Withdrawal\",\"type\":\"event\"},{\"inputs\":[{\"components\":[{\"internalType\":\"address\",\"name\":\"recipient\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"faceValue\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"winProb\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"senderNonce\",\"type\":\"uint256\"},{\"internalType\":\"bytes32\",\"name\":\"recipientRandHash\",\"type\":\"bytes32\"},{\"internalType\":\"bytes\",\"name\":\"auxData\",\"type\":\"bytes\"}],\"internalType\":\"struct MTicketBrokerCore.Ticket[]\",\"name\":\"_tickets\",\"type\":\"tuple[]\"},{\"internalType\":\"bytes[]\",\"name\":\"_sigs\",\"type\":\"bytes[]\"},{\"internalType\":\"uint256[]\",\"name\":\"_recipientRands\",\"type\":\"uint256[]\"}],\"name\":\"batchRedeemWinningTickets\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"cancelUnlock\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_reserveHolder\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"_claimant\",\"type\":\"address\"}],\"name\":\"claimableReserve\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_reserveHolder\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"_claimant\",\"type\":\"address\"}],\"name\":\"claimedReserve\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"controller\",\"outputs\":[{\"internalType\":\"contract IController\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"fundDeposit\",\"outputs\":[],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"_depositAmount\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"_reserveAmount\",\"type\":\"uint256\"}],\"name\":\"fundDepositAndReserve\",\"outputs\":[],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_addr\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"_depositAmount\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"_reserveAmount\",\"type\":\"uint256\"}],\"name\":\"fundDepositAndReserveFor\",\"outputs\":[],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"fundReserve\",\"outputs\":[],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_reserveHolder\",\"type\":\"address\"}],\"name\":\"getReserveInfo\",\"outputs\":[{\"components\":[{\"internalType\":\"uint256\",\"name\":\"fundsRemaining\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"claimedInCurrentRound\",\"type\":\"uint256\"}],\"internalType\":\"struct MReserve.ReserveInfo\",\"name\":\"info\",\"type\":\"tuple\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_sender\",\"type\":\"address\"}],\"name\":\"getSenderInfo\",\"outputs\":[{\"components\":[{\"internalType\":\"uint256\",\"name\":\"deposit\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"withdrawRound\",\"type\":\"uint256\"}],\"internalType\":\"struct MixinTicketBrokerCore.Sender\",\"name\":\"sender\",\"type\":\"tuple\"},{\"components\":[{\"internalType\":\"uint256\",\"name\":\"fundsRemaining\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"claimedInCurrentRound\",\"type\":\"uint256\"}],\"internalType\":\"struct MReserve.ReserveInfo\",\"name\":\"reserve\",\"type\":\"tuple\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"address\",\"name\":\"recipient\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"faceValue\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"winProb\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"senderNonce\",\"type\":\"uint256\"},{\"internalType\":\"bytes32\",\"name\":\"recipientRandHash\",\"type\":\"bytes32\"},{\"internalType\":\"bytes\",\"name\":\"auxData\",\"type\":\"bytes\"}],\"internalType\":\"struct MTicketBrokerCore.Ticket\",\"name\":\"_ticket\",\"type\":\"tuple\"}],\"name\":\"getTicketHash\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"pure\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_sender\",\"type\":\"address\"}],\"name\":\"isUnlockInProgress\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"address\",\"name\":\"recipient\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"sender\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"faceValue\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"winProb\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"senderNonce\",\"type\":\"uint256\"},{\"internalType\":\"bytes32\",\"name\":\"recipientRandHash\",\"type\":\"bytes32\"},{\"internalType\":\"bytes\",\"name\":\"auxData\",\"type\":\"bytes\"}],\"internalType\":\"struct MTicketBrokerCore.Ticket\",\"name\":\"_ticket\",\"type\":\"tuple\"},{\"internalType\":\"bytes\",\"name\":\"_sig\",\"type\":\"bytes\"},{\"internalType\":\"uint256\",\"name\":\"_recipientRand\",\"type\":\"uint256\"}],\"name\":\"redeemWinningTicket\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_controller\",\"type\":\"address\"}],\"name\":\"setController\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"_ticketValidityPeriod\",\"type\":\"uint256\"}],\"name\":\"setTicketValidityPeriod\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"_unlockPeriod\",\"type\":\"uint256\"}],\"name\":\"setUnlockPeriod\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"targetContractId\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"ticketValidityPeriod\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"unlock\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"unlockPeriod\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"name\":\"usedTickets\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"withdraw\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}],\"devdoc\":{\"kind\":\"dev\",\"methods\":{\"batchRedeemWinningTickets((address,address,uint256,uint256,uint256,bytes32,bytes)[],bytes[],uint256[])\":{\"params\":{\"_recipientRands\":\"Array of preimages for the recipientRandHash included in each ticket (`_recipientRands[i]` corresponds to `_tickets[i]`)\",\"_sigs\":\"Array of sender signatures over the hash of tickets (`_sigs[i]` corresponds to `_tickets[i]`)\",\"_tickets\":\"Array of winning tickets to be redeemed in order to claim payment\"}},\"claimableReserve(address,address)\":{\"details\":\"Returns the amount of funds claimable by a claimant from a reserve in the current round\",\"params\":{\"_claimant\":\"Address of claimant\",\"_reserveHolder\":\"Address of reserve holder\"},\"returns\":{\"_0\":\"Amount of funds claimable by `_claimant` from the reserve for `_reserveHolder` in the current round\"}},\"claimedReserve(address,address)\":{\"details\":\"Returns the amount of funds claimed by a claimant from a reserve in the current round\",\"params\":{\"_claimant\":\"Address of claimant\",\"_reserveHolder\":\"Address of reserve holder\"},\"returns\":{\"_0\":\"Amount of funds claimed by `_claimant` from the reserve for `_reserveHolder` in the current round\"}},\"constructor\":{\"details\":\"This constructor will not initialize any state variables besides `controller`. The following setter functions should be used to initialize state variables post-deployment: - setUnlockPeriod() - setTicketValidityPeriod()\",\"params\":{\"_controller\":\"Address of Controller that this contract will be registered with\"}},\"fundDepositAndReserve(uint256,uint256)\":{\"params\":{\"_depositAmount\":\"Amount of ETH to add to the caller's deposit\",\"_reserveAmount\":\"Amount of ETH to add to the caller's reserve\"}},\"fundDepositAndReserveFor(address,uint256,uint256)\":{\"params\":{\"_depositAmount\":\"Amount of ETH to add to the address' deposit\",\"_reserveAmount\":\"Amount of ETH to add to the address' reserve\"}},\"getReserveInfo(address)\":{\"details\":\"Returns info about a reserve\",\"params\":{\"_reserveHolder\":\"Address of reserve holder\"},\"returns\":{\"info\":\"Info about the reserve for `_reserveHolder`\"}},\"getSenderInfo(address)\":{\"params\":{\"_sender\":\"Address of sender\"},\"returns\":{\"reserve\":\"Info about the reserve for `_sender`\",\"sender\":\"Info about the sender for `_sender`\"}},\"getTicketHash((address,address,uint256,uint256,uint256,bytes32,bytes))\":{\"details\":\"Returns the hash of a ticket\",\"params\":{\"_ticket\":\"Ticket to be hashed\"},\"returns\":{\"_0\":\"keccak256 hash of `_ticket`\"}},\"isUnlockInProgress(address)\":{\"params\":{\"_sender\":\"Address of sender\"},\"returns\":{\"_0\":\"Boolean indicating whether `_sender` has an unlock in progress\"}},\"redeemWinningTicket((address,address,uint256,uint256,uint256,bytes32,bytes),bytes,uint256)\":{\"params\":{\"_recipientRand\":\"The preimage for the recipientRandHash included in `_ticket`\",\"_sig\":\"Sender's signature over the hash of `_ticket`\",\"_ticket\":\"Winning ticket to be redeemed in order to claim payment\"}},\"setController(address)\":{\"params\":{\"_controller\":\"Controller contract address\"}},\"setTicketValidityPeriod(uint256)\":{\"params\":{\"_ticketValidityPeriod\":\"Value for ticketValidityPeriod\"}},\"setUnlockPeriod(uint256)\":{\"params\":{\"_unlockPeriod\":\"Value for unlockPeriod\"}}},\"version\":1},\"userdoc\":{\"kind\":\"user\",\"methods\":{\"batchRedeemWinningTickets((address,address,uint256,uint256,uint256,bytes32,bytes)[],bytes[],uint256[])\":{\"notice\":\"Redeems multiple winning tickets. The function will redeem all of the provided tickets and handle any failures gracefully without reverting the entire function\"},\"cancelUnlock()\":{\"notice\":\"Cancels the unlock period for the caller\"},\"constructor\":{\"notice\":\"TicketBroker constructor. Only invokes constructor of base Manager contract with provided Controller address\"},\"fundDeposit()\":{\"notice\":\"Adds ETH to the caller's deposit\"},\"fundDepositAndReserve(uint256,uint256)\":{\"notice\":\"Adds ETH to the caller's deposit and reserve\"},\"fundDepositAndReserveFor(address,uint256,uint256)\":{\"notice\":\"Adds ETH to the address' deposit and reserve\"},\"fundReserve()\":{\"notice\":\"Adds ETH to the caller's reserve\"},\"getSenderInfo(address)\":{\"notice\":\"Returns info about a sender\"},\"isUnlockInProgress(address)\":{\"notice\":\"Returns whether a sender is currently in the unlock period\"},\"redeemWinningTicket((address,address,uint256,uint256,uint256,bytes32,bytes),bytes,uint256)\":{\"notice\":\"Redeems a winning ticket that has been signed by a sender and reveals the recipient recipientRand that corresponds to the recipientRandHash included in the ticket\"},\"setController(address)\":{\"notice\":\"Set controller. Only callable by current controller\"},\"setTicketValidityPeriod(uint256)\":{\"notice\":\"Sets ticketValidityPeriod value. Only callable by the Controller owner\"},\"setUnlockPeriod(uint256)\":{\"notice\":\"Sets unlockPeriod value. Only callable by the Controller owner\"},\"unlock()\":{\"notice\":\"Initiates the unlock period for the caller\"},\"withdraw()\":{\"notice\":\"Withdraws all ETH from the caller's deposit and reserve\"}},\"version\":1}},\"settings\":{\"compilationTarget\":{\"contracts/pm/TicketBroker.sol\":\"TicketBroker\"},\"evmVersion\":\"london\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"ipfs\",\"useLiteralContent\":true},\"optimizer\":{\"enabled\":true,\"runs\":200},\"remappings\":[]},\"sources\":{\"@openzeppelin/contracts/utils/Strings.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\n// OpenZeppelin Contracts v4.4.1 (utils/Strings.sol)\\n\\npragma solidity ^0.8.0;\\n\\n/**\\n * @dev String operations.\\n */\\nlibrary Strings {\\n    bytes16 private constant _HEX_SYMBOLS = \\\"0123456789abcdef\\\";\\n\\n    /**\\n     * @dev Converts a `uint256` to its ASCII `string` decimal representation.\\n     */\\n    function toString(uint256 value) internal pure returns (string memory) {\\n        // Inspired by OraclizeAPI's implementation - MIT licence\\n        // https://github.com/oraclize/ethereum-api/blob/b42146b063c7d6ee1358846c198246239e9360e8/oraclizeAPI_0.4.25.sol\\n\\n        if (value == 0) {\\n            return \\\"0\\\";\\n        }\\n        uint256 temp = value;\\n        uint256 digits;\\n        while (temp != 0) {\\n            digits++;\\n            temp /= 10;\\n        }\\n        bytes memory buffer = new bytes(digits);\\n        while (value != 0) {\\n            digits -= 1;\\n            buffer[digits] = bytes1(uint8(48 + uint256(value % 10)));\\n            value /= 10;\\n        }\\n        return string(buffer);\\n    }\\n\\n    /**\\n     * @dev Converts a `uint256` to its ASCII `string` hexadecimal representation.\\n     */\\n    function toHexString(uint256 value) internal pure returns (string memory) {\\n        if (value == 0) {\\n            return \\\"0x00\\\";\\n        }\\n        uint256 temp = value;\\n        uint256 length = 0;\\n        while (temp != 0) {\\n            length++;\\n            temp >>= 8;\\n        }\\n        return toHexString(value, length);\\n    }\\n\\n    /**\\n     * @dev Converts a `uint256` to its ASCII `string` hexadecimal representation with fixed length.\\n     */\\n    function toHexString(uint256 value, uint256 length) internal pure returns (string memory) {\\n        bytes memory buffer = new bytes(2 * length + 2);\\n        buffer[0] = \\\"0\\\";\\n        buffer[1] = \\\"x\\\";\\n        for (uint256 i = 2 * length + 1; i > 1; --i) {\\n            buffer[i] = _HEX_SYMBOLS[value & 0xf];\\n            value >>= 4;\\n        }\\n        require(value == 0, \\\"Strings: hex length insufficient\\\");\\n        return string(buffer);\\n    }\\n}\\n\",\"keccak256\":\"0x32c202bd28995dd20c4347b7c6467a6d3241c74c8ad3edcbb610cd9205916c45\",\"license\":\"MIT\"},\"@openzeppelin/contracts/utils/cryptography/ECDSA.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\n// OpenZeppelin Contracts v4.4.1 (utils/cryptography/ECDSA.sol)\\n\\npragma solidity ^0.8.0;\\n\\nimport \\\"../Strings.sol\\\";\\n\\n/**\\n * @dev Elliptic Curve Digital Signature Algorithm (ECDSA) operations.\\n *\\n * These functions can be used to verify that a message was signed by the holder\\n * of the private keys of a given address.\\n */\\nlibrary ECDSA {\\n    enum RecoverError {\\n        NoError,\\n        InvalidSignature,\\n        InvalidSignatureLength,\\n        InvalidSignatureS,\\n        InvalidSignatureV\\n    }\\n\\n    function _throwError(RecoverError error) private pure {\\n        if (error == RecoverError.NoError) {\\n            return; // no error: do nothing\\n        } else if (error == RecoverError.InvalidSignature) {\\n            revert(\\\"ECDSA: invalid signature\\\");\\n        } else if (error == RecoverError.InvalidSignatureLength) {\\n            revert(\\\"ECDSA: invalid signature length\\\");\\n        } else if (error == RecoverError.InvalidSignatureS) {\\n            revert(\\\"ECDSA: invalid signature 's' value\\\");\\n        } else if (error == RecoverError.InvalidSignatureV) {\\n            revert(\\\"ECDSA: invalid signature 'v' value\\\");\\n        }\\n    }\\n\\n    /**\\n     * @dev Returns the address that signed a hashed message (`hash`) with\\n     * `signature` or error string. This address can then be used for verification purposes.\\n     *\\n     * The `ecrecover` EVM opcode allows for malleable (non-unique) signatures:\\n     * this function rejects them by requiring the `s` value to be in the lower\\n     * half order, and the `v` value to be either 27 or 28.\\n     *\\n     * IMPORTANT: `hash` _must_ be the result of a hash operation for the\\n     * verification to be secure: it is possible to craft signatures that\\n     * recover to arbitrary addresses for non-hashed data. A safe way to ensure\\n     * this is by receiving a hash of the original message (which may otherwise\\n     * be too long), and then calling {toEthSignedMessageHash} on it.\\n     *\\n     * Documentation for signature generation:\\n     * - with https://web3js.readthedocs.io/en/v1.3.4/web3-eth-accounts.html#sign[Web3.js]\\n     * - with https://docs.ethers.io/v5/api/signer/#Signer-signMessage[ethers]\\n     *\\n     * _Available since v4.3._\\n     */\\n    function tryRecover(bytes32 hash, bytes memory signature) internal pure returns (address, RecoverError) {\\n        // Check the signature length\\n        // - case 65: r,s,v signature (standard)\\n        // - case 64: r,vs signature (cf https://eips.ethereum.org/EIPS/eip-2098) _Available since v4.1._\\n        if (signature.length == 65) {\\n            bytes32 r;\\n            bytes32 s;\\n            uint8 v;\\n            // ecrecover takes the signature parameters, and the only way to get them\\n            // currently is to use assembly.\\n            assembly {\\n                r := mload(add(signature, 0x20))\\n                s := mload(add(signature, 0x40))\\n                v := byte(0, mload(add(signature, 0x60)))\\n            }\\n            return tryRecover(hash, v, r, s);\\n        } else if (signature.length == 64) {\\n            bytes32 r;\\n            bytes32 vs;\\n            // ecrecover takes the signature parameters, and the only way to get them\\n            // currently is to use assembly.\\n            assembly {\\n                r := mload(add(signature, 0x20))\\n                vs := mload(add(signature, 0x40))\\n            }\\n            return tryRecover(hash, r, vs);\\n        } else {\\n            return (address(0), RecoverError.InvalidSignatureLength);\\n        }\\n    }\\n\\n    /**\\n     * @dev Returns the address that signed a hashed message (`hash`) with\\n     * `signature`. This address can then be used for verification purposes.\\n     *\\n     * The `ecrecover` EVM opcode allows for malleable (non-unique) signatures:\\n     * this function rejects them by requiring the `s` value to be in the lower\\n     * half order, and the `v` value to be either 27 or 28.\\n     *\\n     * IMPORTANT: `hash` _must_ be the result of a hash operation for the\\n     * verification to be secure: it is possible to craft signatures that\\n     * recover to arbitrary addresses for non-hashed data. A safe way to ensure\\n     * this is by receiving a hash of the original message (which may otherwise\\n     * be too long), and then calling {toEthSignedMessageHash} on it.\\n     */\\n    function recover(bytes32 hash, bytes memory signature) internal pure returns (address) {\\n        (address recovered, RecoverError error) = tryRecover(hash, signature);\\n        _throwError(error);\\n        return recovered;\\n    }\\n\\n    /**\\n     * @dev Overload of {ECDSA-tryRecover} that receives the `r` and `vs` short-signature fields separately.\\n     *\\n     * See https://eips.ethereum.org/EIPS/eip-2098[EIP-2098 short signatures]\\n     *\\n     * _Available since v4.3._\\n     */\\n    function tryRecover(\\n        bytes32 hash,\\n        bytes32 r,\\n        bytes32 vs\\n    ) internal pure returns (address, RecoverError) {\\n        bytes32 s;\\n        uint8 v;\\n        assembly {\\n            s := and(vs, 0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff)\\n            v := add(shr(255, vs), 27)\\n        }\\n        return tryRecover(hash, v, r, s);\\n    }\\n\\n    /**\\n     * @dev Overload of {ECDSA-recover} that receives the `r and `vs` short-signature fields separately.\\n     *\\n     * _Available since v4.2._\\n     */\\n    function recover(\\n        bytes32 hash,\\n        bytes32 r,\\n        bytes32 vs\\n    ) internal pure returns (address) {\\n        (address recovered, RecoverError error) = tryRecover(hash, r, vs);\\n        _throwError(error);\\n        return recovered;\\n    }\\n\\n    /**\\n     * @dev Overload of {ECDSA-tryRecover} that receives the `v`,\\n     * `r` and `s` signature fields separately.\\n     *\\n     * _Available since v4.3._\\n     */\\n    function tryRecover(\\n        bytes32 hash,\\n        uint8 v,\\n        bytes32 r,\\n        bytes32 s\\n    ) internal pure returns (address, RecoverError) {\\n        // EIP-2 still allows signature malleability for ecrecover(). Remove this possibility and make the signature\\n        // unique. Appendix F in the Ethereum Yellow paper (https://ethereum.github.io/yellowpaper/paper.pdf), defines\\n        // the valid range for s in (301): 0 < s < secp256k1n \\u00f7 2 + 1, and for v in (302): v \\u2208 {27, 28}. Most\\n        // signatures from current libraries generate a unique signature with an s-value in the lower half order.\\n        //\\n        // If your library generates malleable signatures, such as s-values in the upper range, calculate a new s-value\\n        // with 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141 - s1 and flip v from 27 to 28 or\\n        // vice versa. If your library also generates signatures with 0/1 for v instead 27/28, add 27 to v to accept\\n        // these malleable signatures as well.\\n        if (uint256(s) > 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0) {\\n            return (address(0), RecoverError.InvalidSignatureS);\\n        }\\n        if (v != 27 && v != 28) {\\n            return (address(0), RecoverError.InvalidSignatureV);\\n        }\\n\\n        // If the signature is valid (and not malleable), return the signer address\\n        address signer = ecrecover(hash, v, r, s);\\n        if (signer == address(0)) {\\n            return (address(0), RecoverError.InvalidSignature);\\n        }\\n\\n        return (signer, RecoverError.NoError);\\n    }\\n\\n    /**\\n     * @dev Overload of {ECDSA-recover} that receives the `v`,\\n     * `r` and `s` signature fields separately.\\n     */\\n    function recover(\\n        bytes32 hash,\\n        uint8 v,\\n        bytes32 r,\\n        bytes32 s\\n    ) internal pure returns (address) {\\n        (address recovered, RecoverError error) = tryRecover(hash, v, r, s);\\n        _throwError(error);\\n        return recovered;\\n    }\\n\\n    /**\\n     * @dev Returns an Ethereum Signed Message, created from a `hash`. This\\n     * produces hash corresponding to the one signed with the\\n     * https://eth.wiki/json-rpc/API#eth_sign[`eth_sign`]\\n     * JSON-RPC method as part of EIP-191.\\n     *\\n     * See {recover}.\\n     */\\n    function toEthSignedMessageHash(bytes32 hash) internal pure returns (bytes32) {\\n        // 32 is the length in bytes of hash,\\n        // enforced by the type signature above\\n        return keccak256(abi.encodePacked(\\\"\\\\x19Ethereum Signed Message:\\\\n32\\\", hash));\\n    }\\n\\n    /**\\n     * @dev Returns an Ethereum Signed Message, created from `s`. This\\n     * produces hash corresponding to the one signed with the\\n     * https://eth.wiki/json-rpc/API#eth_sign[`eth_sign`]\\n     * JSON-RPC method as part of EIP-191.\\n     *\\n     * See {recover}.\\n     */\\n    function toEthSignedMessageHash(bytes memory s) internal pure returns (bytes32) {\\n        return keccak256(abi.encodePacked(\\\"\\\\x19Ethereum Signed Message:\\\\n\\\", Strings.toString(s.length), s));\\n    }\\n\\n    /**\\n     * @dev Returns an Ethereum Signed Typed Data, created from a\\n     * `domainSeparator` and a `structHash`. This produces hash corresponding\\n     * to the one signed with the\\n     * https://eips.ethereum.org/EIPS/eip-712[`eth_signTypedData`]\\n     * JSON-RPC method as part of EIP-712.\\n     *\\n     * See {recover}.\\n     */\\n    function toTypedDataHash(bytes32 domainSeparator, bytes32 structHash) internal pure returns (bytes32) {\\n        return keccak256(abi.encodePacked(\\\"\\\\x19\\\\x01\\\", domainSeparator, structHash));\\n    }\\n}\\n\",\"keccak256\":\"0xe9e291de7ffe06e66503c6700b1bb84ff6e0989cbb974653628d8994e7c97f03\",\"license\":\"MIT\"},\"@openzeppelin/contracts/utils/math/SafeMath.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\n// OpenZeppelin Contracts v4.4.1 (utils/math/SafeMath.sol)\\n\\npragma solidity ^0.8.0;\\n\\n// CAUTION\\n// This version of SafeMath should only be used with Solidity 0.8 or later,\\n// because it relies on the compiler's built in overflow checks.\\n\\n/**\\n * @dev Wrappers over Solidity's arithmetic operations.\\n *\\n * NOTE: `SafeMath` is generally not needed starting with Solidity 0.8, since the compiler\\n * now has built in overflow checking.\\n */\\nlibrary SafeMath {\\n    /**\\n     * @dev Returns the addition of two unsigned integers, with an overflow flag.\\n     *\\n     * _Available since v3.4._\\n     */\\n    function tryAdd(uint256 a, uint256 b) internal pure returns (bool, uint256) {\\n        unchecked {\\n            uint256 c = a + b;\\n            if (c < a) return (false, 0);\\n            return (true, c);\\n        }\\n    }\\n\\n    /**\\n     * @dev Returns the substraction of two unsigned integers, with an overflow flag.\\n     *\\n     * _Available since v3.4._\\n     */\\n    function trySub(uint256 a, uint256 b) internal pure returns (bool, uint256) {\\n        unchecked {\\n            if (b > a) return (false, 0);\\n            return (true, a - b);\\n        }\\n    }\\n\\n    /**\\n     * @dev Returns the multiplication of two unsigned integers, with an overflow flag.\\n     *\\n     * _Available since v3.4._\\n     */\\n    function tryMul(uint256 a, uint256 b) internal pure returns (bool, uint256) {\\n        unchecked {\\n            // Gas optimization: this is cheaper than requiring 'a' not being zero, but the\\n            // benefit is lost if 'b' is also tested.\\n            // See: https://github.com/OpenZeppelin/openzeppelin-contracts/pull/522\\n            if (a == 0) return (true, 0);\\n            uint256 c = a * b;\\n            if (c / a != b) return (false, 0);\\n            return (true, c);\\n        }\\n    }\\n\\n    /**\\n     * @dev Returns the division of two unsigned integers, with a division by zero flag.\\n     *\\n     * _Available since v3.4._\\n     */\\n    function tryDiv(uint256 a, uint256 b) internal pure returns (bool, uint256) {\\n        unchecked {\\n            if (b == 0) return (false, 0);\\n            return (true, a / b);\\n        }\\n    }\\n\\n    /**\\n     * @dev Returns the remainder of dividing two unsigned integers, with a division by zero flag.\\n     *\\n     * _Available since v3.4._\\n     */\\n    function tryMod(uint256 a, uint256 b) internal pure returns (bool, uint256) {\\n        unchecked {\\n            if (b == 0) return (false, 0);\\n            return (true, a % b);\\n        }\\n    }\\n\\n    /**\\n     * @dev Returns the addition of two unsigned integers, reverting on\\n     * overflow.\\n     *\\n     * Counterpart to Solidity's `+` operator.\\n     *\\n     * Requirements:\\n     *\\n     * - Addition cannot overflow.\\n     */\\n    function add(uint256 a, uint256 b) internal pure returns (uint256) {\\n        return a + b;\\n    }\\n\\n    /**\\n     * @dev Returns the subtraction of two unsigned integers, reverting on\\n     * overflow (when the result is negative).\\n     *\\n     * Counterpart to Solidity's `-` operator.\\n     *\\n     * Requirements:\\n     *\\n     * - Subtraction cannot overflow.\\n     */\\n    function sub(uint256 a, uint256 b) internal pure returns (uint256) {\\n        return a - b;\\n    }\\n\\n    /**\\n     * @dev Returns the multiplication of two unsigned integers, reverting on\\n     * overflow.\\n     *\\n     * Counterpart to Solidity's `*` operator.\\n     *\\n     * Requirements:\\n     *\\n     * - Multiplication cannot overflow.\\n     */\\n    function mul(uint256 a, uint256 b) internal pure returns (uint256) {\\n        return a * b;\\n    }\\n\\n    /**\\n     * @dev Returns the integer division of two unsigned integers, reverting on\\n     * division by zero. The result is rounded towards zero.\\n     *\\n     * Counterpart to Solidity's `/` operator.\\n     *\\n     * Requirements:\\n     *\\n     * - The divisor cannot be zero.\\n     */\\n    function div(uint256 a, uint256 b) internal pure returns (uint256) {\\n        return a / b;\\n    }\\n\\n    /**\\n     * @dev Returns the remainder of dividing two unsigned integers. (unsigned integer modulo),\\n     * reverting when dividing by zero.\\n     *\\n     * Counterpart to Solidity's `%` operator. This function uses a `revert`\\n     * opcode (which leaves remaining gas untouched) while Solidity uses an\\n     * invalid opcode to revert (consuming all remaining gas).\\n     *\\n     * Requirements:\\n     *\\n     * - The divisor cannot be zero.\\n     */\\n    function mod(uint256 a, uint256 b) internal pure returns (uint256) {\\n        return a % b;\\n    }\\n\\n    /**\\n     * @dev Returns the subtraction of two unsigned integers, reverting with custom message on\\n     * overflow (when the result is negative).\\n     *\\n     * CAUTION: This function is deprecated because it requires allocating memory for the error\\n     * message unnecessarily. For custom revert reasons use {trySub}.\\n     *\\n     * Counterpart to Solidity's `-` operator.\\n     *\\n     * Requirements:\\n     *\\n     * - Subtraction cannot overflow.\\n     */\\n    function sub(\\n        uint256 a,\\n        uint256 b,\\n        string memory errorMessage\\n    ) internal pure returns (uint256) {\\n        unchecked {\\n            require(b <= a, errorMessage);\\n            return a - b;\\n        }\\n    }\\n\\n    /**\\n     * @dev Returns the integer division of two unsigned integers, reverting with custom message on\\n     * division by zero. The result is rounded towards zero.\\n     *\\n     * Counterpart to Solidity's `/` operator. Note: this function uses a\\n     * `revert` opcode (which leaves remaining gas untouched) while Solidity\\n     * uses an invalid opcode to revert (consuming all remaining gas).\\n     *\\n     * Requirements:\\n     *\\n     * - The divisor cannot be zero.\\n     */\\n    function div(\\n        uint256 a,\\n        uint256 b,\\n        string memory errorMessage\\n    ) internal pure returns (uint256) {\\n        unchecked {\\n            require(b > 0, errorMessage);\\n            return a / b;\\n        }\\n    }\\n\\n    /**\\n     * @dev Returns the remainder of dividing two unsigned integers. (unsigned integer modulo),\\n     * reverting with custom message when dividing by zero.\\n     *\\n     * CAUTION: This function is deprecated because it requires allocating memory for the error\\n     * message unnecessarily. For custom revert reasons use {tryMod}.\\n     *\\n     * Counterpart to Solidity's `%` operator. This function uses a `revert`\\n     * opcode (which leaves remaining gas untouched) while Solidity uses an\\n     * invalid opcode to revert (consuming all remaining gas).\\n     *\\n     * Requirements:\\n     *\\n     * - The divisor cannot be zero.\\n     */\\n    function mod(\\n        uint256 a,\\n        uint256 b,\\n        string memory errorMessage\\n    ) internal pure returns (uint256) {\\n        unchecked {\\n            require(b > 0, errorMessage);\\n            return a % b;\\n        }\\n    }\\n}\\n\",\"keccak256\":\"0xa2f576be637946f767aa56601c26d717f48a0aff44f82e46f13807eea1009a21\",\"license\":\"MIT\"},\"contracts/IController.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity 0.8.9;\\n\\nimport \\\"./zeppelin/Pausable.sol\\\";\\n\\nabstract contract IController is Pausable {\\n    event SetContractInfo(bytes32 id, address contractAddress, bytes20 gitCommitHash);\\n\\n    function setContractInfo(\\n        bytes32 _id,\\n        address _contractAddress,\\n        bytes20 _gitCommitHash\\n    ) external virtual;\\n\\n    function updateController(bytes32 _id, address _controller) external virtual;\\n\\n    function getContract(bytes32 _id) public view virtual returns (address);\\n}\\n\",\"keccak256\":\"0x34ea30a2b44d0cbec58fc1d703476ff0085b0fdadab0cd65c35c00b8867f7546\",\"license\":\"MIT\"},\"contracts/IManager.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity 0.8.9;\\n\\ninterface IManager {\\n    event SetController(address controller);\\n    event ParameterUpdate(string param);\\n\\n    function setController(address _controller) external;\\n}\\n\",\"keccak256\":\"0xc179e4cecc593741514237d5194b4aaac6b829789629fa19ed04f572a8530481\",\"license\":\"MIT\"},\"contracts/Manager.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity 0.8.9;\\n\\nimport \\\"./IManager.sol\\\";\\nimport \\\"./IController.sol\\\";\\n\\ncontract Manager is IManager {\\n    // Controller that contract is registered with\\n    IController public controller;\\n\\n    // Check if sender is controller\\n    modifier onlyController() {\\n        _onlyController();\\n        _;\\n    }\\n\\n    // Check if sender is controller owner\\n    modifier onlyControllerOwner() {\\n        _onlyControllerOwner();\\n        _;\\n    }\\n\\n    // Check if controller is not paused\\n    modifier whenSystemNotPaused() {\\n        _whenSystemNotPaused();\\n        _;\\n    }\\n\\n    // Check if controller is paused\\n    modifier whenSystemPaused() {\\n        _whenSystemPaused();\\n        _;\\n    }\\n\\n    constructor(address _controller) {\\n        controller = IController(_controller);\\n    }\\n\\n    /**\\n     * @notice Set controller. Only callable by current controller\\n     * @param _controller Controller contract address\\n     */\\n    function setController(address _controller) external onlyController {\\n        controller = IController(_controller);\\n\\n        emit SetController(_controller);\\n    }\\n\\n    function _onlyController() private view {\\n        require(msg.sender == address(controller), \\\"caller must be Controller\\\");\\n    }\\n\\n    function _onlyControllerOwner() private view {\\n        require(msg.sender == controller.owner(), \\\"caller must be Controller owner\\\");\\n    }\\n\\n    function _whenSystemNotPaused() private view {\\n        require(!controller.paused(), \\\"system is paused\\\");\\n    }\\n\\n    function _whenSystemPaused() private view {\\n        require(controller.paused(), \\\"system is not paused\\\");\\n    }\\n}\\n\",\"keccak256\":\"0xc415e3f42da9f82ddd5953031f3f26aed824368fcc34d3b8a17015bfe80dc109\",\"license\":\"MIT\"},\"contracts/ManagerProxyTarget.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity 0.8.9;\\n\\nimport \\\"./Manager.sol\\\";\\n\\n/**\\n * @title ManagerProxyTarget\\n * @notice The base contract that target contracts used by a proxy contract should inherit from\\n * @dev Both the target contract and the proxy contract (implemented as ManagerProxy) MUST inherit from ManagerProxyTarget in order to guarantee\\n that both contracts have the same storage layout. Differing storage layouts in a proxy contract and target contract can\\n potentially break the delegate proxy upgradeability mechanism\\n */\\nabstract contract ManagerProxyTarget is Manager {\\n    // Used to look up target contract address in controller's registry\\n    bytes32 public targetContractId;\\n}\\n\",\"keccak256\":\"0x920bcc2def240e06272dc06cbcb9f12976f1698cd4f1020c165af25ee837e553\",\"license\":\"MIT\"},\"contracts/bonding/IBondingManager.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity 0.8.9;\\n\\n/**\\n * @title Interface for BondingManager\\n * TODO: switch to interface type\\n */\\ninterface IBondingManager {\\n    event TranscoderUpdate(address indexed transcoder, uint256 rewardCut, uint256 feeShare);\\n    event TranscoderActivated(address indexed transcoder, uint256 activationRound);\\n    event TranscoderDeactivated(address indexed transcoder, uint256 deactivationRound);\\n    event TranscoderSlashed(address indexed transcoder, address finder, uint256 penalty, uint256 finderReward);\\n    event Reward(address indexed transcoder, uint256 amount);\\n    event Bond(\\n        address indexed newDelegate,\\n        address indexed oldDelegate,\\n        address indexed delegator,\\n        uint256 additionalAmount,\\n        uint256 bondedAmount\\n    );\\n    event Unbond(\\n        address indexed delegate,\\n        address indexed delegator,\\n        uint256 unbondingLockId,\\n        uint256 amount,\\n        uint256 withdrawRound\\n    );\\n    event Rebond(address indexed delegate, address indexed delegator, uint256 unbondingLockId, uint256 amount);\\n    event TransferBond(\\n        address indexed oldDelegator,\\n        address indexed newDelegator,\\n        uint256 oldUnbondingLockId,\\n        uint256 newUnbondingLockId,\\n        uint256 amount\\n    );\\n    event WithdrawStake(address indexed delegator, uint256 unbondingLockId, uint256 amount, uint256 withdrawRound);\\n    event WithdrawFees(address indexed delegator, address recipient, uint256 amount);\\n    event EarningsClaimed(\\n        address indexed delegate,\\n        address indexed delegator,\\n        uint256 rewards,\\n        uint256 fees,\\n        uint256 startRound,\\n        uint256 endRound\\n    );\\n\\n    // Deprecated events\\n    // These event signatures can be used to construct the appropriate topic hashes to filter for past logs corresponding\\n    // to these deprecated events.\\n    // event Bond(address indexed delegate, address indexed delegator);\\n    // event Unbond(address indexed delegate, address indexed delegator);\\n    // event WithdrawStake(address indexed delegator);\\n    // event TranscoderUpdate(address indexed transcoder, uint256 pendingRewardCut, uint256 pendingFeeShare, uint256 pendingPricePerSegment, bool registered);\\n    // event TranscoderEvicted(address indexed transcoder);\\n    // event TranscoderResigned(address indexed transcoder);\\n\\n    // External functions\\n    function updateTranscoderWithFees(\\n        address _transcoder,\\n        uint256 _fees,\\n        uint256 _round\\n    ) external;\\n\\n    function slashTranscoder(\\n        address _transcoder,\\n        address _finder,\\n        uint256 _slashAmount,\\n        uint256 _finderFee\\n    ) external;\\n\\n    function setCurrentRoundTotalActiveStake() external;\\n\\n    // Public functions\\n    function getTranscoderPoolSize() external view returns (uint256);\\n\\n    function transcoderTotalStake(address _transcoder) external view returns (uint256);\\n\\n    function isActiveTranscoder(address _transcoder) external view returns (bool);\\n\\n    function getTotalBonded() external view returns (uint256);\\n}\\n\",\"keccak256\":\"0x6406378868b556ca91b1ab6cccd036695c8984d30a225f75a5979cb9aa7c1df2\",\"license\":\"MIT\"},\"contracts/pm/TicketBroker.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity 0.8.9;\\n\\nimport \\\"./mixins/MixinContractRegistry.sol\\\";\\nimport \\\"./mixins/MixinReserve.sol\\\";\\nimport \\\"./mixins/MixinTicketBrokerCore.sol\\\";\\nimport \\\"./mixins/MixinTicketProcessor.sol\\\";\\nimport \\\"./mixins/MixinWrappers.sol\\\";\\n\\ncontract TicketBroker is\\n    MixinContractRegistry,\\n    MixinReserve,\\n    MixinTicketBrokerCore,\\n    MixinTicketProcessor,\\n    MixinWrappers\\n{\\n    /**\\n     * @notice TicketBroker constructor. Only invokes constructor of base Manager contract with provided Controller address\\n     * @dev This constructor will not initialize any state variables besides `controller`. The following setter functions\\n     * should be used to initialize state variables post-deployment:\\n     * - setUnlockPeriod()\\n     * - setTicketValidityPeriod()\\n     * @param _controller Address of Controller that this contract will be registered with\\n     */\\n    constructor(address _controller)\\n        MixinContractRegistry(_controller)\\n        MixinReserve()\\n        MixinTicketBrokerCore()\\n        MixinTicketProcessor()\\n    {}\\n\\n    /**\\n     * @notice Sets unlockPeriod value. Only callable by the Controller owner\\n     * @param _unlockPeriod Value for unlockPeriod\\n     */\\n    function setUnlockPeriod(uint256 _unlockPeriod) external onlyControllerOwner {\\n        unlockPeriod = _unlockPeriod;\\n\\n        emit ParameterUpdate(\\\"unlockPeriod\\\");\\n    }\\n\\n    /**\\n     * @notice Sets ticketValidityPeriod value. Only callable by the Controller owner\\n     * @param _ticketValidityPeriod Value for ticketValidityPeriod\\n     */\\n    function setTicketValidityPeriod(uint256 _ticketValidityPeriod) external onlyControllerOwner {\\n        require(_ticketValidityPeriod > 0, \\\"ticketValidityPeriod must be greater than 0\\\");\\n\\n        ticketValidityPeriod = _ticketValidityPeriod;\\n\\n        emit ParameterUpdate(\\\"ticketValidityPeriod\\\");\\n    }\\n}\\n\",\"keccak256\":\"0x3e1b4458d61a3c20e23707bde667f936af006668f1ec4a69b2322ff7e79336e7\",\"license\":\"MIT\"},\"contracts/pm/mixins/MixinContractRegistry.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity 0.8.9;\\n\\nimport \\\"../../ManagerProxyTarget.sol\\\";\\nimport \\\"./interfaces/MContractRegistry.sol\\\";\\n\\nabstract contract MixinContractRegistry is MContractRegistry, ManagerProxyTarget {\\n    /**\\n     * @dev Checks if the current round has been initialized\\n     */\\n    modifier currentRoundInitialized() override {\\n        require(roundsManager().currentRoundInitialized(), \\\"current round is not initialized\\\");\\n        _;\\n    }\\n\\n    constructor(address _controller) Manager(_controller) {}\\n\\n    /**\\n     * @dev Returns an instance of the IBondingManager interface\\n     */\\n    function bondingManager() internal view override returns (IBondingManager) {\\n        return IBondingManager(controller.getContract(keccak256(\\\"BondingManager\\\")));\\n    }\\n\\n    /**\\n     * @dev Returns an instance of the IMinter interface\\n     */\\n    function minter() internal view override returns (IMinter) {\\n        return IMinter(controller.getContract(keccak256(\\\"Minter\\\")));\\n    }\\n\\n    /**\\n     * @dev Returns an instance of the IRoundsManager interface\\n     */\\n    function roundsManager() internal view override returns (IRoundsManager) {\\n        return IRoundsManager(controller.getContract(keccak256(\\\"RoundsManager\\\")));\\n    }\\n}\\n\",\"keccak256\":\"0xaf3b21d532c7fdcd02606045c66646b035a257a27dea374b8c8487339778ee2a\",\"license\":\"MIT\"},\"contracts/pm/mixins/MixinReserve.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity 0.8.9;\\n\\nimport \\\"./interfaces/MReserve.sol\\\";\\nimport \\\"./MixinContractRegistry.sol\\\";\\nimport \\\"@openzeppelin/contracts/utils/math/SafeMath.sol\\\";\\n\\nabstract contract MixinReserve is MixinContractRegistry, MReserve {\\n    using SafeMath for uint256;\\n\\n    struct Reserve {\\n        uint256 funds; // Amount of funds in the reserve\\n        mapping(uint256 => uint256) claimedForRound; // Mapping of round => total amount claimed\\n        mapping(uint256 => mapping(address => uint256)) claimedByAddress; // Mapping of round => claimant address => amount claimed\\n    }\\n\\n    // Mapping of address => reserve\\n    mapping(address => Reserve) internal reserves;\\n\\n    /**\\n     * @dev Returns info about a reserve\\n     * @param _reserveHolder Address of reserve holder\\n     * @return info Info about the reserve for `_reserveHolder`\\n     */\\n    function getReserveInfo(address _reserveHolder) public view override returns (ReserveInfo memory info) {\\n        info.fundsRemaining = remainingReserve(_reserveHolder);\\n        info.claimedInCurrentRound = reserves[_reserveHolder].claimedForRound[roundsManager().currentRound()];\\n    }\\n\\n    /**\\n     * @dev Returns the amount of funds claimable by a claimant from a reserve in the current round\\n     * @param _reserveHolder Address of reserve holder\\n     * @param _claimant Address of claimant\\n     * @return Amount of funds claimable by `_claimant` from the reserve for `_reserveHolder` in the current round\\n     */\\n    function claimableReserve(address _reserveHolder, address _claimant) public view returns (uint256) {\\n        Reserve storage reserve = reserves[_reserveHolder];\\n\\n        uint256 currentRound = roundsManager().currentRound();\\n\\n        if (!bondingManager().isActiveTranscoder(_claimant)) {\\n            return 0;\\n        }\\n\\n        uint256 poolSize = bondingManager().getTranscoderPoolSize();\\n        if (poolSize == 0) {\\n            return 0;\\n        }\\n\\n        // Total claimable funds = remaining funds + amount claimed for the round\\n        uint256 totalClaimable = reserve.funds.add(reserve.claimedForRound[currentRound]);\\n        return totalClaimable.div(poolSize).sub(reserve.claimedByAddress[currentRound][_claimant]);\\n    }\\n\\n    /**\\n     * @dev Returns the amount of funds claimed by a claimant from a reserve in the current round\\n     * @param _reserveHolder Address of reserve holder\\n     * @param _claimant Address of claimant\\n     * @return Amount of funds claimed by `_claimant` from the reserve for `_reserveHolder` in the current round\\n     */\\n    function claimedReserve(address _reserveHolder, address _claimant) public view override returns (uint256) {\\n        Reserve storage reserve = reserves[_reserveHolder];\\n        uint256 currentRound = roundsManager().currentRound();\\n        return reserve.claimedByAddress[currentRound][_claimant];\\n    }\\n\\n    /**\\n     * @dev Adds funds to a reserve\\n     * @param _reserveHolder Address of reserve holder\\n     * @param _amount Amount of funds to add to reserve\\n     */\\n    function addReserve(address _reserveHolder, uint256 _amount) internal override {\\n        reserves[_reserveHolder].funds = reserves[_reserveHolder].funds.add(_amount);\\n\\n        emit ReserveFunded(_reserveHolder, _amount);\\n    }\\n\\n    /**\\n     * @dev Clears contract storage used for a reserve\\n     * @param _reserveHolder Address of reserve holder\\n     */\\n    function clearReserve(address _reserveHolder) internal override {\\n        // This delete operation will only clear reserve.funds and will not clear the storage for reserve.claimedForRound\\n        // reserve.claimedByAddress because these fields are mappings and the Solidity `delete` keyword will not modify mappings.\\n        // This *could* be a problem in the following scenario:\\n        //\\n        // 1) In round N, for address A, reserve.claimedForRound[N] > 0 and reserve.claimedByAddress[N][r_i] > 0 where r_i is\\n        // a member of the active set in round N\\n        // 2) This function is called by MixinTicketBrokerCore.withdraw() in round N\\n        // 3) Address A funds its reserve again\\n        //\\n        // After step 3, A has reserve.funds > 0, reserve.claimedForRound[N] > 0 and reserve.claimedByAddress[N][r_i] > 0\\n        // despite having funded a fresh reserve after previously withdrawing all of its funds in the same round.\\n        // We prevent this scenario by disallowing reserve claims starting at an address' withdraw round in\\n        // MixinTicketBrokerCore.redeemWinningTicket()\\n        delete reserves[_reserveHolder];\\n    }\\n\\n    /**\\n     * @dev Claims funds from a reserve\\n     * @param _reserveHolder Address of reserve holder\\n     * @param _claimant Address of claimant\\n     * @param _amount Amount of funds to claim from the reserve\\n     * @return Amount of funds (<= `_amount`) claimed by `_claimant` from the reserve for `_reserveHolder`\\n     */\\n    function claimFromReserve(\\n        address _reserveHolder,\\n        address _claimant,\\n        uint256 _amount\\n    ) internal override returns (uint256) {\\n        uint256 claimableFunds = claimableReserve(_reserveHolder, _claimant);\\n        // If the given amount > claimableFunds then claim claimableFunds\\n        // If the given amount <= claimableFunds then claim the given amount\\n        uint256 claimAmount = _amount > claimableFunds ? claimableFunds : _amount;\\n\\n        if (claimAmount > 0) {\\n            uint256 currentRound = roundsManager().currentRound();\\n            Reserve storage reserve = reserves[_reserveHolder];\\n            // Increase total amount claimed for the round\\n            reserve.claimedForRound[currentRound] = reserve.claimedForRound[currentRound].add(claimAmount);\\n            // Increase amount claimed by claimant for the round\\n            reserve.claimedByAddress[currentRound][_claimant] = reserve.claimedByAddress[currentRound][_claimant].add(\\n                claimAmount\\n            );\\n            // Decrease remaining reserve\\n            reserve.funds = reserve.funds.sub(claimAmount);\\n\\n            emit ReserveClaimed(_reserveHolder, _claimant, claimAmount);\\n        }\\n\\n        return claimAmount;\\n    }\\n\\n    /**\\n     * @dev Returns the amount of funds remaining in a reserve\\n     * @param _reserveHolder Address of reserve holder\\n     * @return Amount of funds remaining in the reserve for `_reserveHolder`\\n     */\\n    function remainingReserve(address _reserveHolder) internal view override returns (uint256) {\\n        return reserves[_reserveHolder].funds;\\n    }\\n}\\n\",\"keccak256\":\"0x1b1d7694fe606eb1c0ba2e203889b416804bd1547ee63ed572c1c628f219c775\",\"license\":\"MIT\"},\"contracts/pm/mixins/MixinTicketBrokerCore.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity 0.8.9;\\n\\nimport \\\"./interfaces/MReserve.sol\\\";\\nimport \\\"./interfaces/MTicketProcessor.sol\\\";\\nimport \\\"./interfaces/MTicketBrokerCore.sol\\\";\\nimport \\\"./MixinContractRegistry.sol\\\";\\nimport \\\"@openzeppelin/contracts/utils/cryptography/ECDSA.sol\\\";\\nimport \\\"@openzeppelin/contracts/utils/math/SafeMath.sol\\\";\\n\\nabstract contract MixinTicketBrokerCore is MixinContractRegistry, MReserve, MTicketProcessor, MTicketBrokerCore {\\n    using SafeMath for uint256;\\n\\n    struct Sender {\\n        uint256 deposit; // Amount of funds deposited\\n        uint256 withdrawRound; // Round that sender can withdraw deposit & reserve\\n    }\\n\\n    // Mapping of address => Sender\\n    mapping(address => Sender) internal senders;\\n\\n    // Number of rounds before a sender can withdraw after requesting an unlock\\n    uint256 public unlockPeriod;\\n\\n    // Mapping of ticket hashes => boolean indicating if ticket was redeemed\\n    mapping(bytes32 => bool) public usedTickets;\\n\\n    // Checks if msg.value is equal to the given deposit and reserve amounts\\n    modifier checkDepositReserveETHValueSplit(uint256 _depositAmount, uint256 _reserveAmount) {\\n        require(\\n            msg.value == _depositAmount.add(_reserveAmount),\\n            \\\"msg.value does not equal sum of deposit amount and reserve amount\\\"\\n        );\\n\\n        _;\\n    }\\n\\n    // Process deposit funding\\n    modifier processDeposit(address _sender, uint256 _amount) {\\n        Sender storage sender = senders[_sender];\\n        sender.deposit = sender.deposit.add(_amount);\\n        if (_isUnlockInProgress(sender)) {\\n            _cancelUnlock(sender, _sender);\\n        }\\n\\n        _;\\n\\n        emit DepositFunded(_sender, _amount);\\n    }\\n\\n    // Process reserve funding\\n    modifier processReserve(address _sender, uint256 _amount) {\\n        Sender storage sender = senders[_sender];\\n        addReserve(_sender, _amount);\\n        if (_isUnlockInProgress(sender)) {\\n            _cancelUnlock(sender, _sender);\\n        }\\n\\n        _;\\n    }\\n\\n    /**\\n     * @notice Adds ETH to the caller's deposit\\n     */\\n    function fundDeposit() external payable whenSystemNotPaused processDeposit(msg.sender, msg.value) {\\n        processFunding(msg.value);\\n    }\\n\\n    /**\\n     * @notice Adds ETH to the caller's reserve\\n     */\\n    function fundReserve() external payable whenSystemNotPaused processReserve(msg.sender, msg.value) {\\n        processFunding(msg.value);\\n    }\\n\\n    /**\\n     * @notice Adds ETH to the caller's deposit and reserve\\n     * @param _depositAmount Amount of ETH to add to the caller's deposit\\n     * @param _reserveAmount Amount of ETH to add to the caller's reserve\\n     */\\n    function fundDepositAndReserve(uint256 _depositAmount, uint256 _reserveAmount) external payable {\\n        fundDepositAndReserveFor(msg.sender, _depositAmount, _reserveAmount);\\n    }\\n\\n    /**\\n     * @notice Adds ETH to the address' deposit and reserve\\n     * @param _depositAmount Amount of ETH to add to the address' deposit\\n     * @param _reserveAmount Amount of ETH to add to the address' reserve\\n     */\\n    function fundDepositAndReserveFor(\\n        address _addr,\\n        uint256 _depositAmount,\\n        uint256 _reserveAmount\\n    )\\n        public\\n        payable\\n        whenSystemNotPaused\\n        checkDepositReserveETHValueSplit(_depositAmount, _reserveAmount)\\n        processDeposit(_addr, _depositAmount)\\n        processReserve(_addr, _reserveAmount)\\n    {\\n        processFunding(msg.value);\\n    }\\n\\n    /**\\n     * @notice Redeems a winning ticket that has been signed by a sender and reveals the\\n     recipient recipientRand that corresponds to the recipientRandHash included in the ticket\\n     * @param _ticket Winning ticket to be redeemed in order to claim payment\\n     * @param _sig Sender's signature over the hash of `_ticket`\\n     * @param _recipientRand The preimage for the recipientRandHash included in `_ticket`\\n     */\\n    function redeemWinningTicket(\\n        Ticket memory _ticket,\\n        bytes memory _sig,\\n        uint256 _recipientRand\\n    ) public whenSystemNotPaused currentRoundInitialized {\\n        bytes32 ticketHash = getTicketHash(_ticket);\\n\\n        // Require a valid winning ticket for redemption\\n        requireValidWinningTicket(_ticket, ticketHash, _sig, _recipientRand);\\n\\n        Sender storage sender = senders[_ticket.sender];\\n\\n        // Require sender to be locked\\n        require(isLocked(sender), \\\"sender is unlocked\\\");\\n        // Require either a non-zero deposit or non-zero reserve for the sender\\n        require(sender.deposit > 0 || remainingReserve(_ticket.sender) > 0, \\\"sender deposit and reserve are zero\\\");\\n\\n        // Mark ticket as used to prevent replay attacks involving redeeming\\n        // the same winning ticket multiple times\\n        usedTickets[ticketHash] = true;\\n\\n        uint256 amountToTransfer;\\n\\n        if (_ticket.faceValue > sender.deposit) {\\n            // If ticket face value > sender's deposit then claim from\\n            // the sender's reserve\\n\\n            amountToTransfer = sender.deposit.add(\\n                claimFromReserve(_ticket.sender, _ticket.recipient, _ticket.faceValue.sub(sender.deposit))\\n            );\\n\\n            sender.deposit = 0;\\n        } else {\\n            // If ticket face value <= sender's deposit then only deduct\\n            // from sender's deposit\\n\\n            amountToTransfer = _ticket.faceValue;\\n            sender.deposit = sender.deposit.sub(_ticket.faceValue);\\n        }\\n\\n        if (amountToTransfer > 0) {\\n            winningTicketTransfer(_ticket.recipient, amountToTransfer, _ticket.auxData);\\n\\n            emit WinningTicketTransfer(_ticket.sender, _ticket.recipient, amountToTransfer);\\n        }\\n\\n        emit WinningTicketRedeemed(\\n            _ticket.sender,\\n            _ticket.recipient,\\n            _ticket.faceValue,\\n            _ticket.winProb,\\n            _ticket.senderNonce,\\n            _recipientRand,\\n            _ticket.auxData\\n        );\\n    }\\n\\n    /**\\n     * @notice Initiates the unlock period for the caller\\n     */\\n    function unlock() public whenSystemNotPaused {\\n        Sender storage sender = senders[msg.sender];\\n\\n        require(sender.deposit > 0 || remainingReserve(msg.sender) > 0, \\\"sender deposit and reserve are zero\\\");\\n        require(!_isUnlockInProgress(sender), \\\"unlock already initiated\\\");\\n\\n        uint256 currentRound = roundsManager().currentRound();\\n        sender.withdrawRound = currentRound.add(unlockPeriod);\\n\\n        emit Unlock(msg.sender, currentRound, sender.withdrawRound);\\n    }\\n\\n    /**\\n     * @notice Cancels the unlock period for the caller\\n     */\\n    function cancelUnlock() public whenSystemNotPaused {\\n        Sender storage sender = senders[msg.sender];\\n\\n        _cancelUnlock(sender, msg.sender);\\n    }\\n\\n    /**\\n     * @notice Withdraws all ETH from the caller's deposit and reserve\\n     */\\n    function withdraw() public whenSystemNotPaused {\\n        Sender storage sender = senders[msg.sender];\\n\\n        uint256 deposit = sender.deposit;\\n        uint256 reserve = remainingReserve(msg.sender);\\n\\n        require(deposit > 0 || reserve > 0, \\\"sender deposit and reserve are zero\\\");\\n        require(_isUnlockInProgress(sender), \\\"no unlock request in progress\\\");\\n        require(!isLocked(sender), \\\"account is locked\\\");\\n\\n        sender.deposit = 0;\\n        clearReserve(msg.sender);\\n\\n        withdrawTransfer(payable(msg.sender), deposit.add(reserve));\\n\\n        emit Withdrawal(msg.sender, deposit, reserve);\\n    }\\n\\n    /**\\n     * @notice Returns whether a sender is currently in the unlock period\\n     * @param _sender Address of sender\\n     * @return Boolean indicating whether `_sender` has an unlock in progress\\n     */\\n    function isUnlockInProgress(address _sender) public view returns (bool) {\\n        Sender memory sender = senders[_sender];\\n        return _isUnlockInProgress(sender);\\n    }\\n\\n    /**\\n     * @notice Returns info about a sender\\n     * @param _sender Address of sender\\n     * @return sender Info about the sender for `_sender`\\n     * @return reserve Info about the reserve for `_sender`\\n     */\\n    function getSenderInfo(address _sender) public view returns (Sender memory sender, ReserveInfo memory reserve) {\\n        sender = senders[_sender];\\n        reserve = getReserveInfo(_sender);\\n    }\\n\\n    /**\\n     * @dev Returns the hash of a ticket\\n     * @param _ticket Ticket to be hashed\\n     * @return keccak256 hash of `_ticket`\\n     */\\n    function getTicketHash(Ticket memory _ticket) public pure returns (bytes32) {\\n        return\\n            keccak256(\\n                abi.encodePacked(\\n                    _ticket.recipient,\\n                    _ticket.sender,\\n                    _ticket.faceValue,\\n                    _ticket.winProb,\\n                    _ticket.senderNonce,\\n                    _ticket.recipientRandHash,\\n                    _ticket.auxData\\n                )\\n            );\\n    }\\n\\n    /**\\n     * @dev Helper to cancel an unlock\\n     * @param _sender Sender that is cancelling an unlock\\n     * @param _senderAddress Address of sender\\n     */\\n    function _cancelUnlock(Sender storage _sender, address _senderAddress) internal {\\n        require(_isUnlockInProgress(_sender), \\\"no unlock request in progress\\\");\\n\\n        _sender.withdrawRound = 0;\\n\\n        emit UnlockCancelled(_senderAddress);\\n    }\\n\\n    /**\\n     * @dev Validates a winning ticket, succeeds or reverts\\n     * @param _ticket Winning ticket to be validated\\n     * @param _ticketHash Hash of `_ticket`\\n     * @param _sig Sender's signature over `_ticketHash`\\n     * @param _recipientRand The preimage for the recipientRandHash included in `_ticket`\\n     */\\n    function requireValidWinningTicket(\\n        Ticket memory _ticket,\\n        bytes32 _ticketHash,\\n        bytes memory _sig,\\n        uint256 _recipientRand\\n    ) internal view {\\n        require(_ticket.recipient != address(0), \\\"ticket recipient is null address\\\");\\n        require(_ticket.sender != address(0), \\\"ticket sender is null address\\\");\\n\\n        requireValidTicketAuxData(_ticket.auxData);\\n\\n        require(\\n            keccak256(abi.encodePacked(_recipientRand)) == _ticket.recipientRandHash,\\n            \\\"recipientRand does not match recipientRandHash\\\"\\n        );\\n\\n        require(!usedTickets[_ticketHash], \\\"ticket is used\\\");\\n\\n        require(isValidTicketSig(_ticket.sender, _sig, _ticketHash), \\\"invalid signature over ticket hash\\\");\\n\\n        require(isWinningTicket(_sig, _recipientRand, _ticket.winProb), \\\"ticket did not win\\\");\\n    }\\n\\n    /**\\n     * @dev Returns whether a sender is locked\\n     * @param _sender Sender to check for locked status\\n     * @return Boolean indicating whether sender is currently locked\\n     */\\n    function isLocked(Sender memory _sender) internal view returns (bool) {\\n        return _sender.withdrawRound == 0 || roundsManager().currentRound() < _sender.withdrawRound;\\n    }\\n\\n    /**\\n     * @dev Returns whether a signature over a ticket hash is valid for a sender\\n     * @param _sender Address of sender\\n     * @param _sig Signature over `_ticketHash`\\n     * @param _ticketHash Hash of the ticket\\n     * @return Boolean indicating whether `_sig` is valid signature over `_ticketHash` for `_sender`\\n     */\\n    function isValidTicketSig(\\n        address _sender,\\n        bytes memory _sig,\\n        bytes32 _ticketHash\\n    ) internal pure returns (bool) {\\n        address signer = ECDSA.recover(ECDSA.toEthSignedMessageHash(_ticketHash), _sig);\\n        return signer != address(0) && _sender == signer;\\n    }\\n\\n    /**\\n     * @dev Returns whether a ticket won\\n     * @param _sig Sender's signature over the ticket\\n     * @param _recipientRand The preimage for the recipientRandHash included in the ticket\\n     * @param _winProb The winning probability of the ticket\\n     * @return Boolean indicating whether the ticket won\\n     */\\n    function isWinningTicket(\\n        bytes memory _sig,\\n        uint256 _recipientRand,\\n        uint256 _winProb\\n    ) internal pure returns (bool) {\\n        return uint256(keccak256(abi.encodePacked(_sig, _recipientRand))) < _winProb;\\n    }\\n\\n    /**\\n     * @dev Helper to check if a sender is currently in the unlock period\\n     * @param _sender Sender to check for an unlock\\n     * @return Boolean indicating whether the sender is currently in the unlock period\\n     */\\n    function _isUnlockInProgress(Sender memory _sender) internal pure returns (bool) {\\n        return _sender.withdrawRound > 0;\\n    }\\n}\\n\",\"keccak256\":\"0x44f9b93f0f831a21119e77285a6fae45ca7a5087711b9a46effd62c46eb79386\",\"license\":\"MIT\"},\"contracts/pm/mixins/MixinTicketProcessor.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity 0.8.9;\\n\\nimport \\\"./interfaces/MTicketProcessor.sol\\\";\\nimport \\\"./MixinContractRegistry.sol\\\";\\nimport \\\"@openzeppelin/contracts/utils/math/SafeMath.sol\\\";\\n\\nabstract contract MixinTicketProcessor is MixinContractRegistry, MTicketProcessor {\\n    using SafeMath for uint256;\\n\\n    // Number of rounds that a ticket is valid for starting from\\n    // its creationRound\\n    uint256 public ticketValidityPeriod;\\n\\n    /**\\n     * @dev Process sent funds.\\n     * @param _amount Amount of funds sent\\n     */\\n    function processFunding(uint256 _amount) internal override {\\n        // Send funds to Minter\\n        minter().depositETH{ value: _amount }();\\n    }\\n\\n    /**\\n     * @dev Transfer withdrawal funds for a ticket sender\\n     * @param _amount Amount of withdrawal funds\\n     */\\n    function withdrawTransfer(address payable _sender, uint256 _amount) internal override {\\n        // Ask Minter to send withdrawal funds to the ticket sender\\n        minter().trustedWithdrawETH(_sender, _amount);\\n    }\\n\\n    /**\\n     * @dev Transfer funds for a recipient's winning ticket\\n     * @param _recipient Address of recipient\\n     * @param _amount Amount of funds for the winning ticket\\n     * @param _auxData Auxilary data for the winning ticket\\n     */\\n    function winningTicketTransfer(\\n        address _recipient,\\n        uint256 _amount,\\n        bytes memory _auxData\\n    ) internal override {\\n        (uint256 creationRound, ) = getCreationRoundAndBlockHash(_auxData);\\n\\n        // Ask BondingManager to update fee pool for recipient with\\n        // winning ticket funds\\n        bondingManager().updateTranscoderWithFees(_recipient, _amount, creationRound);\\n    }\\n\\n    /**\\n     * @dev Validates a ticket's auxilary data (succeeds or reverts)\\n     * @param _auxData Auxilary data inclueded in a ticket\\n     */\\n    function requireValidTicketAuxData(bytes memory _auxData) internal view override {\\n        (uint256 creationRound, bytes32 creationRoundBlockHash) = getCreationRoundAndBlockHash(_auxData);\\n        bytes32 blockHash = roundsManager().blockHashForRound(creationRound);\\n\\n        require(blockHash != bytes32(0), \\\"ticket creationRound does not have a block hash\\\");\\n        require(creationRoundBlockHash == blockHash, \\\"ticket creationRoundBlockHash invalid for creationRound\\\");\\n\\n        uint256 currRound = roundsManager().currentRound();\\n\\n        require(creationRound.add(ticketValidityPeriod) > currRound, \\\"ticket is expired\\\");\\n    }\\n\\n    /**\\n     * @dev Returns a ticket's creationRound and creationRoundBlockHash parsed from ticket auxilary data\\n     * @param _auxData Auxilary data for a ticket\\n     * @return creationRound and creationRoundBlockHash parsed from `_auxData`\\n     */\\n    function getCreationRoundAndBlockHash(bytes memory _auxData)\\n        internal\\n        pure\\n        returns (uint256 creationRound, bytes32 creationRoundBlockHash)\\n    {\\n        require(_auxData.length == 64, \\\"invalid length for ticket auxData: must be 64 bytes\\\");\\n\\n        // _auxData format:\\n        // Bytes [0:31] = creationRound\\n        // Bytes [32:63] = creationRoundBlockHash\\n        assembly {\\n            creationRound := mload(add(_auxData, 32))\\n            creationRoundBlockHash := mload(add(_auxData, 64))\\n        }\\n    }\\n}\\n\",\"keccak256\":\"0x38a3a855f30ebce7af979a0876f11943b6064bc652908c47572f93a202989c41\",\"license\":\"MIT\"},\"contracts/pm/mixins/MixinWrappers.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity 0.8.9;\\n\\nimport \\\"./interfaces/MTicketBrokerCore.sol\\\";\\nimport \\\"./MixinContractRegistry.sol\\\";\\n\\nabstract contract MixinWrappers is MixinContractRegistry, MTicketBrokerCore {\\n    /**\\n     * @notice Redeems multiple winning tickets. The function will redeem all of the provided tickets and handle any failures gracefully without reverting the entire function\\n     * @param _tickets Array of winning tickets to be redeemed in order to claim payment\\n     * @param _sigs Array of sender signatures over the hash of tickets (`_sigs[i]` corresponds to `_tickets[i]`)\\n     * @param _recipientRands Array of preimages for the recipientRandHash included in each ticket (`_recipientRands[i]` corresponds to `_tickets[i]`)\\n     */\\n    function batchRedeemWinningTickets(\\n        Ticket[] memory _tickets,\\n        bytes[] memory _sigs,\\n        uint256[] memory _recipientRands\\n    ) public whenSystemNotPaused currentRoundInitialized {\\n        for (uint256 i = 0; i < _tickets.length; i++) {\\n            redeemWinningTicketNoRevert(_tickets[i], _sigs[i], _recipientRands[i]);\\n        }\\n    }\\n\\n    /**\\n     * @dev Redeems a winning ticket that has been signed by a sender and reveals the\\n     recipient recipientRand that corresponds to the recipientRandHash included in the ticket\\n     This function wraps `redeemWinningTicket()` and returns false if the underlying call reverts\\n     * @param _ticket Winning ticket to be redeemed in order to claim payment\\n     * @param _sig Sender's signature over the hash of `_ticket`\\n     * @param _recipientRand The preimage for the recipientRandHash included in `_ticket`\\n     * @return success Boolean indicating whether the underlying `redeemWinningTicket()` call succeeded\\n     */\\n    function redeemWinningTicketNoRevert(\\n        Ticket memory _ticket,\\n        bytes memory _sig,\\n        uint256 _recipientRand\\n    ) internal returns (bool success) {\\n        // ABI encode calldata for `redeemWinningTicket()`\\n        // A tuple type is used to represent the Ticket struct in the function signature\\n        bytes memory redeemWinningTicketCalldata = abi.encodeWithSignature(\\n            \\\"redeemWinningTicket((address,address,uint256,uint256,uint256,bytes32,bytes),bytes,uint256)\\\",\\n            _ticket,\\n            _sig,\\n            _recipientRand\\n        );\\n\\n        // Call `redeemWinningTicket()`\\n        // solium-disable-next-line\\n        (success, ) = address(this).call(redeemWinningTicketCalldata);\\n    }\\n}\\n\",\"keccak256\":\"0xf0831bba68089167c5cc9ed9a04564d0a68e1454bd65cf91083103197d047b1d\",\"license\":\"MIT\"},\"contracts/pm/mixins/interfaces/MContractRegistry.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity 0.8.9;\\n\\nimport \\\"../../../bonding/IBondingManager.sol\\\";\\nimport \\\"../../../token/IMinter.sol\\\";\\nimport \\\"../../../rounds/IRoundsManager.sol\\\";\\n\\nabstract contract MContractRegistry {\\n    /**\\n     * @notice Checks if the current round has been initialized\\n     * @dev Executes the 'currentRoundInitialized' modifier in 'MixinContractRegistry'\\n     */\\n    modifier currentRoundInitialized() virtual {\\n        _;\\n    }\\n\\n    /**\\n     * @dev Returns an instance of the IBondingManager interface\\n     */\\n    function bondingManager() internal view virtual returns (IBondingManager);\\n\\n    /**\\n     * @dev Returns an instance of the IMinter interface\\n     */\\n    function minter() internal view virtual returns (IMinter);\\n\\n    /**\\n     * @dev Returns an instance of the IRoundsManager interface\\n     */\\n    function roundsManager() internal view virtual returns (IRoundsManager);\\n}\\n\",\"keccak256\":\"0xc58fb56b6ccfe36e5e09322ca1793a805668c84877cf6856403da51e2e35a359\",\"license\":\"MIT\"},\"contracts/pm/mixins/interfaces/MReserve.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity 0.8.9;\\n\\nabstract contract MReserve {\\n    struct ReserveInfo {\\n        uint256 fundsRemaining; // Funds remaining in reserve\\n        uint256 claimedInCurrentRound; // Funds claimed from reserve in current round\\n    }\\n\\n    // Emitted when funds are added to a reserve\\n    event ReserveFunded(address indexed reserveHolder, uint256 amount);\\n    // Emitted when funds are claimed from a reserve\\n    event ReserveClaimed(address indexed reserveHolder, address claimant, uint256 amount);\\n\\n    /**\\n     * @notice Returns info about a reserve\\n     * @param _reserveHolder Address of reserve holder\\n     * @return info Info about the reserve for `_reserveHolder`\\n     */\\n    function getReserveInfo(address _reserveHolder) public view virtual returns (ReserveInfo memory info);\\n\\n    /**\\n     * @notice Returns the amount of funds claimed by a claimant from a reserve\\n     * @param _reserveHolder Address of reserve holder\\n     * @param _claimant Address of claimant\\n     * @return Amount of funds claimed by `_claimant` from the reserve for `_reserveHolder`\\n     */\\n    function claimedReserve(address _reserveHolder, address _claimant) public view virtual returns (uint256);\\n\\n    /**\\n     * @dev Adds funds to a reserve\\n     * @param _reserveHolder Address of reserve holder\\n     * @param _amount Amount of funds to add to reserve\\n     */\\n    function addReserve(address _reserveHolder, uint256 _amount) internal virtual;\\n\\n    /**\\n     * @dev Clears contract storage used for a reserve\\n     * @param _reserveHolder Address of reserve holder\\n     */\\n    function clearReserve(address _reserveHolder) internal virtual;\\n\\n    /**\\n     * @dev Claims funds from a reserve\\n     * @param _reserveHolder Address of reserve holder\\n     * @param _claimant Address of claimant\\n     * @param _amount Amount of funds to claim from the reserve\\n     * @return Amount of funds (<= `_amount`) claimed by `_claimant` from the reserve for `_reserveHolder`\\n     */\\n    function claimFromReserve(\\n        address _reserveHolder,\\n        address _claimant,\\n        uint256 _amount\\n    ) internal virtual returns (uint256);\\n\\n    /**\\n     * @dev Returns the amount of funds remaining in a reserve\\n     * @param _reserveHolder Address of reserve holder\\n     * @return Amount of funds remaining in the reserve for `_reserveHolder`\\n     */\\n    function remainingReserve(address _reserveHolder) internal view virtual returns (uint256);\\n}\\n\",\"keccak256\":\"0x01229dd7088e23db674d032c239d90a14e8922532a82c7d46a3e7fe5fa234827\",\"license\":\"MIT\"},\"contracts/pm/mixins/interfaces/MTicketBrokerCore.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity 0.8.9;\\n\\nabstract contract MTicketBrokerCore {\\n    struct Ticket {\\n        address recipient; // Address of ticket recipient\\n        address sender; // Address of ticket sender\\n        uint256 faceValue; // Face value of ticket paid to recipient if ticket wins\\n        uint256 winProb; // Probability ticket will win represented as winProb / (2^256 - 1)\\n        uint256 senderNonce; // Sender's monotonically increasing counter for each ticket\\n        bytes32 recipientRandHash; // keccak256 hash commitment to recipient's random value\\n        bytes auxData; // Auxilary data included in ticket used for additional validation\\n    }\\n\\n    // Emitted when funds are added to a sender's deposit\\n    event DepositFunded(address indexed sender, uint256 amount);\\n    // Emitted when a winning ticket is redeemed\\n    event WinningTicketRedeemed(\\n        address indexed sender,\\n        address indexed recipient,\\n        uint256 faceValue,\\n        uint256 winProb,\\n        uint256 senderNonce,\\n        uint256 recipientRand,\\n        bytes auxData\\n    );\\n    // Emitted when a funds transfer for a winning ticket redemption is executed\\n    event WinningTicketTransfer(address indexed sender, address indexed recipient, uint256 amount);\\n    // Emitted when a sender requests an unlock\\n    event Unlock(address indexed sender, uint256 startRound, uint256 endRound);\\n    // Emitted when a sender cancels an unlock\\n    event UnlockCancelled(address indexed sender);\\n    // Emitted when a sender withdraws its deposit & reserve\\n    event Withdrawal(address indexed sender, uint256 deposit, uint256 reserve);\\n}\\n\",\"keccak256\":\"0x80c3b528a357a1895fc5e3d6a7b935db89ab1ba10a0af677d677b7a66434bc0f\",\"license\":\"MIT\"},\"contracts/pm/mixins/interfaces/MTicketProcessor.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity 0.8.9;\\n\\nabstract contract MTicketProcessor {\\n    /**\\n     * @dev Process sent funds.\\n     * @param _amount Amount of funds sent\\n     */\\n    function processFunding(uint256 _amount) internal virtual;\\n\\n    /**\\n     * @dev Transfer withdrawal funds for a ticket sender\\n     * @param _amount Amount of withdrawal funds\\n     */\\n    function withdrawTransfer(address payable _sender, uint256 _amount) internal virtual;\\n\\n    /**\\n     * @dev Transfer funds for a recipient's winning ticket\\n     * @param _recipient Address of recipient\\n     * @param _amount Amount of funds for the winning ticket\\n     * @param _auxData Auxilary data for the winning ticket\\n     */\\n    function winningTicketTransfer(\\n        address _recipient,\\n        uint256 _amount,\\n        bytes memory _auxData\\n    ) internal virtual;\\n\\n    /**\\n     * @dev Validates a ticket's auxilary data (succeeds or reverts)\\n     * @param _auxData Auxilary data inclueded in a ticket\\n     */\\n    function requireValidTicketAuxData(bytes memory _auxData) internal view virtual;\\n}\\n\",\"keccak256\":\"0xe026045f70ec840465b6d146cd4ddc5ea8b9a8e8ee0c6288f44649dd3c4a12e9\",\"license\":\"MIT\"},\"contracts/rounds/IRoundsManager.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity 0.8.9;\\n\\n/**\\n * @title RoundsManager interface\\n */\\ninterface IRoundsManager {\\n    // Events\\n    event NewRound(uint256 indexed round, bytes32 blockHash);\\n\\n    // Deprecated events\\n    // These event signatures can be used to construct the appropriate topic hashes to filter for past logs corresponding\\n    // to these deprecated events.\\n    // event NewRound(uint256 round)\\n\\n    // External functions\\n    function initializeRound() external;\\n\\n    function lipUpgradeRound(uint256 _lip) external view returns (uint256);\\n\\n    // Public functions\\n    function blockNum() external view returns (uint256);\\n\\n    function blockHash(uint256 _block) external view returns (bytes32);\\n\\n    function blockHashForRound(uint256 _round) external view returns (bytes32);\\n\\n    function currentRound() external view returns (uint256);\\n\\n    function currentRoundStartBlock() external view returns (uint256);\\n\\n    function currentRoundInitialized() external view returns (bool);\\n\\n    function currentRoundLocked() external view returns (bool);\\n}\\n\",\"keccak256\":\"0xfc453a476bb68b874c21678a128b46ffcad0af69008e0e3e857d46499214f75f\",\"license\":\"MIT\"},\"contracts/token/IMinter.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity 0.8.9;\\n\\nimport \\\"../IController.sol\\\";\\n\\n/**\\n * @title Minter interface\\n */\\ninterface IMinter {\\n    // Events\\n    event SetCurrentRewardTokens(uint256 currentMintableTokens, uint256 currentInflation);\\n\\n    // External functions\\n    function createReward(uint256 _fracNum, uint256 _fracDenom) external returns (uint256);\\n\\n    function trustedTransferTokens(address _to, uint256 _amount) external;\\n\\n    function trustedBurnTokens(uint256 _amount) external;\\n\\n    function trustedWithdrawETH(address payable _to, uint256 _amount) external;\\n\\n    function depositETH() external payable returns (bool);\\n\\n    function setCurrentRewardTokens() external;\\n\\n    function currentMintableTokens() external view returns (uint256);\\n\\n    function currentMintedTokens() external view returns (uint256);\\n\\n    // Public functions\\n    function getController() external view returns (IController);\\n}\\n\",\"keccak256\":\"0x3fbb7a4239a8b5979fb4c45a41495e9694a9f454de82dca3cf6a14dfe71255c7\",\"license\":\"MIT\"},\"contracts/zeppelin/Ownable.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity 0.8.9;\\n\\n/**\\n * @title Ownable\\n * @dev The Ownable contract has an owner address, and provides basic authorization control\\n * functions, this simplifies the implementation of \\\"user permissions\\\".\\n */\\ncontract Ownable {\\n    address public owner;\\n\\n    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);\\n\\n    /**\\n     * @dev The Ownable constructor sets the original `owner` of the contract to the sender\\n     * account.\\n     */\\n    constructor() {\\n        owner = msg.sender;\\n    }\\n\\n    /**\\n     * @dev Throws if called by any account other than the owner.\\n     */\\n    modifier onlyOwner() {\\n        require(msg.sender == owner);\\n        _;\\n    }\\n\\n    /**\\n     * @dev Allows the current owner to transfer control of the contract to a newOwner.\\n     * @param newOwner The address to transfer ownership to.\\n     */\\n    function transferOwnership(address newOwner) public onlyOwner {\\n        require(newOwner != address(0));\\n        emit OwnershipTransferred(owner, newOwner);\\n        owner = newOwner;\\n    }\\n}\\n\",\"keccak256\":\"0x64f114689f2f161c4a4b8fc8442ab914436a33e6021bf17401eaeac73319a419\",\"license\":\"MIT\"},\"contracts/zeppelin/Pausable.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity 0.8.9;\\n\\nimport \\\"./Ownable.sol\\\";\\n\\n/**\\n * @title Pausable\\n * @dev Base contract which allows children to implement an emergency stop mechanism.\\n */\\ncontract Pausable is Ownable {\\n    event Pause();\\n    event Unpause();\\n\\n    bool public paused;\\n\\n    /**\\n     * @dev Modifier to make a function callable only when the contract is not paused.\\n     */\\n    modifier whenNotPaused() {\\n        require(!paused);\\n        _;\\n    }\\n\\n    /**\\n     * @dev Modifier to make a function callable only when the contract is paused.\\n     */\\n    modifier whenPaused() {\\n        require(paused);\\n        _;\\n    }\\n\\n    /**\\n     * @dev called by the owner to pause, triggers stopped state\\n     */\\n    function pause() public onlyOwner whenNotPaused {\\n        paused = true;\\n        emit Pause();\\n    }\\n\\n    /**\\n     * @dev called by the owner to unpause, returns to normal state\\n     */\\n    function unpause() public onlyOwner whenPaused {\\n        paused = false;\\n        emit Unpause();\\n    }\\n}\\n\",\"keccak256\":\"0xe9635fcac46c22547a08f6977a8c75e7341411f1201f60bdd4c79c26e6c286ef\",\"license\":\"MIT\"}},\"version\":1}",
+  "bytecode": "0x60806040523480156200001157600080fd5b5060405162002f5e38038062002f5e83398101604081905262000034916200005a565b600080546001600160a01b0319166001600160a01b03929092169190911790556200008c565b6000602082840312156200006d57600080fd5b81516001600160a01b03811681146200008557600080fd5b9392505050565b612ec2806200009c6000396000f3fe6080604052600436106101405760003560e01c806381779f38116100b6578063c2c4c2c81161006f578063c2c4c2c814610329578063c92978081461033e578063d01b808e1461035e578063e1a589da1461037e578063ec8b3cb6146103ac578063f77c4791146103cc57600080fd5b806381779f381461028b578063856a2cf8146102ab57806392eefe9b146102c1578063989f789c146102e1578063a69df4b5146102f4578063b03fa8641461030957600080fd5b8063511f407311610108578063511f4073146101f557806351720b411461020857806359a515ba1461021e5780635b6333eb1461024e5780636caa736b1461027b5780636f9c3c8f1461028357600080fd5b8063121cdcc21461014557806320d3a0b41461017a5780633ccfd60b1461019e5780633d0ddf84146101b55780634ac826da146101d5575b600080fd5b34801561015157600080fd5b5061016561016036600461266e565b610404565b60405190151581526020015b60405180910390f35b34801561018657600080fd5b5061019060045481565b604051908152602001610171565b3480156101aa57600080fd5b506101b3610440565b005b3480156101c157600080fd5b506101b36101d036600461268b565b6105c6565b3480156101e157600080fd5b506101906101f03660046126a4565b61062d565b6101b36102033660046126dd565b6106ef565b34801561021457600080fd5b5061019060015481565b34801561022a57600080fd5b5061016561023936600461268b565b60056020526000908152604090205460ff1681565b34801561025a57600080fd5b5061026e61026936600461266e565b6106fe565b60405161017191906126ff565b6101b36107cc565b6101b3610862565b34801561029757600080fd5b506101906102a63660046126a4565b6108bd565b3480156102b757600080fd5b5061019060065481565b3480156102cd57600080fd5b506101b36102dc36600461266e565b610ad2565b6101b36102ef366004612716565b610b28565b34801561030057600080fd5b506101b3610cb7565b34801561031557600080fd5b506101906103243660046128bd565b610e4b565b34801561033557600080fd5b506101b3610e9d565b34801561034a57600080fd5b506101b361035936600461268b565b610ec3565b34801561036a57600080fd5b506101b3610379366004612a09565b610f8b565b34801561038a57600080fd5b5061039e61039936600461266e565b6110d2565b604051610171929190612b01565b3480156103b857600080fd5b506101b36103c7366004612b27565b611133565b3480156103d857600080fd5b506000546103ec906001600160a01b031681565b6040516001600160a01b039091168152602001610171565b6001600160a01b0381166000908152600360209081526040808320815180830190925280548252600101549181018290529015155b9392505050565b610448611445565b33600090815260036020908152604080832080546002909352922054811515806104725750600081115b6104975760405162461bcd60e51b815260040161048e90612b94565b60405180910390fd5b6040805180820190915283548152600184015460209091018190526104fe5760405162461bcd60e51b815260206004820152601d60248201527f6e6f20756e6c6f636b207265717565737420696e2070726f6772657373000000604482015260640161048e565b60408051808201909152835481526001840154602082015261051f9061150b565b156105605760405162461bcd60e51b81526020600482015260116024820152701858d8dbdd5b9d081a5cc81b1bd8dad959607a1b604482015260640161048e565b60008084553381526002602052604081205561058533610580848461159f565b6115ab565b604080518381526020810183905233917fdf273cb619d95419a9cd0ec88123a0538c85064229baa6363788f743fff90deb91015b60405180910390a2505050565b6105ce61161b565b60048190556040517f9f5033568d78ae30f29f01e944f97b2216493bd19d1b46d429673acff3dcd67490610622906020808252600c908201526b1d5b9b1bd8dad4195c9a5bd960a21b604082015260600190565b60405180910390a150565b6001600160a01b03821660009081526002602052604081208161064e6116ff565b6001600160a01b0316638a19c8bc6040518163ffffffff1660e01b815260040160206040518083038186803b15801561068657600080fd5b505afa15801561069a573d6000803e3d6000fd5b505050506040513d601f19601f820116820180604052508101906106be9190612bd7565b60009081526002909201602090815260408084206001600160a01b0387168552909152909120549150505b92915050565b6106fa338383610b28565b5050565b604080518082018252600080825260208083018290526001600160a01b0385168083526002808352948320805485529083529390529091600101906107416116ff565b6001600160a01b0316638a19c8bc6040518163ffffffff1660e01b815260040160206040518083038186803b15801561077957600080fd5b505afa15801561078d573d6000803e3d6000fd5b505050506040513d601f19601f820116820180604052508101906107b19190612bd7565b81526020808201929092526040016000205490820152919050565b6107d4611445565b33600081815260036020526040902080543491906107f2908361159f565b80825560408051808201909152908152600182015460209091018190521561081e5761081e81846117a1565b61082734611846565b826001600160a01b03167f5159e237d952190e68d5215430f305831be7c9c8776d1377c76679ae4773413f836040516105b991815260200190565b61086a611445565b336000818152600360205260409020349061088583836118c1565b604080518082019091528154815260018201546020909101819052156108af576108af81846117a1565b6108b834611846565b505050565b6001600160a01b0382166000908152600260205260408120816108de6116ff565b6001600160a01b0316638a19c8bc6040518163ffffffff1660e01b815260040160206040518083038186803b15801561091657600080fd5b505afa15801561092a573d6000803e3d6000fd5b505050506040513d601f19601f8201168201806040525081019061094e9190612bd7565b9050610958611933565b60405163022008dd60e21b81526001600160a01b038681166004830152919091169063088023749060240160206040518083038186803b15801561099b57600080fd5b505afa1580156109af573d6000803e3d6000fd5b505050506040513d601f19601f820116820180604052508101906109d39190612bf0565b6109e2576000925050506106e9565b60006109ec611933565b6001600160a01b0316632a4e0d556040518163ffffffff1660e01b815260040160206040518083038186803b158015610a2457600080fd5b505afa158015610a38573d6000803e3d6000fd5b505050506040513d601f19601f82011682018060405250810190610a5c9190612bd7565b905080610a6f57600093505050506106e9565b60008281526001840160205260408120548454610a8b9161159f565b600084815260028601602090815260408083206001600160a01b038b168452909152902054909150610ac790610ac18385611984565b90611990565b979650505050505050565b610ada61199c565b600080546001600160a01b0319166001600160a01b0383169081179091556040519081527f4ff638452bbf33c012645d18ae6f05515ff5f2d1dfb0cece8cbf018c60903f7090602001610622565b610b30611445565b8181610b3c828261159f565b3414610bba5760405162461bcd60e51b815260206004820152604160248201527f6d73672e76616c756520646f6573206e6f7420657175616c2073756d206f662060448201527f6465706f73697420616d6f756e7420616e64207265736572766520616d6f756e6064820152601d60fa1b608482015260a40161048e565b6001600160a01b0385166000908152600360205260409020805486918691610be2908361159f565b808255604080518082019091529081526001820154602090910181905215610c0e57610c0e81846117a1565b6001600160a01b038816600090815260036020526040902088908790610c3483836118c1565b60408051808201909152815481526001820154602090910181905215610c5e57610c5e81846117a1565b610c6734611846565b505050826001600160a01b03167f5159e237d952190e68d5215430f305831be7c9c8776d1377c76679ae4773413f83604051610ca591815260200190565b60405180910390a25050505050505050565b610cbf611445565b3360009081526003602052604090208054151580610cea575033600090815260026020526040812054115b610d065760405162461bcd60e51b815260040161048e90612b94565b60408051808201909152815481526001820154602090910181905215610d6e5760405162461bcd60e51b815260206004820152601860248201527f756e6c6f636b20616c726561647920696e697469617465640000000000000000604482015260640161048e565b6000610d786116ff565b6001600160a01b0316638a19c8bc6040518163ffffffff1660e01b815260040160206040518083038186803b158015610db057600080fd5b505afa158015610dc4573d6000803e3d6000fd5b505050506040513d601f19601f82011682018060405250810190610de89190612bd7565b9050610dff6004548261159f90919063ffffffff16565b6001830181905560405133917ff7870c5b224cbc19873599e46ccfc7103934650509b1af0c3ce90138377c200491610e3f91858252602082015260400190565b60405180910390a25050565b80516020808301516040808501516060860151608087015160a088015160c08901519451600098610e80989097969101612c3e565b604051602081830303815290604052805190602001209050919050565b610ea5611445565b33600081815260036020526040902090610ec09082906117a1565b50565b610ecb61161b565b60008111610f2f5760405162461bcd60e51b815260206004820152602b60248201527f7469636b657456616c6964697479506572696f64206d7573742062652067726560448201526a061746572207468616e20360ac1b606482015260840161048e565b60068190556040517f9f5033568d78ae30f29f01e944f97b2216493bd19d1b46d429673acff3dcd67490610622906020808252601490820152731d1a58dad95d15985b1a591a5d1e54195c9a5bd960621b604082015260600190565b610f93611445565b610f9b6116ff565b6001600160a01b031663219bc76c6040518163ffffffff1660e01b815260040160206040518083038186803b158015610fd357600080fd5b505afa158015610fe7573d6000803e3d6000fd5b505050506040513d601f19601f8201168201806040525081019061100b9190612bf0565b6110575760405162461bcd60e51b815260206004820181905260248201527f63757272656e7420726f756e64206973206e6f7420696e697469616c697a6564604482015260640161048e565b60005b83518110156110cc576110b984828151811061107857611078612ca0565b602002602001015184838151811061109257611092612ca0565b60200260200101518484815181106110ac576110ac612ca0565b60200260200101516119f6565b50806110c481612ccc565b91505061105a565b50505050565b60408051808201825260008082526020918201819052825180840184528181528083018290526001600160a01b03851682526003835290839020835180850190945280548452600101549183019190915261112c836106fe565b9050915091565b61113b611445565b6111436116ff565b6001600160a01b031663219bc76c6040518163ffffffff1660e01b815260040160206040518083038186803b15801561117b57600080fd5b505afa15801561118f573d6000803e3d6000fd5b505050506040513d601f19601f820116820180604052508101906111b39190612bf0565b6111ff5760405162461bcd60e51b815260206004820181905260248201527f63757272656e7420726f756e64206973206e6f7420696e697469616c697a6564604482015260640161048e565b600061120a84610e4b565b905061121884828585611a97565b6020808501516001600160a01b03166000908152600382526040908190208151808301909252805482526001810154928201929092526112579061150b565b6112985760405162461bcd60e51b81526020600482015260126024820152711cd95b99195c881a5cc81d5b9b1bd8dad95960721b604482015260640161048e565b80541515806112c9575060006112c786602001516001600160a01b031660009081526002602052604090205490565b115b6112e55760405162461bcd60e51b815260040161048e90612b94565b600082815260056020526040808220805460ff19166001179055825490870151111561134e5761134361133b8760200151886000015161133686600001548b6040015161199090919063ffffffff16565b611ce6565b83549061159f565b600083559050611363565b50604085015181546113609082611990565b82555b80156113d25761137c8660000151828860c00151611e7e565b85600001516001600160a01b031686602001516001600160a01b03167f8b87351a208c06e3ceee59d80725fd77a23b4129e1b51ca231fc89b40712649c836040516113c991815260200190565b60405180910390a35b85600001516001600160a01b031686602001516001600160a01b03167fc389eb51ed006dbf2528507f010efdf5225ea596e1e1741d74f550dab1925ee7886040015189606001518a60800151898c60c00151604051611435959493929190612d13565b60405180910390a3505050505050565b60008054906101000a90046001600160a01b03166001600160a01b0316635c975abb6040518163ffffffff1660e01b815260040160206040518083038186803b15801561149157600080fd5b505afa1580156114a5573d6000803e3d6000fd5b505050506040513d601f19601f820116820180604052508101906114c99190612bf0565b156115095760405162461bcd60e51b815260206004820152601060248201526f1cde5cdd195b481a5cc81c185d5cd95960821b604482015260640161048e565b565b60008160200151600014806106e9575081602001516115286116ff565b6001600160a01b0316638a19c8bc6040518163ffffffff1660e01b815260040160206040518083038186803b15801561156057600080fd5b505afa158015611574573d6000803e3d6000fd5b505050506040513d601f19601f820116820180604052508101906115989190612bd7565b1092915050565b60006104398284612d3e565b6115b3611f05565b6040516320283da960e01b81526001600160a01b0384811660048301526024820184905291909116906320283da990604401600060405180830381600087803b1580156115ff57600080fd5b505af1158015611613573d6000803e3d6000fd5b505050505050565b60008054906101000a90046001600160a01b03166001600160a01b0316638da5cb5b6040518163ffffffff1660e01b815260040160206040518083038186803b15801561166757600080fd5b505afa15801561167b573d6000803e3d6000fd5b505050506040513d601f19601f8201168201806040525081019061169f9190612d56565b6001600160a01b0316336001600160a01b0316146115095760405162461bcd60e51b815260206004820152601f60248201527f63616c6c6572206d75737420626520436f6e74726f6c6c6572206f776e657200604482015260640161048e565b60008054604051631c2d8fb360e31b81527fe8438ea868df48e3fc21f2f087b993c9b1837dc0f6135064161ce7d7a1701fe860048201526001600160a01b039091169063e16c7d98906024015b60206040518083038186803b15801561176457600080fd5b505afa158015611778573d6000803e3d6000fd5b505050506040513d601f19601f8201168201806040525081019061179c9190612d56565b905090565b6040805180820190915282548152600183015460209091018190526118085760405162461bcd60e51b815260206004820152601d60248201527f6e6f20756e6c6f636b207265717565737420696e2070726f6772657373000000604482015260640161048e565b6000600183018190556040516001600160a01b038316917ffa044b7b93a40365dc68049797c2eb06918523d694e5d56e406cac3eb35578e591a25050565b61184e611f05565b6001600160a01b031663f6326fb3826040518263ffffffff1660e01b81526004016020604051808303818588803b15801561188857600080fd5b505af115801561189c573d6000803e3d6000fd5b50505050506040513d601f19601f820116820180604052508101906106fa9190612bf0565b6001600160a01b0382166000908152600260205260409020546118e4908261159f565b6001600160a01b038316600081815260026020526040908190209290925590517fb52b99b9e83551fcbd069b559cc3e823e2a1a3bad8ece46561ea77524394c85090610e3f9084815260200190565b60008054604051631c2d8fb360e31b81527f2517d59a36a86548e38734e8ab416f42afff4bca78706a66ad65750dae7f9e3760048201526001600160a01b039091169063e16c7d989060240161174c565b60006104398284612d73565b60006104398284612d95565b6000546001600160a01b031633146115095760405162461bcd60e51b815260206004820152601960248201527f63616c6c6572206d75737420626520436f6e74726f6c6c657200000000000000604482015260640161048e565b600080848484604051602401611a0e93929190612dac565b60408051601f198184030181529181526020820180516001600160e01b03166376459e5b60e11b179052519091503090611a49908390612e38565b6000604051808303816000865af19150503d8060008114611a86576040519150601f19603f3d011682016040523d82523d6000602084013e611a8b565b606091505b50909695505050505050565b83516001600160a01b0316611aee5760405162461bcd60e51b815260206004820181905260248201527f7469636b657420726563697069656e74206973206e756c6c2061646472657373604482015260640161048e565b60208401516001600160a01b0316611b485760405162461bcd60e51b815260206004820152601d60248201527f7469636b65742073656e646572206973206e756c6c2061646472657373000000604482015260640161048e565b611b558460c00151611f56565b60a08401516040805160208101849052016040516020818303038152906040528051906020012014611be05760405162461bcd60e51b815260206004820152602e60248201527f726563697069656e7452616e6420646f6573206e6f74206d617463682072656360448201526d0d2e0d2cadce8a4c2dcc890c2e6d60931b606482015260840161048e565b60008381526005602052604090205460ff1615611c305760405162461bcd60e51b815260206004820152600e60248201526d1d1a58dad95d081a5cc81d5cd95960921b604482015260640161048e565b611c3f846020015183856121a3565b611c965760405162461bcd60e51b815260206004820152602260248201527f696e76616c6964207369676e6174757265206f766572207469636b65742068616044820152610e6d60f31b606482015260840161048e565b611ca5828286606001516121eb565b6110cc5760405162461bcd60e51b81526020600482015260126024820152713a34b1b5b2ba103234b2103737ba103bb4b760711b604482015260640161048e565b600080611cf385856108bd565b90506000818411611d045783611d06565b815b90508015611e75576000611d186116ff565b6001600160a01b0316638a19c8bc6040518163ffffffff1660e01b815260040160206040518083038186803b158015611d5057600080fd5b505afa158015611d64573d6000803e3d6000fd5b505050506040513d601f19601f82011682018060405250810190611d889190612bd7565b6001600160a01b0388166000908152600260209081526040808320848452600181019092529091205491925090611dbf908461159f565b60008381526001830160209081526040808320939093556002840181528282206001600160a01b038b16835290522054611df9908461159f565b600083815260028301602090815260408083206001600160a01b038c1684529091529020558054611e2a9084611990565b8155604080516001600160a01b038981168252602082018690528a16917f5c2b394723f408a40a60335e24b71829642e35f350cebe2036a96a66e895ea98910160405180910390a250505b95945050505050565b6000611e8982612222565b509050611e94611933565b604051630ebad44b60e21b81526001600160a01b03868116600483015260248201869052604482018490529190911690633aeb512c90606401600060405180830381600087803b158015611ee757600080fd5b505af1158015611efb573d6000803e3d6000fd5b5050505050505050565b60008054604051631c2d8fb360e31b81527f6e58ad548d72b425ea94c15f453bf26caddb061d82b2551db7fdd3cefe0e994060048201526001600160a01b039091169063e16c7d989060240161174c565b600080611f6283612222565b915091506000611f706116ff565b6001600160a01b0316633aa4add4846040518263ffffffff1660e01b8152600401611f9d91815260200190565b60206040518083038186803b158015611fb557600080fd5b505afa158015611fc9573d6000803e3d6000fd5b505050506040513d601f19601f82011682018060405250810190611fed9190612bd7565b9050806120545760405162461bcd60e51b815260206004820152602f60248201527f7469636b6574206372656174696f6e526f756e6420646f6573206e6f7420686160448201526e0ecca40c240c4d8dec6d640d0c2e6d608b1b606482015260840161048e565b8082146120c95760405162461bcd60e51b815260206004820152603760248201527f7469636b6574206372656174696f6e526f756e64426c6f636b4861736820696e60448201527f76616c696420666f72206372656174696f6e526f756e64000000000000000000606482015260840161048e565b60006120d36116ff565b6001600160a01b0316638a19c8bc6040518163ffffffff1660e01b815260040160206040518083038186803b15801561210b57600080fd5b505afa15801561211f573d6000803e3d6000fd5b505050506040513d601f19601f820116820180604052508101906121439190612bd7565b90508061215b6006548661159f90919063ffffffff16565b1161219c5760405162461bcd60e51b81526020600482015260116024820152701d1a58dad95d081a5cc8195e1c1a5c9959607a1b604482015260640161048e565b5050505050565b6000806121b86121b2846122a3565b856122de565b90506001600160a01b03811615801590611e755750806001600160a01b0316856001600160a01b03161495945050505050565b6000818484604051602001612201929190612e54565b60408051601f19818403018152919052805160209091012010949350505050565b60008082516040146122925760405162461bcd60e51b815260206004820152603360248201527f696e76616c6964206c656e67746820666f72207469636b657420617578446174604482015272613a206d75737420626520363420627974657360681b606482015260840161048e565b505060208101516040909101519091565b6040517f19457468657265756d205369676e6564204d6573736167653a0a3332000000006020820152603c8101829052600090605c01610e80565b60008060006122ed8585612302565b915091506122fa81612372565b509392505050565b6000808251604114156123395760208301516040840151606085015160001a61232d8782858561252d565b9450945050505061236b565b825160401415612363576020830151604084015161235886838361261a565b93509350505061236b565b506000905060025b9250929050565b600081600481111561238657612386612e76565b141561238f5750565b60018160048111156123a3576123a3612e76565b14156123f15760405162461bcd60e51b815260206004820152601860248201527f45434453413a20696e76616c6964207369676e61747572650000000000000000604482015260640161048e565b600281600481111561240557612405612e76565b14156124535760405162461bcd60e51b815260206004820152601f60248201527f45434453413a20696e76616c6964207369676e6174757265206c656e67746800604482015260640161048e565b600381600481111561246757612467612e76565b14156124c05760405162461bcd60e51b815260206004820152602260248201527f45434453413a20696e76616c6964207369676e6174757265202773272076616c604482015261756560f01b606482015260840161048e565b60048160048111156124d4576124d4612e76565b1415610ec05760405162461bcd60e51b815260206004820152602260248201527f45434453413a20696e76616c6964207369676e6174757265202776272076616c604482015261756560f01b606482015260840161048e565b6000807f7fffffffffffffffffffffffffffffff5d576e7357a4501ddfe92f46681b20a08311156125645750600090506003612611565b8460ff16601b1415801561257c57508460ff16601c14155b1561258d5750600090506004612611565b6040805160008082526020820180845289905260ff881692820192909252606081018690526080810185905260019060a0016020604051602081039080840390855afa1580156125e1573d6000803e3d6000fd5b5050604051601f1901519150506001600160a01b03811661260a57600060019250925050612611565b9150600090505b94509492505050565b6000806001600160ff1b03831660ff84901c601b0161263b8782888561252d565b935093505050935093915050565b6001600160a01b0381168114610ec057600080fd5b803561266981612649565b919050565b60006020828403121561268057600080fd5b813561043981612649565b60006020828403121561269d57600080fd5b5035919050565b600080604083850312156126b757600080fd5b82356126c281612649565b915060208301356126d281612649565b809150509250929050565b600080604083850312156126f057600080fd5b50508035926020909101359150565b8151815260208083015190820152604081016106e9565b60008060006060848603121561272b57600080fd5b833561273681612649565b95602085013595506040909401359392505050565b634e487b7160e01b600052604160045260246000fd5b60405160e0810167ffffffffffffffff811182821017156127845761278461274b565b60405290565b604051601f8201601f1916810167ffffffffffffffff811182821017156127b3576127b361274b565b604052919050565b600082601f8301126127cc57600080fd5b813567ffffffffffffffff8111156127e6576127e661274b565b6127f9601f8201601f191660200161278a565b81815284602083860101111561280e57600080fd5b816020850160208301376000918101602001919091529392505050565b600060e0828403121561283d57600080fd5b612845612761565b90506128508261265e565b815261285e6020830161265e565b602082015260408201356040820152606082013560608201526080820135608082015260a082013560a082015260c082013567ffffffffffffffff8111156128a557600080fd5b6128b1848285016127bb565b60c08301525092915050565b6000602082840312156128cf57600080fd5b813567ffffffffffffffff8111156128e657600080fd5b6128f28482850161282b565b949350505050565b600067ffffffffffffffff8211156129145761291461274b565b5060051b60200190565b600082601f83011261292f57600080fd5b8135602061294461293f836128fa565b61278a565b82815260059290921b8401810191818101908684111561296357600080fd5b8286015b848110156129a357803567ffffffffffffffff8111156129875760008081fd5b6129958986838b01016127bb565b845250918301918301612967565b509695505050505050565b600082601f8301126129bf57600080fd5b813560206129cf61293f836128fa565b82815260059290921b840181019181810190868411156129ee57600080fd5b8286015b848110156129a357803583529183019183016129f2565b600080600060608486031215612a1e57600080fd5b833567ffffffffffffffff80821115612a3657600080fd5b818601915086601f830112612a4a57600080fd5b81356020612a5a61293f836128fa565b82815260059290921b8401810191818101908a841115612a7957600080fd5b8286015b84811015612ab157803586811115612a955760008081fd5b612aa38d86838b010161282b565b845250918301918301612a7d565b5097505087013592505080821115612ac857600080fd5b612ad48783880161291e565b93506040860135915080821115612aea57600080fd5b50612af7868287016129ae565b9150509250925092565b825181526020808401518183015282516040830152820151606082015260808101610439565b600080600060608486031215612b3c57600080fd5b833567ffffffffffffffff80821115612b5457600080fd5b612b608783880161282b565b94506020860135915080821115612b7657600080fd5b50612b83868287016127bb565b925050604084013590509250925092565b60208082526023908201527f73656e646572206465706f73697420616e64207265736572766520617265207a60408201526265726f60e81b606082015260800190565b600060208284031215612be957600080fd5b5051919050565b600060208284031215612c0257600080fd5b8151801515811461043957600080fd5b60005b83811015612c2d578181015183820152602001612c15565b838111156110cc5750506000910152565b60006bffffffffffffffffffffffff19808a60601b168352808960601b166014840152508660288301528560488301528460688301528360888301528251612c8d8160a8850160208701612c12565b9190910160a80198975050505050505050565b634e487b7160e01b600052603260045260246000fd5b634e487b7160e01b600052601160045260246000fd5b6000600019821415612ce057612ce0612cb6565b5060010190565b60008151808452612cff816020860160208601612c12565b601f01601f19169290920160200192915050565b85815284602082015283604082015282606082015260a060808201526000610ac760a0830184612ce7565b60008219821115612d5157612d51612cb6565b500190565b600060208284031215612d6857600080fd5b815161043981612649565b600082612d9057634e487b7160e01b600052601260045260246000fd5b500490565b600082821015612da757612da7612cb6565b500390565b60608152600060018060a01b0380865116606084015280602087015116608084015250604085015160a0830152606085015160c0830152608085015160e083015260a085015161010083015260c085015160e0610120840152612e13610140840182612ce7565b90508281036020840152612e278186612ce7565b915050826040830152949350505050565b60008251612e4a818460208701612c12565b9190910192915050565b60008351612e66818460208801612c12565b9190910191825250602001919050565b634e487b7160e01b600052602160045260246000fdfea264697066735822122039ff1a1f689899210b80919adb3cf06775169e17291ef7e3b4278f644bf67bf264736f6c63430008090033",
+  "deployedBytecode": "0x6080604052600436106101405760003560e01c806381779f38116100b6578063c2c4c2c81161006f578063c2c4c2c814610329578063c92978081461033e578063d01b808e1461035e578063e1a589da1461037e578063ec8b3cb6146103ac578063f77c4791146103cc57600080fd5b806381779f381461028b578063856a2cf8146102ab57806392eefe9b146102c1578063989f789c146102e1578063a69df4b5146102f4578063b03fa8641461030957600080fd5b8063511f407311610108578063511f4073146101f557806351720b411461020857806359a515ba1461021e5780635b6333eb1461024e5780636caa736b1461027b5780636f9c3c8f1461028357600080fd5b8063121cdcc21461014557806320d3a0b41461017a5780633ccfd60b1461019e5780633d0ddf84146101b55780634ac826da146101d5575b600080fd5b34801561015157600080fd5b5061016561016036600461266e565b610404565b60405190151581526020015b60405180910390f35b34801561018657600080fd5b5061019060045481565b604051908152602001610171565b3480156101aa57600080fd5b506101b3610440565b005b3480156101c157600080fd5b506101b36101d036600461268b565b6105c6565b3480156101e157600080fd5b506101906101f03660046126a4565b61062d565b6101b36102033660046126dd565b6106ef565b34801561021457600080fd5b5061019060015481565b34801561022a57600080fd5b5061016561023936600461268b565b60056020526000908152604090205460ff1681565b34801561025a57600080fd5b5061026e61026936600461266e565b6106fe565b60405161017191906126ff565b6101b36107cc565b6101b3610862565b34801561029757600080fd5b506101906102a63660046126a4565b6108bd565b3480156102b757600080fd5b5061019060065481565b3480156102cd57600080fd5b506101b36102dc36600461266e565b610ad2565b6101b36102ef366004612716565b610b28565b34801561030057600080fd5b506101b3610cb7565b34801561031557600080fd5b506101906103243660046128bd565b610e4b565b34801561033557600080fd5b506101b3610e9d565b34801561034a57600080fd5b506101b361035936600461268b565b610ec3565b34801561036a57600080fd5b506101b3610379366004612a09565b610f8b565b34801561038a57600080fd5b5061039e61039936600461266e565b6110d2565b604051610171929190612b01565b3480156103b857600080fd5b506101b36103c7366004612b27565b611133565b3480156103d857600080fd5b506000546103ec906001600160a01b031681565b6040516001600160a01b039091168152602001610171565b6001600160a01b0381166000908152600360209081526040808320815180830190925280548252600101549181018290529015155b9392505050565b610448611445565b33600090815260036020908152604080832080546002909352922054811515806104725750600081115b6104975760405162461bcd60e51b815260040161048e90612b94565b60405180910390fd5b6040805180820190915283548152600184015460209091018190526104fe5760405162461bcd60e51b815260206004820152601d60248201527f6e6f20756e6c6f636b207265717565737420696e2070726f6772657373000000604482015260640161048e565b60408051808201909152835481526001840154602082015261051f9061150b565b156105605760405162461bcd60e51b81526020600482015260116024820152701858d8dbdd5b9d081a5cc81b1bd8dad959607a1b604482015260640161048e565b60008084553381526002602052604081205561058533610580848461159f565b6115ab565b604080518381526020810183905233917fdf273cb619d95419a9cd0ec88123a0538c85064229baa6363788f743fff90deb91015b60405180910390a2505050565b6105ce61161b565b60048190556040517f9f5033568d78ae30f29f01e944f97b2216493bd19d1b46d429673acff3dcd67490610622906020808252600c908201526b1d5b9b1bd8dad4195c9a5bd960a21b604082015260600190565b60405180910390a150565b6001600160a01b03821660009081526002602052604081208161064e6116ff565b6001600160a01b0316638a19c8bc6040518163ffffffff1660e01b815260040160206040518083038186803b15801561068657600080fd5b505afa15801561069a573d6000803e3d6000fd5b505050506040513d601f19601f820116820180604052508101906106be9190612bd7565b60009081526002909201602090815260408084206001600160a01b0387168552909152909120549150505b92915050565b6106fa338383610b28565b5050565b604080518082018252600080825260208083018290526001600160a01b0385168083526002808352948320805485529083529390529091600101906107416116ff565b6001600160a01b0316638a19c8bc6040518163ffffffff1660e01b815260040160206040518083038186803b15801561077957600080fd5b505afa15801561078d573d6000803e3d6000fd5b505050506040513d601f19601f820116820180604052508101906107b19190612bd7565b81526020808201929092526040016000205490820152919050565b6107d4611445565b33600081815260036020526040902080543491906107f2908361159f565b80825560408051808201909152908152600182015460209091018190521561081e5761081e81846117a1565b61082734611846565b826001600160a01b03167f5159e237d952190e68d5215430f305831be7c9c8776d1377c76679ae4773413f836040516105b991815260200190565b61086a611445565b336000818152600360205260409020349061088583836118c1565b604080518082019091528154815260018201546020909101819052156108af576108af81846117a1565b6108b834611846565b505050565b6001600160a01b0382166000908152600260205260408120816108de6116ff565b6001600160a01b0316638a19c8bc6040518163ffffffff1660e01b815260040160206040518083038186803b15801561091657600080fd5b505afa15801561092a573d6000803e3d6000fd5b505050506040513d601f19601f8201168201806040525081019061094e9190612bd7565b9050610958611933565b60405163022008dd60e21b81526001600160a01b038681166004830152919091169063088023749060240160206040518083038186803b15801561099b57600080fd5b505afa1580156109af573d6000803e3d6000fd5b505050506040513d601f19601f820116820180604052508101906109d39190612bf0565b6109e2576000925050506106e9565b60006109ec611933565b6001600160a01b0316632a4e0d556040518163ffffffff1660e01b815260040160206040518083038186803b158015610a2457600080fd5b505afa158015610a38573d6000803e3d6000fd5b505050506040513d601f19601f82011682018060405250810190610a5c9190612bd7565b905080610a6f57600093505050506106e9565b60008281526001840160205260408120548454610a8b9161159f565b600084815260028601602090815260408083206001600160a01b038b168452909152902054909150610ac790610ac18385611984565b90611990565b979650505050505050565b610ada61199c565b600080546001600160a01b0319166001600160a01b0383169081179091556040519081527f4ff638452bbf33c012645d18ae6f05515ff5f2d1dfb0cece8cbf018c60903f7090602001610622565b610b30611445565b8181610b3c828261159f565b3414610bba5760405162461bcd60e51b815260206004820152604160248201527f6d73672e76616c756520646f6573206e6f7420657175616c2073756d206f662060448201527f6465706f73697420616d6f756e7420616e64207265736572766520616d6f756e6064820152601d60fa1b608482015260a40161048e565b6001600160a01b0385166000908152600360205260409020805486918691610be2908361159f565b808255604080518082019091529081526001820154602090910181905215610c0e57610c0e81846117a1565b6001600160a01b038816600090815260036020526040902088908790610c3483836118c1565b60408051808201909152815481526001820154602090910181905215610c5e57610c5e81846117a1565b610c6734611846565b505050826001600160a01b03167f5159e237d952190e68d5215430f305831be7c9c8776d1377c76679ae4773413f83604051610ca591815260200190565b60405180910390a25050505050505050565b610cbf611445565b3360009081526003602052604090208054151580610cea575033600090815260026020526040812054115b610d065760405162461bcd60e51b815260040161048e90612b94565b60408051808201909152815481526001820154602090910181905215610d6e5760405162461bcd60e51b815260206004820152601860248201527f756e6c6f636b20616c726561647920696e697469617465640000000000000000604482015260640161048e565b6000610d786116ff565b6001600160a01b0316638a19c8bc6040518163ffffffff1660e01b815260040160206040518083038186803b158015610db057600080fd5b505afa158015610dc4573d6000803e3d6000fd5b505050506040513d601f19601f82011682018060405250810190610de89190612bd7565b9050610dff6004548261159f90919063ffffffff16565b6001830181905560405133917ff7870c5b224cbc19873599e46ccfc7103934650509b1af0c3ce90138377c200491610e3f91858252602082015260400190565b60405180910390a25050565b80516020808301516040808501516060860151608087015160a088015160c08901519451600098610e80989097969101612c3e565b604051602081830303815290604052805190602001209050919050565b610ea5611445565b33600081815260036020526040902090610ec09082906117a1565b50565b610ecb61161b565b60008111610f2f5760405162461bcd60e51b815260206004820152602b60248201527f7469636b657456616c6964697479506572696f64206d7573742062652067726560448201526a061746572207468616e20360ac1b606482015260840161048e565b60068190556040517f9f5033568d78ae30f29f01e944f97b2216493bd19d1b46d429673acff3dcd67490610622906020808252601490820152731d1a58dad95d15985b1a591a5d1e54195c9a5bd960621b604082015260600190565b610f93611445565b610f9b6116ff565b6001600160a01b031663219bc76c6040518163ffffffff1660e01b815260040160206040518083038186803b158015610fd357600080fd5b505afa158015610fe7573d6000803e3d6000fd5b505050506040513d601f19601f8201168201806040525081019061100b9190612bf0565b6110575760405162461bcd60e51b815260206004820181905260248201527f63757272656e7420726f756e64206973206e6f7420696e697469616c697a6564604482015260640161048e565b60005b83518110156110cc576110b984828151811061107857611078612ca0565b602002602001015184838151811061109257611092612ca0565b60200260200101518484815181106110ac576110ac612ca0565b60200260200101516119f6565b50806110c481612ccc565b91505061105a565b50505050565b60408051808201825260008082526020918201819052825180840184528181528083018290526001600160a01b03851682526003835290839020835180850190945280548452600101549183019190915261112c836106fe565b9050915091565b61113b611445565b6111436116ff565b6001600160a01b031663219bc76c6040518163ffffffff1660e01b815260040160206040518083038186803b15801561117b57600080fd5b505afa15801561118f573d6000803e3d6000fd5b505050506040513d601f19601f820116820180604052508101906111b39190612bf0565b6111ff5760405162461bcd60e51b815260206004820181905260248201527f63757272656e7420726f756e64206973206e6f7420696e697469616c697a6564604482015260640161048e565b600061120a84610e4b565b905061121884828585611a97565b6020808501516001600160a01b03166000908152600382526040908190208151808301909252805482526001810154928201929092526112579061150b565b6112985760405162461bcd60e51b81526020600482015260126024820152711cd95b99195c881a5cc81d5b9b1bd8dad95960721b604482015260640161048e565b80541515806112c9575060006112c786602001516001600160a01b031660009081526002602052604090205490565b115b6112e55760405162461bcd60e51b815260040161048e90612b94565b600082815260056020526040808220805460ff19166001179055825490870151111561134e5761134361133b8760200151886000015161133686600001548b6040015161199090919063ffffffff16565b611ce6565b83549061159f565b600083559050611363565b50604085015181546113609082611990565b82555b80156113d25761137c8660000151828860c00151611e7e565b85600001516001600160a01b031686602001516001600160a01b03167f8b87351a208c06e3ceee59d80725fd77a23b4129e1b51ca231fc89b40712649c836040516113c991815260200190565b60405180910390a35b85600001516001600160a01b031686602001516001600160a01b03167fc389eb51ed006dbf2528507f010efdf5225ea596e1e1741d74f550dab1925ee7886040015189606001518a60800151898c60c00151604051611435959493929190612d13565b60405180910390a3505050505050565b60008054906101000a90046001600160a01b03166001600160a01b0316635c975abb6040518163ffffffff1660e01b815260040160206040518083038186803b15801561149157600080fd5b505afa1580156114a5573d6000803e3d6000fd5b505050506040513d601f19601f820116820180604052508101906114c99190612bf0565b156115095760405162461bcd60e51b815260206004820152601060248201526f1cde5cdd195b481a5cc81c185d5cd95960821b604482015260640161048e565b565b60008160200151600014806106e9575081602001516115286116ff565b6001600160a01b0316638a19c8bc6040518163ffffffff1660e01b815260040160206040518083038186803b15801561156057600080fd5b505afa158015611574573d6000803e3d6000fd5b505050506040513d601f19601f820116820180604052508101906115989190612bd7565b1092915050565b60006104398284612d3e565b6115b3611f05565b6040516320283da960e01b81526001600160a01b0384811660048301526024820184905291909116906320283da990604401600060405180830381600087803b1580156115ff57600080fd5b505af1158015611613573d6000803e3d6000fd5b505050505050565b60008054906101000a90046001600160a01b03166001600160a01b0316638da5cb5b6040518163ffffffff1660e01b815260040160206040518083038186803b15801561166757600080fd5b505afa15801561167b573d6000803e3d6000fd5b505050506040513d601f19601f8201168201806040525081019061169f9190612d56565b6001600160a01b0316336001600160a01b0316146115095760405162461bcd60e51b815260206004820152601f60248201527f63616c6c6572206d75737420626520436f6e74726f6c6c6572206f776e657200604482015260640161048e565b60008054604051631c2d8fb360e31b81527fe8438ea868df48e3fc21f2f087b993c9b1837dc0f6135064161ce7d7a1701fe860048201526001600160a01b039091169063e16c7d98906024015b60206040518083038186803b15801561176457600080fd5b505afa158015611778573d6000803e3d6000fd5b505050506040513d601f19601f8201168201806040525081019061179c9190612d56565b905090565b6040805180820190915282548152600183015460209091018190526118085760405162461bcd60e51b815260206004820152601d60248201527f6e6f20756e6c6f636b207265717565737420696e2070726f6772657373000000604482015260640161048e565b6000600183018190556040516001600160a01b038316917ffa044b7b93a40365dc68049797c2eb06918523d694e5d56e406cac3eb35578e591a25050565b61184e611f05565b6001600160a01b031663f6326fb3826040518263ffffffff1660e01b81526004016020604051808303818588803b15801561188857600080fd5b505af115801561189c573d6000803e3d6000fd5b50505050506040513d601f19601f820116820180604052508101906106fa9190612bf0565b6001600160a01b0382166000908152600260205260409020546118e4908261159f565b6001600160a01b038316600081815260026020526040908190209290925590517fb52b99b9e83551fcbd069b559cc3e823e2a1a3bad8ece46561ea77524394c85090610e3f9084815260200190565b60008054604051631c2d8fb360e31b81527f2517d59a36a86548e38734e8ab416f42afff4bca78706a66ad65750dae7f9e3760048201526001600160a01b039091169063e16c7d989060240161174c565b60006104398284612d73565b60006104398284612d95565b6000546001600160a01b031633146115095760405162461bcd60e51b815260206004820152601960248201527f63616c6c6572206d75737420626520436f6e74726f6c6c657200000000000000604482015260640161048e565b600080848484604051602401611a0e93929190612dac565b60408051601f198184030181529181526020820180516001600160e01b03166376459e5b60e11b179052519091503090611a49908390612e38565b6000604051808303816000865af19150503d8060008114611a86576040519150601f19603f3d011682016040523d82523d6000602084013e611a8b565b606091505b50909695505050505050565b83516001600160a01b0316611aee5760405162461bcd60e51b815260206004820181905260248201527f7469636b657420726563697069656e74206973206e756c6c2061646472657373604482015260640161048e565b60208401516001600160a01b0316611b485760405162461bcd60e51b815260206004820152601d60248201527f7469636b65742073656e646572206973206e756c6c2061646472657373000000604482015260640161048e565b611b558460c00151611f56565b60a08401516040805160208101849052016040516020818303038152906040528051906020012014611be05760405162461bcd60e51b815260206004820152602e60248201527f726563697069656e7452616e6420646f6573206e6f74206d617463682072656360448201526d0d2e0d2cadce8a4c2dcc890c2e6d60931b606482015260840161048e565b60008381526005602052604090205460ff1615611c305760405162461bcd60e51b815260206004820152600e60248201526d1d1a58dad95d081a5cc81d5cd95960921b604482015260640161048e565b611c3f846020015183856121a3565b611c965760405162461bcd60e51b815260206004820152602260248201527f696e76616c6964207369676e6174757265206f766572207469636b65742068616044820152610e6d60f31b606482015260840161048e565b611ca5828286606001516121eb565b6110cc5760405162461bcd60e51b81526020600482015260126024820152713a34b1b5b2ba103234b2103737ba103bb4b760711b604482015260640161048e565b600080611cf385856108bd565b90506000818411611d045783611d06565b815b90508015611e75576000611d186116ff565b6001600160a01b0316638a19c8bc6040518163ffffffff1660e01b815260040160206040518083038186803b158015611d5057600080fd5b505afa158015611d64573d6000803e3d6000fd5b505050506040513d601f19601f82011682018060405250810190611d889190612bd7565b6001600160a01b0388166000908152600260209081526040808320848452600181019092529091205491925090611dbf908461159f565b60008381526001830160209081526040808320939093556002840181528282206001600160a01b038b16835290522054611df9908461159f565b600083815260028301602090815260408083206001600160a01b038c1684529091529020558054611e2a9084611990565b8155604080516001600160a01b038981168252602082018690528a16917f5c2b394723f408a40a60335e24b71829642e35f350cebe2036a96a66e895ea98910160405180910390a250505b95945050505050565b6000611e8982612222565b509050611e94611933565b604051630ebad44b60e21b81526001600160a01b03868116600483015260248201869052604482018490529190911690633aeb512c90606401600060405180830381600087803b158015611ee757600080fd5b505af1158015611efb573d6000803e3d6000fd5b5050505050505050565b60008054604051631c2d8fb360e31b81527f6e58ad548d72b425ea94c15f453bf26caddb061d82b2551db7fdd3cefe0e994060048201526001600160a01b039091169063e16c7d989060240161174c565b600080611f6283612222565b915091506000611f706116ff565b6001600160a01b0316633aa4add4846040518263ffffffff1660e01b8152600401611f9d91815260200190565b60206040518083038186803b158015611fb557600080fd5b505afa158015611fc9573d6000803e3d6000fd5b505050506040513d601f19601f82011682018060405250810190611fed9190612bd7565b9050806120545760405162461bcd60e51b815260206004820152602f60248201527f7469636b6574206372656174696f6e526f756e6420646f6573206e6f7420686160448201526e0ecca40c240c4d8dec6d640d0c2e6d608b1b606482015260840161048e565b8082146120c95760405162461bcd60e51b815260206004820152603760248201527f7469636b6574206372656174696f6e526f756e64426c6f636b4861736820696e60448201527f76616c696420666f72206372656174696f6e526f756e64000000000000000000606482015260840161048e565b60006120d36116ff565b6001600160a01b0316638a19c8bc6040518163ffffffff1660e01b815260040160206040518083038186803b15801561210b57600080fd5b505afa15801561211f573d6000803e3d6000fd5b505050506040513d601f19601f820116820180604052508101906121439190612bd7565b90508061215b6006548661159f90919063ffffffff16565b1161219c5760405162461bcd60e51b81526020600482015260116024820152701d1a58dad95d081a5cc8195e1c1a5c9959607a1b604482015260640161048e565b5050505050565b6000806121b86121b2846122a3565b856122de565b90506001600160a01b03811615801590611e755750806001600160a01b0316856001600160a01b03161495945050505050565b6000818484604051602001612201929190612e54565b60408051601f19818403018152919052805160209091012010949350505050565b60008082516040146122925760405162461bcd60e51b815260206004820152603360248201527f696e76616c6964206c656e67746820666f72207469636b657420617578446174604482015272613a206d75737420626520363420627974657360681b606482015260840161048e565b505060208101516040909101519091565b6040517f19457468657265756d205369676e6564204d6573736167653a0a3332000000006020820152603c8101829052600090605c01610e80565b60008060006122ed8585612302565b915091506122fa81612372565b509392505050565b6000808251604114156123395760208301516040840151606085015160001a61232d8782858561252d565b9450945050505061236b565b825160401415612363576020830151604084015161235886838361261a565b93509350505061236b565b506000905060025b9250929050565b600081600481111561238657612386612e76565b141561238f5750565b60018160048111156123a3576123a3612e76565b14156123f15760405162461bcd60e51b815260206004820152601860248201527f45434453413a20696e76616c6964207369676e61747572650000000000000000604482015260640161048e565b600281600481111561240557612405612e76565b14156124535760405162461bcd60e51b815260206004820152601f60248201527f45434453413a20696e76616c6964207369676e6174757265206c656e67746800604482015260640161048e565b600381600481111561246757612467612e76565b14156124c05760405162461bcd60e51b815260206004820152602260248201527f45434453413a20696e76616c6964207369676e6174757265202773272076616c604482015261756560f01b606482015260840161048e565b60048160048111156124d4576124d4612e76565b1415610ec05760405162461bcd60e51b815260206004820152602260248201527f45434453413a20696e76616c6964207369676e6174757265202776272076616c604482015261756560f01b606482015260840161048e565b6000807f7fffffffffffffffffffffffffffffff5d576e7357a4501ddfe92f46681b20a08311156125645750600090506003612611565b8460ff16601b1415801561257c57508460ff16601c14155b1561258d5750600090506004612611565b6040805160008082526020820180845289905260ff881692820192909252606081018690526080810185905260019060a0016020604051602081039080840390855afa1580156125e1573d6000803e3d6000fd5b5050604051601f1901519150506001600160a01b03811661260a57600060019250925050612611565b9150600090505b94509492505050565b6000806001600160ff1b03831660ff84901c601b0161263b8782888561252d565b935093505050935093915050565b6001600160a01b0381168114610ec057600080fd5b803561266981612649565b919050565b60006020828403121561268057600080fd5b813561043981612649565b60006020828403121561269d57600080fd5b5035919050565b600080604083850312156126b757600080fd5b82356126c281612649565b915060208301356126d281612649565b809150509250929050565b600080604083850312156126f057600080fd5b50508035926020909101359150565b8151815260208083015190820152604081016106e9565b60008060006060848603121561272b57600080fd5b833561273681612649565b95602085013595506040909401359392505050565b634e487b7160e01b600052604160045260246000fd5b60405160e0810167ffffffffffffffff811182821017156127845761278461274b565b60405290565b604051601f8201601f1916810167ffffffffffffffff811182821017156127b3576127b361274b565b604052919050565b600082601f8301126127cc57600080fd5b813567ffffffffffffffff8111156127e6576127e661274b565b6127f9601f8201601f191660200161278a565b81815284602083860101111561280e57600080fd5b816020850160208301376000918101602001919091529392505050565b600060e0828403121561283d57600080fd5b612845612761565b90506128508261265e565b815261285e6020830161265e565b602082015260408201356040820152606082013560608201526080820135608082015260a082013560a082015260c082013567ffffffffffffffff8111156128a557600080fd5b6128b1848285016127bb565b60c08301525092915050565b6000602082840312156128cf57600080fd5b813567ffffffffffffffff8111156128e657600080fd5b6128f28482850161282b565b949350505050565b600067ffffffffffffffff8211156129145761291461274b565b5060051b60200190565b600082601f83011261292f57600080fd5b8135602061294461293f836128fa565b61278a565b82815260059290921b8401810191818101908684111561296357600080fd5b8286015b848110156129a357803567ffffffffffffffff8111156129875760008081fd5b6129958986838b01016127bb565b845250918301918301612967565b509695505050505050565b600082601f8301126129bf57600080fd5b813560206129cf61293f836128fa565b82815260059290921b840181019181810190868411156129ee57600080fd5b8286015b848110156129a357803583529183019183016129f2565b600080600060608486031215612a1e57600080fd5b833567ffffffffffffffff80821115612a3657600080fd5b818601915086601f830112612a4a57600080fd5b81356020612a5a61293f836128fa565b82815260059290921b8401810191818101908a841115612a7957600080fd5b8286015b84811015612ab157803586811115612a955760008081fd5b612aa38d86838b010161282b565b845250918301918301612a7d565b5097505087013592505080821115612ac857600080fd5b612ad48783880161291e565b93506040860135915080821115612aea57600080fd5b50612af7868287016129ae565b9150509250925092565b825181526020808401518183015282516040830152820151606082015260808101610439565b600080600060608486031215612b3c57600080fd5b833567ffffffffffffffff80821115612b5457600080fd5b612b608783880161282b565b94506020860135915080821115612b7657600080fd5b50612b83868287016127bb565b925050604084013590509250925092565b60208082526023908201527f73656e646572206465706f73697420616e64207265736572766520617265207a60408201526265726f60e81b606082015260800190565b600060208284031215612be957600080fd5b5051919050565b600060208284031215612c0257600080fd5b8151801515811461043957600080fd5b60005b83811015612c2d578181015183820152602001612c15565b838111156110cc5750506000910152565b60006bffffffffffffffffffffffff19808a60601b168352808960601b166014840152508660288301528560488301528460688301528360888301528251612c8d8160a8850160208701612c12565b9190910160a80198975050505050505050565b634e487b7160e01b600052603260045260246000fd5b634e487b7160e01b600052601160045260246000fd5b6000600019821415612ce057612ce0612cb6565b5060010190565b60008151808452612cff816020860160208601612c12565b601f01601f19169290920160200192915050565b85815284602082015283604082015282606082015260a060808201526000610ac760a0830184612ce7565b60008219821115612d5157612d51612cb6565b500190565b600060208284031215612d6857600080fd5b815161043981612649565b600082612d9057634e487b7160e01b600052601260045260246000fd5b500490565b600082821015612da757612da7612cb6565b500390565b60608152600060018060a01b0380865116606084015280602087015116608084015250604085015160a0830152606085015160c0830152608085015160e083015260a085015161010083015260c085015160e0610120840152612e13610140840182612ce7565b90508281036020840152612e278186612ce7565b915050826040830152949350505050565b60008251612e4a818460208701612c12565b9190910192915050565b60008351612e66818460208801612c12565b9190910191825250602001919050565b634e487b7160e01b600052602160045260246000fdfea264697066735822122039ff1a1f689899210b80919adb3cf06775169e17291ef7e3b4278f644bf67bf264736f6c63430008090033",
+  "devdoc": {
+    "kind": "dev",
+    "methods": {
+      "batchRedeemWinningTickets((address,address,uint256,uint256,uint256,bytes32,bytes)[],bytes[],uint256[])": {
+        "params": {
+          "_recipientRands": "Array of preimages for the recipientRandHash included in each ticket (`_recipientRands[i]` corresponds to `_tickets[i]`)",
+          "_sigs": "Array of sender signatures over the hash of tickets (`_sigs[i]` corresponds to `_tickets[i]`)",
+          "_tickets": "Array of winning tickets to be redeemed in order to claim payment"
+        }
+      },
+      "claimableReserve(address,address)": {
+        "details": "Returns the amount of funds claimable by a claimant from a reserve in the current round",
+        "params": {
+          "_claimant": "Address of claimant",
+          "_reserveHolder": "Address of reserve holder"
+        },
+        "returns": {
+          "_0": "Amount of funds claimable by `_claimant` from the reserve for `_reserveHolder` in the current round"
+        }
+      },
+      "claimedReserve(address,address)": {
+        "details": "Returns the amount of funds claimed by a claimant from a reserve in the current round",
+        "params": {
+          "_claimant": "Address of claimant",
+          "_reserveHolder": "Address of reserve holder"
+        },
+        "returns": {
+          "_0": "Amount of funds claimed by `_claimant` from the reserve for `_reserveHolder` in the current round"
+        }
+      },
+      "constructor": {
+        "details": "This constructor will not initialize any state variables besides `controller`. The following setter functions should be used to initialize state variables post-deployment: - setUnlockPeriod() - setTicketValidityPeriod()",
+        "params": {
+          "_controller": "Address of Controller that this contract will be registered with"
+        }
+      },
+      "fundDepositAndReserve(uint256,uint256)": {
+        "params": {
+          "_depositAmount": "Amount of ETH to add to the caller's deposit",
+          "_reserveAmount": "Amount of ETH to add to the caller's reserve"
+        }
+      },
+      "fundDepositAndReserveFor(address,uint256,uint256)": {
+        "params": {
+          "_depositAmount": "Amount of ETH to add to the address' deposit",
+          "_reserveAmount": "Amount of ETH to add to the address' reserve"
+        }
+      },
+      "getReserveInfo(address)": {
+        "details": "Returns info about a reserve",
+        "params": {
+          "_reserveHolder": "Address of reserve holder"
+        },
+        "returns": {
+          "info": "Info about the reserve for `_reserveHolder`"
+        }
+      },
+      "getSenderInfo(address)": {
+        "params": {
+          "_sender": "Address of sender"
+        },
+        "returns": {
+          "reserve": "Info about the reserve for `_sender`",
+          "sender": "Info about the sender for `_sender`"
+        }
+      },
+      "getTicketHash((address,address,uint256,uint256,uint256,bytes32,bytes))": {
+        "details": "Returns the hash of a ticket",
+        "params": {
+          "_ticket": "Ticket to be hashed"
+        },
+        "returns": {
+          "_0": "keccak256 hash of `_ticket`"
+        }
+      },
+      "isUnlockInProgress(address)": {
+        "params": {
+          "_sender": "Address of sender"
+        },
+        "returns": {
+          "_0": "Boolean indicating whether `_sender` has an unlock in progress"
+        }
+      },
+      "redeemWinningTicket((address,address,uint256,uint256,uint256,bytes32,bytes),bytes,uint256)": {
+        "params": {
+          "_recipientRand": "The preimage for the recipientRandHash included in `_ticket`",
+          "_sig": "Sender's signature over the hash of `_ticket`",
+          "_ticket": "Winning ticket to be redeemed in order to claim payment"
+        }
+      },
+      "setController(address)": {
+        "params": {
+          "_controller": "Controller contract address"
+        }
+      },
+      "setTicketValidityPeriod(uint256)": {
+        "params": {
+          "_ticketValidityPeriod": "Value for ticketValidityPeriod"
+        }
+      },
+      "setUnlockPeriod(uint256)": {
+        "params": {
+          "_unlockPeriod": "Value for unlockPeriod"
+        }
+      }
+    },
+    "version": 1
+  },
+  "userdoc": {
+    "kind": "user",
+    "methods": {
+      "batchRedeemWinningTickets((address,address,uint256,uint256,uint256,bytes32,bytes)[],bytes[],uint256[])": {
+        "notice": "Redeems multiple winning tickets. The function will redeem all of the provided tickets and handle any failures gracefully without reverting the entire function"
+      },
+      "cancelUnlock()": {
+        "notice": "Cancels the unlock period for the caller"
+      },
+      "constructor": {
+        "notice": "TicketBroker constructor. Only invokes constructor of base Manager contract with provided Controller address"
+      },
+      "fundDeposit()": {
+        "notice": "Adds ETH to the caller's deposit"
+      },
+      "fundDepositAndReserve(uint256,uint256)": {
+        "notice": "Adds ETH to the caller's deposit and reserve"
+      },
+      "fundDepositAndReserveFor(address,uint256,uint256)": {
+        "notice": "Adds ETH to the address' deposit and reserve"
+      },
+      "fundReserve()": {
+        "notice": "Adds ETH to the caller's reserve"
+      },
+      "getSenderInfo(address)": {
+        "notice": "Returns info about a sender"
+      },
+      "isUnlockInProgress(address)": {
+        "notice": "Returns whether a sender is currently in the unlock period"
+      },
+      "redeemWinningTicket((address,address,uint256,uint256,uint256,bytes32,bytes),bytes,uint256)": {
+        "notice": "Redeems a winning ticket that has been signed by a sender and reveals the recipient recipientRand that corresponds to the recipientRandHash included in the ticket"
+      },
+      "setController(address)": {
+        "notice": "Set controller. Only callable by current controller"
+      },
+      "setTicketValidityPeriod(uint256)": {
+        "notice": "Sets ticketValidityPeriod value. Only callable by the Controller owner"
+      },
+      "setUnlockPeriod(uint256)": {
+        "notice": "Sets unlockPeriod value. Only callable by the Controller owner"
+      },
+      "unlock()": {
+        "notice": "Initiates the unlock period for the caller"
+      },
+      "withdraw()": {
+        "notice": "Withdraws all ETH from the caller's deposit and reserve"
+      }
+    },
+    "version": 1
+  },
+  "storageLayout": {
+    "storage": [
+      {
+        "astId": 2670,
+        "contract": "contracts/pm/TicketBroker.sol:TicketBroker",
+        "label": "controller",
+        "offset": 0,
+        "slot": "0",
+        "type": "t_contract(IController)2645"
+      },
+      {
+        "astId": 2852,
+        "contract": "contracts/pm/TicketBroker.sol:TicketBroker",
+        "label": "targetContractId",
+        "offset": 0,
+        "slot": "1",
+        "type": "t_bytes32"
+      },
+      {
+        "astId": 8525,
+        "contract": "contracts/pm/TicketBroker.sol:TicketBroker",
+        "label": "reserves",
+        "offset": 0,
+        "slot": "2",
+        "type": "t_mapping(t_address,t_struct(Reserve)8520_storage)"
+      },
+      {
+        "astId": 8849,
+        "contract": "contracts/pm/TicketBroker.sol:TicketBroker",
+        "label": "senders",
+        "offset": 0,
+        "slot": "3",
+        "type": "t_mapping(t_address,t_struct(Sender)8844_storage)"
+      },
+      {
+        "astId": 8851,
+        "contract": "contracts/pm/TicketBroker.sol:TicketBroker",
+        "label": "unlockPeriod",
+        "offset": 0,
+        "slot": "4",
+        "type": "t_uint256"
+      },
+      {
+        "astId": 8855,
+        "contract": "contracts/pm/TicketBroker.sol:TicketBroker",
+        "label": "usedTickets",
+        "offset": 0,
+        "slot": "5",
+        "type": "t_mapping(t_bytes32,t_bool)"
+      },
+      {
+        "astId": 9644,
+        "contract": "contracts/pm/TicketBroker.sol:TicketBroker",
+        "label": "ticketValidityPeriod",
+        "offset": 0,
+        "slot": "6",
+        "type": "t_uint256"
+      }
+    ],
+    "types": {
+      "t_address": {
+        "encoding": "inplace",
+        "label": "address",
+        "numberOfBytes": "20"
+      },
+      "t_bool": {
+        "encoding": "inplace",
+        "label": "bool",
+        "numberOfBytes": "1"
+      },
+      "t_bytes32": {
+        "encoding": "inplace",
+        "label": "bytes32",
+        "numberOfBytes": "32"
+      },
+      "t_contract(IController)2645": {
+        "encoding": "inplace",
+        "label": "contract IController",
+        "numberOfBytes": "20"
+      },
+      "t_mapping(t_address,t_struct(Reserve)8520_storage)": {
+        "encoding": "mapping",
+        "key": "t_address",
+        "label": "mapping(address => struct MixinReserve.Reserve)",
+        "numberOfBytes": "32",
+        "value": "t_struct(Reserve)8520_storage"
+      },
+      "t_mapping(t_address,t_struct(Sender)8844_storage)": {
+        "encoding": "mapping",
+        "key": "t_address",
+        "label": "mapping(address => struct MixinTicketBrokerCore.Sender)",
+        "numberOfBytes": "32",
+        "value": "t_struct(Sender)8844_storage"
+      },
+      "t_mapping(t_address,t_uint256)": {
+        "encoding": "mapping",
+        "key": "t_address",
+        "label": "mapping(address => uint256)",
+        "numberOfBytes": "32",
+        "value": "t_uint256"
+      },
+      "t_mapping(t_bytes32,t_bool)": {
+        "encoding": "mapping",
+        "key": "t_bytes32",
+        "label": "mapping(bytes32 => bool)",
+        "numberOfBytes": "32",
+        "value": "t_bool"
+      },
+      "t_mapping(t_uint256,t_mapping(t_address,t_uint256))": {
+        "encoding": "mapping",
+        "key": "t_uint256",
+        "label": "mapping(uint256 => mapping(address => uint256))",
+        "numberOfBytes": "32",
+        "value": "t_mapping(t_address,t_uint256)"
+      },
+      "t_mapping(t_uint256,t_uint256)": {
+        "encoding": "mapping",
+        "key": "t_uint256",
+        "label": "mapping(uint256 => uint256)",
+        "numberOfBytes": "32",
+        "value": "t_uint256"
+      },
+      "t_struct(Reserve)8520_storage": {
+        "encoding": "inplace",
+        "label": "struct MixinReserve.Reserve",
+        "members": [
+          {
+            "astId": 8509,
+            "contract": "contracts/pm/TicketBroker.sol:TicketBroker",
+            "label": "funds",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_uint256"
+          },
+          {
+            "astId": 8513,
+            "contract": "contracts/pm/TicketBroker.sol:TicketBroker",
+            "label": "claimedForRound",
+            "offset": 0,
+            "slot": "1",
+            "type": "t_mapping(t_uint256,t_uint256)"
+          },
+          {
+            "astId": 8519,
+            "contract": "contracts/pm/TicketBroker.sol:TicketBroker",
+            "label": "claimedByAddress",
+            "offset": 0,
+            "slot": "2",
+            "type": "t_mapping(t_uint256,t_mapping(t_address,t_uint256))"
+          }
+        ],
+        "numberOfBytes": "96"
+      },
+      "t_struct(Sender)8844_storage": {
+        "encoding": "inplace",
+        "label": "struct MixinTicketBrokerCore.Sender",
+        "members": [
+          {
+            "astId": 8841,
+            "contract": "contracts/pm/TicketBroker.sol:TicketBroker",
+            "label": "deposit",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_uint256"
+          },
+          {
+            "astId": 8843,
+            "contract": "contracts/pm/TicketBroker.sol:TicketBroker",
+            "label": "withdrawRound",
+            "offset": 0,
+            "slot": "1",
+            "type": "t_uint256"
+          }
+        ],
+        "numberOfBytes": "64"
+      },
+      "t_uint256": {
+        "encoding": "inplace",
+        "label": "uint256",
+        "numberOfBytes": "32"
+      }
+    }
+  }
+}
