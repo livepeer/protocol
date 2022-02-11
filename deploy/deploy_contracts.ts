@@ -164,6 +164,7 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
     await contractDeployer.deployAndRegister({
         contract: "ServiceRegistry",
         name: "ServiceRegistry",
+        proxy: true,
         args: [Controller.address]
     })
 
