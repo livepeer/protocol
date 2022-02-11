@@ -107,7 +107,7 @@ const arbitrumMainnet = {
     },
     broker: {
         // Rounds
-        unblockPeriod: 2,
+        unlockPeriod: 2,
         // Rounds
         ticketValidityPeriod: 2
     },
