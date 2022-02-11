@@ -106,9 +106,6 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
         if (!(await livepeerToken.hasRole(DEFAULT_ADMIN_ROLE, deployer))) {
             throw new Error("deployer is not admin for LPT")
         }
-
-        // Grant MINTER_ROLE to deployer in order to mint tokens as a part of deployment
-        await (await livepeerToken.grantRole(MINTER_ROLE, deployer)).wait()
     } else {
         livepeerToken = await contractDeployer.deployAndRegister({
             contract: "LivepeerToken",
