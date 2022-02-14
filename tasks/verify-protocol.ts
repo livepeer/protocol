@@ -154,6 +154,12 @@ task(
         config.bondingManager.unbondingPeriod
     )
 
+    assertEqual(
+        "BondingManager:numActiveTranscoders",
+        await bondingManager.getTranscoderPoolMaxSize(),
+        config.bondingManager.numActiveTranscoders
+    )
+
     // Check ticketBroker params
     const ticketBroker: TicketBroker = await ethers.getContractAt(
         "TicketBroker",
