@@ -92,7 +92,7 @@ async function assertEqual(name: string, actual: any, expected: any) {
 }
 
 task(
-    "verify-contracts",
+    "verify-protocol",
     "Verifies addresses and params for deployed protocol contracts"
 ).setAction(async (_, hre: HardhatRuntimeEnvironment) => {
     const {deployments, ethers} = hre
