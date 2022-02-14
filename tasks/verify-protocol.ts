@@ -14,7 +14,8 @@ import {
 
 const BridgeContracts = {
     L2Migrator: "0x148D5b6B4df9530c7C76A810bd1Cdf69EC4c2085",
-    L2MigratorTarget: "0x4F59b39e2ea628fe8371BDfd51B063319339c7EE"
+    L2MigratorTarget: "0x4F59b39e2ea628fe8371BDfd51B063319339c7EE",
+    L2LPTDataCache: "0xd78b6bD09cd28A83cFb21aFa0DA95c685A6bb0B1"
 }
 
 class Controller {
@@ -58,6 +59,8 @@ class Controller {
             deployedAddress = BridgeContracts.L2Migrator
         } else if (name === "L2MigratorTarget") {
             deployedAddress = BridgeContracts.L2MigratorTarget
+        } else if (name === "L2LPTDataCache") {
+            deployedAddress = BridgeContracts.L2LPTDataCache
         } else {
             deployedAddress = (await this.deployments.get(name)).address
         }
@@ -111,7 +114,8 @@ task(
         "ServiceRegistryTarget",
         "MerkleSnapshot",
         "L2Migrator",
-        "L2MigratorTarget"
+        "L2MigratorTarget",
+        "L2LPTDataCache"
     ]
 
     await Promise.all(
