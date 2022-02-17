@@ -1,0 +1,3 @@
+[submodule "/Users/yondonfu/Development/livepeer/protocol/lib/ds-test"]
+	path = /Users/yondonfu/Development/livepeer/protocol/lib/ds-test
+	url = https://github.com/dapphub/ds-test
