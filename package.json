@@ -15,7 +15,7 @@
     "eslint": "eslint . --ext .js,.ts",
     "solhint": "npx solhint 'contracts/**/*.sol'",
     "prettier:ts": "prettier-eslint --write 'test/**/*.{js,ts}' 'scripts/**/*.{js,ts}' 'deploy/**/*.{js,ts}' 'tasks/**/*.{js,ts}'",
-    "prettier:sol": "prettier --write 'contracts/**/*.sol'",
+    "prettier:sol": "prettier --write 'contracts/**/*.sol' 'src/**/*.sol'",
     "prettier": "yarn prettier:sol && yarn prettier:ts",
     "clean": "rm -rf cache artifacts typechain",
     "compile": "npx hardhat compile",
