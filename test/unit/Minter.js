@@ -235,35 +235,49 @@ describe("Minter", () => {
         })
 
         it("should transfer current token balance and current ETH balance to new minter", async () => {
+            const tokenMock = await smock.fake("ILivepeerToken")
+
+            const info = await fixture.controller.getContractInfo(
+                contractId("LivepeerToken")
+            )
+            const gitCommitHash = info[1]
+            await fixture.controller.setContractInfo(
+                contractId("LivepeerToken"),
+                tokenMock.address,
+                gitCommitHash
+            )
+
+            const minterETHBalance = 100
             await fixture.ticketBroker
                 .connect(signers[1])
                 .execute(minter.address, functionSig("depositETH()"), {
-                    value: 100
+                    value: minterETHBalance
                 })
 
+            const minterTokenBalance = 2000
+            tokenMock.balanceOf.returns(minterTokenBalance)
+
+            const newMinterDeployParams = [
+                await minter.controller(),
+                await minter.inflation(),
+                await minter.inflationChange(),
+                await minter.targetBondingRate()
+            ]
             const newMinter = await (
-                await ethers.getContractFactory("GenericMock")
-            ).deploy()
-            const controllerAddr = await minter.controller()
-            await newMinter.setMockAddress(
-                functionSig("getController()"),
-                controllerAddr
-            )
-            await fixture.controller.pause()
+                await ethers.getContractFactory("Minter")
+            ).deploy(...newMinterDeployParams)
 
-            // Just make sure token ownership and token balance transfer do not fail
-            await minter.migrateToNewMinter(newMinter.address)
+            const tx = await minter.migrateToNewMinter(newMinter.address)
 
-            assert.equal(
-                await web3.eth.getBalance(newMinter.address),
-                100,
-                "wrong new minter balance"
+            expect(tokenMock.transfer).to.be.calledOnceWith(
+                newMinter.address,
+                minterTokenBalance
             )
-            assert.equal(
-                await web3.eth.getBalance(minter.address),
-                0,
-                "wrong old minter balance"
-            )
+            await expect(tx).to.changeEtherBalance(newMinter, minterETHBalance)
+            await expect(tx).to.changeEtherBalance(minter, -minterETHBalance)
+            expect(
+                await ethers.provider.getBalance(minter.address)
+            ).to.be.equal(0)
         })
     })
 
