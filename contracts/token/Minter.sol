@@ -206,7 +206,7 @@ contract Minter is Manager, IMinter {
         setInflation();
 
         // Set mintable tokens based upon current inflation and current total token supply
-        currentMintableTokens = MathUtils.percOf(livepeerToken().totalSupply(), inflation);
+        currentMintableTokens = MathUtils.percOf(getGlobalTotalSupply(), inflation);
         currentMintedTokens = 0;
 
         emit SetCurrentRewardTokens(currentMintableTokens, inflation);

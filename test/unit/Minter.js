@@ -879,6 +879,17 @@ describe("Minter", () => {
                 functionSig("getTotalBonded()"),
                 500
             )
+            // Set global total supply
+            const l1CirculatingSupply = 200
+            await fixture.l2LPTDataCache.setMockUint256(
+                functionSig("l1CirculatingSupply()"),
+                l1CirculatingSupply
+            )
+
+            expect(await minter.getGlobalTotalSupply()).to.be.equal(
+                1000 + l1CirculatingSupply
+            )
+
             // Call setCurrentRewardTokens via RoundsManager
             await fixture.roundsManager.execute(
                 minter.address,
@@ -887,7 +898,9 @@ describe("Minter", () => {
 
             const inflation = await minter.inflation()
             const expCurrentMintableTokens = Math.floor(
-                (1000 * inflation.toNumber()) / PERC_DIVISOR
+                ((await minter.getGlobalTotalSupply()).toNumber() *
+                    inflation.toNumber()) /
+                    PERC_DIVISOR
             )
 
             assert.equal(
