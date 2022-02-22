@@ -83,7 +83,13 @@ const config: HardhatUserConfig = {
             accounts: PRIVATE_KEY ? [`0x${PRIVATE_KEY}`] : undefined
         },
         localhost: {
-            url: "http://127.0.0.1:8545"
+            url: "http://127.0.0.1:8545",
+            allowUnlimitedContractSize: true,
+            accounts: {
+                // note: run ganache / your local node set up with the same mnemonic {see: run_local_deployment.sh}
+                mnemonic: "test test test test test test test test test test test junk",
+                count: 250
+            }
         }
     },
     gasReporter: {
