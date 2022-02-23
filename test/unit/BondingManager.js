@@ -2953,6 +2953,11 @@ describe("BondingManager", () => {
                     expect(d1BondedAmountStart).to.equal(2000)
                     expect(d2BondedAmountStart).to.equal(0)
 
+                    expect(
+                        (await bondingManager.getDelegator(delegator2.address))
+                            .lastClaimRound
+                    ).to.not.equal(currentRound + 2)
+
                     await bondingManager
                         .connect(delegator1)
                         .transferBond(
@@ -2971,12 +2976,18 @@ describe("BondingManager", () => {
                         await bondingManager.getDelegator(delegator2.address)
                     ).bondedAmount
 
-                    const d1DelegateAddress = (
-                        await bondingManager.getDelegator(delegator1.address)
-                    ).delegateAddress
-                    const d2DelegateAddress = (
-                        await bondingManager.getDelegator(delegator2.address)
-                    ).delegateAddress
+                    const d1 = await bondingManager.getDelegator(
+                        delegator1.address
+                    )
+                    const d2 = await bondingManager.getDelegator(
+                        delegator2.address
+                    )
+
+                    const d1DelegateAddress = d1.delegateAddress
+                    const d2DelegateAddress = d2.delegateAddress
+
+                    const d1LastClaimRound = d1.lastClaimRound
+                    const d2LastClaimRound = d2.lastClaimRound
 
                     expect(d1BondedAmount).to.equal(
                         200,
@@ -2995,6 +3006,9 @@ describe("BondingManager", () => {
                         transcoder0.address,
                         "wrong delegate for delegator 2"
                     )
+
+                    expect(d1LastClaimRound).to.equal(currentRound + 2)
+                    expect(d2LastClaimRound).to.equal(currentRound + 2)
                 })
             })
 
@@ -3003,6 +3017,10 @@ describe("BondingManager", () => {
                     await bondingManager
                         .connect(delegator2)
                         .bond(2000, transcoder0.address)
+                    await fixture.roundsManager.setMockUint256(
+                        functionSig("currentRound()"),
+                        currentRound + 3
+                    )
                 })
 
                 it("should transfer the bond to receiver", async () => {
@@ -3020,6 +3038,11 @@ describe("BondingManager", () => {
                     expect(d1BondedAmountStart).to.equal(2000)
                     expect(d2BondedAmountStart).to.equal(2000)
 
+                    expect(
+                        (await bondingManager.getDelegator(delegator2.address))
+                            .lastClaimRound
+                    ).to.not.equal(currentRound + 3)
+
                     await bondingManager
                         .connect(delegator1)
                         .transferBond(
@@ -3036,12 +3059,21 @@ describe("BondingManager", () => {
                     ).delegatedAmount
                     expect(delegatedAmountEnd).to.equal(delegatedAmountStart)
 
-                    const d1BondedAmount = (
-                        await bondingManager.getDelegator(delegator1.address)
-                    ).bondedAmount
-                    const d2BondedAmount = (
-                        await bondingManager.getDelegator(delegator2.address)
-                    ).bondedAmount
+                    const d1 = await bondingManager.getDelegator(
+                        delegator1.address
+                    )
+                    const d2 = await bondingManager.getDelegator(
+                        delegator2.address
+                    )
+
+                    const d1BondedAmount = d1.bondedAmount
+                    const d2BondedAmount = d2.bondedAmount
+
+                    const d1DelegateAddress = d1.delegateAddress
+                    const d2DelegateAddress = d2.delegateAddress
+
+                    const d1LastClaimRound = d1.lastClaimRound
+                    const d2LastClaimRound = d2.lastClaimRound
 
                     expect(d1BondedAmount).to.equal(
                         200,
@@ -3052,13 +3084,6 @@ describe("BondingManager", () => {
                         "wrong bonded amount for delegator 2"
                     )
 
-                    const d1DelegateAddress = (
-                        await bondingManager.getDelegator(delegator1.address)
-                    ).delegateAddress
-                    const d2DelegateAddress = (
-                        await bondingManager.getDelegator(delegator2.address)
-                    ).delegateAddress
-
                     expect(d1DelegateAddress).to.equal(
                         transcoder0.address,
                         "wrong delegate for delegator 1"
@@ -3067,6 +3092,9 @@ describe("BondingManager", () => {
                         transcoder0.address,
                         "wrong delegate for delegator 2"
                     )
+
+                    expect(d1LastClaimRound).to.equal(currentRound + 3)
+                    expect(d2LastClaimRound).to.equal(currentRound + 3)
                 })
             })
 
@@ -3075,6 +3103,10 @@ describe("BondingManager", () => {
                     await bondingManager
                         .connect(delegator2)
                         .bond(2000, transcoder1.address)
+                    await fixture.roundsManager.setMockUint256(
+                        functionSig("currentRound()"),
+                        currentRound + 3
+                    )
                 })
 
                 it("should transfer the bond to receiver", async () => {
@@ -3106,12 +3138,21 @@ describe("BondingManager", () => {
                             ZERO_ADDRESS
                         )
 
-                    const d1BondedAmount = (
-                        await bondingManager.getDelegator(delegator1.address)
-                    ).bondedAmount
-                    const d2BondedAmount = (
-                        await bondingManager.getDelegator(delegator2.address)
-                    ).bondedAmount
+                    const d1 = await bondingManager.getDelegator(
+                        delegator1.address
+                    )
+                    const d2 = await bondingManager.getDelegator(
+                        delegator2.address
+                    )
+
+                    const d1BondedAmount = d1.bondedAmount
+                    const d2BondedAmount = d2.bondedAmount
+
+                    const d1DelegateAddress = d1.delegateAddress
+                    const d2DelegateAddress = d2.delegateAddress
+
+                    const d1LastClaimRound = d1.lastClaimRound
+                    const d2LastClaimRound = d2.lastClaimRound
 
                     expect(d1BondedAmount).to.equal(
                         200,
@@ -3121,13 +3162,6 @@ describe("BondingManager", () => {
                         3800,
                         "wrong bonded amount for delegator 2"
                     )
-
-                    const d1DelegateAddress = (
-                        await bondingManager.getDelegator(delegator1.address)
-                    ).delegateAddress
-                    const d2DelegateAddress = (
-                        await bondingManager.getDelegator(delegator2.address)
-                    ).delegateAddress
 
                     expect(d1DelegateAddress).to.equal(
                         transcoder0.address,
@@ -3151,6 +3185,9 @@ describe("BondingManager", () => {
                     expect(
                         t1DelegatedAmountEnd.sub(t1DelegatedAmountStart)
                     ).to.equal(1800, "incorrect t1 delegatedAmount")
+
+                    expect(d1LastClaimRound).to.equal(currentRound + 3)
+                    expect(d2LastClaimRound).to.equal(currentRound + 3)
                 })
             })
         })

@@ -623,9 +623,21 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
         emit TransferBond(msg.sender, _delegator, oldDelUnbondingLockId, newDelUnbondingLockId, _amount);
 
+        // Claim earnings for receiver before processing unbonding lock
+        uint256 currentRound = roundsManager().currentRound();
+        uint256 lastClaimRound = newDel.lastClaimRound;
+        if (lastClaimRound < currentRound) {
+            updateDelegatorWithEarnings(_delegator, currentRound, lastClaimRound);
+        }
+
         // Rebond lock for new owner
         if (newDel.delegateAddress == address(0)) {
             newDel.delegateAddress = oldDel.delegateAddress;
+        }
+
+        // Move to Pending state if receiver is currently in Unbonded state
+        if (delegatorStatus(_delegator) == DelegatorStatus.Unbonded) {
+            newDel.startRound = currentRound.add(1);
         }
 
         // Process rebond using unbonding lock
