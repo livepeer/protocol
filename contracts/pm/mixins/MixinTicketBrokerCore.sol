@@ -316,6 +316,7 @@ abstract contract MixinTicketBrokerCore is MixinContractRegistry, MReserve, MTic
         bytes memory _sig,
         bytes32 _ticketHash
     ) internal pure returns (bool) {
+        require(_sig.length == 65, "eip2098 not allowed");
         address signer = ECDSA.recover(ECDSA.toEthSignedMessageHash(_ticketHash), _sig);
         return signer != address(0) && _sender == signer;
     }

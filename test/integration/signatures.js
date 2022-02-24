@@ -23,14 +23,11 @@ export const resetNetwork = async () => {
 }
 
 /**
- * Prove that:
- * - 1) the conversion from long signature to eip-2098 compliant signature leads to the generation of a different pseudorandom number
- * - 2) the orchestrator has at their disposal two different pseudorandom numbers which grant them twice as much the probability they should have to be the PM winners as per protocol design
- * - 3) the vulnerability is only limited to the probability of winning the lottery and does not affect the redemption phase whereby a an orchestrator would be able to claim their lottery prize twice - the eligibility of the two pseudorandom numbers is always mutually exclusive
+ * Ensures that PoC exploit introduced in #49163e560ef28b7cbb8c86d233b55618ad29a756 is not viable anymore (the current patch allows the TicketBroker to accept only  signatures with length == 65 bytes)
  *
  */
 
-describe("Exploit PoC", () => {
+describe("Signatures tests", () => {
     const recipientRand = 5
     const faceValue = 1000
     const deposit = ethers.utils.parseEther("1")
@@ -140,8 +137,7 @@ describe("Exploit PoC", () => {
         await resetNetwork()
     })
 
-    // see 1) and 2)
-    it("under the max `winProb` value, a ticket has two signature formats that are both eligible to win the lottery", async () => {
+    it("under the max `winProb` value, a ticket has two signature formats that are both eligible to win the lottery, but TicketBroker only accepts legacy long signatures", async () => {
         const BrokerMock = await ethers.getContractFactory(
             "TickerBrokerExtendedMock"
         )
@@ -166,14 +162,15 @@ describe("Exploit PoC", () => {
             recipientRand
         )
 
-        const hasEIP2098SignatureWon =
-            await brokerMock.validateAndCheckTicketOutcome(
+        await expect(
+            brokerMock.validateAndCheckTicketOutcome(
                 ticket.sender,
                 getTicketHash(ticket),
                 eip2098Signature,
                 recipientRand,
                 ticket.winProb
             )
+        ).to.be.revertedWith("eip2098 not allowed")
 
         const eip2098SignatureToNumber = await brokerMock.checkResult(
             eip2098Signature,
@@ -188,7 +185,6 @@ describe("Exploit PoC", () => {
             "signature-generated pseudorandom numbers are identical"
         ).to.not.be.eq(eip2098SignatureToNumber)
         expect(hasLongSignatureWon, "long signature not eligible").to.be.true
-        expect(hasEIP2098SignatureWon, "2098-eip signature not eligible").to.be
             .true
 
         // / flipping v value
@@ -212,7 +208,7 @@ describe("Exploit PoC", () => {
                 recipientRand,
                 ticket.winProb
             )
-        ).to.be.revertedWith("invalid signature over ticket hash")
+        ).to.be.revertedWith("eip2098 not allowed")
 
         await expect(
             brokerMock.validateAndCheckTicketOutcome(
@@ -225,8 +221,7 @@ describe("Exploit PoC", () => {
         ).to.be.revertedWith("invalid signature over ticket hash")
     })
 
-    // see 3)
-    it("if an orchestrator redeems a winning ticket with the long-signature format, they should not be able to redeem it again with the eip2098 signature format", async () => {
+    it("redeeming a ticket with an eip-2098 signature should always result in failure", async () => {
         const deposit = (await broker.getSenderInfo(broadcaster.address)).sender
             .deposit
 
@@ -261,8 +256,7 @@ describe("Exploit PoC", () => {
         ).to.equal(faceValue)
     })
 
-    // see 3)
-    it("if an orchestrator redeems a winning ticket with the eip2098 long-signature format, they should not be able to redeem it again with the long-signature format", async () => {
+    it("redeeming a ticket with an eip-2098 signature should always result in failure", async () => {
         const deposit = (await broker.getSenderInfo(broadcaster.address)).sender
             .deposit
 
@@ -273,15 +267,17 @@ describe("Exploit PoC", () => {
 
         const sig2098 = await to2098Format(senderSig)
 
-        await broker
-            .connect(transcoder)
-            .redeemWinningTicket(ticket, sig2098, recipientRand)
+        await expect(
+            broker
+                .connect(transcoder)
+                .redeemWinningTicket(ticket, sig2098, recipientRand)
+        ).to.be.revertedWith("eip2098 not allowed")
 
         await expect(
             broker
                 .connect(transcoder)
                 .redeemWinningTicket(ticket, senderSig, recipientRand)
-        ).to.be.revertedWith("ticket is used")
+        )
 
         const endDeposit = (await broker.getSenderInfo(broadcaster.address))
             .sender.deposit
@@ -292,6 +288,7 @@ describe("Exploit PoC", () => {
 
         const round = await roundsManager.currentRound()
 
+        // there are no delegators so pendingFees(transcoder, currentRound) will include all fees
         expect(
             await bondingManager.pendingFees(transcoder.address, round)
         ).to.equal(faceValue)
