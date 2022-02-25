@@ -3010,6 +3010,43 @@ describe("BondingManager", () => {
                     expect(d1LastClaimRound).to.equal(currentRound + 2)
                     expect(d2LastClaimRound).to.equal(currentRound + 2)
                 })
+
+                it("should set non-null delegate address for receiver when the caller becomes fully unbonded", async () => {
+                    const delegate = (
+                        await bondingManager.getDelegator(delegator1.address)
+                    ).delegateAddress
+                    const pendingStake = await bondingManager.pendingStake(
+                        delegator1.address,
+                        0
+                    )
+
+                    await bondingManager
+                        .connect(delegator1)
+                        .transferBond(
+                            delegator2.address,
+                            pendingStake,
+                            ZERO_ADDRESS,
+                            ZERO_ADDRESS,
+                            ZERO_ADDRESS,
+                            ZERO_ADDRESS
+                        )
+
+                    // Caller becomes fully unbonded
+                    const info = await bondingManager.getDelegator(
+                        delegator1.address
+                    )
+                    expect(info.delegateAddress).to.equal(ZERO_ADDRESS)
+                    expect(info.bondedAmount).to.equal(0)
+                    expect(
+                        await bondingManager.delegatorStatus(delegator1.address)
+                    ).to.be.equal(DelegatorStatus.Unbonded)
+
+                    // Receiver's delegate is set to caller's delegate before fully unbonding
+                    expect(
+                        (await bondingManager.getDelegator(delegator2.address))
+                            .delegateAddress
+                    ).to.equal(delegate)
+                })
             })
 
             describe("receiver is bonded to the same transcoder", () => {

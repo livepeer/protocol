@@ -604,9 +604,13 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         address _newDelegateNewPosPrev,
         address _newDelegateNewPosNext
     ) public whenSystemNotPaused currentRoundInitialized autoClaimEarnings {
+        Delegator storage oldDel = delegators[msg.sender];
+        // Cache delegate address of caller before unbondWithHint because
+        // if unbondWithHint is for a full unbond the caller's delegate address will be set to null
+        address oldDelDelegate = oldDel.delegateAddress;
+
         unbondWithHint(_amount, _oldDelegateNewPosPrev, _oldDelegateNewPosNext);
 
-        Delegator storage oldDel = delegators[msg.sender];
         Delegator storage newDel = delegators[_delegator];
 
         uint256 oldDelUnbondingLockId = oldDel.nextUnbondingLockId.sub(1);
@@ -632,7 +636,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
         // Rebond lock for new owner
         if (newDel.delegateAddress == address(0)) {
-            newDel.delegateAddress = oldDel.delegateAddress;
+            newDel.delegateAddress = oldDelDelegate;
         }
 
         // Move to Pending state if receiver is currently in Unbonded state
