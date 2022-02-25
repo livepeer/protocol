@@ -221,7 +221,7 @@ describe("Signatures tests", () => {
         ).to.be.revertedWith("invalid signature over ticket hash")
     })
 
-    it("redeeming a ticket with an eip-2098 signature should always result in failure", async () => {
+    it("redeeming a redeemed ticket with an eip-2098 signature should always result in failure", async () => {
         const deposit = (await broker.getSenderInfo(broadcaster.address)).sender
             .deposit
 
@@ -256,7 +256,7 @@ describe("Signatures tests", () => {
         ).to.equal(faceValue)
     })
 
-    it("redeeming a ticket with an eip-2098 signature should always result in failure", async () => {
+    it("redeeming an unredeemed ticket with an eip-2098 signature should always result in failure", async () => {
         const deposit = (await broker.getSenderInfo(broadcaster.address)).sender
             .deposit
 
