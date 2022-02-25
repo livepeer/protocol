@@ -488,6 +488,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         uint256 delegationAmount = _amount;
         // Current delegate
         address currentDelegate = del.delegateAddress;
+        // Current bonded amount
+        uint256 currentBondedAmount = del.bondedAmount;
 
         if (delegatorStatus(_owner) == DelegatorStatus.Unbonded) {
             // New delegate
@@ -496,7 +498,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             del.startRound = currentRound.add(1);
             // Unbonded state = no existing delegate and no bonded stake
             // Thus, delegation amount = provided amount
-        } else if (currentDelegate != address(0) && currentDelegate != _to) {
+        } else if (currentBondedAmount > 0 && currentDelegate != _to) {
             // A registered transcoder cannot delegate its bonded stake toward another address
             // because it can only be delegated toward itself
             // In the future, if delegation towards another registered transcoder as an already
@@ -507,9 +509,9 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             // Set start round
             del.startRound = currentRound.add(1);
             // Update amount to delegate with previous delegation amount
-            delegationAmount = delegationAmount.add(del.bondedAmount);
+            delegationAmount = delegationAmount.add(currentBondedAmount);
 
-            decreaseTotalStake(currentDelegate, del.bondedAmount, _oldDelegateNewPosPrev, _oldDelegateNewPosNext);
+            decreaseTotalStake(currentDelegate, currentBondedAmount, _oldDelegateNewPosPrev, _oldDelegateNewPosNext);
         }
 
         {
@@ -530,7 +532,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // Update delegate
         del.delegateAddress = _to;
         // Update bonded amount
-        del.bondedAmount = del.bondedAmount.add(_amount);
+        del.bondedAmount = currentBondedAmount.add(_amount);
 
         increaseTotalStake(_to, delegationAmount, _currDelegateNewPosPrev, _currDelegateNewPosNext);
 

@@ -26,6 +26,8 @@ describe("BondingManager", () => {
     const PERC_DIVISOR = 1000000
     const PERC_MULTIPLIER = PERC_DIVISOR / 100
 
+    const ZERO_ADDRESS = ethers.constants.AddressZero
+
     let signers
     before(async () => {
         signers = await ethers.getSigners()
@@ -860,6 +862,28 @@ describe("BondingManager", () => {
                 )
             })
 
+            it("should allow delegate to be null", async () => {
+                const startDelegatedAmount = (
+                    await bondingManager.getDelegator(ZERO_ADDRESS)
+                ).delegatedAmount
+
+                await bondingManager.connect(delegator).bond(1000, ZERO_ADDRESS)
+
+                const endDelegatedAmount = (
+                    await bondingManager.getDelegator(ZERO_ADDRESS)
+                ).delegatedAmount
+
+                expect(endDelegatedAmount.sub(startDelegatedAmount)).to.equal(
+                    1000
+                )
+
+                const info = await bondingManager.getDelegator(
+                    delegator.address
+                )
+                expect(info.delegateAddress).to.equal(ZERO_ADDRESS)
+                expect(info.bondedAmount).to.equal(1000)
+            })
+
             it("should fire a Bond event when bonding from unbonded", async () => {
                 const txRes = bondingManager
                     .connect(delegator)
@@ -1060,6 +1084,27 @@ describe("BondingManager", () => {
                         2000,
                         "wrong change in delegatedAmount"
                     )
+                })
+                it("should decrease old delegate's delegated amount if current delegate is null", async () => {
+                    await bondingManager
+                        .connect(delegator)
+                        .bond(0, ZERO_ADDRESS)
+
+                    const startDelegatedAmount = (
+                        await bondingManager.getDelegator(ZERO_ADDRESS)
+                    ).delegatedAmount
+
+                    await bondingManager
+                        .connect(delegator)
+                        .bond(0, transcoder1.address)
+
+                    const endDelegatedAmount = (
+                        await bondingManager.getDelegator(ZERO_ADDRESS)
+                    ).delegatedAmount
+
+                    expect(
+                        startDelegatedAmount.sub(endDelegatedAmount)
+                    ).to.equal(2000)
                 })
                 it("should set new delegate", async () => {
                     await bondingManager
@@ -2842,7 +2887,6 @@ describe("BondingManager", () => {
         let delegator1
         let delegator2
         const currentRound = 100
-        const ZERO_ADDRESS = ethers.constants.AddressZero
 
         beforeEach(async () => {
             transcoder0 = signers[0]
