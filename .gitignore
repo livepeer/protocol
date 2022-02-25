@@ -16,3 +16,4 @@ cache
 dist/
 typechain/
 .env
+foundry_artifacts

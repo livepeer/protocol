@@ -1,6 +1,6 @@
 [default]
 src = 'src'
-out = 'artifacts'
+out = 'foundry_artifacts'
 libs = ['node_modules']
 remappings = [
     '@ensdomains/=node_modules/@ensdomains/',
