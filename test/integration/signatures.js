@@ -170,7 +170,7 @@ describe("Signatures tests", () => {
                 recipientRand,
                 ticket.winProb
             )
-        ).to.be.revertedWith("eip2098 not allowed")
+        ).to.be.revertedWith("INVALID_SIGNATURE_LENGTH")
 
         const eip2098SignatureToNumber = await brokerMock.checkResult(
             eip2098Signature,
@@ -208,7 +208,7 @@ describe("Signatures tests", () => {
                 recipientRand,
                 ticket.winProb
             )
-        ).to.be.revertedWith("eip2098 not allowed")
+        ).to.be.revertedWith("INVALID_SIGNATURE_LENGTH")
 
         await expect(
             brokerMock.validateAndCheckTicketOutcome(
@@ -271,7 +271,7 @@ describe("Signatures tests", () => {
             broker
                 .connect(transcoder)
                 .redeemWinningTicket(ticket, sig2098, recipientRand)
-        ).to.be.revertedWith("eip2098 not allowed")
+        ).to.be.revertedWith("INVALID_SIGNATURE_LENGTH")
 
         await expect(
             broker
