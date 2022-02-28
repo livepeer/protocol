@@ -929,7 +929,7 @@ describe("TicketBroker", () => {
             ).to.be.revertedWith("sender deposit and reserve are zero")
         })
 
-        describe("ticket has two signature formats that are both eligible to win", () => {
+        describe("only legacy long-signatures are supported by the protocol ", () => {
             let ticket
             const recipientRand = 5
 
@@ -989,7 +989,7 @@ describe("TicketBroker", () => {
                     "signature-generated pseudorandom numbers are identical"
                 ).to.not.be.eq(eip2098SignatureToNumber)
                 expect(hasLongSignatureWon, "long signature not eligible").to.be
-                    .true.true
+                    .true
 
                 // / flipping v value
                 const flippedLongSignature = flipV(longSignature)
