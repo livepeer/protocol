@@ -86,7 +86,7 @@ To run integration tests only:
 yarn test:integration
 ```
 
-To run gas reporting tests (via [hardhat-gas-reporter](https://hardhat.org/plugins/hardhat-gas-reporter.html)) only:
+To run gas reporting tests (via [hardhat-gas-reporter](https://www.npmjs.com/package/hardhat-gas-reporter)) only:
 
 ```
 yarn test:gas
