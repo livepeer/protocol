@@ -1995,6 +1995,31 @@ describe("BondingManager", () => {
                     "wrong bondedAmount for delegator 2"
                 )
             })
+
+            it("should not change delegate of delegator without consent", async () => {
+                const initialDelegate = (
+                    await bondingManager.getDelegator(delegator1.address)
+                ).delegateAddress
+                expect(initialDelegate).to.equal(transcoder0.address)
+
+                const tx = bondingManager
+                    .connect(transcoder1)
+                    .bondForWithHint(
+                        0,
+                        delegator1.address,
+                        transcoder1.address,
+                        ethers.constants.AddressZero,
+                        ethers.constants.AddressZero,
+                        ethers.constants.AddressZero,
+                        ethers.constants.AddressZero
+                    )
+                await expect(tx).to.be.reverted
+
+                const finalDelegate = (
+                        await bondingManager.getDelegator(delegator1.address)
+                    ).delegateAddress
+                expect(finalDelegate).to.equal(transcoder0.address)                
+            })
         })
     })
 
