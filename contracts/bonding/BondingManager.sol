@@ -483,10 +483,6 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     ) public whenSystemNotPaused currentRoundInitialized autoClaimEarnings {
         Delegator storage del = delegators[_owner];
 
-        if (del.delegateAddress != _to) {
-            require(msg.sender == _owner || msg.sender == l2Migrator(), "INVALID_CALLER");
-        }
-
         uint256 currentRound = roundsManager().currentRound();
         // Amount to delegate
         uint256 delegationAmount = _amount;
@@ -503,6 +499,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             // Unbonded state = no existing delegate and no bonded stake
             // Thus, delegation amount = provided amount
         } else if (currentBondedAmount > 0 && currentDelegate != _to) {
+            // Prevents third-party caller to change the delegate of a delegator
+            require(msg.sender == _owner || msg.sender == l2Migrator(), "INVALID_CALLER");
             // A registered transcoder cannot delegate its bonded stake toward another address
             // because it can only be delegated toward itself
             // In the future, if delegation towards another registered transcoder as an already

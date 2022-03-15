@@ -1989,7 +1989,7 @@ describe("BondingManager", () => {
             })
 
             describe("caller is third-party", () => {
-                it("should fail to set delegate for a delegator", async () => {
+                it("should set delegate for an unbonded delegator", async () => {
                     const initialDelegate = (
                         await bondingManager.getDelegator(delegator3.address)
                     ).delegateAddress
@@ -1998,7 +1998,7 @@ describe("BondingManager", () => {
                         "wrong delegateAddress"
                     )
 
-                    const tx = bondingManager
+                    await bondingManager
                         .connect(thirdParty)
                         .bondForWithHint(
                             1000,
@@ -2010,7 +2010,19 @@ describe("BondingManager", () => {
                             ethers.constants.AddressZero
                         )
 
-                    await expect(tx).to.be.revertedWith("INVALID_CALLER")
+                    const finalDelegate = (
+                        await bondingManager.getDelegator(delegator3.address)
+                    ).delegateAddress
+                    expect(finalDelegate).to.equal(
+                        transcoder0.address,
+                        "wrong delegateAddress"
+                    )
+
+                    const bondedAmount = (
+                        await bondingManager.getDelegator(delegator3.address)
+                    ).bondedAmount
+
+                    expect(bondedAmount).to.equal(1000)
                 })
 
                 it("should fail to change delegate for a delegator", async () => {
