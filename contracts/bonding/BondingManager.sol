@@ -483,6 +483,10 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     ) public whenSystemNotPaused currentRoundInitialized autoClaimEarnings {
         Delegator storage del = delegators[_owner];
 
+        if (del.delegateAddress != _to) {
+            require(msg.sender == _owner || msg.sender == l2Migrator(), "INVALID_CALLER");
+        }
+
         uint256 currentRound = roundsManager().currentRound();
         // Amount to delegate
         uint256 delegationAmount = _amount;
@@ -1482,6 +1486,14 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      */
     function minter() internal view returns (IMinter) {
         return IMinter(controller.getContract(keccak256("Minter")));
+    }
+
+    /**
+     * @dev Return Address of L2Migrator
+     * @return l2Migrator contract address registered with Controller
+     */
+    function l2Migrator() internal view returns (address) {
+        return controller.getContract(keccak256("L2Migrator"));
     }
 
     /**

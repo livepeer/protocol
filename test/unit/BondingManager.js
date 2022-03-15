@@ -1839,6 +1839,9 @@ describe("BondingManager", () => {
         let transcoder1
         let delegator1
         let delegator2
+        let delegator3
+        let thirdParty
+        let l2migrator
         const currentRound = 100
 
         beforeEach(async () => {
@@ -1846,6 +1849,15 @@ describe("BondingManager", () => {
             transcoder1 = signers[1]
             delegator1 = signers[2]
             delegator2 = signers[3]
+            delegator3 = signers[4]
+            l2migrator = signers[5]
+            thirdParty = signers[6]
+
+            await fixture.controller.setContractInfo(
+                contractId("L2Migrator"),
+                l2migrator.address,
+                ethers.utils.randomBytes(20)
+            )
 
             await fixture.roundsManager.setMockBool(
                 functionSig("currentRoundInitialized()"),
@@ -1867,6 +1879,15 @@ describe("BondingManager", () => {
                 .connect(transcoder1)
                 .bond(2000, transcoder1.address)
             await bondingManager.connect(transcoder1).transcoder(5, 10)
+
+            await bondingManager
+                .connect(delegator1)
+                .bond(2000, transcoder0.address)
+
+            await bondingManager
+                .connect(delegator2)
+                .bond(2000, transcoder1.address)
+
             await fixture.roundsManager.setMockUint256(
                 functionSig("currentRound()"),
                 currentRound
@@ -1874,89 +1895,263 @@ describe("BondingManager", () => {
         })
 
         describe("caller is unbonded", () => {
-            it("should set delegate for different address", async () => {
-                await bondingManager
-                    .connect(delegator1)
-                    .bondForWithHint(
-                        1000,
-                        delegator2.address,
-                        transcoder0.address,
+            describe("caller is l2Migrator", () => {
+                it("should set delegate for a delegator", async () => {
+                    const initialDelegate = (
+                        await bondingManager.getDelegator(delegator3.address)
+                    ).delegateAddress
+                    expect(initialDelegate).to.equal(
                         ethers.constants.AddressZero,
-                        ethers.constants.AddressZero,
-                        ethers.constants.AddressZero,
-                        ethers.constants.AddressZero
+                        "wrong delegateAddress"
                     )
 
-                const delegateAddress = (
-                    await bondingManager.getDelegator(delegator2.address)
-                ).delegateAddress
-                expect(delegateAddress).to.equal(
-                    transcoder0.address,
-                    "wrong delegateAddress"
-                )
+                    await bondingManager
+                        .connect(l2migrator)
+                        .bondForWithHint(
+                            1000,
+                            delegator3.address,
+                            transcoder0.address,
+                            ethers.constants.AddressZero,
+                            ethers.constants.AddressZero,
+                            ethers.constants.AddressZero,
+                            ethers.constants.AddressZero
+                        )
+
+                    const delegateAddress = (
+                        await bondingManager.getDelegator(delegator3.address)
+                    ).delegateAddress
+                    expect(delegateAddress).to.equal(
+                        transcoder0.address,
+                        "wrong delegateAddress"
+                    )
+                })
+
+                it("should change delegate for a delegator", async () => {
+                    const initialDelegate = (
+                        await bondingManager.getDelegator(delegator1.address)
+                    ).delegateAddress
+                    expect(initialDelegate).to.equal(
+                        transcoder0.address,
+                        "wrong delegateAddress"
+                    )
+
+                    await bondingManager
+                        .connect(l2migrator)
+                        .bondForWithHint(
+                            1000,
+                            delegator1.address,
+                            transcoder1.address,
+                            ethers.constants.AddressZero,
+                            ethers.constants.AddressZero,
+                            ethers.constants.AddressZero,
+                            ethers.constants.AddressZero
+                        )
+
+                    const delegateAddress = (
+                        await bondingManager.getDelegator(delegator1.address)
+                    ).delegateAddress
+                    expect(delegateAddress).to.equal(
+                        transcoder1.address,
+                        "wrong delegateAddress"
+                    )
+                })
+
+                it("should increase delegated amount for a delegator without changing delegate", async () => {
+                    const delegate = (
+                        await bondingManager.getDelegator(delegator1.address)
+                    ).delegateAddress
+
+                    const initialBondedAmount = (
+                        await bondingManager.getDelegator(delegator1.address)
+                    ).bondedAmount
+
+                    await bondingManager
+                        .connect(l2migrator)
+                        .bondForWithHint(
+                            1000,
+                            delegator1.address,
+                            delegate,
+                            ethers.constants.AddressZero,
+                            ethers.constants.AddressZero,
+                            ethers.constants.AddressZero,
+                            ethers.constants.AddressZero
+                        )
+
+                    const endBondedAmount = (
+                        await bondingManager.getDelegator(delegator1.address)
+                    ).bondedAmount
+
+                    expect(endBondedAmount.sub(initialBondedAmount)).to.equal(
+                        1000,
+                        "wrong change in bonded amount"
+                    )
+                })
             })
 
-            it("should update delegate and bonded amount for a different address", async () => {
-                const startDelegatedAmount = (
-                    await bondingManager.getDelegator(transcoder0.address)
-                ).delegatedAmount
-                await bondingManager
-                    .connect(delegator1)
-                    .bondForWithHint(
-                        1000,
-                        delegator2.address,
-                        transcoder0.address,
+            describe("caller is third-party", () => {
+                it("should fail to set delegate for a delegator", async () => {
+                    const initialDelegate = (
+                        await bondingManager.getDelegator(delegator3.address)
+                    ).delegateAddress
+                    expect(initialDelegate).to.equal(
                         ethers.constants.AddressZero,
-                        ethers.constants.AddressZero,
-                        ethers.constants.AddressZero,
-                        ethers.constants.AddressZero
+                        "wrong delegateAddress"
                     )
-                const endDelegatedAmount = (
-                    await bondingManager.getDelegator(transcoder0.address)
-                ).delegatedAmount
-                expect(endDelegatedAmount.sub(startDelegatedAmount)).to.equal(
-                    1000,
-                    "wrong change in delegatedAmount"
-                )
 
-                const bondedAmount = (
-                    await bondingManager.getDelegator(delegator2.address)
-                ).bondedAmount
-                expect(bondedAmount).to.equal(1000, "wrong bondedAmount")
+                    const tx = bondingManager
+                        .connect(thirdParty)
+                        .bondForWithHint(
+                            1000,
+                            delegator3.address,
+                            transcoder0.address,
+                            ethers.constants.AddressZero,
+                            ethers.constants.AddressZero,
+                            ethers.constants.AddressZero,
+                            ethers.constants.AddressZero
+                        )
+
+                    await expect(tx).to.be.revertedWith("INVALID_CALLER")
+                })
+
+                it("should fail to change delegate for a delegator", async () => {
+                    const initialDelegate = (
+                        await bondingManager.getDelegator(delegator1.address)
+                    ).delegateAddress
+                    expect(initialDelegate).to.equal(
+                        transcoder0.address,
+                        "wrong delegateAddress"
+                    )
+
+                    const tx = bondingManager
+                        .connect(thirdParty)
+                        .bondForWithHint(
+                            1000,
+                            delegator1.address,
+                            transcoder1.address,
+                            ethers.constants.AddressZero,
+                            ethers.constants.AddressZero,
+                            ethers.constants.AddressZero,
+                            ethers.constants.AddressZero
+                        )
+
+                    await expect(tx).to.be.revertedWith("INVALID_CALLER")
+                })
+
+                it("should increase delegated amount for a delegator without changing delegate", async () => {
+                    const delegate = (
+                        await bondingManager.getDelegator(delegator2.address)
+                    ).delegateAddress
+
+                    const startBondedAmount = (
+                        await bondingManager.getDelegator(delegator2.address)
+                    ).bondedAmount
+
+                    await bondingManager
+                        .connect(thirdParty)
+                        .bondForWithHint(
+                            1000,
+                            delegator2.address,
+                            delegate,
+                            ethers.constants.AddressZero,
+                            ethers.constants.AddressZero,
+                            ethers.constants.AddressZero,
+                            ethers.constants.AddressZero
+                        )
+
+                    const endBondedAmount = (
+                        await bondingManager.getDelegator(delegator2.address)
+                    ).bondedAmount
+
+                    expect(endBondedAmount.sub(startBondedAmount)).to.equal(
+                        1000,
+                        "wrong change in bonded amount"
+                    )
+                })
             })
         })
 
         describe("caller is bonded", () => {
-            beforeEach(async () => {
-                await bondingManager
-                    .connect(delegator1)
-                    .bond(2000, transcoder0.address)
-                await fixture.roundsManager.setMockUint256(
-                    functionSig("currentRound()"),
-                    currentRound + 1
-                )
-            })
+            describe("changing delegate", () => {
+                describe("caller is owner", () => {
+                    it("should be able to change delegate", async () => {
+                        const initialDelegate = (
+                            await bondingManager.getDelegator(
+                                delegator1.address
+                            )
+                        ).delegateAddress
 
-            it("should fail if bond owner address is a registered transcoder", async () => {
-                const tx = bondingManager
-                    .connect(delegator1)
-                    .bondForWithHint(
-                        0,
-                        transcoder0.address,
-                        transcoder1.address,
-                        ethers.constants.AddressZero,
-                        ethers.constants.AddressZero,
-                        ethers.constants.AddressZero,
-                        ethers.constants.AddressZero
-                    )
-                await expect(tx).to.be.revertedWith(
-                    "registered transcoders can't delegate towards other addresses"
-                )
+                        expect(initialDelegate).to.equal(transcoder0.address)
+
+                        await bondingManager
+                            .connect(delegator1)
+                            .bondForWithHint(
+                                0,
+                                delegator1.address,
+                                transcoder1.address,
+                                ethers.constants.AddressZero,
+                                ethers.constants.AddressZero,
+                                ethers.constants.AddressZero,
+                                ethers.constants.AddressZero
+                            )
+
+                        const finalDelegate = (
+                            await bondingManager.getDelegator(
+                                delegator1.address
+                            )
+                        ).delegateAddress
+                        expect(finalDelegate).to.equal(transcoder1.address)
+                    })
+                })
+
+                describe("caller is third-party", () => {
+                    it("should fail to change delegate for a delegator", async () => {
+                        const initialDelegate = (
+                            await bondingManager.getDelegator(
+                                delegator1.address
+                            )
+                        ).delegateAddress
+
+                        expect(initialDelegate).to.equal(transcoder0.address)
+
+                        const tx = bondingManager
+                            .connect(delegator2)
+                            .bondForWithHint(
+                                0,
+                                delegator1.address,
+                                transcoder1.address,
+                                ethers.constants.AddressZero,
+                                ethers.constants.AddressZero,
+                                ethers.constants.AddressZero,
+                                ethers.constants.AddressZero
+                            )
+
+                        await expect(tx).to.be.revertedWith("INVALID_CALLER")
+                    })
+
+                    it("should fail to change self delegation for a transcoder", async () => {
+                        const tx = bondingManager
+                            .connect(transcoder1)
+                            .bondForWithHint(
+                                1000,
+                                transcoder0.address,
+                                transcoder1.address,
+                                ethers.constants.AddressZero,
+                                ethers.constants.AddressZero,
+                                ethers.constants.AddressZero,
+                                ethers.constants.AddressZero
+                            )
+                        await expect(tx).to.be.revertedWith("INVALID_CALLER")
+                    })
+                })
             })
 
             it("should increase stake for receiver without affecting self", async () => {
+                const delegate = (
+                    await bondingManager.getDelegator(delegator2.address)
+                ).delegateAddress
+
                 const startDelegatedAmount = (
-                    await bondingManager.getDelegator(transcoder0.address)
+                    await bondingManager.getDelegator(delegate)
                 ).delegatedAmount
 
                 await bondingManager
@@ -1964,7 +2159,7 @@ describe("BondingManager", () => {
                     .bondForWithHint(
                         1000,
                         delegator2.address,
-                        transcoder0.address,
+                        delegate,
                         ethers.constants.AddressZero,
                         ethers.constants.AddressZero,
                         ethers.constants.AddressZero,
@@ -1972,7 +2167,7 @@ describe("BondingManager", () => {
                     )
 
                 const endDelegatedAmount = (
-                    await bondingManager.getDelegator(transcoder0.address)
+                    await bondingManager.getDelegator(delegate)
                 ).delegatedAmount
                 expect(
                     endDelegatedAmount.sub(startDelegatedAmount),
@@ -1991,34 +2186,9 @@ describe("BondingManager", () => {
                     "wrong bondedAmount for delegator 1"
                 )
                 expect(d2BondedAmount).to.equal(
-                    1000,
+                    3000,
                     "wrong bondedAmount for delegator 2"
                 )
-            })
-
-            it("should not change delegate of delegator without consent", async () => {
-                const initialDelegate = (
-                    await bondingManager.getDelegator(delegator1.address)
-                ).delegateAddress
-                expect(initialDelegate).to.equal(transcoder0.address)
-
-                const tx = bondingManager
-                    .connect(transcoder1)
-                    .bondForWithHint(
-                        0,
-                        delegator1.address,
-                        transcoder1.address,
-                        ethers.constants.AddressZero,
-                        ethers.constants.AddressZero,
-                        ethers.constants.AddressZero,
-                        ethers.constants.AddressZero
-                    )
-                await expect(tx).to.be.reverted
-
-                const finalDelegate = (
-                        await bondingManager.getDelegator(delegator1.address)
-                    ).delegateAddress
-                expect(finalDelegate).to.equal(transcoder0.address)                
             })
         })
     })
