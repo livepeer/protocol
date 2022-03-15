@@ -481,6 +481,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         address _currDelegateNewPosPrev,
         address _currDelegateNewPosNext
     ) public whenSystemNotPaused currentRoundInitialized {
+        // the `autoClaimEarnings` modifier has been replaced with its internal function as a `Stack too deep` error work-around
         _autoClaimEarnings(_owner);
         Delegator storage del = delegators[_owner];
 
@@ -609,6 +610,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         address _newDelegateNewPosPrev,
         address _newDelegateNewPosNext
     ) public whenSystemNotPaused currentRoundInitialized {
+        // the `autoClaimEarnings` modifier has been replaced with its internal function as a `Stack too deep` error work-around
         _autoClaimEarnings(msg.sender);
         Delegator storage oldDel = delegators[msg.sender];
         // Cache delegate address of caller before unbondWithHint because
