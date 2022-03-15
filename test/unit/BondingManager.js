@@ -16,6 +16,24 @@ chai.use(solidity)
 const {expect} = chai
 const {DelegatorStatus, TranscoderStatus} = constants
 
+// TODO: to be moved in a separate util/config (i.e: chai-setup)
+chai.use(function(chai) {
+    const Assertion = chai.Assertion
+
+    Assertion.addMethod("matchStruct", function(expected) {
+        // eslint-disable-next-line no-invalid-this
+        const obj = this._obj
+
+        Object.keys(expected).forEach(function(key) {
+            if (Array.isArray(obj[key])) {
+                new Assertion(obj[key]).to.deep.eq(expected[key])
+            } else {
+                new Assertion(obj[key]).to.eq(expected[key])
+            }
+        })
+    })
+})
+
 describe("BondingManager", () => {
     let fixture
     let bondingManager
@@ -2154,6 +2172,41 @@ describe("BondingManager", () => {
                             )
                         await expect(tx).to.be.revertedWith("INVALID_CALLER")
                     })
+                })
+
+                it("should update the state only for the provided delegator and not for the caller", async () => {
+                    const callerDelegatorDataBefore =
+                        await bondingManager.getDelegator(thirdParty.address)
+
+                    const delegatorDataBefore =
+                        await bondingManager.getDelegator(delegator2.address)
+
+                    await bondingManager
+                        .connect(thirdParty)
+                        .bondForWithHint(
+                            1000,
+                            delegator2.address,
+                            delegatorDataBefore.delegateAddress,
+                            ethers.constants.AddressZero,
+                            ethers.constants.AddressZero,
+                            ethers.constants.AddressZero,
+                            ethers.constants.AddressZero
+                        )
+
+                    const callerDelegatorDataAfter =
+                        await bondingManager.getDelegator(thirdParty.address)
+                    const delegatorDataAfter =
+                        await bondingManager.getDelegator(delegator2.address)
+
+                    expect(
+                        delegatorDataAfter.bondedAmount.sub(
+                            delegatorDataBefore.bondedAmount
+                        )
+                    ).to.equal(1000, "delegatorDataAfter wrong")
+
+                    expect(callerDelegatorDataAfter).to.matchStruct(
+                        callerDelegatorDataBefore
+                    )
                 })
             })
 

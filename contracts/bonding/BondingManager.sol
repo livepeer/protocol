@@ -118,8 +118,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     }
 
     // Automatically claim earnings from lastClaimRound through the current round
-    modifier autoClaimEarnings() {
-        _autoClaimEarnings();
+    modifier autoClaimEarnings(address _delegator) {
+        _autoClaimEarnings(_delegator);
         _;
     }
 
@@ -230,7 +230,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         external
         whenSystemNotPaused
         currentRoundInitialized
-        autoClaimEarnings
+        autoClaimEarnings(msg.sender)
     {
         require(_recipient != address(0), "invalid recipient");
         uint256 fees = delegators[msg.sender].fees;
@@ -399,7 +399,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // Silence unused param compiler warning
         _endRound;
 
-        _autoClaimEarnings();
+        _autoClaimEarnings(msg.sender);
     }
 
     /**
@@ -480,7 +480,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         address _oldDelegateNewPosNext,
         address _currDelegateNewPosPrev,
         address _currDelegateNewPosNext
-    ) public whenSystemNotPaused currentRoundInitialized autoClaimEarnings {
+    ) public whenSystemNotPaused currentRoundInitialized {
+        _autoClaimEarnings(_owner);
         Delegator storage del = delegators[_owner];
 
         uint256 currentRound = roundsManager().currentRound();
@@ -607,7 +608,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         address _oldDelegateNewPosNext,
         address _newDelegateNewPosPrev,
         address _newDelegateNewPosNext
-    ) public whenSystemNotPaused currentRoundInitialized autoClaimEarnings {
+    ) public whenSystemNotPaused currentRoundInitialized {
+        _autoClaimEarnings(msg.sender);
         Delegator storage oldDel = delegators[msg.sender];
         // Cache delegate address of caller before unbondWithHint because
         // if unbondWithHint is for a full unbond the caller's delegate address will be set to null
@@ -665,7 +667,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         uint256 _amount,
         address _newPosPrev,
         address _newPosNext
-    ) public whenSystemNotPaused currentRoundInitialized autoClaimEarnings {
+    ) public whenSystemNotPaused currentRoundInitialized autoClaimEarnings(msg.sender) {
         require(delegatorStatus(msg.sender) == DelegatorStatus.Bonded, "caller must be bonded");
 
         Delegator storage del = delegators[msg.sender];
@@ -716,7 +718,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         uint256 _unbondingLockId,
         address _newPosPrev,
         address _newPosNext
-    ) public whenSystemNotPaused currentRoundInitialized autoClaimEarnings {
+    ) public whenSystemNotPaused currentRoundInitialized autoClaimEarnings(msg.sender) {
         require(delegatorStatus(msg.sender) != DelegatorStatus.Unbonded, "caller must be bonded");
 
         // Process rebond using unbonding lock
@@ -739,7 +741,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         uint256 _unbondingLockId,
         address _newPosPrev,
         address _newPosNext
-    ) public whenSystemNotPaused currentRoundInitialized autoClaimEarnings {
+    ) public whenSystemNotPaused currentRoundInitialized autoClaimEarnings(msg.sender) {
         require(delegatorStatus(msg.sender) == DelegatorStatus.Unbonded, "caller must be unbonded");
 
         // Set delegator's start round and transition into Pending state
@@ -1518,11 +1520,11 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         require(roundsManager().currentRoundInitialized(), "current round is not initialized");
     }
 
-    function _autoClaimEarnings() internal {
+    function _autoClaimEarnings(address _delegator) internal {
         uint256 currentRound = roundsManager().currentRound();
-        uint256 lastClaimRound = delegators[msg.sender].lastClaimRound;
+        uint256 lastClaimRound = delegators[_delegator].lastClaimRound;
         if (lastClaimRound < currentRound) {
-            updateDelegatorWithEarnings(msg.sender, currentRound, lastClaimRound);
+            updateDelegatorWithEarnings(_delegator, currentRound, lastClaimRound);
         }
     }
 }
