@@ -2202,10 +2202,16 @@ describe("BondingManager", () => {
                         delegatorDataAfter.bondedAmount.sub(
                             delegatorDataBefore.bondedAmount
                         )
-                    ).to.equal(1000, "delegatorDataAfter wrong")
+                    ).to.equal(1000, "wrong delegator's bondedAmount")
+
+                    expect(delegatorDataAfter.lastClaimRound).to.equal(
+                        delegatorDataBefore.lastClaimRound.add(1),
+                        "wrong delegator's lastClaimRound"
+                    )
 
                     expect(callerDelegatorDataAfter).to.matchStruct(
-                        callerDelegatorDataBefore
+                        callerDelegatorDataBefore,
+                        "wrong caller's delegator data"
                     )
                 })
             })
