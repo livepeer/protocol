@@ -55,6 +55,7 @@ contract BondingManagerForceChangeDelegateFix is DSTest {
     address[] public targets;
     uint256[] public values;
     bytes[] public datas;
+    bytes20 public gitCommitHash;
 
     BondingManager public newBondingManagerTarget;
 
@@ -72,7 +73,7 @@ contract BondingManagerForceChangeDelegateFix is DSTest {
         targets = [address(CONTROLLER)];
         values = [0];
 
-        (, bytes20 gitCommitHash) = CONTROLLER.getContractInfo(BONDING_MANAGER_TARGET_ID);
+        (, gitCommitHash) = CONTROLLER.getContractInfo(BONDING_MANAGER_TARGET_ID);
         datas = [
             abi.encodeWithSelector(
                 CONTROLLER.setContractInfo.selector,
@@ -81,6 +82,12 @@ contract BondingManagerForceChangeDelegateFix is DSTest {
                 gitCommitHash
             )
         ];
+
+        uint256 round = 2499;
+        uint256 blockNum = round * 5760;
+        CHEATS.roll(blockNum);
+
+        upgradeBondingManager();
     }
 
     function upgradeBondingManager() public {
@@ -95,8 +102,6 @@ contract BondingManagerForceChangeDelegateFix is DSTest {
     function testUpgrade() public {
         (, bytes20 gitCommitHash) = CONTROLLER.getContractInfo(BONDING_MANAGER_TARGET_ID);
 
-        upgradeBondingManager();
-
         // Check that new BondingManagerTarget is registered
         (address infoAddr, bytes20 infoGitCommitHash) = CONTROLLER.getContractInfo(BONDING_MANAGER_TARGET_ID);
         assertEq(infoAddr, address(newBondingManagerTarget));
@@ -104,12 +109,6 @@ contract BondingManagerForceChangeDelegateFix is DSTest {
     }
 
     function testBond() public {
-        upgradeBondingManager();
-
-        uint256 round = 2499;
-        uint256 blockNum = round * 5760;
-        CHEATS.roll(blockNum);
-
         address delegator = 0x5Ec2be1aDC70Bc338471277c2dCc183b0b2C91be;
         (, , address delegateAddress, , , , ) = BONDING_MANAGER.getDelegator(delegator);
 
@@ -124,12 +123,6 @@ contract BondingManagerForceChangeDelegateFix is DSTest {
     }
 
     function testChangeDelegate() public {
-        upgradeBondingManager();
-
-        uint256 round = 2499;
-        uint256 blockNum = round * 5760;
-        CHEATS.roll(blockNum);
-
         address delegator = 0xAcA4bD77e459b9898A0de9Ad7C1caC34fF540D0B;
         address delegate = 0x525419FF5707190389bfb5C87c375D710F5fCb0E;
 
@@ -143,17 +136,11 @@ contract BondingManagerForceChangeDelegateFix is DSTest {
     }
 
     function testClaimStake() public {
-        upgradeBondingManager();
-
         CHEATS.mockCall(
             address(MERKLE_SNAPSHOT),
             abi.encodeWithSelector(MERKLE_SNAPSHOT.verify.selector),
             abi.encode(true)
         );
-
-        uint256 round = 2499;
-        uint256 blockNum = round * 5760;
-        CHEATS.roll(blockNum);
 
         address delegator = 0xE22d48950C88C4e8F2C5dA6c7d32D4bc9fE43Bff;
         address delegate = 0x91f19C0335BC776f4693EeB1D88765243f63e9D6;
@@ -161,7 +148,7 @@ contract BondingManagerForceChangeDelegateFix is DSTest {
         bytes32[] memory proof;
         CHEATS.prank(delegator);
 
-        CHEATS.expectEmit(true, true, false, true);
+        CHEATS.expectEmit(true, true, true, true);
         emit Bond(delegate, address(0), delegator, 500000000000000000000, 500000000000000000000);
         L2_MIGRATOR.claimStake(delegate, 500000000000000000000, 0, proof, address(0));
 
@@ -171,12 +158,6 @@ contract BondingManagerForceChangeDelegateFix is DSTest {
     }
 
     function testChangeDelegateByThirdParty() public {
-        upgradeBondingManager();
-
-        uint256 round = 2499;
-        uint256 blockNum = round * 5760;
-        CHEATS.roll(blockNum);
-
         address delegator = 0xAcA4bD77e459b9898A0de9Ad7C1caC34fF540D0B;
         address delegate = 0x525419FF5707190389bfb5C87c375D710F5fCb0E;
         address thirdParty = 0x12336b564A71Cc4C1319bf35E87Ea45681E4D94a;
