@@ -11,6 +11,15 @@ interface CheatCodes {
 
     function prank(address) external;
 
+    function expectRevert(bytes calldata) external;
+
+    function expectEmit(
+        bool checkTopic1,
+        bool checkTopic2,
+        bool checkTopic3,
+        bool checkData
+    ) external;
+
     function mockCall(
         address,
         bytes calldata,
@@ -28,6 +37,7 @@ interface L2Migrator {
     ) external;
 }
 
+// forge test --match-contract BondingManagerForceChangeDelegateFix --fork-url https://arbitrum-mainnet.infura.io/v3/<INFURA_KEY> -vvv --fork-block-number 8006620
 contract BondingManagerForceChangeDelegateFix is DSTest {
     CheatCodes public constant CHEATS = CheatCodes(HEVM_ADDRESS);
 
@@ -48,6 +58,14 @@ contract BondingManagerForceChangeDelegateFix is DSTest {
 
     BondingManager public newBondingManagerTarget;
 
+    event Bond(
+        address indexed newDelegate,
+        address indexed oldDelegate,
+        address indexed delegator,
+        uint256 additionalAmount,
+        uint256 bondedAmount
+    );
+
     function setUp() public {
         newBondingManagerTarget = new BondingManager(address(CONTROLLER));
 
@@ -65,15 +83,19 @@ contract BondingManagerForceChangeDelegateFix is DSTest {
         ];
     }
 
-    function testUpgrade() public {
-        (, bytes20 gitCommitHash) = CONTROLLER.getContractInfo(BONDING_MANAGER_TARGET_ID);
-
+    function upgradeBondingManager() public {
         Governor.Update memory update = Governor.Update({ target: targets, value: values, data: datas, nonce: 0 });
 
         // Impersonate Governor owner
         CHEATS.prank(GOVERNOR_OWNER);
         GOVERNOR.stage(update, 0);
         GOVERNOR.execute(update);
+    }
+
+    function testUpgrade() public {
+        (, bytes20 gitCommitHash) = CONTROLLER.getContractInfo(BONDING_MANAGER_TARGET_ID);
+
+        upgradeBondingManager();
 
         // Check that new BondingManagerTarget is registered
         (address infoAddr, bytes20 infoGitCommitHash) = CONTROLLER.getContractInfo(BONDING_MANAGER_TARGET_ID);
@@ -82,6 +104,8 @@ contract BondingManagerForceChangeDelegateFix is DSTest {
     }
 
     function testBond() public {
+        upgradeBondingManager();
+
         uint256 round = 2499;
         uint256 blockNum = round * 5760;
         CHEATS.roll(blockNum);
@@ -91,7 +115,6 @@ contract BondingManagerForceChangeDelegateFix is DSTest {
 
         uint256 initialStake = BONDING_MANAGER.transcoderTotalStake(delegateAddress);
 
-        // checks if owner can change delegate
         CHEATS.prank(delegator);
         BONDING_MANAGER.bond(10, delegateAddress);
 
@@ -101,6 +124,8 @@ contract BondingManagerForceChangeDelegateFix is DSTest {
     }
 
     function testChangeDelegate() public {
+        upgradeBondingManager();
+
         uint256 round = 2499;
         uint256 blockNum = round * 5760;
         CHEATS.roll(blockNum);
@@ -118,6 +143,8 @@ contract BondingManagerForceChangeDelegateFix is DSTest {
     }
 
     function testClaimStake() public {
+        upgradeBondingManager();
+
         CHEATS.mockCall(
             address(MERKLE_SNAPSHOT),
             abi.encodeWithSelector(MERKLE_SNAPSHOT.verify.selector),
@@ -129,10 +156,13 @@ contract BondingManagerForceChangeDelegateFix is DSTest {
         CHEATS.roll(blockNum);
 
         address delegator = 0xE22d48950C88C4e8F2C5dA6c7d32D4bc9fE43Bff;
-        address delegate = 0x21d1130DC36958dB75fbB0e5a9E3e5F5680238FF;
+        address delegate = 0x91f19C0335BC776f4693EeB1D88765243f63e9D6;
 
         bytes32[] memory proof;
         CHEATS.prank(delegator);
+
+        CHEATS.expectEmit(true, true, false, true);
+        emit Bond(delegate, address(0), delegator, 500000000000000000000, 500000000000000000000);
         L2_MIGRATOR.claimStake(delegate, 500000000000000000000, 0, proof, address(0));
 
         (, , address delegateAddress, , , , ) = BONDING_MANAGER.getDelegator(delegator);
@@ -140,7 +170,9 @@ contract BondingManagerForceChangeDelegateFix is DSTest {
         assertEq(delegateAddress, delegate);
     }
 
-    function testFailChangeDelegateByThirdParty() public {
+    function testChangeDelegateByThirdParty() public {
+        upgradeBondingManager();
+
         uint256 round = 2499;
         uint256 blockNum = round * 5760;
         CHEATS.roll(blockNum);
@@ -151,6 +183,7 @@ contract BondingManagerForceChangeDelegateFix is DSTest {
 
         // trying to change delegate of a delegator should revert
         CHEATS.prank(thirdParty);
+        CHEATS.expectRevert(bytes("INVALID_CALLER"));
         BONDING_MANAGER.bondForWithHint(0, delegator, delegate, address(0), address(0), address(0), address(0));
     }
 }
