@@ -1,12 +1,12 @@
 pragma solidity ^0.8.9;
 
 import "ds-test/test.sol";
-import "./base/GovernorUpgrade.sol";
+import "./base/GovernorBaseTest.sol";
 import "contracts/bonding/BondingManager.sol";
 import "contracts/snapshots/MerkleSnapshot.sol";
 
 // forge test -vvv --fork-url <ARB_MAINNET_RPC_URL> --fork-block-number 6768456 --match-contract BondingManagerNullDelegateBondFix
-contract BondingManagerNullDelegateBondFix is GovernorUpgrade {
+contract BondingManagerNullDelegateBondFix is GovernorBaseTest {
     BondingManager public constant BONDING_MANAGER = BondingManager(0x35Bcf3c30594191d53231E4FF333E8A770453e40);
 
     bytes32 public constant BONDING_MANAGER_TARGET_ID = keccak256("BondingManagerTarget");
@@ -16,24 +16,22 @@ contract BondingManagerNullDelegateBondFix is GovernorUpgrade {
     function setUp() public {
         newBondingManagerTarget = new BondingManager(address(CONTROLLER));
 
-        targets = [address(CONTROLLER)];
-        values = [0];
+        (, bytes20 gitCommitHash) = CONTROLLER.getContractInfo(BONDING_MANAGER_TARGET_ID);
 
-        (, bytes20 gitCommitHash) = fetchContractInfo(BONDING_MANAGER_TARGET_ID);
-        data = [
+        stageAndExecuteOne(
+            address(CONTROLLER),
+            0,
             abi.encodeWithSelector(
                 CONTROLLER.setContractInfo.selector,
                 BONDING_MANAGER_TARGET_ID,
                 address(newBondingManagerTarget),
                 gitCommitHash
             )
-        ];
+        );
     }
 
     function testUpgrade() public {
         (, bytes20 gitCommitHash) = fetchContractInfo(BONDING_MANAGER_TARGET_ID);
-
-        upgrade();
 
         // Check that new BondingManagerTarget is registered
         (address infoAddr, bytes20 infoGitCommitHash) = fetchContractInfo(BONDING_MANAGER_TARGET_ID);

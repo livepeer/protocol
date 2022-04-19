@@ -1,11 +1,11 @@
 pragma solidity ^0.8.9;
 
 import "ds-test/test.sol";
-import "./base/GovernorUpgrade.sol";
+import "./base/GovernorBaseTest.sol";
 import "contracts/token/LivepeerToken.sol";
 import "contracts/token/Minter.sol";
 
-contract MinterGlobalTotalSupplyFix is GovernorUpgrade {
+contract MinterGlobalTotalSupplyFix is GovernorBaseTest {
     Minter public constant MINTER = Minter(0x4969dcCF5186e1c49411638fc8A2a020Fdab752E);
     LivepeerToken public constant TOKEN = LivepeerToken(0x289ba1701C2F088cf0faf8B3705246331cB8A839);
 
@@ -16,7 +16,7 @@ contract MinterGlobalTotalSupplyFix is GovernorUpgrade {
 
     Minter public newMinter;
 
-    function setUp() public {
+    function upgrade() public {
         newMinter = new Minter(
             address(MINTER.controller()),
             MINTER.inflation(),
@@ -24,16 +24,30 @@ contract MinterGlobalTotalSupplyFix is GovernorUpgrade {
             MINTER.targetBondingRate()
         );
 
-        targets = [address(MINTER), address(TOKEN), address(TOKEN), address(CONTROLLER)];
-        values = [0, 0, 0, 0];
+        address[] memory targets = new address[](4);
+        uint256[] memory values = new uint256[](4);
+        bytes[] memory data = new bytes[](4);
+
+        targets[0] = address(MINTER);
+        targets[1] = address(TOKEN);
+        targets[2] = address(TOKEN);
+        targets[3] = address(CONTROLLER);
+
+        values[0] = 0;
+        values[1] = 0;
+        values[2] = 0;
+        values[3] = 0;
 
         (, bytes20 gitCommitHash) = CONTROLLER.getContractInfo(MINTER_ID);
-        data = [
-            abi.encodeWithSelector(MINTER.migrateToNewMinter.selector, address(newMinter)),
-            abi.encodeWithSelector(TOKEN.grantRole.selector, MINTER_ROLE, address(newMinter)),
-            abi.encodeWithSelector(TOKEN.revokeRole.selector, MINTER_ROLE, address(MINTER)),
-            abi.encodeWithSelector(CONTROLLER.setContractInfo.selector, MINTER_ID, address(newMinter), gitCommitHash)
-        ];
+        data[0] = abi.encodeWithSelector(MINTER.migrateToNewMinter.selector, address(newMinter));
+        data[1] = abi.encodeWithSelector(TOKEN.grantRole.selector, MINTER_ROLE, address(newMinter));
+        data[2] = abi.encodeWithSelector(TOKEN.revokeRole.selector, MINTER_ROLE, address(MINTER));
+        data[3] = abi.encodeWithSelector(
+            CONTROLLER.setContractInfo.selector,
+            MINTER_ID,
+            address(newMinter),
+            gitCommitHash
+        );
     }
 
     function testUpgrade() public {
