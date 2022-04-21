@@ -5,6 +5,7 @@ import "./base/GovernorBaseTest.sol";
 import "contracts/token/LivepeerToken.sol";
 import "contracts/token/Minter.sol";
 
+// forge test -vvv --fork-url <ARB_MAINNET_RPC_URL> --fork-block-number 6251064 --match-contract MinterGlobalTotalSupplyFix
 contract MinterGlobalTotalSupplyFix is GovernorBaseTest {
     Minter public constant MINTER = Minter(0x4969dcCF5186e1c49411638fc8A2a020Fdab752E);
     LivepeerToken public constant TOKEN = LivepeerToken(0x289ba1701C2F088cf0faf8B3705246331cB8A839);
@@ -17,13 +18,6 @@ contract MinterGlobalTotalSupplyFix is GovernorBaseTest {
     Minter public newMinter;
 
     function upgrade() public {
-        newMinter = new Minter(
-            address(MINTER.controller()),
-            MINTER.inflation(),
-            MINTER.inflationChange(),
-            MINTER.targetBondingRate()
-        );
-
         address[] memory targets = new address[](4);
         uint256[] memory values = new uint256[](4);
         bytes[] memory data = new bytes[](4);
@@ -48,9 +42,16 @@ contract MinterGlobalTotalSupplyFix is GovernorBaseTest {
             address(newMinter),
             gitCommitHash
         );
+        stageAndExecuteMany(targets, values, data);
     }
 
     function testUpgrade() public {
+        newMinter = new Minter(
+            address(MINTER.controller()),
+            MINTER.inflation(),
+            MINTER.inflationChange(),
+            MINTER.targetBondingRate()
+        );
         assertEq(address(newMinter.controller()), address(MINTER.controller()));
         assertEq(newMinter.inflation(), MINTER.inflation());
         assertEq(newMinter.inflationChange(), MINTER.inflationChange());

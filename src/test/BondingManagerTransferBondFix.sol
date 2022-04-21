@@ -7,7 +7,7 @@ import "contracts/snapshots/MerkleSnapshot.sol";
 import "./interfaces/IL2Migrator.sol";
 import "./interfaces/ICheatCodes.sol";
 
-// forge test -vvv --fork-url <ARB_MAINNET_RPC_URL> --fork-block-number 6768456 --match-contract BondingManagerTransferBondFix
+// forge test -vvv --fork-url <ARB_MAINNET_RPC_URL> --fork-block-number 6737758 --match-contract BondingManagerTransferBondFix
 contract BondingManagerTransferBondFix is GovernorBaseTest {
     BondingManager public constant BONDING_MANAGER = BondingManager(0x35Bcf3c30594191d53231E4FF333E8A770453e40);
     MerkleSnapshot public constant MERKLE_SNAPSHOT = MerkleSnapshot(0x10736ffaCe687658F88a46D042631d182C7757f7);
