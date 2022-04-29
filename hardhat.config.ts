@@ -84,6 +84,10 @@ const config: HardhatUserConfig = {
         },
         localhost: {
             url: "http://127.0.0.1:8545"
+        },
+        localGeth: {
+            url: "http://127.0.0.1:8545",
+            chainId: 54321
         }
     },
     gasReporter: {

@@ -1,5 +1,33 @@
 import {ethers} from "ethers"
 
+const localGeth = {
+    bondingManager: {
+        numTranscoders: 100,
+        numActiveTranscoders: 50,
+        unbondingPeriod: 7,
+        maxEarningsClaimsRounds: 20
+    },
+    broker: {
+        unlockPeriod: 50,
+        ticketValidityPeriod: ethers.BigNumber.from(2)
+    },
+    roundsManager: {
+        roundLength: 50,
+        roundLockAmount: 100000
+    },
+    faucet: {
+        requestAmount: ethers.utils.parseEther("10"),
+        requestWait: 1,
+        whitelist: []
+    },
+    minter: {
+        inflation: 137,
+        inflationChange: 3,
+        targetBondingRate: 500000
+    }
+}
+
+
 const defaultConfig = {
     bondingManager: {
         numTranscoders: 20,
@@ -132,7 +160,8 @@ const networkConfigs: any = {
     rinkebyDevnet,
     arbitrumRinkeby,
     arbitrumRinkebyDevnet,
-    arbitrumMainnet
+    arbitrumMainnet,
+    localGeth
 }
 
 export default function getNetworkConfig(network: string) {
