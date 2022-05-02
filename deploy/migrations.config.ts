@@ -1,6 +1,6 @@
 import {ethers} from "ethers"
 
-const localGeth = {
+const geth = {
     bondingManager: {
         numTranscoders: 100,
         numActiveTranscoders: 50,
@@ -26,7 +26,6 @@ const localGeth = {
         targetBondingRate: 500000
     }
 }
-
 
 const defaultConfig = {
     bondingManager: {
@@ -161,7 +160,7 @@ const networkConfigs: any = {
     arbitrumRinkeby,
     arbitrumRinkebyDevnet,
     arbitrumMainnet,
-    localGeth
+    geth
 }
 
 export default function getNetworkConfig(network: string) {

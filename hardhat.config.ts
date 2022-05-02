@@ -13,7 +13,6 @@ import "@nomiclabs/hardhat-ethers"
 import "solidity-coverage"
 import path from "path"
 import fs from "fs"
-
 import {HardhatUserConfig} from "hardhat/types/config"
 
 const PRIVATE_KEY = process.env.PRIVATE_KEY
@@ -26,7 +25,10 @@ function loadTasks() {
     })
 }
 
-if (fs.existsSync(path.join(__dirname, "artifacts"))) {
+if (
+    fs.existsSync(path.join(__dirname, "artifacts")) &&
+  fs.existsSync("./typechain")
+) {
     loadTasks()
 }
 
