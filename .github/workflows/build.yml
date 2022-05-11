@@ -35,7 +35,6 @@ jobs:
         continue-on-error: true
         id: slither
         with:
-          ignore-compile: true
           sarif: results.sarif
       - name: Upload SARIF file
         uses: github/codeql-action/upload-sarif@v1
