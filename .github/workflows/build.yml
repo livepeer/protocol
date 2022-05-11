@@ -9,6 +9,9 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -35,20 +38,17 @@ jobs:
       # - name: 💡 Run contract tests with coverage reporting
       #   run: |
       #     yarn test:coverage
-      - name: Run analysis of the contracts
-        if: github.event_name == 'pull_request'
-        id: analysis
-        run: |
-          echo ::set-output name=analysis::$(yarn analyze:human-readable)
-      - name: Add analysis comment to PR
-        uses: mshick/add-pr-comment@v1
-        if: github.event_name == 'pull_request'
+      - name: Run Slither
+        uses: crytic/slither-action@v0.1.1
+        continue-on-error: true
+        id: slither
         with:
-          message: |
-            ${{ steps.analysis.outputs.analysis }}
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          repo-token-user-login: 'github-actions[bot]' # The user.login for temporary GitHub tokens
-          allow-repeats: false # This is the default
+          ignore-compile: true
+          sarif: results.sarif
+      - name: Upload SARIF file
+        uses: github/codeql-action/upload-sarif@v1
+        with:
+          sarif_file: ${{ steps.slither.outputs.sarif }}
       - name: Coveralls
         uses: coverallsapp/github-action@master
         with:

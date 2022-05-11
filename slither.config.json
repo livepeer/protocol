@@ -1,0 +1,5 @@
+{
+  "detectors_to_exclude": "external-function",
+  "filter_paths": "@openzeppelin|contracts/test",
+  "exclude_informational": true
+}
