@@ -15,6 +15,14 @@ jobs:
         with:
           # Needed for commands that depend on git tags
           fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@v3
+        with:
+          python-version: '3.x'
+      - name: Install python dependencies
+        run: |
+          sudo snap install solc
+          pip3 install slither-analyzer
       - name: Install dependencies
         run: |
           yarn
@@ -24,9 +32,9 @@ jobs:
       - name: Compile contracts
         run: |
           yarn compile
-      - name: 💡 Run contract tests with coverage reporting
-        run: |
-          yarn test:coverage
+      # - name: 💡 Run contract tests with coverage reporting
+      #   run: |
+      #     yarn test:coverage
       - name: Run analysis of the contracts
         if: github.event_name == 'pull_request'
         id: analysis
