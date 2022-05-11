@@ -8,7 +8,7 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
 
     const {deployer} = await getNamedAccounts()
 
-    const deployResult = await deploy("L2LPTDataCacheMock", {
+    const deployResult = await deploy("DummyL2LPTDataCache", {
         from: deployer,
         log: true
     })

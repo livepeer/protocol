@@ -27,7 +27,7 @@ function loadTasks() {
 
 if (
     fs.existsSync(path.join(__dirname, "artifacts")) &&
-  fs.existsSync("./typechain")
+    fs.existsSync("./typechain")
 ) {
     loadTasks()
 }
@@ -87,7 +87,7 @@ const config: HardhatUserConfig = {
         localhost: {
             url: "http://127.0.0.1:8545"
         },
-        geth: {
+        gethDev: {
             url: "http://127.0.0.1:8545",
             chainId: 54321
         }

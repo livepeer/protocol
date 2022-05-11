@@ -1,6 +1,6 @@
 import {ethers} from "ethers"
 
-const geth = {
+const gethDev = {
     bondingManager: {
         numTranscoders: 100,
         numActiveTranscoders: 50,
@@ -160,7 +160,7 @@ const networkConfigs: any = {
     arbitrumRinkeby,
     arbitrumRinkebyDevnet,
     arbitrumMainnet,
-    geth
+    gethDev
 }
 
 export default function getNetworkConfig(network: string) {
