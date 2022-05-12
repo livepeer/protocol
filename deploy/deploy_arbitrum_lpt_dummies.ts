@@ -27,5 +27,5 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
     )
 }
 
-func.tags = ["ARBITRUM_LPT_MOCK"]
+func.tags = ["ARBITRUM_LPT_DUMMIES"]
 export default func
