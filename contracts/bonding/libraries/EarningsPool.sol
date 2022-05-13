@@ -3,15 +3,11 @@ pragma solidity 0.8.9;
 
 import "../../libraries/MathUtils.sol";
 
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-
 /**
  * @title EarningsPool
  * @dev Manages reward and fee pools for delegators and transcoders
  */
 library EarningsPool {
-    using SafeMath for uint256;
-
     struct Data {
         uint256 totalStake; // Transcoder's total stake during the earnings pool's round
         uint256 transcoderRewardCut; // Transcoder's reward cut during the earnings pool's round

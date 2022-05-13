@@ -8,8 +8,6 @@ import "../rounds/IRoundsManager.sol";
 import "../bonding/IBondingManager.sol";
 import "../libraries/MathUtilsV2.sol";
 
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-
 interface IL2LPTDataCache {
     function l1CirculatingSupply() external view returns (uint256);
 }
@@ -19,8 +17,6 @@ interface IL2LPTDataCache {
  * @dev Manages inflation rate and the minting of new tokens for each round of the Livepeer protocol
  */
 contract Minter is Manager, IMinter {
-    using SafeMath for uint256;
-
     // Per round inflation rate
     uint256 public inflation;
     // Change in inflation rate per round until the target bonding rate is achieved
@@ -152,7 +148,7 @@ contract Minter is Manager, IMinter {
         // Compute and mint fraction of mintable tokens to include in reward
         uint256 mintAmount = MathUtils.percOf(currentMintableTokens, _fracNum, _fracDenom);
         // Update amount of minted tokens for round
-        currentMintedTokens = currentMintedTokens.add(mintAmount);
+        currentMintedTokens += mintAmount;
         // Minted tokens must not exceed mintable tokens
         require(currentMintedTokens <= currentMintableTokens, "minted tokens cannot exceed mintable tokens");
         // Mint new tokens
@@ -225,7 +221,7 @@ contract Minter is Manager, IMinter {
      */
     function getGlobalTotalSupply() public view returns (uint256) {
         // Global total supply = L2 total supply + L1 circulating supply
-        return livepeerToken().totalSupply().add(l2LPTDataCache().l1CirculatingSupply());
+        return livepeerToken().totalSupply() + l2LPTDataCache().l1CirculatingSupply();
     }
 
     /**
@@ -242,13 +238,13 @@ contract Minter is Manager, IMinter {
 
         if (currentBondingRate < targetBondingRate) {
             // Bonding rate is below the target - increase inflation
-            inflation = inflation.add(inflationChange);
+            inflation += inflationChange;
         } else if (currentBondingRate > targetBondingRate) {
             // Bonding rate is above the target - decrease inflation
             if (inflationChange > inflation) {
                 inflation = 0;
             } else {
-                inflation = inflation.sub(inflationChange);
+                inflation -= inflationChange;
             }
         }
     }

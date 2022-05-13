@@ -13,14 +13,11 @@ import "../token/IMinter.sol";
 import "../rounds/IRoundsManager.sol";
 import "../snapshots/IMerkleSnapshot.sol";
 
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-
 /**
  * @title BondingManager
  * @notice Manages bonding, transcoder and rewards/fee accounting related operations of the Livepeer protocol
  */
 contract BondingManager is ManagerProxyTarget, IBondingManager {
-    using SafeMath for uint256;
     using SortedDoublyLL for SortedDoublyLL.Data;
     using EarningsPool for EarningsPool.Data;
     using EarningsPoolLIP36 for EarningsPool.Data;
@@ -235,7 +232,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         require(_recipient != address(0), "invalid recipient");
         uint256 fees = delegators[msg.sender].fees;
         require(fees >= _amount, "insufficient fees to withdraw");
-        delegators[msg.sender].fees = fees.sub(_amount);
+        delegators[msg.sender].fees = fees - _amount;
 
         // Tell Minter to transfer fees (ETH) to the address
         minter().trustedWithdrawETH(_recipient, _amount);
@@ -275,7 +272,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // LIP-36: Add fees for the current round instead of '_round'
         // https://github.com/livepeer/LIPs/issues/35#issuecomment-673659199
         EarningsPool.Data storage earningsPool = t.earningsPoolPerRound[currentRound];
-        EarningsPool.Data memory prevEarningsPool = latestCumulativeFactorsPool(t, currentRound.sub(1));
+        EarningsPool.Data memory prevEarningsPool = latestCumulativeFactorsPool(t, currentRound - 1);
 
         // if transcoder hasn't called 'reward()' for '_round' its 'transcoderFeeShare', 'transcoderRewardCut' and 'totalStake'
         // on the 'EarningsPool' for '_round' would not be initialized and the fee distribution wouldn't happen as expected
@@ -302,22 +299,22 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             // based on rewards for currentRound
             IMinter mtr = minter();
             uint256 rewards = PreciseMathUtils.percOf(
-                mtr.currentMintableTokens().add(mtr.currentMintedTokens()),
+                mtr.currentMintableTokens() + mtr.currentMintedTokens(),
                 totalStake,
                 currentRoundTotalActiveStake
             );
             uint256 transcoderCommissionRewards = MathUtils.percOf(rewards, earningsPool.transcoderRewardCut);
-            uint256 delegatorsRewards = rewards.sub(transcoderCommissionRewards);
+            uint256 delegatorsRewards = rewards - transcoderCommissionRewards;
 
             prevEarningsPool.cumulativeRewardFactor = PreciseMathUtils.percOf(
                 earningsPool.cumulativeRewardFactor,
                 totalStake,
-                delegatorsRewards.add(totalStake)
+                delegatorsRewards + totalStake
             );
         }
 
         uint256 delegatorsFees = MathUtils.percOf(_fees, earningsPool.transcoderFeeShare);
-        uint256 transcoderCommissionFees = _fees.sub(delegatorsFees);
+        uint256 transcoderCommissionFees = _fees - delegatorsFees;
         // Calculate the fees earned by the transcoder's earned rewards
         uint256 transcoderRewardStakeFees = PreciseMathUtils.percOf(
             delegatorsFees,
@@ -325,7 +322,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             totalStake
         );
         // Track fees earned by the transcoder based on its earned rewards and feeShare
-        t.cumulativeFees = t.cumulativeFees.add(transcoderRewardStakeFees).add(transcoderCommissionFees);
+        t.cumulativeFees = t.cumulativeFees + transcoderRewardStakeFees + transcoderCommissionFees;
         // Update cumulative fee factor with new fees
         // The cumulativeFeeFactor is used to calculate fees for all delegators including the transcoder (self-delegated)
         // Note that delegatorsFees includes transcoderRewardStakeFees, but no delegator will claim that amount using
@@ -359,13 +356,11 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             }
 
             // Decrease bonded stake
-            del.bondedAmount = del.bondedAmount.sub(penalty);
+            del.bondedAmount -= penalty;
 
             // If still bonded decrease delegate's delegated amount
             if (delegatorStatus(_transcoder) == DelegatorStatus.Bonded) {
-                delegators[del.delegateAddress].delegatedAmount = delegators[del.delegateAddress].delegatedAmount.sub(
-                    penalty
-                );
+                delegators[del.delegateAddress].delegatedAmount -= penalty;
             }
 
             // Account for penalty
@@ -377,7 +372,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
                 minter().trustedTransferTokens(_finder, finderAmount);
 
                 // Minter burns the slashed funds - finder reward
-                minter().trustedBurnTokens(burnAmount.sub(finderAmount));
+                minter().trustedBurnTokens(burnAmount - finderAmount);
 
                 emit TranscoderSlashed(_transcoder, _finder, penalty, finderAmount);
             } else {
@@ -446,7 +441,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             tryToJoinActiveSet(
                 msg.sender,
                 delegators[msg.sender].delegatedAmount,
-                currentRound.add(1),
+                currentRound + 1,
                 _newPosPrev,
                 _newPosNext
             );
@@ -497,7 +492,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             // New delegate
             // Set start round
             // Don't set start round if delegator is in pending state because the start round would not change
-            del.startRound = currentRound.add(1);
+            del.startRound = currentRound + 1;
             // Unbonded state = no existing delegate and no bonded stake
             // Thus, delegation amount = provided amount
         } else if (currentBondedAmount > 0 && currentDelegate != _to) {
@@ -511,9 +506,9 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             require(!isRegisteredTranscoder(_owner), "registered transcoders can't delegate towards other addresses");
             // Changing delegate
             // Set start round
-            del.startRound = currentRound.add(1);
+            del.startRound = currentRound + 1;
             // Update amount to delegate with previous delegation amount
-            delegationAmount = delegationAmount.add(currentBondedAmount);
+            delegationAmount = delegationAmount + currentBondedAmount;
 
             decreaseTotalStake(currentDelegate, currentBondedAmount, _oldDelegateNewPosPrev, _oldDelegateNewPosNext);
         }
@@ -536,7 +531,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // Update delegate
         del.delegateAddress = _to;
         // Update bonded amount
-        del.bondedAmount = currentBondedAmount.add(_amount);
+        del.bondedAmount = currentBondedAmount + _amount;
 
         increaseTotalStake(_to, delegationAmount, _currDelegateNewPosPrev, _currDelegateNewPosNext);
 
@@ -621,7 +616,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
         Delegator storage newDel = delegators[_delegator];
 
-        uint256 oldDelUnbondingLockId = oldDel.nextUnbondingLockId.sub(1);
+        uint256 oldDelUnbondingLockId = oldDel.nextUnbondingLockId - 1;
         uint256 withdrawRound = oldDel.unbondingLocks[oldDelUnbondingLockId].withdrawRound;
 
         // Burn lock for current owner
@@ -631,7 +626,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         uint256 newDelUnbondingLockId = newDel.nextUnbondingLockId;
 
         newDel.unbondingLocks[newDelUnbondingLockId] = UnbondingLock({ amount: _amount, withdrawRound: withdrawRound });
-        newDel.nextUnbondingLockId = newDel.nextUnbondingLockId.add(1);
+        newDel.nextUnbondingLockId = newDel.nextUnbondingLockId + 1;
 
         emit TransferBond(msg.sender, _delegator, oldDelUnbondingLockId, newDelUnbondingLockId, _amount);
 
@@ -649,7 +644,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
         // Move to Pending state if receiver is currently in Unbonded state
         if (delegatorStatus(_delegator) == DelegatorStatus.Unbonded) {
-            newDel.startRound = currentRound.add(1);
+            newDel.startRound = currentRound + 1;
         }
 
         // Process rebond using unbonding lock
@@ -679,15 +674,15 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
         address currentDelegate = del.delegateAddress;
         uint256 currentRound = roundsManager().currentRound();
-        uint256 withdrawRound = currentRound.add(unbondingPeriod);
+        uint256 withdrawRound = currentRound + unbondingPeriod;
         uint256 unbondingLockId = del.nextUnbondingLockId;
 
         // Create new unbonding lock
         del.unbondingLocks[unbondingLockId] = UnbondingLock({ amount: _amount, withdrawRound: withdrawRound });
         // Increment ID for next unbonding lock
-        del.nextUnbondingLockId = unbondingLockId.add(1);
+        del.nextUnbondingLockId = unbondingLockId + 1;
         // Decrease delegator's bonded amount
-        del.bondedAmount = del.bondedAmount.sub(_amount);
+        del.bondedAmount -= _amount;
 
         if (del.bondedAmount == 0) {
             // Delegator no longer delegated to anyone if it does not have a bonded amount
@@ -747,7 +742,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         require(delegatorStatus(msg.sender) == DelegatorStatus.Unbonded, "caller must be unbonded");
 
         // Set delegator's start round and transition into Pending state
-        delegators[msg.sender].startRound = roundsManager().currentRound().add(1);
+        delegators[msg.sender].startRound = roundsManager().currentRound() + 1;
         // Set delegator's delegate
         delegators[msg.sender].delegateAddress = _to;
         // Process rebond using unbonding lock
@@ -1148,13 +1143,13 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             endPool.cumulativeRewardFactor = PreciseMathUtils.percPoints(1, 1);
         }
 
-        cFees = _fees.add(
+        cFees =
+            _fees +
             PreciseMathUtils.percOf(
                 _stake,
-                endPool.cumulativeFeeFactor.sub(startPool.cumulativeFeeFactor),
+                endPool.cumulativeFeeFactor - startPool.cumulativeFeeFactor,
                 startPool.cumulativeRewardFactor
-            )
-        );
+            );
 
         cStake = PreciseMathUtils.percOf(_stake, endPool.cumulativeRewardFactor, startPool.cumulativeRewardFactor);
 
@@ -1178,20 +1173,20 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         fees = del.fees;
         stake = del.bondedAmount;
 
-        uint256 startRound = del.lastClaimRound.add(1);
+        uint256 startRound = del.lastClaimRound + 1;
         address delegateAddr = del.delegateAddress;
         bool isTranscoder = _delegator == delegateAddr;
 
         // Make sure there is a round to claim i.e. end round - (start round - 1) > 0
         if (startRound <= _endRound) {
-            (stake, fees) = delegatorCumulativeStakeAndFees(t, startRound.sub(1), _endRound, stake, fees);
+            (stake, fees) = delegatorCumulativeStakeAndFees(t, startRound - 1, _endRound, stake, fees);
         }
         // cumulativeRewards and cumulativeFees will track *all* rewards/fees earned by the transcoder
         // so it is important that this is only executed with the end round as the current round or else
         // the returned stake and fees will reflect rewards/fees earned in the future relative to the end round
         if (isTranscoder) {
-            stake = stake.add(t.cumulativeRewards);
-            fees = fees.add(t.cumulativeFees);
+            stake += t.cumulativeRewards;
+            fees += t.cumulativeFees;
         }
 
         return (stake, fees);
@@ -1210,14 +1205,14 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     ) internal {
         if (isRegisteredTranscoder(_delegate)) {
             uint256 currStake = transcoderTotalStake(_delegate);
-            uint256 newStake = currStake.add(_amount);
+            uint256 newStake = currStake + _amount;
             uint256 currRound = roundsManager().currentRound();
-            uint256 nextRound = currRound.add(1);
+            uint256 nextRound = currRound + 1;
 
             // If the transcoder is already in the active set update its stake and return
             if (transcoderPool.contains(_delegate)) {
                 transcoderPool.updateKey(_delegate, newStake, _newPosPrev, _newPosNext);
-                nextRoundTotalActiveStake = nextRoundTotalActiveStake.add(_amount);
+                nextRoundTotalActiveStake = nextRoundTotalActiveStake + _amount;
                 Transcoder storage t = transcoders[_delegate];
 
                 // currStake (the transcoder's delegatedAmount field) will reflect the transcoder's stake from lastActiveStakeUpdateRound
@@ -1237,7 +1232,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         }
 
         // Increase delegate's delegated amount
-        delegators[_delegate].delegatedAmount = delegators[_delegate].delegatedAmount.add(_amount);
+        delegators[_delegate].delegatedAmount += _amount;
     }
 
     /**
@@ -1253,12 +1248,12 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     ) internal {
         if (transcoderPool.contains(_delegate)) {
             uint256 currStake = transcoderTotalStake(_delegate);
-            uint256 newStake = currStake.sub(_amount);
+            uint256 newStake = currStake - _amount;
             uint256 currRound = roundsManager().currentRound();
-            uint256 nextRound = currRound.add(1);
+            uint256 nextRound = currRound + 1;
 
             transcoderPool.updateKey(_delegate, newStake, _newPosPrev, _newPosNext);
-            nextRoundTotalActiveStake = nextRoundTotalActiveStake.sub(_amount);
+            nextRoundTotalActiveStake = nextRoundTotalActiveStake - _amount;
             Transcoder storage t = transcoders[_delegate];
 
             // currStake (the transcoder's delegatedAmount field) will reflect the transcoder's stake from lastActiveStakeUpdateRound
@@ -1274,7 +1269,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         }
 
         // Decrease old delegate's delegated amount
-        delegators[_delegate].delegatedAmount = delegators[_delegate].delegatedAmount.sub(_amount);
+        delegators[_delegate].delegatedAmount -= _amount;
     }
 
     /**
@@ -1309,13 +1304,13 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             // 'EarningsPool.setStake()' is called whenever a transcoder becomes active again.
             transcoderPool.remove(lastTranscoder);
             transcoders[lastTranscoder].deactivationRound = _activationRound;
-            pendingNextRoundTotalActiveStake = pendingNextRoundTotalActiveStake.sub(lastStake);
+            pendingNextRoundTotalActiveStake -= lastStake;
 
             emit TranscoderDeactivated(lastTranscoder, _activationRound);
         }
 
         transcoderPool.insert(_transcoder, _totalStake, _newPosPrev, _newPosNext);
-        pendingNextRoundTotalActiveStake = pendingNextRoundTotalActiveStake.add(_totalStake);
+        pendingNextRoundTotalActiveStake += _totalStake;
         Transcoder storage t = transcoders[_transcoder];
         t.lastActiveStakeUpdateRound = _activationRound;
         t.activationRound = _activationRound;
@@ -1334,8 +1329,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // Not zeroing the stake on the current round's 'EarningsPool' saves gas and should have no side effects as long as
         // 'EarningsPool.setStake()' is called whenever a transcoder becomes active again.
         transcoderPool.remove(_transcoder);
-        nextRoundTotalActiveStake = nextRoundTotalActiveStake.sub(transcoderTotalStake(_transcoder));
-        uint256 deactivationRound = roundsManager().currentRound().add(1);
+        nextRoundTotalActiveStake -= transcoderTotalStake(_transcoder);
+        uint256 deactivationRound = roundsManager().currentRound() + 1;
         transcoders[_transcoder].deactivationRound = deactivationRound;
         emit TranscoderDeactivated(_transcoder, deactivationRound);
     }
@@ -1363,7 +1358,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         t.activeCumulativeRewards = t.cumulativeRewards;
 
         uint256 transcoderCommissionRewards = MathUtils.percOf(_rewards, earningsPool.transcoderRewardCut);
-        uint256 delegatorsRewards = _rewards.sub(transcoderCommissionRewards);
+        uint256 delegatorsRewards = _rewards - transcoderCommissionRewards;
         // Calculate the rewards earned by the transcoder's earned rewards
         uint256 transcoderRewardStakeRewards = PreciseMathUtils.percOf(
             delegatorsRewards,
@@ -1371,7 +1366,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             earningsPool.totalStake
         );
         // Track rewards earned by the transcoder based on its earned rewards and rewardCut
-        t.cumulativeRewards = t.cumulativeRewards.add(transcoderRewardStakeRewards).add(transcoderCommissionRewards);
+        t.cumulativeRewards = t.cumulativeRewards + transcoderRewardStakeRewards + transcoderCommissionRewards;
         // Update cumulative reward factor with new rewards
         // The cumulativeRewardFactor is used to calculate rewards for all delegators including the transcoder (self-delegated)
         // Note that delegatorsRewards includes transcoderRewardStakeRewards, but no delegator will claim that amount using
@@ -1393,7 +1388,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         uint256 _lastClaimRound
     ) internal {
         Delegator storage del = delegators[_delegator];
-        uint256 startRound = _lastClaimRound.add(1);
+        uint256 startRound = _lastClaimRound + 1;
         uint256 currentBondedAmount = del.bondedAmount;
         uint256 currentFees = del.fees;
 
@@ -1431,8 +1426,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         emit EarningsClaimed(
             del.delegateAddress,
             _delegator,
-            currentBondedAmount.sub(del.bondedAmount),
-            currentFees.sub(del.fees),
+            currentBondedAmount - del.bondedAmount,
+            currentFees - del.fees,
             startRound,
             _endRound
         );
@@ -1464,7 +1459,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
         uint256 amount = lock.amount;
         // Increase delegator's bonded amount
-        del.bondedAmount = del.bondedAmount.add(amount);
+        del.bondedAmount += amount;
 
         // Delete lock
         delete del.unbondingLocks[_unbondingLockId];

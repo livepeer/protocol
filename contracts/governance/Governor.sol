@@ -1,15 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-
 /**
  * @title Governor
  * @dev The Governor holds the rights to stage and execute contract calls i.e. changing Livepeer protocol parameters.
  */
 contract Governor {
-    using SafeMath for uint256;
-
     address public owner;
 
     /// @dev mapping of updateHash (keccak256(update) => executeBlock (block.number + delay)
@@ -68,7 +64,7 @@ contract Governor {
 
         require(updates[updateHash] == 0, "update already staged");
 
-        updates[updateHash] = block.number.add(_delay);
+        updates[updateHash] = block.number + _delay;
 
         emit UpdateStaged(_update, _delay);
     }

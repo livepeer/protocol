@@ -4,11 +4,7 @@ pragma solidity 0.8.9;
 import "./EarningsPool.sol";
 import "../../libraries/PreciseMathUtils.sol";
 
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-
 library EarningsPoolLIP36 {
-    using SafeMath for uint256;
-
     /**
      * @notice Update the cumulative fee factor stored in an earnings pool with new fees
      * @param earningsPool Storage pointer to EarningsPools.Data struct
@@ -27,15 +23,15 @@ library EarningsPoolLIP36 {
 
         // Initialize the cumulativeFeeFactor when adding fees for the first time
         if (earningsPool.cumulativeFeeFactor == 0) {
-            earningsPool.cumulativeFeeFactor = prevCumulativeFeeFactor.add(
-                PreciseMathUtils.percOf(prevCumulativeRewardFactor, _fees, earningsPool.totalStake)
-            );
+            earningsPool.cumulativeFeeFactor =
+                prevCumulativeFeeFactor +
+                PreciseMathUtils.percOf(prevCumulativeRewardFactor, _fees, earningsPool.totalStake);
             return;
         }
 
-        earningsPool.cumulativeFeeFactor = earningsPool.cumulativeFeeFactor.add(
-            PreciseMathUtils.percOf(prevCumulativeRewardFactor, _fees, earningsPool.totalStake)
-        );
+        earningsPool.cumulativeFeeFactor =
+            earningsPool.cumulativeFeeFactor +
+            PreciseMathUtils.percOf(prevCumulativeRewardFactor, _fees, earningsPool.totalStake);
     }
 
     /**
@@ -53,8 +49,8 @@ library EarningsPoolLIP36 {
             ? _prevEarningsPool.cumulativeRewardFactor
             : PreciseMathUtils.percPoints(1, 1);
 
-        earningsPool.cumulativeRewardFactor = prevCumulativeRewardFactor.add(
-            PreciseMathUtils.percOf(prevCumulativeRewardFactor, _rewards, earningsPool.totalStake)
-        );
+        earningsPool.cumulativeRewardFactor =
+            prevCumulativeRewardFactor +
+            PreciseMathUtils.percOf(prevCumulativeRewardFactor, _rewards, earningsPool.totalStake);
     }
 }

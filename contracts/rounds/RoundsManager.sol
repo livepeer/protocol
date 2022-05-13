@@ -7,15 +7,11 @@ import "../bonding/IBondingManager.sol";
 import "../token/IMinter.sol";
 import "../libraries/MathUtils.sol";
 
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-
 /**
  * @title RoundsManager
  * @notice Manages round progression and other blockchain time related operations of the Livepeer protocol
  */
 contract RoundsManager is ManagerProxyTarget, IRoundsManager {
-    using SafeMath for uint256;
-
     // Round length in blocks
     uint256 public roundLength;
     // Lock period of a round as a % of round length
@@ -96,7 +92,7 @@ contract RoundsManager is ManagerProxyTarget, IRoundsManager {
         // Set current round as initialized
         lastInitializedRound = currRound;
         // Store block hash for round
-        bytes32 roundBlockHash = blockHash(blockNum().sub(1));
+        bytes32 roundBlockHash = blockHash(blockNum() - 1);
         _blockHashForRound[currRound] = roundBlockHash;
         // Set total active stake for the round
         bondingManager().setCurrentRoundTotalActiveStake();
@@ -148,9 +144,9 @@ contract RoundsManager is ManagerProxyTarget, IRoundsManager {
      */
     function currentRound() public view returns (uint256) {
         // Compute # of rounds since roundLength was last updated
-        uint256 roundsSinceUpdate = blockNum().sub(lastRoundLengthUpdateStartBlock).div(roundLength);
+        uint256 roundsSinceUpdate = (blockNum() - lastRoundLengthUpdateStartBlock) / roundLength;
         // Current round = round that roundLength was last updated + # of rounds since roundLength was last updated
-        return lastRoundLengthUpdateRound.add(roundsSinceUpdate);
+        return lastRoundLengthUpdateRound + roundsSinceUpdate;
     }
 
     /**
@@ -158,9 +154,9 @@ contract RoundsManager is ManagerProxyTarget, IRoundsManager {
      */
     function currentRoundStartBlock() public view returns (uint256) {
         // Compute # of rounds since roundLength was last updated
-        uint256 roundsSinceUpdate = blockNum().sub(lastRoundLengthUpdateStartBlock).div(roundLength);
+        uint256 roundsSinceUpdate = (blockNum() - lastRoundLengthUpdateStartBlock) / roundLength;
         // Current round start block = start block of round that roundLength was last updated + (# of rounds since roundLenght was last updated * roundLength)
-        return lastRoundLengthUpdateStartBlock.add(roundsSinceUpdate.mul(roundLength));
+        return lastRoundLengthUpdateStartBlock + (roundsSinceUpdate * roundLength);
     }
 
     /**
@@ -175,7 +171,7 @@ contract RoundsManager is ManagerProxyTarget, IRoundsManager {
      */
     function currentRoundLocked() public view returns (bool) {
         uint256 lockedBlocks = MathUtils.percOf(roundLength, roundLockAmount);
-        return blockNum().sub(currentRoundStartBlock()) >= roundLength.sub(lockedBlocks);
+        return (blockNum() - currentRoundStartBlock()) >= (roundLength - lockedBlocks);
     }
 
     /**

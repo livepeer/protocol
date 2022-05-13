@@ -3,11 +3,8 @@ pragma solidity 0.8.9;
 
 import "./interfaces/MReserve.sol";
 import "./MixinContractRegistry.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 abstract contract MixinReserve is MixinContractRegistry, MReserve {
-    using SafeMath for uint256;
-
     struct Reserve {
         uint256 funds; // Amount of funds in the reserve
         mapping(uint256 => uint256) claimedForRound; // Mapping of round => total amount claimed
@@ -48,8 +45,8 @@ abstract contract MixinReserve is MixinContractRegistry, MReserve {
         }
 
         // Total claimable funds = remaining funds + amount claimed for the round
-        uint256 totalClaimable = reserve.funds.add(reserve.claimedForRound[currentRound]);
-        return totalClaimable.div(poolSize).sub(reserve.claimedByAddress[currentRound][_claimant]);
+        uint256 totalClaimable = reserve.funds + reserve.claimedForRound[currentRound];
+        return (totalClaimable / poolSize) - reserve.claimedByAddress[currentRound][_claimant];
     }
 
     /**
@@ -70,7 +67,7 @@ abstract contract MixinReserve is MixinContractRegistry, MReserve {
      * @param _amount Amount of funds to add to reserve
      */
     function addReserve(address _reserveHolder, uint256 _amount) internal override {
-        reserves[_reserveHolder].funds = reserves[_reserveHolder].funds.add(_amount);
+        reserves[_reserveHolder].funds += _amount;
 
         emit ReserveFunded(_reserveHolder, _amount);
     }
@@ -117,13 +114,11 @@ abstract contract MixinReserve is MixinContractRegistry, MReserve {
             uint256 currentRound = roundsManager().currentRound();
             Reserve storage reserve = reserves[_reserveHolder];
             // Increase total amount claimed for the round
-            reserve.claimedForRound[currentRound] = reserve.claimedForRound[currentRound].add(claimAmount);
+            reserve.claimedForRound[currentRound] += claimAmount;
             // Increase amount claimed by claimant for the round
-            reserve.claimedByAddress[currentRound][_claimant] = reserve.claimedByAddress[currentRound][_claimant].add(
-                claimAmount
-            );
+            reserve.claimedByAddress[currentRound][_claimant] += claimAmount;
             // Decrease remaining reserve
-            reserve.funds = reserve.funds.sub(claimAmount);
+            reserve.funds -= claimAmount;
 
             emit ReserveClaimed(_reserveHolder, _claimant, claimAmount);
         }
