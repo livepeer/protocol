@@ -135,7 +135,7 @@ abstract contract MixinTicketBrokerCore is MixinContractRegistry, MReserve, MTic
 
             amountToTransfer =
                 sender.deposit +
-                claimFromReserve(_ticket.sender, _ticket.recipient, _ticket.faceValue + sender.deposit);
+                claimFromReserve(_ticket.sender, _ticket.recipient, _ticket.faceValue - sender.deposit);
 
             sender.deposit = 0;
         } else {
