@@ -109,6 +109,10 @@ describe("Minter", () => {
             INFLATION_CHANGE,
             TARGET_BONDING_RATE
         )
+        await fixture.token.setMockBool(
+            functionSig("transfer(address,uint256)"),
+            true
+        )
     })
 
     beforeEach(async () => {
@@ -256,6 +260,7 @@ describe("Minter", () => {
 
             const minterTokenBalance = 2000
             tokenMock.balanceOf.returns(minterTokenBalance)
+            tokenMock.transfer.returns(true)
 
             const newMinterDeployParams = [
                 await minter.controller(),
@@ -278,6 +283,45 @@ describe("Minter", () => {
             expect(
                 await ethers.provider.getBalance(minter.address)
             ).to.be.equal(0)
+        })
+
+        it("should fail to migrate when transfer fails", async () => {
+            const tokenMock = await smock.fake("ILivepeerToken")
+
+            const info = await fixture.controller.getContractInfo(
+                contractId("LivepeerToken")
+            )
+            const gitCommitHash = info[1]
+            await fixture.controller.setContractInfo(
+                contractId("LivepeerToken"),
+                tokenMock.address,
+                gitCommitHash
+            )
+
+            const minterETHBalance = 100
+            await fixture.ticketBroker
+                .connect(signers[1])
+                .execute(minter.address, functionSig("depositETH()"), {
+                    value: minterETHBalance
+                })
+
+            const minterTokenBalance = 2000
+            tokenMock.balanceOf.returns(minterTokenBalance)
+            tokenMock.transfer.returns(false)
+
+            const newMinterDeployParams = [
+                await minter.controller(),
+                await minter.inflation(),
+                await minter.inflationChange(),
+                await minter.targetBondingRate()
+            ]
+            const newMinter = await (
+                await ethers.getContractFactory("Minter")
+            ).deploy(...newMinterDeployParams)
+
+            await expect(
+                minter.migrateToNewMinter(newMinter.address)
+            ).to.be.revertedWith("Transfer failed")
         })
     })
 

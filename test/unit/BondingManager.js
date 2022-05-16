@@ -152,6 +152,10 @@ describe("BondingManager", () => {
                 functionSig("currentRound()"),
                 currentRound
             )
+            await fixture.token.setMockBool(
+                functionSig("transferFrom(address,address,uint256)"),
+                true
+            )
         })
 
         it("should fail if current round is not initialized", async () => {
@@ -511,6 +515,10 @@ describe("BondingManager", () => {
             delegator = signers[3]
             delegator2 = signers[4]
 
+            await fixture.token.setMockBool(
+                functionSig("transferFrom(address,address,uint256)"),
+                true
+            )
             await fixture.roundsManager.setMockBool(
                 functionSig("currentRoundInitialized()"),
                 true
@@ -535,6 +543,19 @@ describe("BondingManager", () => {
                 functionSig("currentRound()"),
                 currentRound
             )
+        })
+
+        it("should fail if transferFrom fails", async () => {
+            await fixture.token.setMockBool(
+                functionSig("transferFrom(address,address,uint256)"),
+                false
+            )
+
+            await expect(
+                bondingManager
+                    .connect(delegator)
+                    .bond(1000, transcoder0.address)
+            ).to.be.revertedWith("Transfer failed")
         })
 
         it("should fail if current round is not initialized", async () => {
@@ -1871,6 +1892,10 @@ describe("BondingManager", () => {
             l2migrator = signers[5]
             thirdParty = signers[6]
 
+            await fixture.token.setMockBool(
+                functionSig("transferFrom(address,address,uint256)"),
+                true
+            )
             await fixture.controller.setContractInfo(
                 contractId("L2Migrator"),
                 l2migrator.address,
@@ -2276,6 +2301,10 @@ describe("BondingManager", () => {
             delegator2 = signers[2]
             currentRound = 100
 
+            await fixture.token.setMockBool(
+                functionSig("transferFrom(address,address,uint256)"),
+                true
+            )
             await fixture.roundsManager.setMockBool(
                 functionSig("currentRoundInitialized()"),
                 true
@@ -2726,6 +2755,10 @@ describe("BondingManager", () => {
             currentRound = 100
             unbondingLockID = 0
 
+            await fixture.token.setMockBool(
+                functionSig("transferFrom(address,address,uint256)"),
+                true
+            )
             await fixture.roundsManager.setMockBool(
                 functionSig("currentRoundInitialized()"),
                 true
@@ -2940,6 +2973,10 @@ describe("BondingManager", () => {
             currentRound = 100
             unbondingLockID = 0
 
+            await fixture.token.setMockBool(
+                functionSig("transferFrom(address,address,uint256)"),
+                true
+            )
             await fixture.roundsManager.setMockBool(
                 functionSig("currentRoundInitialized()"),
                 true
@@ -3160,6 +3197,10 @@ describe("BondingManager", () => {
             delegator1 = signers[3]
             delegator2 = signers[4]
 
+            await fixture.token.setMockBool(
+                functionSig("transferFrom(address,address,uint256)"),
+                true
+            )
             await fixture.roundsManager.setMockBool(
                 functionSig("currentRoundInitialized()"),
                 true
@@ -3552,6 +3593,10 @@ describe("BondingManager", () => {
             currentRound = 100
             unbondingLockID = 0
 
+            await fixture.token.setMockBool(
+                functionSig("transferFrom(address,address,uint256)"),
+                true
+            )
             await fixture.roundsManager.setMockBool(
                 functionSig("currentRoundInitialized()"),
                 true
@@ -3672,6 +3717,10 @@ describe("BondingManager", () => {
             recipient = signers[2]
             currentRound = 100
 
+            await fixture.token.setMockBool(
+                functionSig("transferFrom(address,address,uint256)"),
+                true
+            )
             await fixture.roundsManager.setMockBool(
                 functionSig("currentRoundInitialized()"),
                 true
@@ -3861,6 +3910,10 @@ describe("BondingManager", () => {
             nonTranscoder = signers[1]
             currentRound = 100
 
+            await fixture.token.setMockBool(
+                functionSig("transferFrom(address,address,uint256)"),
+                true
+            )
             await fixture.roundsManager.setMockBool(
                 functionSig("currentRoundInitialized()"),
                 true
@@ -4118,6 +4171,10 @@ describe("BondingManager", () => {
             nonTranscoder = signers[1]
             currentRound = 100
 
+            await fixture.token.setMockBool(
+                functionSig("transferFrom(address,address,uint256)"),
+                true
+            )
             await fixture.roundsManager.setMockBool(
                 functionSig("currentRoundInitialized()"),
                 true
@@ -4520,6 +4577,10 @@ describe("BondingManager", () => {
             nonTranscoder = signers[3]
             currentRound = 100
 
+            await fixture.token.setMockBool(
+                functionSig("transferFrom(address,address,uint256)"),
+                true
+            )
             await fixture.roundsManager.setMockBool(
                 functionSig("currentRoundInitialized()"),
                 true
@@ -4988,6 +5049,10 @@ describe("BondingManager", () => {
             delegator3 = signers[3]
             currentRound = 100
 
+            await fixture.token.setMockBool(
+                functionSig("transferFrom(address,address,uint256)"),
+                true
+            )
             await fixture.roundsManager.setMockBool(
                 functionSig("currentRoundInitialized()"),
                 true
@@ -5561,6 +5626,10 @@ describe("BondingManager", () => {
             delegator = signers[1]
             currentRound = 100
 
+            await fixture.token.setMockBool(
+                functionSig("transferFrom(address,address,uint256)"),
+                true
+            )
             await fixture.roundsManager.setMockBool(
                 functionSig("currentRoundInitialized()"),
                 true
@@ -5821,6 +5890,10 @@ describe("BondingManager", () => {
             delegator = signers[1]
             currentRound = 100
 
+            await fixture.token.setMockBool(
+                functionSig("transferFrom(address,address,uint256)"),
+                true
+            )
             await fixture.roundsManager.setMockBool(
                 functionSig("currentRoundInitialized()"),
                 true
@@ -6226,6 +6299,10 @@ describe("BondingManager", () => {
         beforeEach(async () => {
             transcoder = signers[0]
 
+            await fixture.token.setMockBool(
+                functionSig("transferFrom(address,address,uint256)"),
+                true
+            )
             await fixture.roundsManager.setMockBool(
                 functionSig("currentRoundInitialized()"),
                 true
@@ -6265,6 +6342,10 @@ describe("BondingManager", () => {
         beforeEach(async () => {
             transcoder = signers[0]
 
+            await fixture.token.setMockBool(
+                functionSig("transferFrom(address,address,uint256)"),
+                true
+            )
             await fixture.roundsManager.setMockBool(
                 functionSig("currentRoundInitialized()"),
                 true
@@ -6309,6 +6390,10 @@ describe("BondingManager", () => {
         beforeEach(async () => {
             transcoder = signers[0]
 
+            await fixture.token.setMockBool(
+                functionSig("transferFrom(address,address,uint256)"),
+                true
+            )
             await fixture.roundsManager.setMockBool(
                 functionSig("currentRoundInitialized()"),
                 true
@@ -6370,6 +6455,10 @@ describe("BondingManager", () => {
             delegator0 = signers[0]
             transcoder = signers[1]
 
+            await fixture.token.setMockBool(
+                functionSig("transferFrom(address,address,uint256)"),
+                true
+            )
             await fixture.roundsManager.setMockBool(
                 functionSig("currentRoundInitialized()"),
                 true
@@ -6463,6 +6552,10 @@ describe("BondingManager", () => {
         beforeEach(async () => {
             transcoder = signers[0]
 
+            await fixture.token.setMockBool(
+                functionSig("transferFrom(address,address,uint256)"),
+                true
+            )
             await fixture.roundsManager.setMockBool(
                 functionSig("currentRoundInitialized()"),
                 true
@@ -6517,6 +6610,10 @@ describe("BondingManager", () => {
         beforeEach(async () => {
             delegator = signers[0]
 
+            await fixture.token.setMockBool(
+                functionSig("transferFrom(address,address,uint256)"),
+                true
+            )
             await fixture.roundsManager.setMockBool(
                 functionSig("currentRoundInitialized()"),
                 true
@@ -6581,6 +6678,10 @@ describe("BondingManager", () => {
             delegator1 = signers[3]
             currentRound = 100
 
+            await fixture.token.setMockBool(
+                functionSig("transferFrom(address,address,uint256)"),
+                true
+            )
             await fixture.roundsManager.setMockBool(
                 functionSig("currentRoundInitialized()"),
                 true

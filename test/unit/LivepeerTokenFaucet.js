@@ -45,6 +45,8 @@ describe("LivepeerTokenFaucet", () => {
             )
         })
 
+        // ADD TEST FOR TRANSFER FAILING
+
         it("fails if sender does not wait through request time", async () => {
             await expect(faucet.connect(signers[1]).request()).to.be.reverted
         })
