@@ -542,7 +542,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
         if (_amount > 0) {
             // Transfer the LPT to the Minter
-            livepeerToken().transferFrom(msg.sender, address(minter()), _amount);
+            require(livepeerToken().transferFrom(msg.sender, address(minter()), _amount), "Transfer failed");
         }
 
         emit Bond(_to, currentDelegate, _owner, _amount, del.bondedAmount);

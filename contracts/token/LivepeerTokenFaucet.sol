@@ -72,7 +72,7 @@ contract LivepeerTokenFaucet is Ownable {
             nextValidRequest[msg.sender] = block.timestamp + requestWait * 1 hours;
         }
 
-        token.transfer(msg.sender, requestAmount);
+        require(token.transfer(msg.sender, requestAmount), "Transfer failed");
 
         emit Request(msg.sender, requestAmount);
     }

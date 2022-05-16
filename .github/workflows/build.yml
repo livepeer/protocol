@@ -9,9 +9,6 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      security-events: write
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -30,16 +27,6 @@ jobs:
       - name: 💡 Run contract tests with coverage reporting
         run: |
           yarn test:coverage
-      - name: Run Slither
-        uses: crytic/slither-action@v0.1.1
-        continue-on-error: true
-        id: slither
-        with:
-          sarif: results.sarif
-      - name: Upload SARIF file
-        uses: github/codeql-action/upload-sarif@v1
-        with:
-          sarif_file: ${{ steps.slither.outputs.sarif }}
       - name: Coveralls
         uses: coverallsapp/github-action@master
         with:
