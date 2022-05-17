@@ -22,7 +22,12 @@ contract TicketBroker is
      * - setTicketValidityPeriod()
      * @param _controller Address of Controller that this contract will be registered with
      */
-    constructor(address _controller) MixinContractRegistry(_controller) {}
+    constructor(address _controller)
+        MixinContractRegistry(_controller)
+        MixinReserve()
+        MixinTicketBrokerCore()
+        MixinTicketProcessor()
+    {}
 
     /**
      * @notice Sets unlockPeriod value. Only callable by the Controller owner

@@ -133,10 +133,7 @@ contract Minter is Manager, IMinter {
         require(newMinterController.getContract(keccak256("Minter")) == address(this), "new Minter must be registered");
 
         // Transfer current Minter's token balance to new Minter
-        require(
-            livepeerToken().transfer(address(_newMinter), livepeerToken().balanceOf(address(this))),
-            "Transfer failed"
-        );
+        livepeerToken().transfer(address(_newMinter), livepeerToken().balanceOf(address(this)));
         // Transfer current Minter's ETH balance to new Minter
         _newMinter.depositETH{ value: address(this).balance }();
     }
@@ -171,7 +168,7 @@ contract Minter is Manager, IMinter {
      * @param _amount Amount of tokens
      */
     function trustedTransferTokens(address _to, uint256 _amount) external onlyBondingManager whenSystemNotPaused {
-        require(livepeerToken().transfer(_to, _amount), "Transfer failed");
+        livepeerToken().transfer(_to, _amount);
     }
 
     /**
