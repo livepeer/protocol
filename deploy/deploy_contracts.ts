@@ -29,7 +29,8 @@ const LIVE_NETWORKS = [
     "rinkeby",
     "rinkebyDevnet",
     "arbitrumRinkeby",
-    "arbitrumRinkebyDevnet"
+    "arbitrumRinkebyDevnet",
+    "gethDev"
 ]
 
 const ARBITRUM_NETWORKS = [
