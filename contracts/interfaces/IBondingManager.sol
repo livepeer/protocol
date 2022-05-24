@@ -78,4 +78,6 @@ interface IBondingManager {
     function isActiveTranscoder(address _transcoder) external view returns (bool);
 
     function getTotalBonded() external view returns (uint256);
+
+    function pendingStake(address _addr, uint256 _endRound) external view returns (uint256);
 }

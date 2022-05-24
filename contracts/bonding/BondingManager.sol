@@ -2,7 +2,7 @@
 pragma solidity 0.8.9;
 
 import "../ManagerProxyTarget.sol";
-import "./IBondingManager.sol";
+import "../interfaces/IBondingManager.sol";
 import "../libraries/SortedDoublyLL.sol";
 import "../libraries/MathUtils.sol";
 import "../libraries/PreciseMathUtils.sol";

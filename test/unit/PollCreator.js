@@ -25,7 +25,7 @@ describe("PollCreator", () => {
         fixture = new Fixture(web3)
 
         bondingManagerMock = await smock.fake(
-            "contracts/polling/PollCreator.sol:IBondingManager",
+            "contracts/interfaces/IBondingManager.sol:IBondingManager",
             {
                 address: mockBondingManagerEOA.address
             }
