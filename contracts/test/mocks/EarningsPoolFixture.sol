@@ -5,10 +5,7 @@ import "../../libraries/MathUtils.sol";
 import "../../bonding/libraries/EarningsPool.sol";
 import "../../bonding/libraries/EarningsPoolLIP36.sol";
 
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-
 contract EarningsPoolFixture {
-    using SafeMath for uint256;
     using EarningsPool for EarningsPool.Data;
     using EarningsPoolLIP36 for EarningsPool.Data;
 

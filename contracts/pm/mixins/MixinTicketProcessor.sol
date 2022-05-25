@@ -3,11 +3,8 @@ pragma solidity 0.8.9;
 
 import "./interfaces/MTicketProcessor.sol";
 import "./MixinContractRegistry.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 abstract contract MixinTicketProcessor is MixinContractRegistry, MTicketProcessor {
-    using SafeMath for uint256;
-
     // Number of rounds that a ticket is valid for starting from
     // its creationRound
     uint256 public ticketValidityPeriod;
@@ -61,7 +58,7 @@ abstract contract MixinTicketProcessor is MixinContractRegistry, MTicketProcesso
 
         uint256 currRound = roundsManager().currentRound();
 
-        require(creationRound.add(ticketValidityPeriod) > currRound, "ticket is expired");
+        require(creationRound + ticketValidityPeriod > currRound, "ticket is expired");
     }
 
     /**

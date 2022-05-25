@@ -6,11 +6,8 @@ import "./interfaces/MTicketProcessor.sol";
 import "./interfaces/MTicketBrokerCore.sol";
 import "./MixinContractRegistry.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 abstract contract MixinTicketBrokerCore is MixinContractRegistry, MReserve, MTicketProcessor, MTicketBrokerCore {
-    using SafeMath for uint256;
-
     struct Sender {
         uint256 deposit; // Amount of funds deposited
         uint256 withdrawRound; // Round that sender can withdraw deposit & reserve
@@ -28,7 +25,7 @@ abstract contract MixinTicketBrokerCore is MixinContractRegistry, MReserve, MTic
     // Checks if msg.value is equal to the given deposit and reserve amounts
     modifier checkDepositReserveETHValueSplit(uint256 _depositAmount, uint256 _reserveAmount) {
         require(
-            msg.value == _depositAmount.add(_reserveAmount),
+            msg.value == _depositAmount + _reserveAmount,
             "msg.value does not equal sum of deposit amount and reserve amount"
         );
 
@@ -38,7 +35,7 @@ abstract contract MixinTicketBrokerCore is MixinContractRegistry, MReserve, MTic
     // Process deposit funding
     modifier processDeposit(address _sender, uint256 _amount) {
         Sender storage sender = senders[_sender];
-        sender.deposit = sender.deposit.add(_amount);
+        sender.deposit += _amount;
         if (_isUnlockInProgress(sender)) {
             _cancelUnlock(sender, _sender);
         }
@@ -136,9 +133,9 @@ abstract contract MixinTicketBrokerCore is MixinContractRegistry, MReserve, MTic
             // If ticket face value > sender's deposit then claim from
             // the sender's reserve
 
-            amountToTransfer = sender.deposit.add(
-                claimFromReserve(_ticket.sender, _ticket.recipient, _ticket.faceValue.sub(sender.deposit))
-            );
+            amountToTransfer =
+                sender.deposit +
+                claimFromReserve(_ticket.sender, _ticket.recipient, _ticket.faceValue - sender.deposit);
 
             sender.deposit = 0;
         } else {
@@ -146,7 +143,7 @@ abstract contract MixinTicketBrokerCore is MixinContractRegistry, MReserve, MTic
             // from sender's deposit
 
             amountToTransfer = _ticket.faceValue;
-            sender.deposit = sender.deposit.sub(_ticket.faceValue);
+            sender.deposit -= _ticket.faceValue;
         }
 
         if (amountToTransfer > 0) {
@@ -176,7 +173,7 @@ abstract contract MixinTicketBrokerCore is MixinContractRegistry, MReserve, MTic
         require(!_isUnlockInProgress(sender), "unlock already initiated");
 
         uint256 currentRound = roundsManager().currentRound();
-        sender.withdrawRound = currentRound.add(unlockPeriod);
+        sender.withdrawRound = currentRound + unlockPeriod;
 
         emit Unlock(msg.sender, currentRound, sender.withdrawRound);
     }
@@ -206,7 +203,7 @@ abstract contract MixinTicketBrokerCore is MixinContractRegistry, MReserve, MTic
         sender.deposit = 0;
         clearReserve(msg.sender);
 
-        withdrawTransfer(payable(msg.sender), deposit.add(reserve));
+        withdrawTransfer(payable(msg.sender), deposit + reserve);
 
         emit Withdrawal(msg.sender, deposit, reserve);
     }
