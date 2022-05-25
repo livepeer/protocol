@@ -3,7 +3,7 @@ pragma solidity 0.8.9;
 
 import "../ManagerProxyTarget.sol";
 import "./IRoundsManager.sol";
-import "../interfaces/IBondingManager.sol";
+import "../bonding/IBondingManager.sol";
 import "../token/IMinter.sol";
 import "../libraries/MathUtils.sol";
 
