@@ -2,7 +2,12 @@
 pragma solidity 0.8.9;
 
 import "./Poll.sol";
-import "../interfaces/IBondingManager.sol";
+
+interface IBondingManager {
+    function transcoderTotalStake(address _addr) external view returns (uint256);
+
+    function pendingStake(address _addr, uint256 _endRound) external view returns (uint256);
+}
 
 contract PollCreator {
     // 33.33%

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.9;
 
-import "../../../interfaces/IBondingManager.sol";
+import "../../../bonding/IBondingManager.sol";
 import "../../../token/IMinter.sol";
 import "../../../rounds/IRoundsManager.sol";
 
