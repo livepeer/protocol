@@ -5,7 +5,7 @@ import "../Manager.sol";
 import "./IMinter.sol";
 import "./ILivepeerToken.sol";
 import "../rounds/IRoundsManager.sol";
-import "../bonding/IBondingManager.sol";
+import "../interfaces/IBondingManager.sol";
 import "../libraries/MathUtilsV2.sol";
 
 interface IL2LPTDataCache {
