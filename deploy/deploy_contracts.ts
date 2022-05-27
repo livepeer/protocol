@@ -14,7 +14,7 @@ import {
     Governor
 } from "../typechain"
 
-import ContractDeployer from "./deployer"
+import ContractDeployer from "../utils/deployer"
 import getNetworkConfig from "./migrations.config"
 import genesis from "./genesis.config"
 
