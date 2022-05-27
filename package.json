@@ -10,6 +10,8 @@
     "deploy": "npx hardhat deploy --tags Contracts,Poll",
     "deploy:poll": "npx hardhat deploy --tags Poll",
     "deploy:contracts": "npx hardhat deploy --tags Contracts",
+    "analyze": "slither .",
+    "analyze:human-readable": "slither . --print human-summary",
     "lint": "yarn eslint && yarn solhint",
     "eslint:fix": "eslint . --ext .js,.ts --fix",
     "eslint": "eslint . --ext .js,.ts",

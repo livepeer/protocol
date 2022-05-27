@@ -1,0 +1,36 @@
+name: Analyze
+on:
+  pull_request:
+  push:
+    branches:
+      - confluence
+      - cf/next
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          # Needed for commands that depend on git tags
+          fetch-depth: 0
+      - uses: actions/setup-node@v3
+        with:
+          node-version: "16"
+          cache: "yarn"
+      - name: Install dependencies
+        run: yarn --immutable
+      - name: Run Slither
+        uses: crytic/slither-action@v0.1.1
+        continue-on-error: true
+        id: slither
+        with:
+          sarif: results.sarif
+      # - name: Upload SARIF file
+      #   uses: github/codeql-action/upload-sarif@v2
+      #   with:
+      #     sarif_file: ${{ steps.slither.outputs.sarif }}

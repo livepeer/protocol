@@ -62,6 +62,14 @@ The project uses [ESLint](https://github.com/eslint/eslint) for Javascript linti
 yarn lint
 ```
 
+### Static Analysis
+
+The project uses [Slither](https://github.com/crytic/slither) for static analysis of the code. This may have false positives and is configured at [slither.config.json](./slither.config.json).
+
+```
+yarn analyze
+```
+
 ### Run Tests
 
 All tests will be executed via [hardhat](https://hardhat.org/guides/waffle-testing.html).

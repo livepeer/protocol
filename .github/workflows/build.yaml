@@ -3,20 +3,24 @@ on:
   pull_request:
   push:
     branches:
-      - streamflow
-      - next
+      - confluence
+      - cf/next
+
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           # Needed for commands that depend on git tags
           fetch-depth: 0
+      - uses: actions/setup-node@v3
+        with:
+          node-version: "16"
+          cache: "yarn"
       - name: Install dependencies
-        run: |
-          yarn
+        run: yarn --immutable
       - name: Linter
         run: |
           yarn lint
