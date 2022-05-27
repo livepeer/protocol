@@ -1,7 +1,7 @@
 import {HardhatRuntimeEnvironment} from "hardhat/types"
 import {DeployFunction} from "hardhat-deploy/types"
 
-import ContractDeployer from "./deployer"
+import ContractDeployer from "../utils/deployer"
 
 const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
     const {deployments, getNamedAccounts} = hre // Get the deployments and getNamedAccounts which are provided by hardhat-deploy
