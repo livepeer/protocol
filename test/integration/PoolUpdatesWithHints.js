@@ -80,7 +80,7 @@ describe("PoolUpdatesWithHints", () => {
         transcoders = signers.slice(0, 10)
         delegator = signers[11]
         newTranscoder = signers[12]
-        rpc = new RPC(web3)
+        rpc = new RPC(ethers.provider)
 
         const fixture = await setupIntegrationTest()
         controller = await ethers.getContractAt(

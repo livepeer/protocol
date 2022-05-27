@@ -34,7 +34,7 @@ describe("redeem ticket gas report", () => {
     let signers
 
     before(async () => {
-        rpc = new RPC(web3)
+        rpc = new RPC(ethers.provider)
         signers = await ethers.getSigners()
         transcoder = signers[0]
         broadcaster = signers[1]

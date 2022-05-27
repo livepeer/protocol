@@ -16,7 +16,7 @@ describe("Governor", () => {
 
     before(async () => {
         signers = await ethers.getSigners()
-        fixture = new Fixture(web3)
+        fixture = new Fixture(ethers.provider)
         await fixture.deploy()
         const govFac = await ethers.getContractFactory("Governor")
         governor = await govFac.deploy()

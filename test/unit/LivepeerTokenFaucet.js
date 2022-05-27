@@ -15,7 +15,7 @@ describe("LivepeerTokenFaucet", () => {
     let signers
 
     before(async () => {
-        rpc = new RPC(web3)
+        rpc = new RPC(ethers.provider)
         signers = await ethers.getSigners()
         const tokenFac = await ethers.getContractFactory("LivepeerToken")
         const faucetFac = await ethers.getContractFactory("LivepeerTokenFaucet")

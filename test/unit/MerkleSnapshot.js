@@ -1,7 +1,7 @@
 import {keccak256, bufferToHex} from "ethereumjs-util"
 import MerkleTree from "../../utils/merkleTree"
 import Fixture from "./helpers/Fixture"
-import {web3, ethers} from "hardhat"
+import {ethers} from "hardhat"
 import chai, {expect, assert} from "chai"
 import {solidity} from "ethereum-waffle"
 chai.use(solidity)
@@ -13,7 +13,7 @@ describe("MerkleSnapshot", () => {
 
     before(async () => {
         signers = await ethers.getSigners()
-        fixture = new Fixture(web3)
+        fixture = new Fixture(ethers.provider)
         await fixture.deploy()
         const merkleFac = await ethers.getContractFactory("MerkleSnapshot")
         merkleSnapshot = await merkleFac.deploy(fixture.controller.address)

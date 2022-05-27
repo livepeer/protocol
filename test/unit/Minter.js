@@ -98,7 +98,7 @@ describe("Minter", () => {
     })
 
     before(async () => {
-        fixture = new Fixture(web3)
+        fixture = new Fixture(ethers.provider)
         await fixture.deploy()
 
         minter = await fixture.deployAndRegister(

@@ -43,7 +43,7 @@ describe("TicketBroker", () => {
         sender = signers[0].address
         recipient = signers[1].address
         funder = signers[3]
-        fixture = new Fixture(web3)
+        fixture = new Fixture(ethers.provider)
         await fixture.deploy()
 
         broker = await (

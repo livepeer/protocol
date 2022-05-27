@@ -7,7 +7,7 @@ import {
 import {constants} from "../../utils/constants"
 import math from "../helpers/math"
 import {assert} from "chai"
-import {ethers, web3} from "hardhat"
+import {ethers} from "hardhat"
 const BigNumber = ethers.BigNumber
 import chai from "chai"
 import {solidity} from "ethereum-waffle"
@@ -49,7 +49,7 @@ describe("BondingManager", () => {
     let signers
     before(async () => {
         signers = await ethers.getSigners()
-        fixture = new Fixture(web3)
+        fixture = new Fixture(ethers.provider)
         await fixture.deploy()
 
         const llFac = await ethers.getContractFactory("SortedDoublyLL")
