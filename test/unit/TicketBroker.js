@@ -889,7 +889,7 @@ describe("TicketBroker", () => {
             const recipientRand = 5
             const recipientRandHash = web3.utils.soliditySha3(recipientRand)
 
-            const sig = await signMsg("junk", sender)
+            const sig = await signMsg("0xdabbad00", sender)
 
             await expect(
                 broker.redeemWinningTicket(
