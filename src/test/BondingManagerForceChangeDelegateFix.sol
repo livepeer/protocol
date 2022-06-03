@@ -18,6 +18,14 @@ contract BondingManagerForceChangeDelegateFix is GovernorBaseTest {
 
     BondingManager public newBondingManagerTarget;
 
+    event Bond(
+        address indexed newDelegate,
+        address indexed oldDelegate,
+        address indexed delegator,
+        uint256 additionalAmount,
+        uint256 bondedAmount
+    );
+
     function setUp() public {
         newBondingManagerTarget = new BondingManager(address(CONTROLLER));
 
@@ -84,8 +92,10 @@ contract BondingManagerForceChangeDelegateFix is GovernorBaseTest {
         address delegate = 0x91f19C0335BC776f4693EeB1D88765243f63e9D6;
 
         bytes32[] memory proof;
-        CHEATS.prank(delegator);
 
+        CHEATS.prank(delegator);
+        CHEATS.expectEmit(true, true, true, true);
+        emit Bond(delegate, address(0), delegator, 500000000000000000000, 500000000000000000000);
         L2_MIGRATOR.claimStake(delegate, 500000000000000000000, 0, proof, address(0));
 
         (, , address delegateAddress, , , , ) = BONDING_MANAGER.getDelegator(delegator);
