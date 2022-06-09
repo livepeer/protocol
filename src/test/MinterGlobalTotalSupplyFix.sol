@@ -1,59 +1,57 @@
 pragma solidity ^0.8.9;
 
 import "ds-test/test.sol";
-import "contracts/governance/Governor.sol";
-import "contracts/Controller.sol";
+import "./base/GovernorBaseTest.sol";
 import "contracts/token/LivepeerToken.sol";
 import "contracts/token/Minter.sol";
 
-interface CheatCodes {
-    function roll(uint256) external;
-
-    function prank(address) external;
-}
-
-contract MinterGlobalTotalSupplyFix is DSTest {
-    CheatCodes public constant CHEATS = CheatCodes(HEVM_ADDRESS);
-
-    Governor public constant GOVERNOR = Governor(0xD9dEd6f9959176F0A04dcf88a0d2306178A736a6);
+// forge test -vvv --fork-url <ARB_MAINNET_RPC_URL> --fork-block-number 6251064 --match-contract MinterGlobalTotalSupplyFix
+contract MinterGlobalTotalSupplyFix is GovernorBaseTest {
     Minter public constant MINTER = Minter(0x4969dcCF5186e1c49411638fc8A2a020Fdab752E);
-    Controller public constant CONTROLLER = Controller(0xD8E8328501E9645d16Cf49539efC04f734606ee4);
     LivepeerToken public constant TOKEN = LivepeerToken(0x289ba1701C2F088cf0faf8B3705246331cB8A839);
 
     address public constant ROUNDS_MANAGER_ADDR = 0xdd6f56DcC28D3F5f27084381fE8Df634985cc39f;
-    address public constant GOVERNOR_OWNER = 0x04F53A0bb244f015cC97731570BeD26F0229da05;
 
     bytes32 public constant MINTER_ID = keccak256("Minter");
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
 
-    // Governor update
-    address[] public targets;
-    uint256[] public values;
-    bytes[] public datas;
-
     Minter public newMinter;
 
-    function setUp() public {
+    function upgrade() public {
+        address[] memory targets = new address[](4);
+        uint256[] memory values = new uint256[](4);
+        bytes[] memory data = new bytes[](4);
+
+        targets[0] = address(MINTER);
+        targets[1] = address(TOKEN);
+        targets[2] = address(TOKEN);
+        targets[3] = address(CONTROLLER);
+
+        values[0] = 0;
+        values[1] = 0;
+        values[2] = 0;
+        values[3] = 0;
+
+        (, bytes20 gitCommitHash) = CONTROLLER.getContractInfo(MINTER_ID);
+        data[0] = abi.encodeWithSelector(MINTER.migrateToNewMinter.selector, address(newMinter));
+        data[1] = abi.encodeWithSelector(TOKEN.grantRole.selector, MINTER_ROLE, address(newMinter));
+        data[2] = abi.encodeWithSelector(TOKEN.revokeRole.selector, MINTER_ROLE, address(MINTER));
+        data[3] = abi.encodeWithSelector(
+            CONTROLLER.setContractInfo.selector,
+            MINTER_ID,
+            address(newMinter),
+            gitCommitHash
+        );
+        stageAndExecuteMany(targets, values, data);
+    }
+
+    function testUpgrade() public {
         newMinter = new Minter(
             address(MINTER.controller()),
             MINTER.inflation(),
             MINTER.inflationChange(),
             MINTER.targetBondingRate()
         );
-
-        targets = [address(MINTER), address(TOKEN), address(TOKEN), address(CONTROLLER)];
-        values = [0, 0, 0, 0];
-
-        (, bytes20 gitCommitHash) = CONTROLLER.getContractInfo(MINTER_ID);
-        datas = [
-            abi.encodeWithSelector(MINTER.migrateToNewMinter.selector, address(newMinter)),
-            abi.encodeWithSelector(TOKEN.grantRole.selector, MINTER_ROLE, address(newMinter)),
-            abi.encodeWithSelector(TOKEN.revokeRole.selector, MINTER_ROLE, address(MINTER)),
-            abi.encodeWithSelector(CONTROLLER.setContractInfo.selector, MINTER_ID, address(newMinter), gitCommitHash)
-        ];
-    }
-
-    function testUpgrade() public {
         assertEq(address(newMinter.controller()), address(MINTER.controller()));
         assertEq(newMinter.inflation(), MINTER.inflation());
         assertEq(newMinter.inflationChange(), MINTER.inflationChange());
@@ -64,17 +62,11 @@ contract MinterGlobalTotalSupplyFix is DSTest {
 
         (, bytes20 gitCommitHash) = CONTROLLER.getContractInfo(MINTER_ID);
 
-        Governor.Update memory update = Governor.Update({ target: targets, value: values, data: datas, nonce: 0 });
-
         // Impersonate Governor owner which is also Controller owner
         CHEATS.prank(GOVERNOR_OWNER);
         // Make sure Controller is owned by Governor
         CONTROLLER.transferOwnership(address(GOVERNOR));
-
-        // Impersonate Governor owner again
-        CHEATS.prank(GOVERNOR_OWNER);
-        GOVERNOR.stage(update, 0);
-        GOVERNOR.execute(update);
+        upgrade();
 
         // Check that assets are moved over
         assertEq(TOKEN.balanceOf(address(newMinter)), minterLPTBal);
