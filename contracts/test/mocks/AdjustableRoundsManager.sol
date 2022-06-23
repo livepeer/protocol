@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.9;
 
-import "./RoundsManager.sol";
+import "../../rounds/RoundsManager.sol";
 
 contract AdjustableRoundsManager is RoundsManager {
     uint256 public num;
