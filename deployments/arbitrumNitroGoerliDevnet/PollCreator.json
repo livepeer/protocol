@@ -1,0 +1,194 @@
+{
+  "address": "0x1a62cAaA643372A0066724c82dbd21B273d2220f",
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_bondingManagerAddr",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "poll",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "bytes",
+          "name": "proposal",
+          "type": "bytes"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "endBlock",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "quorum",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "quota",
+          "type": "uint256"
+        }
+      ],
+      "name": "PollCreated",
+      "type": "event"
+    },
+    {
+      "inputs": [],
+      "name": "POLL_CREATION_COST",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "POLL_PERIOD",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "QUORUM",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "QUOTA",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "bondingManager",
+      "outputs": [
+        {
+          "internalType": "contract IBondingManager",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes",
+          "name": "_proposal",
+          "type": "bytes"
+        }
+      ],
+      "name": "createPoll",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  ],
+  "transactionHash": "0x77dc3e10c02c2e8869f5d9c947f867dd7a482678322f975d011ad697b90cb9e3",
+  "receipt": {
+    "to": null,
+    "from": "0xC96f6B72843Af1988C98F78eAB3E47673af63eA1",
+    "contractAddress": "0x1a62cAaA643372A0066724c82dbd21B273d2220f",
+    "transactionIndex": 1,
+    "gasUsed": "418180",
+    "logsBloom": "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+    "blockHash": "0x2b8b0bf64b454369fd876c86db686521b5475cc4089f52503223c35fe6e4e8cb",
+    "transactionHash": "0x77dc3e10c02c2e8869f5d9c947f867dd7a482678322f975d011ad697b90cb9e3",
+    "logs": [],
+    "blockNumber": 51076,
+    "cumulativeGasUsed": "418180",
+    "status": 1,
+    "byzantium": true
+  },
+  "args": [
+    "0x9B2B20AFe426A6fA196d02cdeFaB4DaEa435323A"
+  ],
+  "numDeployments": 2,
+  "solcInputHash": "6ef8695a2f240c3b9460c170f7b2aff1",
+  "metadata": "{\"compiler\":{\"version\":\"0.8.9+commit.e5eed63a\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_bondingManagerAddr\",\"type\":\"address\"}],\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"poll\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"bytes\",\"name\":\"proposal\",\"type\":\"bytes\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"endBlock\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"quorum\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"quota\",\"type\":\"uint256\"}],\"name\":\"PollCreated\",\"type\":\"event\"},{\"inputs\":[],\"name\":\"POLL_CREATION_COST\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"POLL_PERIOD\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"QUORUM\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"QUOTA\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"bondingManager\",\"outputs\":[{\"internalType\":\"contract IBondingManager\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes\",\"name\":\"_proposal\",\"type\":\"bytes\"}],\"name\":\"createPoll\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}],\"devdoc\":{\"kind\":\"dev\",\"methods\":{\"createPoll(bytes)\":{\"params\":{\"_proposal\":\"The IPFS multihash for the proposal.\"}}},\"version\":1},\"userdoc\":{\"kind\":\"user\",\"methods\":{\"createPoll(bytes)\":{\"notice\":\"Create a poll if caller has POLL_CREATION_COST LPT stake (own stake or stake delegated to it).\"}},\"version\":1}},\"settings\":{\"compilationTarget\":{\"contracts/polling/PollCreator.sol\":\"PollCreator\"},\"evmVersion\":\"london\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"ipfs\",\"useLiteralContent\":true},\"optimizer\":{\"enabled\":true,\"runs\":200},\"remappings\":[]},\"sources\":{\"contracts/polling/Poll.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity 0.8.9;\\n\\ncontract Poll {\\n    // The block at which the poll ends and votes can no longer be submitted.\\n    uint256 public endBlock;\\n\\n    // Vote is emitted when an account submits a vote with 'choiceID'.\\n    // This event can be indexed to tally all votes for each choiceID\\n    event Vote(address indexed voter, uint256 choiceID);\\n\\n    modifier isActive() {\\n        require(block.number <= endBlock, \\\"poll is over\\\");\\n        _;\\n    }\\n\\n    constructor(uint256 _endBlock) {\\n        endBlock = _endBlock;\\n    }\\n\\n    /**\\n     * @dev Vote for the poll's proposal.\\n     *      Reverts if the poll period is over.\\n     * @param _choiceID the ID of the option to vote for\\n     */\\n    function vote(uint256 _choiceID) external isActive {\\n        emit Vote(msg.sender, _choiceID);\\n    }\\n\\n    /**\\n     * @dev Destroy the Poll contract after the poll has finished\\n     *      Reverts if the poll is still active\\n     */\\n    function destroy() external {\\n        require(block.number > endBlock, \\\"poll is active\\\");\\n        selfdestruct(payable(msg.sender));\\n    }\\n}\\n\",\"keccak256\":\"0xd367ab8593963ab1d0f82629ee58f911462580e3ec180ed57712ee51f8487911\",\"license\":\"MIT\"},\"contracts/polling/PollCreator.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity 0.8.9;\\n\\nimport \\\"./Poll.sol\\\";\\n\\ninterface IBondingManager {\\n    function transcoderTotalStake(address _addr) external view returns (uint256);\\n\\n    function pendingStake(address _addr, uint256 _endRound) external view returns (uint256);\\n}\\n\\ncontract PollCreator {\\n    // 33.33%\\n    uint256 public constant QUORUM = 333300;\\n    // 50%\\n    uint256 public constant QUOTA = 500000;\\n    // 10 rounds\\n    uint256 public constant POLL_PERIOD = 10 * 5760;\\n    uint256 public constant POLL_CREATION_COST = 100 * 1 ether;\\n\\n    IBondingManager public bondingManager;\\n\\n    event PollCreated(address indexed poll, bytes proposal, uint256 endBlock, uint256 quorum, uint256 quota);\\n\\n    constructor(address _bondingManagerAddr) {\\n        bondingManager = IBondingManager(_bondingManagerAddr);\\n    }\\n\\n    /**\\n     * @notice Create a poll if caller has POLL_CREATION_COST LPT stake (own stake or stake delegated to it).\\n     * @param _proposal The IPFS multihash for the proposal.\\n     */\\n    function createPoll(bytes calldata _proposal) external {\\n        require(\\n            // pendingStake() ignores the second arg\\n            bondingManager.pendingStake(msg.sender, 0) >= POLL_CREATION_COST ||\\n                bondingManager.transcoderTotalStake(msg.sender) >= POLL_CREATION_COST,\\n            \\\"PollCreator#createPoll: INSUFFICIENT_STAKE\\\"\\n        );\\n\\n        uint256 endBlock = block.number + POLL_PERIOD;\\n        Poll poll = new Poll(endBlock);\\n\\n        emit PollCreated(address(poll), _proposal, endBlock, QUORUM, QUOTA);\\n    }\\n}\\n\",\"keccak256\":\"0x7a3466592682d8dcec420696c6cf36706cf4bf52b532918bf7c458f04e2d9709\",\"license\":\"MIT\"}},\"version\":1}",
+  "bytecode": "0x608060405234801561001057600080fd5b506040516106be3803806106be83398101604081905261002f91610054565b600080546001600160a01b0319166001600160a01b0392909216919091179055610084565b60006020828403121561006657600080fd5b81516001600160a01b038116811461007d57600080fd5b9392505050565b61062b806100936000396000f3fe608060405234801561001057600080fd5b50600436106100625760003560e01c80632e80d9b614610067578063426eae45146100845780634d2942ab146100af5780635359fbc0146100c4578063a502303b146100d4578063cb61e46e146100de575b600080fd5b610071620515f481565b6040519081526020015b60405180910390f35b600054610097906001600160a01b031681565b6040516001600160a01b03909116815260200161007b565b6100c26100bd36600461030e565b6100e7565b005b61007168056bc75e2d6310000081565b6100716207a12081565b61007161e10081565b60008054604051634e85963d60e11b8152336004820152602481019290925268056bc75e2d63100000916001600160a01b0390911690639d0b2c7a9060440160206040518083038186803b15801561013e57600080fd5b505afa158015610152573d6000803e3d6000fd5b505050506040513d601f19601f820116820180604052508101906101769190610380565b10158061020557506000546040516327be77e560e21b815233600482015268056bc75e2d63100000916001600160a01b031690639ef9df949060240160206040518083038186803b1580156101ca57600080fd5b505afa1580156101de573d6000803e3d6000fd5b505050506040513d601f19601f820116820180604052508101906102029190610380565b10155b6102685760405162461bcd60e51b815260206004820152602a60248201527f506f6c6c43726561746f7223637265617465506f6c6c3a20494e53554646494360448201526949454e545f5354414b4560b01b606482015260840160405180910390fd5b600061027661e10043610399565b905060008160405161028790610301565b908152602001604051809103906000f0801580156102a9573d6000803e3d6000fd5b509050806001600160a01b03167f8afbc4e1826cefcfc1e64fd5ff7d8484e700867fdbe36e9b6db047c010a6229e858585620515f46207a1206040516102f39594939291906103bf565b60405180910390a250505050565b6101ef8061040783390190565b6000806020838503121561032157600080fd5b823567ffffffffffffffff8082111561033957600080fd5b818501915085601f83011261034d57600080fd5b81358181111561035c57600080fd5b86602082850101111561036e57600080fd5b60209290920196919550909350505050565b60006020828403121561039257600080fd5b5051919050565b600082198211156103ba57634e487b7160e01b600052601160045260246000fd5b500190565b60808152846080820152848660a0830137600060a08683010152600060a0601f19601f8801168301019050846020830152836040830152826060830152969550505050505056fe608060405234801561001057600080fd5b506040516101ef3803806101ef83398101604081905261002f91610037565b600055610050565b60006020828403121561004957600080fd5b5051919050565b6101908061005f6000396000f3fe608060405234801561001057600080fd5b50600436106100415760003560e01c80630121b93f14610046578063083c63231461005b57806383197ef014610076575b600080fd5b610059610054366004610141565b61007e565b005b61006460005481565b60405190815260200160405180910390f35b6100596100fc565b6000544311156100c45760405162461bcd60e51b815260206004820152600c60248201526b3837b6361034b99037bb32b960a11b60448201526064015b60405180910390fd5b60405181815233907ff668ead05c744b9178e571d2edb452e72baf6529c8d72160e64e59b50d865bd09060200160405180910390a250565b600054431161013e5760405162461bcd60e51b815260206004820152600e60248201526d706f6c6c2069732061637469766560901b60448201526064016100bb565b33ff5b60006020828403121561015357600080fd5b503591905056fea2646970667358221220e261c2ae86d579d3bb93dac7a0a4cdcb6fd8ec10e94802f7978fcf4892830b3464736f6c63430008090033a2646970667358221220a03dc095991cbc23c9a0899496e73acaccbf55bd4d692f3acc7edb3bf31b917864736f6c63430008090033",
+  "deployedBytecode": "0x608060405234801561001057600080fd5b50600436106100625760003560e01c80632e80d9b614610067578063426eae45146100845780634d2942ab146100af5780635359fbc0146100c4578063a502303b146100d4578063cb61e46e146100de575b600080fd5b610071620515f481565b6040519081526020015b60405180910390f35b600054610097906001600160a01b031681565b6040516001600160a01b03909116815260200161007b565b6100c26100bd36600461030e565b6100e7565b005b61007168056bc75e2d6310000081565b6100716207a12081565b61007161e10081565b60008054604051634e85963d60e11b8152336004820152602481019290925268056bc75e2d63100000916001600160a01b0390911690639d0b2c7a9060440160206040518083038186803b15801561013e57600080fd5b505afa158015610152573d6000803e3d6000fd5b505050506040513d601f19601f820116820180604052508101906101769190610380565b10158061020557506000546040516327be77e560e21b815233600482015268056bc75e2d63100000916001600160a01b031690639ef9df949060240160206040518083038186803b1580156101ca57600080fd5b505afa1580156101de573d6000803e3d6000fd5b505050506040513d601f19601f820116820180604052508101906102029190610380565b10155b6102685760405162461bcd60e51b815260206004820152602a60248201527f506f6c6c43726561746f7223637265617465506f6c6c3a20494e53554646494360448201526949454e545f5354414b4560b01b606482015260840160405180910390fd5b600061027661e10043610399565b905060008160405161028790610301565b908152602001604051809103906000f0801580156102a9573d6000803e3d6000fd5b509050806001600160a01b03167f8afbc4e1826cefcfc1e64fd5ff7d8484e700867fdbe36e9b6db047c010a6229e858585620515f46207a1206040516102f39594939291906103bf565b60405180910390a250505050565b6101ef8061040783390190565b6000806020838503121561032157600080fd5b823567ffffffffffffffff8082111561033957600080fd5b818501915085601f83011261034d57600080fd5b81358181111561035c57600080fd5b86602082850101111561036e57600080fd5b60209290920196919550909350505050565b60006020828403121561039257600080fd5b5051919050565b600082198211156103ba57634e487b7160e01b600052601160045260246000fd5b500190565b60808152846080820152848660a0830137600060a08683010152600060a0601f19601f8801168301019050846020830152836040830152826060830152969550505050505056fe608060405234801561001057600080fd5b506040516101ef3803806101ef83398101604081905261002f91610037565b600055610050565b60006020828403121561004957600080fd5b5051919050565b6101908061005f6000396000f3fe608060405234801561001057600080fd5b50600436106100415760003560e01c80630121b93f14610046578063083c63231461005b57806383197ef014610076575b600080fd5b610059610054366004610141565b61007e565b005b61006460005481565b60405190815260200160405180910390f35b6100596100fc565b6000544311156100c45760405162461bcd60e51b815260206004820152600c60248201526b3837b6361034b99037bb32b960a11b60448201526064015b60405180910390fd5b60405181815233907ff668ead05c744b9178e571d2edb452e72baf6529c8d72160e64e59b50d865bd09060200160405180910390a250565b600054431161013e5760405162461bcd60e51b815260206004820152600e60248201526d706f6c6c2069732061637469766560901b60448201526064016100bb565b33ff5b60006020828403121561015357600080fd5b503591905056fea2646970667358221220e261c2ae86d579d3bb93dac7a0a4cdcb6fd8ec10e94802f7978fcf4892830b3464736f6c63430008090033a2646970667358221220a03dc095991cbc23c9a0899496e73acaccbf55bd4d692f3acc7edb3bf31b917864736f6c63430008090033",
+  "devdoc": {
+    "kind": "dev",
+    "methods": {
+      "createPoll(bytes)": {
+        "params": {
+          "_proposal": "The IPFS multihash for the proposal."
+        }
+      }
+    },
+    "version": 1
+  },
+  "userdoc": {
+    "kind": "user",
+    "methods": {
+      "createPoll(bytes)": {
+        "notice": "Create a poll if caller has POLL_CREATION_COST LPT stake (own stake or stake delegated to it)."
+      }
+    },
+    "version": 1
+  },
+  "storageLayout": {
+    "storage": [
+      {
+        "astId": 107,
+        "contract": "contracts/polling/PollCreator.sol:PollCreator",
+        "label": "bondingManager",
+        "offset": 0,
+        "slot": "0",
+        "type": "t_contract(IBondingManager)88"
+      }
+    ],
+    "types": {
+      "t_contract(IBondingManager)88": {
+        "encoding": "inplace",
+        "label": "contract IBondingManager",
+        "numberOfBytes": "20"
+      }
+    }
+  }
+}

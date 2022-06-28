@@ -1,0 +1,274 @@
+{
+  "address": "0x049914eb41c1b7C249DcaAE0Fee81fF835B82E65",
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_controller",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "string",
+          "name": "param",
+          "type": "string"
+        }
+      ],
+      "name": "ParameterUpdate",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "addr",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "string",
+          "name": "serviceURI",
+          "type": "string"
+        }
+      ],
+      "name": "ServiceURIUpdate",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "controller",
+          "type": "address"
+        }
+      ],
+      "name": "SetController",
+      "type": "event"
+    },
+    {
+      "inputs": [],
+      "name": "controller",
+      "outputs": [
+        {
+          "internalType": "contract IController",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_addr",
+          "type": "address"
+        }
+      ],
+      "name": "getServiceURI",
+      "outputs": [
+        {
+          "internalType": "string",
+          "name": "",
+          "type": "string"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_controller",
+          "type": "address"
+        }
+      ],
+      "name": "setController",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "string",
+          "name": "_serviceURI",
+          "type": "string"
+        }
+      ],
+      "name": "setServiceURI",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "targetContractId",
+      "outputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ],
+  "transactionHash": "0xe5b36d414b962537867fc27505edd95057be9193f11d94879f95ac14df747789",
+  "receipt": {
+    "to": null,
+    "from": "0xC96f6B72843Af1988C98F78eAB3E47673af63eA1",
+    "contractAddress": "0x049914eb41c1b7C249DcaAE0Fee81fF835B82E65",
+    "transactionIndex": 0,
+    "gasUsed": "348987",
+    "logsBloom": "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+    "blockHash": "0x4da899f16540b27dcf07acea8d11b0cad909bc92a7db39beb6bd0e8416f96cda",
+    "transactionHash": "0xe5b36d414b962537867fc27505edd95057be9193f11d94879f95ac14df747789",
+    "logs": [],
+    "blockNumber": 7069109,
+    "cumulativeGasUsed": "348987",
+    "status": 1,
+    "byzantium": true
+  },
+  "args": [
+    "0xc145691db4692ce8584D28b82331128C9C149EDA"
+  ],
+  "numDeployments": 1,
+  "solcInputHash": "38b657e341fe6dcb1b812a658e825f5e",
+  "metadata": "{\"compiler\":{\"version\":\"0.8.9+commit.e5eed63a\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_controller\",\"type\":\"address\"}],\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"string\",\"name\":\"param\",\"type\":\"string\"}],\"name\":\"ParameterUpdate\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"addr\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"string\",\"name\":\"serviceURI\",\"type\":\"string\"}],\"name\":\"ServiceURIUpdate\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"controller\",\"type\":\"address\"}],\"name\":\"SetController\",\"type\":\"event\"},{\"inputs\":[],\"name\":\"controller\",\"outputs\":[{\"internalType\":\"contract IController\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_addr\",\"type\":\"address\"}],\"name\":\"getServiceURI\",\"outputs\":[{\"internalType\":\"string\",\"name\":\"\",\"type\":\"string\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_controller\",\"type\":\"address\"}],\"name\":\"setController\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"_serviceURI\",\"type\":\"string\"}],\"name\":\"setServiceURI\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"targetContractId\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"}],\"devdoc\":{\"kind\":\"dev\",\"methods\":{\"constructor\":{\"params\":{\"_controller\":\"Address of a Controller that this contract will be registered with\"}},\"getServiceURI(address)\":{\"params\":{\"_addr\":\"Address for which a service URI endpoint is desired\"}},\"setController(address)\":{\"params\":{\"_controller\":\"Controller contract address\"}},\"setServiceURI(string)\":{\"params\":{\"_serviceURI\":\"Service URI endpoint for the caller\"}}},\"title\":\"ServiceRegistry\",\"version\":1},\"userdoc\":{\"kind\":\"user\",\"methods\":{\"constructor\":{\"notice\":\"ServiceRegistry constructor. Only invokes constructor of base Manager contract with provided Controller address\"},\"getServiceURI(address)\":{\"notice\":\"Returns service URI endpoint stored for a given address\"},\"setController(address)\":{\"notice\":\"Set controller. Only callable by current controller\"},\"setServiceURI(string)\":{\"notice\":\"Stores service URI endpoint for the caller that can be used to send requests to the caller off-chain\"}},\"notice\":\"Maintains a registry of service metadata associated with service provider addresses (transcoders/orchestrators)\",\"version\":1}},\"settings\":{\"compilationTarget\":{\"contracts/ServiceRegistry.sol\":\"ServiceRegistry\"},\"evmVersion\":\"london\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"ipfs\",\"useLiteralContent\":true},\"optimizer\":{\"enabled\":true,\"runs\":200},\"remappings\":[]},\"sources\":{\"contracts/IController.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity 0.8.9;\\n\\nimport \\\"./zeppelin/Pausable.sol\\\";\\n\\nabstract contract IController is Pausable {\\n    event SetContractInfo(bytes32 id, address contractAddress, bytes20 gitCommitHash);\\n\\n    function setContractInfo(\\n        bytes32 _id,\\n        address _contractAddress,\\n        bytes20 _gitCommitHash\\n    ) external virtual;\\n\\n    function updateController(bytes32 _id, address _controller) external virtual;\\n\\n    function getContract(bytes32 _id) public view virtual returns (address);\\n}\\n\",\"keccak256\":\"0x34ea30a2b44d0cbec58fc1d703476ff0085b0fdadab0cd65c35c00b8867f7546\",\"license\":\"MIT\"},\"contracts/IManager.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity 0.8.9;\\n\\ninterface IManager {\\n    event SetController(address controller);\\n    event ParameterUpdate(string param);\\n\\n    function setController(address _controller) external;\\n}\\n\",\"keccak256\":\"0xc179e4cecc593741514237d5194b4aaac6b829789629fa19ed04f572a8530481\",\"license\":\"MIT\"},\"contracts/Manager.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity 0.8.9;\\n\\nimport \\\"./IManager.sol\\\";\\nimport \\\"./IController.sol\\\";\\n\\ncontract Manager is IManager {\\n    // Controller that contract is registered with\\n    IController public controller;\\n\\n    // Check if sender is controller\\n    modifier onlyController() {\\n        _onlyController();\\n        _;\\n    }\\n\\n    // Check if sender is controller owner\\n    modifier onlyControllerOwner() {\\n        _onlyControllerOwner();\\n        _;\\n    }\\n\\n    // Check if controller is not paused\\n    modifier whenSystemNotPaused() {\\n        _whenSystemNotPaused();\\n        _;\\n    }\\n\\n    // Check if controller is paused\\n    modifier whenSystemPaused() {\\n        _whenSystemPaused();\\n        _;\\n    }\\n\\n    constructor(address _controller) {\\n        controller = IController(_controller);\\n    }\\n\\n    /**\\n     * @notice Set controller. Only callable by current controller\\n     * @param _controller Controller contract address\\n     */\\n    function setController(address _controller) external onlyController {\\n        controller = IController(_controller);\\n\\n        emit SetController(_controller);\\n    }\\n\\n    function _onlyController() private view {\\n        require(msg.sender == address(controller), \\\"caller must be Controller\\\");\\n    }\\n\\n    function _onlyControllerOwner() private view {\\n        require(msg.sender == controller.owner(), \\\"caller must be Controller owner\\\");\\n    }\\n\\n    function _whenSystemNotPaused() private view {\\n        require(!controller.paused(), \\\"system is paused\\\");\\n    }\\n\\n    function _whenSystemPaused() private view {\\n        require(controller.paused(), \\\"system is not paused\\\");\\n    }\\n}\\n\",\"keccak256\":\"0xc415e3f42da9f82ddd5953031f3f26aed824368fcc34d3b8a17015bfe80dc109\",\"license\":\"MIT\"},\"contracts/ManagerProxyTarget.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity 0.8.9;\\n\\nimport \\\"./Manager.sol\\\";\\n\\n/**\\n * @title ManagerProxyTarget\\n * @notice The base contract that target contracts used by a proxy contract should inherit from\\n * @dev Both the target contract and the proxy contract (implemented as ManagerProxy) MUST inherit from ManagerProxyTarget in order to guarantee\\n that both contracts have the same storage layout. Differing storage layouts in a proxy contract and target contract can\\n potentially break the delegate proxy upgradeability mechanism\\n */\\nabstract contract ManagerProxyTarget is Manager {\\n    // Used to look up target contract address in controller's registry\\n    bytes32 public targetContractId;\\n}\\n\",\"keccak256\":\"0x920bcc2def240e06272dc06cbcb9f12976f1698cd4f1020c165af25ee837e553\",\"license\":\"MIT\"},\"contracts/ServiceRegistry.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity 0.8.9;\\n\\nimport \\\"./ManagerProxyTarget.sol\\\";\\n\\n/**\\n * @title ServiceRegistry\\n * @notice Maintains a registry of service metadata associated with service provider addresses (transcoders/orchestrators)\\n */\\ncontract ServiceRegistry is ManagerProxyTarget {\\n    // Store service metadata\\n    struct Record {\\n        string serviceURI; // Service URI endpoint that can be used to send off-chain requests\\n    }\\n\\n    // Track records for addresses\\n    mapping(address => Record) private records;\\n\\n    // Event fired when a caller updates its service URI endpoint\\n    event ServiceURIUpdate(address indexed addr, string serviceURI);\\n\\n    /**\\n     * @notice ServiceRegistry constructor. Only invokes constructor of base Manager contract with provided Controller address\\n     * @param _controller Address of a Controller that this contract will be registered with\\n     */\\n    constructor(address _controller) Manager(_controller) {}\\n\\n    /**\\n     * @notice Stores service URI endpoint for the caller that can be used to send requests to the caller off-chain\\n     * @param _serviceURI Service URI endpoint for the caller\\n     */\\n    function setServiceURI(string calldata _serviceURI) external {\\n        records[msg.sender].serviceURI = _serviceURI;\\n\\n        emit ServiceURIUpdate(msg.sender, _serviceURI);\\n    }\\n\\n    /**\\n     * @notice Returns service URI endpoint stored for a given address\\n     * @param _addr Address for which a service URI endpoint is desired\\n     */\\n    function getServiceURI(address _addr) public view returns (string memory) {\\n        return records[_addr].serviceURI;\\n    }\\n}\\n\",\"keccak256\":\"0xca3235eea4230fff83203f07b9be76bf62ee9786dc4768abc351de2c12273563\",\"license\":\"MIT\"},\"contracts/zeppelin/Ownable.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity 0.8.9;\\n\\n/**\\n * @title Ownable\\n * @dev The Ownable contract has an owner address, and provides basic authorization control\\n * functions, this simplifies the implementation of \\\"user permissions\\\".\\n */\\ncontract Ownable {\\n    address public owner;\\n\\n    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);\\n\\n    /**\\n     * @dev The Ownable constructor sets the original `owner` of the contract to the sender\\n     * account.\\n     */\\n    constructor() {\\n        owner = msg.sender;\\n    }\\n\\n    /**\\n     * @dev Throws if called by any account other than the owner.\\n     */\\n    modifier onlyOwner() {\\n        require(msg.sender == owner);\\n        _;\\n    }\\n\\n    /**\\n     * @dev Allows the current owner to transfer control of the contract to a newOwner.\\n     * @param newOwner The address to transfer ownership to.\\n     */\\n    function transferOwnership(address newOwner) public onlyOwner {\\n        require(newOwner != address(0));\\n        emit OwnershipTransferred(owner, newOwner);\\n        owner = newOwner;\\n    }\\n}\\n\",\"keccak256\":\"0x64f114689f2f161c4a4b8fc8442ab914436a33e6021bf17401eaeac73319a419\",\"license\":\"MIT\"},\"contracts/zeppelin/Pausable.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity 0.8.9;\\n\\nimport \\\"./Ownable.sol\\\";\\n\\n/**\\n * @title Pausable\\n * @dev Base contract which allows children to implement an emergency stop mechanism.\\n */\\ncontract Pausable is Ownable {\\n    event Pause();\\n    event Unpause();\\n\\n    bool public paused;\\n\\n    /**\\n     * @dev Modifier to make a function callable only when the contract is not paused.\\n     */\\n    modifier whenNotPaused() {\\n        require(!paused);\\n        _;\\n    }\\n\\n    /**\\n     * @dev Modifier to make a function callable only when the contract is paused.\\n     */\\n    modifier whenPaused() {\\n        require(paused);\\n        _;\\n    }\\n\\n    /**\\n     * @dev called by the owner to pause, triggers stopped state\\n     */\\n    function pause() public onlyOwner whenNotPaused {\\n        paused = true;\\n        emit Pause();\\n    }\\n\\n    /**\\n     * @dev called by the owner to unpause, returns to normal state\\n     */\\n    function unpause() public onlyOwner whenPaused {\\n        paused = false;\\n        emit Unpause();\\n    }\\n}\\n\",\"keccak256\":\"0xe9635fcac46c22547a08f6977a8c75e7341411f1201f60bdd4c79c26e6c286ef\",\"license\":\"MIT\"}},\"version\":1}",
+  "bytecode": "0x608060405234801561001057600080fd5b5060405161057c38038061057c83398101604081905261002f91610054565b600080546001600160a01b0319166001600160a01b0392909216919091179055610084565b60006020828403121561006657600080fd5b81516001600160a01b038116811461007d57600080fd5b9392505050565b6104e9806100936000396000f3fe608060405234801561001057600080fd5b50600436106100575760003560e01c8063214c2a4b1461005c57806351720b41146100855780635f11301b1461009c57806392eefe9b146100b1578063f77c4791146100c4575b600080fd5b61006f61006a366004610352565b6100ef565b60405161007c9190610382565b60405180910390f35b61008e60015481565b60405190815260200161007c565b6100af6100aa3660046103d7565b61019b565b005b6100af6100bf366004610352565b6101fd565b6000546100d7906001600160a01b031681565b6040516001600160a01b03909116815260200161007c565b6001600160a01b038116600090815260026020526040902080546060919061011690610449565b80601f016020809104026020016040519081016040528092919081815260200182805461014290610449565b801561018f5780601f106101645761010080835404028352916020019161018f565b820191906000526020600020905b81548152906001019060200180831161017257829003601f168201915b50505050509050919050565b3360009081526002602052604090206101b59083836102b9565b50336001600160a01b03167ffbb63068732c85741c9f8e61caffaabe038d577bfafd2d2dcc0e352a4f653a4c83836040516101f1929190610484565b60405180910390a25050565b610205610259565b600080546001600160a01b0319166001600160a01b0383169081179091556040519081527f4ff638452bbf33c012645d18ae6f05515ff5f2d1dfb0cece8cbf018c60903f709060200160405180910390a150565b6000546001600160a01b031633146102b75760405162461bcd60e51b815260206004820152601960248201527f63616c6c6572206d75737420626520436f6e74726f6c6c657200000000000000604482015260640160405180910390fd5b565b8280546102c590610449565b90600052602060002090601f0160209004810192826102e7576000855561032d565b82601f106103005782800160ff1982351617855561032d565b8280016001018555821561032d579182015b8281111561032d578235825591602001919060010190610312565b5061033992915061033d565b5090565b5b80821115610339576000815560010161033e565b60006020828403121561036457600080fd5b81356001600160a01b038116811461037b57600080fd5b9392505050565b600060208083528351808285015260005b818110156103af57858101830151858201604001528201610393565b818111156103c1576000604083870101525b50601f01601f1916929092016040019392505050565b600080602083850312156103ea57600080fd5b823567ffffffffffffffff8082111561040257600080fd5b818501915085601f83011261041657600080fd5b81358181111561042557600080fd5b86602082850101111561043757600080fd5b60209290920196919550909350505050565b600181811c9082168061045d57607f821691505b6020821081141561047e57634e487b7160e01b600052602260045260246000fd5b50919050565b60208152816020820152818360408301376000818301604090810191909152601f909201601f1916010191905056fea2646970667358221220072fab04e9b0eb88e7ce73c7ea0dd0e46030826f89b48af04a185d7ac13df8de64736f6c63430008090033",
+  "deployedBytecode": "0x608060405234801561001057600080fd5b50600436106100575760003560e01c8063214c2a4b1461005c57806351720b41146100855780635f11301b1461009c57806392eefe9b146100b1578063f77c4791146100c4575b600080fd5b61006f61006a366004610352565b6100ef565b60405161007c9190610382565b60405180910390f35b61008e60015481565b60405190815260200161007c565b6100af6100aa3660046103d7565b61019b565b005b6100af6100bf366004610352565b6101fd565b6000546100d7906001600160a01b031681565b6040516001600160a01b03909116815260200161007c565b6001600160a01b038116600090815260026020526040902080546060919061011690610449565b80601f016020809104026020016040519081016040528092919081815260200182805461014290610449565b801561018f5780601f106101645761010080835404028352916020019161018f565b820191906000526020600020905b81548152906001019060200180831161017257829003601f168201915b50505050509050919050565b3360009081526002602052604090206101b59083836102b9565b50336001600160a01b03167ffbb63068732c85741c9f8e61caffaabe038d577bfafd2d2dcc0e352a4f653a4c83836040516101f1929190610484565b60405180910390a25050565b610205610259565b600080546001600160a01b0319166001600160a01b0383169081179091556040519081527f4ff638452bbf33c012645d18ae6f05515ff5f2d1dfb0cece8cbf018c60903f709060200160405180910390a150565b6000546001600160a01b031633146102b75760405162461bcd60e51b815260206004820152601960248201527f63616c6c6572206d75737420626520436f6e74726f6c6c657200000000000000604482015260640160405180910390fd5b565b8280546102c590610449565b90600052602060002090601f0160209004810192826102e7576000855561032d565b82601f106103005782800160ff1982351617855561032d565b8280016001018555821561032d579182015b8281111561032d578235825591602001919060010190610312565b5061033992915061033d565b5090565b5b80821115610339576000815560010161033e565b60006020828403121561036457600080fd5b81356001600160a01b038116811461037b57600080fd5b9392505050565b600060208083528351808285015260005b818110156103af57858101830151858201604001528201610393565b818111156103c1576000604083870101525b50601f01601f1916929092016040019392505050565b600080602083850312156103ea57600080fd5b823567ffffffffffffffff8082111561040257600080fd5b818501915085601f83011261041657600080fd5b81358181111561042557600080fd5b86602082850101111561043757600080fd5b60209290920196919550909350505050565b600181811c9082168061045d57607f821691505b6020821081141561047e57634e487b7160e01b600052602260045260246000fd5b50919050565b60208152816020820152818360408301376000818301604090810191909152601f909201601f1916010191905056fea2646970667358221220072fab04e9b0eb88e7ce73c7ea0dd0e46030826f89b48af04a185d7ac13df8de64736f6c63430008090033",
+  "devdoc": {
+    "kind": "dev",
+    "methods": {
+      "constructor": {
+        "params": {
+          "_controller": "Address of a Controller that this contract will be registered with"
+        }
+      },
+      "getServiceURI(address)": {
+        "params": {
+          "_addr": "Address for which a service URI endpoint is desired"
+        }
+      },
+      "setController(address)": {
+        "params": {
+          "_controller": "Controller contract address"
+        }
+      },
+      "setServiceURI(string)": {
+        "params": {
+          "_serviceURI": "Service URI endpoint for the caller"
+        }
+      }
+    },
+    "title": "ServiceRegistry",
+    "version": 1
+  },
+  "userdoc": {
+    "kind": "user",
+    "methods": {
+      "constructor": {
+        "notice": "ServiceRegistry constructor. Only invokes constructor of base Manager contract with provided Controller address"
+      },
+      "getServiceURI(address)": {
+        "notice": "Returns service URI endpoint stored for a given address"
+      },
+      "setController(address)": {
+        "notice": "Set controller. Only callable by current controller"
+      },
+      "setServiceURI(string)": {
+        "notice": "Stores service URI endpoint for the caller that can be used to send requests to the caller off-chain"
+      }
+    },
+    "notice": "Maintains a registry of service metadata associated with service provider addresses (transcoders/orchestrators)",
+    "version": 1
+  },
+  "storageLayout": {
+    "storage": [
+      {
+        "astId": 2670,
+        "contract": "contracts/ServiceRegistry.sol:ServiceRegistry",
+        "label": "controller",
+        "offset": 0,
+        "slot": "0",
+        "type": "t_contract(IController)2645"
+      },
+      {
+        "astId": 2852,
+        "contract": "contracts/ServiceRegistry.sol:ServiceRegistry",
+        "label": "targetContractId",
+        "offset": 0,
+        "slot": "1",
+        "type": "t_bytes32"
+      },
+      {
+        "astId": 2867,
+        "contract": "contracts/ServiceRegistry.sol:ServiceRegistry",
+        "label": "records",
+        "offset": 0,
+        "slot": "2",
+        "type": "t_mapping(t_address,t_struct(Record)2862_storage)"
+      }
+    ],
+    "types": {
+      "t_address": {
+        "encoding": "inplace",
+        "label": "address",
+        "numberOfBytes": "20"
+      },
+      "t_bytes32": {
+        "encoding": "inplace",
+        "label": "bytes32",
+        "numberOfBytes": "32"
+      },
+      "t_contract(IController)2645": {
+        "encoding": "inplace",
+        "label": "contract IController",
+        "numberOfBytes": "20"
+      },
+      "t_mapping(t_address,t_struct(Record)2862_storage)": {
+        "encoding": "mapping",
+        "key": "t_address",
+        "label": "mapping(address => struct ServiceRegistry.Record)",
+        "numberOfBytes": "32",
+        "value": "t_struct(Record)2862_storage"
+      },
+      "t_string_storage": {
+        "encoding": "bytes",
+        "label": "string",
+        "numberOfBytes": "32"
+      },
+      "t_struct(Record)2862_storage": {
+        "encoding": "inplace",
+        "label": "struct ServiceRegistry.Record",
+        "members": [
+          {
+            "astId": 2861,
+            "contract": "contracts/ServiceRegistry.sol:ServiceRegistry",
+            "label": "serviceURI",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_string_storage"
+          }
+        ],
+        "numberOfBytes": "32"
+      }
+    }
+  }
+}

@@ -1,0 +1,525 @@
+{
+  "address": "0x44418657854c30195Bf6f8D3C6C71F1654010D9c",
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_controller",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_inflation",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_inflationChange",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_targetBondingRate",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "string",
+          "name": "param",
+          "type": "string"
+        }
+      ],
+      "name": "ParameterUpdate",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "address",
+          "name": "controller",
+          "type": "address"
+        }
+      ],
+      "name": "SetController",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "currentMintableTokens",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "currentInflation",
+          "type": "uint256"
+        }
+      ],
+      "name": "SetCurrentRewardTokens",
+      "type": "event"
+    },
+    {
+      "inputs": [],
+      "name": "controller",
+      "outputs": [
+        {
+          "internalType": "contract IController",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_fracNum",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_fracDenom",
+          "type": "uint256"
+        }
+      ],
+      "name": "createReward",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "currentMintableTokens",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "currentMintedTokens",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "depositETH",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "payable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "getController",
+      "outputs": [
+        {
+          "internalType": "contract IController",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "getGlobalTotalSupply",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "inflation",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "inflationChange",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "contract IMinter",
+          "name": "_newMinter",
+          "type": "address"
+        }
+      ],
+      "name": "migrateToNewMinter",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_controller",
+          "type": "address"
+        }
+      ],
+      "name": "setController",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "setCurrentRewardTokens",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_inflationChange",
+          "type": "uint256"
+        }
+      ],
+      "name": "setInflationChange",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_targetBondingRate",
+          "type": "uint256"
+        }
+      ],
+      "name": "setTargetBondingRate",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "targetBondingRate",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "trustedBurnTokens",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_to",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "trustedTransferTokens",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address payable",
+          "name": "_to",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "trustedWithdrawETH",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  ],
+  "transactionHash": "0xaff9ae7e6f50079c3f442782bbce1dde92b6827237a8ae30119ad51f81680cde",
+  "receipt": {
+    "to": null,
+    "from": "0xC96f6B72843Af1988C98F78eAB3E47673af63eA1",
+    "contractAddress": "0x44418657854c30195Bf6f8D3C6C71F1654010D9c",
+    "transactionIndex": 179,
+    "gasUsed": "1609723",
+    "logsBloom": "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+    "blockHash": "0x19a3c0a8c2c9135abadadf605494624a2c69bd6538b34af5f68e00b0ae554442",
+    "transactionHash": "0xaff9ae7e6f50079c3f442782bbce1dde92b6827237a8ae30119ad51f81680cde",
+    "logs": [],
+    "blockNumber": 7069080,
+    "cumulativeGasUsed": "5382113",
+    "status": 1,
+    "byzantium": true
+  },
+  "args": [
+    "0xc145691db4692ce8584D28b82331128C9C149EDA",
+    137,
+    3,
+    500000
+  ],
+  "numDeployments": 4,
+  "solcInputHash": "38b657e341fe6dcb1b812a658e825f5e",
+  "metadata": "{\"compiler\":{\"version\":\"0.8.9+commit.e5eed63a\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_controller\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"_inflation\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"_inflationChange\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"_targetBondingRate\",\"type\":\"uint256\"}],\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"string\",\"name\":\"param\",\"type\":\"string\"}],\"name\":\"ParameterUpdate\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"address\",\"name\":\"controller\",\"type\":\"address\"}],\"name\":\"SetController\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"currentMintableTokens\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"currentInflation\",\"type\":\"uint256\"}],\"name\":\"SetCurrentRewardTokens\",\"type\":\"event\"},{\"inputs\":[],\"name\":\"controller\",\"outputs\":[{\"internalType\":\"contract IController\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"_fracNum\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"_fracDenom\",\"type\":\"uint256\"}],\"name\":\"createReward\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"currentMintableTokens\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"currentMintedTokens\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"depositETH\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getController\",\"outputs\":[{\"internalType\":\"contract IController\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getGlobalTotalSupply\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"inflation\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"inflationChange\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"contract IMinter\",\"name\":\"_newMinter\",\"type\":\"address\"}],\"name\":\"migrateToNewMinter\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_controller\",\"type\":\"address\"}],\"name\":\"setController\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"setCurrentRewardTokens\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"_inflationChange\",\"type\":\"uint256\"}],\"name\":\"setInflationChange\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"_targetBondingRate\",\"type\":\"uint256\"}],\"name\":\"setTargetBondingRate\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"targetBondingRate\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"_amount\",\"type\":\"uint256\"}],\"name\":\"trustedBurnTokens\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_to\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"_amount\",\"type\":\"uint256\"}],\"name\":\"trustedTransferTokens\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address payable\",\"name\":\"_to\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"_amount\",\"type\":\"uint256\"}],\"name\":\"trustedWithdrawETH\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}],\"devdoc\":{\"details\":\"Manages inflation rate and the minting of new tokens for each round of the Livepeer protocol\",\"kind\":\"dev\",\"methods\":{\"constructor\":{\"params\":{\"_inflation\":\"Base inflation rate as a percentage of current total token supply\",\"_inflationChange\":\"Change in inflation rate each round (increase or decrease) if target bonding rate is not achieved\",\"_targetBondingRate\":\"Target bonding rate as a percentage of total bonded tokens / total token supply\"}},\"createReward(uint256,uint256)\":{\"params\":{\"_fracDenom\":\"Denominator of fraction (total active stake)\",\"_fracNum\":\"Numerator of fraction (active transcoder's stake)\"}},\"getController()\":{\"details\":\"Returns Controller interface\"},\"getGlobalTotalSupply()\":{\"returns\":{\"_0\":\"Global LPT total supply\"}},\"migrateToNewMinter(address)\":{\"details\":\"Only callable by Controller owner\",\"params\":{\"_newMinter\":\"Address of new Minter\"}},\"setController(address)\":{\"params\":{\"_controller\":\"Controller contract address\"}},\"setInflationChange(uint256)\":{\"params\":{\"_inflationChange\":\"Inflation change as a percentage of total token supply\"}},\"setTargetBondingRate(uint256)\":{\"params\":{\"_targetBondingRate\":\"Target bonding rate as a percentage of total bonded tokens / total token supply\"}},\"trustedBurnTokens(uint256)\":{\"params\":{\"_amount\":\"Amount of tokens to burn\"}},\"trustedTransferTokens(address,uint256)\":{\"params\":{\"_amount\":\"Amount of tokens\",\"_to\":\"Recipient address\"}},\"trustedWithdrawETH(address,uint256)\":{\"params\":{\"_amount\":\"Amount of ETH\",\"_to\":\"Recipient address\"}}},\"title\":\"Minter\",\"version\":1},\"userdoc\":{\"kind\":\"user\",\"methods\":{\"constructor\":{\"notice\":\"Minter constructor\"},\"createReward(uint256,uint256)\":{\"notice\":\"Create reward based on a fractional portion of the mintable tokens for the current round\"},\"depositETH()\":{\"notice\":\"Deposit ETH to this contract. Only callable by the currently registered Minter or JobsManager\"},\"getGlobalTotalSupply()\":{\"notice\":\"Calculate and return global LPT total supply\"},\"migrateToNewMinter(address)\":{\"notice\":\"Migrate to a new Minter by transferring the current Minter's LPT + ETH balance to the new Minter\"},\"setController(address)\":{\"notice\":\"Set controller. Only callable by current controller\"},\"setCurrentRewardTokens()\":{\"notice\":\"Set inflation and mintable tokens for the round. Only callable by the RoundsManager\"},\"setInflationChange(uint256)\":{\"notice\":\"Set inflationChange. Only callable by Controller owner\"},\"setTargetBondingRate(uint256)\":{\"notice\":\"Set targetBondingRate. Only callable by Controller owner\"},\"trustedBurnTokens(uint256)\":{\"notice\":\"Burn tokens. Only callable by BondingManager - always trusts BondingManager\"},\"trustedTransferTokens(address,uint256)\":{\"notice\":\"Transfer tokens to a receipient. Only callable by BondingManager - always trusts BondingManager\"},\"trustedWithdrawETH(address,uint256)\":{\"notice\":\"Withdraw ETH to a recipient. Only callable by BondingManager or TicketBroker - always trusts these two contracts\"}},\"version\":1}},\"settings\":{\"compilationTarget\":{\"contracts/token/Minter.sol\":\"Minter\"},\"evmVersion\":\"london\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"ipfs\",\"useLiteralContent\":true},\"optimizer\":{\"enabled\":true,\"runs\":200},\"remappings\":[]},\"sources\":{\"@openzeppelin/contracts/token/ERC20/IERC20.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\n// OpenZeppelin Contracts v4.4.1 (token/ERC20/IERC20.sol)\\n\\npragma solidity ^0.8.0;\\n\\n/**\\n * @dev Interface of the ERC20 standard as defined in the EIP.\\n */\\ninterface IERC20 {\\n    /**\\n     * @dev Returns the amount of tokens in existence.\\n     */\\n    function totalSupply() external view returns (uint256);\\n\\n    /**\\n     * @dev Returns the amount of tokens owned by `account`.\\n     */\\n    function balanceOf(address account) external view returns (uint256);\\n\\n    /**\\n     * @dev Moves `amount` tokens from the caller's account to `recipient`.\\n     *\\n     * Returns a boolean value indicating whether the operation succeeded.\\n     *\\n     * Emits a {Transfer} event.\\n     */\\n    function transfer(address recipient, uint256 amount) external returns (bool);\\n\\n    /**\\n     * @dev Returns the remaining number of tokens that `spender` will be\\n     * allowed to spend on behalf of `owner` through {transferFrom}. This is\\n     * zero by default.\\n     *\\n     * This value changes when {approve} or {transferFrom} are called.\\n     */\\n    function allowance(address owner, address spender) external view returns (uint256);\\n\\n    /**\\n     * @dev Sets `amount` as the allowance of `spender` over the caller's tokens.\\n     *\\n     * Returns a boolean value indicating whether the operation succeeded.\\n     *\\n     * IMPORTANT: Beware that changing an allowance with this method brings the risk\\n     * that someone may use both the old and the new allowance by unfortunate\\n     * transaction ordering. One possible solution to mitigate this race\\n     * condition is to first reduce the spender's allowance to 0 and set the\\n     * desired value afterwards:\\n     * https://github.com/ethereum/EIPs/issues/20#issuecomment-263524729\\n     *\\n     * Emits an {Approval} event.\\n     */\\n    function approve(address spender, uint256 amount) external returns (bool);\\n\\n    /**\\n     * @dev Moves `amount` tokens from `sender` to `recipient` using the\\n     * allowance mechanism. `amount` is then deducted from the caller's\\n     * allowance.\\n     *\\n     * Returns a boolean value indicating whether the operation succeeded.\\n     *\\n     * Emits a {Transfer} event.\\n     */\\n    function transferFrom(\\n        address sender,\\n        address recipient,\\n        uint256 amount\\n    ) external returns (bool);\\n\\n    /**\\n     * @dev Emitted when `value` tokens are moved from one account (`from`) to\\n     * another (`to`).\\n     *\\n     * Note that `value` may be zero.\\n     */\\n    event Transfer(address indexed from, address indexed to, uint256 value);\\n\\n    /**\\n     * @dev Emitted when the allowance of a `spender` for an `owner` is set by\\n     * a call to {approve}. `value` is the new allowance.\\n     */\\n    event Approval(address indexed owner, address indexed spender, uint256 value);\\n}\\n\",\"keccak256\":\"0x61437cb513a887a1bbad006e7b1c8b414478427d33de47c5600af3c748f108da\",\"license\":\"MIT\"},\"@openzeppelin/contracts/utils/math/SafeMath.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\n// OpenZeppelin Contracts v4.4.1 (utils/math/SafeMath.sol)\\n\\npragma solidity ^0.8.0;\\n\\n// CAUTION\\n// This version of SafeMath should only be used with Solidity 0.8 or later,\\n// because it relies on the compiler's built in overflow checks.\\n\\n/**\\n * @dev Wrappers over Solidity's arithmetic operations.\\n *\\n * NOTE: `SafeMath` is generally not needed starting with Solidity 0.8, since the compiler\\n * now has built in overflow checking.\\n */\\nlibrary SafeMath {\\n    /**\\n     * @dev Returns the addition of two unsigned integers, with an overflow flag.\\n     *\\n     * _Available since v3.4._\\n     */\\n    function tryAdd(uint256 a, uint256 b) internal pure returns (bool, uint256) {\\n        unchecked {\\n            uint256 c = a + b;\\n            if (c < a) return (false, 0);\\n            return (true, c);\\n        }\\n    }\\n\\n    /**\\n     * @dev Returns the substraction of two unsigned integers, with an overflow flag.\\n     *\\n     * _Available since v3.4._\\n     */\\n    function trySub(uint256 a, uint256 b) internal pure returns (bool, uint256) {\\n        unchecked {\\n            if (b > a) return (false, 0);\\n            return (true, a - b);\\n        }\\n    }\\n\\n    /**\\n     * @dev Returns the multiplication of two unsigned integers, with an overflow flag.\\n     *\\n     * _Available since v3.4._\\n     */\\n    function tryMul(uint256 a, uint256 b) internal pure returns (bool, uint256) {\\n        unchecked {\\n            // Gas optimization: this is cheaper than requiring 'a' not being zero, but the\\n            // benefit is lost if 'b' is also tested.\\n            // See: https://github.com/OpenZeppelin/openzeppelin-contracts/pull/522\\n            if (a == 0) return (true, 0);\\n            uint256 c = a * b;\\n            if (c / a != b) return (false, 0);\\n            return (true, c);\\n        }\\n    }\\n\\n    /**\\n     * @dev Returns the division of two unsigned integers, with a division by zero flag.\\n     *\\n     * _Available since v3.4._\\n     */\\n    function tryDiv(uint256 a, uint256 b) internal pure returns (bool, uint256) {\\n        unchecked {\\n            if (b == 0) return (false, 0);\\n            return (true, a / b);\\n        }\\n    }\\n\\n    /**\\n     * @dev Returns the remainder of dividing two unsigned integers, with a division by zero flag.\\n     *\\n     * _Available since v3.4._\\n     */\\n    function tryMod(uint256 a, uint256 b) internal pure returns (bool, uint256) {\\n        unchecked {\\n            if (b == 0) return (false, 0);\\n            return (true, a % b);\\n        }\\n    }\\n\\n    /**\\n     * @dev Returns the addition of two unsigned integers, reverting on\\n     * overflow.\\n     *\\n     * Counterpart to Solidity's `+` operator.\\n     *\\n     * Requirements:\\n     *\\n     * - Addition cannot overflow.\\n     */\\n    function add(uint256 a, uint256 b) internal pure returns (uint256) {\\n        return a + b;\\n    }\\n\\n    /**\\n     * @dev Returns the subtraction of two unsigned integers, reverting on\\n     * overflow (when the result is negative).\\n     *\\n     * Counterpart to Solidity's `-` operator.\\n     *\\n     * Requirements:\\n     *\\n     * - Subtraction cannot overflow.\\n     */\\n    function sub(uint256 a, uint256 b) internal pure returns (uint256) {\\n        return a - b;\\n    }\\n\\n    /**\\n     * @dev Returns the multiplication of two unsigned integers, reverting on\\n     * overflow.\\n     *\\n     * Counterpart to Solidity's `*` operator.\\n     *\\n     * Requirements:\\n     *\\n     * - Multiplication cannot overflow.\\n     */\\n    function mul(uint256 a, uint256 b) internal pure returns (uint256) {\\n        return a * b;\\n    }\\n\\n    /**\\n     * @dev Returns the integer division of two unsigned integers, reverting on\\n     * division by zero. The result is rounded towards zero.\\n     *\\n     * Counterpart to Solidity's `/` operator.\\n     *\\n     * Requirements:\\n     *\\n     * - The divisor cannot be zero.\\n     */\\n    function div(uint256 a, uint256 b) internal pure returns (uint256) {\\n        return a / b;\\n    }\\n\\n    /**\\n     * @dev Returns the remainder of dividing two unsigned integers. (unsigned integer modulo),\\n     * reverting when dividing by zero.\\n     *\\n     * Counterpart to Solidity's `%` operator. This function uses a `revert`\\n     * opcode (which leaves remaining gas untouched) while Solidity uses an\\n     * invalid opcode to revert (consuming all remaining gas).\\n     *\\n     * Requirements:\\n     *\\n     * - The divisor cannot be zero.\\n     */\\n    function mod(uint256 a, uint256 b) internal pure returns (uint256) {\\n        return a % b;\\n    }\\n\\n    /**\\n     * @dev Returns the subtraction of two unsigned integers, reverting with custom message on\\n     * overflow (when the result is negative).\\n     *\\n     * CAUTION: This function is deprecated because it requires allocating memory for the error\\n     * message unnecessarily. For custom revert reasons use {trySub}.\\n     *\\n     * Counterpart to Solidity's `-` operator.\\n     *\\n     * Requirements:\\n     *\\n     * - Subtraction cannot overflow.\\n     */\\n    function sub(\\n        uint256 a,\\n        uint256 b,\\n        string memory errorMessage\\n    ) internal pure returns (uint256) {\\n        unchecked {\\n            require(b <= a, errorMessage);\\n            return a - b;\\n        }\\n    }\\n\\n    /**\\n     * @dev Returns the integer division of two unsigned integers, reverting with custom message on\\n     * division by zero. The result is rounded towards zero.\\n     *\\n     * Counterpart to Solidity's `/` operator. Note: this function uses a\\n     * `revert` opcode (which leaves remaining gas untouched) while Solidity\\n     * uses an invalid opcode to revert (consuming all remaining gas).\\n     *\\n     * Requirements:\\n     *\\n     * - The divisor cannot be zero.\\n     */\\n    function div(\\n        uint256 a,\\n        uint256 b,\\n        string memory errorMessage\\n    ) internal pure returns (uint256) {\\n        unchecked {\\n            require(b > 0, errorMessage);\\n            return a / b;\\n        }\\n    }\\n\\n    /**\\n     * @dev Returns the remainder of dividing two unsigned integers. (unsigned integer modulo),\\n     * reverting with custom message when dividing by zero.\\n     *\\n     * CAUTION: This function is deprecated because it requires allocating memory for the error\\n     * message unnecessarily. For custom revert reasons use {tryMod}.\\n     *\\n     * Counterpart to Solidity's `%` operator. This function uses a `revert`\\n     * opcode (which leaves remaining gas untouched) while Solidity uses an\\n     * invalid opcode to revert (consuming all remaining gas).\\n     *\\n     * Requirements:\\n     *\\n     * - The divisor cannot be zero.\\n     */\\n    function mod(\\n        uint256 a,\\n        uint256 b,\\n        string memory errorMessage\\n    ) internal pure returns (uint256) {\\n        unchecked {\\n            require(b > 0, errorMessage);\\n            return a % b;\\n        }\\n    }\\n}\\n\",\"keccak256\":\"0xa2f576be637946f767aa56601c26d717f48a0aff44f82e46f13807eea1009a21\",\"license\":\"MIT\"},\"contracts/IController.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity 0.8.9;\\n\\nimport \\\"./zeppelin/Pausable.sol\\\";\\n\\nabstract contract IController is Pausable {\\n    event SetContractInfo(bytes32 id, address contractAddress, bytes20 gitCommitHash);\\n\\n    function setContractInfo(\\n        bytes32 _id,\\n        address _contractAddress,\\n        bytes20 _gitCommitHash\\n    ) external virtual;\\n\\n    function updateController(bytes32 _id, address _controller) external virtual;\\n\\n    function getContract(bytes32 _id) public view virtual returns (address);\\n}\\n\",\"keccak256\":\"0x34ea30a2b44d0cbec58fc1d703476ff0085b0fdadab0cd65c35c00b8867f7546\",\"license\":\"MIT\"},\"contracts/IManager.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity 0.8.9;\\n\\ninterface IManager {\\n    event SetController(address controller);\\n    event ParameterUpdate(string param);\\n\\n    function setController(address _controller) external;\\n}\\n\",\"keccak256\":\"0xc179e4cecc593741514237d5194b4aaac6b829789629fa19ed04f572a8530481\",\"license\":\"MIT\"},\"contracts/Manager.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity 0.8.9;\\n\\nimport \\\"./IManager.sol\\\";\\nimport \\\"./IController.sol\\\";\\n\\ncontract Manager is IManager {\\n    // Controller that contract is registered with\\n    IController public controller;\\n\\n    // Check if sender is controller\\n    modifier onlyController() {\\n        _onlyController();\\n        _;\\n    }\\n\\n    // Check if sender is controller owner\\n    modifier onlyControllerOwner() {\\n        _onlyControllerOwner();\\n        _;\\n    }\\n\\n    // Check if controller is not paused\\n    modifier whenSystemNotPaused() {\\n        _whenSystemNotPaused();\\n        _;\\n    }\\n\\n    // Check if controller is paused\\n    modifier whenSystemPaused() {\\n        _whenSystemPaused();\\n        _;\\n    }\\n\\n    constructor(address _controller) {\\n        controller = IController(_controller);\\n    }\\n\\n    /**\\n     * @notice Set controller. Only callable by current controller\\n     * @param _controller Controller contract address\\n     */\\n    function setController(address _controller) external onlyController {\\n        controller = IController(_controller);\\n\\n        emit SetController(_controller);\\n    }\\n\\n    function _onlyController() private view {\\n        require(msg.sender == address(controller), \\\"caller must be Controller\\\");\\n    }\\n\\n    function _onlyControllerOwner() private view {\\n        require(msg.sender == controller.owner(), \\\"caller must be Controller owner\\\");\\n    }\\n\\n    function _whenSystemNotPaused() private view {\\n        require(!controller.paused(), \\\"system is paused\\\");\\n    }\\n\\n    function _whenSystemPaused() private view {\\n        require(controller.paused(), \\\"system is not paused\\\");\\n    }\\n}\\n\",\"keccak256\":\"0xc415e3f42da9f82ddd5953031f3f26aed824368fcc34d3b8a17015bfe80dc109\",\"license\":\"MIT\"},\"contracts/bonding/IBondingManager.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity 0.8.9;\\n\\n/**\\n * @title Interface for BondingManager\\n * TODO: switch to interface type\\n */\\ninterface IBondingManager {\\n    event TranscoderUpdate(address indexed transcoder, uint256 rewardCut, uint256 feeShare);\\n    event TranscoderActivated(address indexed transcoder, uint256 activationRound);\\n    event TranscoderDeactivated(address indexed transcoder, uint256 deactivationRound);\\n    event TranscoderSlashed(address indexed transcoder, address finder, uint256 penalty, uint256 finderReward);\\n    event Reward(address indexed transcoder, uint256 amount);\\n    event Bond(\\n        address indexed newDelegate,\\n        address indexed oldDelegate,\\n        address indexed delegator,\\n        uint256 additionalAmount,\\n        uint256 bondedAmount\\n    );\\n    event Unbond(\\n        address indexed delegate,\\n        address indexed delegator,\\n        uint256 unbondingLockId,\\n        uint256 amount,\\n        uint256 withdrawRound\\n    );\\n    event Rebond(address indexed delegate, address indexed delegator, uint256 unbondingLockId, uint256 amount);\\n    event TransferBond(\\n        address indexed oldDelegator,\\n        address indexed newDelegator,\\n        uint256 oldUnbondingLockId,\\n        uint256 newUnbondingLockId,\\n        uint256 amount\\n    );\\n    event WithdrawStake(address indexed delegator, uint256 unbondingLockId, uint256 amount, uint256 withdrawRound);\\n    event WithdrawFees(address indexed delegator, address recipient, uint256 amount);\\n    event EarningsClaimed(\\n        address indexed delegate,\\n        address indexed delegator,\\n        uint256 rewards,\\n        uint256 fees,\\n        uint256 startRound,\\n        uint256 endRound\\n    );\\n\\n    // Deprecated events\\n    // These event signatures can be used to construct the appropriate topic hashes to filter for past logs corresponding\\n    // to these deprecated events.\\n    // event Bond(address indexed delegate, address indexed delegator);\\n    // event Unbond(address indexed delegate, address indexed delegator);\\n    // event WithdrawStake(address indexed delegator);\\n    // event TranscoderUpdate(address indexed transcoder, uint256 pendingRewardCut, uint256 pendingFeeShare, uint256 pendingPricePerSegment, bool registered);\\n    // event TranscoderEvicted(address indexed transcoder);\\n    // event TranscoderResigned(address indexed transcoder);\\n\\n    // External functions\\n    function updateTranscoderWithFees(\\n        address _transcoder,\\n        uint256 _fees,\\n        uint256 _round\\n    ) external;\\n\\n    function slashTranscoder(\\n        address _transcoder,\\n        address _finder,\\n        uint256 _slashAmount,\\n        uint256 _finderFee\\n    ) external;\\n\\n    function setCurrentRoundTotalActiveStake() external;\\n\\n    // Public functions\\n    function getTranscoderPoolSize() external view returns (uint256);\\n\\n    function transcoderTotalStake(address _transcoder) external view returns (uint256);\\n\\n    function isActiveTranscoder(address _transcoder) external view returns (bool);\\n\\n    function getTotalBonded() external view returns (uint256);\\n}\\n\",\"keccak256\":\"0x6406378868b556ca91b1ab6cccd036695c8984d30a225f75a5979cb9aa7c1df2\",\"license\":\"MIT\"},\"contracts/libraries/MathUtilsV2.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity 0.8.9;\\n\\nimport \\\"@openzeppelin/contracts/utils/math/SafeMath.sol\\\";\\n\\nlibrary MathUtils {\\n    using SafeMath for uint256;\\n\\n    // Divisor used for representing percentages\\n    uint256 public constant PERC_DIVISOR = 1000000000;\\n\\n    /**\\n     * @dev Returns whether an amount is a valid percentage out of PERC_DIVISOR\\n     * @param _amount Amount that is supposed to be a percentage\\n     */\\n    function validPerc(uint256 _amount) internal pure returns (bool) {\\n        return _amount <= PERC_DIVISOR;\\n    }\\n\\n    /**\\n     * @dev Compute percentage of a value with the percentage represented by a fraction\\n     * @param _amount Amount to take the percentage of\\n     * @param _fracNum Numerator of fraction representing the percentage\\n     * @param _fracDenom Denominator of fraction representing the percentage\\n     */\\n    function percOf(\\n        uint256 _amount,\\n        uint256 _fracNum,\\n        uint256 _fracDenom\\n    ) internal pure returns (uint256) {\\n        return _amount.mul(percPoints(_fracNum, _fracDenom)).div(PERC_DIVISOR);\\n    }\\n\\n    /**\\n     * @dev Compute percentage of a value with the percentage represented by a fraction over PERC_DIVISOR\\n     * @param _amount Amount to take the percentage of\\n     * @param _fracNum Numerator of fraction representing the percentage with PERC_DIVISOR as the denominator\\n     */\\n    function percOf(uint256 _amount, uint256 _fracNum) internal pure returns (uint256) {\\n        return _amount.mul(_fracNum).div(PERC_DIVISOR);\\n    }\\n\\n    /**\\n     * @dev Compute percentage representation of a fraction\\n     * @param _fracNum Numerator of fraction represeting the percentage\\n     * @param _fracDenom Denominator of fraction represeting the percentage\\n     */\\n    function percPoints(uint256 _fracNum, uint256 _fracDenom) internal pure returns (uint256) {\\n        return _fracNum.mul(PERC_DIVISOR).div(_fracDenom);\\n    }\\n}\\n\",\"keccak256\":\"0x2f727bbe79ea75c542a2d1cd2f5fa6b65c9c8d0b4b865d6c432197fd3d65dec2\",\"license\":\"MIT\"},\"contracts/rounds/IRoundsManager.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity 0.8.9;\\n\\n/**\\n * @title RoundsManager interface\\n */\\ninterface IRoundsManager {\\n    // Events\\n    event NewRound(uint256 indexed round, bytes32 blockHash);\\n\\n    // Deprecated events\\n    // These event signatures can be used to construct the appropriate topic hashes to filter for past logs corresponding\\n    // to these deprecated events.\\n    // event NewRound(uint256 round)\\n\\n    // External functions\\n    function initializeRound() external;\\n\\n    function lipUpgradeRound(uint256 _lip) external view returns (uint256);\\n\\n    // Public functions\\n    function blockNum() external view returns (uint256);\\n\\n    function blockHash(uint256 _block) external view returns (bytes32);\\n\\n    function blockHashForRound(uint256 _round) external view returns (bytes32);\\n\\n    function currentRound() external view returns (uint256);\\n\\n    function currentRoundStartBlock() external view returns (uint256);\\n\\n    function currentRoundInitialized() external view returns (bool);\\n\\n    function currentRoundLocked() external view returns (bool);\\n}\\n\",\"keccak256\":\"0xfc453a476bb68b874c21678a128b46ffcad0af69008e0e3e857d46499214f75f\",\"license\":\"MIT\"},\"contracts/token/ILivepeerToken.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity 0.8.9;\\n\\nimport \\\"@openzeppelin/contracts/token/ERC20/IERC20.sol\\\";\\n\\ninterface ILivepeerToken is IERC20 {\\n    function mint(address _to, uint256 _amount) external;\\n\\n    function burn(uint256 _amount) external;\\n}\\n\",\"keccak256\":\"0xe9f35b4fd415a199993ac13e273149f9f8f2cf3d14c06927f05c40a9d6d048e1\",\"license\":\"MIT\"},\"contracts/token/IMinter.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity 0.8.9;\\n\\nimport \\\"../IController.sol\\\";\\n\\n/**\\n * @title Minter interface\\n */\\ninterface IMinter {\\n    // Events\\n    event SetCurrentRewardTokens(uint256 currentMintableTokens, uint256 currentInflation);\\n\\n    // External functions\\n    function createReward(uint256 _fracNum, uint256 _fracDenom) external returns (uint256);\\n\\n    function trustedTransferTokens(address _to, uint256 _amount) external;\\n\\n    function trustedBurnTokens(uint256 _amount) external;\\n\\n    function trustedWithdrawETH(address payable _to, uint256 _amount) external;\\n\\n    function depositETH() external payable returns (bool);\\n\\n    function setCurrentRewardTokens() external;\\n\\n    function currentMintableTokens() external view returns (uint256);\\n\\n    function currentMintedTokens() external view returns (uint256);\\n\\n    // Public functions\\n    function getController() external view returns (IController);\\n}\\n\",\"keccak256\":\"0x3fbb7a4239a8b5979fb4c45a41495e9694a9f454de82dca3cf6a14dfe71255c7\",\"license\":\"MIT\"},\"contracts/token/Minter.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity 0.8.9;\\n\\nimport \\\"../Manager.sol\\\";\\nimport \\\"./IMinter.sol\\\";\\nimport \\\"./ILivepeerToken.sol\\\";\\nimport \\\"../rounds/IRoundsManager.sol\\\";\\nimport \\\"../bonding/IBondingManager.sol\\\";\\nimport \\\"../libraries/MathUtilsV2.sol\\\";\\n\\nimport \\\"@openzeppelin/contracts/utils/math/SafeMath.sol\\\";\\n\\ninterface IL2LPTDataCache {\\n    function l1CirculatingSupply() external view returns (uint256);\\n}\\n\\n/**\\n * @title Minter\\n * @dev Manages inflation rate and the minting of new tokens for each round of the Livepeer protocol\\n */\\ncontract Minter is Manager, IMinter {\\n    using SafeMath for uint256;\\n\\n    // Per round inflation rate\\n    uint256 public inflation;\\n    // Change in inflation rate per round until the target bonding rate is achieved\\n    uint256 public inflationChange;\\n    // Target bonding rate\\n    uint256 public targetBondingRate;\\n\\n    // Current number of mintable tokens. Reset every round\\n    uint256 public currentMintableTokens;\\n    // Current number of minted tokens. Reset every round\\n    uint256 public currentMintedTokens;\\n\\n    // Checks if caller is BondingManager\\n    modifier onlyBondingManager() {\\n        require(msg.sender == controller.getContract(keccak256(\\\"BondingManager\\\")), \\\"msg.sender not BondingManager\\\");\\n        _;\\n    }\\n\\n    // Checks if caller is RoundsManager\\n    modifier onlyRoundsManager() {\\n        require(msg.sender == controller.getContract(keccak256(\\\"RoundsManager\\\")), \\\"msg.sender not RoundsManager\\\");\\n        _;\\n    }\\n\\n    // Checks if caller is either BondingManager or JobsManager\\n    modifier onlyBondingManagerOrJobsManager() {\\n        require(\\n            msg.sender == controller.getContract(keccak256(\\\"BondingManager\\\")) ||\\n                msg.sender == controller.getContract(keccak256(\\\"JobsManager\\\")),\\n            \\\"msg.sender not BondingManager or JobsManager\\\"\\n        );\\n        _;\\n    }\\n\\n    // Checks if caller is either the currently registered Minter or JobsManager\\n    modifier onlyMinterOrJobsManager() {\\n        require(\\n            msg.sender == controller.getContract(keccak256(\\\"Minter\\\")) ||\\n                msg.sender == controller.getContract(keccak256(\\\"JobsManager\\\")),\\n            \\\"msg.sender not Minter or JobsManager\\\"\\n        );\\n        _;\\n    }\\n\\n    /**\\n     * @notice Minter constructor\\n     * @param _inflation Base inflation rate as a percentage of current total token supply\\n     * @param _inflationChange Change in inflation rate each round (increase or decrease) if target bonding rate is not achieved\\n     * @param _targetBondingRate Target bonding rate as a percentage of total bonded tokens / total token supply\\n     */\\n    constructor(\\n        address _controller,\\n        uint256 _inflation,\\n        uint256 _inflationChange,\\n        uint256 _targetBondingRate\\n    ) Manager(_controller) {\\n        // Inflation must be valid percentage\\n        require(MathUtils.validPerc(_inflation), \\\"_inflation is invalid percentage\\\");\\n        // Inflation change must be valid percentage\\n        require(MathUtils.validPerc(_inflationChange), \\\"_inflationChange is invalid percentage\\\");\\n        // Target bonding rate must be valid percentage\\n        require(MathUtils.validPerc(_targetBondingRate), \\\"_targetBondingRate is invalid percentage\\\");\\n\\n        inflation = _inflation;\\n        inflationChange = _inflationChange;\\n        targetBondingRate = _targetBondingRate;\\n    }\\n\\n    /**\\n     * @notice Set targetBondingRate. Only callable by Controller owner\\n     * @param _targetBondingRate Target bonding rate as a percentage of total bonded tokens / total token supply\\n     */\\n    function setTargetBondingRate(uint256 _targetBondingRate) external onlyControllerOwner {\\n        // Must be valid percentage\\n        require(MathUtils.validPerc(_targetBondingRate), \\\"_targetBondingRate is invalid percentage\\\");\\n\\n        targetBondingRate = _targetBondingRate;\\n\\n        emit ParameterUpdate(\\\"targetBondingRate\\\");\\n    }\\n\\n    /**\\n     * @notice Set inflationChange. Only callable by Controller owner\\n     * @param _inflationChange Inflation change as a percentage of total token supply\\n     */\\n    function setInflationChange(uint256 _inflationChange) external onlyControllerOwner {\\n        // Must be valid percentage\\n        require(MathUtils.validPerc(_inflationChange), \\\"_inflationChange is invalid percentage\\\");\\n\\n        inflationChange = _inflationChange;\\n\\n        emit ParameterUpdate(\\\"inflationChange\\\");\\n    }\\n\\n    /**\\n     * @notice Migrate to a new Minter by transferring the current Minter's LPT + ETH balance to the new Minter\\n     * @dev Only callable by Controller owner\\n     * @param _newMinter Address of new Minter\\n     */\\n    function migrateToNewMinter(IMinter _newMinter) external onlyControllerOwner {\\n        // New Minter cannot be the current Minter\\n        require(_newMinter != this, \\\"new Minter cannot be current Minter\\\");\\n        // Check for null address\\n        require(address(_newMinter) != address(0), \\\"new Minter cannot be null address\\\");\\n\\n        IController newMinterController = _newMinter.getController();\\n        // New Minter must have same Controller as current Minter\\n        require(newMinterController == controller, \\\"new Minter Controller must be current Controller\\\");\\n        // New Minter's Controller must have the current Minter registered\\n        require(newMinterController.getContract(keccak256(\\\"Minter\\\")) == address(this), \\\"new Minter must be registered\\\");\\n\\n        // Transfer current Minter's token balance to new Minter\\n        livepeerToken().transfer(address(_newMinter), livepeerToken().balanceOf(address(this)));\\n        // Transfer current Minter's ETH balance to new Minter\\n        _newMinter.depositETH{ value: address(this).balance }();\\n    }\\n\\n    /**\\n     * @notice Create reward based on a fractional portion of the mintable tokens for the current round\\n     * @param _fracNum Numerator of fraction (active transcoder's stake)\\n     * @param _fracDenom Denominator of fraction (total active stake)\\n     */\\n    function createReward(uint256 _fracNum, uint256 _fracDenom)\\n        external\\n        onlyBondingManager\\n        whenSystemNotPaused\\n        returns (uint256)\\n    {\\n        // Compute and mint fraction of mintable tokens to include in reward\\n        uint256 mintAmount = MathUtils.percOf(currentMintableTokens, _fracNum, _fracDenom);\\n        // Update amount of minted tokens for round\\n        currentMintedTokens = currentMintedTokens.add(mintAmount);\\n        // Minted tokens must not exceed mintable tokens\\n        require(currentMintedTokens <= currentMintableTokens, \\\"minted tokens cannot exceed mintable tokens\\\");\\n        // Mint new tokens\\n        livepeerToken().mint(address(this), mintAmount);\\n\\n        // Reward = minted tokens\\n        return mintAmount;\\n    }\\n\\n    /**\\n     * @notice Transfer tokens to a receipient. Only callable by BondingManager - always trusts BondingManager\\n     * @param _to Recipient address\\n     * @param _amount Amount of tokens\\n     */\\n    function trustedTransferTokens(address _to, uint256 _amount) external onlyBondingManager whenSystemNotPaused {\\n        livepeerToken().transfer(_to, _amount);\\n    }\\n\\n    /**\\n     * @notice Burn tokens. Only callable by BondingManager - always trusts BondingManager\\n     * @param _amount Amount of tokens to burn\\n     */\\n    function trustedBurnTokens(uint256 _amount) external onlyBondingManager whenSystemNotPaused {\\n        livepeerToken().burn(_amount);\\n    }\\n\\n    /**\\n     * @notice Withdraw ETH to a recipient. Only callable by BondingManager or TicketBroker - always trusts these two contracts\\n     * @param _to Recipient address\\n     * @param _amount Amount of ETH\\n     */\\n    function trustedWithdrawETH(address payable _to, uint256 _amount)\\n        external\\n        onlyBondingManagerOrJobsManager\\n        whenSystemNotPaused\\n    {\\n        _to.transfer(_amount);\\n    }\\n\\n    /**\\n     * @notice Deposit ETH to this contract. Only callable by the currently registered Minter or JobsManager\\n     */\\n    function depositETH() external payable onlyMinterOrJobsManager returns (bool) {\\n        return true;\\n    }\\n\\n    /**\\n     * @notice Set inflation and mintable tokens for the round. Only callable by the RoundsManager\\n     */\\n    function setCurrentRewardTokens() external onlyRoundsManager whenSystemNotPaused {\\n        setInflation();\\n\\n        // Set mintable tokens based upon current inflation and current total token supply\\n        currentMintableTokens = MathUtils.percOf(getGlobalTotalSupply(), inflation);\\n        currentMintedTokens = 0;\\n\\n        emit SetCurrentRewardTokens(currentMintableTokens, inflation);\\n    }\\n\\n    /**\\n     * @dev Returns Controller interface\\n     */\\n    function getController() public view returns (IController) {\\n        return controller;\\n    }\\n\\n    /**\\n     * @notice Calculate and return global LPT total supply\\n     * @return Global LPT total supply\\n     */\\n    function getGlobalTotalSupply() public view returns (uint256) {\\n        // Global total supply = L2 total supply + L1 circulating supply\\n        return livepeerToken().totalSupply().add(l2LPTDataCache().l1CirculatingSupply());\\n    }\\n\\n    /**\\n     * @dev Set inflation based upon the current bonding rate and target bonding rate\\n     */\\n    function setInflation() internal {\\n        uint256 currentBondingRate;\\n        uint256 totalSupply = getGlobalTotalSupply();\\n\\n        if (totalSupply > 0) {\\n            uint256 totalBonded = bondingManager().getTotalBonded();\\n            currentBondingRate = MathUtils.percPoints(totalBonded, totalSupply);\\n        }\\n\\n        if (currentBondingRate < targetBondingRate) {\\n            // Bonding rate is below the target - increase inflation\\n            inflation = inflation.add(inflationChange);\\n        } else if (currentBondingRate > targetBondingRate) {\\n            // Bonding rate is above the target - decrease inflation\\n            if (inflationChange > inflation) {\\n                inflation = 0;\\n            } else {\\n                inflation = inflation.sub(inflationChange);\\n            }\\n        }\\n    }\\n\\n    /**\\n     * @dev Returns LivepeerToken interface\\n     */\\n    function livepeerToken() internal view returns (ILivepeerToken) {\\n        return ILivepeerToken(controller.getContract(keccak256(\\\"LivepeerToken\\\")));\\n    }\\n\\n    /**\\n     * @dev Returns BondingManager interface\\n     */\\n    function bondingManager() internal view returns (IBondingManager) {\\n        return IBondingManager(controller.getContract(keccak256(\\\"BondingManager\\\")));\\n    }\\n\\n    /**\\n     * @dev Returns L2LPTDataCache interface\\n     */\\n    function l2LPTDataCache() internal view returns (IL2LPTDataCache) {\\n        return IL2LPTDataCache(controller.getContract(keccak256(\\\"L2LPTDataCache\\\")));\\n    }\\n}\\n\",\"keccak256\":\"0xc7429f9a6c25bc64a7b31e5d5e23cfe9f83c16b96efe2d0816eaccc7fb2037d4\",\"license\":\"MIT\"},\"contracts/zeppelin/Ownable.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity 0.8.9;\\n\\n/**\\n * @title Ownable\\n * @dev The Ownable contract has an owner address, and provides basic authorization control\\n * functions, this simplifies the implementation of \\\"user permissions\\\".\\n */\\ncontract Ownable {\\n    address public owner;\\n\\n    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);\\n\\n    /**\\n     * @dev The Ownable constructor sets the original `owner` of the contract to the sender\\n     * account.\\n     */\\n    constructor() {\\n        owner = msg.sender;\\n    }\\n\\n    /**\\n     * @dev Throws if called by any account other than the owner.\\n     */\\n    modifier onlyOwner() {\\n        require(msg.sender == owner);\\n        _;\\n    }\\n\\n    /**\\n     * @dev Allows the current owner to transfer control of the contract to a newOwner.\\n     * @param newOwner The address to transfer ownership to.\\n     */\\n    function transferOwnership(address newOwner) public onlyOwner {\\n        require(newOwner != address(0));\\n        emit OwnershipTransferred(owner, newOwner);\\n        owner = newOwner;\\n    }\\n}\\n\",\"keccak256\":\"0x64f114689f2f161c4a4b8fc8442ab914436a33e6021bf17401eaeac73319a419\",\"license\":\"MIT\"},\"contracts/zeppelin/Pausable.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity 0.8.9;\\n\\nimport \\\"./Ownable.sol\\\";\\n\\n/**\\n * @title Pausable\\n * @dev Base contract which allows children to implement an emergency stop mechanism.\\n */\\ncontract Pausable is Ownable {\\n    event Pause();\\n    event Unpause();\\n\\n    bool public paused;\\n\\n    /**\\n     * @dev Modifier to make a function callable only when the contract is not paused.\\n     */\\n    modifier whenNotPaused() {\\n        require(!paused);\\n        _;\\n    }\\n\\n    /**\\n     * @dev Modifier to make a function callable only when the contract is paused.\\n     */\\n    modifier whenPaused() {\\n        require(paused);\\n        _;\\n    }\\n\\n    /**\\n     * @dev called by the owner to pause, triggers stopped state\\n     */\\n    function pause() public onlyOwner whenNotPaused {\\n        paused = true;\\n        emit Pause();\\n    }\\n\\n    /**\\n     * @dev called by the owner to unpause, returns to normal state\\n     */\\n    function unpause() public onlyOwner whenPaused {\\n        paused = false;\\n        emit Unpause();\\n    }\\n}\\n\",\"keccak256\":\"0xe9635fcac46c22547a08f6977a8c75e7341411f1201f60bdd4c79c26e6c286ef\",\"license\":\"MIT\"}},\"version\":1}",
+  "bytecode": "0x60806040523480156200001157600080fd5b5060405162001c8038038062001c808339810160408190526200003491620001bd565b600080546001600160a01b0319166001600160a01b0386161790556200006683620001b3602090811b620013ae17901c565b620000b85760405162461bcd60e51b815260206004820181905260248201527f5f696e666c6174696f6e20697320696e76616c69642070657263656e7461676560448201526064015b60405180910390fd5b620000ce82620001b360201b620013ae1760201c565b6200012b5760405162461bcd60e51b815260206004820152602660248201527f5f696e666c6174696f6e4368616e676520697320696e76616c69642070657263604482015265656e7461676560d01b6064820152608401620000af565b6200014181620001b360201b620013ae1760201c565b620001a05760405162461bcd60e51b815260206004820152602860248201527f5f746172676574426f6e64696e675261746520697320696e76616c69642070656044820152677263656e7461676560c01b6064820152608401620000af565b600192909255600255600355506200020a565b633b9aca00101590565b60008060008060808587031215620001d457600080fd5b84516001600160a01b0381168114620001ec57600080fd5b60208601516040870151606090970151919890975090945092505050565b611a66806200021a6000396000f3fe6080604052600436106101095760003560e01c806392eefe9b11610095578063c7ee98c211610064578063c7ee98c214610298578063e7a49c2b146102b8578063ece2064c146102d8578063f6326fb3146102ed578063f77c47911461030557600080fd5b806392eefe9b146102365780639ae6309a14610256578063a7c835141461026c578063be0522e01461028257600080fd5b80633018205f116100dc5780633018205f146101995780635507442d146101cb57806377bde142146101e05780637dbedad514610200578063821b771f1461022057600080fd5b8063010e3c1c1461010e57806318d217ad1461013057806320283da9146101505780632de22cdb14610170575b600080fd5b34801561011a57600080fd5b5061012e61012936600461185f565b610325565b005b34801561013c57600080fd5b5061012e61014b366004611890565b6103fd565b34801561015c57600080fd5b5061012e61016b3660046118ad565b610835565b34801561017c57600080fd5b5061018660055481565b6040519081526020015b60405180910390f35b3480156101a557600080fd5b506000546001600160a01b03165b6040516001600160a01b039091168152602001610190565b3480156101d757600080fd5b50610186610a27565b3480156101ec57600080fd5b5061012e6101fb36600461185f565b610b27565b34801561020c57600080fd5b5061018661021b3660046118d9565b610bf3565b34801561022c57600080fd5b5061018660035481565b34801561024257600080fd5b5061012e610251366004611890565b610db0565b34801561026257600080fd5b5061018660045481565b34801561027857600080fd5b5061018660025481565b34801561028e57600080fd5b5061018660015481565b3480156102a457600080fd5b5061012e6102b336600461185f565b610e06565b3480156102c457600080fd5b5061012e6102d33660046118ad565b610f31565b3480156102e457600080fd5b5061012e61107e565b6102f56111ea565b6040519015158152602001610190565b34801561031157600080fd5b506000546101b3906001600160a01b031681565b61032d6113b8565b61033b81633b9aca00101590565b61039b5760405162461bcd60e51b815260206004820152602660248201527f5f696e666c6174696f6e4368616e676520697320696e76616c69642070657263604482015265656e7461676560d01b60648201526084015b60405180910390fd5b60028190556040517f9f5033568d78ae30f29f01e944f97b2216493bd19d1b46d429673acff3dcd674906103f2906020808252600f908201526e696e666c6174696f6e4368616e676560881b604082015260600190565b60405180910390a150565b6104056113b8565b6001600160a01b03811630141561046a5760405162461bcd60e51b815260206004820152602360248201527f6e6577204d696e7465722063616e6e6f742062652063757272656e74204d696e6044820152623a32b960e91b6064820152608401610392565b6001600160a01b0381166104ca5760405162461bcd60e51b815260206004820152602160248201527f6e6577204d696e7465722063616e6e6f74206265206e756c6c206164647265736044820152607360f81b6064820152608401610392565b6000816001600160a01b0316633018205f6040518163ffffffff1660e01b815260040160206040518083038186803b15801561050557600080fd5b505afa158015610519573d6000803e3d6000fd5b505050506040513d601f19601f8201168201806040525081019061053d91906118fb565b6000549091506001600160a01b038083169116146105b65760405162461bcd60e51b815260206004820152603060248201527f6e6577204d696e74657220436f6e74726f6c6c6572206d75737420626520637560448201526f393932b73a1021b7b73a3937b63632b960811b6064820152608401610392565b604051631c2d8fb360e31b81527f6e58ad548d72b425ea94c15f453bf26caddb061d82b2551db7fdd3cefe0e9940600482015230906001600160a01b0383169063e16c7d989060240160206040518083038186803b15801561061757600080fd5b505afa15801561062b573d6000803e3d6000fd5b505050506040513d601f19601f8201168201806040525081019061064f91906118fb565b6001600160a01b0316146106a55760405162461bcd60e51b815260206004820152601d60248201527f6e6577204d696e746572206d75737420626520726567697374657265640000006044820152606401610392565b6106ad61149e565b6001600160a01b031663a9059cbb836106c461149e565b6040516370a0823160e01b81523060048201526001600160a01b0391909116906370a082319060240160206040518083038186803b15801561070557600080fd5b505afa158015610719573d6000803e3d6000fd5b505050506040513d601f19601f8201168201806040525081019061073d9190611918565b6040516001600160e01b031960e085901b1681526001600160a01b0390921660048301526024820152604401602060405180830381600087803b15801561078357600080fd5b505af1158015610797573d6000803e3d6000fd5b505050506040513d601f19601f820116820180604052508101906107bb9190611931565b50816001600160a01b031663f6326fb3476040518263ffffffff1660e01b81526004016020604051808303818588803b1580156107f757600080fd5b505af115801561080b573d6000803e3d6000fd5b50505050506040513d601f19601f820116820180604052508101906108309190611931565b505050565b600054604051631c2d8fb360e31b8152600080516020611a1183398151915260048201526001600160a01b039091169063e16c7d989060240160206040518083038186803b15801561088657600080fd5b505afa15801561089a573d6000803e3d6000fd5b505050506040513d601f19601f820116820180604052508101906108be91906118fb565b6001600160a01b0316336001600160a01b031614806109885750600054604051631c2d8fb360e31b81527f3d7456535a3155a46f15a2313c3915bd07137ffdc56464f4fc9a82bae7215c2d60048201526001600160a01b039091169063e16c7d989060240160206040518083038186803b15801561093b57600080fd5b505afa15801561094f573d6000803e3d6000fd5b505050506040513d601f19601f8201168201806040525081019061097391906118fb565b6001600160a01b0316336001600160a01b0316145b6109e95760405162461bcd60e51b815260206004820152602c60248201527f6d73672e73656e646572206e6f7420426f6e64696e674d616e61676572206f7260448201526b102537b139a6b0b730b3b2b960a11b6064820152608401610392565b6109f161153b565b6040516001600160a01b0383169082156108fc029083906000818181858888f19350505050158015610830573d6000803e3d6000fd5b6000610b22610a346115ff565b6001600160a01b031663fb1c5ee96040518163ffffffff1660e01b815260040160206040518083038186803b158015610a6c57600080fd5b505afa158015610a80573d6000803e3d6000fd5b505050506040513d601f19601f82011682018060405250810190610aa49190611918565b610aac61149e565b6001600160a01b03166318160ddd6040518163ffffffff1660e01b815260040160206040518083038186803b158015610ae457600080fd5b505afa158015610af8573d6000803e3d6000fd5b505050506040513d601f19601f82011682018060405250810190610b1c9190611918565b90611650565b905090565b610b2f6113b8565b610b3d81633b9aca00101590565b610b9a5760405162461bcd60e51b815260206004820152602860248201527f5f746172676574426f6e64696e675261746520697320696e76616c69642070656044820152677263656e7461676560c01b6064820152608401610392565b60038190556040517f9f5033568d78ae30f29f01e944f97b2216493bd19d1b46d429673acff3dcd674906103f290602080825260119082015270746172676574426f6e64696e675261746560781b604082015260600190565b60008054604051631c2d8fb360e31b8152600080516020611a1183398151915260048201526001600160a01b039091169063e16c7d989060240160206040518083038186803b158015610c4557600080fd5b505afa158015610c59573d6000803e3d6000fd5b505050506040513d601f19601f82011682018060405250810190610c7d91906118fb565b6001600160a01b0316336001600160a01b031614610cad5760405162461bcd60e51b815260040161039290611953565b610cb561153b565b6000610cc46004548585611663565b600554909150610cd49082611650565b60058190556004541015610d3e5760405162461bcd60e51b815260206004820152602b60248201527f6d696e74656420746f6b656e732063616e6e6f7420657863656564206d696e7460448201526a61626c6520746f6b656e7360a81b6064820152608401610392565b610d4661149e565b6040516340c10f1960e01b8152306004820152602481018390526001600160a01b0391909116906340c10f1990604401600060405180830381600087803b158015610d9057600080fd5b505af1158015610da4573d6000803e3d6000fd5b50929695505050505050565b610db861168f565b600080546001600160a01b0319166001600160a01b0383169081179091556040519081527f4ff638452bbf33c012645d18ae6f05515ff5f2d1dfb0cece8cbf018c60903f70906020016103f2565b600054604051631c2d8fb360e31b8152600080516020611a1183398151915260048201526001600160a01b039091169063e16c7d989060240160206040518083038186803b158015610e5757600080fd5b505afa158015610e6b573d6000803e3d6000fd5b505050506040513d601f19601f82011682018060405250810190610e8f91906118fb565b6001600160a01b0316336001600160a01b031614610ebf5760405162461bcd60e51b815260040161039290611953565b610ec761153b565b610ecf61149e565b6001600160a01b03166342966c68826040518263ffffffff1660e01b8152600401610efc91815260200190565b600060405180830381600087803b158015610f1657600080fd5b505af1158015610f2a573d6000803e3d6000fd5b5050505050565b600054604051631c2d8fb360e31b8152600080516020611a1183398151915260048201526001600160a01b039091169063e16c7d989060240160206040518083038186803b158015610f8257600080fd5b505afa158015610f96573d6000803e3d6000fd5b505050506040513d601f19601f82011682018060405250810190610fba91906118fb565b6001600160a01b0316336001600160a01b031614610fea5760405162461bcd60e51b815260040161039290611953565b610ff261153b565b610ffa61149e565b60405163a9059cbb60e01b81526001600160a01b03848116600483015260248201849052919091169063a9059cbb90604401602060405180830381600087803b15801561104657600080fd5b505af115801561105a573d6000803e3d6000fd5b505050506040513d601f19601f820116820180604052508101906108309190611931565b600054604051631c2d8fb360e31b81527fe8438ea868df48e3fc21f2f087b993c9b1837dc0f6135064161ce7d7a1701fe860048201526001600160a01b039091169063e16c7d989060240160206040518083038186803b1580156110e157600080fd5b505afa1580156110f5573d6000803e3d6000fd5b505050506040513d601f19601f8201168201806040525081019061111991906118fb565b6001600160a01b0316336001600160a01b0316146111795760405162461bcd60e51b815260206004820152601c60248201527f6d73672e73656e646572206e6f7420526f756e64734d616e61676572000000006044820152606401610392565b61118161153b565b6111896116e9565b61119c611194610a27565b6001546117d8565b600481905560006005556001546040517f39567a366345edf17f50c1967a31b597745186c4632f34c4f8ebe06b6890784d926111e092908252602082015260400190565b60405180910390a1565b60008054604051631c2d8fb360e31b81527f6e58ad548d72b425ea94c15f453bf26caddb061d82b2551db7fdd3cefe0e994060048201526001600160a01b039091169063e16c7d989060240160206040518083038186803b15801561124e57600080fd5b505afa158015611262573d6000803e3d6000fd5b505050506040513d601f19601f8201168201806040525081019061128691906118fb565b6001600160a01b0316336001600160a01b031614806113505750600054604051631c2d8fb360e31b81527f3d7456535a3155a46f15a2313c3915bd07137ffdc56464f4fc9a82bae7215c2d60048201526001600160a01b039091169063e16c7d989060240160206040518083038186803b15801561130357600080fd5b505afa158015611317573d6000803e3d6000fd5b505050506040513d601f19601f8201168201806040525081019061133b91906118fb565b6001600160a01b0316336001600160a01b0316145b6113a85760405162461bcd60e51b8152602060048201526024808201527f6d73672e73656e646572206e6f74204d696e746572206f72204a6f62734d616e60448201526330b3b2b960e11b6064820152608401610392565b50600190565b633b9aca00101590565b60008054906101000a90046001600160a01b03166001600160a01b0316638da5cb5b6040518163ffffffff1660e01b815260040160206040518083038186803b15801561140457600080fd5b505afa158015611418573d6000803e3d6000fd5b505050506040513d601f19601f8201168201806040525081019061143c91906118fb565b6001600160a01b0316336001600160a01b03161461149c5760405162461bcd60e51b815260206004820152601f60248201527f63616c6c6572206d75737420626520436f6e74726f6c6c6572206f776e6572006044820152606401610392565b565b60008054604051631c2d8fb360e31b81527f3443e257065fe41dd0e4d1f5a1b73a22a62e300962b57f30cddf41d0f8273ba760048201526001600160a01b039091169063e16c7d98906024015b60206040518083038186803b15801561150357600080fd5b505afa158015611517573d6000803e3d6000fd5b505050506040513d601f19601f82011682018060405250810190610b2291906118fb565b60008054906101000a90046001600160a01b03166001600160a01b0316635c975abb6040518163ffffffff1660e01b815260040160206040518083038186803b15801561158757600080fd5b505afa15801561159b573d6000803e3d6000fd5b505050506040513d601f19601f820116820180604052508101906115bf9190611931565b1561149c5760405162461bcd60e51b815260206004820152601060248201526f1cde5cdd195b481a5cc81c185d5cd95960821b6044820152606401610392565b60008054604051631c2d8fb360e31b81527f8ecfba413a4e4715a264d70a55d3a35bf60b2954c56759310202f3928162320060048201526001600160a01b039091169063e16c7d98906024016114eb565b600061165c82846119a0565b9392505050565b6000611687633b9aca0061168161167a86866117ec565b87906117fc565b90611808565b949350505050565b6000546001600160a01b0316331461149c5760405162461bcd60e51b815260206004820152601960248201527f63616c6c6572206d75737420626520436f6e74726f6c6c6572000000000000006044820152606401610392565b6000806116f4610a27565b90508015611786576000611706611814565b6001600160a01b0316635c50c3566040518163ffffffff1660e01b815260040160206040518083038186803b15801561173e57600080fd5b505afa158015611752573d6000803e3d6000fd5b505050506040513d601f19601f820116820180604052508101906117769190611918565b905061178281836117ec565b9250505b6003548210156117a65760025460015461179f91611650565b6001555050565b6003548211156117d45760015460025411156117c55760006001555050565b60025460015461179f91611853565b5050565b600061165c633b9aca0061168185856117fc565b600061165c8261168185633b9aca005b600061165c82846119b8565b600061165c82846119d7565b60008054604051631c2d8fb360e31b8152600080516020611a1183398151915260048201526001600160a01b039091169063e16c7d98906024016114eb565b600061165c82846119f9565b60006020828403121561187157600080fd5b5035919050565b6001600160a01b038116811461188d57600080fd5b50565b6000602082840312156118a257600080fd5b813561165c81611878565b600080604083850312156118c057600080fd5b82356118cb81611878565b946020939093013593505050565b600080604083850312156118ec57600080fd5b50508035926020909101359150565b60006020828403121561190d57600080fd5b815161165c81611878565b60006020828403121561192a57600080fd5b5051919050565b60006020828403121561194357600080fd5b8151801515811461165c57600080fd5b6020808252601d908201527f6d73672e73656e646572206e6f7420426f6e64696e674d616e61676572000000604082015260600190565b634e487b7160e01b600052601160045260246000fd5b600082198211156119b3576119b361198a565b500190565b60008160001904831182151516156119d2576119d261198a565b500290565b6000826119f457634e487b7160e01b600052601260045260246000fd5b500490565b600082821015611a0b57611a0b61198a565b50039056fe2517d59a36a86548e38734e8ab416f42afff4bca78706a66ad65750dae7f9e37a2646970667358221220db57b965514cfe4b52b46bdf103e3b470bfc74fa3aa90d88525bf052a4e3455164736f6c63430008090033",
+  "deployedBytecode": "0x6080604052600436106101095760003560e01c806392eefe9b11610095578063c7ee98c211610064578063c7ee98c214610298578063e7a49c2b146102b8578063ece2064c146102d8578063f6326fb3146102ed578063f77c47911461030557600080fd5b806392eefe9b146102365780639ae6309a14610256578063a7c835141461026c578063be0522e01461028257600080fd5b80633018205f116100dc5780633018205f146101995780635507442d146101cb57806377bde142146101e05780637dbedad514610200578063821b771f1461022057600080fd5b8063010e3c1c1461010e57806318d217ad1461013057806320283da9146101505780632de22cdb14610170575b600080fd5b34801561011a57600080fd5b5061012e61012936600461185f565b610325565b005b34801561013c57600080fd5b5061012e61014b366004611890565b6103fd565b34801561015c57600080fd5b5061012e61016b3660046118ad565b610835565b34801561017c57600080fd5b5061018660055481565b6040519081526020015b60405180910390f35b3480156101a557600080fd5b506000546001600160a01b03165b6040516001600160a01b039091168152602001610190565b3480156101d757600080fd5b50610186610a27565b3480156101ec57600080fd5b5061012e6101fb36600461185f565b610b27565b34801561020c57600080fd5b5061018661021b3660046118d9565b610bf3565b34801561022c57600080fd5b5061018660035481565b34801561024257600080fd5b5061012e610251366004611890565b610db0565b34801561026257600080fd5b5061018660045481565b34801561027857600080fd5b5061018660025481565b34801561028e57600080fd5b5061018660015481565b3480156102a457600080fd5b5061012e6102b336600461185f565b610e06565b3480156102c457600080fd5b5061012e6102d33660046118ad565b610f31565b3480156102e457600080fd5b5061012e61107e565b6102f56111ea565b6040519015158152602001610190565b34801561031157600080fd5b506000546101b3906001600160a01b031681565b61032d6113b8565b61033b81633b9aca00101590565b61039b5760405162461bcd60e51b815260206004820152602660248201527f5f696e666c6174696f6e4368616e676520697320696e76616c69642070657263604482015265656e7461676560d01b60648201526084015b60405180910390fd5b60028190556040517f9f5033568d78ae30f29f01e944f97b2216493bd19d1b46d429673acff3dcd674906103f2906020808252600f908201526e696e666c6174696f6e4368616e676560881b604082015260600190565b60405180910390a150565b6104056113b8565b6001600160a01b03811630141561046a5760405162461bcd60e51b815260206004820152602360248201527f6e6577204d696e7465722063616e6e6f742062652063757272656e74204d696e6044820152623a32b960e91b6064820152608401610392565b6001600160a01b0381166104ca5760405162461bcd60e51b815260206004820152602160248201527f6e6577204d696e7465722063616e6e6f74206265206e756c6c206164647265736044820152607360f81b6064820152608401610392565b6000816001600160a01b0316633018205f6040518163ffffffff1660e01b815260040160206040518083038186803b15801561050557600080fd5b505afa158015610519573d6000803e3d6000fd5b505050506040513d601f19601f8201168201806040525081019061053d91906118fb565b6000549091506001600160a01b038083169116146105b65760405162461bcd60e51b815260206004820152603060248201527f6e6577204d696e74657220436f6e74726f6c6c6572206d75737420626520637560448201526f393932b73a1021b7b73a3937b63632b960811b6064820152608401610392565b604051631c2d8fb360e31b81527f6e58ad548d72b425ea94c15f453bf26caddb061d82b2551db7fdd3cefe0e9940600482015230906001600160a01b0383169063e16c7d989060240160206040518083038186803b15801561061757600080fd5b505afa15801561062b573d6000803e3d6000fd5b505050506040513d601f19601f8201168201806040525081019061064f91906118fb565b6001600160a01b0316146106a55760405162461bcd60e51b815260206004820152601d60248201527f6e6577204d696e746572206d75737420626520726567697374657265640000006044820152606401610392565b6106ad61149e565b6001600160a01b031663a9059cbb836106c461149e565b6040516370a0823160e01b81523060048201526001600160a01b0391909116906370a082319060240160206040518083038186803b15801561070557600080fd5b505afa158015610719573d6000803e3d6000fd5b505050506040513d601f19601f8201168201806040525081019061073d9190611918565b6040516001600160e01b031960e085901b1681526001600160a01b0390921660048301526024820152604401602060405180830381600087803b15801561078357600080fd5b505af1158015610797573d6000803e3d6000fd5b505050506040513d601f19601f820116820180604052508101906107bb9190611931565b50816001600160a01b031663f6326fb3476040518263ffffffff1660e01b81526004016020604051808303818588803b1580156107f757600080fd5b505af115801561080b573d6000803e3d6000fd5b50505050506040513d601f19601f820116820180604052508101906108309190611931565b505050565b600054604051631c2d8fb360e31b8152600080516020611a1183398151915260048201526001600160a01b039091169063e16c7d989060240160206040518083038186803b15801561088657600080fd5b505afa15801561089a573d6000803e3d6000fd5b505050506040513d601f19601f820116820180604052508101906108be91906118fb565b6001600160a01b0316336001600160a01b031614806109885750600054604051631c2d8fb360e31b81527f3d7456535a3155a46f15a2313c3915bd07137ffdc56464f4fc9a82bae7215c2d60048201526001600160a01b039091169063e16c7d989060240160206040518083038186803b15801561093b57600080fd5b505afa15801561094f573d6000803e3d6000fd5b505050506040513d601f19601f8201168201806040525081019061097391906118fb565b6001600160a01b0316336001600160a01b0316145b6109e95760405162461bcd60e51b815260206004820152602c60248201527f6d73672e73656e646572206e6f7420426f6e64696e674d616e61676572206f7260448201526b102537b139a6b0b730b3b2b960a11b6064820152608401610392565b6109f161153b565b6040516001600160a01b0383169082156108fc029083906000818181858888f19350505050158015610830573d6000803e3d6000fd5b6000610b22610a346115ff565b6001600160a01b031663fb1c5ee96040518163ffffffff1660e01b815260040160206040518083038186803b158015610a6c57600080fd5b505afa158015610a80573d6000803e3d6000fd5b505050506040513d601f19601f82011682018060405250810190610aa49190611918565b610aac61149e565b6001600160a01b03166318160ddd6040518163ffffffff1660e01b815260040160206040518083038186803b158015610ae457600080fd5b505afa158015610af8573d6000803e3d6000fd5b505050506040513d601f19601f82011682018060405250810190610b1c9190611918565b90611650565b905090565b610b2f6113b8565b610b3d81633b9aca00101590565b610b9a5760405162461bcd60e51b815260206004820152602860248201527f5f746172676574426f6e64696e675261746520697320696e76616c69642070656044820152677263656e7461676560c01b6064820152608401610392565b60038190556040517f9f5033568d78ae30f29f01e944f97b2216493bd19d1b46d429673acff3dcd674906103f290602080825260119082015270746172676574426f6e64696e675261746560781b604082015260600190565b60008054604051631c2d8fb360e31b8152600080516020611a1183398151915260048201526001600160a01b039091169063e16c7d989060240160206040518083038186803b158015610c4557600080fd5b505afa158015610c59573d6000803e3d6000fd5b505050506040513d601f19601f82011682018060405250810190610c7d91906118fb565b6001600160a01b0316336001600160a01b031614610cad5760405162461bcd60e51b815260040161039290611953565b610cb561153b565b6000610cc46004548585611663565b600554909150610cd49082611650565b60058190556004541015610d3e5760405162461bcd60e51b815260206004820152602b60248201527f6d696e74656420746f6b656e732063616e6e6f7420657863656564206d696e7460448201526a61626c6520746f6b656e7360a81b6064820152608401610392565b610d4661149e565b6040516340c10f1960e01b8152306004820152602481018390526001600160a01b0391909116906340c10f1990604401600060405180830381600087803b158015610d9057600080fd5b505af1158015610da4573d6000803e3d6000fd5b50929695505050505050565b610db861168f565b600080546001600160a01b0319166001600160a01b0383169081179091556040519081527f4ff638452bbf33c012645d18ae6f05515ff5f2d1dfb0cece8cbf018c60903f70906020016103f2565b600054604051631c2d8fb360e31b8152600080516020611a1183398151915260048201526001600160a01b039091169063e16c7d989060240160206040518083038186803b158015610e5757600080fd5b505afa158015610e6b573d6000803e3d6000fd5b505050506040513d601f19601f82011682018060405250810190610e8f91906118fb565b6001600160a01b0316336001600160a01b031614610ebf5760405162461bcd60e51b815260040161039290611953565b610ec761153b565b610ecf61149e565b6001600160a01b03166342966c68826040518263ffffffff1660e01b8152600401610efc91815260200190565b600060405180830381600087803b158015610f1657600080fd5b505af1158015610f2a573d6000803e3d6000fd5b5050505050565b600054604051631c2d8fb360e31b8152600080516020611a1183398151915260048201526001600160a01b039091169063e16c7d989060240160206040518083038186803b158015610f8257600080fd5b505afa158015610f96573d6000803e3d6000fd5b505050506040513d601f19601f82011682018060405250810190610fba91906118fb565b6001600160a01b0316336001600160a01b031614610fea5760405162461bcd60e51b815260040161039290611953565b610ff261153b565b610ffa61149e565b60405163a9059cbb60e01b81526001600160a01b03848116600483015260248201849052919091169063a9059cbb90604401602060405180830381600087803b15801561104657600080fd5b505af115801561105a573d6000803e3d6000fd5b505050506040513d601f19601f820116820180604052508101906108309190611931565b600054604051631c2d8fb360e31b81527fe8438ea868df48e3fc21f2f087b993c9b1837dc0f6135064161ce7d7a1701fe860048201526001600160a01b039091169063e16c7d989060240160206040518083038186803b1580156110e157600080fd5b505afa1580156110f5573d6000803e3d6000fd5b505050506040513d601f19601f8201168201806040525081019061111991906118fb565b6001600160a01b0316336001600160a01b0316146111795760405162461bcd60e51b815260206004820152601c60248201527f6d73672e73656e646572206e6f7420526f756e64734d616e61676572000000006044820152606401610392565b61118161153b565b6111896116e9565b61119c611194610a27565b6001546117d8565b600481905560006005556001546040517f39567a366345edf17f50c1967a31b597745186c4632f34c4f8ebe06b6890784d926111e092908252602082015260400190565b60405180910390a1565b60008054604051631c2d8fb360e31b81527f6e58ad548d72b425ea94c15f453bf26caddb061d82b2551db7fdd3cefe0e994060048201526001600160a01b039091169063e16c7d989060240160206040518083038186803b15801561124e57600080fd5b505afa158015611262573d6000803e3d6000fd5b505050506040513d601f19601f8201168201806040525081019061128691906118fb565b6001600160a01b0316336001600160a01b031614806113505750600054604051631c2d8fb360e31b81527f3d7456535a3155a46f15a2313c3915bd07137ffdc56464f4fc9a82bae7215c2d60048201526001600160a01b039091169063e16c7d989060240160206040518083038186803b15801561130357600080fd5b505afa158015611317573d6000803e3d6000fd5b505050506040513d601f19601f8201168201806040525081019061133b91906118fb565b6001600160a01b0316336001600160a01b0316145b6113a85760405162461bcd60e51b8152602060048201526024808201527f6d73672e73656e646572206e6f74204d696e746572206f72204a6f62734d616e60448201526330b3b2b960e11b6064820152608401610392565b50600190565b633b9aca00101590565b60008054906101000a90046001600160a01b03166001600160a01b0316638da5cb5b6040518163ffffffff1660e01b815260040160206040518083038186803b15801561140457600080fd5b505afa158015611418573d6000803e3d6000fd5b505050506040513d601f19601f8201168201806040525081019061143c91906118fb565b6001600160a01b0316336001600160a01b03161461149c5760405162461bcd60e51b815260206004820152601f60248201527f63616c6c6572206d75737420626520436f6e74726f6c6c6572206f776e6572006044820152606401610392565b565b60008054604051631c2d8fb360e31b81527f3443e257065fe41dd0e4d1f5a1b73a22a62e300962b57f30cddf41d0f8273ba760048201526001600160a01b039091169063e16c7d98906024015b60206040518083038186803b15801561150357600080fd5b505afa158015611517573d6000803e3d6000fd5b505050506040513d601f19601f82011682018060405250810190610b2291906118fb565b60008054906101000a90046001600160a01b03166001600160a01b0316635c975abb6040518163ffffffff1660e01b815260040160206040518083038186803b15801561158757600080fd5b505afa15801561159b573d6000803e3d6000fd5b505050506040513d601f19601f820116820180604052508101906115bf9190611931565b1561149c5760405162461bcd60e51b815260206004820152601060248201526f1cde5cdd195b481a5cc81c185d5cd95960821b6044820152606401610392565b60008054604051631c2d8fb360e31b81527f8ecfba413a4e4715a264d70a55d3a35bf60b2954c56759310202f3928162320060048201526001600160a01b039091169063e16c7d98906024016114eb565b600061165c82846119a0565b9392505050565b6000611687633b9aca0061168161167a86866117ec565b87906117fc565b90611808565b949350505050565b6000546001600160a01b0316331461149c5760405162461bcd60e51b815260206004820152601960248201527f63616c6c6572206d75737420626520436f6e74726f6c6c6572000000000000006044820152606401610392565b6000806116f4610a27565b90508015611786576000611706611814565b6001600160a01b0316635c50c3566040518163ffffffff1660e01b815260040160206040518083038186803b15801561173e57600080fd5b505afa158015611752573d6000803e3d6000fd5b505050506040513d601f19601f820116820180604052508101906117769190611918565b905061178281836117ec565b9250505b6003548210156117a65760025460015461179f91611650565b6001555050565b6003548211156117d45760015460025411156117c55760006001555050565b60025460015461179f91611853565b5050565b600061165c633b9aca0061168185856117fc565b600061165c8261168185633b9aca005b600061165c82846119b8565b600061165c82846119d7565b60008054604051631c2d8fb360e31b8152600080516020611a1183398151915260048201526001600160a01b039091169063e16c7d98906024016114eb565b600061165c82846119f9565b60006020828403121561187157600080fd5b5035919050565b6001600160a01b038116811461188d57600080fd5b50565b6000602082840312156118a257600080fd5b813561165c81611878565b600080604083850312156118c057600080fd5b82356118cb81611878565b946020939093013593505050565b600080604083850312156118ec57600080fd5b50508035926020909101359150565b60006020828403121561190d57600080fd5b815161165c81611878565b60006020828403121561192a57600080fd5b5051919050565b60006020828403121561194357600080fd5b8151801515811461165c57600080fd5b6020808252601d908201527f6d73672e73656e646572206e6f7420426f6e64696e674d616e61676572000000604082015260600190565b634e487b7160e01b600052601160045260246000fd5b600082198211156119b3576119b361198a565b500190565b60008160001904831182151516156119d2576119d261198a565b500290565b6000826119f457634e487b7160e01b600052601260045260246000fd5b500490565b600082821015611a0b57611a0b61198a565b50039056fe2517d59a36a86548e38734e8ab416f42afff4bca78706a66ad65750dae7f9e37a2646970667358221220db57b965514cfe4b52b46bdf103e3b470bfc74fa3aa90d88525bf052a4e3455164736f6c63430008090033",
+  "devdoc": {
+    "details": "Manages inflation rate and the minting of new tokens for each round of the Livepeer protocol",
+    "kind": "dev",
+    "methods": {
+      "constructor": {
+        "params": {
+          "_inflation": "Base inflation rate as a percentage of current total token supply",
+          "_inflationChange": "Change in inflation rate each round (increase or decrease) if target bonding rate is not achieved",
+          "_targetBondingRate": "Target bonding rate as a percentage of total bonded tokens / total token supply"
+        }
+      },
+      "createReward(uint256,uint256)": {
+        "params": {
+          "_fracDenom": "Denominator of fraction (total active stake)",
+          "_fracNum": "Numerator of fraction (active transcoder's stake)"
+        }
+      },
+      "getController()": {
+        "details": "Returns Controller interface"
+      },
+      "getGlobalTotalSupply()": {
+        "returns": {
+          "_0": "Global LPT total supply"
+        }
+      },
+      "migrateToNewMinter(address)": {
+        "details": "Only callable by Controller owner",
+        "params": {
+          "_newMinter": "Address of new Minter"
+        }
+      },
+      "setController(address)": {
+        "params": {
+          "_controller": "Controller contract address"
+        }
+      },
+      "setInflationChange(uint256)": {
+        "params": {
+          "_inflationChange": "Inflation change as a percentage of total token supply"
+        }
+      },
+      "setTargetBondingRate(uint256)": {
+        "params": {
+          "_targetBondingRate": "Target bonding rate as a percentage of total bonded tokens / total token supply"
+        }
+      },
+      "trustedBurnTokens(uint256)": {
+        "params": {
+          "_amount": "Amount of tokens to burn"
+        }
+      },
+      "trustedTransferTokens(address,uint256)": {
+        "params": {
+          "_amount": "Amount of tokens",
+          "_to": "Recipient address"
+        }
+      },
+      "trustedWithdrawETH(address,uint256)": {
+        "params": {
+          "_amount": "Amount of ETH",
+          "_to": "Recipient address"
+        }
+      }
+    },
+    "title": "Minter",
+    "version": 1
+  },
+  "userdoc": {
+    "kind": "user",
+    "methods": {
+      "constructor": {
+        "notice": "Minter constructor"
+      },
+      "createReward(uint256,uint256)": {
+        "notice": "Create reward based on a fractional portion of the mintable tokens for the current round"
+      },
+      "depositETH()": {
+        "notice": "Deposit ETH to this contract. Only callable by the currently registered Minter or JobsManager"
+      },
+      "getGlobalTotalSupply()": {
+        "notice": "Calculate and return global LPT total supply"
+      },
+      "migrateToNewMinter(address)": {
+        "notice": "Migrate to a new Minter by transferring the current Minter's LPT + ETH balance to the new Minter"
+      },
+      "setController(address)": {
+        "notice": "Set controller. Only callable by current controller"
+      },
+      "setCurrentRewardTokens()": {
+        "notice": "Set inflation and mintable tokens for the round. Only callable by the RoundsManager"
+      },
+      "setInflationChange(uint256)": {
+        "notice": "Set inflationChange. Only callable by Controller owner"
+      },
+      "setTargetBondingRate(uint256)": {
+        "notice": "Set targetBondingRate. Only callable by Controller owner"
+      },
+      "trustedBurnTokens(uint256)": {
+        "notice": "Burn tokens. Only callable by BondingManager - always trusts BondingManager"
+      },
+      "trustedTransferTokens(address,uint256)": {
+        "notice": "Transfer tokens to a receipient. Only callable by BondingManager - always trusts BondingManager"
+      },
+      "trustedWithdrawETH(address,uint256)": {
+        "notice": "Withdraw ETH to a recipient. Only callable by BondingManager or TicketBroker - always trusts these two contracts"
+      }
+    },
+    "version": 1
+  },
+  "storageLayout": {
+    "storage": [
+      {
+        "astId": 2670,
+        "contract": "contracts/token/Minter.sol:Minter",
+        "label": "controller",
+        "offset": 0,
+        "slot": "0",
+        "type": "t_contract(IController)2645"
+      },
+      {
+        "astId": 25216,
+        "contract": "contracts/token/Minter.sol:Minter",
+        "label": "inflation",
+        "offset": 0,
+        "slot": "1",
+        "type": "t_uint256"
+      },
+      {
+        "astId": 25218,
+        "contract": "contracts/token/Minter.sol:Minter",
+        "label": "inflationChange",
+        "offset": 0,
+        "slot": "2",
+        "type": "t_uint256"
+      },
+      {
+        "astId": 25220,
+        "contract": "contracts/token/Minter.sol:Minter",
+        "label": "targetBondingRate",
+        "offset": 0,
+        "slot": "3",
+        "type": "t_uint256"
+      },
+      {
+        "astId": 25222,
+        "contract": "contracts/token/Minter.sol:Minter",
+        "label": "currentMintableTokens",
+        "offset": 0,
+        "slot": "4",
+        "type": "t_uint256"
+      },
+      {
+        "astId": 25224,
+        "contract": "contracts/token/Minter.sol:Minter",
+        "label": "currentMintedTokens",
+        "offset": 0,
+        "slot": "5",
+        "type": "t_uint256"
+      }
+    ],
+    "types": {
+      "t_contract(IController)2645": {
+        "encoding": "inplace",
+        "label": "contract IController",
+        "numberOfBytes": "20"
+      },
+      "t_uint256": {
+        "encoding": "inplace",
+        "label": "uint256",
+        "numberOfBytes": "32"
+      }
+    }
+  }
+}

@@ -1,0 +1,362 @@
+{
+  "address": "0x64aDE6Cda3702aAA49263DBcD2bfDFe19cE21432",
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_token",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_requestAmount",
+          "type": "uint256"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_requestWait",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "previousOwner",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "newOwner",
+          "type": "address"
+        }
+      ],
+      "name": "OwnershipTransferred",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "to",
+          "type": "address"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "amount",
+          "type": "uint256"
+        }
+      ],
+      "name": "Request",
+      "type": "event"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_addr",
+          "type": "address"
+        }
+      ],
+      "name": "addToWhitelist",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "name": "isWhitelisted",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "name": "nextValidRequest",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "owner",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_addr",
+          "type": "address"
+        }
+      ],
+      "name": "removeFromWhitelist",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "request",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "requestAmount",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "requestWait",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "token",
+      "outputs": [
+        {
+          "internalType": "contract ILivepeerToken",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "newOwner",
+          "type": "address"
+        }
+      ],
+      "name": "transferOwnership",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  ],
+  "transactionHash": "0xb34cbd5d8469de5b8ef53106cf46b79168d1342fb3517055fa5f9e2ebde13fad",
+  "receipt": {
+    "to": null,
+    "from": "0xC96f6B72843Af1988C98F78eAB3E47673af63eA1",
+    "contractAddress": "0x64aDE6Cda3702aAA49263DBcD2bfDFe19cE21432",
+    "transactionIndex": 1,
+    "gasUsed": "401228",
+    "logsBloom": "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+    "blockHash": "0x812a52f3605e6e2077078e22bd6ae8ad410e31518b07ff9147ad4aa5871d822d",
+    "transactionHash": "0xb34cbd5d8469de5b8ef53106cf46b79168d1342fb3517055fa5f9e2ebde13fad",
+    "logs": [],
+    "blockNumber": 51069,
+    "cumulativeGasUsed": "401228",
+    "status": 1,
+    "byzantium": true
+  },
+  "args": [
+    "0x127C21dD971E7E58A5f94c8849e7F7d8177B4B3d",
+    "10000000000000000000",
+    1
+  ],
+  "numDeployments": 2,
+  "solcInputHash": "38b657e341fe6dcb1b812a658e825f5e",
+  "metadata": "{\"compiler\":{\"version\":\"0.8.9+commit.e5eed63a\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_token\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"_requestAmount\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"_requestWait\",\"type\":\"uint256\"}],\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"previousOwner\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"newOwner\",\"type\":\"address\"}],\"name\":\"OwnershipTransferred\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"to\",\"type\":\"address\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"amount\",\"type\":\"uint256\"}],\"name\":\"Request\",\"type\":\"event\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_addr\",\"type\":\"address\"}],\"name\":\"addToWhitelist\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"name\":\"isWhitelisted\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"name\":\"nextValidRequest\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"owner\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_addr\",\"type\":\"address\"}],\"name\":\"removeFromWhitelist\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"request\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"requestAmount\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"requestWait\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"token\",\"outputs\":[{\"internalType\":\"contract ILivepeerToken\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"newOwner\",\"type\":\"address\"}],\"name\":\"transferOwnership\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}],\"devdoc\":{\"kind\":\"dev\",\"methods\":{\"addToWhitelist(address)\":{\"params\":{\"_addr\":\"Address to be whitelisted\"}},\"constructor\":{\"params\":{\"_requestAmount\":\"Amount of token sent to sender for a request\",\"_requestWait\":\"Amount of time a sender must wait between request (denominated in hours)\",\"_token\":\"Address of LivepeerToken\"}},\"removeFromWhitelist(address)\":{\"params\":{\"_addr\":\"Address to be removed from whitelist\"}},\"transferOwnership(address)\":{\"details\":\"Allows the current owner to transfer control of the contract to a newOwner.\",\"params\":{\"newOwner\":\"The address to transfer ownership to.\"}}},\"title\":\"Faucet for the Livepeer Token\",\"version\":1},\"userdoc\":{\"kind\":\"user\",\"methods\":{\"addToWhitelist(address)\":{\"notice\":\"Add an address to the whitelist\"},\"constructor\":{\"notice\":\"LivepeerTokenFacuet constructor\"},\"removeFromWhitelist(address)\":{\"notice\":\"Remove an address from the whitelist\"},\"request()\":{\"notice\":\"Request an amount of token to be sent to sender\"}},\"version\":1}},\"settings\":{\"compilationTarget\":{\"contracts/token/LivepeerTokenFaucet.sol\":\"LivepeerTokenFaucet\"},\"evmVersion\":\"london\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"ipfs\",\"useLiteralContent\":true},\"optimizer\":{\"enabled\":true,\"runs\":200},\"remappings\":[]},\"sources\":{\"@openzeppelin/contracts/token/ERC20/IERC20.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\n// OpenZeppelin Contracts v4.4.1 (token/ERC20/IERC20.sol)\\n\\npragma solidity ^0.8.0;\\n\\n/**\\n * @dev Interface of the ERC20 standard as defined in the EIP.\\n */\\ninterface IERC20 {\\n    /**\\n     * @dev Returns the amount of tokens in existence.\\n     */\\n    function totalSupply() external view returns (uint256);\\n\\n    /**\\n     * @dev Returns the amount of tokens owned by `account`.\\n     */\\n    function balanceOf(address account) external view returns (uint256);\\n\\n    /**\\n     * @dev Moves `amount` tokens from the caller's account to `recipient`.\\n     *\\n     * Returns a boolean value indicating whether the operation succeeded.\\n     *\\n     * Emits a {Transfer} event.\\n     */\\n    function transfer(address recipient, uint256 amount) external returns (bool);\\n\\n    /**\\n     * @dev Returns the remaining number of tokens that `spender` will be\\n     * allowed to spend on behalf of `owner` through {transferFrom}. This is\\n     * zero by default.\\n     *\\n     * This value changes when {approve} or {transferFrom} are called.\\n     */\\n    function allowance(address owner, address spender) external view returns (uint256);\\n\\n    /**\\n     * @dev Sets `amount` as the allowance of `spender` over the caller's tokens.\\n     *\\n     * Returns a boolean value indicating whether the operation succeeded.\\n     *\\n     * IMPORTANT: Beware that changing an allowance with this method brings the risk\\n     * that someone may use both the old and the new allowance by unfortunate\\n     * transaction ordering. One possible solution to mitigate this race\\n     * condition is to first reduce the spender's allowance to 0 and set the\\n     * desired value afterwards:\\n     * https://github.com/ethereum/EIPs/issues/20#issuecomment-263524729\\n     *\\n     * Emits an {Approval} event.\\n     */\\n    function approve(address spender, uint256 amount) external returns (bool);\\n\\n    /**\\n     * @dev Moves `amount` tokens from `sender` to `recipient` using the\\n     * allowance mechanism. `amount` is then deducted from the caller's\\n     * allowance.\\n     *\\n     * Returns a boolean value indicating whether the operation succeeded.\\n     *\\n     * Emits a {Transfer} event.\\n     */\\n    function transferFrom(\\n        address sender,\\n        address recipient,\\n        uint256 amount\\n    ) external returns (bool);\\n\\n    /**\\n     * @dev Emitted when `value` tokens are moved from one account (`from`) to\\n     * another (`to`).\\n     *\\n     * Note that `value` may be zero.\\n     */\\n    event Transfer(address indexed from, address indexed to, uint256 value);\\n\\n    /**\\n     * @dev Emitted when the allowance of a `spender` for an `owner` is set by\\n     * a call to {approve}. `value` is the new allowance.\\n     */\\n    event Approval(address indexed owner, address indexed spender, uint256 value);\\n}\\n\",\"keccak256\":\"0x61437cb513a887a1bbad006e7b1c8b414478427d33de47c5600af3c748f108da\",\"license\":\"MIT\"},\"contracts/token/ILivepeerToken.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity 0.8.9;\\n\\nimport \\\"@openzeppelin/contracts/token/ERC20/IERC20.sol\\\";\\n\\ninterface ILivepeerToken is IERC20 {\\n    function mint(address _to, uint256 _amount) external;\\n\\n    function burn(uint256 _amount) external;\\n}\\n\",\"keccak256\":\"0xe9f35b4fd415a199993ac13e273149f9f8f2cf3d14c06927f05c40a9d6d048e1\",\"license\":\"MIT\"},\"contracts/token/LivepeerTokenFaucet.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity 0.8.9;\\n\\nimport \\\"./ILivepeerToken.sol\\\";\\n\\nimport \\\"../zeppelin/Ownable.sol\\\";\\n\\n/**\\n * @title Faucet for the Livepeer Token\\n */\\ncontract LivepeerTokenFaucet is Ownable {\\n    // Token\\n    ILivepeerToken public token;\\n\\n    // Amount of token sent to sender for a request\\n    uint256 public requestAmount;\\n\\n    // Amount of time a sender must wait between requests\\n    uint256 public requestWait;\\n\\n    // sender => timestamp at which sender can make another request\\n    mapping(address => uint256) public nextValidRequest;\\n\\n    // Whitelist addresses that can bypass faucet request rate limit\\n    mapping(address => bool) public isWhitelisted;\\n\\n    // Checks if a request is valid (sender is whitelisted or has waited the rate limit time)\\n    modifier validRequest() {\\n        require(isWhitelisted[msg.sender] || block.timestamp >= nextValidRequest[msg.sender]);\\n        _;\\n    }\\n\\n    event Request(address indexed to, uint256 amount);\\n\\n    /**\\n     * @notice LivepeerTokenFacuet constructor\\n     * @param _token Address of LivepeerToken\\n     * @param _requestAmount Amount of token sent to sender for a request\\n     * @param _requestWait Amount of time a sender must wait between request (denominated in hours)\\n     */\\n    constructor(\\n        address _token,\\n        uint256 _requestAmount,\\n        uint256 _requestWait\\n    ) {\\n        token = ILivepeerToken(_token);\\n        requestAmount = _requestAmount;\\n        requestWait = _requestWait;\\n    }\\n\\n    /**\\n     * @notice Add an address to the whitelist\\n     * @param _addr Address to be whitelisted\\n     */\\n    function addToWhitelist(address _addr) external onlyOwner {\\n        isWhitelisted[_addr] = true;\\n    }\\n\\n    /**\\n     * @notice Remove an address from the whitelist\\n     * @param _addr Address to be removed from whitelist\\n     */\\n    function removeFromWhitelist(address _addr) external onlyOwner {\\n        isWhitelisted[_addr] = false;\\n    }\\n\\n    /**\\n     * @notice Request an amount of token to be sent to sender\\n     */\\n    function request() external validRequest {\\n        if (!isWhitelisted[msg.sender]) {\\n            nextValidRequest[msg.sender] = block.timestamp + requestWait * 1 hours;\\n        }\\n\\n        token.transfer(msg.sender, requestAmount);\\n\\n        emit Request(msg.sender, requestAmount);\\n    }\\n}\\n\",\"keccak256\":\"0x2a8febd51ce61bf83056c7f53ee13b76ee5f8bce86039b103e40509e9c77bbe1\",\"license\":\"MIT\"},\"contracts/zeppelin/Ownable.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity 0.8.9;\\n\\n/**\\n * @title Ownable\\n * @dev The Ownable contract has an owner address, and provides basic authorization control\\n * functions, this simplifies the implementation of \\\"user permissions\\\".\\n */\\ncontract Ownable {\\n    address public owner;\\n\\n    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);\\n\\n    /**\\n     * @dev The Ownable constructor sets the original `owner` of the contract to the sender\\n     * account.\\n     */\\n    constructor() {\\n        owner = msg.sender;\\n    }\\n\\n    /**\\n     * @dev Throws if called by any account other than the owner.\\n     */\\n    modifier onlyOwner() {\\n        require(msg.sender == owner);\\n        _;\\n    }\\n\\n    /**\\n     * @dev Allows the current owner to transfer control of the contract to a newOwner.\\n     * @param newOwner The address to transfer ownership to.\\n     */\\n    function transferOwnership(address newOwner) public onlyOwner {\\n        require(newOwner != address(0));\\n        emit OwnershipTransferred(owner, newOwner);\\n        owner = newOwner;\\n    }\\n}\\n\",\"keccak256\":\"0x64f114689f2f161c4a4b8fc8442ab914436a33e6021bf17401eaeac73319a419\",\"license\":\"MIT\"}},\"version\":1}",
+  "bytecode": "0x608060405234801561001057600080fd5b5060405161055e38038061055e83398101604081905261002f91610069565b60008054336001600160a01b031991821617909155600180549091166001600160a01b0394909416939093179092556002556003556100ac565b60008060006060848603121561007e57600080fd5b83516001600160a01b038116811461009557600080fd5b602085015160409095015190969495509392505050565b6104a3806100bb6000396000f3fe608060405234801561001057600080fd5b506004361061009e5760003560e01c80638da5cb5b116100665780638da5cb5b1461012f578063e43252d71461015a578063f2fde38b1461016d578063f52ec46c14610180578063fc0c546a1461018957600080fd5b80630d6c51b3146100a3578063207f5ce6146100bf578063338cdca1146100df5780633af32abf146100e95780638ab1d6811461011c575b600080fd5b6100ac60035481565b6040519081526020015b60405180910390f35b6100ac6100cd3660046103ce565b60046020526000908152604090205481565b6100e761019c565b005b61010c6100f73660046103ce565b60056020526000908152604090205460ff1681565b60405190151581526020016100b6565b6100e761012a3660046103ce565b6102d6565b600054610142906001600160a01b031681565b6040516001600160a01b0390911681526020016100b6565b6100e76101683660046103ce565b61030e565b6100e761017b3660046103ce565b610349565b6100ac60025481565b600154610142906001600160a01b031681565b3360009081526005602052604090205460ff16806101c95750336000908152600460205260409020544210155b6101d257600080fd5b3360009081526005602052604090205460ff16610213576003546101f890610e10610414565b6102029042610433565b336000908152600460205260409020555b60015460025460405163a9059cbb60e01b815233600482015260248101919091526001600160a01b039091169063a9059cbb90604401602060405180830381600087803b15801561026357600080fd5b505af1158015610277573d6000803e3d6000fd5b505050506040513d601f19601f8201168201806040525081019061029b919061044b565b5060025460405190815233907fe31c60e37ab1301f69f01b436a1d13486e6c16cc22c888a08c0e64a39230b6ac9060200160405180910390a2565b6000546001600160a01b031633146102ed57600080fd5b6001600160a01b03166000908152600560205260409020805460ff19169055565b6000546001600160a01b0316331461032557600080fd5b6001600160a01b03166000908152600560205260409020805460ff19166001179055565b6000546001600160a01b0316331461036057600080fd5b6001600160a01b03811661037357600080fd5b600080546040516001600160a01b03808516939216917f8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e091a3600080546001600160a01b0319166001600160a01b0392909216919091179055565b6000602082840312156103e057600080fd5b81356001600160a01b03811681146103f757600080fd5b9392505050565b634e487b7160e01b600052601160045260246000fd5b600081600019048311821515161561042e5761042e6103fe565b500290565b60008219821115610446576104466103fe565b500190565b60006020828403121561045d57600080fd5b815180151581146103f757600080fdfea26469706673582212205cdbe5299a305623b8b136d6247cb4e6c918e81e30e804edb819f957a135e68b64736f6c63430008090033",
+  "deployedBytecode": "0x608060405234801561001057600080fd5b506004361061009e5760003560e01c80638da5cb5b116100665780638da5cb5b1461012f578063e43252d71461015a578063f2fde38b1461016d578063f52ec46c14610180578063fc0c546a1461018957600080fd5b80630d6c51b3146100a3578063207f5ce6146100bf578063338cdca1146100df5780633af32abf146100e95780638ab1d6811461011c575b600080fd5b6100ac60035481565b6040519081526020015b60405180910390f35b6100ac6100cd3660046103ce565b60046020526000908152604090205481565b6100e761019c565b005b61010c6100f73660046103ce565b60056020526000908152604090205460ff1681565b60405190151581526020016100b6565b6100e761012a3660046103ce565b6102d6565b600054610142906001600160a01b031681565b6040516001600160a01b0390911681526020016100b6565b6100e76101683660046103ce565b61030e565b6100e761017b3660046103ce565b610349565b6100ac60025481565b600154610142906001600160a01b031681565b3360009081526005602052604090205460ff16806101c95750336000908152600460205260409020544210155b6101d257600080fd5b3360009081526005602052604090205460ff16610213576003546101f890610e10610414565b6102029042610433565b336000908152600460205260409020555b60015460025460405163a9059cbb60e01b815233600482015260248101919091526001600160a01b039091169063a9059cbb90604401602060405180830381600087803b15801561026357600080fd5b505af1158015610277573d6000803e3d6000fd5b505050506040513d601f19601f8201168201806040525081019061029b919061044b565b5060025460405190815233907fe31c60e37ab1301f69f01b436a1d13486e6c16cc22c888a08c0e64a39230b6ac9060200160405180910390a2565b6000546001600160a01b031633146102ed57600080fd5b6001600160a01b03166000908152600560205260409020805460ff19169055565b6000546001600160a01b0316331461032557600080fd5b6001600160a01b03166000908152600560205260409020805460ff19166001179055565b6000546001600160a01b0316331461036057600080fd5b6001600160a01b03811661037357600080fd5b600080546040516001600160a01b03808516939216917f8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e091a3600080546001600160a01b0319166001600160a01b0392909216919091179055565b6000602082840312156103e057600080fd5b81356001600160a01b03811681146103f757600080fd5b9392505050565b634e487b7160e01b600052601160045260246000fd5b600081600019048311821515161561042e5761042e6103fe565b500290565b60008219821115610446576104466103fe565b500190565b60006020828403121561045d57600080fd5b815180151581146103f757600080fdfea26469706673582212205cdbe5299a305623b8b136d6247cb4e6c918e81e30e804edb819f957a135e68b64736f6c63430008090033",
+  "devdoc": {
+    "kind": "dev",
+    "methods": {
+      "addToWhitelist(address)": {
+        "params": {
+          "_addr": "Address to be whitelisted"
+        }
+      },
+      "constructor": {
+        "params": {
+          "_requestAmount": "Amount of token sent to sender for a request",
+          "_requestWait": "Amount of time a sender must wait between request (denominated in hours)",
+          "_token": "Address of LivepeerToken"
+        }
+      },
+      "removeFromWhitelist(address)": {
+        "params": {
+          "_addr": "Address to be removed from whitelist"
+        }
+      },
+      "transferOwnership(address)": {
+        "details": "Allows the current owner to transfer control of the contract to a newOwner.",
+        "params": {
+          "newOwner": "The address to transfer ownership to."
+        }
+      }
+    },
+    "title": "Faucet for the Livepeer Token",
+    "version": 1
+  },
+  "userdoc": {
+    "kind": "user",
+    "methods": {
+      "addToWhitelist(address)": {
+        "notice": "Add an address to the whitelist"
+      },
+      "constructor": {
+        "notice": "LivepeerTokenFacuet constructor"
+      },
+      "removeFromWhitelist(address)": {
+        "notice": "Remove an address from the whitelist"
+      },
+      "request()": {
+        "notice": "Request an amount of token to be sent to sender"
+      }
+    },
+    "version": 1
+  },
+  "storageLayout": {
+    "storage": [
+      {
+        "astId": 25871,
+        "contract": "contracts/token/LivepeerTokenFaucet.sol:LivepeerTokenFaucet",
+        "label": "owner",
+        "offset": 0,
+        "slot": "0",
+        "type": "t_address"
+      },
+      {
+        "astId": 25058,
+        "contract": "contracts/token/LivepeerTokenFaucet.sol:LivepeerTokenFaucet",
+        "label": "token",
+        "offset": 0,
+        "slot": "1",
+        "type": "t_contract(ILivepeerToken)24860"
+      },
+      {
+        "astId": 25060,
+        "contract": "contracts/token/LivepeerTokenFaucet.sol:LivepeerTokenFaucet",
+        "label": "requestAmount",
+        "offset": 0,
+        "slot": "2",
+        "type": "t_uint256"
+      },
+      {
+        "astId": 25062,
+        "contract": "contracts/token/LivepeerTokenFaucet.sol:LivepeerTokenFaucet",
+        "label": "requestWait",
+        "offset": 0,
+        "slot": "3",
+        "type": "t_uint256"
+      },
+      {
+        "astId": 25066,
+        "contract": "contracts/token/LivepeerTokenFaucet.sol:LivepeerTokenFaucet",
+        "label": "nextValidRequest",
+        "offset": 0,
+        "slot": "4",
+        "type": "t_mapping(t_address,t_uint256)"
+      },
+      {
+        "astId": 25070,
+        "contract": "contracts/token/LivepeerTokenFaucet.sol:LivepeerTokenFaucet",
+        "label": "isWhitelisted",
+        "offset": 0,
+        "slot": "5",
+        "type": "t_mapping(t_address,t_bool)"
+      }
+    ],
+    "types": {
+      "t_address": {
+        "encoding": "inplace",
+        "label": "address",
+        "numberOfBytes": "20"
+      },
+      "t_bool": {
+        "encoding": "inplace",
+        "label": "bool",
+        "numberOfBytes": "1"
+      },
+      "t_contract(ILivepeerToken)24860": {
+        "encoding": "inplace",
+        "label": "contract ILivepeerToken",
+        "numberOfBytes": "20"
+      },
+      "t_mapping(t_address,t_bool)": {
+        "encoding": "mapping",
+        "key": "t_address",
+        "label": "mapping(address => bool)",
+        "numberOfBytes": "32",
+        "value": "t_bool"
+      },
+      "t_mapping(t_address,t_uint256)": {
+        "encoding": "mapping",
+        "key": "t_address",
+        "label": "mapping(address => uint256)",
+        "numberOfBytes": "32",
+        "value": "t_uint256"
+      },
+      "t_uint256": {
+        "encoding": "inplace",
+        "label": "uint256",
+        "numberOfBytes": "32"
+      }
+    }
+  }
+}
