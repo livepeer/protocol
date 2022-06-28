@@ -72,6 +72,10 @@ const config: HardhatUserConfig = {
             url: `https://rinkeby.infura.io/v3/${INFURA_KEY}`,
             accounts: PRIVATE_KEY ? [`0x${PRIVATE_KEY}`] : undefined
         },
+        nitroGoerliDevnet: {
+            url: `https://goerli.infura.io/v3/${INFURA_KEY}`,
+            accounts: PRIVATE_KEY ? [`0x${PRIVATE_KEY}`] : undefined
+        },
         arbitrumMainnet: {
             url: `https://arbitrum-mainnet.infura.io/v3/${INFURA_KEY}`,
             accounts: PRIVATE_KEY ? [`0x${PRIVATE_KEY}`] : undefined
@@ -82,6 +86,10 @@ const config: HardhatUserConfig = {
         },
         arbitrumRinkebyDevnet: {
             url: `https://arbitrum-rinkeby.infura.io/v3/${INFURA_KEY}`,
+            accounts: PRIVATE_KEY ? [`0x${PRIVATE_KEY}`] : undefined
+        },
+        arbitrumNitroGoerliDevnet: {
+            url: "https://nitro-devnet.arbitrum.io/rpc",
             accounts: PRIVATE_KEY ? [`0x${PRIVATE_KEY}`] : undefined
         },
         localhost: {

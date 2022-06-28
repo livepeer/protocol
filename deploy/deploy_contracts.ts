@@ -30,13 +30,15 @@ const LIVE_NETWORKS = [
     "rinkebyDevnet",
     "arbitrumRinkeby",
     "arbitrumRinkebyDevnet",
-    "gethDev"
+    "gethDev",
+    "nitroGoerliDevnet"
 ]
 
 const ARBITRUM_NETWORKS = [
     "arbitrumMainnet",
     "arbitrumRinkeby",
-    "arbitrumRinkebyDevnet"
+    "arbitrumRinkebyDevnet",
+    "arbitrumNitroGoerliDevnet"
 ]
 
 const isProdNetwork = (name: string): boolean => {
