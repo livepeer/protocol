@@ -2,8 +2,8 @@
 pragma solidity 0.8.9;
 
 import "ds-test/test.sol";
-import "../interfaces/ICheatCodes.sol";
 import "contracts/libraries/MathUtils.sol";
+import "../interfaces/ICheatCodes.sol";
 
 contract TestMathUtils is DSTest {
     ICheatCodes public constant CHEATS = ICheatCodes(HEVM_ADDRESS);

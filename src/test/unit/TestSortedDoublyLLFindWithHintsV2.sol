@@ -2,8 +2,8 @@
 pragma solidity 0.8.9;
 
 import "ds-test/test.sol";
-import "../interfaces/ICheatCodes.sol";
 import "contracts/test/mocks/SortedDoublyLLFixture.sol";
+import "../interfaces/ICheatCodes.sol";
 
 contract TestSortedDoublyLLFindWithHintsV2 is DSTest {
     ICheatCodes public constant CHEATS = ICheatCodes(HEVM_ADDRESS);
