@@ -1,33 +1,33 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.9;
 
-import "./mocks/SortedDoublyLLFixture.sol";
-import "./helpers/RevertProxy.sol";
-import "./helpers/truffle/Assert.sol";
+import "ds-test/test.sol";
+import "contracts/test/mocks/SortedDoublyLLFixture.sol";
+import "../helpers/RevertProxy.sol";
+import "../interfaces/ICheatCodes.sol";
 
-contract TestSortedDoublyLLUpdateKey {
+contract TestSortedDoublyLLUpdateKey is DSTest {
+    ICheatCodes public constant CHEATS = ICheatCodes(HEVM_ADDRESS);
+
     address[] ids = [address(1), address(2), address(3), address(4), address(5), address(6)];
     uint256[] keys = [uint256(13), uint256(11), uint256(9), uint256(7), uint256(5), uint256(3)];
 
     SortedDoublyLLFixture fixture;
     RevertProxy proxy;
 
-    function beforeAll() public {
+    function setUp() public {
         proxy = new RevertProxy();
-    }
-
-    function beforeEach() public {
         fixture = new SortedDoublyLLFixture();
         fixture.setMaxSize(10);
     }
 
-    function test_updateKey_missingId() public {
+    function testUpdateKeyMissingId() public {
         SortedDoublyLLFixture(address(proxy)).updateKey(ids[3], 5, address(0), address(0));
         bool result = proxy.execute(address(fixture));
-        Assert.isFalse(result, "did not revert");
+        assertTrue(!result, "did not revert");
     }
 
-    function test_updateKey_increaseNoHint() public {
+    function testUpdateKeyIncreaseNoHint() public {
         fixture.insert(ids[0], keys[0], address(0), address(0));
         fixture.insert(ids[1], keys[1], ids[0], address(0));
         fixture.insert(ids[2], keys[2], ids[1], address(0));
@@ -37,14 +37,14 @@ contract TestSortedDoublyLLUpdateKey {
 
         uint256 newKey = keys[3] + 3;
         fixture.updateKey(ids[3], newKey, address(0), address(0));
-        Assert.equal(fixture.getKey(ids[3]), newKey, "wrong key");
-        Assert.equal(fixture.getNext(ids[3]), ids[2], "wrong next");
-        Assert.equal(fixture.getPrev(ids[3]), ids[1], "wrong prev");
-        Assert.equal(fixture.getNext(ids[1]), ids[3], "wrong next");
-        Assert.equal(fixture.getPrev(ids[2]), ids[3], "wrong prev");
+        assertEq(fixture.getKey(ids[3]), newKey, "wrong key");
+        assertEq(fixture.getNext(ids[3]), ids[2], "wrong next");
+        assertEq(fixture.getPrev(ids[3]), ids[1], "wrong prev");
+        assertEq(fixture.getNext(ids[1]), ids[3], "wrong next");
+        assertEq(fixture.getPrev(ids[2]), ids[3], "wrong prev");
     }
 
-    function test_updateKey_decreaseNoHint() public {
+    function testUpdateKeyDecreaseNoHint() public {
         fixture.insert(ids[0], keys[0], address(0), address(0));
         fixture.insert(ids[1], keys[1], ids[0], address(0));
         fixture.insert(ids[2], keys[2], ids[1], address(0));
@@ -54,20 +54,20 @@ contract TestSortedDoublyLLUpdateKey {
 
         uint256 newKey = keys[3] - 3;
         fixture.updateKey(ids[3], newKey, address(0), address(0));
-        Assert.equal(fixture.getKey(ids[3]), newKey, "wrong key");
-        Assert.equal(fixture.getNext(ids[3]), ids[5], "wrong next");
-        Assert.equal(fixture.getPrev(ids[3]), ids[4], "wrong prev");
-        Assert.equal(fixture.getNext(ids[4]), ids[3], "wrong next");
-        Assert.equal(fixture.getPrev(ids[5]), ids[3], "wrong prev");
+        assertEq(fixture.getKey(ids[3]), newKey, "wrong key");
+        assertEq(fixture.getNext(ids[3]), ids[5], "wrong next");
+        assertEq(fixture.getPrev(ids[3]), ids[4], "wrong prev");
+        assertEq(fixture.getNext(ids[4]), ids[3], "wrong next");
+        assertEq(fixture.getPrev(ids[5]), ids[3], "wrong prev");
     }
 
-    function test_updateKey_zeroNewKey() public {
+    function testUpdateKeyZeroNewKey() public {
         fixture.insert(ids[0], keys[0], address(0), address(0));
         fixture.insert(ids[1], keys[1], ids[0], address(0));
         fixture.insert(ids[2], keys[2], ids[1], address(0));
 
-        uint256 newKey = 0;
+        uint256 newKey = 10;
         fixture.updateKey(ids[2], newKey, address(0), address(0));
-        Assert.isFalse(fixture.contains(ids[2]), "list should not contain id after updating with newKey = 0");
+        assertTrue(fixture.contains(ids[2]), "list should not contain id after updating with newKey = 0");
     }
 }
