@@ -3537,6 +3537,50 @@ describe("BondingManager", () => {
                     expect(d2LastClaimRound).to.equal(currentRound + 3)
                 })
             })
+
+            describe("receiver is bonded to zero address", () => {
+                beforeEach(async () => {
+                    await bondingManager
+                        .connect(delegator2)
+                        .bond(2000, ethers.constants.AddressZero)
+                    await fixture.roundsManager.setMockUint256(
+                        functionSig("currentRound()"),
+                        currentRound + 3
+                    )
+                })
+
+                it("should set delegate of sender as delegate of receiver", async () => {
+                    const d1 = await bondingManager.getDelegator(
+                        delegator1.address
+                    )
+
+                    const delegate1InfoInitial =
+                        await bondingManager.getDelegator(d1.delegateAddress)
+                    const initialAmount = delegate1InfoInitial.delegatedAmount
+
+                    await bondingManager
+                        .connect(delegator1)
+                        .transferBond(
+                            delegator2.address,
+                            1,
+                            ZERO_ADDRESS,
+                            ZERO_ADDRESS,
+                            ZERO_ADDRESS,
+                            ZERO_ADDRESS
+                        )
+
+                    const d2Final = await bondingManager.getDelegator(
+                        delegator2.address
+                    )
+                    const delegate1InfoFinal =
+                        await bondingManager.getDelegator(d1.delegateAddress)
+
+                    const finalAmount = delegate1InfoFinal.delegatedAmount
+
+                    expect(finalAmount).to.equal(initialAmount) // does not reflect delegator2's initial stake
+                    expect(d2Final.delegateAddress).to.equal(d1.delegateAddress)
+                })
+            })
         })
     })
 
