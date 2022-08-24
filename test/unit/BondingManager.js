@@ -3549,14 +3549,21 @@ describe("BondingManager", () => {
                     )
                 })
 
-                it("should set delegate of sender as delegate of receiver", async () => {
+                it("should not set delegate of sender as delegate of receiver", async () => {
                     const d1 = await bondingManager.getDelegator(
                         delegator1.address
+                    )
+                    const d2 = await bondingManager.getDelegator(
+                        delegator2.address
                     )
 
                     const delegate1InfoInitial =
                         await bondingManager.getDelegator(d1.delegateAddress)
-                    const initialAmount = delegate1InfoInitial.delegatedAmount
+                    const initialAmount1 = delegate1InfoInitial.delegatedAmount
+
+                    const delegate2InfoInitial =
+                        await bondingManager.getDelegator(d2.delegateAddress)
+                    const initialAmount2 = delegate2InfoInitial.delegatedAmount
 
                     await bondingManager
                         .connect(delegator1)
@@ -3574,11 +3581,19 @@ describe("BondingManager", () => {
                     )
                     const delegate1InfoFinal =
                         await bondingManager.getDelegator(d1.delegateAddress)
+                    const delegate2InfoFinal =
+                        await bondingManager.getDelegator(
+                            d2Final.delegateAddress
+                        )
 
-                    const finalAmount = delegate1InfoFinal.delegatedAmount
+                    const finalAmount1 = delegate1InfoFinal.delegatedAmount
+                    const finalAmount2 = delegate2InfoFinal.delegatedAmount
 
-                    expect(finalAmount).to.equal(initialAmount) // does not reflect delegator2's initial stake
-                    expect(d2Final.delegateAddress).to.equal(d1.delegateAddress)
+                    expect(finalAmount1).to.equal(initialAmount1.sub(1))
+                    expect(finalAmount2).to.equal(initialAmount2.add(1))
+                    expect(d2Final.delegateAddress).to.equal(
+                        ethers.constants.AddressZero
+                    )
                 })
             })
         })

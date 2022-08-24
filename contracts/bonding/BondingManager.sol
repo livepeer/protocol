@@ -643,7 +643,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         }
 
         // Rebond lock for new owner
-        if (newDel.delegateAddress == address(0)) {
+        if (newDel.delegateAddress == address(0) && newDel.bondedAmount == 0) {
             newDel.delegateAddress = oldDelDelegate;
         }
 
