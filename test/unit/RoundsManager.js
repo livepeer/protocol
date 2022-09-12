@@ -406,6 +406,22 @@ describe("RoundsManager", () => {
             )
         })
 
+        it("should set the current round as initialized after round length increase", async () => {
+            const roundLength = await roundsManager.roundLength()
+            await fixture.rpc.waitUntilNextBlockMultiple(roundLength.toNumber())
+
+            await roundsManager.setRoundLength(roundLength + 100)
+
+            await roundsManager.initializeRound()
+
+            const currentRound = await roundsManager.currentRound()
+            assert.equal(
+                await roundsManager.lastInitializedRound(),
+                currentRound.toNumber(),
+                "wrong lastInitializedRound"
+            )
+        })
+
         it("should store the previous block hash", async () => {
             const roundLength = await roundsManager.roundLength()
             await fixture.rpc.waitUntilNextBlockMultiple(roundLength.toNumber())

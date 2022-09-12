@@ -219,8 +219,10 @@ describe("Delegation", () => {
         ).to.be.reverted
     })
 
-    it("delegator 1 partially unbonds twice (at different times), rebonds with one unbonding lock and withdraws with the other", async () => {
+    it("delegator 1 partially unbonds twice (at different times), rebonds with one unbonding lock and withdraws with the other AFTER roundLength update", async () => {
         await roundsManager.mineBlocks(roundLength)
+        const newRoundsLength = roundLength + 100
+        await roundsManager.setRoundLength(newRoundsLength)
         await roundsManager.initializeRound()
 
         const unbondingPeriod = await bondingManager.unbondingPeriod()
@@ -291,7 +293,7 @@ describe("Delegation", () => {
             "wrong next total stake after unbond 0"
         )
 
-        await roundsManager.mineBlocks(roundLength)
+        await roundsManager.mineBlocks(newRoundsLength)
         await roundsManager.initializeRound()
 
         // Delegator 1 partially unbonds from transcoder 2
@@ -342,7 +344,7 @@ describe("Delegation", () => {
             "wrong next total stake after unbond 1"
         )
 
-        await roundsManager.mineBlocks(roundLength)
+        await roundsManager.mineBlocks(newRoundsLength)
         await roundsManager.initializeRound()
 
         // Delegator 1 rebonds with unbonding lock 0 to transcoder 2
@@ -389,7 +391,9 @@ describe("Delegation", () => {
             "wrong withdrawRound for unbonding lock 0 - should be 0"
         )
 
-        await roundsManager.mineBlocks(unbondingPeriod.toNumber() * roundLength)
+        await roundsManager.mineBlocks(
+            unbondingPeriod.toNumber() * newRoundsLength
+        )
         await roundsManager.initializeRound()
 
         // Delegator 1 withdraws with unbonding lock 1
@@ -421,6 +425,8 @@ describe("Delegation", () => {
             startMinterTokenBalance.sub(BigNumber.from(700)).toString(),
             "wrong minter token balance after withdrawStake"
         )
+        await roundsManager.mineBlocks(newRoundsLength)
+        await roundsManager.setRoundLength(roundLength)
     })
 
     it("delegator 2 fully unbonds, bonds to transcoder 1 and also rebonds with existing unbonding lock", async () => {
