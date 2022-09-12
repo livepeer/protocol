@@ -178,4 +178,52 @@ describe("TicketFlow", () => {
             )
         ).to.equal(ticket.faceValue)
     })
+
+    it("ticket should properly expire after 2 rounds, after round length update", async () => {
+        await roundsManager.mineBlocks(roundLength)
+        await roundsManager.setRoundLength(roundLength + 100)
+        await roundsManager.initializeRound()
+
+        await broker
+            .connect(broadcaster)
+            .fundDeposit({value: ethers.utils.parseEther("1")})
+        await broker
+            .connect(broadcaster)
+            .fundReserve({value: ethers.utils.parseEther("1")})
+
+        const block = await roundsManager.blockNum()
+        const creationRound = await roundsManager.currentRound()
+        const creationRoundBlockHash = await roundsManager.blockHash(block)
+        const auxData = ethers.utils.solidityPack(
+            ["uint256", "bytes32"],
+            [creationRound, creationRoundBlockHash]
+        )
+        const recipientRand = 6
+        const faceValue = 1000
+        const ticket = createWinningTicket(
+            transcoder.address,
+            broadcaster.address,
+            recipientRand,
+            faceValue,
+            auxData
+        )
+        const senderSig = await signMsg(
+            getTicketHash(ticket),
+            broadcaster.address
+        )
+
+        // 1 round passes
+        await roundsManager.mineBlocks(roundLength + 100)
+        await roundsManager.initializeRound()
+
+        // 2 rounds pass
+        await roundsManager.mineBlocks(roundLength + 100)
+        await roundsManager.initializeRound()
+
+        await expect(
+            broker
+                .connect(transcoder)
+                .redeemWinningTicket(ticket, senderSig, recipientRand)
+        ).to.be.revertedWith("ticket is expired")
+    })
 })
