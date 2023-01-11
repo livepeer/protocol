@@ -122,6 +122,31 @@ const arbitrumRinkeby = {
 
 const arbitrumRinkebyDevnet = arbitrumRinkeby
 
+const arbitrumGoerli = {
+    bondingManager: {
+        numActiveTranscoders: 100,
+        unbondingPeriod: 2
+    },
+    broker: {
+        unlockPeriod: 100,
+        ticketValidityPeriod: 2
+    },
+    roundsManager: {
+        roundLength: 5760,
+        roundLockAmount: 100000
+    },
+    faucet: {
+        requestAmount: ethers.utils.parseEther("10"),
+        requestWait: 1,
+        whitelist: []
+    },
+    minter: {
+        inflation: 137,
+        inflationChange: 3,
+        targetBondingRate: 0
+    }
+}
+
 const arbitrumMainnet = {
     governor: {
         // Governance multisig
@@ -160,6 +185,7 @@ const networkConfigs: any = {
     arbitrumRinkeby,
     arbitrumRinkebyDevnet,
     arbitrumMainnet,
+    arbitrumGoerli,
     gethDev
 }
 
