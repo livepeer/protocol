@@ -23,4 +23,10 @@ interface ICheatCodes {
         bytes calldata,
         bytes calldata
     ) external;
+
+    function createFork(string calldata) external returns (uint256);
+
+    function createFork(string calldata, uint256) external returns (uint256);
+
+    function selectFork(uint256) external;
 }
