@@ -1,3 +1,4 @@
+profile = { default = { libs = ["node_modules", "lib"] } }
 [default]
 src = 'src'
 out = 'foundry_artifacts'
