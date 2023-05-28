@@ -14,6 +14,7 @@ import "../rounds/IRoundsManager.sol";
 import "../snapshots/IMerkleSnapshot.sol";
 
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/governance/IGovernor.sol";
 
 /**
  * @title BondingManager
@@ -93,6 +94,11 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     // in the pool are locked into the active set for round N + 1
     SortedDoublyLL.Data private transcoderPool;
 
+    // Rate of global rewards that will be sent to the treasury
+    uint256 public treasuryRewardCutRate;
+    // Value to the reward distribution code t
+    uint256 public currentRoundTreasuryArtificialStake;
+
     // Check if sender is TicketBroker
     modifier onlyTicketBroker() {
         _onlyTicketBroker();
@@ -142,6 +148,15 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         unbondingPeriod = _unbondingPeriod;
 
         emit ParameterUpdate("unbondingPeriod");
+    }
+
+    function setTreasuryRewardCutRate(uint256 _cutRate) external onlyControllerOwner {
+        // Must be a valid percentage from PreciseMathUtils
+        require(PreciseMathUtils.validPerc(_cutRate), "_cutRate is invalid precise percentage");
+
+        treasuryRewardCutRate = cutRate;
+
+        emit ParameterUpdate("treasuryRewardCutRate");
     }
 
     /**
@@ -407,6 +422,31 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      */
     function setCurrentRoundTotalActiveStake() external onlyRoundsManager {
         currentRoundTotalActiveStake = nextRoundTotalActiveStake;
+    }
+
+    function mintTreasuryRewards() public onlyRoundsManager {
+        if (treasuryRewardCutRate == 0) {
+            currentRoundTreasuryArtificialStake = 0;
+            return;
+        }
+
+        // we calculate this artificial stake so that the treasury gets the corresponding cut of the rewards.
+        // it is calculated with the formula: treasuryStake = rate * TotalStake / (1 - rate)
+        uint256 cutRateComplement = PreciseMathUtils.percPoints(1, 1).sub(treasuryRewardCutRate);
+        currentRoundTreasuryArtificialStake = PreciseMathUtils.percOf(
+            currentRoundTotalActiveStake,
+            treasuryRewardCutRate,
+            cutRateComplement
+        );
+
+        // Create reward based on artificial treasury stake relative to the total active stake
+        // rewardTokens = (current mintable tokens for the round * artificial treasury stake) / (total active stake + artificial treasury stale)
+        uint256 rewardTokens = minter().createReward(
+            artificialTreasuryStake,
+            currentRoundTotalActiveStake + artificialTreasuryStake
+        );
+
+        minter().trustedTransferTokens(treasury(), rewardTokens);
     }
 
     /**
@@ -791,8 +831,11 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         }
 
         // Create reward based on active transcoder's stake relative to the total active stake
-        // rewardTokens = (current mintable tokens for the round * active transcoder stake) / total active stake
-        uint256 rewardTokens = minter().createReward(earningsPool.totalStake, currentRoundTotalActiveStake);
+        // rewardTokens = (current mintable tokens for the round * active transcoder stake) / (total active stake + treasury stake adjustment)
+        uint256 rewardTokens = minter().createReward(
+            earningsPool.totalStake,
+            currentRoundTotalActiveStake + currentTreasuryStakeAdjustment
+        );
 
         updateTranscoderWithRewards(msg.sender, rewardTokens, currentRound, _newPosPrev, _newPosNext);
 
@@ -1504,6 +1547,10 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      */
     function roundsManager() internal view returns (IRoundsManager) {
         return IRoundsManager(controller.getContract(keccak256("RoundsManager")));
+    }
+
+    function treasury() internal view returns (IGovernor) {
+        return IGovernor(controller.getContract(keccak256("Treasury")));
     }
 
     function _onlyTicketBroker() internal view {
