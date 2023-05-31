@@ -154,7 +154,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // Must be a valid percentage from PreciseMathUtils
         require(PreciseMathUtils.validPerc(_cutRate), "_cutRate is invalid precise percentage");
 
-        treasuryRewardCutRate = cutRate;
+        treasuryRewardCutRate = _cutRate;
 
         emit ParameterUpdate("treasuryRewardCutRate");
     }
@@ -442,8 +442,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // Create reward based on artificial treasury stake relative to the total active stake
         // rewardTokens = (current mintable tokens for the round * artificial treasury stake) / (total active stake + artificial treasury stale)
         uint256 rewardTokens = minter().createReward(
-            artificialTreasuryStake,
-            currentRoundTotalActiveStake + artificialTreasuryStake
+            currentRoundTreasuryArtificialStake,
+            currentRoundTotalActiveStake + currentRoundTreasuryArtificialStake
         );
 
         minter().trustedTransferTokens(treasury(), rewardTokens);
@@ -834,7 +834,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // rewardTokens = (current mintable tokens for the round * active transcoder stake) / (total active stake + treasury stake adjustment)
         uint256 rewardTokens = minter().createReward(
             earningsPool.totalStake,
-            currentRoundTotalActiveStake + currentTreasuryStakeAdjustment
+            currentRoundTotalActiveStake + currentRoundTreasuryArtificialStake
         );
 
         updateTranscoderWithRewards(msg.sender, rewardTokens, currentRound, _newPosPrev, _newPosNext);
@@ -1545,7 +1545,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * @dev Return RoundsManager interface
      * @return RoundsManager contract registered with Controller
      */
-    function roundsManager() internal view returns (IRoundsManager) {
+    // TODO: Undo the hack of making this public. Only for spike.
+    function roundsManager() public view returns (IRoundsManager) {
         return IRoundsManager(controller.getContract(keccak256("RoundsManager")));
     }
 
