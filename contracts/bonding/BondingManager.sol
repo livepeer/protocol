@@ -1177,14 +1177,23 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     ) internal view returns (uint256 cStake, uint256 cFees) {
         // Fetch start cumulative factors
         EarningsPool.Data memory startPool = cumulativeFactorsPool(_transcoder, _startRound);
+        // Fetch end cumulative factors
+        EarningsPool.Data memory endPool = latestCumulativeFactorsPool(_transcoder, _endRound);
 
+        return delegatorCumulativeStakeAndFees(startPool, endPool, _stake, _fees);
+    }
+
+    // TODO: Document, think of a better public interface
+    function delegatorCumulativeStakeAndFees(
+        EarningsPool.Data memory startPool,
+        EarningsPool.Data memory endPool,
+        uint256 _stake,
+        uint256 _fees
+    ) public pure returns (uint256 cStake, uint256 cFees) {
         // If the start cumulativeRewardFactor is 0 set the default value to PreciseMathUtils.percPoints(1, 1)
         if (startPool.cumulativeRewardFactor == 0) {
             startPool.cumulativeRewardFactor = PreciseMathUtils.percPoints(1, 1);
         }
-
-        // Fetch end cumulative factors
-        EarningsPool.Data memory endPool = latestCumulativeFactorsPool(_transcoder, _endRound);
 
         // If the end cumulativeRewardFactor is 0 set the default value to PreciseMathUtils.percPoints(1, 1)
         if (endPool.cumulativeRewardFactor == 0) {
