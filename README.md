@@ -24,6 +24,13 @@ The contracts are based off of the [technical protocol specification](https://gi
 
 All contributions and bug fixes are welcome as pull requests back into the repo.
 
+A note on branches as of [LIP-73: Confluence - Arbitrum One Migration](https://github.com/livepeer/LIPs/blob/master/LIPs/LIP-73.md):
+
+- The `confluence` branch contains the latest contract code deployed on the Arbitrum One rollup. Since the core protocol is operating on Arbitrum One rollup going forward all contract code changes pertaining to the core protocol should be on this branch.
+- The `streamflow` branch contains the latest contract code deployed on Ethereum. Since the only operational contracts (not paused) on Ethereum, excluding the Controller, are the [LivepeerToken](https://github.com/livepeer/protocol/blob/streamflow/contracts/token/LivepeerToken.sol) and [BridgeMinter](https://github.com/livepeer/protocol/blob/streamflow/contracts/token/BridgeMinter.sol) the only contract code changes on this branch would be for those contracts.
+
+The Arbitrum bridge contracts can be found in the [arbitrum-lpt-bridge](https://github.com/livepeer/arbitrum-lpt-bridge) repository.
+
 ### ERC20 Note
 
 The Livepeer token is implemented as an ERC20 token in `token/LivepeerToken.sol` which inherits from the OpenZeppelin ERC20 token contract and all implemented ERC20 functions will revert if the operation is not successful. However, the [ERC20 spec](https://github.com/ethereum/EIPs/blob/master/EIPS/eip-20.md) does not require functions to revert and instead requires functions to return true if the operation succeed and false if the operation fails. The contracts `bonding/BondingManager.sol` and `token/Minter.sol` do not check the return value of ERC20 functions and instead assume that they will revert if the operation fails. The Livepeer token contract is already [deployed on mainnet](https://github.com/livepeer/wiki/blob/master/Deployed-Contract-Addresses.md) and its implementation should not change so this is not a problem. However, if for some reason the implementation ever does change, developers should keep in mind that `bonding/BondingManager.sol` and `token/Minter.sol` do not check the return value of ERC20 functions.
