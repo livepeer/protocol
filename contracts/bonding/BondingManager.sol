@@ -446,7 +446,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             currentRoundTotalActiveStake + currentRoundTreasuryArtificialStake
         );
 
-        minter().trustedTransferTokens(treasury(), rewardTokens);
+        minter().trustedTransferTokens(address(treasury()), rewardTokens);
     }
 
     /**
@@ -1545,8 +1545,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * @dev Return RoundsManager interface
      * @return RoundsManager contract registered with Controller
      */
-    // TODO: Undo the hack of making this public. Only for spike.
-    function roundsManager() public view returns (IRoundsManager) {
+    function roundsManager() internal view returns (IRoundsManager) {
         return IRoundsManager(controller.getContract(keccak256("RoundsManager")));
     }
 
