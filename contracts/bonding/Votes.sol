@@ -7,7 +7,12 @@ import "@openzeppelin/contracts/utils/Checkpoints.sol";
 import "./BondingManager.sol";
 
 abstract contract Votes is Governor {
+    using Checkpoints for Checkpoints.Trace224;
+
     uint256 public constant MAX_ROUNDS_WITHOUT_CHECKPOINT = 100;
+
+    // 33.33% perc points compatible with MathUtils
+    uint256 public constant QUORUM = 333300;
 
     BondingManager public immutable bondingManagerAddr;
 
@@ -32,50 +37,16 @@ abstract contract Votes is Governor {
 
     // voting power
 
-    function getVotes(address _account, uint256 _timepoint) public view override returns (uint256) {
-        return _getVotes(_account, _timepoint, "");
-    }
-
     function _getVotes(
         address _account,
         uint256 _timepoint,
         bytes memory
     ) internal view override returns (uint256) {
-        // ASSUMPTIONS
-        // - _timepoint is a round number
-        // - _timepoint is the start round for the proposal's voting period
+        return _getStake(_account, _timepoint);
+    }
 
-        // In this iteration, we only give voting power to transcoders, but a subsequent iteration could give voting power to delegators!
-
-        (, , , uint256 lastActiveStakeUpdateRound, , , , , , ) = bondingManager().getTranscoder(_account);
-
-        // lastActiveStakeUpdateRound is the last round that the transcoder's total active stake (self-delegated + delegated stake) was updated.
-        // Any stake changes for a transcoder update the transcoder's total active stake for the *next* round.
-
-        // If lastActiveStakeUpdateRound <= _timepoint, then the transcoder's total active stake at _timepoint should be the transcoder's
-        // total active stake at lastActiveStakeUpdateRound because there were no additional stake changes after that round.
-        if (lastActiveStakeUpdateRound <= _timepoint) {
-            (uint256 totalStake, , , , ) = bondingManager().getTranscoderEarningsPoolForRound(
-                _account,
-                lastActiveStakeUpdateRound
-            );
-            return totalStake;
-        }
-
-        // If lastActiveStakeUpdateRound > _timepoint, then the transcoder total active stake at _timepoint should be the transcoder's
-        // total active stake at the most recent round before _timepoint that the transcoder's total active stake was checkpointed.
-        // In order to prevent an unbounded loop, we limit the number of rounds that we'll search for a checkpointed total active stake to
-        // MAX_ROUNDS_WITHOUT_CHECKPOINT.
-        uint256 end = _timepoint - MAX_ROUNDS_WITHOUT_CHECKPOINT;
-        for (uint256 i = _timepoint; i >= end; i--) {
-            (uint256 totalStake, , , , ) = bondingManager().getTranscoderEarningsPoolForRound(_account, i);
-
-            if (totalStake > 0) {
-                return totalStake;
-            }
-        }
-
-        return 0;
+    function quorum(uint256 _timepoint) public view virtual override returns (uint256) {
+        return MathUtils.percOf(getTotalActiveStake(_timepoint), QUORUM);
     }
 
     // vote counting
@@ -177,6 +148,85 @@ abstract contract Votes is Governor {
         } else {
             revert("GovernorVotingSimple: invalid value for enum VoteType");
         }
+    }
+
+    // checkpointing logic
+
+    mapping(address => Checkpoints.Trace224) private _bondedAmountCheckpoints;
+
+    mapping(address => Checkpoints.Trace224) private _delegateeCheckpoints;
+
+    Checkpoints.Trace224 private _totalActiveStakeCheckpoints;
+
+    function checkpointDelegator(
+        address _account,
+        address _delegatee,
+        uint224 _bondedAmount,
+        uint32 _startRound
+    ) internal virtual onlyBondingManager {
+        _bondedAmountCheckpoints[_account].push(_startRound, _bondedAmount);
+
+        Checkpoints.Trace224 storage delegatees = _delegateeCheckpoints[_account];
+        uint224 lastDelegatee = delegatees.latest();
+        uint224 newDelegatee = uint224(uint160(_delegatee));
+
+        if (newDelegatee != lastDelegatee) {
+            delegatees.push(_startRound, uint224(uint160(_delegatee)));
+        }
+    }
+
+    function checkpointTotalActiveStake(uint224 _totalStake, uint32 _round) internal virtual onlyBondingManager {
+        _totalActiveStakeCheckpoints.push(_round, _totalStake);
+    }
+
+    function _getStake(address _account, uint256 _timepoint) internal view returns (uint256) {
+        require(_timepoint <= clock(), "getVotes: future lookup");
+
+        // ASSUMPTIONS
+        // - _timepoint is a round number
+        // - _timepoint is the start round for the proposal's voting period
+
+        // In this iteration, we only give voting power to transcoders, but a subsequent iteration could give voting power to delegators!
+
+        (, , , uint256 lastActiveStakeUpdateRound, , , , , , ) = bondingManager().getTranscoder(_account);
+
+        // lastActiveStakeUpdateRound is the last round that the transcoder's total active stake (self-delegated + delegated stake) was updated.
+        // Any stake changes for a transcoder update the transcoder's total active stake for the *next* round.
+
+        // If lastActiveStakeUpdateRound <= _timepoint, then the transcoder's total active stake at _timepoint should be the transcoder's
+        // total active stake at lastActiveStakeUpdateRound because there were no additional stake changes after that round.
+        if (lastActiveStakeUpdateRound <= _timepoint) {
+            (uint256 totalStake, , , , ) = bondingManager().getTranscoderEarningsPoolForRound(
+                _account,
+                lastActiveStakeUpdateRound
+            );
+            return totalStake;
+        }
+
+        // If lastActiveStakeUpdateRound > _timepoint, then the transcoder total active stake at _timepoint should be the transcoder's
+        // total active stake at the most recent round before _timepoint that the transcoder's total active stake was checkpointed.
+        // In order to prevent an unbounded loop, we limit the number of rounds that we'll search for a checkpointed total active stake to
+        // MAX_ROUNDS_WITHOUT_CHECKPOINT.
+        uint256 end = _timepoint - MAX_ROUNDS_WITHOUT_CHECKPOINT;
+        for (uint256 i = _timepoint; i >= end; i--) {
+            (uint256 totalStake, , , , ) = bondingManager().getTranscoderEarningsPoolForRound(_account, i);
+
+            if (totalStake > 0) {
+                return totalStake;
+            }
+        }
+
+        return 0;
+    }
+
+    function getTotalActiveStake(uint256 _timepoint) internal view virtual returns (uint256) {
+        require(_timepoint <= clock(), "getTotalSupply: future lookup");
+
+        uint224 activeStake = _totalActiveStakeCheckpoints.upperLookupRecent(SafeCast.toUint32(_timepoint));
+
+        require(activeStake > 0, "getTotalSupply: no recorded active stake");
+
+        return activeStake;
     }
 
     // Helpers for relations with other protocol contracts
