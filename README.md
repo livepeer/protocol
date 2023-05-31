@@ -13,12 +13,7 @@ Ethereum smart contracts used for the Livepeer protocol. These contracts govern 
 
 ## Documentation
 
-For a general overview of the protocol see:
-
--   The [whitepaper](http://github.com/livepeer/wiki/blob/master/WHITEPAPER.md) for the original proposal
--   The [Streamflow proposal paper](https://github.com/livepeer/wiki/blob/master/STREAMFLOW.md) for the Streamflow scalability upgrade proposal
-
-The contracts are based off of the [technical protocol specification](https://github.com/livepeer/wiki/tree/master/spec).
+For a general overview of the protocol refer to the [wiki](https://github.com/livepeer/wiki) resources.
 
 ## Development
 
