@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.9;
 
+import "@openzeppelin/contracts/governance/Governor.sol";
+
 import "./BondingManager.sol";
-import "forge-std/console.sol";
 
 abstract contract Votes is Governor {
     uint256 public constant MAX_ROUNDS_WITHOUT_CHECKPOINT = 100;
@@ -17,7 +18,7 @@ abstract contract Votes is Governor {
      * @dev Clock is set to match the current round.
      */
     function clock() public view virtual override returns (uint48) {
-        return bondingManager.roundsManager().currentRound();
+        return uint48(bondingManager.roundsManager().currentRound());
     }
 
     /**
@@ -30,7 +31,7 @@ abstract contract Votes is Governor {
 
     // voting power
 
-    function getVotes(address _account, uint256 _timepoint) public view returns (uint256) {
+    function getVotes(address _account, uint256 _timepoint) public view override returns (uint256) {
         return _getVotes(_account, _timepoint, "");
     }
 
@@ -38,7 +39,7 @@ abstract contract Votes is Governor {
         address _account,
         uint256 _timepoint,
         bytes memory
-    ) internal view returns (uint256) {
+    ) internal view override returns (uint256) {
         // ASSUMPTIONS
         // - _timepoint is a round number
         // - _timepoint is the start round for the proposal's voting period
@@ -161,10 +162,10 @@ abstract contract Votes is Governor {
 
         require(!proposalVote.hasVoted[account], "GovernorVotingSimple: vote already cast");
         proposalVote.hasVoted[account] = true;
-        proposalVote.votes[account] = support;
+        proposalVote.votes[account] = VoteType(support);
 
         // TODO: need historical delegator state here
-        (, , address delegateAddress, , , ) = bondingManager.getDelegator(accouunt);
+        (, , address delegateAddress, , , , ) = bondingManager.getDelegator(account);
 
         if (support == uint8(VoteType.Against)) {
             proposalVote.againstVotes += weight;
