@@ -66,6 +66,7 @@ abstract contract Votes is Governor {
         uint256 abstainVotes;
         mapping(address => bool) hasVoted;
         mapping(address => VoteType) votes;
+        mapping(address => uint256) voteDeductions;
     }
 
     mapping(uint256 => ProposalVote) private _proposalVotes;
@@ -136,8 +137,34 @@ abstract contract Votes is Governor {
         proposalVote.hasVoted[account] = true;
         proposalVote.votes[account] = VoteType(support);
 
-        // TODO: need historical delegator state here
-        (, , address delegateAddress, , , , ) = bondingManager().getDelegator(account);
+        uint256 timepoint = proposalSnapshot(proposalId);
+        (, , address delegatee) = getDelegatorSnapshot(account, timepoint);
+
+        bool isTranscoder = account == delegatee;
+        if (isTranscoder) {
+            // deduce weight from any previous delegators for this transcoder to
+            // make a vote
+            weight = weight - proposalVote.voteDeductions[account];
+        } else {
+            proposalVote.voteDeductions[delegatee] += weight;
+
+            if (proposalVote.hasVoted[delegatee]) {
+                // this is a delegator overriding its delegated transcoder vote,
+                // we need to update the current totals to move the weight of
+                // the delegator vote to the right outcome.
+                VoteType transcoderSupport = proposalVote.votes[delegatee];
+
+                if (transcoderSupport == VoteType.Against) {
+                    proposalVote.againstVotes -= weight;
+                } else if (transcoderSupport == VoteType.For) {
+                    proposalVote.forVotes -= weight;
+                } else if (transcoderSupport == VoteType.Abstain) {
+                    proposalVote.abstainVotes -= weight;
+                } else {
+                    revert("Votes: invalid recorded transcoder vote type");
+                }
+            }
+        }
 
         if (support == uint8(VoteType.Against)) {
             proposalVote.againstVotes += weight;
@@ -146,7 +173,7 @@ abstract contract Votes is Governor {
         } else if (support == uint8(VoteType.Abstain)) {
             proposalVote.abstainVotes += weight;
         } else {
-            revert("GovernorVotingSimple: invalid value for enum VoteType");
+            revert("Votes: invalid value for enum VoteType");
         }
     }
 
