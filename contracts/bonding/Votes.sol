@@ -2,23 +2,24 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/governance/Governor.sol";
+import "@openzeppelin/contracts/utils/Checkpoints.sol";
 
 import "./BondingManager.sol";
 
 abstract contract Votes is Governor {
     uint256 public constant MAX_ROUNDS_WITHOUT_CHECKPOINT = 100;
 
-    BondingManager public immutable bondingManager;
+    BondingManager public immutable bondingManagerAddr;
 
     constructor(BondingManager _bondingManager) {
-        bondingManager = _bondingManager;
+        bondingManagerAddr = _bondingManager;
     }
 
     /**
      * @dev Clock is set to match the current round.
      */
     function clock() public view virtual override returns (uint48) {
-        return uint48(bondingManager.roundsManager().currentRound());
+        return uint48(roundsManager().currentRound());
     }
 
     /**
@@ -46,7 +47,7 @@ abstract contract Votes is Governor {
 
         // In this iteration, we only give voting power to transcoders, but a subsequent iteration could give voting power to delegators!
 
-        (, , , uint256 lastActiveStakeUpdateRound, , , , , , ) = bondingManager.getTranscoder(_account);
+        (, , , uint256 lastActiveStakeUpdateRound, , , , , , ) = bondingManager().getTranscoder(_account);
 
         // lastActiveStakeUpdateRound is the last round that the transcoder's total active stake (self-delegated + delegated stake) was updated.
         // Any stake changes for a transcoder update the transcoder's total active stake for the *next* round.
@@ -54,7 +55,7 @@ abstract contract Votes is Governor {
         // If lastActiveStakeUpdateRound <= _timepoint, then the transcoder's total active stake at _timepoint should be the transcoder's
         // total active stake at lastActiveStakeUpdateRound because there were no additional stake changes after that round.
         if (lastActiveStakeUpdateRound <= _timepoint) {
-            (uint256 totalStake, , , , ) = bondingManager.getTranscoderEarningsPoolForRound(
+            (uint256 totalStake, , , , ) = bondingManager().getTranscoderEarningsPoolForRound(
                 _account,
                 lastActiveStakeUpdateRound
             );
@@ -67,7 +68,7 @@ abstract contract Votes is Governor {
         // MAX_ROUNDS_WITHOUT_CHECKPOINT.
         uint256 end = _timepoint - MAX_ROUNDS_WITHOUT_CHECKPOINT;
         for (uint256 i = _timepoint; i >= end; i--) {
-            (uint256 totalStake, , , , ) = bondingManager.getTranscoderEarningsPoolForRound(_account, i);
+            (uint256 totalStake, , , , ) = bondingManager().getTranscoderEarningsPoolForRound(_account, i);
 
             if (totalStake > 0) {
                 return totalStake;
@@ -165,7 +166,7 @@ abstract contract Votes is Governor {
         proposalVote.votes[account] = VoteType(support);
 
         // TODO: need historical delegator state here
-        (, , address delegateAddress, , , , ) = bondingManager.getDelegator(account);
+        (, , address delegateAddress, , , , ) = bondingManager().getDelegator(account);
 
         if (support == uint8(VoteType.Against)) {
             proposalVote.againstVotes += weight;
@@ -176,5 +177,29 @@ abstract contract Votes is Governor {
         } else {
             revert("GovernorVotingSimple: invalid value for enum VoteType");
         }
+    }
+
+    // Helpers for relations with other protocol contracts
+
+    // Check if sender is BondingManager
+    modifier onlyBondingManager() {
+        _onlyBondingManager();
+        _;
+    }
+
+    function bondingManager() public view returns (BondingManager) {
+        return bondingManagerAddr;
+    }
+
+    function controller() public view returns (IController) {
+        return bondingManager().controller();
+    }
+
+    function roundsManager() public view returns (IRoundsManager) {
+        return IRoundsManager(controller().getContract(keccak256("RoundsManager")));
+    }
+
+    function _onlyBondingManager() internal view {
+        require(msg.sender == address(bondingManagerAddr), "caller must be BondingManager");
     }
 }
