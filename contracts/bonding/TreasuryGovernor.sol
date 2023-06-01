@@ -12,7 +12,7 @@ import "../IController.sol";
 import "../rounds/IRoundsManager.sol";
 import "./BondingManager.sol";
 
-contract Votes is Governor, GovernorSettings {
+contract TreasuryGovernor is Governor, GovernorSettings {
     using Checkpoints for Checkpoints.Trace224;
 
     uint256 public constant MAX_ROUNDS_WITHOUT_CHECKPOINT = 100;
