@@ -2,11 +2,17 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/governance/Governor.sol";
+import "@openzeppelin/contracts/governance/extensions/GovernorSettings.sol";
 import "@openzeppelin/contracts/utils/Checkpoints.sol";
 
+import "./libraries/EarningsPool.sol";
+import "./libraries/EarningsPoolLIP36.sol";
+
+import "../IController.sol";
+import "../rounds/IRoundsManager.sol";
 import "./BondingManager.sol";
 
-abstract contract Votes is Governor {
+contract Votes is Governor, GovernorSettings {
     using Checkpoints for Checkpoints.Trace224;
 
     uint256 public constant MAX_ROUNDS_WITHOUT_CHECKPOINT = 100;
@@ -16,8 +22,19 @@ abstract contract Votes is Governor {
 
     BondingManager public immutable bondingManagerAddr;
 
-    constructor(BondingManager _bondingManager) {
+    constructor(BondingManager _bondingManager)
+        Governor("TreasuryGovernor")
+        GovernorSettings(
+            1, /* 1 round/day */
+            14, /* 14 rounds/days */
+            100e18 /* 100 LPT min proposal threshold */
+        )
+    {
         bondingManagerAddr = _bondingManager;
+    }
+
+    function proposalThreshold() public view override(Governor, GovernorSettings) returns (uint256) {
+        return super.proposalThreshold();
     }
 
     /**
@@ -198,17 +215,20 @@ abstract contract Votes is Governor {
 
     function checkpointDelegator(
         address _account,
-        address _delegatee,
-        uint224 _bondedAmount,
-        uint32 _startRound
-    ) internal virtual onlyBondingManager {
-        delegatorSnapshots[_account][_startRound] = DelegatorSnapshot(_bondedAmount, _delegatee);
+        uint256 _startRound,
+        uint256 _bondedAmount,
+        address _delegateAddress
+    ) public virtual onlyBondingManager {
+        uint32 startRound = SafeCast.toUint32(_startRound);
+        delegatorSnapshots[_account][startRound] = DelegatorSnapshot(_bondedAmount, _delegateAddress);
 
-        startRoundCheckpoints[_account].push(_startRound, _startRound);
+        // now store the startRound itself in the startRoundCheckpoints to allow
+        // us to lookup in the above mapping
+        startRoundCheckpoints[_account].push(startRound, startRound);
     }
 
-    function checkpointTotalActiveStake(uint224 _totalStake, uint32 _round) internal virtual onlyBondingManager {
-        totalActiveStakeCheckpoints.push(_round, _totalStake);
+    function checkpointTotalActiveStake(uint256 _totalStake, uint256 _round) public virtual onlyBondingManager {
+        totalActiveStakeCheckpoints.push(SafeCast.toUint32(_round), SafeCast.toUint224(_totalStake));
     }
 
     function _getStake(address _account, uint256 _timepoint) internal view returns (uint256) {
