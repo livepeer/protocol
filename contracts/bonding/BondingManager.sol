@@ -765,7 +765,9 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             }
         }
 
-        treasury().checkpointDelegator(msg.sender, currentRound.add(1), del.bondedAmount, del.delegateAddress);
+        // no problem that startRound was cleared above. lastClaimRound will be
+        // used for the snapshot instead
+        checkpointDelegator(msg.sender, del);
 
         // If msg.sender was resigned this statement will only decrease delegators[currentDelegate].delegatedAmount
         decreaseTotalStake(currentDelegate, _amount, _newPosPrev, _newPosNext);
