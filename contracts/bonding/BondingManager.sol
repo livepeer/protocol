@@ -12,7 +12,7 @@ import "../token/ILivepeerToken.sol";
 import "../token/IMinter.sol";
 import "../rounds/IRoundsManager.sol";
 import "../snapshots/IMerkleSnapshot.sol";
-import "./Votes.sol";
+import "./TreasuryGovernor.sol";
 
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/governance/IGovernor.sol";
@@ -101,7 +101,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     uint256 public currentRoundTreasuryArtificialStake;
 
     // TODO: Move to controller
-    Votes public votes;
+    TreasuryGovernor public treasuryAddr;
 
     // Check if sender is TicketBroker
     modifier onlyTicketBroker() {
@@ -144,7 +144,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      */
     constructor(address _controller) Manager(_controller) {
         // TODO: This is so wrong
-        votes = new Votes(this);
+        treasuryAddr = new TreasuryGovernor(this);
     }
 
     /**
@@ -435,7 +435,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     function setCurrentRoundTotalActiveStake() external onlyRoundsManager {
         currentRoundTotalActiveStake = nextRoundTotalActiveStake;
 
-        votes.checkpointTotalActiveStake(currentRoundTotalActiveStake, roundsManager().currentRound());
+        treasury().checkpointTotalActiveStake(currentRoundTotalActiveStake, roundsManager().currentRound());
     }
 
     function mintTreasuryRewards() public onlyRoundsManager {
@@ -610,7 +610,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      */
     function checkpointDelegator(address _owner, Delegator storage _del) internal {
         uint256 startRound = _del.lastClaimRound > _del.startRound ? _del.lastClaimRound : _del.startRound;
-        votes.checkpointDelegator(_owner, startRound, _del.bondedAmount, _del.delegateAddress);
+        treasury().checkpointDelegator(_owner, startRound, _del.bondedAmount, _del.delegateAddress);
     }
 
     /**
@@ -765,7 +765,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             }
         }
 
-        votes.checkpointDelegator(msg.sender, currentRound.add(1), del.bondedAmount, del.delegateAddress);
+        treasury().checkpointDelegator(msg.sender, currentRound.add(1), del.bondedAmount, del.delegateAddress);
 
         // If msg.sender was resigned this statement will only decrease delegators[currentDelegate].delegatedAmount
         decreaseTotalStake(currentDelegate, _amount, _newPosPrev, _newPosNext);
@@ -1589,8 +1589,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         return IRoundsManager(controller.getContract(keccak256("RoundsManager")));
     }
 
-    function treasury() internal view returns (IGovernor) {
-        return IGovernor(controller.getContract(keccak256("Treasury")));
+    function treasury() internal view returns (TreasuryGovernor) {
+        return treasuryAddr;
     }
 
     function _onlyTicketBroker() internal view {
