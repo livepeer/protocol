@@ -12,6 +12,7 @@ import "../token/ILivepeerToken.sol";
 import "../token/IMinter.sol";
 import "../rounds/IRoundsManager.sol";
 import "../snapshots/IMerkleSnapshot.sol";
+import "./Votes.sol";
 
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/governance/IGovernor.sol";
@@ -99,6 +100,9 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     // Value to the reward distribution code t
     uint256 public currentRoundTreasuryArtificialStake;
 
+    // TODO: Move to controller
+    Votes public votes;
+
     // Check if sender is TicketBroker
     modifier onlyTicketBroker() {
         _onlyTicketBroker();
@@ -138,7 +142,10 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * - setMaxEarningsClaimsRounds()
      * @param _controller Address of Controller that this contract will be registered with
      */
-    constructor(address _controller) Manager(_controller) {}
+    constructor(address _controller) Manager(_controller) {
+        // TODO: This is so wrong
+        votes = new Votes(this);
+    }
 
     /**
      * @notice Set unbonding period. Only callable by Controller owner
@@ -422,6 +429,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      */
     function setCurrentRoundTotalActiveStake() external onlyRoundsManager {
         currentRoundTotalActiveStake = nextRoundTotalActiveStake;
+
+        votes.checkpointTotalActiveStake(currentRoundTotalActiveStake, roundsManager().currentRound());
     }
 
     function mintTreasuryRewards() public onlyRoundsManager {
