@@ -370,6 +370,9 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         uint256 _slashAmount,
         uint256 _finderFee
     ) external whenSystemNotPaused onlyVerifier {
+        // TODO: Verify if this is right? Seems like it was missing from this func.
+        _autoClaimEarnings(_transcoder);
+
         Delegator storage del = delegators[_transcoder];
 
         if (del.bondedAmount > 0) {
@@ -382,6 +385,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
             // Decrease bonded stake
             del.bondedAmount = del.bondedAmount.sub(penalty);
+
+            checkpointDelegator(_transcoder, del);
 
             // If still bonded decrease delegate's delegated amount
             if (delegatorStatus(_transcoder) == DelegatorStatus.Bonded) {
@@ -587,6 +592,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // Update bonded amount
         del.bondedAmount = currentBondedAmount.add(_amount);
 
+        checkpointDelegator(_owner, del);
+
         increaseTotalStake(_to, delegationAmount, _currDelegateNewPosPrev, _currDelegateNewPosNext);
 
         if (_amount > 0) {
@@ -595,6 +602,15 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         }
 
         emit Bond(_to, currentDelegate, _owner, _amount, del.bondedAmount);
+    }
+
+    /**
+     * @notice Checkpoints a delegator state after changes, to be used for
+     * historical voting power calculations in on-chain governor logic.
+     */
+    function checkpointDelegator(address _owner, Delegator storage _del) internal {
+        uint256 startRound = _del.lastClaimRound > _del.startRound ? _del.lastClaimRound : _del.startRound;
+        votes.checkpointDelegator(_owner, startRound, _del.bondedAmount, _del.delegateAddress);
     }
 
     /**
@@ -748,6 +764,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
                 resignTranscoder(msg.sender);
             }
         }
+
+        votes.checkpointDelegator(msg.sender, currentRound.add(1), del.bondedAmount, del.delegateAddress);
 
         // If msg.sender was resigned this statement will only decrease delegators[currentDelegate].delegatedAmount
         decreaseTotalStake(currentDelegate, _amount, _newPosPrev, _newPosNext);
@@ -1502,6 +1520,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // Rewards are bonded by default
         del.bondedAmount = currentBondedAmount;
         del.fees = currentFees;
+
+        checkpointDelegator(_delegator, del);
     }
 
     /**
@@ -1526,6 +1546,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         uint256 amount = lock.amount;
         // Increase delegator's bonded amount
         del.bondedAmount = del.bondedAmount.add(amount);
+
+        checkpointDelegator(_delegator, del);
 
         // Delete lock
         delete del.unbondingLocks[_unbondingLockId];
