@@ -202,14 +202,18 @@ contract TreasuryGovernor is Governor, GovernorSettings {
     // the specific values on the separate delegatorSnapshots mapping.
     // TODO: Consider writing our own checkpoints lib version instead that
     // stores directly the data we want inline.
-    mapping(address => Checkpoints.Trace224) private startRoundCheckpoints;
 
-    struct DelegatorSnapshot {
+    struct DelegatorInfo {
         uint256 bondedAmount;
         address delegatee;
     }
 
-    mapping(address => mapping(uint256 => DelegatorSnapshot)) private delegatorSnapshots;
+    struct DelegatorCheckpoints {
+        Checkpoints.Trace224 startRounds;
+        mapping(uint256 => DelegatorInfo) snapshots;
+    }
+
+    mapping(address => DelegatorCheckpoints) private delegatorCheckpoints;
 
     Checkpoints.Trace224 private totalActiveStakeCheckpoints;
 
@@ -219,12 +223,14 @@ contract TreasuryGovernor is Governor, GovernorSettings {
         uint256 _bondedAmount,
         address _delegateAddress
     ) public virtual onlyBondingManager {
-        uint32 startRound = SafeCast.toUint32(_startRound);
-        delegatorSnapshots[_account][startRound] = DelegatorSnapshot(_bondedAmount, _delegateAddress);
+        DelegatorCheckpoints storage del = delegatorCheckpoints[_account];
 
-        // now store the startRound itself in the startRoundCheckpoints to allow
-        // us to lookup in the above mapping
-        startRoundCheckpoints[_account].push(startRound, startRound);
+        uint32 startRound = SafeCast.toUint32(_startRound);
+        del.snapshots[startRound] = DelegatorInfo(_bondedAmount, _delegateAddress);
+
+        // now store the startRound itself in the startRounds checkpoints to
+        // allow us to lookup in the above mapping
+        del.startRounds.push(startRound, startRound);
     }
 
     function checkpointTotalActiveStake(uint256 _totalStake, uint256 _round) public virtual onlyBondingManager {
@@ -279,7 +285,9 @@ contract TreasuryGovernor is Governor, GovernorSettings {
             address delegatee
         )
     {
-        startRound = startRoundCheckpoints[_account].upperLookupRecent(SafeCast.toUint32(_timepoint));
+        DelegatorCheckpoints storage del = delegatorCheckpoints[_account];
+
+        startRound = del.startRounds.upperLookupRecent(SafeCast.toUint32(_timepoint));
         if (startRound == 0) {
             (bondedAmount, , delegatee, , startRound, , ) = bondingManager().getDelegator(_account);
             require(startRound <= _timepoint, "missing delegator snapshot for votes");
@@ -287,10 +295,10 @@ contract TreasuryGovernor is Governor, GovernorSettings {
             return (startRound, bondedAmount, delegatee);
         }
 
-        DelegatorSnapshot storage del = delegatorSnapshots[_account][startRound];
+        DelegatorInfo storage snapshot = del.snapshots[startRound];
 
-        bondedAmount = del.bondedAmount;
-        delegatee = del.delegatee;
+        bondedAmount = snapshot.bondedAmount;
+        delegatee = snapshot.delegatee;
     }
 
     function getMostRecentTranscoderEarningPool(address _transcoder, uint256 _timepoint)
