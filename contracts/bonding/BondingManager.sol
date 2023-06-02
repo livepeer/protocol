@@ -12,6 +12,7 @@ import "../token/ILivepeerToken.sol";
 import "../token/IMinter.sol";
 import "../rounds/IRoundsManager.sol";
 import "../snapshots/IMerkleSnapshot.sol";
+import "./BondingCheckpoints.sol";
 import "./TreasuryGovernor.sol";
 
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
@@ -100,7 +101,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     // Value to the reward distribution code t
     uint256 public currentRoundTreasuryArtificialStake;
 
-    // TODO: Move to controller
+    // TODO: Move these to controller
+    BondingCheckpoints public checkpointsAddr;
     TreasuryGovernor public treasuryAddr;
 
     // Check if sender is TicketBroker
@@ -144,7 +146,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      */
     constructor(address _controller) Manager(_controller) {
         // TODO: This is so wrong
-        treasuryAddr = new TreasuryGovernor(this);
+        checkpointsAddr = new BondingCheckpoints(this);
+        treasuryAddr = new TreasuryGovernor(controller, checkpointsAddr);
     }
 
     /**
@@ -435,7 +438,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     function setCurrentRoundTotalActiveStake() external onlyRoundsManager {
         currentRoundTotalActiveStake = nextRoundTotalActiveStake;
 
-        treasury().checkpointTotalActiveStake(currentRoundTotalActiveStake, roundsManager().currentRound());
+        checkpoints().checkpointTotalActiveStake(currentRoundTotalActiveStake, roundsManager().currentRound());
     }
 
     function mintTreasuryRewards() public onlyRoundsManager {
@@ -610,7 +613,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      */
     function checkpointDelegator(address _owner, Delegator storage _del) internal {
         uint256 startRound = _del.lastClaimRound > _del.startRound ? _del.lastClaimRound : _del.startRound;
-        treasury().checkpointDelegator(_owner, startRound, _del.bondedAmount, _del.delegateAddress);
+        checkpoints().checkpointDelegator(_owner, startRound, _del.bondedAmount, _del.delegateAddress);
     }
 
     /**
@@ -1593,6 +1596,10 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
     function treasury() internal view returns (TreasuryGovernor) {
         return treasuryAddr;
+    }
+
+    function checkpoints() internal view returns (BondingCheckpoints) {
+        return checkpointsAddr;
     }
 
     function _onlyTicketBroker() internal view {
