@@ -10,19 +10,17 @@ import "./libraries/EarningsPoolLIP36.sol";
 
 import "../IController.sol";
 import "../rounds/IRoundsManager.sol";
-import "./BondingManager.sol";
+import "./BondingCheckpoints.sol";
 
 contract TreasuryGovernor is Governor, GovernorSettings {
-    using Checkpoints for Checkpoints.Trace224;
-
-    uint256 public constant MAX_ROUNDS_WITHOUT_CHECKPOINT = 100;
-
     // 33.33% perc points compatible with MathUtils
     uint256 public constant QUORUM = 333300;
 
-    BondingManager public immutable bondingManagerAddr;
+    IController public immutable controller;
 
-    constructor(BondingManager _bondingManager)
+    BondingCheckpoints public immutable bondingCheckpointsAddr;
+
+    constructor(IController _controller, BondingCheckpoints _bondingCheckpoints)
         Governor("TreasuryGovernor")
         GovernorSettings(
             1, /* 1 round/day */
@@ -30,7 +28,8 @@ contract TreasuryGovernor is Governor, GovernorSettings {
             100e18 /* 100 LPT min proposal threshold */
         )
     {
-        bondingManagerAddr = _bondingManager;
+        controller = _controller;
+        bondingCheckpointsAddr = _bondingCheckpoints;
     }
 
     function proposalThreshold() public view override(Governor, GovernorSettings) returns (uint256) {
@@ -59,11 +58,15 @@ contract TreasuryGovernor is Governor, GovernorSettings {
         uint256 _timepoint,
         bytes memory
     ) internal view override returns (uint256) {
-        return _getStake(_account, _timepoint);
+        require(_timepoint <= clock(), ")_getVotes: future lookup");
+
+        return bondingCheckpoints().getStakeAt(_account, _timepoint);
     }
 
     function quorum(uint256 _timepoint) public view virtual override returns (uint256) {
-        return MathUtils.percOf(getTotalActiveStake(_timepoint), QUORUM);
+        require(_timepoint <= clock(), ")_getVotes: future lookup");
+
+        return MathUtils.percOf(bondingCheckpoints().getTotalActiveStakeAt(_timepoint), QUORUM);
     }
 
     // vote counting
@@ -155,7 +158,7 @@ contract TreasuryGovernor is Governor, GovernorSettings {
         proposalVote.votes[account] = VoteType(support);
 
         uint256 timepoint = proposalSnapshot(proposalId);
-        (, , address delegatee) = getDelegatorSnapshot(account, timepoint);
+        (, , address delegatee) = bondingCheckpoints().getDelegatorSnapshot(account, timepoint);
 
         bool isTranscoder = account == delegatee;
         if (isTranscoder) {
@@ -194,186 +197,13 @@ contract TreasuryGovernor is Governor, GovernorSettings {
         }
     }
 
-    // checkpointing logic
-
-    // We can't lookup the "checkpoint time" from the Checkpoints lib, only the
-    // current value. So instead of checkpointing the bonded amount and
-    // delegatee we snapshot the start round of each delegator change and lookup
-    // the specific values on the separate delegatorSnapshots mapping.
-    // TODO: Consider writing our own checkpoints lib version instead that
-    // stores directly the data we want inline.
-
-    struct DelegatorInfo {
-        uint256 bondedAmount;
-        address delegatee;
-    }
-
-    struct DelegatorCheckpoints {
-        Checkpoints.Trace224 startRounds;
-        mapping(uint256 => DelegatorInfo) snapshots;
-    }
-
-    mapping(address => DelegatorCheckpoints) private delegatorCheckpoints;
-
-    Checkpoints.Trace224 private totalActiveStakeCheckpoints;
-
-    function checkpointDelegator(
-        address _account,
-        uint256 _startRound,
-        uint256 _bondedAmount,
-        address _delegateAddress
-    ) public virtual onlyBondingManager {
-        DelegatorCheckpoints storage del = delegatorCheckpoints[_account];
-
-        uint32 startRound = SafeCast.toUint32(_startRound);
-        del.snapshots[startRound] = DelegatorInfo(_bondedAmount, _delegateAddress);
-
-        // now store the startRound itself in the startRounds checkpoints to
-        // allow us to lookup in the above mapping
-        del.startRounds.push(startRound, startRound);
-    }
-
-    function checkpointTotalActiveStake(uint256 _totalStake, uint256 _round) public virtual onlyBondingManager {
-        totalActiveStakeCheckpoints.push(SafeCast.toUint32(_round), SafeCast.toUint224(_totalStake));
-    }
-
-    function _getStake(address _account, uint256 _timepoint) internal view returns (uint256) {
-        require(_timepoint <= clock(), "getVotes: future lookup");
-
-        // ASSUMPTIONS
-        // - _timepoint is a round number
-        // - _timepoint is the start round for the proposal's voting period
-
-        (uint256 startRound, uint256 bondedAmount, address delegatee) = getDelegatorSnapshot(_account, _timepoint);
-        bool isTranscoder = delegatee == _account;
-
-        if (isTranscoder) {
-            return getMostRecentTranscoderEarningPool(_account, _timepoint).totalStake;
-        } else {
-            // address is not a registered transcoder so we use its bonded
-            // amount at the time of the proposal's voting period start plus
-            // accrued rewards since that round.
-
-            EarningsPool.Data memory startPool = getTranscoderEarningPool(delegatee, startRound);
-            require(startPool.totalStake > 0, "missing start pool");
-
-            uint256 endRound = _timepoint;
-            EarningsPool.Data memory endPool = getMostRecentTranscoderEarningPool(delegatee, endRound);
-            if (endPool.totalStake == 0) {
-                // if we can't find an end pool where the transcoder called
-                // `rewards()` return the originally bonded amount as the stake
-                // at the end round (disconsider rewards since the start pool).
-                return bondedAmount;
-            }
-
-            (uint256 stakeWithRewards, ) = bondingManager().delegatorCumulativeStakeAndFees(
-                startPool,
-                endPool,
-                bondedAmount,
-                0
-            );
-            return stakeWithRewards;
-        }
-    }
-
-    function getDelegatorSnapshot(address _account, uint256 _timepoint)
-        internal
-        view
-        returns (
-            uint256 startRound,
-            uint256 bondedAmount,
-            address delegatee
-        )
-    {
-        DelegatorCheckpoints storage del = delegatorCheckpoints[_account];
-
-        startRound = del.startRounds.upperLookupRecent(SafeCast.toUint32(_timepoint));
-        if (startRound == 0) {
-            (bondedAmount, , delegatee, , startRound, , ) = bondingManager().getDelegator(_account);
-            require(startRound <= _timepoint, "missing delegator snapshot for votes");
-
-            return (startRound, bondedAmount, delegatee);
-        }
-
-        DelegatorInfo storage snapshot = del.snapshots[startRound];
-
-        bondedAmount = snapshot.bondedAmount;
-        delegatee = snapshot.delegatee;
-    }
-
-    function getMostRecentTranscoderEarningPool(address _transcoder, uint256 _timepoint)
-        internal
-        view
-        returns (EarningsPool.Data memory pool)
-    {
-        // lastActiveStakeUpdateRound is the last round that the transcoder's total active stake (self-delegated + delegated stake) was updated.
-        // Any stake changes for a transcoder update the transcoder's total active stake for the *next* round.
-        (, , , uint256 lastActiveStakeUpdateRound, , , , , , ) = bondingManager().getTranscoder(_transcoder);
-
-        // If lastActiveStakeUpdateRound <= _timepoint, then the transcoder's total active stake at _timepoint should be the transcoder's
-        // total active stake at lastActiveStakeUpdateRound because there were no additional stake changes after that round.
-        if (lastActiveStakeUpdateRound <= _timepoint) {
-            return getTranscoderEarningPool(_transcoder, lastActiveStakeUpdateRound);
-        }
-
-        // If lastActiveStakeUpdateRound > _timepoint, then the transcoder total active stake at _timepoint should be the transcoder's
-        // total active stake at the most recent round before _timepoint that the transcoder's total active stake was checkpointed.
-        // In order to prevent an unbounded loop, we limit the number of rounds that we'll search for a checkpointed total active stake to
-        // MAX_ROUNDS_WITHOUT_CHECKPOINT.
-        uint256 end = _timepoint - MAX_ROUNDS_WITHOUT_CHECKPOINT;
-        for (uint256 i = _timepoint; i >= end; i--) {
-            pool = getTranscoderEarningPool(_transcoder, i);
-            if (pool.totalStake > 0) {
-                return pool;
-            }
-        }
-    }
-
-    function getTranscoderEarningPool(address _transcoder, uint256 _timepoint)
-        internal
-        view
-        returns (EarningsPool.Data memory pool)
-    {
-        (
-            pool.totalStake,
-            pool.transcoderRewardCut,
-            pool.transcoderFeeShare,
-            pool.cumulativeRewardFactor,
-            pool.cumulativeFeeFactor
-        ) = bondingManager().getTranscoderEarningsPoolForRound(_transcoder, _timepoint);
-    }
-
-    function getTotalActiveStake(uint256 _timepoint) internal view virtual returns (uint256) {
-        require(_timepoint <= clock(), "getTotalSupply: future lookup");
-
-        uint224 activeStake = totalActiveStakeCheckpoints.upperLookupRecent(SafeCast.toUint32(_timepoint));
-
-        require(activeStake > 0, "getTotalSupply: no recorded active stake");
-
-        return activeStake;
-    }
-
     // Helpers for relations with other protocol contracts
 
-    // Check if sender is BondingManager
-    modifier onlyBondingManager() {
-        _onlyBondingManager();
-        _;
-    }
-
-    function bondingManager() public view returns (BondingManager) {
-        return bondingManagerAddr;
-    }
-
-    function controller() public view returns (IController) {
-        return bondingManager().controller();
+    function bondingCheckpoints() public view returns (BondingCheckpoints) {
+        return bondingCheckpointsAddr;
     }
 
     function roundsManager() public view returns (IRoundsManager) {
-        return IRoundsManager(controller().getContract(keccak256("RoundsManager")));
-    }
-
-    function _onlyBondingManager() internal view {
-        require(msg.sender == address(bondingManagerAddr), "caller must be BondingManager");
+        return IRoundsManager(controller.getContract(keccak256("RoundsManager")));
     }
 }
