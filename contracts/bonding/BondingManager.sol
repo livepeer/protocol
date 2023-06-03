@@ -13,7 +13,7 @@ import "../token/IMinter.sol";
 import "../rounds/IRoundsManager.sol";
 import "../snapshots/IMerkleSnapshot.sol";
 import "./BondingCheckpoints.sol";
-import "./TreasuryGovernor.sol";
+import "../treasury/TreasuryGovernor.sol";
 
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/governance/IGovernor.sol";
