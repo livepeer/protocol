@@ -5,12 +5,12 @@ import "@openzeppelin/contracts/governance/Governor.sol";
 import "@openzeppelin/contracts/governance/extensions/GovernorSettings.sol";
 import "@openzeppelin/contracts/utils/Checkpoints.sol";
 
-import "./libraries/EarningsPool.sol";
-import "./libraries/EarningsPoolLIP36.sol";
+import "../bonding/libraries/EarningsPool.sol";
+import "../bonding/libraries/EarningsPoolLIP36.sol";
 
 import "../IController.sol";
 import "../rounds/IRoundsManager.sol";
-import "./BondingCheckpoints.sol";
+import "../bonding/BondingCheckpoints.sol";
 import "./GovernorVotesBondingCheckpoints.sol";
 
 contract TreasuryGovernor is Governor, GovernorSettings, GovernorVotesBondingCheckpoints {
