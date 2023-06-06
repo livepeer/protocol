@@ -129,7 +129,6 @@ abstract contract GovernorVotesBondingCheckpoints is Governor {
     function _quorumReached(uint256 proposalId) internal view virtual override returns (bool) {
         (uint256 againstVotes, uint256 forVotes, uint256 abstainVotes) = proposalVotes(proposalId);
 
-        // TODO: Should all vote types count for quorum?
         uint256 totalVotes = againstVotes.add(forVotes).add(abstainVotes);
 
         return totalVotes >= quorum(proposalSnapshot(proposalId));
@@ -139,11 +138,12 @@ abstract contract GovernorVotesBondingCheckpoints is Governor {
      * @dev See {Governor-_voteSucceeded}. In this module, the forVotes must be at least QUOTA of the total votes.
      */
     function _voteSucceeded(uint256 proposalId) internal view virtual override returns (bool) {
-        (uint256 againstVotes, uint256 forVotes, uint256 abstainVotes) = proposalVotes(proposalId);
+        (uint256 againstVotes, uint256 forVotes, ) = proposalVotes(proposalId);
 
-        uint256 totalVotes = againstVotes.add(forVotes).add(abstainVotes);
+        // we ignore abstain votes for vote succeeded calculation
+        uint256 totalValidVotes = againstVotes.add(forVotes);
 
-        return forVotes >= MathUtils.percOf(totalVotes, QUOTA);
+        return forVotes >= MathUtils.percOf(totalValidVotes, QUOTA);
     }
 
     /**
