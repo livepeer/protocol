@@ -3,7 +3,7 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/governance/Governor.sol";
 import "@openzeppelin/contracts/governance/extensions/GovernorSettings.sol";
-import "@openzeppelin/contracts/utils/Checkpoints.sol";
+import "@openzeppelin/contracts/utils/Arrays.sol";
 
 import "./libraries/EarningsPool.sol";
 import "./libraries/EarningsPoolLIP36.sol";
@@ -13,8 +13,6 @@ import "../rounds/IRoundsManager.sol";
 import "./BondingManager.sol";
 
 contract BondingCheckpoints {
-    using Checkpoints for Checkpoints.Trace224;
-
     uint256 public constant MAX_ROUNDS_WITHOUT_CHECKPOINT = 100;
 
     BondingManager public immutable bondingManagerAddr;
@@ -23,26 +21,19 @@ contract BondingCheckpoints {
         bondingManagerAddr = _bondingManager;
     }
 
-    // We can't lookup the "checkpoint time" from the Checkpoints lib, only the
-    // current value. So instead of checkpointing the bonded amount and
-    // delegatee we snapshot the start round of each delegator change and lookup
-    // the specific values on the separate delegatorSnapshots mapping.
-    // TODO: Consider writing our own checkpoints lib version instead that
-    // stores directly the data we want inline.
-
     struct DelegatorInfo {
         uint256 bondedAmount;
         address delegatee;
     }
 
     struct DelegatorCheckpoints {
-        Checkpoints.Trace224 startRounds;
+        uint256[] startRounds;
         mapping(uint256 => DelegatorInfo) snapshots;
     }
 
     mapping(address => DelegatorCheckpoints) private delegatorCheckpoints;
 
-    Checkpoints.Trace224 private totalActiveStakeCheckpoints;
+    mapping(uint256 => uint256) private totalActiveStakeCheckpoints;
 
     function checkpointDelegator(
         address _account,
@@ -52,22 +43,21 @@ contract BondingCheckpoints {
     ) public virtual onlyBondingManager {
         DelegatorCheckpoints storage del = delegatorCheckpoints[_account];
 
-        uint32 startRound = SafeCast.toUint32(_startRound);
-        del.snapshots[startRound] = DelegatorInfo(_bondedAmount, _delegateAddress);
+        del.snapshots[_startRound] = DelegatorInfo(_bondedAmount, _delegateAddress);
 
-        // now store the startRound itself in the startRounds checkpoints to
-        // allow us to lookup in the above mapping
-        del.startRounds.push(startRound, startRound);
+        // now store the startRound itself in the startRounds array to allow us
+        // to find it and lookup in the above mapping
+        pushSorted(del.startRounds, _startRound);
     }
 
     function checkpointTotalActiveStake(uint256 _totalStake, uint256 _round) public virtual onlyBondingManager {
-        totalActiveStakeCheckpoints.push(SafeCast.toUint32(_round), SafeCast.toUint224(_totalStake));
+        totalActiveStakeCheckpoints[_round] = _totalStake;
     }
 
     function getTotalActiveStakeAt(uint256 _timepoint) public view virtual returns (uint256) {
-        uint224 activeStake = totalActiveStakeCheckpoints.upperLookupRecent(SafeCast.toUint32(_timepoint));
+        uint256 activeStake = totalActiveStakeCheckpoints[_timepoint];
 
-        require(activeStake > 0, "getTotalSupply: no recorded active stake");
+        require(activeStake > 0, "getTotalActiveStakeAt: no recorded active stake");
 
         return activeStake;
     }
@@ -120,7 +110,7 @@ contract BondingCheckpoints {
     {
         DelegatorCheckpoints storage del = delegatorCheckpoints[_account];
 
-        startRound = del.startRounds.upperLookupRecent(SafeCast.toUint32(_timepoint));
+        startRound = lowerLookup(del.startRounds, _timepoint);
         if (startRound == 0) {
             (bondedAmount, , delegatee, , startRound, , ) = bondingManager().getDelegator(_account);
             require(startRound <= _timepoint, "missing delegator snapshot for votes");
@@ -174,6 +164,33 @@ contract BondingCheckpoints {
             pool.cumulativeRewardFactor,
             pool.cumulativeFeeFactor
         ) = bondingManager().getTranscoderEarningsPoolForRound(_transcoder, _timepoint);
+    }
+
+    // array checkpointing logic
+    // TODO: move to a library?
+
+    function lowerLookup(uint256[] storage array, uint256 val) internal view returns (uint256) {
+        uint256 upperIdx = Arrays.findUpperBound(array, val);
+        if (upperIdx == 0) {
+            return 0;
+        }
+        return array[upperIdx - 1];
+    }
+
+    function pushSorted(uint256[] storage array, uint256 val) internal {
+        if (array.length == 0) {
+            array.push(val);
+        } else {
+            uint256 last = array[array.length - 1];
+
+            // values must be pushed in order
+            require(val >= last, "pushSorted: decreasing values");
+
+            // don't push duplicate values
+            if (val != last) {
+                array.push(val);
+            }
+        }
     }
 
     // Helpers for relations with other protocol contracts
