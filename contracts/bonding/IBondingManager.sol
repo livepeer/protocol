@@ -70,8 +70,6 @@ interface IBondingManager {
 
     function setCurrentRoundTotalActiveStake() external;
 
-    function mintTreasuryRewards() external;
-
     // Public functions
     function getTranscoderPoolSize() external view returns (uint256);
 
