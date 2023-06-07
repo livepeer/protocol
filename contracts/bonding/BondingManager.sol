@@ -327,6 +327,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             // based on rewards for currentRound
             IMinter mtr = minter();
             uint256 rewards = PreciseMathUtils.percOf(
+                // TODO: Should this be only `currentMintableTokens()`? The math here is different than what we have in
+                // `minter().createReward`, seems like we're double-counting the already minted tokens here.
                 mtr.currentMintableTokens().add(mtr.currentMintedTokens()),
                 totalStake,
                 currentRoundTotalActiveStake + currentRoundTreasuryArtificialStake
