@@ -98,8 +98,6 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
     // Rate of global rewards that will be sent to the treasury
     uint256 public treasuryRewardCutRate;
-    // Value to the reward distribution code t
-    uint256 public currentRoundTreasuryArtificialStake;
 
     // TODO: Move these to controller
     BondingCheckpoints public checkpointsAddr;
@@ -331,10 +329,14 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
                 // `minter().createReward`, seems like we're double-counting the already minted tokens here.
                 mtr.currentMintableTokens().add(mtr.currentMintedTokens()),
                 totalStake,
-                currentRoundTotalActiveStake + currentRoundTreasuryArtificialStake
+                currentRoundTotalActiveStake
             );
+
+            uint256 treasuryRewards = MathUtils.percOf(rewards, treasuryRewardCutRate);
+            rewards = rewards.sub(treasuryRewards);
+
             uint256 transcoderCommissionRewards = MathUtils.percOf(rewards, earningsPool.transcoderRewardCut);
-            uint256 delegatorsRewards = rewards.sub(transcoderCommissionRewards);
+            uint256 delegatorsRewards = rewards.sub(transcoderCommissionRewards).sub(treasuryRewards);
 
             prevEarningsPool.cumulativeRewardFactor = PreciseMathUtils.percOf(
                 earningsPool.cumulativeRewardFactor,
@@ -441,31 +443,6 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         currentRoundTotalActiveStake = nextRoundTotalActiveStake;
 
         checkpoints().checkpointTotalActiveStake(currentRoundTotalActiveStake, roundsManager().currentRound());
-    }
-
-    function mintTreasuryRewards() public onlyRoundsManager {
-        if (treasuryRewardCutRate == 0) {
-            currentRoundTreasuryArtificialStake = 0;
-            return;
-        }
-
-        // we calculate this artificial stake so that the treasury gets the corresponding cut of the rewards.
-        // it is calculated with the formula: treasuryStake = rate * TotalStake / (1 - rate)
-        uint256 cutRateComplement = PreciseMathUtils.percPoints(1, 1).sub(treasuryRewardCutRate);
-        currentRoundTreasuryArtificialStake = PreciseMathUtils.percOf(
-            currentRoundTotalActiveStake,
-            treasuryRewardCutRate,
-            cutRateComplement
-        );
-
-        // Create reward based on artificial treasury stake relative to the total active stake
-        // rewardTokens = (current mintable tokens for the round * artificial treasury stake) / (total active stake + artificial treasury stale)
-        uint256 rewardTokens = minter().createReward(
-            currentRoundTreasuryArtificialStake,
-            currentRoundTotalActiveStake + currentRoundTreasuryArtificialStake
-        );
-
-        minter().trustedTransferTokens(address(treasury()), rewardTokens);
     }
 
     /**
@@ -866,17 +843,20 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
         // Create reward based on active transcoder's stake relative to the total active stake
         // rewardTokens = (current mintable tokens for the round * active transcoder stake) / (total active stake + treasury stake adjustment)
-        uint256 rewardTokens = minter().createReward(
-            earningsPool.totalStake,
-            currentRoundTotalActiveStake + currentRoundTreasuryArtificialStake
-        );
+        uint256 totalRewardTokens = minter().createReward(earningsPool.totalStake, currentRoundTotalActiveStake);
 
-        updateTranscoderWithRewards(msg.sender, rewardTokens, currentRound, _newPosPrev, _newPosNext);
+        uint256 treasuryRewards = PreciseMathUtils.percOf(totalRewardTokens, treasuryRewardCutRate);
+        uint256 transcoderRewards = totalRewardTokens.sub(treasuryRewards);
+
+        // TODO: emit an event about this as well?
+        minter().trustedTransferTokens(address(treasury()), treasuryRewards);
+
+        updateTranscoderWithRewards(msg.sender, transcoderRewards, currentRound, _newPosPrev, _newPosNext);
 
         // Set last round that transcoder called reward
         t.lastRewardRound = currentRound;
 
-        emit Reward(msg.sender, rewardTokens);
+        emit Reward(msg.sender, transcoderRewards);
     }
 
     /**

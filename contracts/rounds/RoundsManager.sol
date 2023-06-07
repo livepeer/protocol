@@ -102,8 +102,6 @@ contract RoundsManager is ManagerProxyTarget, IRoundsManager {
         bondingManager().setCurrentRoundTotalActiveStake();
         // Set mintable rewards for the round
         minter().setCurrentRewardTokens();
-        // Mint treasury reward cut for the round
-        bondingManager().mintTreasuryRewards();
 
         emit NewRound(currRound, roundBlockHash);
     }
