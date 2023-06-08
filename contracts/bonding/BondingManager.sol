@@ -747,8 +747,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             }
         }
 
-        // no problem that startRound was cleared above. lastClaimRound will be
-        // used for the snapshot instead
+        // no problem that startRound may have been cleared above. lastClaimRound will be used for the snapshot instead
         checkpointDelegator(msg.sender, del);
 
         // If msg.sender was resigned this statement will only decrease delegators[currentDelegate].delegatedAmount

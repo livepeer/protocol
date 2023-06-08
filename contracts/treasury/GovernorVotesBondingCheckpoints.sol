@@ -162,34 +162,7 @@ abstract contract GovernorVotesBondingCheckpoints is Governor {
         proposalVote.hasVoted[account] = true;
         proposalVote.votes[account] = VoteType(support);
 
-        uint256 timepoint = proposalSnapshot(proposalId);
-        (, , address delegatee) = bondingCheckpoints().getDelegatorSnapshot(account, timepoint);
-
-        bool isTranscoder = account == delegatee;
-        if (isTranscoder) {
-            // deduce weight from any previous delegators for this transcoder to
-            // make a vote
-            weight = weight - proposalVote.voteDeductions[account];
-        } else {
-            proposalVote.voteDeductions[delegatee] += weight;
-
-            if (proposalVote.hasVoted[delegatee]) {
-                // this is a delegator overriding its delegated transcoder vote,
-                // we need to update the current totals to move the weight of
-                // the delegator vote to the right outcome.
-                VoteType transcoderSupport = proposalVote.votes[delegatee];
-
-                if (transcoderSupport == VoteType.Against) {
-                    proposalVote.againstVotes -= weight;
-                } else if (transcoderSupport == VoteType.For) {
-                    proposalVote.forVotes -= weight;
-                } else if (transcoderSupport == VoteType.Abstain) {
-                    proposalVote.abstainVotes -= weight;
-                } else {
-                    revert("Votes: invalid recorded transcoder vote type");
-                }
-            }
-        }
+        weight = _handleVoteOverrides(proposalId, proposalVote, account, weight);
 
         if (support == uint8(VoteType.Against)) {
             proposalVote.againstVotes += weight;
@@ -200,6 +173,56 @@ abstract contract GovernorVotesBondingCheckpoints is Governor {
         } else {
             revert("Votes: invalid value for enum VoteType");
         }
+    }
+
+    /**
+     * @notice Handles vote overrides that delegators can make to their
+     * corresponding delegated transcoder votes. Usually only the transcoders
+     * vote on proposals, but any delegator can change their part of the vote.
+     * This tracks past votes and deduction on separate mappings in order to
+     * calculate the effective voting power of each vote.
+     * @param proposalId ID of the proposal being voted on
+     * @param proposalVote struct where the vote totals are tallied on
+     * @param account current user making a vote
+     * @param weight voting weight of the user making the vote
+     */
+    function _handleVoteOverrides(
+        uint256 proposalId,
+        ProposalVote storage proposalVote,
+        address account,
+        uint256 weight
+    ) internal returns (uint256) {
+        uint256 timepoint = proposalSnapshot(proposalId);
+        (, , address delegatee) = bondingCheckpoints().getDelegatorSnapshot(account, timepoint);
+
+        bool isTranscoder = account == delegatee;
+        if (isTranscoder) {
+            // deduce weight from any previous delegators for this transcoder to
+            // make a vote
+            return weight - proposalVote.voteDeductions[account];
+        }
+
+        // this is a delegator, so add a deduction to the delegated transcoder
+        proposalVote.voteDeductions[delegatee] += weight;
+
+        if (proposalVote.hasVoted[delegatee]) {
+            // this is a delegator overriding its delegated transcoder vote,
+            // we need to update the current totals to move the weight of
+            // the delegator vote to the right outcome.
+            VoteType transcoderSupport = proposalVote.votes[delegatee];
+
+            if (transcoderSupport == VoteType.Against) {
+                proposalVote.againstVotes -= weight;
+            } else if (transcoderSupport == VoteType.For) {
+                proposalVote.forVotes -= weight;
+            } else if (transcoderSupport == VoteType.Abstain) {
+                proposalVote.abstainVotes -= weight;
+            } else {
+                revert("Votes: invalid recorded transcoder vote type");
+            }
+        }
+
+        return weight;
     }
 
     // Helpers for relations with other protocol contracts
