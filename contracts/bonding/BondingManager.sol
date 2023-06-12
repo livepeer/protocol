@@ -591,8 +591,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     function checkpointDelegator(address _owner, Delegator storage _del) internal {
         BondingCheckpoints checkpoints = bondingCheckpoints();
         if (address(checkpoints) != address(0)) {
-            uint256 startRound = _del.lastClaimRound > _del.startRound ? _del.lastClaimRound : _del.startRound;
-            checkpoints.checkpointDelegator(_owner, startRound, _del.bondedAmount, _del.delegateAddress);
+            checkpoints.checkpointDelegator(_owner, _del.lastClaimRound, _del.bondedAmount, _del.delegateAddress);
         }
     }
 

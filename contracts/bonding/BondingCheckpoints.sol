@@ -24,7 +24,7 @@ contract BondingCheckpoints is ManagerProxyTarget {
     }
 
     struct DelegatorCheckpoints {
-        uint256[] startRounds;
+        uint256[] claimRounds;
         mapping(uint256 => DelegatorInfo) snapshots;
     }
 
@@ -34,17 +34,17 @@ contract BondingCheckpoints is ManagerProxyTarget {
 
     function checkpointDelegator(
         address _account,
-        uint256 _startRound,
+        uint256 _claimRound,
         uint256 _bondedAmount,
         address _delegateAddress
     ) public virtual onlyBondingManager {
         DelegatorCheckpoints storage del = delegatorCheckpoints[_account];
 
-        del.snapshots[_startRound] = DelegatorInfo(_bondedAmount, _delegateAddress);
+        del.snapshots[_claimRound] = DelegatorInfo(_bondedAmount, _delegateAddress);
 
-        // now store the startRound itself in the startRounds array to allow us
+        // now store the claimRound itself in the claimRounds array to allow us
         // to find it and lookup in the above mapping
-        pushSorted(del.startRounds, _startRound);
+        pushSorted(del.claimRounds, _claimRound);
     }
 
     function checkpointTotalActiveStake(uint256 _totalStake, uint256 _round) public virtual onlyBondingManager {
@@ -64,7 +64,7 @@ contract BondingCheckpoints is ManagerProxyTarget {
         // - _timepoint is a round number
         // - _timepoint is the start round for the proposal's voting period
 
-        (uint256 startRound, uint256 bondedAmount, address delegatee) = getDelegatorSnapshot(_account, _timepoint);
+        (uint256 claimRound, uint256 bondedAmount, address delegatee) = getDelegatorSnapshot(_account, _timepoint);
         bool isTranscoder = delegatee == _account;
 
         if (isTranscoder) {
@@ -74,7 +74,7 @@ contract BondingCheckpoints is ManagerProxyTarget {
             // amount at the time of the proposal's voting period start plus
             // accrued rewards since that round.
 
-            EarningsPool.Data memory startPool = getTranscoderEarningPool(delegatee, startRound);
+            EarningsPool.Data memory startPool = getTranscoderEarningPool(delegatee, claimRound);
             require(startPool.totalStake > 0, "missing start pool");
 
             uint256 endRound = _timepoint;
@@ -100,22 +100,22 @@ contract BondingCheckpoints is ManagerProxyTarget {
         public
         view
         returns (
-            uint256 startRound,
+            uint256 claimRound,
             uint256 bondedAmount,
             address delegatee
         )
     {
         DelegatorCheckpoints storage del = delegatorCheckpoints[_account];
 
-        startRound = lowerLookup(del.startRounds, _timepoint);
-        if (startRound == 0) {
-            (bondedAmount, , delegatee, , startRound, , ) = bondingManager().getDelegator(_account);
-            require(startRound <= _timepoint, "missing delegator snapshot for votes");
+        claimRound = lowerLookup(del.claimRounds, _timepoint);
+        if (claimRound == 0) {
+            (bondedAmount, , delegatee, , , claimRound, ) = bondingManager().getDelegator(_account);
+            require(claimRound <= _timepoint, "missing delegator snapshot for votes");
 
-            return (startRound, bondedAmount, delegatee);
+            return (claimRound, bondedAmount, delegatee);
         }
 
-        DelegatorInfo storage snapshot = del.snapshots[startRound];
+        DelegatorInfo storage snapshot = del.snapshots[claimRound];
 
         bondedAmount = snapshot.bondedAmount;
         delegatee = snapshot.delegatee;
@@ -140,7 +140,11 @@ contract BondingCheckpoints is ManagerProxyTarget {
         // total active stake at the most recent round before _timepoint that the transcoder's total active stake was checkpointed.
         // In order to prevent an unbounded loop, we limit the number of rounds that we'll search for a checkpointed total active stake to
         // MAX_ROUNDS_WITHOUT_CHECKPOINT.
-        uint256 end = _timepoint - MAX_ROUNDS_WITHOUT_CHECKPOINT;
+        uint256 end = 0;
+        if (_timepoint > MAX_ROUNDS_WITHOUT_CHECKPOINT) {
+            end = _timepoint - MAX_ROUNDS_WITHOUT_CHECKPOINT;
+        }
+
         for (uint256 i = _timepoint; i >= end; i--) {
             pool = getTranscoderEarningPool(_transcoder, i);
             if (pool.totalStake > 0) {
@@ -168,9 +172,24 @@ contract BondingCheckpoints is ManagerProxyTarget {
 
     function lowerLookup(uint256[] storage array, uint256 val) internal view returns (uint256) {
         uint256 upperIdx = Arrays.findUpperBound(array, val);
+
+        // all elements in array are lower than val
+        if (upperIdx == array.length) {
+            return array[array.length - 1];
+        }
+
+        uint256 upperElm = array[upperIdx];
+        // the value we were searching is in the array
+        if (upperElm == val) {
+            return val;
+        }
+
+        // the first snapshot we have is already higher than the value we wanted
         if (upperIdx == 0) {
             return 0;
         }
+
+        // the upperElm is the first element higher than the value we want, so return the previous element
         return array[upperIdx - 1];
     }
 
