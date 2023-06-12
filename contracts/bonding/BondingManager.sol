@@ -99,10 +99,6 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     // Rate of global rewards that will be sent to the treasury
     uint256 public treasuryRewardCutRate;
 
-    // TODO: Move these to controller
-    BondingCheckpoints public checkpointsAddr;
-    TreasuryGovernor public treasuryAddr;
-
     // Check if sender is TicketBroker
     modifier onlyTicketBroker() {
         _onlyTicketBroker();
@@ -142,11 +138,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * - setMaxEarningsClaimsRounds()
      * @param _controller Address of Controller that this contract will be registered with
      */
-    constructor(address _controller) Manager(_controller) {
-        // TODO: This is so wrong
-        checkpointsAddr = new BondingCheckpoints(this);
-        treasuryAddr = new TreasuryGovernor(controller, checkpointsAddr);
-    }
+    constructor(address _controller) Manager(_controller) {}
 
     /**
      * @notice Set unbonding period. Only callable by Controller owner
@@ -442,7 +434,13 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     function setCurrentRoundTotalActiveStake() external onlyRoundsManager {
         currentRoundTotalActiveStake = nextRoundTotalActiveStake;
 
-        checkpoints().checkpointTotalActiveStake(currentRoundTotalActiveStake, roundsManager().currentRound());
+        BondingCheckpoints checkpoints = bondingCheckpoints();
+        if (address(checkpoints) != address(0)) {
+            bondingCheckpoints().checkpointTotalActiveStake(
+                currentRoundTotalActiveStake,
+                roundsManager().currentRound()
+            );
+        }
     }
 
     /**
@@ -591,8 +589,11 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * historical voting power calculations in on-chain governor logic.
      */
     function checkpointDelegator(address _owner, Delegator storage _del) internal {
-        uint256 startRound = _del.lastClaimRound > _del.startRound ? _del.lastClaimRound : _del.startRound;
-        checkpoints().checkpointDelegator(_owner, startRound, _del.bondedAmount, _del.delegateAddress);
+        BondingCheckpoints checkpoints = bondingCheckpoints();
+        if (address(checkpoints) != address(0)) {
+            uint256 startRound = _del.lastClaimRound > _del.startRound ? _del.lastClaimRound : _del.startRound;
+            checkpoints.checkpointDelegator(_owner, startRound, _del.bondedAmount, _del.delegateAddress);
+        }
     }
 
     /**
@@ -1576,11 +1577,11 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     }
 
     function treasury() internal view returns (TreasuryGovernor) {
-        return treasuryAddr;
+        return TreasuryGovernor(payable(controller.getContract(keccak256("TreasuryGovernor"))));
     }
 
-    function checkpoints() internal view returns (BondingCheckpoints) {
-        return checkpointsAddr;
+    function bondingCheckpoints() internal view returns (BondingCheckpoints) {
+        return BondingCheckpoints(controller.getContract(keccak256("BondingCheckpoints")));
     }
 
     function _onlyTicketBroker() internal view {

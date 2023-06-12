@@ -8,18 +8,15 @@ import "@openzeppelin/contracts/utils/Arrays.sol";
 import "./libraries/EarningsPool.sol";
 import "./libraries/EarningsPoolLIP36.sol";
 
+import "../ManagerProxyTarget.sol";
 import "../IController.sol";
 import "../rounds/IRoundsManager.sol";
 import "./BondingManager.sol";
 
-contract BondingCheckpoints {
+contract BondingCheckpoints is ManagerProxyTarget {
     uint256 public constant MAX_ROUNDS_WITHOUT_CHECKPOINT = 100;
 
-    BondingManager public immutable bondingManagerAddr;
-
-    constructor(BondingManager _bondingManager) {
-        bondingManagerAddr = _bondingManager;
-    }
+    constructor(address _controller) Manager(_controller) {}
 
     struct DelegatorInfo {
         uint256 bondedAmount;
@@ -201,11 +198,14 @@ contract BondingCheckpoints {
         _;
     }
 
-    function bondingManager() public view returns (BondingManager) {
-        return bondingManagerAddr;
+    /**
+     * @dev Return BondingManager interface
+     */
+    function bondingManager() internal view returns (BondingManager) {
+        return BondingManager(controller.getContract(keccak256("BondingManager")));
     }
 
     function _onlyBondingManager() internal view {
-        require(msg.sender == address(bondingManagerAddr), "caller must be BondingManager");
+        require(msg.sender == address(bondingManager()), "caller must be BondingManager");
     }
 }

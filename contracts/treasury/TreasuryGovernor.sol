@@ -8,20 +8,22 @@ import "@openzeppelin/contracts/utils/Checkpoints.sol";
 import "../bonding/libraries/EarningsPool.sol";
 import "../bonding/libraries/EarningsPoolLIP36.sol";
 
+import "../ManagerProxyTarget.sol";
 import "../IController.sol";
 import "../rounds/IRoundsManager.sol";
 import "../bonding/BondingCheckpoints.sol";
 import "./GovernorVotesBondingCheckpoints.sol";
 
-contract TreasuryGovernor is Governor, GovernorSettings, GovernorVotesBondingCheckpoints {
-    constructor(IController _controller, BondingCheckpoints _bondingCheckpoints)
+contract TreasuryGovernor is ManagerProxyTarget, Governor, GovernorSettings, GovernorVotesBondingCheckpoints {
+    constructor(address _controller)
+        Manager(_controller)
         Governor("TreasuryGovernor")
         GovernorSettings(
             1, /* 1 round/day voting delay */
             10, /* 10 rounds/days voting period */
             100e18 /* 100 LPT min proposal threshold */
         )
-        GovernorVotesBondingCheckpoints(_controller, _bondingCheckpoints)
+        GovernorVotesBondingCheckpoints()
     {}
 
     function proposalThreshold() public view override(Governor, GovernorSettings) returns (uint256) {

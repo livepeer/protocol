@@ -8,21 +8,18 @@ import "@openzeppelin/contracts/utils/Checkpoints.sol";
 import "../bonding/libraries/EarningsPool.sol";
 import "../bonding/libraries/EarningsPoolLIP36.sol";
 
+import "../Manager.sol";
 import "../IController.sol";
 import "../rounds/IRoundsManager.sol";
 import "../bonding/BondingCheckpoints.sol";
 
-abstract contract GovernorVotesBondingCheckpoints is Governor {
+abstract contract GovernorVotesBondingCheckpoints is Manager, Governor {
     using SafeMath for uint256;
 
     // 33.33% perc points compatible with MathUtils
     uint256 public constant QUORUM = 333300;
     // 50% perc points compatible with MathUtils
     uint256 public constant QUOTA = 500000;
-
-    IController public immutable controller;
-
-    BondingCheckpoints public immutable bondingCheckpointsAddr;
 
     /**
      * @dev Supported vote types. Matches Governor Bravo ordering.
@@ -48,11 +45,6 @@ abstract contract GovernorVotesBondingCheckpoints is Governor {
     }
 
     mapping(uint256 => ProposalVote) private _proposalVotes;
-
-    constructor(IController _controller, BondingCheckpoints _bondingCheckpoints) {
-        controller = _controller;
-        bondingCheckpointsAddr = _bondingCheckpoints;
-    }
 
     // Voting power module (GovernorVotes)
 
@@ -227,8 +219,8 @@ abstract contract GovernorVotesBondingCheckpoints is Governor {
 
     // Helpers for relations with other protocol contracts
 
-    function bondingCheckpoints() public view returns (BondingCheckpoints) {
-        return bondingCheckpointsAddr;
+    function bondingCheckpoints() internal view returns (BondingCheckpoints) {
+        return BondingCheckpoints(controller.getContract(keccak256("BondingCheckpoints")));
     }
 
     function roundsManager() public view returns (IRoundsManager) {
