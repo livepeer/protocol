@@ -129,6 +129,9 @@ describe.only("BondingCheckpoints", () => {
                 functionSig("currentRound()"),
                 currentRound - 1
             )
+            await bondingCheckpoints
+                .connect(delegator)
+                .initDelegatorCheckpoint(delegator.address)
             await bondingManager
                 .connect(delegator)
                 .bond(1000, transcoder.address)
@@ -165,6 +168,8 @@ describe.only("BondingCheckpoints", () => {
                     .getStakeAt(delegator.address, round)
                     .then(n => n.toString())
 
+            assert.equal(await stakeAt(1), 0)
+            assert.equal(await stakeAt(currentRound - 10), 0)
             assert.equal(await stakeAt(currentRound - 1), 1000)
             assert.equal(await stakeAt(currentRound), 1000 + pendingRewards0)
             assert.equal(

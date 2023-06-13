@@ -32,12 +32,12 @@ contract BondingCheckpoints is ManagerProxyTarget {
 
     mapping(uint256 => uint256) private totalActiveStakeCheckpoints;
 
-    function checkpointDelegator(
+    function _checkpointDelegator(
         address _account,
         uint256 _claimRound,
         uint256 _bondedAmount,
         address _delegateAddress
-    ) public virtual onlyBondingManager {
+    ) internal {
         DelegatorCheckpoints storage del = delegatorCheckpoints[_account];
 
         del.snapshots[_claimRound] = DelegatorInfo(_bondedAmount, _delegateAddress);
@@ -45,6 +45,21 @@ contract BondingCheckpoints is ManagerProxyTarget {
         // now store the claimRound itself in the claimRounds array to allow us
         // to find it and lookup in the above mapping
         pushSorted(del.claimRounds, _claimRound);
+    }
+
+    function checkpointDelegator(
+        address _account,
+        uint256 _claimRound,
+        uint256 _bondedAmount,
+        address _delegateAddress
+    ) public virtual onlyBondingManager {
+        _checkpointDelegator(_account, _claimRound, _bondedAmount, _delegateAddress);
+    }
+
+    function initDelegatorCheckpoint(address _account) public virtual {
+        (uint256 bondedAmount, , address delegatee, , , uint256 claimRound, ) = bondingManager().getDelegator(_account);
+
+        _checkpointDelegator(_account, claimRound, bondedAmount, delegatee);
     }
 
     function checkpointTotalActiveStake(uint256 _totalStake, uint256 _round) public virtual onlyBondingManager {
@@ -67,7 +82,9 @@ contract BondingCheckpoints is ManagerProxyTarget {
         (uint256 claimRound, uint256 bondedAmount, address delegatee) = getDelegatorSnapshot(_account, _timepoint);
         bool isTranscoder = delegatee == _account;
 
-        if (isTranscoder) {
+        if (bondedAmount == 0) {
+            return 0;
+        } else if (isTranscoder) {
             return getMostRecentTranscoderEarningPool(_account, _timepoint).totalStake;
         } else {
             // address is not a registered transcoder so we use its bonded
@@ -107,8 +124,9 @@ contract BondingCheckpoints is ManagerProxyTarget {
     {
         DelegatorCheckpoints storage del = delegatorCheckpoints[_account];
 
-        claimRound = lowerLookup(del.claimRounds, _timepoint);
-        if (claimRound == 0) {
+        bool ok;
+        (claimRound, ok) = lowerLookup(del.claimRounds, _timepoint);
+        if (!ok) {
             (bondedAmount, , delegatee, , , claimRound, ) = bondingManager().getDelegator(_account);
             require(claimRound <= _timepoint, "missing delegator snapshot for votes");
 
@@ -170,27 +188,27 @@ contract BondingCheckpoints is ManagerProxyTarget {
     // array checkpointing logic
     // TODO: move to a library?
 
-    function lowerLookup(uint256[] storage array, uint256 val) internal view returns (uint256) {
+    function lowerLookup(uint256[] storage array, uint256 val) internal view returns (uint256, bool) {
         uint256 upperIdx = Arrays.findUpperBound(array, val);
 
         // all elements in array are lower than val
         if (upperIdx == array.length) {
-            return array[array.length - 1];
+            return (array[array.length - 1], true);
         }
 
         uint256 upperElm = array[upperIdx];
         // the value we were searching is in the array
         if (upperElm == val) {
-            return val;
+            return (val, true);
         }
 
         // the first snapshot we have is already higher than the value we wanted
         if (upperIdx == 0) {
-            return 0;
+            return (0, false);
         }
 
         // the upperElm is the first element higher than the value we want, so return the previous element
-        return array[upperIdx - 1];
+        return (array[upperIdx - 1], true);
     }
 
     function pushSorted(uint256[] storage array, uint256 val) internal {
