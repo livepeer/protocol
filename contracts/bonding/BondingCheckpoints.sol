@@ -59,6 +59,8 @@ contract BondingCheckpoints is ManagerProxyTarget {
     }
 
     function initDelegatorCheckpoint(address _account) public virtual {
+        require(delegatorCheckpoints[_account].claimRounds.length == 0, "delegator already initialized");
+
         (uint256 bondedAmount, , address delegatee, , , uint256 claimRound, ) = bondingManager().getDelegator(_account);
 
         _checkpointDelegator(_account, claimRound, bondedAmount, delegatee);
@@ -87,7 +89,7 @@ contract BondingCheckpoints is ManagerProxyTarget {
         // - _timepoint is a round number
         // - _timepoint is the start round for the proposal's voting period
 
-        (uint256 claimRound, uint256 bondedAmount, address delegatee) = getDelegatorSnapshot(_account, _timepoint);
+        (uint256 claimRound, uint256 bondedAmount, address delegatee) = getDelegatorSnapshot(_account, _timepoint - 1);
         bool isTranscoder = delegatee == _account;
 
         if (bondedAmount == 0) {
@@ -102,7 +104,7 @@ contract BondingCheckpoints is ManagerProxyTarget {
             EarningsPool.Data memory startPool = getTranscoderEarningPool(delegatee, claimRound);
             require(startPool.cumulativeRewardFactor > 0, "missing delegation start pool");
 
-            uint256 endRound = _timepoint;
+            uint256 endRound = _timepoint - 1;
             EarningsPool.Data memory endPool = getMostRecentTranscoderEarningPool(delegatee, endRound, false);
             if (endPool.cumulativeRewardFactor == 0) {
                 // if we can't find an end pool where the transcoder called
@@ -134,12 +136,7 @@ contract BondingCheckpoints is ManagerProxyTarget {
 
         bool ok;
         (claimRound, ok) = lowerLookup(del.claimRounds, _timepoint);
-        if (!ok) {
-            (bondedAmount, , delegatee, , , claimRound, ) = bondingManager().getDelegator(_account);
-            require(claimRound <= _timepoint, "missing delegator snapshot for votes");
-
-            return (claimRound, bondedAmount, delegatee);
-        }
+        require(ok, "missing delegator snapshot for votes");
 
         DelegatorInfo storage snapshot = del.snapshots[claimRound];
 
@@ -251,17 +248,17 @@ contract BondingCheckpoints is ManagerProxyTarget {
         uint256 upperIdx = Arrays.findUpperBound(array, val);
 
         // we already checked the last element above so the upper must be inside the array
-        require(upperIdx < len, "lowerLookup: invalid index returned by findUpperBoun");
-
-        // the first snapshot we have is already higher than the value we wanted
-        if (upperIdx == 0) {
-            return (0, false);
-        }
+        require(upperIdx < len, "lowerLookup: invalid index returned by findUpperBound");
 
         uint256 upperElm = array[upperIdx];
         // the value we were searching is in the array
         if (upperElm == val) {
             return (val, true);
+        }
+
+        // the first snapshot we have is already higher than the value we wanted
+        if (upperIdx == 0) {
+            return (0, false);
         }
 
         // the upperElm is the first element higher than the value we want, so return the previous element

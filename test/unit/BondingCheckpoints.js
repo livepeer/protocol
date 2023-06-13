@@ -158,6 +158,12 @@ describe.only("BondingCheckpoints", () => {
             )
 
             await bondingManager.connect(transcoder).reward()
+
+            // Round R+2
+            await fixture.roundsManager.setMockUint256(
+                functionSig("currentRound()"),
+                currentRound + 2
+            )
         })
 
         it("should return partial rewards for any rounds since bonding", async () => {
@@ -173,11 +179,14 @@ describe.only("BondingCheckpoints", () => {
 
             assert.equal(await stakeAt(1), 0)
             assert.equal(await stakeAt(currentRound - 10), 0)
-            assert.equal(await stakeAt(currentRound - 2), 0)
-            assert.equal(await stakeAt(currentRound - 1), 1000)
-            assert.equal(await stakeAt(currentRound), 1000 + pendingRewards0)
+            assert.equal(await stakeAt(currentRound - 1), 0)
+            assert.equal(await stakeAt(currentRound), 1000)
             assert.equal(
                 await stakeAt(currentRound + 1),
+                1000 + pendingRewards0
+            )
+            assert.equal(
+                await stakeAt(currentRound + 2),
                 1000 + pendingRewards0 + pendingRewards1
             )
         })
@@ -195,6 +204,7 @@ describe.only("BondingCheckpoints", () => {
             assert.equal(await stakeAt(currentRound - 1), 1000)
             assert.equal(await stakeAt(currentRound), 2000)
             assert.equal(await stakeAt(currentRound + 1), 3000)
+            assert.equal(await stakeAt(currentRound + 2), 4000)
         })
     })
 })
