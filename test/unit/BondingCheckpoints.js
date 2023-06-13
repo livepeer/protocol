@@ -117,6 +117,9 @@ describe.only("BondingCheckpoints", () => {
                 currentRound - 2
             )
 
+            await bondingCheckpoints
+                .connect(transcoder)
+                .initDelegatorCheckpoint(transcoder.address)
             await bondingManager
                 .connect(transcoder)
                 .bond(1000, transcoder.address)
@@ -170,12 +173,28 @@ describe.only("BondingCheckpoints", () => {
 
             assert.equal(await stakeAt(1), 0)
             assert.equal(await stakeAt(currentRound - 10), 0)
+            assert.equal(await stakeAt(currentRound - 2), 0)
             assert.equal(await stakeAt(currentRound - 1), 1000)
             assert.equal(await stakeAt(currentRound), 1000 + pendingRewards0)
             assert.equal(
                 await stakeAt(currentRound + 1),
                 1000 + pendingRewards0 + pendingRewards1
             )
+        })
+
+        it("should return partial rewards for all transcoder stake", async () => {
+            const stakeAt = round =>
+                bondingCheckpoints
+                    .getStakeAt(transcoder.address, round)
+                    .then(n => n.toString())
+
+            assert.equal(await stakeAt(1), 0)
+            assert.equal(await stakeAt(currentRound - 10), 0)
+            // transcoder bonding is only valid on the following round
+            assert.equal(await stakeAt(currentRound - 2), 0)
+            assert.equal(await stakeAt(currentRound - 1), 1000)
+            assert.equal(await stakeAt(currentRound), 2000)
+            assert.equal(await stakeAt(currentRound + 1), 3000)
         })
     })
 })

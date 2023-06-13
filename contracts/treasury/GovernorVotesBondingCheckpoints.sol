@@ -49,19 +49,18 @@ abstract contract GovernorVotesBondingCheckpoints is Manager, Governor {
     // Voting power module (GovernorVotes)
 
     /**
-     * @dev Clock is set to match the current round, which is the snapshotting method supported by BondingCheckpoints.
+     * @dev See {IGovernor-clock}.
      */
     function clock() public view virtual override returns (uint48) {
-        return uint48(roundsManager().currentRound());
+        return bondingCheckpoints().clock();
     }
 
     /**
-     * @dev Machine-readable description of the clock as specified in EIP-6372.
+     * @dev See {IGovernor-CLOCK_MODE}.
      */
     // solhint-disable-next-line func-name-mixedcase
     function CLOCK_MODE() public view virtual override returns (string memory) {
-        // TODO: Figure out the right value for this
-        return "mode=livepeer_round&from=default";
+        return bondingCheckpoints().CLOCK_MODE();
     }
 
     function _getVotes(
@@ -69,14 +68,10 @@ abstract contract GovernorVotesBondingCheckpoints is Manager, Governor {
         uint256 _timepoint,
         bytes memory
     ) internal view override returns (uint256) {
-        require(_timepoint <= clock(), ")_getVotes: future lookup");
-
         return bondingCheckpoints().getStakeAt(_account, _timepoint);
     }
 
     function quorum(uint256 _timepoint) public view virtual override returns (uint256) {
-        require(_timepoint <= clock(), ")_getVotes: future lookup");
-
         return MathUtils.percOf(bondingCheckpoints().getTotalActiveStakeAt(_timepoint), QUORUM);
     }
 
@@ -221,9 +216,5 @@ abstract contract GovernorVotesBondingCheckpoints is Manager, Governor {
 
     function bondingCheckpoints() internal view returns (BondingCheckpoints) {
         return BondingCheckpoints(controller.getContract(keccak256("BondingCheckpoints")));
-    }
-
-    function roundsManager() public view returns (IRoundsManager) {
-        return IRoundsManager(controller.getContract(keccak256("RoundsManager")));
     }
 }
