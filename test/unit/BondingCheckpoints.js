@@ -92,7 +92,7 @@ describe.only("BondingCheckpoints", () => {
         await fixture.tearDown()
     })
 
-    describe("pendingStake", () => {
+    describe("reward-calling transcoder", () => {
         let transcoder
         let delegator
         let currentRound
@@ -111,11 +111,19 @@ describe.only("BondingCheckpoints", () => {
                 false
             )
 
+            const setRound = async round => {
+                await fixture.roundsManager.setMockUint256(
+                    functionSig("currentRound()"),
+                    round
+                )
+                await fixture.roundsManager.execute(
+                    bondingManager.address,
+                    functionSig("setCurrentRoundTotalActiveStake()")
+                )
+            }
+
             // Round R-2
-            await fixture.roundsManager.setMockUint256(
-                functionSig("currentRound()"),
-                currentRound - 2
-            )
+            await setRound(currentRound - 2)
 
             await bondingCheckpoints
                 .connect(transcoder)
@@ -128,10 +136,8 @@ describe.only("BondingCheckpoints", () => {
                 .transcoder(50 * PERC_MULTIPLIER, 25 * PERC_MULTIPLIER)
 
             // Round R-1
-            await fixture.roundsManager.setMockUint256(
-                functionSig("currentRound()"),
-                currentRound - 1
-            )
+            await setRound(currentRound - 1)
+
             await bondingCheckpoints
                 .connect(delegator)
                 .initDelegatorCheckpoint(delegator.address)
@@ -140,10 +146,7 @@ describe.only("BondingCheckpoints", () => {
                 .bond(1000, transcoder.address)
 
             // Round R
-            await fixture.roundsManager.setMockUint256(
-                functionSig("currentRound()"),
-                currentRound
-            )
+            await setRound(currentRound)
 
             await fixture.minter.setMockUint256(
                 functionSig("createReward(uint256,uint256)"),
@@ -152,59 +155,73 @@ describe.only("BondingCheckpoints", () => {
             await bondingManager.connect(transcoder).reward()
 
             // Round R+1
-            await fixture.roundsManager.setMockUint256(
-                functionSig("currentRound()"),
-                currentRound + 1
-            )
+            await setRound(currentRound + 1)
 
             await bondingManager.connect(transcoder).reward()
 
             // Round R+2
-            await fixture.roundsManager.setMockUint256(
-                functionSig("currentRound()"),
-                currentRound + 2
-            )
+            await setRound(currentRound + 2)
         })
 
-        it("should return partial rewards for any rounds since bonding", async () => {
-            const pendingRewards0 = 250
-            const pendingRewards1 = Math.floor(
-                (500 * ((1250 * PERC_DIVISOR) / 3000)) / PERC_DIVISOR
-            )
+        describe("getStakeAt", () => {
+            it("should return partial rewards for any rounds since bonding", async () => {
+                const pendingRewards0 = 250
+                const pendingRewards1 = Math.floor(
+                    (500 * ((1250 * PERC_DIVISOR) / 3000)) / PERC_DIVISOR
+                )
 
-            const stakeAt = round =>
-                bondingCheckpoints
-                    .getStakeAt(delegator.address, round)
-                    .then(n => n.toString())
+                const stakeAt = round =>
+                    bondingCheckpoints
+                        .getStakeAt(delegator.address, round)
+                        .then(n => n.toString())
 
-            assert.equal(await stakeAt(1), 0)
-            assert.equal(await stakeAt(currentRound - 10), 0)
-            assert.equal(await stakeAt(currentRound - 1), 0)
-            assert.equal(await stakeAt(currentRound), 1000)
-            assert.equal(
-                await stakeAt(currentRound + 1),
-                1000 + pendingRewards0
-            )
-            assert.equal(
-                await stakeAt(currentRound + 2),
-                1000 + pendingRewards0 + pendingRewards1
-            )
+                assert.equal(await stakeAt(1), 0)
+                assert.equal(await stakeAt(currentRound - 10), 0)
+                assert.equal(await stakeAt(currentRound - 1), 0)
+                assert.equal(await stakeAt(currentRound), 1000)
+                assert.equal(
+                    await stakeAt(currentRound + 1),
+                    1000 + pendingRewards0
+                )
+                assert.equal(
+                    await stakeAt(currentRound + 2),
+                    1000 + pendingRewards0 + pendingRewards1
+                )
+            })
+
+            it("should return partial rewards for all transcoder stake", async () => {
+                const stakeAt = round =>
+                    bondingCheckpoints
+                        .getStakeAt(transcoder.address, round)
+                        .then(n => n.toString())
+
+                assert.equal(await stakeAt(1), 0)
+                assert.equal(await stakeAt(currentRound - 10), 0)
+                // transcoder bonding is only valid on the following round
+                assert.equal(await stakeAt(currentRound - 2), 0)
+                assert.equal(await stakeAt(currentRound - 1), 1000)
+                assert.equal(await stakeAt(currentRound), 2000)
+                assert.equal(await stakeAt(currentRound + 1), 3000)
+                assert.equal(await stakeAt(currentRound + 2), 4000)
+            })
         })
 
-        it("should return partial rewards for all transcoder stake", async () => {
-            const stakeAt = round =>
-                bondingCheckpoints
-                    .getStakeAt(transcoder.address, round)
-                    .then(n => n.toString())
+        describe("getTotalActiveStakeAt", () => {
+            it("should return total stake at any point in time", async () => {
+                const totalActiveStakeAt = round =>
+                    bondingCheckpoints
+                        .getTotalActiveStakeAt(round)
+                        .then(n => n.toString())
 
-            assert.equal(await stakeAt(1), 0)
-            assert.equal(await stakeAt(currentRound - 10), 0)
-            // transcoder bonding is only valid on the following round
-            assert.equal(await stakeAt(currentRound - 2), 0)
-            assert.equal(await stakeAt(currentRound - 1), 1000)
-            assert.equal(await stakeAt(currentRound), 2000)
-            assert.equal(await stakeAt(currentRound + 1), 3000)
-            assert.equal(await stakeAt(currentRound + 2), 4000)
+                // Currently cannot query rounds with 0 total stake, nor rounds
+                // that weren't initialized (with setCurrentRoundTotalActiveStake)
+                // assert.equal(await totalActiveStakeAt(currentRound - 2), 0)
+
+                assert.equal(await totalActiveStakeAt(currentRound - 1), 1000)
+                assert.equal(await totalActiveStakeAt(currentRound), 2000)
+                assert.equal(await totalActiveStakeAt(currentRound + 1), 3000)
+                assert.equal(await totalActiveStakeAt(currentRound + 2), 4000)
+            })
         })
     })
 })
