@@ -601,10 +601,11 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         }
     }
 
-    function initDelegatorCheckpoint(address _account) external virtual {
-        require(bondingCheckpoints().checkpointCount(_account) == 0, "delegator already initialized");
-
-        checkpointDelegator(_account, delegators[_account]);
+    function initDelegatorCheckpoint(address _account, Delegator storage _del) internal {
+        BondingCheckpoints checkpoints = bondingCheckpoints();
+        if (address(checkpoints) != address(0) && checkpoints.checkpointCount(_account) == 0) {
+            checkpointDelegator(_account, _del);
+        }
     }
 
     /**
@@ -1513,6 +1514,10 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             startRound,
             _endRound
         );
+
+        // Migration strategy: make sure any existing state when the checkpointing logic is deployed gets snapshotted on
+        // the first change to it.
+        initDelegatorCheckpoint(_delegator, del);
 
         del.lastClaimRound = _endRound;
         // Rewards are bonded by default

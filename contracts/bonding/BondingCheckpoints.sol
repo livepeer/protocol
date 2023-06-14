@@ -213,7 +213,16 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
 
         bool found;
         (startRound, found) = lowerLookup(del.startRounds, _timepoint);
-        require(found, "missing delegator snapshot for votes");
+        if (!found) {
+            // Migration strategy: Support the current values in the bonding manager to be able to calculate voting
+            // power as soon as this is deployed. This is only needed until the bonding manager starts doing checkpoints
+            uint256 lastClaimRound;
+            (bondedAmount, , delegatee, , , lastClaimRound, ) = bondingManager().getDelegator(_account);
+
+            require(lastClaimRound <= _timepoint, "missing delegator snapshot for votes");
+
+            return (lastClaimRound + 1, bondedAmount, delegatee);
+        }
 
         DelegatorInfo storage snapshot = del.snapshots[startRound];
 

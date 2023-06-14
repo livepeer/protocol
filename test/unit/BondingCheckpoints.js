@@ -125,13 +125,6 @@ describe.only("BondingCheckpoints", () => {
             // Initialize the first round ever
             await setRound(0)
 
-            await bondingManager
-                .connect(transcoder)
-                .initDelegatorCheckpoint(transcoder.address)
-            await bondingManager
-                .connect(delegator)
-                .initDelegatorCheckpoint(delegator.address)
-
             // Round R-2
             await setRound(currentRound - 2)
 
