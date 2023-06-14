@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts/governance/Governor.sol";
-import "@openzeppelin/contracts/governance/extensions/GovernorSettings.sol";
-import "@openzeppelin/contracts/utils/Checkpoints.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/governance/GovernorUpgradeable.sol";
 
 import "../bonding/libraries/EarningsPool.sol";
 import "../bonding/libraries/EarningsPoolLIP36.sol";
@@ -13,8 +12,14 @@ import "../IController.sol";
 import "../rounds/IRoundsManager.sol";
 import "../bonding/BondingCheckpoints.sol";
 
-abstract contract GovernorVotesBondingCheckpoints is Manager, Governor {
+abstract contract GovernorVotesBondingCheckpoints is Initializable, Manager, GovernorUpgradeable {
     using SafeMath for uint256;
+
+    function __GovernorVotesBondingCheckpoints_init() internal onlyInitializing {
+        __GovernorVotesBondingCheckpoints_init_unchained();
+    }
+
+    function __GovernorVotesBondingCheckpoints_init_unchained() internal onlyInitializing {}
 
     // 33.33% perc points compatible with MathUtils
     uint256 public constant QUORUM = 333300;
