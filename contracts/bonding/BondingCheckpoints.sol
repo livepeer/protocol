@@ -30,6 +30,7 @@ contract BondingCheckpoints is ManagerProxyTarget {
 
     mapping(address => DelegatorCheckpoints) private delegatorCheckpoints;
 
+    uint256[] totalStakeCheckpointRounds;
     mapping(uint256 => uint256) private totalActiveStakeCheckpoints;
 
     /**
@@ -73,16 +74,23 @@ contract BondingCheckpoints is ManagerProxyTarget {
         require(_round <= clock() + 1, "can only checkpoint total active stake up to the next round");
 
         totalActiveStakeCheckpoints[_round] = _totalStake;
+
+        pushSorted(totalStakeCheckpointRounds, _round);
     }
 
     function getTotalActiveStakeAt(uint256 _timepoint) public view virtual returns (uint256) {
         require(_timepoint <= clock(), "getTotalActiveStakeAt: future lookup");
 
+        // most of the time we will have the checkpoint from exactly the round we want
         uint256 activeStake = totalActiveStakeCheckpoints[_timepoint];
+        if (activeStake > 0) {
+            return activeStake;
+        }
 
-        require(activeStake > 0, "getTotalActiveStakeAt: no recorded active stake");
+        (uint256 round, bool found) = lowerLookup(totalStakeCheckpointRounds, _timepoint);
+        require(found, "getTotalActiveStakeAt: no recorded active stake");
 
-        return activeStake;
+        return totalActiveStakeCheckpoints[round];
     }
 
     function getStakeAt(address _account, uint256 _timepoint) public view returns (uint256) {
@@ -144,9 +152,9 @@ contract BondingCheckpoints is ManagerProxyTarget {
     {
         DelegatorCheckpoints storage del = delegatorCheckpoints[_account];
 
-        bool ok;
-        (startRound, ok) = lowerLookup(del.startRounds, _timepoint);
-        require(ok, "missing delegator snapshot for votes");
+        bool found;
+        (startRound, found) = lowerLookup(del.startRounds, _timepoint);
+        require(found, "missing delegator snapshot for votes");
 
         DelegatorInfo storage snapshot = del.snapshots[startRound];
 

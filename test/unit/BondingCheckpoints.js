@@ -122,12 +122,19 @@ describe.only("BondingCheckpoints", () => {
                 )
             }
 
-            // Round R-2
-            await setRound(currentRound - 2)
+            // Initialize the first round ever
+            await setRound(0)
 
             await bondingCheckpoints
                 .connect(transcoder)
                 .initDelegatorCheckpoint(transcoder.address)
+            await bondingCheckpoints
+                .connect(delegator)
+                .initDelegatorCheckpoint(delegator.address)
+
+            // Round R-2
+            await setRound(currentRound - 2)
+
             await bondingManager
                 .connect(transcoder)
                 .bond(1000, transcoder.address)
@@ -138,9 +145,6 @@ describe.only("BondingCheckpoints", () => {
             // Round R-1
             await setRound(currentRound - 1)
 
-            await bondingCheckpoints
-                .connect(delegator)
-                .initDelegatorCheckpoint(delegator.address)
             await bondingManager
                 .connect(delegator)
                 .bond(1000, transcoder.address)
@@ -213,10 +217,9 @@ describe.only("BondingCheckpoints", () => {
                         .getTotalActiveStakeAt(round)
                         .then(n => n.toString())
 
-                // Currently cannot query rounds with 0 total stake, nor rounds
-                // that weren't initialized (with setCurrentRoundTotalActiveStake)
-                // assert.equal(await totalActiveStakeAt(currentRound - 2), 0)
-
+                assert.equal(await totalActiveStakeAt(1), 0)
+                assert.equal(await totalActiveStakeAt(currentRound - 10), 0)
+                assert.equal(await totalActiveStakeAt(currentRound - 2), 0)
                 assert.equal(await totalActiveStakeAt(currentRound - 1), 1000)
                 assert.equal(await totalActiveStakeAt(currentRound), 2000)
                 assert.equal(await totalActiveStakeAt(currentRound + 1), 3000)
