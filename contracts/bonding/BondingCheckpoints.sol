@@ -24,7 +24,7 @@ contract BondingCheckpoints is ManagerProxyTarget {
     }
 
     struct DelegatorCheckpoints {
-        uint256[] claimRounds;
+        uint256[] startRounds;
         mapping(uint256 => DelegatorInfo) snapshots;
     }
 
@@ -51,23 +51,26 @@ contract BondingCheckpoints is ManagerProxyTarget {
 
     function checkpointDelegator(
         address _account,
-        uint256 _claimRound,
+        uint256 _startRound,
         uint256 _bondedAmount,
         address _delegateAddress
     ) public virtual onlyBondingManager {
-        _checkpointDelegator(_account, _claimRound, _bondedAmount, _delegateAddress);
+        _checkpointDelegator(_account, _startRound, _bondedAmount, _delegateAddress);
     }
 
     function initDelegatorCheckpoint(address _account) public virtual {
-        require(delegatorCheckpoints[_account].claimRounds.length == 0, "delegator already initialized");
+        require(delegatorCheckpoints[_account].startRounds.length == 0, "delegator already initialized");
 
-        (uint256 bondedAmount, , address delegatee, , , uint256 claimRound, ) = bondingManager().getDelegator(_account);
+        (uint256 bondedAmount, , address delegatee, , , uint256 lastClaimRound, ) = bondingManager().getDelegator(
+            _account
+        );
 
-        _checkpointDelegator(_account, claimRound, bondedAmount, delegatee);
+        uint256 startRound = lastClaimRound + 1;
+        _checkpointDelegator(_account, startRound, bondedAmount, delegatee);
     }
 
     function checkpointTotalActiveStake(uint256 _totalStake, uint256 _round) public virtual onlyBondingManager {
-        require(_round <= clock(), "can't checkpoint total active stake in the future");
+        require(_round <= clock() + 1, "can only checkpoint total active stake up to the next round");
 
         totalActiveStakeCheckpoints[_round] = _totalStake;
     }
@@ -89,23 +92,30 @@ contract BondingCheckpoints is ManagerProxyTarget {
         // - _timepoint is a round number
         // - _timepoint is the start round for the proposal's voting period
 
-        (uint256 claimRound, uint256 bondedAmount, address delegatee) = getDelegatorSnapshot(_account, _timepoint - 1);
+        (uint256 startRound, uint256 bondedAmount, address delegatee) = getDelegatorSnapshot(_account, _timepoint);
         bool isTranscoder = delegatee == _account;
 
         if (bondedAmount == 0) {
             return 0;
         } else if (isTranscoder) {
+            // address is a registered transcoder so we use its total stake
+            // (self and delegated) at the time of the proposal
             return getMostRecentTranscoderEarningPool(_account, _timepoint, true).totalStake;
         } else {
             // address is not a registered transcoder so we use its bonded
             // amount at the time of the proposal's voting period start plus
             // accrued rewards since that round.
 
-            EarningsPool.Data memory startPool = getTranscoderEarningPool(delegatee, claimRound);
+            // reward calculation uses the earning pool from the previous round.
+            // this is because cumulative reward factors are calcualted for the
+            // end of the round, valid only for the next round forward.
+            uint256 rewardsStartRound = startRound - 1;
+            uint256 rewardsEndRound = _timepoint - 1;
+
+            EarningsPool.Data memory startPool = getTranscoderEarningPool(delegatee, rewardsStartRound);
             require(startPool.cumulativeRewardFactor > 0, "missing delegation start pool");
 
-            uint256 endRound = _timepoint - 1;
-            EarningsPool.Data memory endPool = getMostRecentTranscoderEarningPool(delegatee, endRound, false);
+            EarningsPool.Data memory endPool = getMostRecentTranscoderEarningPool(delegatee, rewardsEndRound, false);
             if (endPool.cumulativeRewardFactor == 0) {
                 // if we can't find an end pool where the transcoder called
                 // `rewards()` return the originally bonded amount as the stake
@@ -127,7 +137,7 @@ contract BondingCheckpoints is ManagerProxyTarget {
         public
         view
         returns (
-            uint256 claimRound,
+            uint256 startRound,
             uint256 bondedAmount,
             address delegatee
         )
@@ -135,10 +145,10 @@ contract BondingCheckpoints is ManagerProxyTarget {
         DelegatorCheckpoints storage del = delegatorCheckpoints[_account];
 
         bool ok;
-        (claimRound, ok) = lowerLookup(del.claimRounds, _timepoint);
+        (startRound, ok) = lowerLookup(del.startRounds, _timepoint);
         require(ok, "missing delegator snapshot for votes");
 
-        DelegatorInfo storage snapshot = del.snapshots[claimRound];
+        DelegatorInfo storage snapshot = del.snapshots[startRound];
 
         bondedAmount = snapshot.bondedAmount;
         delegatee = snapshot.delegatee;
@@ -146,19 +156,19 @@ contract BondingCheckpoints is ManagerProxyTarget {
 
     function _checkpointDelegator(
         address _account,
-        uint256 _claimRound,
+        uint256 _startRound,
         uint256 _bondedAmount,
         address _delegateAddress
     ) internal {
-        require(_claimRound <= clock(), "can't checkpoint delegator in the future");
+        require(_startRound <= clock() + 1, "can only checkpoint delegator up to the next round");
 
         DelegatorCheckpoints storage del = delegatorCheckpoints[_account];
 
-        del.snapshots[_claimRound] = DelegatorInfo(_bondedAmount, _delegateAddress);
+        del.snapshots[_startRound] = DelegatorInfo(_bondedAmount, _delegateAddress);
 
-        // now store the claimRound itself in the claimRounds array to allow us
+        // now store the startRound itself in the startRounds array to allow us
         // to find it and lookup in the above mapping
-        pushSorted(del.claimRounds, _claimRound);
+        pushSorted(del.startRounds, _startRound);
     }
 
     function getMostRecentTranscoderEarningPool(
@@ -171,17 +181,6 @@ contract BondingCheckpoints is ManagerProxyTarget {
         (uint256 lastRewardRound, , , uint256 lastActiveStakeUpdateRound, , , , , , ) = bondingManager().getTranscoder(
             _transcoder
         );
-
-        if (_timepoint == clock()) {
-            pool = getTranscoderEarningPool(_transcoder, _timepoint);
-
-            require(
-                pool.totalStake > 0 && pool.cumulativeRewardFactor > 0,
-                "transcoder must have already called reward when querying for the current round"
-            );
-
-            return pool;
-        }
 
         // If lastActiveStakeUpdateRound <= _timepoint, then the transcoder's total active stake at _timepoint should be the transcoder's
         // total active stake at lastActiveStakeUpdateRound because there were no additional stake changes after that round.
