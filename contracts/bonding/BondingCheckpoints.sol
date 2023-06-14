@@ -46,7 +46,7 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
      * @dev Machine-readable description of the clock as specified in EIP-6372.
      */
     // solhint-disable-next-line func-name-mixedcase
-    function CLOCK_MODE() public view returns (string memory) {
+    function CLOCK_MODE() public pure returns (string memory) {
         // TODO: Figure out the right value for this
         return "mode=livepeer_round&from=default";
     }
@@ -87,7 +87,7 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
     /**
      * @dev Delegation through BondingCheckpoints is unsupported.
      */
-    function delegate(address) external {
+    function delegate(address) external pure {
         revert("use BondingManager to update delegation through bonding");
     }
 
@@ -101,7 +101,7 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
         uint8,
         bytes32,
         bytes32
-    ) external {
+    ) external pure {
         revert("use BondingManager to update delegation through bonding");
     }
 
@@ -114,7 +114,6 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
     }
 
     // BondingManager checkpointing hooks
-
     function checkpointDelegator(
         address _account,
         uint256 _startRound,
@@ -124,15 +123,8 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
         _checkpointDelegator(_account, _startRound, _bondedAmount, _delegateAddress);
     }
 
-    function initDelegatorCheckpoint(address _account) public virtual {
-        require(delegatorCheckpoints[_account].startRounds.length == 0, "delegator already initialized");
-
-        (uint256 bondedAmount, , address delegatee, , , uint256 lastClaimRound, ) = bondingManager().getDelegator(
-            _account
-        );
-
-        uint256 startRound = lastClaimRound + 1;
-        _checkpointDelegator(_account, startRound, bondedAmount, delegatee);
+    function checkpointCount(address _account) external virtual returns (uint256) {
+        return delegatorCheckpoints[_account].startRounds.length;
     }
 
     function checkpointTotalActiveStake(uint256 _totalStake, uint256 _round) public virtual onlyBondingManager {

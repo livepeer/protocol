@@ -594,11 +594,17 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     function checkpointDelegator(address _owner, Delegator storage _del) internal {
         BondingCheckpoints checkpoints = bondingCheckpoints();
         if (address(checkpoints) != address(0)) {
-            // start round doesn't get updated on bond or claim earnings, so use
-            // lastClaimRound + 1 as the start round for the checkpoint
+            // start round refer to the round where the checkpointed stake will be active. The actual `startRound` value in
+            // the delegators doesn't get updated on bond or claim earnings though, so we use lastClaimRound + 1
             uint256 startRound = _del.lastClaimRound + 1;
             checkpoints.checkpointDelegator(_owner, startRound, _del.bondedAmount, _del.delegateAddress);
         }
+    }
+
+    function initDelegatorCheckpoint(address _account) external virtual {
+        require(bondingCheckpoints().checkpointCount(_account) == 0, "delegator already initialized");
+
+        checkpointDelegator(_account, delegators[_account]);
     }
 
     /**

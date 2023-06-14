@@ -125,10 +125,10 @@ describe.only("BondingCheckpoints", () => {
             // Initialize the first round ever
             await setRound(0)
 
-            await bondingCheckpoints
+            await bondingManager
                 .connect(transcoder)
                 .initDelegatorCheckpoint(transcoder.address)
-            await bondingCheckpoints
+            await bondingManager
                 .connect(delegator)
                 .initDelegatorCheckpoint(delegator.address)
 
@@ -167,63 +167,63 @@ describe.only("BondingCheckpoints", () => {
             await setRound(currentRound + 2)
         })
 
-        describe("getStakeAt", () => {
+        describe("getPastVotes", () => {
             it("should return partial rewards for any rounds since bonding", async () => {
                 const pendingRewards0 = 250
                 const pendingRewards1 = Math.floor(
                     (500 * ((1250 * PERC_DIVISOR) / 3000)) / PERC_DIVISOR
                 )
 
-                const stakeAt = round =>
+                const votesAt = round =>
                     bondingCheckpoints
-                        .getStakeAt(delegator.address, round)
+                        .getPastVotes(delegator.address, round)
                         .then(n => n.toString())
 
-                assert.equal(await stakeAt(1), 0)
-                assert.equal(await stakeAt(currentRound - 10), 0)
-                assert.equal(await stakeAt(currentRound - 1), 0)
-                assert.equal(await stakeAt(currentRound), 1000)
+                assert.equal(await votesAt(1), 0)
+                assert.equal(await votesAt(currentRound - 10), 0)
+                assert.equal(await votesAt(currentRound - 1), 0)
+                assert.equal(await votesAt(currentRound), 1000)
                 assert.equal(
-                    await stakeAt(currentRound + 1),
+                    await votesAt(currentRound + 1),
                     1000 + pendingRewards0
                 )
                 assert.equal(
-                    await stakeAt(currentRound + 2),
+                    await votesAt(currentRound + 2),
                     1000 + pendingRewards0 + pendingRewards1
                 )
             })
 
             it("should return partial rewards for all transcoder stake", async () => {
-                const stakeAt = round =>
+                const votesAt = round =>
                     bondingCheckpoints
-                        .getStakeAt(transcoder.address, round)
+                        .getPastVotes(transcoder.address, round)
                         .then(n => n.toString())
 
-                assert.equal(await stakeAt(1), 0)
-                assert.equal(await stakeAt(currentRound - 10), 0)
+                assert.equal(await votesAt(1), 0)
+                assert.equal(await votesAt(currentRound - 10), 0)
                 // transcoder bonding is only valid on the following round
-                assert.equal(await stakeAt(currentRound - 2), 0)
-                assert.equal(await stakeAt(currentRound - 1), 1000)
-                assert.equal(await stakeAt(currentRound), 2000)
-                assert.equal(await stakeAt(currentRound + 1), 3000)
-                assert.equal(await stakeAt(currentRound + 2), 4000)
+                assert.equal(await votesAt(currentRound - 2), 0)
+                assert.equal(await votesAt(currentRound - 1), 1000)
+                assert.equal(await votesAt(currentRound), 2000)
+                assert.equal(await votesAt(currentRound + 1), 3000)
+                assert.equal(await votesAt(currentRound + 2), 4000)
             })
         })
 
-        describe("getTotalActiveStakeAt", () => {
+        describe("getPastTotalSupply", () => {
             it("should return total stake at any point in time", async () => {
-                const totalActiveStakeAt = round =>
+                const totalSupplyAt = round =>
                     bondingCheckpoints
-                        .getTotalActiveStakeAt(round)
+                        .getPastTotalSupply(round)
                         .then(n => n.toString())
 
-                assert.equal(await totalActiveStakeAt(1), 0)
-                assert.equal(await totalActiveStakeAt(currentRound - 10), 0)
-                assert.equal(await totalActiveStakeAt(currentRound - 2), 0)
-                assert.equal(await totalActiveStakeAt(currentRound - 1), 1000)
-                assert.equal(await totalActiveStakeAt(currentRound), 2000)
-                assert.equal(await totalActiveStakeAt(currentRound + 1), 3000)
-                assert.equal(await totalActiveStakeAt(currentRound + 2), 4000)
+                assert.equal(await totalSupplyAt(1), 0)
+                assert.equal(await totalSupplyAt(currentRound - 10), 0)
+                assert.equal(await totalSupplyAt(currentRound - 2), 0)
+                assert.equal(await totalSupplyAt(currentRound - 1), 1000)
+                assert.equal(await totalSupplyAt(currentRound), 2000)
+                assert.equal(await totalSupplyAt(currentRound + 1), 3000)
+                assert.equal(await totalSupplyAt(currentRound + 2), 4000)
             })
         })
     })

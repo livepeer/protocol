@@ -17,6 +17,9 @@ abstract contract GovernorVotesBondingCheckpoints is Initializable, Manager, Gov
 
     function __GovernorVotesBondingCheckpoints_init(uint256 quorumPerc) internal onlyInitializing {
         // this token address should never be used given we override all the relevant functions below.
+        // TODO: Reevaluate this. Now BondingCheckpoints implements the expected IVotes interface, so we could use the
+        // token address here. The only problem is that we don't have a fixed address, but rather always fetch it from
+        // the controller. Would it be fine to pass a fixed address (of the proxy anyway)?
         __GovernorVotes_init(IVotesUpgradeable(address(0)));
         __GovernorVotesQuorumFraction_init(quorumPerc);
         __GovernorVotesBondingCheckpoints_init_unchained();
