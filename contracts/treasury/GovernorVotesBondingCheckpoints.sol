@@ -2,7 +2,7 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts-upgradeable/governance/GovernorUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorVotesQuorumFractionUpgradeable.sol";
 
 import "../bonding/libraries/EarningsPool.sol";
 import "../bonding/libraries/EarningsPoolLIP36.sol";
@@ -12,17 +12,18 @@ import "../IController.sol";
 import "../rounds/IRoundsManager.sol";
 import "../bonding/BondingCheckpoints.sol";
 
-abstract contract GovernorVotesBondingCheckpoints is Initializable, Manager, GovernorUpgradeable {
+abstract contract GovernorVotesBondingCheckpoints is Initializable, Manager, GovernorVotesQuorumFractionUpgradeable {
     using SafeMath for uint256;
 
-    function __GovernorVotesBondingCheckpoints_init() internal onlyInitializing {
+    function __GovernorVotesBondingCheckpoints_init(uint256 quorumPerc) internal onlyInitializing {
+        // this token address should never be used given we override all relevant functions below.
+        __GovernorVotes_init(IVotesUpgradeable(address(0)));
+        __GovernorVotesQuorumFraction_init(quorumPerc);
         __GovernorVotesBondingCheckpoints_init_unchained();
     }
 
     function __GovernorVotesBondingCheckpoints_init_unchained() internal onlyInitializing {}
 
-    // 33.33% perc points compatible with MathUtils
-    uint256 public constant QUORUM = 333300;
     // 50% perc points compatible with MathUtils
     uint256 public constant QUOTA = 500000;
 
@@ -77,7 +78,15 @@ abstract contract GovernorVotesBondingCheckpoints is Initializable, Manager, Gov
     }
 
     function quorum(uint256 _timepoint) public view virtual override returns (uint256) {
-        return MathUtils.percOf(bondingCheckpoints().getTotalActiveStakeAt(_timepoint), QUORUM);
+        return MathUtils.percOf(bondingCheckpoints().getTotalActiveStakeAt(_timepoint), quorumNumerator(_timepoint));
+    }
+
+    /**
+     * @dev Returns the quorum denominator. We use MathUtils.PERC_DIVISOR so
+     * that our quorum numerator is already a valid _fracNum to be used above.
+     */
+    function quorumDenominator() public view virtual override returns (uint256) {
+        return MathUtils.PERC_DIVISOR;
     }
 
     // Vote counting module (GovernorCountingSimple)

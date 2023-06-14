@@ -21,6 +21,9 @@ contract TreasuryGovernor is
     GovernorSettingsUpgradeable,
     GovernorVotesBondingCheckpoints
 {
+    // 33.33% perc points compatible with MathUtils
+    uint256 public constant INITIAL_QUORUM = 333300;
+
     /**
      * @notice TreasuryGovernor constructor. Only invokes constructor of base Manager contract with provided Controller address
      * @dev This constructor will not initialize any state variables besides `controller`. The `initialize` function must be called
@@ -36,7 +39,7 @@ contract TreasuryGovernor is
             10, /* 10 rounds/days voting period */
             100e18 /* 100 LPT min proposal threshold */
         );
-        __GovernorVotesBondingCheckpoints_init();
+        __GovernorVotesBondingCheckpoints_init(INITIAL_QUORUM);
     }
 
     // The following functions are overrides required by Solidity.
