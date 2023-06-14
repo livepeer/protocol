@@ -10,13 +10,13 @@ import "../bonding/libraries/EarningsPoolLIP36.sol";
 import "../Manager.sol";
 import "../IController.sol";
 import "../rounds/IRoundsManager.sol";
-import "../bonding/BondingCheckpoints.sol";
+import "../bonding/IBondingCheckpoints.sol";
 
 abstract contract GovernorVotesBondingCheckpoints is Initializable, Manager, GovernorVotesQuorumFractionUpgradeable {
     using SafeMath for uint256;
 
     function __GovernorVotesBondingCheckpoints_init(uint256 quorumPerc) internal onlyInitializing {
-        // this token address should never be used given we override all relevant functions below.
+        // this token address should never be used given we override all the relevant functions below.
         __GovernorVotes_init(IVotesUpgradeable(address(0)));
         __GovernorVotesQuorumFraction_init(quorumPerc);
         __GovernorVotesBondingCheckpoints_init_unchained();
@@ -33,7 +33,6 @@ abstract contract GovernorVotesBondingCheckpoints is Initializable, Manager, Gov
     enum VoteType {
         Against,
         For,
-        // TODO: We currently don't have abstain votes in the existing protocol governance. Do we want them here?
         Abstain
     }
 
@@ -69,21 +68,27 @@ abstract contract GovernorVotesBondingCheckpoints is Initializable, Manager, Gov
         return bondingCheckpoints().CLOCK_MODE();
     }
 
+    /**
+     * Read the voting weight from the token's built in snapshot mechanism (see {Governor-_getVotes}).
+     */
     function _getVotes(
         address _account,
         uint256 _timepoint,
         bytes memory
     ) internal view override returns (uint256) {
-        return bondingCheckpoints().getStakeAt(_account, _timepoint);
+        return bondingCheckpoints().getPastVotes(_account, _timepoint);
     }
 
+    /**
+     * @dev Returns the quorum for a timepoint, in terms of number of votes: `supply * numerator / denominator`.
+     */
     function quorum(uint256 _timepoint) public view virtual override returns (uint256) {
-        return MathUtils.percOf(bondingCheckpoints().getTotalActiveStakeAt(_timepoint), quorumNumerator(_timepoint));
+        return MathUtils.percOf(bondingCheckpoints().getPastTotalSupply(_timepoint), quorumNumerator(_timepoint));
     }
 
     /**
      * @dev Returns the quorum denominator. We use MathUtils.PERC_DIVISOR so
-     * that our quorum numerator is already a valid _fracNum to be used above.
+     * that our quorum numerator has to be a valid MathUtils fraction.
      */
     function quorumDenominator() public view virtual override returns (uint256) {
         return MathUtils.PERC_DIVISOR;
@@ -194,7 +199,7 @@ abstract contract GovernorVotesBondingCheckpoints is Initializable, Manager, Gov
         uint256 weight
     ) internal returns (uint256) {
         uint256 timepoint = proposalSnapshot(proposalId);
-        (, , address delegatee) = bondingCheckpoints().getDelegatorSnapshot(account, timepoint);
+        address delegatee = bondingCheckpoints().getPastDelegate(account, timepoint);
 
         bool isTranscoder = account == delegatee;
         if (isTranscoder) {
@@ -228,7 +233,7 @@ abstract contract GovernorVotesBondingCheckpoints is Initializable, Manager, Gov
 
     // Helpers for relations with other protocol contracts
 
-    function bondingCheckpoints() internal view returns (BondingCheckpoints) {
-        return BondingCheckpoints(controller.getContract(keccak256("BondingCheckpoints")));
+    function bondingCheckpoints() internal view returns (IBondingCheckpoints) {
+        return IBondingCheckpoints(controller.getContract(keccak256("BondingCheckpoints")));
     }
 }

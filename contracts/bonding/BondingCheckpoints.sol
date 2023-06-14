@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts/governance/Governor.sol";
-import "@openzeppelin/contracts/governance/extensions/GovernorSettings.sol";
 import "@openzeppelin/contracts/utils/Arrays.sol";
+import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 import "./libraries/EarningsPool.sol";
 import "./libraries/EarningsPoolLIP36.sol";
@@ -13,7 +12,7 @@ import "../IController.sol";
 import "../rounds/IRoundsManager.sol";
 import "./BondingManager.sol";
 
-contract BondingCheckpoints is ManagerProxyTarget {
+contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
     uint256 public constant MAX_ROUNDS_WITHOUT_CHECKPOINT = 100;
 
     constructor(address _controller) Manager(_controller) {}
@@ -33,6 +32,8 @@ contract BondingCheckpoints is ManagerProxyTarget {
     uint256[] totalStakeCheckpointRounds;
     mapping(uint256 => uint256) private totalActiveStakeCheckpoints;
 
+    // IERC5805 interface implementation
+
     /**
      * @dev Clock is set to match the current round, which is the snapshotting
      *  method implemented here.
@@ -49,6 +50,70 @@ contract BondingCheckpoints is ManagerProxyTarget {
         // TODO: Figure out the right value for this
         return "mode=livepeer_round&from=default";
     }
+
+    /**
+     * @dev Returns the current amount of votes that `account` has.
+     */
+    function getVotes(address account) external view returns (uint256) {
+        return getStakeAt(account, clock());
+    }
+
+    /**
+     * @dev Returns the amount of votes that `account` had at a specific moment in the past. If the `clock()` is
+     * configured to use block numbers, this will return the value at the end of the corresponding block.
+     */
+    function getPastVotes(address account, uint256 timepoint) external view returns (uint256) {
+        return getStakeAt(account, timepoint);
+    }
+
+    /**
+     * @dev Returns the total supply of votes available at a specific round in the past.
+     *
+     * NOTE: This value is the sum of all active stake, which is not necessarily the sum of all delegated stake.
+     * Bonded stake that is not part of the top 100 active set is still allowed to vote, but is not counted here.
+     */
+    function getPastTotalSupply(uint256 timepoint) external view returns (uint256) {
+        return getTotalActiveStakeAt(timepoint);
+    }
+
+    /**
+     * @dev Returns the delegate that `account` has chosen. This means the transcoder address both in case of delegators
+     * and for the transcoder itself.
+     */
+    function delegates(address account) external view returns (address) {
+        return getPastDelegate(account, clock());
+    }
+
+    /**
+     * @dev Delegation through BondingCheckpoints is unsupported.
+     */
+    function delegate(address) external {
+        revert("use BondingManager to update delegation through bonding");
+    }
+
+    /**
+     * @dev Delegation through BondingCheckpoints is unsupported.
+     */
+    function delegateBySig(
+        address,
+        uint256,
+        uint256,
+        uint8,
+        bytes32,
+        bytes32
+    ) external {
+        revert("use BondingManager to update delegation through bonding");
+    }
+
+    /**
+     * @dev Returns the delegate that `account` had chosen in a specific round in the past.
+     */
+    function getPastDelegate(address _account, uint256 _timepoint) public view returns (address) {
+        (, , address delegatee) = getDelegatorSnapshot(_account, _timepoint);
+        return delegatee;
+    }
+
+    // BondingManager checkpointing hooks
 
     function checkpointDelegator(
         address _account,
@@ -78,7 +143,9 @@ contract BondingCheckpoints is ManagerProxyTarget {
         pushSorted(totalStakeCheckpointRounds, _round);
     }
 
-    function getTotalActiveStakeAt(uint256 _timepoint) public view virtual returns (uint256) {
+    // Internal logic
+
+    function getTotalActiveStakeAt(uint256 _timepoint) internal view virtual returns (uint256) {
         require(_timepoint <= clock(), "getTotalActiveStakeAt: future lookup");
 
         // most of the time we will have the checkpoint from exactly the round we want
@@ -93,7 +160,7 @@ contract BondingCheckpoints is ManagerProxyTarget {
         return totalActiveStakeCheckpoints[round];
     }
 
-    function getStakeAt(address _account, uint256 _timepoint) public view returns (uint256) {
+    function getStakeAt(address _account, uint256 _timepoint) internal view returns (uint256) {
         require(_timepoint <= clock(), "getStakeAt: future lookup");
 
         // ASSUMPTIONS
@@ -142,7 +209,7 @@ contract BondingCheckpoints is ManagerProxyTarget {
     }
 
     function getDelegatorSnapshot(address _account, uint256 _timepoint)
-        public
+        internal
         view
         returns (
             uint256 startRound,
