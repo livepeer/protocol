@@ -18,6 +18,8 @@ import "../treasury/TreasuryGovernor.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/governance/IGovernor.sol";
 
+import "hardhat/console.sol";
+
 /**
  * @title BondingManager
  * @notice Manages bonding, transcoder and rewards/fee accounting related operations of the Livepeer protocol
@@ -512,6 +514,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         address _currDelegateNewPosPrev,
         address _currDelegateNewPosNext
     ) public whenSystemNotPaused currentRoundInitialized {
+        console.log("bondForWithHint amount: %d owner: %s to: %s", _amount, _owner, _to);
+
         // the `autoClaimEarnings` modifier has been replaced with its internal function as a `Stack too deep` error work-around
         _autoClaimEarnings(_owner);
         Delegator storage del = delegators[_owner];
@@ -525,6 +529,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         uint256 currentBondedAmount = del.bondedAmount;
 
         if (delegatorStatus(_owner) == DelegatorStatus.Unbonded) {
+            console.log("delegator is unbonded");
             // New delegate
             // Set start round
             // Don't set start round if delegator is in pending state because the start round would not change
@@ -540,6 +545,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             // registered transcoder becomes useful (i.e. for transitive delegation), this restriction
             // could be removed
             require(!isRegisteredTranscoder(_owner), "registered transcoders can't delegate towards other addresses");
+
+            console.log("delegator is changing transcoder");
             // Changing delegate
             // Set start round
             del.startRound = currentRound.add(1);
@@ -565,12 +572,15 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             }
         }
 
+        console.log("finished updating transcoder pool and all");
         // cannot delegate to someone without having bonded stake
         require(delegationAmount > 0, "delegation amount must be greater than 0");
         // Update delegate
         del.delegateAddress = _to;
         // Update bonded amount
         del.bondedAmount = currentBondedAmount.add(_amount);
+
+        console.log("bonded, checkpointing %s", _owner);
 
         checkpointBonding(_owner, del, transcoders[_owner]);
 
@@ -593,6 +603,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         Delegator storage _delegator,
         Transcoder storage _transcoder
     ) internal {
+        console.log("checkpointing delegator %s", _owner);
+
         IBondingCheckpoints checkpoints = bondingCheckpoints();
         if (address(checkpoints) != address(0)) {
             // start round refers to the round where the checkpointed stake will be active. The actual `startRound` value

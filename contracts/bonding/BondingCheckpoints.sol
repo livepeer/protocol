@@ -12,6 +12,8 @@ import "../IController.sol";
 import "../rounds/IRoundsManager.sol";
 import "./BondingManager.sol";
 
+import "hardhat/console.sol";
+
 contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
     using SortedArrays for uint256[];
 
@@ -77,6 +79,14 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
         uint256 _lastClaimRound,
         uint256 _lastRewardRound
     ) public virtual onlyBondingManager {
+        console.log("Checkpointing delegator %s at round %d", _account, _startRound);
+        console.log(
+            "bondedAmount=%d delegatedAmount=%d lastRewardRound=%d",
+            _bondedAmount,
+            _delegatedAmount,
+            _lastRewardRound
+        );
+
         require(_startRound <= clock() + 1, "can only checkpoint delegator up to the next round");
         require(_lastClaimRound < _startRound, "claim round must always be lower than start round");
 
@@ -113,6 +123,8 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
      * @param _round The round for which the total active stake is valid. This is normally the current round.
      */
     function checkpointTotalActiveStake(uint256 _totalStake, uint256 _round) public virtual onlyBondingManager {
+        console.log("Checkpointing total active stake %d at round %d", _totalStake, _round);
+
         require(_round <= clock(), "can only checkpoint total active stake in the current round");
 
         totalActiveStakeCheckpoints[_round] = _totalStake;
@@ -127,6 +139,8 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
      * @param _round The round for which we want to get the total active stake.
      */
     function getTotalActiveStakeAt(uint256 _round) public view virtual returns (uint256) {
+        console.log("Getting total active stake at round %d", _round);
+
         require(_round <= clock(), "getTotalActiveStakeAt: future lookup");
 
         // most of the time we will have the checkpoint from exactly the round we want
@@ -166,7 +180,17 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
     }
 
     function getDelegateAddressAt(address _account, uint256 _round) public view virtual returns (address) {
+        console.log("Getting delegate address of %s at %d", _account, _round);
+
         BondingCheckpoint storage bond = getBondingCheckpointAt(_account, _round);
+
+        console.log(
+            "Got delegate %s claim %d reward %d",
+            bond.delegateAddress,
+            bond.lastClaimRound,
+            bond.lastRewardRound
+        );
+
         return bond.delegateAddress;
     }
 
@@ -183,6 +207,8 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
         view
         returns (BondingCheckpoint storage)
     {
+        console.log("Getting delegator info at round %d for %s", _round, _account);
+
         BondingCheckpointsByRound storage checkpoints = bondingCheckpoints[_account];
         uint256 startRound = checkpoints.startRounds.findLowerBound(_round);
         return checkpoints.data[startRound];
@@ -201,6 +227,13 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
         view
         returns (uint256)
     {
+        console.log(
+            "Getting delegator cumulative stake and fees at round %d for %s lastClaimRound %d",
+            _round,
+            bond.delegateAddress,
+            bond.lastClaimRound
+        );
+
         EarningsPool.Data memory startPool = getTranscoderEarningPoolForRound(
             bond.delegateAddress,
             bond.lastClaimRound
@@ -254,6 +287,13 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
         if (bond.lastRewardRound == 0) {
             bond = getBondingCheckpointAt(_transcoder, _round);
         }
+
+        console.log(
+            "Getting transcoder last rewards earning pool at round %d for %s lastRewardRound %d",
+            _round,
+            _transcoder,
+            bond.lastRewardRound
+        );
 
         rewardRound = bond.lastRewardRound;
         pool = getTranscoderEarningPoolForRound(_transcoder, rewardRound);
