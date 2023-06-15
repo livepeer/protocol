@@ -330,14 +330,7 @@ describe.only("BondingCheckpoints", () => {
         }
 
         const expectedTranscoderStake = (idx, endRound) => {
-            if (idx === 4) {
-                // TODO: Inactive transcoders are currently getting no active
-                // stake. This is because we grab the stake from the totalStake
-                // variable which is only initialized for active transcoders.
-                // We need to start using delegatedAmount instead to grab stake
-                // from inactive transcoders as well.
-                return 0
-            } else if (endRound < currentRound - 1) {
+            if (endRound < currentRound - 1) {
                 // transcoder self bond starts on currentRound-1
                 return 0
             } else if (endRound === currentRound - 1) {
