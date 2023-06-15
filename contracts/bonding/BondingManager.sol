@@ -877,8 +877,10 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         uint256 treasuryRewards = PreciseMathUtils.percOf(totalRewardTokens, treasuryRewardCutRate);
         uint256 transcoderRewards = totalRewardTokens.sub(treasuryRewards);
 
-        // TODO: emit an event about this as well?
-        minter().trustedTransferTokens(address(treasury()), treasuryRewards);
+        if (treasuryRewards > 0) {
+            // TODO: emit an event about this as well?
+            minter().trustedTransferTokens(address(treasury()), treasuryRewards);
+        }
 
         updateTranscoderWithRewards(msg.sender, transcoderRewards, currentRound, _newPosPrev, _newPosNext);
 
