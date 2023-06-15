@@ -10,5 +10,5 @@ interface IBondingCheckpoints is IERC5805Upgradeable {
     /**
      * @dev Returns the delegate that `account` had chosen in a specific moment in the past.
      */
-    function getPastDelegate(address _account, uint256 _timepoint) external view returns (address);
+    function delegatedAt(address _account, uint256 _timepoint) external view returns (address);
 }

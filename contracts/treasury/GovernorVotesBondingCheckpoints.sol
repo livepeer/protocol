@@ -202,7 +202,7 @@ abstract contract GovernorVotesBondingCheckpoints is Initializable, Manager, Gov
         uint256 weight
     ) internal returns (uint256) {
         uint256 timepoint = proposalSnapshot(proposalId);
-        address delegatee = bondingCheckpoints().getPastDelegate(account, timepoint);
+        address delegatee = bondingCheckpoints().delegatedAt(account, timepoint);
 
         bool isTranscoder = account == delegatee;
         if (isTranscoder) {

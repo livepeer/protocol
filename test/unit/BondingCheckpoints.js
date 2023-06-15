@@ -125,6 +125,10 @@ describe.only("BondingCheckpoints", () => {
             // Initialize the first round ever
             await setRound(0)
 
+            for (const account of [transcoder, delegator]) {
+                await bondingManager.initDelegatorCheckpoint(account.address)
+            }
+
             // Round R-2
             await setRound(currentRound - 2)
 
@@ -258,6 +262,10 @@ describe.only("BondingCheckpoints", () => {
 
             await bondingManager.setNumActiveTranscoders(transcoders.length - 1)
 
+            for (const account of [...transcoders, ...delegators]) {
+                await bondingManager.initDelegatorCheckpoint(account.address)
+            }
+
             // Round R-2
             await setRound(currentRound - 2)
 
@@ -339,7 +347,8 @@ describe.only("BondingCheckpoints", () => {
             }
 
             const delegation = 500 - 100 * idx
-            const rewardCalls = Math.max(endRound - currentRound, 0)
+            const rewardCalls =
+                idx === 4 ? 0 : Math.max(endRound - currentRound, 0)
             return 1000 + delegation + 1000 * rewardCalls
         }
 
