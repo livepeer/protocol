@@ -17,19 +17,20 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
 
     constructor(address _controller) Manager(_controller) {}
 
-    struct DelegatorInfo {
+    struct BondingCheckpoint {
         uint256 bondedAmount; // The amount of bonded tokens to another delegate as per the lastClaimRound
         address delegateAddress; // The address delegated to
         uint256 delegatedAmount; // The amount of tokens delegated to the account (only set for transcoders)
         uint256 lastClaimRound; // The last round during which the delegator claimed its earnings. Pegs the value of bondedAmount for rewards calculation
+        uint256 lastRewardRound; // The last round during which the transcoder called rewards. This is useful to find the reward pool when calculating historical rewards. Notice that this actually comes from the Transcoder struct in bonding manager, not Delegator.
     }
 
-    struct DelegatorCheckpoints {
+    struct BondingCheckpointsByRound {
         uint256[] startRounds;
-        mapping(uint256 => DelegatorInfo) data;
+        mapping(uint256 => BondingCheckpoint) data;
     }
 
-    mapping(address => DelegatorCheckpoints) private delegatorCheckpoints;
+    mapping(address => BondingCheckpointsByRound) private bondingCheckpoints;
 
     uint256[] totalStakeCheckpointRounds;
     mapping(uint256 => uint256) private totalActiveStakeCheckpoints;
@@ -91,8 +92,8 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
      * default IERC5805 interface for proper vote counting logic in the case of vote overrides.
      */
     function delegatedAt(address _account, uint256 _timepoint) public view returns (address) {
-        DelegatorInfo storage del = getDelegatorInfoAt(_account, _timepoint);
-        return del.delegateAddress;
+        BondingCheckpoint storage bond = getBondingCheckpointAt(_account, _timepoint);
+        return bond.delegateAddress;
     }
 
     /**
@@ -123,18 +124,20 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
         uint256 _bondedAmount,
         address _delegateAddress,
         uint256 _delegatedAmount,
-        uint256 _lastClaimRound
+        uint256 _lastClaimRound,
+        uint256 _lastRewardRound
     ) public virtual onlyBondingManager {
         require(_startRound <= clock() + 1, "can only checkpoint delegator up to the next round");
         require(_lastClaimRound < _startRound, "claim round must always be lower than start round");
 
-        DelegatorCheckpoints storage checkpoints = delegatorCheckpoints[_account];
+        BondingCheckpointsByRound storage checkpoints = bondingCheckpoints[_account];
 
-        checkpoints.data[_startRound] = DelegatorInfo(
+        checkpoints.data[_startRound] = BondingCheckpoint(
             _bondedAmount,
             _delegateAddress,
             _delegatedAmount,
-            _lastClaimRound
+            _lastClaimRound,
+            _lastRewardRound
         );
 
         // now store the startRound itself in the startRounds array to allow us
@@ -143,7 +146,7 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
     }
 
     function hasDelegatorCheckpoint(address _account) external virtual returns (bool) {
-        return delegatorCheckpoints[_account].startRounds.length > 0;
+        return bondingCheckpoints[_account].startRounds.length > 0;
     }
 
     function checkpointTotalActiveStake(uint256 _totalStake, uint256 _round) public virtual onlyBondingManager {
@@ -165,9 +168,7 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
             return activeStake;
         }
 
-        (uint256 round, bool found) = lowerLookup(totalStakeCheckpointRounds, _timepoint);
-        require(found, "getTotalActiveStakeAt: no recorded active stake");
-
+        uint256 round = ensureLowerLookup(totalStakeCheckpointRounds, _timepoint);
         return totalActiveStakeCheckpoints[round];
     }
 
@@ -178,113 +179,95 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
         // - _timepoint is a round number
         // - _timepoint is the start round for the proposal's voting period
 
-        DelegatorInfo storage del = getDelegatorInfoAt(_account, _timepoint);
-        bool isTranscoder = del.delegateAddress == _account;
+        BondingCheckpoint storage bond = getBondingCheckpointAt(_account, _timepoint);
+        bool isTranscoder = bond.delegateAddress == _account;
 
-        if (del.bondedAmount == 0) {
+        if (bond.bondedAmount == 0) {
             return 0;
         } else if (isTranscoder) {
             // address is a registered transcoder so we use its delegated amount
             // (which self and delegated stake) at the time of the proposal
-            return del.delegatedAmount;
+            return bond.delegatedAmount;
         } else {
             // address is not a registered transcoder so we use its bonded
             // amount at the time of the proposal's voting period start plus
             // accrued rewards since that round.
-            return delegatorCumulativeStakeAndFeesAt(del, _timepoint);
+            return delegatorCumulativeStakeAndFeesAt(bond, _timepoint);
         }
     }
 
-    function getDelegatorInfoAt(address _account, uint256 _timepoint) internal view returns (DelegatorInfo storage) {
-        DelegatorCheckpoints storage checkpoints = delegatorCheckpoints[_account];
-
-        (uint256 startRound, bool found) = lowerLookup(checkpoints.startRounds, _timepoint);
-        require(found, "missing delegator checkpoint");
-
+    function getBondingCheckpointAt(address _account, uint256 _timepoint)
+        internal
+        view
+        returns (BondingCheckpoint storage)
+    {
+        BondingCheckpointsByRound storage checkpoints = bondingCheckpoints[_account];
+        uint256 startRound = ensureLowerLookup(checkpoints.startRounds, _timepoint);
         return checkpoints.data[startRound];
     }
 
-    function delegatorCumulativeStakeAndFeesAt(DelegatorInfo storage del, uint256 _timepoint)
+    function delegatorCumulativeStakeAndFeesAt(BondingCheckpoint storage bond, uint256 _timepoint)
         internal
         view
         returns (uint256)
     {
-        // reward calculation uses the earning pool from the previous round.
-        // this is because cumulative reward factors are calcualted for the
-        // end of the round, valid only for the next round forward.
-        uint256 rewardsStartRound = del.lastClaimRound;
-        uint256 rewardsEndRound = _timepoint - 1;
-
-        EarningsPool.Data memory startPool = getTranscoderEarningPool(del.delegateAddress, rewardsStartRound);
-        require(startPool.cumulativeRewardFactor > 0, "missing delegation start pool");
-
-        EarningsPool.Data memory endPool = getMostRecentTranscoderEarningPool(
-            del.delegateAddress,
-            rewardsEndRound,
-            false
+        EarningsPool.Data memory startPool = getTranscoderEarningPoolForRound(
+            bond.delegateAddress,
+            bond.lastClaimRound
         );
+        require(startPool.cumulativeRewardFactor > 0, "missing earning pool from delegator's last claim round");
+
+        EarningsPool.Data memory endPool = getTranscoderLastRewardsEarningPool(bond.delegateAddress, _timepoint);
         if (endPool.cumulativeRewardFactor == 0) {
             // if we can't find an end pool where the transcoder called
             // `rewards()` return the originally bonded amount as the stake
             // at the end round (disconsider rewards since the start pool).
-            return del.bondedAmount;
+            return bond.bondedAmount;
         }
 
         (uint256 stakeWithRewards, ) = bondingManager().delegatorCumulativeStakeAndFees(
             startPool,
             endPool,
-            del.bondedAmount,
+            bond.bondedAmount,
             0
         );
         return stakeWithRewards;
     }
 
-    function getMostRecentTranscoderEarningPool(
-        address _transcoder,
-        uint256 _timepoint,
-        bool totalStakeOnly
-    ) internal view returns (EarningsPool.Data memory pool) {
-        // lastActiveStakeUpdateRound is the last round that the transcoder's total active stake (self-delegated + delegated stake) was updated.
-        // Any stake changes for a transcoder update the transcoder's total active stake for the *next* round.
-        (uint256 lastRewardRound, , , uint256 lastActiveStakeUpdateRound, , , , , , ) = bondingManager().getTranscoder(
-            _transcoder
+    /**
+     * @notice Returns the last initialized earning pool for a transcoder at a given round.
+     * @dev Transcoders are just delegators with a self-delegation, so we find their last checkpoint before or at the
+     * provided _timepoint and use its lastRewardRound value. That value is guaranteed to be the latest one with a valid
+     * earning pool. The only case where this returns a zeroed pool is if the transcoder has never called reward().
+     * @param _transcoder Address of the transcoder to look for
+     * @param _timepoint Past round at which we want the valid earning pool from
+     * @return pool EarningsPool.Data struct with the last initialized earning pool.
+     */
+    function getTranscoderLastRewardsEarningPool(address _transcoder, uint256 _timepoint)
+        internal
+        view
+        returns (EarningsPool.Data memory pool)
+    {
+        // Most of the time we will already have the checkpoint from exactly the round we want
+        BondingCheckpoint storage bond = bondingCheckpoints[_transcoder].data[_timepoint];
+
+        if (bond.lastRewardRound == 0) {
+            bond = getBondingCheckpointAt(_transcoder, _timepoint);
+        }
+
+        pool = getTranscoderEarningPoolForRound(_transcoder, bond.lastRewardRound);
+
+        // only allow reward factor to be zero if transcoder has never called reward, which is handled automatically by
+        // the bonding manager's delegatorCumulativeStakeAndFees reward calculation logic.
+        require(
+            bond.lastRewardRound == 0 || pool.cumulativeRewardFactor > 0,
+            "missing transcoder earning pool on reported last reward round"
         );
 
-        // If lastActiveStakeUpdateRound <= _timepoint, then the transcoder's total active stake at _timepoint should be the transcoder's
-        // total active stake at lastActiveStakeUpdateRound because there were no additional stake changes after that round.
-        if (lastActiveStakeUpdateRound <= _timepoint) {
-            _timepoint = lastActiveStakeUpdateRound;
-        } else if (lastRewardRound <= _timepoint) {
-            // Similarly, we can use lastRewardRound as the timepoint for the query if lastRewardRound <= _timepoint. Notice
-            // that we can only do so when the above condition failed.
-            _timepoint = lastRewardRound;
-        }
-
-        // If lastActiveStakeUpdateRound > _timepoint, then the transcoder total active stake at _timepoint should be the transcoder's
-        // total active stake at the most recent round before _timepoint that the transcoder's total active stake was checkpointed.
-        // In order to prevent an unbounded loop, we limit the number of rounds that we'll search for a checkpointed total active stake to
-        // MAX_ROUNDS_WITHOUT_CHECKPOINT.
-        uint256 end = 0;
-        if (_timepoint > MAX_ROUNDS_WITHOUT_CHECKPOINT) {
-            end = _timepoint - MAX_ROUNDS_WITHOUT_CHECKPOINT;
-        }
-
-        for (uint256 i = _timepoint; ; i--) {
-            pool = getTranscoderEarningPool(_transcoder, i);
-
-            bool hasTotalStake = pool.totalStake > 0;
-            bool hasRewards = hasTotalStake && pool.cumulativeRewardFactor > 0;
-            if ((totalStakeOnly && hasTotalStake) || hasRewards) {
-                return pool;
-            }
-
-            if (i <= end) {
-                break;
-            }
-        }
+        return pool;
     }
 
-    function getTranscoderEarningPool(address _transcoder, uint256 _timepoint)
+    function getTranscoderEarningPoolForRound(address _transcoder, uint256 _timepoint)
         internal
         view
         returns (EarningsPool.Data memory pool)
@@ -300,6 +283,12 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
 
     // array checkpointing logic
     // TODO: move to a library?
+
+    function ensureLowerLookup(uint256[] storage array, uint256 val) internal view returns (uint256) {
+        (uint256 lower, bool found) = lowerLookup(array, val);
+        require(found, "ensureLowerLookup: no lower or equal value found in array");
+        return lower;
+    }
 
     function lowerLookup(uint256[] storage array, uint256 val) internal view returns (uint256, bool) {
         uint256 len = array.length;
