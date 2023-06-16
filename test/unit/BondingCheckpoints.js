@@ -126,7 +126,7 @@ describe.only("BondingCheckpoints", () => {
             await setRound(0)
 
             for (const account of [transcoder, delegator]) {
-                await bondingManager.initDelegatorCheckpoint(account.address)
+                await bondingManager.initBondingCheckpoint(account.address)
             }
 
             // Round R-2
@@ -263,7 +263,7 @@ describe.only("BondingCheckpoints", () => {
             await bondingManager.setNumActiveTranscoders(transcoders.length - 1)
 
             for (const account of [...transcoders, ...delegators]) {
-                await bondingManager.initDelegatorCheckpoint(account.address)
+                await bondingManager.initBondingCheckpoint(account.address)
             }
 
             // Round R-2

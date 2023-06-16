@@ -12,7 +12,7 @@ import "../token/ILivepeerToken.sol";
 import "../token/IMinter.sol";
 import "../rounds/IRoundsManager.sol";
 import "../snapshots/IMerkleSnapshot.sol";
-import "./BondingCheckpoints.sol";
+import "./IBondingCheckpoints.sol";
 import "../treasury/TreasuryGovernor.sol";
 
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
@@ -385,7 +385,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             // Decrease bonded stake
             del.bondedAmount = del.bondedAmount.sub(penalty);
 
-            checkpointDelegator(_transcoder, del, transcoders[_transcoder]);
+            checkpointBonding(_transcoder, del, transcoders[_transcoder]);
 
             // If still bonded decrease delegate's delegated amount
             if (delegatorStatus(_transcoder) == DelegatorStatus.Bonded) {
@@ -434,12 +434,9 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     function setCurrentRoundTotalActiveStake() external onlyRoundsManager {
         currentRoundTotalActiveStake = nextRoundTotalActiveStake;
 
-        BondingCheckpoints checkpoints = bondingCheckpoints();
+        IBondingCheckpoints checkpoints = bondingCheckpoints();
         if (address(checkpoints) != address(0)) {
-            bondingCheckpoints().checkpointTotalActiveStake(
-                currentRoundTotalActiveStake,
-                roundsManager().currentRound()
-            );
+            checkpoints.checkpointTotalActiveStake(currentRoundTotalActiveStake, roundsManager().currentRound());
         }
     }
 
@@ -575,7 +572,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // Update bonded amount
         del.bondedAmount = currentBondedAmount.add(_amount);
 
-        checkpointDelegator(_owner, del, transcoders[_owner]);
+        checkpointBonding(_owner, del, transcoders[_owner]);
 
         increaseTotalStake(_to, delegationAmount, _currDelegateNewPosPrev, _currDelegateNewPosNext);
 
@@ -591,18 +588,18 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * @notice Checkpoints a delegator state after changes, to be used for historical voting power calculations in
      * on-chain governor logic.
      */
-    function checkpointDelegator(
+    function checkpointBonding(
         address _owner,
         Delegator storage _delegator,
         Transcoder storage _transcoder
     ) internal {
-        BondingCheckpoints checkpoints = bondingCheckpoints();
+        IBondingCheckpoints checkpoints = bondingCheckpoints();
         if (address(checkpoints) != address(0)) {
             // start round refer to the round where the checkpointed stake will be active. The actual `startRound` value
             // in the delegators doesn't get updated on bond or claim earnings though, so we use currentRound() + 1
             // which is the only guaranteed round where the currently stored stake will be active.
             uint256 startRound = roundsManager().currentRound() + 1;
-            checkpoints.checkpointDelegator(
+            checkpoints.checkpointBonding(
                 _owner,
                 startRound,
                 _delegator.bondedAmount,
@@ -615,20 +612,16 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     }
 
     /**
-     * @notice Initializes a delegator's checkpoint if it doesn't yet exist. This is a migration strategy so we can
-     * snapshot all delegators' stake immediately after deploying the new BondingCheckpoints contract.
+     * @notice Initializes the bonding checkpoint for a given account. This can only be called for accounts that have no
+     * checkpoints yet.
+     * @dev This is a migration strategy so we can snapshot all accounts' stake immediately after deploying the new
+     * BondingCheckpoints contract.
+     * @param _account The account to initialize the bonding checkpoint for
      */
-    function initDelegatorCheckpoint(address _account) external {
-        require(!bondingCheckpoints().hasDelegatorCheckpoint(_account), "delegator already checkpointed");
+    function initBondingCheckpoint(address _account) external {
+        require(!bondingCheckpoints().hasCheckpoint(_account), "account already checkpointed");
 
-        Transcoder storage t = transcoders[_account];
-        if (isActiveTranscoder(_account)) {
-            uint256 lastRewardRound = t.lastRewardRound;
-            // need transcoder to have called reward so the `delegatedAmount` is up to date for the next round
-            require(lastRewardRound == roundsManager().currentRound(), "transcoder must have already called reward");
-        }
-
-        checkpointDelegator(_account, delegators[_account], t);
+        checkpointBonding(_account, delegators[_account], transcoders[_account]);
     }
 
     /**
@@ -784,7 +777,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         }
 
         // no problem that startRound may have been cleared above. lastClaimRound will be used for the snapshot instead
-        checkpointDelegator(msg.sender, del, transcoders[msg.sender]);
+        checkpointBonding(msg.sender, del, transcoders[msg.sender]);
 
         // If msg.sender was resigned this statement will only decrease delegators[currentDelegate].delegatedAmount
         decreaseTotalStake(currentDelegate, _amount, _newPosPrev, _newPosNext);
@@ -893,7 +886,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // Set last round that transcoder called reward
         t.lastRewardRound = currentRound;
 
-        checkpointDelegator(msg.sender, delegators[msg.sender], t);
+        checkpointBonding(msg.sender, delegators[msg.sender], t);
 
         emit Reward(msg.sender, transcoderRewards);
     }
@@ -1216,7 +1209,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * @notice Return a delegator's cumulative stake and fees using the LIP-36 earnings claiming algorithm
      * @param _transcoder Storage pointer to a transcoder struct for a delegator's delegate
      * @param _startRound The round for the start cumulative factors
-     * @param _endRound The round for the end cumulative factors
+     * @param _endRound The round for the end cumulative factors. Normally this is the current round as historical
+     * lookup is only supported through BondingCheckpoints
      * @param _stake The delegator's initial stake before including earned rewards
      * @param _fees The delegator's initial fees before including earned fees
      * @return cStake , cFees where cStake is the delegator's cumulative stake including earned rewards and cFees is the delegator's cumulative fees including earned fees
@@ -1236,32 +1230,42 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         return delegatorCumulativeStakeAndFees(startPool, endPool, _stake, _fees);
     }
 
-    // TODO: Document, think of a better public interface
+    /**
+     * @notice Calculates a delegator's cumulative stake and fees using the LIP-36 earnings claiming algorithm. This is
+     * a pure function to be used from anywhere. Created for historical stake calculations from BondingCheckpoints.
+     * @param _startPool The earning pool from the start round for the start cumulative factors. Normally this is the
+     * earning pool from the {Delegator-lastclaimRound}+1 round, as the round where `bondedAmount` was measured.
+     * @param _endPool The earning pool from the end round for the end cumulative factors
+     * @param _stake The delegator initial stake before including earned rewards. Normally the {Delegator-bondedAmount}
+     * @param _fees The delegator's initial fees before including earned fees
+     * @return cStake , cFees where cStake is the delegator's cumulative stake including earned rewards and cFees is the
+     * delegator's cumulative fees including earned fees
+     */
     function delegatorCumulativeStakeAndFees(
-        EarningsPool.Data memory startPool,
-        EarningsPool.Data memory endPool,
+        EarningsPool.Data memory _startPool,
+        EarningsPool.Data memory _endPool,
         uint256 _stake,
         uint256 _fees
     ) public pure returns (uint256 cStake, uint256 cFees) {
         // If the start cumulativeRewardFactor is 0 set the default value to PreciseMathUtils.percPoints(1, 1)
-        if (startPool.cumulativeRewardFactor == 0) {
-            startPool.cumulativeRewardFactor = PreciseMathUtils.percPoints(1, 1);
+        if (_startPool.cumulativeRewardFactor == 0) {
+            _startPool.cumulativeRewardFactor = PreciseMathUtils.percPoints(1, 1);
         }
 
         // If the end cumulativeRewardFactor is 0 set the default value to PreciseMathUtils.percPoints(1, 1)
-        if (endPool.cumulativeRewardFactor == 0) {
-            endPool.cumulativeRewardFactor = PreciseMathUtils.percPoints(1, 1);
+        if (_endPool.cumulativeRewardFactor == 0) {
+            _endPool.cumulativeRewardFactor = PreciseMathUtils.percPoints(1, 1);
         }
 
         cFees = _fees.add(
             PreciseMathUtils.percOf(
                 _stake,
-                endPool.cumulativeFeeFactor.sub(startPool.cumulativeFeeFactor),
-                startPool.cumulativeRewardFactor
+                _endPool.cumulativeFeeFactor.sub(_startPool.cumulativeFeeFactor),
+                _startPool.cumulativeRewardFactor
             )
         );
 
-        cStake = PreciseMathUtils.percOf(_stake, endPool.cumulativeRewardFactor, startPool.cumulativeRewardFactor);
+        cStake = PreciseMathUtils.percOf(_stake, _endPool.cumulativeRewardFactor, _startPool.cumulativeRewardFactor);
 
         return (cStake, cFees);
     }
@@ -1348,7 +1352,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // Increase delegate's delegated amount
         del.delegatedAmount = newStake;
 
-        checkpointDelegator(_delegate, del, t);
+        checkpointBonding(_delegate, del, t);
     }
 
     /**
@@ -1391,7 +1395,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // Decrease old delegate's delegated amount
         del.delegatedAmount = newStake;
 
-        checkpointDelegator(_delegate, del, t);
+        checkpointBonding(_delegate, del, t);
     }
 
     /**
@@ -1559,7 +1563,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         del.bondedAmount = currentBondedAmount;
         del.fees = currentFees;
 
-        checkpointDelegator(_delegator, del, transcoders[_delegator]);
+        checkpointBonding(_delegator, del, transcoders[_delegator]);
     }
 
     /**
@@ -1585,7 +1589,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // Increase delegator's bonded amount
         del.bondedAmount = del.bondedAmount.add(amount);
 
-        checkpointDelegator(_delegator, del, transcoders[_delegator]);
+        checkpointBonding(_delegator, del, transcoders[_delegator]);
 
         // Delete lock
         delete del.unbondingLocks[_unbondingLockId];
@@ -1631,8 +1635,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         return TreasuryGovernor(payable(controller.getContract(keccak256("TreasuryGovernor"))));
     }
 
-    function bondingCheckpoints() internal view returns (BondingCheckpoints) {
-        return BondingCheckpoints(controller.getContract(keccak256("BondingCheckpoints")));
+    function bondingCheckpoints() internal view returns (IBondingCheckpoints) {
+        return IBondingCheckpoints(controller.getContract(keccak256("BondingCheckpoints")));
     }
 
     function _onlyTicketBroker() internal view {
