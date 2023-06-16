@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/utils/Arrays.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 import "./libraries/EarningsPool.sol";
-import "./libraries/EarningsPoolLIP36.sol";
+import "./libraries/SortedArrays.sol";
 
 import "../ManagerProxyTarget.sol";
 import "../IController.sol";
@@ -13,7 +13,7 @@ import "../rounds/IRoundsManager.sol";
 import "./BondingManager.sol";
 
 contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
-    uint256 public constant MAX_ROUNDS_WITHOUT_CHECKPOINT = 100;
+    using SortedArrays for uint256[];
 
     constructor(address _controller) Manager(_controller) {}
 
@@ -157,7 +157,7 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
 
         // now store the startRound itself in the startRounds array to allow us
         // to find it and lookup in the above mapping
-        pushSorted(checkpoints.startRounds, _startRound);
+        checkpoints.startRounds.pushSorted(_startRound);
     }
 
     /**
@@ -182,7 +182,7 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
 
         totalActiveStakeCheckpoints[_round] = _totalStake;
 
-        pushSorted(totalStakeCheckpointRounds, _round);
+        totalStakeCheckpointRounds.pushSorted(_round);
     }
 
     // Internal logic
@@ -200,7 +200,7 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
             return activeStake;
         }
 
-        uint256 round = ensureLowerLookup(totalStakeCheckpointRounds, _round);
+        uint256 round = totalStakeCheckpointRounds.findLowerBound(_round);
         return totalActiveStakeCheckpoints[round];
     }
 
@@ -244,7 +244,7 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
         returns (BondingCheckpoint storage)
     {
         BondingCheckpointsByRound storage checkpoints = bondingCheckpoints[_account];
-        uint256 startRound = ensureLowerLookup(checkpoints.startRounds, _round);
+        uint256 startRound = checkpoints.startRounds.findLowerBound(_round);
         return checkpoints.data[startRound];
     }
 
@@ -334,62 +334,6 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
             pool.cumulativeRewardFactor,
             pool.cumulativeFeeFactor
         ) = bondingManager().getTranscoderEarningsPoolForRound(_transcoder, _round);
-    }
-
-    // array checkpointing logic
-    // TODO: move to a library?
-
-    function ensureLowerLookup(uint256[] storage array, uint256 val) internal view returns (uint256) {
-        (uint256 lower, bool found) = lowerLookup(array, val);
-        require(found, "ensureLowerLookup: no lower or equal value found in array");
-        return lower;
-    }
-
-    function lowerLookup(uint256[] storage array, uint256 val) internal view returns (uint256, bool) {
-        uint256 len = array.length;
-        if (len == 0) {
-            return (0, false);
-        }
-
-        uint256 lastElm = array[len - 1];
-        if (lastElm <= val) {
-            return (lastElm, true);
-        }
-
-        uint256 upperIdx = Arrays.findUpperBound(array, val);
-
-        // we already checked the last element above so the upper must be inside the array
-        require(upperIdx < len, "lowerLookup: invalid index returned by findUpperBound");
-
-        uint256 upperElm = array[upperIdx];
-        // the value we were searching is in the array
-        if (upperElm == val) {
-            return (val, true);
-        }
-
-        // the first value in the array is already higher than the value we wanted
-        if (upperIdx == 0) {
-            return (0, false);
-        }
-
-        // the upperElm is the first element higher than the value we want, so return the previous element
-        return (array[upperIdx - 1], true);
-    }
-
-    function pushSorted(uint256[] storage array, uint256 val) internal {
-        if (array.length == 0) {
-            array.push(val);
-        } else {
-            uint256 last = array[array.length - 1];
-
-            // values must be pushed in order
-            require(val >= last, "pushSorted: decreasing values");
-
-            // don't push duplicate values
-            if (val != last) {
-                array.push(val);
-            }
-        }
     }
 
     // Manager/Controller helpers
