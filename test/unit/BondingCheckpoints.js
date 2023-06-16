@@ -1,20 +1,11 @@
 import Fixture from "./helpers/Fixture"
-import {
-    // contractId,
-    functionSig
-    // functionEncodedABI
-} from "../../utils/helpers"
-// import {constants} from "../../utils/constants"
-// import math from "../helpers/math"
+import {functionSig} from "../../utils/helpers"
 import {assert} from "chai"
 import {ethers, web3} from "hardhat"
-// const BigNumber = ethers.BigNumber
 import chai from "chai"
 import {solidity} from "ethereum-waffle"
 
 chai.use(solidity)
-// const {expect} = chai
-// const {DelegatorStatus, TranscoderStatus} = constants
 
 // TODO: to be moved in a separate util/config (i.e: chai-setup)
 chai.use(function(chai) {
@@ -44,8 +35,6 @@ describe.only("BondingCheckpoints", () => {
 
     const PERC_DIVISOR = 1000000
     const PERC_MULTIPLIER = PERC_DIVISOR / 100
-
-    // const ZERO_ADDRESS = ethers.constants.AddressZero
 
     let signers
     before(async () => {
@@ -443,4 +432,18 @@ describe.only("BondingCheckpoints", () => {
             })
         })
     })
+
+    // TODO: more tests, especially some corner cases:
+    // - transcoders that have stopped calling reward()
+    //   - since a delegator made a bond
+    //   - for a long long time (>100 rounds, prev implementation)
+    // - delegator with no stake?
+    // - transcoder which is the only delegator to itself?
+    // - what if some rounds weren't initialized?
+    // - migration tests:
+    //   - everything still works if we don't call `initBondingCheckpoint`
+    //   - when we do call it, checkpoints should work starting on the next round
+    //   - make sure it still works even if we init before a transcoder has called reward()
+    //   - if we don't call it, it's a known issue that we will only have state starting on the next update made
+    // - sorted array tests (separate file)
 })
