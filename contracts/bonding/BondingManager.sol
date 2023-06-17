@@ -595,7 +595,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     ) internal {
         IBondingCheckpoints checkpoints = bondingCheckpoints();
         if (address(checkpoints) != address(0)) {
-            // start round refer to the round where the checkpointed stake will be active. The actual `startRound` value
+            // start round refers to the round where the checkpointed stake will be active. The actual `startRound` value
             // in the delegators doesn't get updated on bond or claim earnings though, so we use currentRound() + 1
             // which is the only guaranteed round where the currently stored stake will be active.
             uint256 startRound = roundsManager().currentRound() + 1;
@@ -776,7 +776,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             }
         }
 
-        // no problem that startRound may have been cleared above. lastClaimRound will be used for the snapshot instead
+        // No problem that startRound may have been cleared above, checkpoints are always made for currentRound()+1
         checkpointBonding(msg.sender, del, transcoders[msg.sender]);
 
         // If msg.sender was resigned this statement will only decrease delegators[currentDelegate].delegatedAmount
@@ -1231,8 +1231,9 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     }
 
     /**
-     * @notice Calculates a delegator's cumulative stake and fees using the LIP-36 earnings claiming algorithm. This is
-     * a pure function to be used from anywhere. Created for historical stake calculations from BondingCheckpoints.
+     * @notice Calculates a delegator's cumulative stake and fees using the LIP-36 earnings claiming algorithm.
+     * @dev This is a mostly a memroy-only function to be called from other contracts. Created for historical stake
+     * calculations with BondingCheckpoints.
      * @param _startPool The earning pool from the start round for the start cumulative factors. Normally this is the
      * earning pool from the {Delegator-lastclaimRound}+1 round, as the round where `bondedAmount` was measured.
      * @param _endPool The earning pool from the end round for the end cumulative factors

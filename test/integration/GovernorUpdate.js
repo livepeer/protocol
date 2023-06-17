@@ -27,7 +27,9 @@ describe("Governor update", () => {
             fixture.BondingManager.address
         )
         minter = await ethers.getContractAt("Minter", fixture.Minter.address)
-        const governorFac = await ethers.getContractFactory("Governor")
+        const governorFac = await ethers.getContractFactory(
+            "contracts/governance/Governor.sol:Governor"
+        )
         governor = await governorFac.deploy()
 
         await controller.unpause()
