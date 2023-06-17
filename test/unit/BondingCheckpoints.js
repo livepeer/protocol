@@ -153,63 +153,63 @@ describe("BondingCheckpoints", () => {
             await setRound(currentRound + 2)
         })
 
-        describe("getPastVotes", () => {
+        describe("getAccountActiveStakeAt", () => {
             it("should return partial rewards for any rounds since bonding", async () => {
                 const pendingRewards0 = 250
                 const pendingRewards1 = Math.floor(
                     (500 * ((1250 * PERC_DIVISOR) / 3000)) / PERC_DIVISOR
                 )
 
-                const votesAt = round =>
+                const stakeAt = round =>
                     bondingCheckpoints
-                        .getPastVotes(delegator.address, round)
+                        .getAccountActiveStakeAt(delegator.address, round)
                         .then(n => n.toString())
 
-                assert.equal(await votesAt(1), 0)
-                assert.equal(await votesAt(currentRound - 10), 0)
-                assert.equal(await votesAt(currentRound - 1), 0)
-                assert.equal(await votesAt(currentRound), 1000)
+                assert.equal(await stakeAt(1), 0)
+                assert.equal(await stakeAt(currentRound - 10), 0)
+                assert.equal(await stakeAt(currentRound - 1), 0)
+                assert.equal(await stakeAt(currentRound), 1000)
                 assert.equal(
-                    await votesAt(currentRound + 1),
+                    await stakeAt(currentRound + 1),
                     1000 + pendingRewards0
                 )
                 assert.equal(
-                    await votesAt(currentRound + 2),
+                    await stakeAt(currentRound + 2),
                     1000 + pendingRewards0 + pendingRewards1
                 )
             })
 
             it("should return partial rewards for all transcoder stake", async () => {
-                const votesAt = round =>
+                const stakeAt = round =>
                     bondingCheckpoints
-                        .getPastVotes(transcoder.address, round)
+                        .getAccountActiveStakeAt(transcoder.address, round)
                         .then(n => n.toString())
 
-                assert.equal(await votesAt(1), 0)
-                assert.equal(await votesAt(currentRound - 10), 0)
+                assert.equal(await stakeAt(1), 0)
+                assert.equal(await stakeAt(currentRound - 10), 0)
                 // transcoder bonding is only valid on the following round
-                assert.equal(await votesAt(currentRound - 2), 0)
-                assert.equal(await votesAt(currentRound - 1), 1000)
-                assert.equal(await votesAt(currentRound), 2000)
-                assert.equal(await votesAt(currentRound + 1), 3000)
-                assert.equal(await votesAt(currentRound + 2), 4000)
+                assert.equal(await stakeAt(currentRound - 2), 0)
+                assert.equal(await stakeAt(currentRound - 1), 1000)
+                assert.equal(await stakeAt(currentRound), 2000)
+                assert.equal(await stakeAt(currentRound + 1), 3000)
+                assert.equal(await stakeAt(currentRound + 2), 4000)
             })
         })
 
-        describe("getPastTotalSupply", () => {
-            const totalSupplyAt = round =>
+        describe("getTotalActiveStakeAt", () => {
+            const totalStakeAt = round =>
                 bondingCheckpoints
-                    .getPastTotalSupply(round)
+                    .getTotalActiveStakeAt(round)
                     .then(n => n.toString())
 
             it("should return total stake at any point in time", async () => {
-                assert.equal(await totalSupplyAt(1), 0)
-                assert.equal(await totalSupplyAt(currentRound - 10), 0)
-                assert.equal(await totalSupplyAt(currentRound - 2), 0)
-                assert.equal(await totalSupplyAt(currentRound - 1), 1000)
-                assert.equal(await totalSupplyAt(currentRound), 2000)
-                assert.equal(await totalSupplyAt(currentRound + 1), 3000)
-                assert.equal(await totalSupplyAt(currentRound + 2), 4000)
+                assert.equal(await totalStakeAt(1), 0)
+                assert.equal(await totalStakeAt(currentRound - 10), 0)
+                assert.equal(await totalStakeAt(currentRound - 2), 0)
+                assert.equal(await totalStakeAt(currentRound - 1), 1000)
+                assert.equal(await totalStakeAt(currentRound), 2000)
+                assert.equal(await totalStakeAt(currentRound + 1), 3000)
+                assert.equal(await totalStakeAt(currentRound + 2), 4000)
             })
         })
     })
@@ -364,11 +364,11 @@ describe("BondingCheckpoints", () => {
             assert.isFalse(await isActive(inactiveTranscoder.address))
         })
 
-        describe("getPastVotes", () => {
-            const votesAt = (signer, round) =>
+        describe("getAccountActiveStakeAt", () => {
+            const stakeAt = (signer, round) =>
                 bondingCheckpoints
                     .connect(signer)
-                    .getPastVotes(signer.address, round)
+                    .getAccountActiveStakeAt(signer.address, round)
                     .then(n => n.toString())
 
             it("should allow votes from active and inactive stake delegators", async () => {
@@ -377,7 +377,7 @@ describe("BondingCheckpoints", () => {
                         const delegator = delegators[i]
 
                         assert.equal(
-                            await votesAt(delegator, round),
+                            await stakeAt(delegator, round),
                             expectedDelegatorStake(i, round),
                             `delegator ${i} stake mismatch at round ${round}`
                         )
@@ -390,7 +390,7 @@ describe("BondingCheckpoints", () => {
                     for (const i = 0; i < transcoders.length; i++) {
                         const transcoder = transcoders[i]
                         assert.equal(
-                            await votesAt(transcoder, round),
+                            await stakeAt(transcoder, round),
                             expectedTranscoderStake(i, round),
                             `transcoder ${i} stake mismatch at round ${round}`
                         )
@@ -399,16 +399,16 @@ describe("BondingCheckpoints", () => {
             })
         })
 
-        describe("getPastTotalSupply", () => {
-            const totalSupplyAt = round =>
+        describe("getTotalActiveStakeAt", () => {
+            const totalStakeAt = round =>
                 bondingCheckpoints
-                    .getPastTotalSupply(round)
+                    .getTotalActiveStakeAt(round)
                     .then(n => n.toString())
 
             it("should return total supply from only the active stake at any point in time", async () => {
                 for (const round of testRounds) {
                     assert.equal(
-                        await totalSupplyAt(round),
+                        await totalStakeAt(round),
                         expectedTotalSupply(round),
                         `total supply mismatch at round ${round}`
                     )
@@ -420,11 +420,11 @@ describe("BondingCheckpoints", () => {
                     let activeStake = 0
                     for (const transcoder of activeTranscoders) {
                         activeStake += await bondingCheckpoints
-                            .getPastVotes(transcoder.address, round)
+                            .getAccountActiveStakeAt(transcoder.address, round)
                             .then(n => parseInt(n.toString()))
                     }
                     assert.equal(
-                        await totalSupplyAt(round),
+                        await totalStakeAt(round),
                         activeStake.toString(),
                         `total supply mismatch at round ${round}`
                     )
@@ -446,4 +446,5 @@ describe("BondingCheckpoints", () => {
     //   - make sure it still works even if we init before a transcoder has called reward()
     //   - if we don't call it, it's a known issue that we will only have state starting on the next update made
     // - sorted array tests (separate file)
+    // - delegator changing delegate address
 })

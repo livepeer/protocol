@@ -35,7 +35,7 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
     uint256[] totalStakeCheckpointRounds;
     mapping(uint256 => uint256) private totalActiveStakeCheckpoints;
 
-    // IERC5805 interface implementation
+    // IERC6372 interface implementation
 
     /**
      * @notice Clock is set to match the current round, which is the checkpointing
@@ -52,71 +52,6 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
     function CLOCK_MODE() public pure returns (string memory) {
         // TODO: Figure out the right value for this
         return "mode=livepeer_round&from=default";
-    }
-
-    /**
-     * @notice Returns the current amount of votes that `account` has.
-     */
-    function getVotes(address _account) external view returns (uint256) {
-        return getAccountActiveStakeAt(_account, clock());
-    }
-
-    /**
-     * @notice Returns the amount of votes that `account` had at a specific moment in the past. If the `clock()` is
-     * configured to use block numbers, this will return the value at the end of the corresponding block.
-     */
-    function getPastVotes(address _account, uint256 _timepoint) external view returns (uint256) {
-        return getAccountActiveStakeAt(_account, _timepoint);
-    }
-
-    /**
-     * @notice Returns the total supply of votes available at a specific round in the past.
-     * @dev This value is the sum of all *active* stake, which is not necessarily the sum of all voting power.
-     * Bonded stake that is not part of the top 100 active transcoder set is still given voting power, but is not
-     * considered here.
-     */
-    function getPastTotalSupply(uint256 _timepoint) external view returns (uint256) {
-        return getTotalActiveStakeAt(_timepoint);
-    }
-
-    /**
-     * @notice Returns the delegate that _account has chosen. This means the delegated transcoder address in case of
-     * delegators, and the account own address for transcoders (self-delegated).
-     */
-    function delegates(address _account) external view returns (address) {
-        return delegatedAt(_account, clock());
-    }
-
-    /**
-     * @notice Returns the delegate that _account had chosen in a specific round in the past. See `delegates()` above
-     * for more details.
-     * @dev This is an addition to the IERC5805 interface to support our custom vote counting logic that allows
-     * delegators to override their transcoders votes. See {GovernorVotesBondingCheckpoints-_handleVoteOverrides}.
-     */
-    function delegatedAt(address _account, uint256 _round) public view returns (address) {
-        BondingCheckpoint storage bond = getBondingCheckpointAt(_account, _round);
-        return bond.delegateAddress;
-    }
-
-    /**
-     * @notice Delegation through BondingCheckpoints is not supported.
-     */
-    function delegate(address) external pure {
-        revert("use BondingManager to update vote delegation through bonding");
-    }
-
-    /**
-     * @notice Delegation through BondingCheckpoints is not supported.
-     */
-    function delegateBySig(
-        address,
-        uint256,
-        uint256,
-        uint8,
-        bytes32,
-        bytes32
-    ) external pure {
-        revert("use BondingManager to update vote delegation through bonding");
     }
 
     // BondingManager checkpointing hooks
@@ -185,13 +120,13 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
         totalStakeCheckpointRounds.pushSorted(_round);
     }
 
-    // Internal logic
+    // Historical stake access functions
 
     /**
      * @dev Gets the checkpointed total active stake at a given round.
      * @param _round The round for which we want to get the total active stake.
      */
-    function getTotalActiveStakeAt(uint256 _round) internal view virtual returns (uint256) {
+    function getTotalActiveStakeAt(uint256 _round) public view virtual returns (uint256) {
         require(_round <= clock(), "getTotalActiveStakeAt: future lookup");
 
         // most of the time we will have the checkpoint from exactly the round we want
@@ -212,7 +147,7 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
      * @param _round The round for which we want to get the bonding state. Normally a proposal's vote start round.
      * @return The active stake of the account at the given round including any accrued rewards.
      */
-    function getAccountActiveStakeAt(address _account, uint256 _round) internal view returns (uint256) {
+    function getAccountActiveStakeAt(address _account, uint256 _round) public view virtual returns (uint256) {
         require(_round <= clock(), "getStakeAt: future lookup");
 
         BondingCheckpoint storage bond = getBondingCheckpointAt(_account, _round);
@@ -228,6 +163,11 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
             // Address is NOT a registered transcoder so we calculate its cumulative stake for the voting power
             return delegatorCumulativeStakeAt(bond, _round);
         }
+    }
+
+    function getDelegateAddressAt(address _account, uint256 _round) public view virtual returns (address) {
+        BondingCheckpoint storage bond = getBondingCheckpointAt(_account, _round);
+        return bond.delegateAddress;
     }
 
     /**

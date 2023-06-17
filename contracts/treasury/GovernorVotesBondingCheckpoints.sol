@@ -11,21 +11,28 @@ import "../Manager.sol";
 import "../IController.sol";
 import "../rounds/IRoundsManager.sol";
 import "../bonding/IBondingCheckpoints.sol";
+import "./BondingCheckpointsVotes.sol";
 
 abstract contract GovernorVotesBondingCheckpoints is Initializable, Manager, GovernorVotesQuorumFractionUpgradeable {
     using SafeMath for uint256;
 
     function __GovernorVotesBondingCheckpoints_init(uint256 quorumPerc) internal onlyInitializing {
-        // this token address should never be used given we override all the relevant functions below.
-        // TODO: Reevaluate this. Now BondingCheckpoints implements the expected IVotes interface, so we could use the
-        // token address here. The only problem is that we don't have a fixed address, but rather always fetch it from
-        // the controller. Would it be fine to pass a fixed address (of the proxy anyway)?
-        __GovernorVotes_init(IVotesUpgradeable(address(0)));
+        BondingCheckpointsVotes votes = bondingCheckpointsVotes();
+        __GovernorVotes_init(votes);
         __GovernorVotesQuorumFraction_init(quorumPerc);
         __GovernorVotesBondingCheckpoints_init_unchained();
     }
 
     function __GovernorVotesBondingCheckpoints_init_unchained() internal onlyInitializing {}
+
+    /**
+     * @dev This should be called if we ever change the address of the bonding checkpoints votes contract. It is made as
+     * just a proxy to the bonding checkpoints not to require any updates for that matter, but its address could still
+     * eventually change in the controller so we provide this function as a future-proof commodity.
+     */
+    function bumpCheckpointsVotesRef() external {
+        token = bondingCheckpointsVotes();
+    }
 
     // 50% perc points compatible with MathUtils
     uint256 public constant QUOTA = 500000;
@@ -55,39 +62,6 @@ abstract contract GovernorVotesBondingCheckpoints is Initializable, Manager, Gov
     mapping(uint256 => ProposalVote) private _proposalVotes;
 
     // Voting power module (GovernorVotes)
-
-    /**
-     * @dev See {IGovernor-clock}.
-     */
-    function clock() public view virtual override returns (uint48) {
-        return bondingCheckpoints().clock();
-    }
-
-    /**
-     * @dev See {IGovernor-CLOCK_MODE}.
-     */
-    // solhint-disable-next-line func-name-mixedcase
-    function CLOCK_MODE() public view virtual override returns (string memory) {
-        return bondingCheckpoints().CLOCK_MODE();
-    }
-
-    /**
-     * Read the voting weight from the token's built in snapshot mechanism (see {Governor-_getVotes}).
-     */
-    function _getVotes(
-        address _account,
-        uint256 _timepoint,
-        bytes memory
-    ) internal view override returns (uint256) {
-        return bondingCheckpoints().getPastVotes(_account, _timepoint);
-    }
-
-    /**
-     * @dev Returns the quorum for a timepoint, in terms of number of votes: `supply * numerator / denominator`.
-     */
-    function quorum(uint256 _timepoint) public view virtual override returns (uint256) {
-        return MathUtils.percOf(bondingCheckpoints().getPastTotalSupply(_timepoint), quorumNumerator(_timepoint));
-    }
 
     /**
      * @dev Returns the quorum denominator. We use MathUtils.PERC_DIVISOR so
@@ -202,7 +176,7 @@ abstract contract GovernorVotesBondingCheckpoints is Initializable, Manager, Gov
         uint256 weight
     ) internal returns (uint256) {
         uint256 timepoint = proposalSnapshot(proposalId);
-        address delegatee = bondingCheckpoints().delegatedAt(account, timepoint);
+        address delegatee = bondingCheckpointsVotes().delegatedAt(account, timepoint);
 
         bool isTranscoder = account == delegatee;
         if (isTranscoder) {
@@ -236,7 +210,7 @@ abstract contract GovernorVotesBondingCheckpoints is Initializable, Manager, Gov
 
     // Helpers for relations with other protocol contracts
 
-    function bondingCheckpoints() internal view returns (IBondingCheckpoints) {
-        return IBondingCheckpoints(controller.getContract(keccak256("BondingCheckpoints")));
+    function bondingCheckpointsVotes() internal view returns (BondingCheckpointsVotes) {
+        return BondingCheckpointsVotes(controller.getContract(keccak256("BondingCheckpointsVotes")));
     }
 }
