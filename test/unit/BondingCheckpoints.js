@@ -25,7 +25,7 @@ chai.use(function(chai) {
     })
 })
 
-describe.only("BondingCheckpoints", () => {
+describe("BondingCheckpoints", () => {
     let fixture
     let bondingManager
     let bondingCheckpoints

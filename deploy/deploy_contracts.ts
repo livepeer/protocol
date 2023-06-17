@@ -177,15 +177,18 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
     })
 
     // governor
-    const governor = await deploy("Governor", {
-        from: deployer,
-        args: [],
-        log: true
-    })
+    const governor = await deploy(
+        "contracts/governance/Governor.sol:Governor",
+        {
+            from: deployer,
+            args: [],
+            log: true
+        }
+    )
 
     // Transfer ownership of Governor to governance multisig
     const Governor: Governor = (await ethers.getContractAt(
-        "Governor",
+        "contracts/governance/Governor.sol:Governor",
         governor.address
     )) as Governor
 
