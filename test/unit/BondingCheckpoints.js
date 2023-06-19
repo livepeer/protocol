@@ -82,354 +82,361 @@ describe("BondingCheckpoints", () => {
         await fixture.tearDown()
     })
 
-    describe("single active transcoder", () => {
-        let transcoder
-        let delegator
-        let currentRound
+    describe("scenarios", () => {
+        describe("single active transcoder", () => {
+            let transcoder
+            let delegator
+            let currentRound
 
-        beforeEach(async () => {
-            transcoder = signers[0]
-            delegator = signers[1]
-            currentRound = 100
+            beforeEach(async () => {
+                transcoder = signers[0]
+                delegator = signers[1]
+                currentRound = 100
 
-            await fixture.roundsManager.setMockBool(
-                functionSig("currentRoundInitialized()"),
-                true
-            )
-            await fixture.roundsManager.setMockBool(
-                functionSig("currentRoundLocked()"),
-                false
-            )
-
-            const setRound = async round => {
-                await fixture.roundsManager.setMockUint256(
-                    functionSig("currentRound()"),
-                    round
+                await fixture.roundsManager.setMockBool(
+                    functionSig("currentRoundInitialized()"),
+                    true
                 )
-                await fixture.roundsManager.execute(
-                    bondingManager.address,
-                    functionSig("setCurrentRoundTotalActiveStake()")
-                )
-            }
-
-            // Initialize the first round ever
-            await setRound(0)
-
-            for (const account of [transcoder, delegator]) {
-                await bondingManager.initBondingCheckpoint(account.address)
-            }
-
-            // Round R-2
-            await setRound(currentRound - 2)
-
-            await bondingManager
-                .connect(transcoder)
-                .bond(1000, transcoder.address)
-            await bondingManager
-                .connect(transcoder)
-                .transcoder(50 * PERC_MULTIPLIER, 25 * PERC_MULTIPLIER)
-
-            // Round R-1
-            await setRound(currentRound - 1)
-
-            await bondingManager
-                .connect(delegator)
-                .bond(1000, transcoder.address)
-
-            // Round R
-            await setRound(currentRound)
-
-            await fixture.minter.setMockUint256(
-                functionSig("createReward(uint256,uint256)"),
-                1000
-            )
-            await bondingManager.connect(transcoder).reward()
-
-            // Round R+1
-            await setRound(currentRound + 1)
-
-            await bondingManager.connect(transcoder).reward()
-
-            // Round R+2
-            await setRound(currentRound + 2)
-        })
-
-        describe("getAccountActiveStakeAt", () => {
-            it("should return partial rewards for any rounds since bonding", async () => {
-                const pendingRewards0 = 250
-                const pendingRewards1 = Math.floor(
-                    (500 * ((1250 * PERC_DIVISOR) / 3000)) / PERC_DIVISOR
+                await fixture.roundsManager.setMockBool(
+                    functionSig("currentRoundLocked()"),
+                    false
                 )
 
-                const stakeAt = round =>
-                    bondingCheckpoints
-                        .getAccountActiveStakeAt(delegator.address, round)
-                        .then(n => n.toString())
+                const setRound = async round => {
+                    await fixture.roundsManager.setMockUint256(
+                        functionSig("currentRound()"),
+                        round
+                    )
+                    await fixture.roundsManager.execute(
+                        bondingManager.address,
+                        functionSig("setCurrentRoundTotalActiveStake()")
+                    )
+                }
 
-                assert.equal(await stakeAt(1), 0)
-                assert.equal(await stakeAt(currentRound - 10), 0)
-                assert.equal(await stakeAt(currentRound - 1), 0)
-                assert.equal(await stakeAt(currentRound), 1000)
-                assert.equal(
-                    await stakeAt(currentRound + 1),
-                    1000 + pendingRewards0
-                )
-                assert.equal(
-                    await stakeAt(currentRound + 2),
-                    1000 + pendingRewards0 + pendingRewards1
-                )
-            })
+                // Initialize the first round ever
+                await setRound(0)
 
-            it("should return partial rewards for all transcoder stake", async () => {
-                const stakeAt = round =>
-                    bondingCheckpoints
-                        .getAccountActiveStakeAt(transcoder.address, round)
-                        .then(n => n.toString())
+                for (const account of [transcoder, delegator]) {
+                    await bondingManager.initBondingCheckpoint(account.address)
+                }
 
-                assert.equal(await stakeAt(1), 0)
-                assert.equal(await stakeAt(currentRound - 10), 0)
-                // transcoder bonding is only valid on the following round
-                assert.equal(await stakeAt(currentRound - 2), 0)
-                assert.equal(await stakeAt(currentRound - 1), 1000)
-                assert.equal(await stakeAt(currentRound), 2000)
-                assert.equal(await stakeAt(currentRound + 1), 3000)
-                assert.equal(await stakeAt(currentRound + 2), 4000)
-            })
-        })
+                // Round R-2
+                await setRound(currentRound - 2)
 
-        describe("getTotalActiveStakeAt", () => {
-            const totalStakeAt = round =>
-                bondingCheckpoints
-                    .getTotalActiveStakeAt(round)
-                    .then(n => n.toString())
-
-            it("should return total stake at any point in time", async () => {
-                assert.equal(await totalStakeAt(1), 0)
-                assert.equal(await totalStakeAt(currentRound - 10), 0)
-                assert.equal(await totalStakeAt(currentRound - 2), 0)
-                assert.equal(await totalStakeAt(currentRound - 1), 1000)
-                assert.equal(await totalStakeAt(currentRound), 2000)
-                assert.equal(await totalStakeAt(currentRound + 1), 3000)
-                assert.equal(await totalStakeAt(currentRound + 2), 4000)
-            })
-        })
-    })
-
-    describe("inactive transcoders with stake", () => {
-        let transcoders = []
-        let activeTranscoders = []
-        let delegators = []
-        const currentRound = 100
-        const testRounds = [1, 90, 98, 99, 100, 101, 102]
-
-        beforeEach(async () => {
-            transcoders = signers.slice(0, 5)
-            activeTranscoders = signers.slice(0, 4)
-            delegators = signers.slice(5, 10)
-
-            await fixture.roundsManager.setMockBool(
-                functionSig("currentRoundInitialized()"),
-                true
-            )
-            await fixture.roundsManager.setMockBool(
-                functionSig("currentRoundLocked()"),
-                false
-            )
-
-            const setRound = async round => {
-                await fixture.roundsManager.setMockUint256(
-                    functionSig("currentRound()"),
-                    round
-                )
-                await fixture.roundsManager.execute(
-                    bondingManager.address,
-                    functionSig("setCurrentRoundTotalActiveStake()")
-                )
-            }
-
-            // Initialize the first round ever
-            await setRound(0)
-
-            await bondingManager.setNumActiveTranscoders(transcoders.length - 1)
-
-            for (const account of [...transcoders, ...delegators]) {
-                await bondingManager.initBondingCheckpoint(account.address)
-            }
-
-            // Round R-2
-            await setRound(currentRound - 2)
-
-            for (const transcoder of transcoders) {
                 await bondingManager
                     .connect(transcoder)
                     .bond(1000, transcoder.address)
                 await bondingManager
                     .connect(transcoder)
                     .transcoder(50 * PERC_MULTIPLIER, 25 * PERC_MULTIPLIER)
-            }
 
-            // Round R-1
-            await setRound(currentRound - 1)
+                // Round R-1
+                await setRound(currentRound - 1)
 
-            // Distribute stake progressively so the last T is always inactive
-            const amount = 500
-            for (const i = 0; i < delegators.length; i++) {
-                const delegator = delegators[i]
                 await bondingManager
                     .connect(delegator)
-                    .bond(amount, transcoders[i].address)
-                amount -= 100
-            }
+                    .bond(1000, transcoder.address)
 
-            // Round R
-            await setRound(currentRound)
+                // Round R
+                await setRound(currentRound)
 
-            await fixture.minter.setMockUint256(
-                functionSig("createReward(uint256,uint256)"),
-                1000
-            )
-            for (const transcoder of activeTranscoders) {
-                await bondingManager.connect(transcoder).reward()
-            }
-
-            // Round R+1
-            await setRound(currentRound + 1)
-
-            for (const transcoder of activeTranscoders) {
-                await bondingManager.connect(transcoder).reward()
-            }
-
-            // Round R+2
-            await setRound(currentRound + 2)
-        })
-
-        const expectedDelegatorStake = (idx, endRound) => {
-            if (endRound < currentRound) {
-                return 0
-            } else if (idx === 4) {
-                // last delegator doesn't get rewards from the inactive transcoder
-                return 100
-            }
-
-            let rewardFactor = PERC_DIVISOR
-            for (let round = currentRound; round < endRound; round++) {
-                // transcoders distribute 50% of the 1000 rewards
-                const transcoderStake = expectedTranscoderStake(idx, round)
-                const currRewardPerc = Math.floor(
-                    (500 * PERC_DIVISOR) / transcoderStake
+                await fixture.minter.setMockUint256(
+                    functionSig("createReward(uint256,uint256)"),
+                    1000
                 )
-                rewardFactor += Math.floor(
-                    (rewardFactor * currRewardPerc) / PERC_DIVISOR
-                )
-            }
+                await bondingManager.connect(transcoder).reward()
 
-            const initialBond = 500 - 100 * idx
-            return Math.floor((initialBond * rewardFactor) / PERC_DIVISOR)
-        }
+                // Round R+1
+                await setRound(currentRound + 1)
 
-        const expectedTranscoderStake = (idx, endRound) => {
-            if (endRound < currentRound - 1) {
-                // transcoder self bond starts on currentRound-1
-                return 0
-            } else if (endRound === currentRound - 1) {
-                // delegator bond only starts on currentRound
-                return 1000
-            }
+                await bondingManager.connect(transcoder).reward()
 
-            const delegation = 500 - 100 * idx
-            const rewardCalls =
-                idx === 4 ? 0 : Math.max(endRound - currentRound, 0)
-            return 1000 + delegation + 1000 * rewardCalls
-        }
-
-        const expectedTotalSupply = endRound => {
-            if (endRound < currentRound - 1) {
-                return 0
-            } else if (endRound === currentRound - 1) {
-                // only transcoders bonded at this point (inactive doesn't count)
-                return 4000
-            }
-
-            const delegations = 1400 // 500 + 400 + 300 + 200 (doesn't include inactive delegator)
-            const rewardCalls = 4 * Math.max(endRound - currentRound, 0)
-            return 4000 + delegations + 1000 * rewardCalls
-        }
-
-        it("should have all active transcoders but the last one", async () => {
-            const isActive = a => bondingManager.isActiveTranscoder(a)
-            for (const transcoder of activeTranscoders) {
-                assert.isTrue(await isActive(transcoder.address))
-            }
-
-            const inactiveTranscoder = transcoders[4]
-            assert.isFalse(await isActive(inactiveTranscoder.address))
-        })
-
-        describe("getAccountActiveStakeAt", () => {
-            const stakeAt = (signer, round) =>
-                bondingCheckpoints
-                    .connect(signer)
-                    .getAccountActiveStakeAt(signer.address, round)
-                    .then(n => n.toString())
-
-            it("should allow votes from active and inactive stake delegators", async () => {
-                for (const round of testRounds) {
-                    for (const i = 0; i < delegators.length; i++) {
-                        const delegator = delegators[i]
-
-                        assert.equal(
-                            await stakeAt(delegator, round),
-                            expectedDelegatorStake(i, round),
-                            `delegator ${i} stake mismatch at round ${round}`
-                        )
-                    }
-                }
+                // Round R+2
+                await setRound(currentRound + 2)
             })
 
-            it("should return partial rewards for all transcoder stake", async () => {
-                for (const round of testRounds) {
-                    for (const i = 0; i < transcoders.length; i++) {
-                        const transcoder = transcoders[i]
-                        assert.equal(
-                            await stakeAt(transcoder, round),
-                            expectedTranscoderStake(i, round),
-                            `transcoder ${i} stake mismatch at round ${round}`
-                        )
-                    }
-                }
-            })
-        })
-
-        describe("getTotalActiveStakeAt", () => {
-            const totalStakeAt = round =>
-                bondingCheckpoints
-                    .getTotalActiveStakeAt(round)
-                    .then(n => n.toString())
-
-            it("should return total supply from only the active stake at any point in time", async () => {
-                for (const round of testRounds) {
-                    assert.equal(
-                        await totalStakeAt(round),
-                        expectedTotalSupply(round),
-                        `total supply mismatch at round ${round}`
+            describe("getAccountActiveStakeAt", () => {
+                it("should return partial rewards for any rounds since bonding", async () => {
+                    const pendingRewards0 = 250
+                    const pendingRewards1 = Math.floor(
+                        (500 * ((1250 * PERC_DIVISOR) / 3000)) / PERC_DIVISOR
                     )
-                }
-            })
 
-            it("should actually match the sum of all active transcoders stake", async () => {
-                for (const round of testRounds) {
-                    let activeStake = 0
-                    for (const transcoder of activeTranscoders) {
-                        activeStake += await bondingCheckpoints
+                    const stakeAt = round =>
+                        bondingCheckpoints
+                            .getAccountActiveStakeAt(delegator.address, round)
+                            .then(n => n.toString())
+
+                    assert.equal(await stakeAt(1), 0)
+                    assert.equal(await stakeAt(currentRound - 10), 0)
+                    assert.equal(await stakeAt(currentRound - 1), 0)
+                    assert.equal(await stakeAt(currentRound), 1000)
+                    assert.equal(
+                        await stakeAt(currentRound + 1),
+                        1000 + pendingRewards0
+                    )
+                    assert.equal(
+                        await stakeAt(currentRound + 2),
+                        1000 + pendingRewards0 + pendingRewards1
+                    )
+                })
+
+                it("should return partial rewards for all transcoder stake", async () => {
+                    const stakeAt = round =>
+                        bondingCheckpoints
                             .getAccountActiveStakeAt(transcoder.address, round)
-                            .then(n => parseInt(n.toString()))
-                    }
-                    assert.equal(
-                        await totalStakeAt(round),
-                        activeStake.toString(),
-                        `total supply mismatch at round ${round}`
+                            .then(n => n.toString())
+
+                    assert.equal(await stakeAt(1), 0)
+                    assert.equal(await stakeAt(currentRound - 10), 0)
+                    // transcoder bonding is only valid on the following round
+                    assert.equal(await stakeAt(currentRound - 2), 0)
+                    assert.equal(await stakeAt(currentRound - 1), 1000)
+                    assert.equal(await stakeAt(currentRound), 2000)
+                    assert.equal(await stakeAt(currentRound + 1), 3000)
+                    assert.equal(await stakeAt(currentRound + 2), 4000)
+                })
+            })
+
+            describe("getTotalActiveStakeAt", () => {
+                const totalStakeAt = round =>
+                    bondingCheckpoints
+                        .getTotalActiveStakeAt(round)
+                        .then(n => n.toString())
+
+                it("should return total stake at any point in time", async () => {
+                    assert.equal(await totalStakeAt(1), 0)
+                    assert.equal(await totalStakeAt(currentRound - 10), 0)
+                    assert.equal(await totalStakeAt(currentRound - 2), 0)
+                    assert.equal(await totalStakeAt(currentRound - 1), 1000)
+                    assert.equal(await totalStakeAt(currentRound), 2000)
+                    assert.equal(await totalStakeAt(currentRound + 1), 3000)
+                    assert.equal(await totalStakeAt(currentRound + 2), 4000)
+                })
+            })
+        })
+
+        describe("inactive transcoders with stake", () => {
+            let transcoders = []
+            let activeTranscoders = []
+            let delegators = []
+            const currentRound = 100
+            const testRounds = [1, 90, 98, 99, 100, 101, 102]
+
+            beforeEach(async () => {
+                transcoders = signers.slice(0, 5)
+                activeTranscoders = signers.slice(0, 4)
+                delegators = signers.slice(5, 10)
+
+                await fixture.roundsManager.setMockBool(
+                    functionSig("currentRoundInitialized()"),
+                    true
+                )
+                await fixture.roundsManager.setMockBool(
+                    functionSig("currentRoundLocked()"),
+                    false
+                )
+
+                const setRound = async round => {
+                    await fixture.roundsManager.setMockUint256(
+                        functionSig("currentRound()"),
+                        round
+                    )
+                    await fixture.roundsManager.execute(
+                        bondingManager.address,
+                        functionSig("setCurrentRoundTotalActiveStake()")
                     )
                 }
+
+                // Initialize the first round ever
+                await setRound(0)
+
+                await bondingManager.setNumActiveTranscoders(
+                    transcoders.length - 1
+                )
+
+                for (const account of [...transcoders, ...delegators]) {
+                    await bondingManager.initBondingCheckpoint(account.address)
+                }
+
+                // Round R-2
+                await setRound(currentRound - 2)
+
+                for (const transcoder of transcoders) {
+                    await bondingManager
+                        .connect(transcoder)
+                        .bond(1000, transcoder.address)
+                    await bondingManager
+                        .connect(transcoder)
+                        .transcoder(50 * PERC_MULTIPLIER, 25 * PERC_MULTIPLIER)
+                }
+
+                // Round R-1
+                await setRound(currentRound - 1)
+
+                // Distribute stake progressively so the last T is always inactive
+                const amount = 500
+                for (const i = 0; i < delegators.length; i++) {
+                    const delegator = delegators[i]
+                    await bondingManager
+                        .connect(delegator)
+                        .bond(amount, transcoders[i].address)
+                    amount -= 100
+                }
+
+                // Round R
+                await setRound(currentRound)
+
+                await fixture.minter.setMockUint256(
+                    functionSig("createReward(uint256,uint256)"),
+                    1000
+                )
+                for (const transcoder of activeTranscoders) {
+                    await bondingManager.connect(transcoder).reward()
+                }
+
+                // Round R+1
+                await setRound(currentRound + 1)
+
+                for (const transcoder of activeTranscoders) {
+                    await bondingManager.connect(transcoder).reward()
+                }
+
+                // Round R+2
+                await setRound(currentRound + 2)
+            })
+
+            const expectedDelegatorStake = (idx, endRound) => {
+                if (endRound < currentRound) {
+                    return 0
+                } else if (idx === 4) {
+                    // last delegator doesn't get rewards from the inactive transcoder
+                    return 100
+                }
+
+                let rewardFactor = PERC_DIVISOR
+                for (let round = currentRound; round < endRound; round++) {
+                    // transcoders distribute 50% of the 1000 rewards
+                    const transcoderStake = expectedTranscoderStake(idx, round)
+                    const currRewardPerc = Math.floor(
+                        (500 * PERC_DIVISOR) / transcoderStake
+                    )
+                    rewardFactor += Math.floor(
+                        (rewardFactor * currRewardPerc) / PERC_DIVISOR
+                    )
+                }
+
+                const initialBond = 500 - 100 * idx
+                return Math.floor((initialBond * rewardFactor) / PERC_DIVISOR)
+            }
+
+            const expectedTranscoderStake = (idx, endRound) => {
+                if (endRound < currentRound - 1) {
+                    // transcoder self bond starts on currentRound-1
+                    return 0
+                } else if (endRound === currentRound - 1) {
+                    // delegator bond only starts on currentRound
+                    return 1000
+                }
+
+                const delegation = 500 - 100 * idx
+                const rewardCalls =
+                    idx === 4 ? 0 : Math.max(endRound - currentRound, 0)
+                return 1000 + delegation + 1000 * rewardCalls
+            }
+
+            const expectedTotalSupply = endRound => {
+                if (endRound < currentRound - 1) {
+                    return 0
+                } else if (endRound === currentRound - 1) {
+                    // only transcoders bonded at this point (inactive doesn't count)
+                    return 4000
+                }
+
+                const delegations = 1400 // 500 + 400 + 300 + 200 (doesn't include inactive delegator)
+                const rewardCalls = 4 * Math.max(endRound - currentRound, 0)
+                return 4000 + delegations + 1000 * rewardCalls
+            }
+
+            it("should have all active transcoders but the last one", async () => {
+                const isActive = a => bondingManager.isActiveTranscoder(a)
+                for (const transcoder of activeTranscoders) {
+                    assert.isTrue(await isActive(transcoder.address))
+                }
+
+                const inactiveTranscoder = transcoders[4]
+                assert.isFalse(await isActive(inactiveTranscoder.address))
+            })
+
+            describe("getAccountActiveStakeAt", () => {
+                const stakeAt = (signer, round) =>
+                    bondingCheckpoints
+                        .connect(signer)
+                        .getAccountActiveStakeAt(signer.address, round)
+                        .then(n => n.toString())
+
+                it("should allow votes from active and inactive stake delegators", async () => {
+                    for (const round of testRounds) {
+                        for (const i = 0; i < delegators.length; i++) {
+                            const delegator = delegators[i]
+
+                            assert.equal(
+                                await stakeAt(delegator, round),
+                                expectedDelegatorStake(i, round),
+                                `delegator ${i} stake mismatch at round ${round}`
+                            )
+                        }
+                    }
+                })
+
+                it("should return partial rewards for all transcoder stake", async () => {
+                    for (const round of testRounds) {
+                        for (const i = 0; i < transcoders.length; i++) {
+                            const transcoder = transcoders[i]
+                            assert.equal(
+                                await stakeAt(transcoder, round),
+                                expectedTranscoderStake(i, round),
+                                `transcoder ${i} stake mismatch at round ${round}`
+                            )
+                        }
+                    }
+                })
+            })
+
+            describe("getTotalActiveStakeAt", () => {
+                const totalStakeAt = round =>
+                    bondingCheckpoints
+                        .getTotalActiveStakeAt(round)
+                        .then(n => n.toString())
+
+                it("should return total supply from only the active stake at any point in time", async () => {
+                    for (const round of testRounds) {
+                        assert.equal(
+                            await totalStakeAt(round),
+                            expectedTotalSupply(round),
+                            `total supply mismatch at round ${round}`
+                        )
+                    }
+                })
+
+                it("should actually match the sum of all active transcoders stake", async () => {
+                    for (const round of testRounds) {
+                        let activeStake = 0
+                        for (const transcoder of activeTranscoders) {
+                            activeStake += await bondingCheckpoints
+                                .getAccountActiveStakeAt(
+                                    transcoder.address,
+                                    round
+                                )
+                                .then(n => parseInt(n.toString()))
+                        }
+                        assert.equal(
+                            await totalStakeAt(round),
+                            activeStake.toString(),
+                            `total supply mismatch at round ${round}`
+                        )
+                    }
+                })
             })
         })
     })
@@ -621,7 +628,7 @@ describe("BondingCheckpoints", () => {
         })
     })
 
-    describe("additional corner cases", () => {
+    describe("corner cases", () => {
         let transcoder
         let delegator
         let currentRound
