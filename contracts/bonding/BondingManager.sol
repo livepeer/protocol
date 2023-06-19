@@ -598,7 +598,11 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * @param _account The account to initialize the bonding checkpoint for
      */
     function initBondingCheckpoint(address _account) external {
-        require(!bondingCheckpoints().hasCheckpoint(_account), "account already checkpointed");
+        IBondingCheckpoints checkpoints = bondingCheckpoints();
+
+        require(address(checkpoints) != address(0), "bonding checkpoints not available");
+
+        require(!checkpoints.hasCheckpoint(_account), "account already checkpointed");
 
         checkpointBonding(_account, delegators[_account], transcoders[_account]);
     }
