@@ -433,10 +433,194 @@ describe("BondingCheckpoints", () => {
         })
     })
 
+    describe("intermittent reward-calling transcoder", () => {
+        let transcoder
+        let delegatorEarly
+        let delegator
+        let currentRound
+
+        beforeEach(async () => {
+            transcoder = signers[0]
+            delegator = signers[1]
+            delegatorEarly = signers[2]
+            currentRound = 1000
+
+            await fixture.roundsManager.setMockBool(
+                functionSig("currentRoundInitialized()"),
+                true
+            )
+            await fixture.roundsManager.setMockBool(
+                functionSig("currentRoundLocked()"),
+                false
+            )
+
+            const setRound = async round => {
+                await fixture.roundsManager.setMockUint256(
+                    functionSig("currentRound()"),
+                    round
+                )
+                await fixture.roundsManager.execute(
+                    bondingManager.address,
+                    functionSig("setCurrentRoundTotalActiveStake()")
+                )
+            }
+
+            // Initialize the first round ever
+            await setRound(0)
+
+            for (const account of [transcoder, delegator, delegatorEarly]) {
+                await bondingManager.initBondingCheckpoint(account.address)
+            }
+
+            // Round R-200
+            await setRound(currentRound - 200)
+
+            await bondingManager
+                .connect(transcoder)
+                .bond(1000, transcoder.address)
+            await bondingManager
+                .connect(transcoder)
+                .transcoder(50 * PERC_MULTIPLIER, 25 * PERC_MULTIPLIER)
+
+            await bondingManager
+                .connect(delegatorEarly)
+                .bond(1000, transcoder.address)
+
+            // Round R-199
+            await setRound(currentRound - 199)
+
+            await fixture.minter.setMockUint256(
+                functionSig("createReward(uint256,uint256)"),
+                1000
+            )
+            await bondingManager.connect(transcoder).reward()
+
+            // Round R-198
+            await setRound(currentRound - 198)
+
+            await bondingManager
+                .connect(delegator)
+                .bond(1000, transcoder.address)
+
+            // Round R-197
+            await setRound(currentRound - 197)
+
+            // We need to initialize this round so the total active stake with the above bond is checkpointed.
+
+            // Now hibernate far away into the future...
+
+            // Round R
+            await setRound(currentRound)
+
+            // Round R+1
+            await setRound(currentRound + 1)
+
+            await bondingManager.connect(transcoder).reward()
+
+            // Round R+2
+            await setRound(currentRound + 2)
+
+            // Round R+3
+            await setRound(currentRound + 3)
+        })
+
+        describe("getAccountActiveStakeAt", () => {
+            const stakeAt = (account, round) =>
+                bondingCheckpoints
+                    .getAccountActiveStakeAt(account.address, round)
+                    .then(n => n.toString())
+            const expectStakeAt = async (account, round, expected) => {
+                assert.equal(
+                    await stakeAt(account, round),
+                    expected,
+                    `stake mismatch at round ${round}`
+                )
+            }
+
+            it("consistent stake for delegator that had never observed a reward on the call gap", async () => {
+                const pendingRewards0 = 125 // ~ 500 * 1000 / 4000
+
+                await expectStakeAt(delegator, currentRound - 198, 0) // bond made on this round
+                await expectStakeAt(delegator, currentRound - 197, 1000) // transcoder is gone from here until currRound+1
+                await expectStakeAt(delegator, currentRound - 99, 1000)
+                await expectStakeAt(delegator, currentRound, 1000)
+                await expectStakeAt(delegator, currentRound + 1, 1000) // reward is called again here
+                await expectStakeAt(
+                    delegator,
+                    currentRound + 2,
+                    1000 + pendingRewards0 // 1125
+                )
+                await expectStakeAt(delegator, currentRound + 3, 1125)
+            })
+
+            it("consistent stake for delegator that had unclaimed rewards", async () => {
+                const pendingRewards0 = 250 // ~ 500 * 1000 / 2000
+                const pendingRewards1 = 156 // ~ 500 * 1250 / 4000
+
+                await expectStakeAt(delegatorEarly, currentRound - 200, 0) // bond is already made here
+                await expectStakeAt(
+                    delegatorEarly,
+                    currentRound - 199, // reward is called first time
+                    1000
+                )
+                await expectStakeAt(
+                    delegatorEarly,
+                    currentRound - 198,
+                    1000 + pendingRewards0 // 1250
+                )
+                await expectStakeAt(delegatorEarly, currentRound - 197, 1250) // transcoder is gone from here until currRound+1
+                await expectStakeAt(delegatorEarly, currentRound - 99, 1250)
+                await expectStakeAt(delegatorEarly, currentRound, 1250)
+                await expectStakeAt(delegatorEarly, currentRound + 1, 1250) // reward called again
+                await expectStakeAt(
+                    delegatorEarly,
+                    currentRound + 2,
+                    1000 + pendingRewards0 + pendingRewards1 // 1406
+                )
+                await expectStakeAt(delegatorEarly, currentRound + 3, 1406)
+            })
+
+            it("for the intermittent transcoder itself", async () => {
+                await expectStakeAt(transcoder, currentRound - 200, 0) // both transcoder and delegator bond 1000
+                await expectStakeAt(transcoder, currentRound - 199, 2000) // reward is called first time
+                await expectStakeAt(transcoder, currentRound - 198, 3000) // late delegator bonds more 1000
+                await expectStakeAt(transcoder, currentRound - 197, 4000)
+                await expectStakeAt(transcoder, currentRound - 99, 4000)
+                await expectStakeAt(transcoder, currentRound, 4000)
+                await expectStakeAt(transcoder, currentRound + 1, 4000) // reward called again
+                await expectStakeAt(transcoder, currentRound + 2, 5000)
+                await expectStakeAt(transcoder, currentRound + 3, 5000)
+            })
+        })
+
+        describe("getTotalActiveStakeAt", () => {
+            const totalStakeAt = round =>
+                bondingCheckpoints
+                    .getTotalActiveStakeAt(round)
+                    .then(n => n.toString())
+            const expectTotalStakeAt = async (round, expected) => {
+                assert.equal(
+                    await totalStakeAt(round),
+                    expected,
+                    `total stake mismatch at round ${round}`
+                )
+            }
+
+            it("on the total stake as well", async () => {
+                await expectTotalStakeAt(currentRound - 200, 0) // both transcoder and delegator bond 1000
+                await expectTotalStakeAt(currentRound - 199, 2000) // reward is called first time
+                await expectTotalStakeAt(currentRound - 198, 3000) // late delegator bonds more 1000
+                await expectTotalStakeAt(currentRound - 197, 4000)
+                await expectTotalStakeAt(currentRound - 99, 4000)
+                await expectTotalStakeAt(currentRound, 4000)
+                await expectTotalStakeAt(currentRound + 1, 4000) // reward called again
+                await expectTotalStakeAt(currentRound + 2, 5000)
+                await expectTotalStakeAt(currentRound + 3, 5000)
+            })
+        })
+    })
+
     // TODO: more tests, especially some corner cases:
-    // - transcoders that have stopped calling reward()
-    //   - since a delegator made a bond
-    //   - for a long long time (>100 rounds, prev implementation)
     // - delegator with no stake?
     // - transcoder which is the only delegator to itself?
     // - what if some rounds weren't initialized?
