@@ -4,6 +4,7 @@ import {assert} from "chai"
 import {ethers, web3} from "hardhat"
 import chai from "chai"
 import {solidity} from "ethereum-waffle"
+import {constants} from "ethers"
 
 chai.use(solidity)
 
@@ -620,15 +621,311 @@ describe("BondingCheckpoints", () => {
         })
     })
 
-    // TODO: more tests, especially some corner cases:
-    // - delegator with no stake?
-    // - transcoder which is the only delegator to itself?
-    // - what if some rounds weren't initialized?
+    describe("additional corner cases", () => {
+        let transcoder
+        let delegator
+        let currentRound
+
+        const setRound = async round => {
+            await fixture.roundsManager.setMockUint256(
+                functionSig("currentRound()"),
+                round
+            )
+            await fixture.roundsManager.execute(
+                bondingManager.address,
+                functionSig("setCurrentRoundTotalActiveStake()")
+            )
+        }
+
+        beforeEach(async () => {
+            transcoder = signers[0]
+            delegator = signers[1]
+            currentRound = 100
+
+            await fixture.roundsManager.setMockBool(
+                functionSig("currentRoundInitialized()"),
+                true
+            )
+            await fixture.roundsManager.setMockBool(
+                functionSig("currentRoundLocked()"),
+                false
+            )
+
+            // Initialize the first round ever
+            await setRound(0)
+
+            for (const account of [transcoder, delegator]) {
+                await bondingManager.initBondingCheckpoint(account.address)
+            }
+
+            // Round R-1
+            await setRound(currentRound - 1)
+
+            await bondingManager
+                .connect(transcoder)
+                .bond(1000, transcoder.address)
+            await bondingManager
+                .connect(transcoder)
+                .transcoder(50 * PERC_MULTIPLIER, 25 * PERC_MULTIPLIER)
+
+            await fixture.minter.setMockUint256(
+                functionSig("createReward(uint256,uint256)"),
+                1000
+            )
+
+            // Stop setup now and let sub-tests do their thing
+        })
+
+        const stakeAt = (account, round) =>
+            bondingCheckpoints
+                .getAccountActiveStakeAt(account.address, round)
+                .then(n => n.toString())
+        const delegateAt = (account, round) =>
+            bondingCheckpoints
+                .getDelegateAddressAt(account.address, round)
+                .then(n => n.toString())
+        const expectStakeAt = async (account, round, expected, delegate) => {
+            assert.equal(
+                await stakeAt(account, round),
+                expected,
+                `stake mismatch at round ${round}`
+            )
+            if (delegate) {
+                assert.equal(
+                    await delegateAt(account, round),
+                    delegate,
+                    `unexpected delegate at round ${round}`
+                )
+            }
+        }
+
+        const totalStakeAt = round =>
+            bondingCheckpoints
+                .getTotalActiveStakeAt(round)
+                .then(n => n.toString())
+        const expectTotalStakeAt = async (round, expected) => {
+            assert.equal(
+                await totalStakeAt(round),
+                expected,
+                `total stake mismatch at round ${round}`
+            )
+        }
+
+        describe("delegator with no stake", () => {
+            it("should have not have stake in any rounds", async () => {
+                for (const r = currentRound - 10; r < currentRound; r++) {
+                    await expectStakeAt(delegator, r, 0, constants.AddressZero)
+                }
+            })
+
+            describe("after unbonding", () => {
+                beforeEach(async () => {
+                    // Round R
+                    await setRound(currentRound)
+
+                    await bondingManager
+                        .connect(delegator)
+                        .bond(1000, transcoder.address)
+
+                    // Round R+1
+                    setRound(currentRound + 1)
+
+                    await bondingManager.connect(delegator).unbond(1000)
+
+                    // Round R+2
+                    setRound(currentRound + 2)
+                })
+
+                it("should have not have stake in any rounds", async () => {
+                    const testCases = [
+                        [delegator, currentRound, 0, constants.AddressZero],
+                        [delegator, currentRound + 1, 1000, transcoder.address],
+                        [delegator, currentRound + 2, 0, constants.AddressZero]
+                    ]
+                    for (const [acc, r, expStake, expDel] of testCases) {
+                        await expectStakeAt(acc, r, expStake, expDel)
+                    }
+                })
+            })
+        })
+
+        describe("self-delegated-only active transcoder", () => {
+            beforeEach(async () => {
+                // call reward in a couple of rounds
+                for (const r = currentRound; r <= currentRound + 10; r++) {
+                    // Rounds R - R+10
+                    await setRound(r)
+
+                    await bondingManager.connect(transcoder).reward()
+                }
+            })
+
+            it("should have consistent checkpoints for normally accruing stake", async () => {
+                for (const r = currentRound - 10; r <= currentRound + 10; r++) {
+                    const expectedStake =
+                        1000 * Math.max(0, r - currentRound + 1) // 1000 at round R, 2000 at round R+1, etc.
+                    const expectedDelegate =
+                        expectedStake > 0 ?
+                            transcoder.address :
+                            constants.AddressZero
+                    await expectStakeAt(
+                        transcoder,
+                        r,
+                        expectedStake,
+                        expectedDelegate
+                    )
+                }
+            })
+        })
+
+        describe("rounds without initialization", () => {
+            beforeEach(async () => {
+                // Round R
+                await setRound(currentRound)
+
+                await bondingManager
+                    .connect(delegator)
+                    .bond(1000, transcoder.address)
+
+                // then let's do a 50 round init gap
+                // Round R+50
+                await setRound(currentRound + 50)
+
+                await bondingManager.connect(transcoder).reward()
+
+                // then let's do another 50 round call gap
+
+                // Round R+100
+                await setRound(currentRound + 100)
+
+                // Round R+101
+                await setRound(currentRound + 101)
+            })
+
+            it("should have checkpoints during gap for transcoder", async () => {
+                const testCases = [
+                    [transcoder, currentRound, 1000, transcoder.address],
+                    [transcoder, currentRound + 1, 2000, transcoder.address],
+                    [transcoder, currentRound + 2, 2000, transcoder.address],
+                    [transcoder, currentRound + 50, 2000, transcoder.address],
+                    [transcoder, currentRound + 51, 3000, transcoder.address],
+                    [transcoder, currentRound + 75, 3000, transcoder.address],
+                    [transcoder, currentRound + 100, 3000, transcoder.address],
+                    [transcoder, currentRound + 101, 3000, transcoder.address]
+                ]
+                for (const [acc, r, expStake, expDel] of testCases) {
+                    await expectStakeAt(acc, r, expStake, expDel)
+                }
+            })
+
+            it("should have checkpoints during gap for delegator", async () => {
+                const testCases = [
+                    [delegator, currentRound, 0, constants.AddressZero],
+                    [delegator, currentRound + 1, 1000, transcoder.address],
+                    [delegator, currentRound + 2, 1000, transcoder.address],
+                    [delegator, currentRound + 50, 1000, transcoder.address],
+                    [delegator, currentRound + 51, 1250, transcoder.address],
+                    [delegator, currentRound + 75, 1250, transcoder.address],
+                    [delegator, currentRound + 100, 1250, transcoder.address],
+                    [delegator, currentRound + 101, 1250, transcoder.address]
+                ]
+                for (const [acc, r, expStake, expDel] of testCases) {
+                    await expectStakeAt(acc, r, expStake, expDel)
+                }
+            })
+
+            // This is a test for a known corner case in the implementation: Since we only initialize the total active
+            // stake checkpoint on the `initializeRound` flow, if a round is not initialized we won't have a checkpoint
+            // of the active stake on that round and will use the info from the last checkpointed round instead.
+            //
+            // The practical effect of this is that if you query for the total active stake of a round that hasn't been
+            // initialized, you will get a value that is not equal to the sum of the active stake of all transcoders in
+            // the active set. Observe in the test below how the "total stake" is reported as a lower value than the
+            // "transcoder stake" on the corresponding rounds in the above tests. In practice this is only an issue if
+            // we ever get rounds not being initialized at some point, which seems like a bigger issue itself.
+            //
+            // This could be fixed in the code by checkpointing the "next round active stake" instead, every time it
+            // changes instead, but it means more storage writes and complexity in BondingManager code.
+            it("should only update total active stake on the next initialized round", async () => {
+                expectTotalStakeAt(currentRound, 1000)
+                expectTotalStakeAt(currentRound + 1, 1000) // this should be 2000 since the delegator bonded on the previous round
+                expectTotalStakeAt(currentRound + 25, 1000)
+                expectTotalStakeAt(currentRound + 50, 2000) // only when a round is initialized it picks up the change
+                expectTotalStakeAt(currentRound + 51, 2000) // this should be 2000 since the transcoder called reward on the previous round
+                expectTotalStakeAt(currentRound + 75, 2000)
+                expectTotalStakeAt(currentRound + 100, 3000) // same thing here, only picks up the change on initRound
+            })
+        })
+
+        describe("delegator changing delegate address", () => {
+            let transcoder2
+
+            beforeEach(async () => {
+                transcoder2 = signers[3]
+
+                // Round R
+                await setRound(currentRound)
+
+                await bondingManager
+                    .connect(transcoder2)
+                    .bond(1000, transcoder2.address)
+                await bondingManager
+                    .connect(transcoder2)
+                    .transcoder(50 * PERC_MULTIPLIER, 25 * PERC_MULTIPLIER)
+
+                await bondingManager
+                    .connect(delegator)
+                    .bond(500, transcoder.address)
+
+                // Round R+1
+                setRound(currentRound + 1)
+
+                await bondingManager.connect(transcoder2).reward()
+
+                // Round R+2
+                setRound(currentRound + 2)
+
+                await bondingManager
+                    .connect(delegator)
+                    .bond(500, transcoder2.address)
+
+                await bondingManager.connect(transcoder2).reward()
+
+                // Round R+3
+                setRound(currentRound + 3)
+
+                await bondingManager.connect(transcoder2).reward()
+
+                // Round R+4
+                setRound(currentRound + 4)
+
+                await bondingManager.connect(transcoder2).reward()
+
+                // Round R+5
+                setRound(currentRound + 5)
+            })
+
+            it("should have valid bonded amount and delegate checkpoints", async () => {
+                const testCases = [
+                    [delegator, currentRound, 0, constants.AddressZero],
+                    [delegator, currentRound + 1, 500, transcoder.address],
+                    [delegator, currentRound + 2, 500, transcoder.address],
+                    [delegator, currentRound + 3, 1000, transcoder2.address],
+                    [delegator, currentRound + 4, 1125, transcoder2.address], // 1000 + 500 * 1000 / 4000
+                    [delegator, currentRound + 5, 1237, transcoder2.address] // 1125 + 500 * 1125 / 5000
+                ]
+                for (const [acc, r, expStake, expDel] of testCases) {
+                    await expectStakeAt(acc, r, expStake, expDel)
+                }
+            })
+        })
+    })
+
+    // TODO: more tests:
     // - migration tests:
     //   - everything still works if we don't call `initBondingCheckpoint`
     //   - when we do call it, checkpoints should work starting on the next round
     //   - make sure it still works even if we init before a transcoder has called reward()
     //   - if we don't call it, it's a known issue that we will only have state starting on the next update made
     // - sorted array tests (separate file)
-    // - delegator changing delegate address
 })
