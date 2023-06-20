@@ -18,21 +18,57 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
     constructor(address _controller) Manager(_controller) {}
 
     struct BondingCheckpoint {
-        uint256 bondedAmount; // The amount of bonded tokens to another delegate as per the lastClaimRound
-        address delegateAddress; // The address delegated to
-        uint256 delegatedAmount; // The amount of tokens delegated to the account (only set for transcoders)
-        uint256 lastClaimRound; // The last round during which the delegator claimed its earnings. Pegs the value of bondedAmount for rewards calculation
-        uint256 lastRewardRound; // The last round during which the transcoder called rewards. This is useful to find the reward pool when calculating historical rewards. Notice that this actually comes from the Transcoder struct in bonding manager, not Delegator.
+        /**
+         * @dev The amount of bonded tokens to another delegate as per the lastClaimRound.
+         */
+        uint256 bondedAmount;
+        /**
+         * @dev The address of the delegate the account is bonded to. In case of transcoders this is their own address.
+         */
+        address delegateAddress;
+        /**
+         * @dev The amount of tokens delegated from delegators to this account. This is only set for transcoders, which
+         * have to self-delegate first and then have tokens bonded from other delegators.
+         */
+        uint256 delegatedAmount;
+        /**
+         * @dev The last round during which the delegator claimed its earnings. This pegs the value of bondedAmount for
+         * rewards calculation in {BondingManager-delegatorCumulativeStakeAndFees}.
+         */
+        uint256 lastClaimRound;
+        /**
+         * @dev The last round during which the transcoder called {BondingManager-reward}. This is needed to find a
+         * reward pool for any round when calculating historical rewards.
+         *
+         * Notice that this is the only field that comes from the Transcoder struct in BondingManager, not Delegator.
+         */
+        uint256 lastRewardRound;
     }
 
+    /**
+     * @dev Stores a list of checkpoints for an account, queryable and mapped by start round. To access the checkpoint
+         for a given round, find the checkpoint with the highest start round that is lower or equal to the queried round
+        ({SortedArrays-findLowerBound}) and then fetch the specific checkpoint on the data mapping.
+        */
     struct BondingCheckpointsByRound {
         uint256[] startRounds;
         mapping(uint256 => BondingCheckpoint) data;
     }
 
+    /**
+     * @dev Checkpoints by account (delegators and transcoders).
+     */
     mapping(address => BondingCheckpointsByRound) private bondingCheckpoints;
 
+    /**
+     * @dev Rounds in which we have checkpoints for the total active stake. This and {totalActiveStakeCheckpoints} are
+     * handled in the same wat that {BondingCheckpointsByRound}, with rounds stored and queried on this array and
+     * checkpointed value stored and retrieved from the mapping.
+     */
     uint256[] totalStakeCheckpointRounds;
+    /**
+     * @dev See {totalStakeCheckpointRounds} above.
+     */
     mapping(uint256 => uint256) private totalActiveStakeCheckpoints;
 
     // IERC6372 interface implementation
@@ -184,6 +220,14 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
         returns (BondingCheckpoint storage)
     {
         BondingCheckpointsByRound storage checkpoints = bondingCheckpoints[_account];
+
+        // Most of the time we will be calling this for a transcoder which checkpoints on every round through reward().
+        // On those cases we will have a checkpoint for exactly the round we want, so optimize for that.
+        BondingCheckpoint storage bond = checkpoints.data[_round];
+        if (bond.bondedAmount > 0) {
+            return bond;
+        }
+
         uint256 startRound = checkpoints.startRounds.findLowerBound(_round);
         return checkpoints.data[startRound];
     }
@@ -248,13 +292,7 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
         view
         returns (uint256 rewardRound, EarningsPool.Data memory pool)
     {
-        // Most of the time we will already have the checkpoint from exactly the round we want
-        BondingCheckpoint storage bond = bondingCheckpoints[_transcoder].data[_round];
-
-        if (bond.lastRewardRound == 0) {
-            bond = getBondingCheckpointAt(_transcoder, _round);
-        }
-
+        BondingCheckpoint storage bond = getBondingCheckpointAt(_transcoder, _round);
         rewardRound = bond.lastRewardRound;
         pool = getTranscoderEarningPoolForRound(_transcoder, rewardRound);
     }
