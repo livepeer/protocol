@@ -12,6 +12,10 @@ import "../IController.sol";
 import "../rounds/IRoundsManager.sol";
 import "./BondingManager.sol";
 
+/**
+ * @title BondingCheckpoints
+ * @dev Checkpointing logic for BondingManager state for historical stake calculations.
+ */
 contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
     using SortedArrays for uint256[];
 
@@ -183,7 +187,7 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
      * @param _round The round for which we want to get the bonding state. Normally a proposal's vote start round.
      * @return The active stake of the account at the given round including any accrued rewards.
      */
-    function getAccountActiveStakeAt(address _account, uint256 _round) public view virtual returns (uint256) {
+    function getAccountStakeAt(address _account, uint256 _round) public view virtual returns (uint256) {
         require(_round <= clock(), "getStakeAt: future lookup");
 
         BondingCheckpoint storage bond = getBondingCheckpointAt(_account, _round);

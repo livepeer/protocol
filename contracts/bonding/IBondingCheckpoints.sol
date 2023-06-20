@@ -27,7 +27,7 @@ interface IBondingCheckpoints is IERC6372Upgradeable {
 
     function getTotalActiveStakeAt(uint256 _round) external view returns (uint256);
 
-    function getAccountActiveStakeAt(address _account, uint256 _round) external view returns (uint256);
+    function getAccountStakeAt(address _account, uint256 _round) external view returns (uint256);
 
     function getDelegateAddressAt(address _account, uint256 _round) external view returns (address);
 }

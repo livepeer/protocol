@@ -32,7 +32,7 @@ contract BondingCheckpointsVotes is Manager, IERC5805Upgradeable {
      * @notice Returns the current amount of votes that `account` has.
      */
     function getVotes(address _account) external view returns (uint256) {
-        return bondingCheckpoints().getAccountActiveStakeAt(_account, clock());
+        return bondingCheckpoints().getAccountStakeAt(_account, clock());
     }
 
     /**
@@ -40,7 +40,7 @@ contract BondingCheckpointsVotes is Manager, IERC5805Upgradeable {
      * configured to use block numbers, this will return the value at the end of the corresponding block.
      */
     function getPastVotes(address _account, uint256 _timepoint) external view returns (uint256) {
-        return bondingCheckpoints().getAccountActiveStakeAt(_account, _timepoint);
+        return bondingCheckpoints().getAccountStakeAt(_account, _timepoint);
     }
 
     /**

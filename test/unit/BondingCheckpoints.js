@@ -151,7 +151,7 @@ describe("BondingCheckpoints", () => {
 
         const stakeAt = (account, round) =>
             bondingCheckpoints
-                .getAccountActiveStakeAt(account.address, round)
+                .getAccountStakeAt(account.address, round)
                 .then(n => n.toString())
 
         it("should revert if bonding checkpoint is not registered", async () => {
@@ -296,7 +296,7 @@ describe("BondingCheckpoints", () => {
                 await setRound(currentRound + 2)
             })
 
-            describe("getAccountActiveStakeAt", () => {
+            describe("getAccountStakeAt", () => {
                 it("should return partial rewards for any rounds since bonding", async () => {
                     const pendingRewards0 = 250
                     const pendingRewards1 = Math.floor(
@@ -305,7 +305,7 @@ describe("BondingCheckpoints", () => {
 
                     const stakeAt = round =>
                         bondingCheckpoints
-                            .getAccountActiveStakeAt(delegator.address, round)
+                            .getAccountStakeAt(delegator.address, round)
                             .then(n => n.toString())
 
                     assert.equal(await stakeAt(1), 0)
@@ -325,7 +325,7 @@ describe("BondingCheckpoints", () => {
                 it("should return partial rewards for all transcoder stake", async () => {
                     const stakeAt = round =>
                         bondingCheckpoints
-                            .getAccountActiveStakeAt(transcoder.address, round)
+                            .getAccountStakeAt(transcoder.address, round)
                             .then(n => n.toString())
 
                     assert.equal(await stakeAt(1), 0)
@@ -509,11 +509,11 @@ describe("BondingCheckpoints", () => {
                 assert.isFalse(await isActive(inactiveTranscoder.address))
             })
 
-            describe("getAccountActiveStakeAt", () => {
+            describe("getAccountStakeAt", () => {
                 const stakeAt = (signer, round) =>
                     bondingCheckpoints
                         .connect(signer)
-                        .getAccountActiveStakeAt(signer.address, round)
+                        .getAccountStakeAt(signer.address, round)
                         .then(n => n.toString())
 
                 it("should allow votes from active and inactive stake delegators", async () => {
@@ -565,10 +565,7 @@ describe("BondingCheckpoints", () => {
                         let activeStake = 0
                         for (const transcoder of activeTranscoders) {
                             activeStake += await bondingCheckpoints
-                                .getAccountActiveStakeAt(
-                                    transcoder.address,
-                                    round
-                                )
+                                .getAccountStakeAt(transcoder.address, round)
                                 .then(n => parseInt(n.toString()))
                         }
                         assert.equal(
@@ -673,10 +670,10 @@ describe("BondingCheckpoints", () => {
             await setRound(currentRound + 3)
         })
 
-        describe("getAccountActiveStakeAt", () => {
+        describe("getAccountStakeAt", () => {
             const stakeAt = (account, round) =>
                 bondingCheckpoints
-                    .getAccountActiveStakeAt(account.address, round)
+                    .getAccountStakeAt(account.address, round)
                     .then(n => n.toString())
             const expectStakeAt = async (account, round, expected) => {
                 assert.equal(
@@ -826,7 +823,7 @@ describe("BondingCheckpoints", () => {
 
         const stakeAt = (account, round) =>
             bondingCheckpoints
-                .getAccountActiveStakeAt(account.address, round)
+                .getAccountStakeAt(account.address, round)
                 .then(n => n.toString())
         const delegateAt = (account, round) =>
             bondingCheckpoints
