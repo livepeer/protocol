@@ -90,8 +90,7 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
      */
     // solhint-disable-next-line func-name-mixedcase
     function CLOCK_MODE() public pure returns (string memory) {
-        // TODO: Figure out the right value for this
-        return "mode=livepeer_round&from=default";
+        return "mode=livepeer_round";
     }
 
     // BondingManager checkpointing hooks
@@ -175,6 +174,9 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
             return activeStake;
         }
 
+        // TODO: We may want to remove this possibility for the total stake and instead require every round to have a
+        // checkpoint. If it doesn't, it means it wasn't initialized and we could have weird issues if we treat it
+        // normally here (e.g. inconsistent total supply depending on if you call before or after initializeRound).
         uint256 round = totalStakeCheckpointRounds.findLowerBound(_round);
         return totalActiveStakeCheckpoints[round];
     }
@@ -188,8 +190,6 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
      * @return The active stake of the account at the given round including any accrued rewards.
      */
     function getAccountStakeAt(address _account, uint256 _round) public view virtual returns (uint256) {
-        require(_round <= clock(), "getStakeAt: future lookup");
-
         BondingCheckpoint storage bond = getBondingCheckpointAt(_account, _round);
         bool isTranscoder = bond.delegateAddress == _account;
 
@@ -223,6 +223,8 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
         view
         returns (BondingCheckpoint storage)
     {
+        require(_round <= clock(), "getBondingCheckpointAt: future lookup");
+
         BondingCheckpointsByRound storage checkpoints = bondingCheckpoints[_account];
 
         // Most of the time we will be calling this for a transcoder which checkpoints on every round through reward().
