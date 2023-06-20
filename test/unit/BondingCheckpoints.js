@@ -1068,7 +1068,4 @@ describe("BondingCheckpoints", () => {
             })
         })
     })
-
-    // TODO: more tests:
-    // - sorted array tests (separate file)
 })
