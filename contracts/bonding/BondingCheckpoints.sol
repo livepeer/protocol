@@ -47,13 +47,14 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
          * Notice that this is the only field that comes from the Transcoder struct in BondingManager, not Delegator.
          */
         uint256 lastRewardRound;
+        // TODO: add a storage gap?
     }
 
     /**
      * @dev Stores a list of checkpoints for an account, queryable and mapped by start round. To access the checkpoint
-         for a given round, find the checkpoint with the highest start round that is lower or equal to the queried round
-        ({SortedArrays-findLowerBound}) and then fetch the specific checkpoint on the data mapping.
-        */
+     * for a given round, find the checkpoint with the highest start round that is lower or equal to the queried round
+     * ({SortedArrays-findLowerBound}) and then fetch the specific checkpoint on the data mapping.
+     */
     struct BondingCheckpointsByRound {
         uint256[] startRounds;
         mapping(uint256 => BondingCheckpoint) data;

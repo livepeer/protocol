@@ -11,28 +11,21 @@ import "../Manager.sol";
 import "../IController.sol";
 import "../rounds/IRoundsManager.sol";
 import "../bonding/IBondingCheckpoints.sol";
-import "./BondingCheckpointsVotes.sol";
+import "./IVotes.sol";
 
-abstract contract GovernorVotesBondingCheckpoints is Initializable, Manager, GovernorVotesQuorumFractionUpgradeable {
+/**
+ * @title GovernorCountingOverridable
+ * @notice Implements the Counting module from OpenZeppelin Governor with support for delegators overriding their
+ * delegated transcoder's vote. This module is used through inheritance by the Governor contract.
+ */
+abstract contract GovernorCountingOverridable is Initializable, GovernorUpgradeable {
     using SafeMath for uint256;
 
-    function __GovernorVotesBondingCheckpoints_init(uint256 quorumPerc) internal onlyInitializing {
-        BondingCheckpointsVotes votes = bondingCheckpointsVotes();
-        __GovernorVotes_init(votes);
-        __GovernorVotesQuorumFraction_init(quorumPerc);
-        __GovernorVotesBondingCheckpoints_init_unchained();
+    function __GovernorCountingOverridable_init() internal onlyInitializing {
+        __GovernorCountingOverridable_init_unchained();
     }
 
-    function __GovernorVotesBondingCheckpoints_init_unchained() internal onlyInitializing {}
-
-    /**
-     * @dev This should be called if we ever change the address of the bonding checkpoints votes contract. It is made as
-     * just a proxy to the bonding checkpoints not to require any updates for that matter, but its address could still
-     * eventually change in the controller so we provide this function as a future-proof commodity.
-     */
-    function bumpCheckpointsVotesRef() external {
-        token = bondingCheckpointsVotes();
-    }
+    function __GovernorCountingOverridable_init_unchained() internal onlyInitializing {}
 
     // 50% perc points compatible with MathUtils
     uint256 public constant QUOTA = 500000;
@@ -60,18 +53,6 @@ abstract contract GovernorVotesBondingCheckpoints is Initializable, Manager, Gov
     }
 
     mapping(uint256 => ProposalVote) private _proposalVotes;
-
-    // Voting power module (GovernorVotes)
-
-    /**
-     * @dev Returns the quorum denominator. We use MathUtils.PERC_DIVISOR so
-     * that our quorum numerator has to be a valid MathUtils fraction.
-     */
-    function quorumDenominator() public view virtual override returns (uint256) {
-        return MathUtils.PERC_DIVISOR;
-    }
-
-    // Vote counting module (GovernorCountingSimple)
 
     /**
      * @dev See {IGovernor-COUNTING_MODE}.
@@ -176,7 +157,7 @@ abstract contract GovernorVotesBondingCheckpoints is Initializable, Manager, Gov
         uint256 weight
     ) internal returns (uint256) {
         uint256 timepoint = proposalSnapshot(proposalId);
-        address delegatee = bondingCheckpointsVotes().delegatedAt(account, timepoint);
+        address delegatee = votes().delegatedAt(account, timepoint);
 
         bool isTranscoder = account == delegatee;
         if (isTranscoder) {
@@ -208,9 +189,10 @@ abstract contract GovernorVotesBondingCheckpoints is Initializable, Manager, Gov
         return weight;
     }
 
-    // Helpers for relations with other protocol contracts
+    /**
+     * @dev This needs to be implemented by the inheriting contract to provide the voting power provider.
+     */
+    function votes() public view virtual returns (IVotes);
 
-    function bondingCheckpointsVotes() internal view returns (BondingCheckpointsVotes) {
-        return BondingCheckpointsVotes(controller.getContract(keccak256("BondingCheckpointsVotes")));
-    }
+    // TODO: add a storage gap? we might have issues with LivepeerGovernor storage layout
 }
