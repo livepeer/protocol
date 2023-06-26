@@ -23,4 +23,6 @@ interface ICheatCodes {
         bytes calldata,
         bytes calldata
     ) external;
+
+    function addr(uint256) external returns (address);
 }
