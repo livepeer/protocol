@@ -37,8 +37,8 @@ library SortedArrays {
 
         uint256 upperIdx = _array.findUpperBound(_val);
 
-        // we already checked the last element above so the upper must be inside the array
-        require(upperIdx < len, "findLowerBound: invalid index returned by findUpperBound");
+        // we already checked the last element above so the upper will always be inside the array
+        assert(upperIdx < len);
 
         uint256 upperElm = _array[upperIdx];
         // the exact value we were searching is in the array
