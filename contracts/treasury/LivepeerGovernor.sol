@@ -9,11 +9,13 @@ import "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorSettin
 
 import "../bonding/libraries/EarningsPool.sol";
 import "../bonding/libraries/EarningsPoolLIP36.sol";
+import "../polling/PollCreator.sol";
 
 import "../ManagerProxyTarget.sol";
 import "../IController.sol";
 import "../rounds/IRoundsManager.sol";
 import "./GovernorCountingOverridable.sol";
+import "./BondingCheckpointsVotes.sol";
 import "./IVotes.sol";
 
 contract LivepeerGovernor is
@@ -25,9 +27,6 @@ contract LivepeerGovernor is
     GovernorVotesQuorumFractionUpgradeable,
     GovernorCountingOverridable
 {
-    // 33.33% perc points compatible with MathUtils
-    uint256 public constant INITIAL_QUORUM = 333300;
-
     /**
      * @notice TreasuryGovernor constructor. Only invokes constructor of base Manager contract with provided Controller address
      * @dev This constructor will not initialize any state variables besides `controller`. The `initialize` function must be called
@@ -43,10 +42,15 @@ contract LivepeerGovernor is
             10, /* 10 rounds/days voting period */
             100e18 /* 100 LPT min proposal threshold */
         );
-        // Note the GovernorVotes will hold a fixed reference to the votes contract. If we ever change its address we
-        // need to call the {bumpCheckpointsVotesRef} function below.
+
+        // The GovernorVotes module will hold a fixed reference to the votes contract. If we ever change its address we
+        // need to call the {bumpVotesAddress} function to update it in here as well.
         __GovernorVotes_init(votes());
-        __GovernorVotesQuorumFraction_init(INITIAL_QUORUM);
+
+        // Initialize with the same value from the existing polling system.
+        uint256 initialQuorum = pollCreator().QUORUM();
+        __GovernorVotesQuorumFraction_init(initialQuorum);
+
         __GovernorCountingOverridable_init();
     }
 
@@ -73,15 +77,32 @@ contract LivepeerGovernor is
      * @dev See {GovernorCountingOverridable-votes}.
      */
     function votes() public view override returns (IVotes) {
-        return IVotes(controller.getContract(keccak256("BondingCheckpointsVotes")));
+        return bondingCheckpointVotes();
+    }
+
+    /**
+     * @dev See {GovernorCountingOverridable-quota}. We use the same QUOTA value from the protocol governance system for
+     * now, but can consider changing this in the future (e.g. to make it updateable through proposals).
+     */
+    function quota() public view override returns (uint256) {
+        return pollCreator().QUOTA();
     }
 
     /**
      * @dev This should be called if we ever change the address of the BondingCheckpointsVotes contract. It is a simple
      * non upgradeable proxy to the BondingCheckpoints not to require any upgrades, but its address could still
-     * eventually change in the controller so we provide this function as a future-proof commodity.
+     * eventually change in the controller so we provide this function as a future-proof commodity. This function is
+     * callable by anyone because always fetch the current address from the controller, so it's not exploitable.
      */
-    function bumpCheckpointsVotesRef() external {
+    function bumpVotesAddress() external {
         token = votes();
+    }
+
+    function bondingCheckpointVotes() public view returns (BondingCheckpointsVotes) {
+        return BondingCheckpointsVotes(controller.getContract(keccak256("BondingCheckpointsVotes")));
+    }
+
+    function pollCreator() public view returns (PollCreator) {
+        return PollCreator(controller.getContract(keccak256("PollCreator")));
     }
 }

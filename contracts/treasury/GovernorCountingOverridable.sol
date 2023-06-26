@@ -27,9 +27,6 @@ abstract contract GovernorCountingOverridable is Initializable, GovernorUpgradea
 
     function __GovernorCountingOverridable_init_unchained() internal onlyInitializing {}
 
-    // 50% perc points compatible with MathUtils
-    uint256 public constant QUOTA = 500000;
-
     /**
      * @dev Supported vote types. Matches Governor Bravo ordering.
      */
@@ -107,7 +104,7 @@ abstract contract GovernorCountingOverridable is Initializable, GovernorUpgradea
         // we ignore abstain votes for vote succeeded calculation
         uint256 totalValidVotes = againstVotes.add(forVotes);
 
-        return forVotes >= MathUtils.percOf(totalValidVotes, QUOTA);
+        return forVotes >= MathUtils.percOf(totalValidVotes, quota());
     }
 
     /**
@@ -190,9 +187,14 @@ abstract contract GovernorCountingOverridable is Initializable, GovernorUpgradea
     }
 
     /**
-     * @dev This needs to be implemented by the inheriting contract to provide the voting power provider.
+     * @dev Implement in inheriting contract to provide the voting power provider.
      */
     function votes() public view virtual returns (IVotes);
+
+    /**
+     * @dev Implement in inheriting contract to provide quota value to use to decide on proposal success.
+     */
+    function quota() public view virtual returns (uint256);
 
     // TODO: add a storage gap? we might have issues with LivepeerGovernor storage layout
 }

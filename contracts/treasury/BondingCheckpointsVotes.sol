@@ -1,15 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts-upgradeable/interfaces/IERC5805Upgradeable.sol";
-
 import "../Manager.sol";
 import "../bonding/IBondingCheckpoints.sol";
+import "./IVotes.sol";
 
 /**
  * @title Interface for BondingCheckpoints
  */
-contract BondingCheckpointsVotes is Manager, IERC5805Upgradeable {
+contract BondingCheckpointsVotes is Manager, IVotes {
     constructor(address _controller) Manager(_controller) {}
 
     /**
