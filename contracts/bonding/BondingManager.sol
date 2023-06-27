@@ -622,13 +622,12 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // the `autoClaimEarnings` modifier has been replaced with its internal function as a `Stack too deep` error work-around
         _autoClaimEarnings(msg.sender);
         Delegator storage oldDel = delegators[msg.sender];
+        Delegator storage newDel = delegators[_delegator];
         // Cache delegate address of caller before unbondWithHint because
         // if unbondWithHint is for a full unbond the caller's delegate address will be set to null
         address oldDelDelegate = oldDel.delegateAddress;
 
         unbondWithHint(_amount, _oldDelegateNewPosPrev, _oldDelegateNewPosNext);
-
-        Delegator storage newDel = delegators[_delegator];
 
         uint256 oldDelUnbondingLockId = oldDel.nextUnbondingLockId.sub(1);
         uint256 withdrawRound = oldDel.unbondingLocks[oldDelUnbondingLockId].withdrawRound;
@@ -653,6 +652,10 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
         // Rebond lock for new owner
         if (newDel.delegateAddress == address(0) && newDel.bondedAmount == 0) {
+            // Requirements for caller
+            // Does not trigger self-delegation
+            require(oldDelDelegate != _delegator, "INVALID_DELEGATOR");
+
             newDel.delegateAddress = oldDelDelegate;
         }
 

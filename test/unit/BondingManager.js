@@ -3182,6 +3182,8 @@ describe("BondingManager", () => {
         let transcoder1
         let delegator1
         let delegator2
+        let delegator3
+        let delegator4
         const currentRound = 100
 
         beforeEach(async () => {
@@ -3189,6 +3191,8 @@ describe("BondingManager", () => {
             transcoder1 = signers[1]
             delegator1 = signers[3]
             delegator2 = signers[4]
+            delegator3 = signers[5]
+            delegator4 = signers[6]
 
             await fixture.roundsManager.setMockBool(
                 functionSig("currentRoundInitialized()"),
@@ -3221,6 +3225,9 @@ describe("BondingManager", () => {
                 await bondingManager
                     .connect(delegator1)
                     .bond(2000, transcoder0.address)
+                await bondingManager
+                    .connect(delegator3)
+                    .bond(2000, delegator4.address)
                 await fixture.roundsManager.setMockUint256(
                     functionSig("currentRound()"),
                     currentRound + 2
@@ -3282,6 +3289,21 @@ describe("BondingManager", () => {
             })
 
             describe("receiver is not bonded", () => {
+                it("should fail if caller is delegated to receiver", async () => {
+                    const tx = bondingManager
+                        .connect(delegator3)
+                        .transferBond(
+                            delegator4.address,
+                            1,
+                            ZERO_ADDRESS,
+                            ZERO_ADDRESS,
+                            ZERO_ADDRESS,
+                            ZERO_ADDRESS
+                        )
+
+                    await expect(tx).to.be.revertedWith("INVALID_DELEGATOR")
+                })
+
                 it("should transfer the bond to receiver", async () => {
                     const d1BondedAmountStart = (
                         await bondingManager.getDelegator(delegator1.address)
