@@ -93,7 +93,7 @@ describe.only("BondingCheckpoints", () => {
             await nextRound()
 
             for (const account of [transcoder, delegator]) {
-                await bondingManager.initBondingCheckpoint(account.address)
+                await bondingManager.checkpointBonding(account.address)
             }
 
             // Round R-2
@@ -245,7 +245,7 @@ describe.only("BondingCheckpoints", () => {
             await nextRound()
 
             for (const account of [...transcoders, ...delegators]) {
-                await bondingManager.initBondingCheckpoint(account.address)
+                await bondingManager.checkpointBonding(account.address)
             }
 
             // Round R-2
@@ -406,7 +406,7 @@ describe.only("BondingCheckpoints", () => {
             await nextRound()
 
             for (const account of [transcoder, delegator, delegatorEarly]) {
-                await bondingManager.initBondingCheckpoint(account.address)
+                await bondingManager.checkpointBonding(account.address)
             }
 
             // Round R-202
@@ -558,7 +558,7 @@ describe.only("BondingCheckpoints", () => {
             await nextRound()
 
             for (const account of [transcoder, delegator]) {
-                await bondingManager.initBondingCheckpoint(account.address)
+                await bondingManager.checkpointBonding(account.address)
             }
 
             // Round R-1

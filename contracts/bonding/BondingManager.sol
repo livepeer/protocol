@@ -612,19 +612,12 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     }
 
     /**
-     * @notice Initializes the bonding checkpoint for a given account. This can only be called for accounts that have no
-     * checkpoints yet.
-     * @dev This is a migration strategy so we can snapshot all accounts' stake immediately after deploying the new
-     * BondingCheckpoints contract.
+     * @notice Checkpoints the bonding state for a given account.
+     * @dev This is to allow checkpointing an account that has an inconsistent checkpoint with its current state.
+     * Implemented as a deploy utility to checkpoint the existing state when deploying the BondingCheckpoints contract.
      * @param _account The account to initialize the bonding checkpoint for
      */
-    function initBondingCheckpoint(address _account) external {
-        IBondingCheckpoints checkpoints = bondingCheckpoints();
-
-        require(address(checkpoints) != address(0), "bonding checkpoints not available");
-
-        require(!checkpoints.hasCheckpoint(_account), "account already checkpointed");
-
+    function checkpointBonding(address _account) external {
         checkpointBonding(_account, delegators[_account], transcoders[_account]);
     }
 

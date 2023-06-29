@@ -45,7 +45,7 @@ describe.only("BondingCheckpoints", () => {
     })
 
     // TODO: Move this to BondingManager tests
-    describe("initBondingCheckpoint", () => {
+    describe("checkpointBonding", () => {
         let bondingManager
 
         let transcoder
@@ -142,15 +142,15 @@ describe.only("BondingCheckpoints", () => {
             await fixture.register("BondingCheckpoints", constants.AddressZero)
 
             await expect(
-                bondingManager.initBondingCheckpoint(transcoder.address)
+                bondingManager.checkpointBonding(transcoder.address)
             ).to.be.revertedWith("bonding checkpoints not available")
         })
 
         it("should revert if account already initialized", async () => {
-            await bondingManager.initBondingCheckpoint(transcoder.address)
+            await bondingManager.checkpointBonding(transcoder.address)
 
             await expect(
-                bondingManager.initBondingCheckpoint(transcoder.address)
+                bondingManager.checkpointBonding(transcoder.address)
             ).to.be.revertedWith("account already checkpointed")
         })
 
@@ -159,7 +159,7 @@ describe.only("BondingCheckpoints", () => {
                 "findLowerBound: empty array"
             )
 
-            await bondingManager.initBondingCheckpoint(transcoder.address)
+            await bondingManager.checkpointBonding(transcoder.address)
 
             // Round R+1
             await setRound(currentRound + 1)
@@ -173,7 +173,7 @@ describe.only("BondingCheckpoints", () => {
         })
 
         it("should have no problems if state gets updated again in round", async () => {
-            await bondingManager.initBondingCheckpoint(transcoder.address)
+            await bondingManager.checkpointBonding(transcoder.address)
 
             await bondingManager.connect(transcoder).reward()
 
