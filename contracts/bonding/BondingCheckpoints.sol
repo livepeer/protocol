@@ -169,17 +169,16 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
     function getTotalActiveStakeAt(uint256 _round) public view virtual returns (uint256) {
         require(_round <= clock(), "getTotalActiveStakeAt: future lookup");
 
-        // most of the time we will have the checkpoint from exactly the round we want
         uint256 activeStake = totalActiveStakeCheckpoints[_round];
-        if (activeStake > 0) {
-            return activeStake;
+
+        if (activeStake == 0) {
+            uint256 lastInitialized = totalStakeCheckpointRounds.findLowerBound(_round);
+
+            // Check that the round was in fact initialized so we don't return a 0 value accidentally.
+            require(lastInitialized == _round, "getTotalActiveStakeAt: round was not initialized");
         }
 
-        // TODO: We may want to remove this possibility for the total stake and instead require every round to have a
-        // checkpoint. If it doesn't, it means it wasn't initialized and we could have weird issues if we treat it
-        // normally here (e.g. inconsistent total supply depending on if you call before or after initializeRound).
-        uint256 round = totalStakeCheckpointRounds.findLowerBound(_round);
-        return totalActiveStakeCheckpoints[round];
+        return activeStake;
     }
 
     /**
