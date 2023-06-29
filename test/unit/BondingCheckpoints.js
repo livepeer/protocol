@@ -158,15 +158,15 @@ describe("BondingCheckpoints", () => {
             await fixture.register("BondingCheckpoints", constants.AddressZero)
 
             await expect(
-                bondingManager.initBondingCheckpoint(transcoder.address)
+                bondingManager.checkpointBonding(transcoder.address)
             ).to.be.revertedWith("bonding checkpoints not available")
         })
 
         it("should revert if account already initialized", async () => {
-            await bondingManager.initBondingCheckpoint(transcoder.address)
+            await bondingManager.checkpointBonding(transcoder.address)
 
             await expect(
-                bondingManager.initBondingCheckpoint(transcoder.address)
+                bondingManager.checkpointBonding(transcoder.address)
             ).to.be.revertedWith("account already checkpointed")
         })
 
@@ -175,7 +175,7 @@ describe("BondingCheckpoints", () => {
                 "findLowerBound: empty array"
             )
 
-            await bondingManager.initBondingCheckpoint(transcoder.address)
+            await bondingManager.checkpointBonding(transcoder.address)
 
             // Round R+1
             await setRound(currentRound + 1)
@@ -189,7 +189,7 @@ describe("BondingCheckpoints", () => {
         })
 
         it("should have no problems if state gets updated again in round", async () => {
-            await bondingManager.initBondingCheckpoint(transcoder.address)
+            await bondingManager.checkpointBonding(transcoder.address)
 
             await bondingManager.connect(transcoder).reward()
 
@@ -258,7 +258,7 @@ describe("BondingCheckpoints", () => {
                 await setRound(0)
 
                 for (const account of [transcoder, delegator]) {
-                    await bondingManager.initBondingCheckpoint(account.address)
+                    await bondingManager.checkpointBonding(account.address)
                 }
 
                 // Round R-2
@@ -397,7 +397,7 @@ describe("BondingCheckpoints", () => {
                 )
 
                 for (const account of [...transcoders, ...delegators]) {
-                    await bondingManager.initBondingCheckpoint(account.address)
+                    await bondingManager.checkpointBonding(account.address)
                 }
 
                 // Round R-2
@@ -615,7 +615,7 @@ describe("BondingCheckpoints", () => {
             await setRound(0)
 
             for (const account of [transcoder, delegator, delegatorEarly]) {
-                await bondingManager.initBondingCheckpoint(account.address)
+                await bondingManager.checkpointBonding(account.address)
             }
 
             // Round R-200
@@ -800,7 +800,7 @@ describe("BondingCheckpoints", () => {
             await setRound(0)
 
             for (const account of [transcoder, delegator]) {
-                await bondingManager.initBondingCheckpoint(account.address)
+                await bondingManager.checkpointBonding(account.address)
             }
 
             // Round R-1
