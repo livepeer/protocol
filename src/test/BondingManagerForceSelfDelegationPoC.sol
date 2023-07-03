@@ -47,7 +47,7 @@ contract BondingManagerForceSelfDelegationPoC is GovernorBaseTest {
     }
 
     function testBondForWithHintPoC() public {
-        // Attacker calls bondForWithHint() to force the delegator to self-delegate at the cost of 1 uLPT
+        // Attacker calls bondForWithHint() to force the delegator to self-delegate at the cost of 1 aLPT
         CHEATS.prank(attacker);
         BONDING_MANAGER.bondForWithHint(1, delegator, delegator, address(0), address(0), address(0), address(0));
 
@@ -75,7 +75,7 @@ contract BondingManagerForceSelfDelegationPoC is GovernorBaseTest {
         CHEATS.expectRevert("caller must be unbonded");
         BONDING_MANAGER.rebondFromUnbonded(transcoder, 0);
 
-        // Attacker can prevent a delegator address from delegating to a separate address by calling bondForWithHint() to force the address to self-delegate at the cost of 1 uLPT
+        // Attacker can prevent a delegator address from delegating to a separate address by calling bondForWithHint() to force the address to self-delegate at the cost of 1 aLPT
         // whenever the delegator address is in the Unbonded state
     }
 
@@ -90,7 +90,7 @@ contract BondingManagerForceSelfDelegationPoC is GovernorBaseTest {
         CHEATS.roll(nextRoundStartBlock);
         ROUNDS_MANAGER.initializeRound();
 
-        // Attacker calls transferBond() to force the delegator to self-delegate at the cost of 1 uLPT
+        // Attacker calls transferBond() to force the delegator to self-delegate at the cost of 1 aLPT
         CHEATS.prank(attacker);
         BONDING_MANAGER.transferBond(delegator, 1, address(0), address(0), address(0), address(0));
 
@@ -117,7 +117,7 @@ contract BondingManagerForceSelfDelegationPoC is GovernorBaseTest {
         CHEATS.expectRevert("caller must be unbonded");
         BONDING_MANAGER.rebondFromUnbonded(transcoder, 0);
 
-        // Attacker can prevent a delegator address from delegating to a separate address by calling transferBond() to force the address to self-delegate at the cost of 1 uLPT
+        // Attacker can prevent a delegator address from delegating to a separate address by calling transferBond() to force the address to self-delegate at the cost of 1 aLPT
         // whenever the delegator address is in the Unbonded state
     }
 }
