@@ -15,16 +15,16 @@ export INFURA_KEY=<INFURA_KEY>
 Deploy the target implementation contract by using the `--tags` flag to specify the tag associated with the relevant deploy script.
 
 ```
-PRIVATE_KEY=<PATH_TO_PRIVATE_KEY_FILE> npx hardhat deploy --tags <TAGS> --network arbitrumMainnet
+PRIVATE_KEY=$(cat <PATH_TO_PRIVATE_KEY_FILE>) npx hardhat deploy --tags <TAGS> --network arbitrumMainnet
 ```
 
 For example, `deploy/deploy_bonding_manager.ts` is the deploy script for the `BondingManager` target implementation contract and the following command would just run that specific deploy script.
 
 ```
-PRIVATE_KEY=~/path-to-private-key-file npx hardhat deploy --tags BONDING_MANAGER --network arbitrumMainnet
+PRIVATE_KEY=$(cat ~/path-to-private-key-file) npx hardhat deploy --tags BONDING_MANAGER --network arbitrumMainnet
 ```
 
-After deployment, a file in the `deployments` directory containing the latest addresses of deployed contracts will be updated. 
+After deployment, a file in the `deployments` directory containing the latest addresses of deployed contracts will be updated. The JSON file for the proxy will use the name of the contract i.e. `BondingManager` proxy -> `deployments/<NETWORK>/BondingManager.json` and the target implementation will use the name of the contract with the `Target` suffix i.e. `BondingManager` target implementation -> `deployments/<NETWORK>/BondingManagerTarget.json`. By default, the proxy file i.e. `deployments/<NETWORK>/BondingManager.json` will be updated as well even if we only want to update the target implementation file i.e. `deployments/<NETWORK>/BondingManagerTarget.json` to be updated. We can omit this change from the Git history just by running `git checkout -- deployments/<NETWORK>/BondingManager.json`.
 
 ## Verify Contract Code
 
@@ -40,7 +40,7 @@ The `etherscan-verify` task might return an error for certain contracts. If this
 npx hardhat flatten contracts/bonding/BondingManager.sol > flattened.sol
 ```
 
-You can use https://arbiscan.io/verifyContract to manually submit contract code for verification.
+You can use https://arbiscan.io/verifyContract to manually submit contract code for public verification.
 
 - The compiler config (i.e. version, optimizer runs, etc.) can be found in `hardhat.config.ts`  under `solidity.compilers`.
 - For Compiler Type, select "Solidity (Single File)".
@@ -48,9 +48,15 @@ You can use https://arbiscan.io/verifyContract to manually submit contract code 
 
 When prompted for the code, you can copy and paste the contents of `flattened.sol`.
 
+You can also use Tenderly to manually submit contract code for [private verification](https://docs.tenderly.co/monitoring/smart-contract-verification/verifying-a-smart-contract).
+
+If you see an error related to multiple SPDX license identifiers, remove all SPDX license identifiers from `flattened.sol` except for a single one.
+
 ## View Contract Diff
 
 Use the contract diff checker at https://arbiscan.io/contractdiffchecker to view the code diff between the current and new target implementation contracts in order to check that the verified code at address of the new target implementation contract contains the expected changes.
+
+If the contract code is only privately verified in Tenderly, you can view the contract diff by copying the current target implementation contract code from arbiscan.io and the new target implementation contract code from Tenderly to local files and then running `diff current.sol new.sol`.
 
 ## Create Protocol Governor Update
 
