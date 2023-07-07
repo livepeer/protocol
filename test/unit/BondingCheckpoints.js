@@ -19,21 +19,25 @@ describe.only("BondingCheckpoints", () => {
     const PERC_DIVISOR = 1000000
     const PERC_MULTIPLIER = PERC_DIVISOR / 100
 
+    async function deployAndRegisterBondingCheckpoints() {
+        const bondingCheckpointsFac = await ethers.getContractFactory(
+            "BondingCheckpoints"
+        )
+
+        return await fixture.deployAndRegister(
+            bondingCheckpointsFac,
+            "BondingCheckpoints",
+            fixture.controller.address
+        )
+    }
+
     let signers
     before(async () => {
         signers = await ethers.getSigners()
         fixture = new Fixture(web3)
         await fixture.deploy()
 
-        const bondingCheckpointsFac = await ethers.getContractFactory(
-            "BondingCheckpoints"
-        )
-
-        bondingCheckpoints = await fixture.deployAndRegister(
-            bondingCheckpointsFac,
-            "BondingCheckpoints",
-            fixture.controller.address
-        )
+        bondingCheckpoints = await deployAndRegisterBondingCheckpoints()
     })
 
     beforeEach(async () => {
@@ -45,7 +49,7 @@ describe.only("BondingCheckpoints", () => {
     })
 
     // TODO: Move this to BondingManager tests
-    describe("checkpointBonding", () => {
+    describe("checkpointBondingState", () => {
         let bondingManager
 
         let transcoder
@@ -88,9 +92,10 @@ describe.only("BondingCheckpoints", () => {
             await bondingManager.setUnbondingPeriod(UNBONDING_PERIOD)
             await bondingManager.setNumActiveTranscoders(NUM_ACTIVE_TRANSCODERS)
 
-            // Unregister BondingCheckpoints from controller so it doesn't get state updates. This is the trick we use
-            // to simulate not having the checkpoints deployed yet to see the migration of the data once it is
-            await fixture.register("BondingCheckpoints", constants.AddressZero)
+            // Register a dummy BondingCheckpoints on the controller so all checkpoints from this initialization goes to
+            // it. This is reverted in the end of this function and is the trick we use to simulate the first deployment
+            // of the checkpoints contract to test the initialization logic.
+            await deployAndRegisterBondingCheckpoints()
 
             await fixture.roundsManager.setMockBool(
                 functionSig("currentRoundInitialized()"),
@@ -126,7 +131,7 @@ describe.only("BondingCheckpoints", () => {
                 1000
             )
 
-            // Now let's register back the BondingCheckpoints contract as if it was deployed in the current round
+            // Now let's register back the main BondingCheckpoints contract as if it was deployed in the current round
             await fixture.register(
                 "BondingCheckpoints",
                 bondingCheckpoints.address
@@ -135,23 +140,26 @@ describe.only("BondingCheckpoints", () => {
 
         const stakeAt = (account, round) =>
             bondingCheckpoints
-                .getAccountStakeAt(account.address, round)
-                .then(n => n.toString())
+                .getBondingStateAt(account.address, round)
+                .then(n => n[0].toString())
 
-        it("should revert if bonding checkpoint is not registered", async () => {
+        it("should fail if bonding checkpoint is not registered", async () => {
             await fixture.register("BondingCheckpoints", constants.AddressZero)
 
             await expect(
-                bondingManager.checkpointBonding(transcoder.address)
-            ).to.be.revertedWith("bonding checkpoints not available")
+                bondingManager.checkpointBondingState(transcoder.address)
+            ).to.be.revertedWith("function call to a non-contract account")
         })
 
-        it("should revert if account already initialized", async () => {
-            await bondingManager.checkpointBonding(transcoder.address)
+        it("should correctly return if account already has a checkpoint", async () => {
+            const hasCheckpoint = addr =>
+                bondingCheckpoints.hasCheckpoint(addr).then(n => n.toString())
 
-            await expect(
-                bondingManager.checkpointBonding(transcoder.address)
-            ).to.be.revertedWith("account already checkpointed")
+            assert.equal(await hasCheckpoint(transcoder.address), "false")
+
+            await bondingManager.checkpointBondingState(transcoder.address)
+
+            assert.equal(await hasCheckpoint(transcoder.address), "true")
         })
 
         it("should allow querying on the round after it is called", async () => {
@@ -159,7 +167,7 @@ describe.only("BondingCheckpoints", () => {
                 "findLowerBound: empty array"
             )
 
-            await bondingManager.checkpointBonding(transcoder.address)
+            await bondingManager.checkpointBondingState(transcoder.address)
 
             // Round R+1
             await setRound(currentRound + 1)
@@ -173,7 +181,7 @@ describe.only("BondingCheckpoints", () => {
         })
 
         it("should have no problems if state gets updated again in round", async () => {
-            await bondingManager.checkpointBonding(transcoder.address)
+            await bondingManager.checkpointBondingState(transcoder.address)
 
             await bondingManager.connect(transcoder).reward()
 
@@ -241,10 +249,10 @@ describe.only("BondingCheckpoints", () => {
             await setRound(currentRound)
         })
 
-        const checkpointBonding = (account, startRound) => {
+        const checkpointBondingState = (account, startRound) => {
             const functionData =
                 bondingCheckpoints.interface.encodeFunctionData(
-                    "checkpointBonding",
+                    "checkpointBondingState",
                     [
                         account.address,
                         startRound, // start round
@@ -263,7 +271,7 @@ describe.only("BondingCheckpoints", () => {
 
         it("should revert if caller is not bonding manager", async () => {
             await expect(
-                bondingCheckpoints.checkpointBonding(
+                bondingCheckpoints.checkpointBondingState(
                     delegator.address,
                     0,
                     0,
@@ -276,8 +284,10 @@ describe.only("BondingCheckpoints", () => {
         })
 
         it("should revert if round is in the future", async () => {
-            await expect(checkpointBonding(delegator, 102)).to.be.revertedWith(
-                "future lookup"
+            await expect(
+                checkpointBondingState(delegator, 102)
+            ).to.be.revertedWith(
+                "can only checkpoint delegator up to the next round"
             )
         })
     })

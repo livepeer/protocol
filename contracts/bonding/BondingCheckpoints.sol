@@ -140,7 +140,7 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
      * @dev This is meant to be called by a checkpoint initialization script once we deploy the checkpointing logic for
      * the first time, so we can efficiently initialize the checkpoint state for all accounts in the system.
      */
-    function hasCheckpoint(address _account) external virtual returns (bool) {
+    function hasCheckpoint(address _account) external view returns (bool) {
         return bondingCheckpoints[_account].startRounds.length > 0;
     }
 

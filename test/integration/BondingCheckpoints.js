@@ -93,7 +93,7 @@ describe.only("BondingCheckpoints", () => {
             await nextRound()
 
             for (const account of [transcoder, delegator]) {
-                await bondingManager.checkpointBonding(account.address)
+                await bondingManager.checkpointBondingState(account.address)
             }
 
             // Round R-2
@@ -245,7 +245,7 @@ describe.only("BondingCheckpoints", () => {
             await nextRound()
 
             for (const account of [...transcoders, ...delegators]) {
-                await bondingManager.checkpointBonding(account.address)
+                await bondingManager.checkpointBondingState(account.address)
             }
 
             // Round R-2
@@ -307,7 +307,7 @@ describe.only("BondingCheckpoints", () => {
                 const delegator = delegators[delegators.length - 1].address
 
                 const testHasStake = async (address, round) => {
-                    const stake = await bondingCheckpoints.getAccountStakeAt(
+                    const [stake] = await bondingCheckpoints.getBondingStateAt(
                         address,
                         round
                     )
@@ -336,8 +336,8 @@ describe.only("BondingCheckpoints", () => {
                     for (const address of Object.keys(pendingStakes)) {
                         const expectedStake = pendingStakes[address]
 
-                        const stakeCheckpoint =
-                            await bondingCheckpoints.getAccountStakeAt(
+                        const [stakeCheckpoint] =
+                            await bondingCheckpoints.getBondingStateAt(
                                 address,
                                 round
                             )
@@ -368,8 +368,8 @@ describe.only("BondingCheckpoints", () => {
                 for (const r = currentRound - 2; r <= currentRound + 2; r++) {
                     const activeStakeSum = BigNumber.from(0)
                     for (const transcoder of activeTranscoders) {
-                        const stake =
-                            await bondingCheckpoints.getAccountStakeAt(
+                        const [stake] =
+                            await bondingCheckpoints.getBondingStateAt(
                                 transcoder.address,
                                 r
                             )
@@ -406,7 +406,7 @@ describe.only("BondingCheckpoints", () => {
             await nextRound()
 
             for (const account of [transcoder, delegator, delegatorEarly]) {
-                await bondingManager.checkpointBonding(account.address)
+                await bondingManager.checkpointBondingState(account.address)
             }
 
             // Round R-202
@@ -447,11 +447,11 @@ describe.only("BondingCheckpoints", () => {
             await nextRound()
         })
 
-        describe("getAccountStakeAt", () => {
+        describe("getBondingStateAt", () => {
             const stakeAt = (account, round) =>
                 bondingCheckpoints
-                    .getAccountStakeAt(account.address, round)
-                    .then(n => n.toString())
+                    .getBondingStateAt(account.address, round)
+                    .then(n => n[0].toString())
             const expectStakeAt = async (account, round, expected) => {
                 assert.equal(
                     await stakeAt(account, round),
@@ -558,7 +558,7 @@ describe.only("BondingCheckpoints", () => {
             await nextRound()
 
             for (const account of [transcoder, delegator]) {
-                await bondingManager.checkpointBonding(account.address)
+                await bondingManager.checkpointBondingState(account.address)
             }
 
             // Round R-1
@@ -577,12 +577,13 @@ describe.only("BondingCheckpoints", () => {
 
         const stakeAt = (account, round) =>
             bondingCheckpoints
-                .getAccountStakeAt(account.address, round)
-                .then(n => n.toString())
+                .getBondingStateAt(account.address, round)
+                .then(n => n[0].toString())
         const delegateAt = (account, round) =>
             bondingCheckpoints
-                .getDelegateAddressAt(account.address, round)
-                .then(n => n.toString())
+                .getBondingStateAt(account.address, round)
+                .then(n => n[1].toString())
+
         const expectStakeAt = async (account, round, expected, delegate) => {
             assert.equal(
                 await stakeAt(account, round),
