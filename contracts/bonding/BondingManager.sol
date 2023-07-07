@@ -385,7 +385,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             // Decrease bonded stake
             del.bondedAmount = del.bondedAmount.sub(penalty);
 
-            checkpointBonding(_transcoder, del, transcoders[_transcoder]);
+            checkpointBondingState(_transcoder, del, transcoders[_transcoder]);
 
             // If still bonded decrease delegate's delegated amount
             if (delegatorStatus(_transcoder) == DelegatorStatus.Bonded) {
@@ -572,7 +572,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // Update bonded amount
         del.bondedAmount = currentBondedAmount.add(_amount);
 
-        checkpointBonding(_owner, del, transcoders[_owner]);
+        checkpointBondingState(_owner, del, transcoders[_owner]);
 
         increaseTotalStake(_to, delegationAmount, _currDelegateNewPosPrev, _currDelegateNewPosNext);
 
@@ -588,27 +588,24 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * @notice Checkpoints a delegator state after changes, to be used for historical voting power calculations in
      * on-chain governor logic.
      */
-    function checkpointBonding(
+    function checkpointBondingState(
         address _owner,
         Delegator storage _delegator,
         Transcoder storage _transcoder
     ) internal {
-        IBondingCheckpoints checkpoints = bondingCheckpoints();
-        if (address(checkpoints) != address(0)) {
-            // start round refers to the round where the checkpointed stake will be active. The actual `startRound` value
-            // in the delegators doesn't get updated on bond or claim earnings though, so we use currentRound() + 1
-            // which is the only guaranteed round where the currently stored stake will be active.
-            uint256 startRound = roundsManager().currentRound() + 1;
-            checkpoints.checkpointBonding(
-                _owner,
-                startRound,
-                _delegator.bondedAmount,
-                _delegator.delegateAddress,
-                _delegator.delegatedAmount,
-                _delegator.lastClaimRound,
-                _transcoder.lastRewardRound
-            );
-        }
+        // start round refers to the round where the checkpointed stake will be active. The actual `startRound` value
+        // in the delegators doesn't get updated on bond or claim earnings though, so we use currentRound() + 1
+        // which is the only guaranteed round where the currently stored stake will be active.
+        uint256 startRound = roundsManager().currentRound() + 1;
+        bondingCheckpoints().checkpointBondingState(
+            _owner,
+            startRound,
+            _delegator.bondedAmount,
+            _delegator.delegateAddress,
+            _delegator.delegatedAmount,
+            _delegator.lastClaimRound,
+            _transcoder.lastRewardRound
+        );
     }
 
     /**
@@ -617,8 +614,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * Implemented as a deploy utility to checkpoint the existing state when deploying the BondingCheckpoints contract.
      * @param _account The account to initialize the bonding checkpoint for
      */
-    function checkpointBonding(address _account) external {
-        checkpointBonding(_account, delegators[_account], transcoders[_account]);
+    function checkpointBondingState(address _account) external {
+        checkpointBondingState(_account, delegators[_account], transcoders[_account]);
     }
 
     /**
@@ -774,7 +771,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         }
 
         // No problem that startRound may have been cleared above, checkpoints are always made for currentRound()+1
-        checkpointBonding(msg.sender, del, transcoders[msg.sender]);
+        checkpointBondingState(msg.sender, del, transcoders[msg.sender]);
 
         // If msg.sender was resigned this statement will only decrease delegators[currentDelegate].delegatedAmount
         decreaseTotalStake(currentDelegate, _amount, _newPosPrev, _newPosNext);
@@ -883,7 +880,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // Set last round that transcoder called reward
         t.lastRewardRound = currentRound;
 
-        checkpointBonding(msg.sender, delegators[msg.sender], t);
+        checkpointBondingState(msg.sender, delegators[msg.sender], t);
 
         emit Reward(msg.sender, transcoderRewards);
     }
@@ -1350,7 +1347,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // Increase delegate's delegated amount
         del.delegatedAmount = newStake;
 
-        checkpointBonding(_delegate, del, t);
+        checkpointBondingState(_delegate, del, t);
     }
 
     /**
@@ -1393,7 +1390,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // Decrease old delegate's delegated amount
         del.delegatedAmount = newStake;
 
-        checkpointBonding(_delegate, del, t);
+        checkpointBondingState(_delegate, del, t);
     }
 
     /**
@@ -1561,7 +1558,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         del.bondedAmount = currentBondedAmount;
         del.fees = currentFees;
 
-        checkpointBonding(_delegator, del, transcoders[_delegator]);
+        checkpointBondingState(_delegator, del, transcoders[_delegator]);
     }
 
     /**
@@ -1587,7 +1584,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // Increase delegator's bonded amount
         del.bondedAmount = del.bondedAmount.add(amount);
 
-        checkpointBonding(_delegator, del, transcoders[_delegator]);
+        checkpointBondingState(_delegator, del, transcoders[_delegator]);
 
         // Delete lock
         delete del.unbondingLocks[_unbondingLockId];

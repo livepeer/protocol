@@ -9,7 +9,7 @@ import "@openzeppelin/contracts-upgradeable/interfaces/IERC6372Upgradeable.sol";
 interface IBondingCheckpoints is IERC6372Upgradeable {
     // BondingManager hooks
 
-    function checkpointBonding(
+    function checkpointBondingState(
         address _account,
         uint256 _startRound,
         uint256 _bondedAmount,
@@ -21,13 +21,12 @@ interface IBondingCheckpoints is IERC6372Upgradeable {
 
     function checkpointTotalActiveStake(uint256 _totalStake, uint256 _round) external;
 
-    function hasCheckpoint(address _account) external returns (bool);
-
     // Historical stake access functions
 
     function getTotalActiveStakeAt(uint256 _round) external view returns (uint256);
 
-    function getAccountStakeAt(address _account, uint256 _round) external view returns (uint256);
-
-    function getDelegateAddressAt(address _account, uint256 _round) external view returns (address);
+    function getBondingStateAt(address _account, uint256 _round)
+        external
+        view
+        returns (uint256 amount, address delegateAddress);
 }

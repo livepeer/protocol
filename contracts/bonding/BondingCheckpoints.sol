@@ -108,7 +108,7 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
      * @param _lastClaimRound From {BondingManager-Delegator-lastClaimRound}
      * @param _lastRewardRound From {BondingManager-Transcoder-lastRewardRound}
      */
-    function checkpointBonding(
+    function checkpointBondingState(
         address _account,
         uint256 _startRound,
         uint256 _bondedAmount,
@@ -182,32 +182,36 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
     }
 
     /**
-     * @dev Gets the active stake of an account at a given round. In case of delegators it is the amount they are
-       delegating to a transcoder, while for transcoders this is all the stake that has been delegated to them
-       (including self-delegated).
+     * @notice Gets the bonding state of an account at a given round.
+     * @dev In the case of delegators it is the amount they are delegating to a transcoder, while for transcoders this
+     * includes all the stake that has been delegated to them (including self-delegated).
      * @param _account The account whose bonding state we want to get.
      * @param _round The round for which we want to get the bonding state. Normally a proposal's vote start round.
-     * @return The active stake of the account at the given round including any accrued rewards.
+     * @return amount The active stake of the account at the given round including any accrued rewards. In case of
+     * transcoders this also includes all the amount delegated towards them by other delegators.
+     * @return delegateAddress The address the account delegated to. Will be equal to _account in case of transcoders.
      */
-    function getAccountStakeAt(address _account, uint256 _round) public view virtual returns (uint256) {
+    function getBondingStateAt(address _account, uint256 _round)
+        public
+        view
+        virtual
+        returns (uint256 amount, address delegateAddress)
+    {
         BondingCheckpoint storage bond = getBondingCheckpointAt(_account, _round);
-        bool isTranscoder = bond.delegateAddress == _account;
+
+        delegateAddress = bond.delegateAddress;
+        bool isTranscoder = delegateAddress == _account;
 
         if (bond.bondedAmount == 0) {
-            return 0;
+            amount = 0;
         } else if (isTranscoder) {
             // Address is a registered transcoder so we use its delegated amount. This includes self and delegated stake
             // as well as any accrued rewards, even unclaimed ones
-            return bond.delegatedAmount;
+            amount = bond.delegatedAmount;
         } else {
             // Address is NOT a registered transcoder so we calculate its cumulative stake for the voting power
-            return delegatorCumulativeStakeAt(bond, _round);
+            amount = delegatorCumulativeStakeAt(bond, _round);
         }
-    }
-
-    function getDelegateAddressAt(address _account, uint256 _round) public view virtual returns (address) {
-        BondingCheckpoint storage bond = getBondingCheckpointAt(_account, _round);
-        return bond.delegateAddress;
     }
 
     /**
