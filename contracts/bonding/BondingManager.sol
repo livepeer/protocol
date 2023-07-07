@@ -13,7 +13,6 @@ import "../token/IMinter.sol";
 import "../rounds/IRoundsManager.sol";
 import "../snapshots/IMerkleSnapshot.sol";
 import "./IBondingCheckpoints.sol";
-import "../treasury/LivepeerGovernor.sol";
 
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/governance/IGovernor.sol";
@@ -1626,8 +1625,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         return IRoundsManager(controller.getContract(keccak256("RoundsManager")));
     }
 
-    function treasury() internal view returns (LivepeerGovernor) {
-        return LivepeerGovernor(payable(controller.getContract(keccak256("LivepeerGovernor"))));
+    function treasury() internal view returns (address payable) {
+        return payable(controller.getContract(keccak256("Treasury")));
     }
 
     function bondingCheckpoints() internal view returns (IBondingCheckpoints) {

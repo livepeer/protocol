@@ -137,9 +137,8 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
 
     /**
      * @notice Returns whether an account already has any checkpoint.
-     * @dev This is used in BondingManager logic to initialize the checkpointing of existing accounts. It is meant to be
-     * called once we deploy the checkpointing logic for the first time, so we have a starting checkpoint from all
-     * accounts in the system.
+     * @dev This is meant to be called by a checkpoint initialization script once we deploy the checkpointing logic for
+     * the first time, so we can efficiently initialize the checkpoint state for all accounts in the system.
      */
     function hasCheckpoint(address _account) external virtual returns (bool) {
         return bondingCheckpoints[_account].startRounds.length > 0;

@@ -31,15 +31,16 @@ contract BondingCheckpointsVotes is Manager, IVotes {
      * @notice Returns the current amount of votes that `account` has.
      */
     function getVotes(address _account) external view returns (uint256) {
-        return bondingCheckpoints().getAccountStakeAt(_account, clock());
+        return getPastVotes(_account, clock());
     }
 
     /**
      * @notice Returns the amount of votes that `account` had at a specific moment in the past. If the `clock()` is
      * configured to use block numbers, this will return the value at the end of the corresponding block.
      */
-    function getPastVotes(address _account, uint256 _timepoint) external view returns (uint256) {
-        return bondingCheckpoints().getAccountStakeAt(_account, _timepoint);
+    function getPastVotes(address _account, uint256 _round) public view returns (uint256) {
+        (uint256 amount, ) = bondingCheckpoints().getBondingStateAt(_account, _round);
+        return amount;
     }
 
     /**
@@ -48,8 +49,8 @@ contract BondingCheckpointsVotes is Manager, IVotes {
      * Bonded stake that is not part of the top 100 active transcoder set is still given voting power, but is not
      * considered here.
      */
-    function getPastTotalSupply(uint256 _timepoint) external view returns (uint256) {
-        return bondingCheckpoints().getTotalActiveStakeAt(_timepoint);
+    function getPastTotalSupply(uint256 _round) external view returns (uint256) {
+        return bondingCheckpoints().getTotalActiveStakeAt(_round);
     }
 
     /**
@@ -67,7 +68,8 @@ contract BondingCheckpointsVotes is Manager, IVotes {
      * delegators to override their transcoders votes. See {GovernorVotesBondingCheckpoints-_handleVoteOverrides}.
      */
     function delegatedAt(address _account, uint256 _round) public view returns (address) {
-        return bondingCheckpoints().getDelegateAddressAt(_account, _round);
+        (, address delegateAddress) = bondingCheckpoints().getBondingStateAt(_account, _round);
+        return delegateAddress;
     }
 
     /**

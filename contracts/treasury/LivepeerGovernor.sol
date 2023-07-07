@@ -6,6 +6,7 @@ import "@openzeppelin/contracts-upgradeable/governance/GovernorUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorVotesUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorVotesQuorumFractionUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorSettingsUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorTimelockControlUpgradeable.sol";
 
 import "../bonding/libraries/EarningsPool.sol";
 import "../bonding/libraries/EarningsPoolLIP36.sol";
@@ -22,18 +23,29 @@ contract LivepeerGovernor is
     ManagerProxyTarget,
     GovernorUpgradeable,
     GovernorSettingsUpgradeable,
+    GovernorTimelockControlUpgradeable,
     GovernorVotesUpgradeable,
     GovernorVotesQuorumFractionUpgradeable,
     GovernorCountingOverridable
 {
     /**
-     * @notice TreasuryGovernor constructor. Only invokes constructor of base Manager contract with provided Controller address
-     * @dev This constructor will not initialize any state variables besides `controller`. The `initialize` function must be called
-     * after construction to initialize the contract's state.
+     * @notice TreasuryGovernor constructor. Only invokes constructor of base Manager contract with provided Controller.
+     * @dev This constructor will not initialize any state variables besides `controller`. The `initialize` function
+     * must be called through the proxy after construction to initialize the contract's state in the proxy contract.
      * @param _controller Address of Controller that this contract will be registered with
      */
-    constructor(address _controller) Manager(_controller) {}
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor(address _controller) Manager(_controller) {
+        _disableInitializers();
+    }
 
+    /**
+     * Initializes the LivepeerGovernor instance. This requires the following contracts to have already been deployed
+     * and registered on the controller:
+     * - "Treasury" (TimelockControllerUpgradeable)
+     * - "BondingCheckpointsVotes"
+     * - "PollCreator"
+     */
     function initialize() public initializer {
         __Governor_init("LivepeerGovernor");
         __GovernorSettings_init(
@@ -41,6 +53,7 @@ contract LivepeerGovernor is
             10, /* 10 rounds/days voting period */
             100e18 /* 100 LPT min proposal threshold */
         );
+        __GovernorTimelockControl_init(treasury());
 
         // The GovernorVotes module will hold a fixed reference to the votes contract. If we ever change its address we
         // need to call the {bumpVotesAddress} function to update it in here as well.
@@ -59,17 +72,6 @@ contract LivepeerGovernor is
      */
     function quorumDenominator() public view virtual override returns (uint256) {
         return MathUtils.PERC_DIVISOR;
-    }
-
-    // The following functions are overrides required by Solidity.
-
-    function proposalThreshold()
-        public
-        view
-        override(GovernorUpgradeable, GovernorSettingsUpgradeable)
-        returns (uint256)
-    {
-        return super.proposalThreshold();
     }
 
     /**
@@ -103,5 +105,66 @@ contract LivepeerGovernor is
 
     function pollCreator() internal view returns (PollCreator) {
         return PollCreator(controller.getContract(keccak256("PollCreator")));
+    }
+
+    function treasury() internal view returns (TimelockControllerUpgradeable) {
+        return TimelockControllerUpgradeable(payable(controller.getContract(keccak256("Treasury"))));
+    }
+
+    // The following functions are overrides required by Solidity.
+
+    function proposalThreshold()
+        public
+        view
+        override(GovernorUpgradeable, GovernorSettingsUpgradeable)
+        returns (uint256)
+    {
+        return super.proposalThreshold();
+    }
+
+    function state(uint256 proposalId)
+        public
+        view
+        override(GovernorUpgradeable, GovernorTimelockControlUpgradeable)
+        returns (ProposalState)
+    {
+        return super.state(proposalId);
+    }
+
+    function _execute(
+        uint256 proposalId,
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        bytes32 descriptionHash
+    ) internal override(GovernorUpgradeable, GovernorTimelockControlUpgradeable) {
+        super._execute(proposalId, targets, values, calldatas, descriptionHash);
+    }
+
+    function _cancel(
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        bytes32 descriptionHash
+    ) internal override(GovernorUpgradeable, GovernorTimelockControlUpgradeable) returns (uint256) {
+        return super._cancel(targets, values, calldatas, descriptionHash);
+    }
+
+    function _executor()
+        internal
+        view
+        override(GovernorUpgradeable, GovernorTimelockControlUpgradeable)
+        returns (address)
+    {
+        return super._executor();
+    }
+
+    function supportsInterface(bytes4 interfaceId)
+        public
+        view
+        override(GovernorUpgradeable, GovernorTimelockControlUpgradeable)
+        returns (bool)
+    {
+        return super.supportsInterface(interfaceId);
     }
 }
