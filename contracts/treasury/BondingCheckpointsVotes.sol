@@ -3,7 +3,7 @@ pragma solidity 0.8.9;
 
 import "../Manager.sol";
 import "../bonding/IBondingCheckpoints.sol";
-import "./IVotes.sol";
+import "./GovernorCountingOverridable.sol";
 
 /**
  * @title Interface for BondingCheckpoints

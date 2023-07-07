@@ -16,7 +16,6 @@ import "../IController.sol";
 import "../rounds/IRoundsManager.sol";
 import "./GovernorCountingOverridable.sol";
 import "./BondingCheckpointsVotes.sol";
-import "./IVotes.sol";
 
 contract LivepeerGovernor is
     Initializable,
@@ -98,11 +97,11 @@ contract LivepeerGovernor is
         token = votes();
     }
 
-    function bondingCheckpointVotes() public view returns (BondingCheckpointsVotes) {
+    function bondingCheckpointVotes() internal view returns (BondingCheckpointsVotes) {
         return BondingCheckpointsVotes(controller.getContract(keccak256("BondingCheckpointsVotes")));
     }
 
-    function pollCreator() public view returns (PollCreator) {
+    function pollCreator() internal view returns (PollCreator) {
         return PollCreator(controller.getContract(keccak256("PollCreator")));
     }
 }

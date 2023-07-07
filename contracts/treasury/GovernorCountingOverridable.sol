@@ -3,6 +3,7 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorVotesQuorumFractionUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/interfaces/IERC5805Upgradeable.sol";
 
 import "../bonding/libraries/EarningsPool.sol";
 import "../bonding/libraries/EarningsPoolLIP36.sol";
@@ -11,7 +12,10 @@ import "../Manager.sol";
 import "../IController.sol";
 import "../rounds/IRoundsManager.sol";
 import "../bonding/IBondingCheckpoints.sol";
-import "./IVotes.sol";
+
+interface IVotes is IERC5805Upgradeable {
+    function delegatedAt(address delegatee, uint256 timepoint) external returns (address);
+}
 
 /**
  * @title GovernorCountingOverridable
@@ -57,7 +61,7 @@ abstract contract GovernorCountingOverridable is Initializable, GovernorUpgradea
     // solhint-disable-next-line func-name-mixedcase
     function COUNTING_MODE() public pure virtual override returns (string memory) {
         // TODO: Figure out the right value for this
-        return "support=bravo&quorum=for,abstain";
+        return "support=bravo&quorum=for,abstain,against";
     }
 
     /**
