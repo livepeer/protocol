@@ -364,14 +364,14 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             // Decrease bonded stake
             del.bondedAmount = del.bondedAmount.sub(penalty);
 
-            checkpointBondingState(_transcoder, del, transcoders[_transcoder]);
-
             // If still bonded decrease delegate's delegated amount
             if (delegatorStatus(_transcoder) == DelegatorStatus.Bonded) {
                 delegators[del.delegateAddress].delegatedAmount = delegators[del.delegateAddress].delegatedAmount.sub(
                     penalty
                 );
             }
+
+            checkpointBondingState(_transcoder, del, transcoders[_transcoder]);
 
             // Account for penalty
             uint256 burnAmount = penalty;

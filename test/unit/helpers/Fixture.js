@@ -23,12 +23,19 @@ export default class Fixture {
         const BondingManagerMock = await ethers.getContractFactory(
             "BondingManagerMock"
         )
+        const BondingCheckpointsMock = await ethers.getContractFactory(
+            "BondingCheckpointsMock"
+        )
 
         this.token = await this.deployAndRegister(GenericMock, "LivepeerToken")
         this.minter = await this.deployAndRegister(MinterMock, "Minter")
         this.bondingManager = await this.deployAndRegister(
             BondingManagerMock,
             "BondingManager"
+        )
+        this.bondingCheckpoints = await this.deployAndRegister(
+            BondingCheckpointsMock,
+            "BondingCheckpoints"
         )
         this.roundsManager = await this.deployAndRegister(
             GenericMock,

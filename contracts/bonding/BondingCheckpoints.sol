@@ -47,7 +47,6 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
          * Notice that this is the only field that comes from the Transcoder struct in BondingManager, not Delegator.
          */
         uint256 lastRewardRound;
-        // TODO: add a storage gap?
     }
 
     /**
@@ -137,11 +136,10 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
 
     /**
      * @notice Returns whether an account already has any checkpoint.
-     * @dev This is used in BondingManager logic to initialize the checkpointing of existing accounts. It is meant to be
-     * called once we deploy the checkpointing logic for the first time, so we have a starting checkpoint from all
-     * accounts in the system.
+     * @dev This is meant to be called by a checkpoint initialization script once we deploy the checkpointing logic for
+     * the first time, so we can efficiently initialize the checkpoint state for all accounts in the system.
      */
-    function hasCheckpoint(address _account) external virtual returns (bool) {
+    function hasCheckpoint(address _account) external view returns (bool) {
         return bondingCheckpoints[_account].startRounds.length > 0;
     }
 
