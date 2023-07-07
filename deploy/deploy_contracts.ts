@@ -143,6 +143,13 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
         args: [Controller.address]
     })
 
+    await contractDeployer.deployAndRegister({
+        contract: "BondingCheckpoints",
+        name: "BondingCheckpoints",
+        proxy: true,
+        args: [Controller.address]
+    })
+
     // rounds manager
     let roundsManager
     if (!isLiveNetwork(hre.network.name)) {
