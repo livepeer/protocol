@@ -364,14 +364,14 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             // Decrease bonded stake
             del.bondedAmount = del.bondedAmount.sub(penalty);
 
-            checkpointBondingState(_transcoder, del, transcoders[_transcoder]);
-
             // If still bonded decrease delegate's delegated amount
             if (delegatorStatus(_transcoder) == DelegatorStatus.Bonded) {
                 delegators[del.delegateAddress].delegatedAmount = delegators[del.delegateAddress].delegatedAmount.sub(
                     penalty
                 );
             }
+
+            checkpointBondingState(_transcoder, del, transcoders[_transcoder]);
 
             // Account for penalty
             uint256 burnAmount = penalty;
@@ -413,10 +413,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     function setCurrentRoundTotalActiveStake() external onlyRoundsManager {
         currentRoundTotalActiveStake = nextRoundTotalActiveStake;
 
-        IBondingCheckpoints checkpoints = bondingCheckpoints();
-        if (address(checkpoints) != address(0)) {
-            checkpoints.checkpointTotalActiveStake(currentRoundTotalActiveStake, roundsManager().currentRound());
-        }
+        bondingCheckpoints().checkpointTotalActiveStake(currentRoundTotalActiveStake, roundsManager().currentRound());
     }
 
     /**
@@ -1192,48 +1189,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // Fetch end cumulative factors
         EarningsPool.Data memory endPool = latestCumulativeFactorsPool(_transcoder, _endRound);
 
-        return delegatorCumulativeStakeAndFees(startPool, endPool, _stake, _fees);
-    }
-
-    /**
-     * @notice Calculates a delegator's cumulative stake and fees using the LIP-36 earnings claiming algorithm.
-     * @dev This is a mostly a memroy-only function to be called from other contracts. Created for historical stake
-     * calculations with BondingCheckpoints.
-     * @param _startPool The earning pool from the start round for the start cumulative factors. Normally this is the
-     * earning pool from the {Delegator-lastclaimRound}+1 round, as the round where `bondedAmount` was measured.
-     * @param _endPool The earning pool from the end round for the end cumulative factors
-     * @param _stake The delegator initial stake before including earned rewards. Normally the {Delegator-bondedAmount}
-     * @param _fees The delegator's initial fees before including earned fees
-     * @return cStake , cFees where cStake is the delegator's cumulative stake including earned rewards and cFees is the
-     * delegator's cumulative fees including earned fees
-     */
-    function delegatorCumulativeStakeAndFees(
-        EarningsPool.Data memory _startPool,
-        EarningsPool.Data memory _endPool,
-        uint256 _stake,
-        uint256 _fees
-    ) public pure returns (uint256 cStake, uint256 cFees) {
-        // If the start cumulativeRewardFactor is 0 set the default value to PreciseMathUtils.percPoints(1, 1)
-        if (_startPool.cumulativeRewardFactor == 0) {
-            _startPool.cumulativeRewardFactor = PreciseMathUtils.percPoints(1, 1);
-        }
-
-        // If the end cumulativeRewardFactor is 0 set the default value to PreciseMathUtils.percPoints(1, 1)
-        if (_endPool.cumulativeRewardFactor == 0) {
-            _endPool.cumulativeRewardFactor = PreciseMathUtils.percPoints(1, 1);
-        }
-
-        cFees = _fees.add(
-            PreciseMathUtils.percOf(
-                _stake,
-                _endPool.cumulativeFeeFactor.sub(_startPool.cumulativeFeeFactor),
-                _startPool.cumulativeRewardFactor
-            )
-        );
-
-        cStake = PreciseMathUtils.percOf(_stake, _endPool.cumulativeRewardFactor, _startPool.cumulativeRewardFactor);
-
-        return (cStake, cFees);
+        return EarningsPoolLIP36.delegatorCumulativeStakeAndFees(startPool, endPool, _stake, _fees);
     }
 
     /**

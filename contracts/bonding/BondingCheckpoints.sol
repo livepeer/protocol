@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/utils/Arrays.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 import "./libraries/EarningsPool.sol";
+import "./libraries/EarningsPoolLIP36.sol";
 import "./libraries/SortedArrays.sol";
 
 import "../ManagerProxyTarget.sol";
@@ -37,7 +38,7 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
         uint256 delegatedAmount;
         /**
          * @dev The last round during which the delegator claimed its earnings. This pegs the value of bondedAmount for
-         * rewards calculation in {BondingManager-delegatorCumulativeStakeAndFees}.
+         * rewards calculation in {EarningsPoolLIP36-delegatorCumulativeStakeAndFees}.
          */
         uint256 lastClaimRound;
         /**
@@ -47,7 +48,6 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
          * Notice that this is the only field that comes from the Transcoder struct in BondingManager, not Delegator.
          */
         uint256 lastRewardRound;
-        // TODO: add a storage gap?
     }
 
     /**
@@ -122,13 +122,13 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
 
         BondingCheckpointsByRound storage checkpoints = bondingCheckpoints[_account];
 
-        checkpoints.data[_startRound] = BondingCheckpoint(
-            _bondedAmount,
-            _delegateAddress,
-            _delegatedAmount,
-            _lastClaimRound,
-            _lastRewardRound
-        );
+        checkpoints.data[_startRound] = BondingCheckpoint({
+            bondedAmount: _bondedAmount,
+            delegateAddress: _delegateAddress,
+            delegatedAmount: _delegatedAmount,
+            lastClaimRound: _lastClaimRound,
+            lastRewardRound: _lastRewardRound
+        });
 
         // now store the startRound itself in the startRounds array to allow us
         // to find it and lookup in the above mapping
@@ -137,11 +137,10 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
 
     /**
      * @notice Returns whether an account already has any checkpoint.
-     * @dev This is used in BondingManager logic to initialize the checkpointing of existing accounts. It is meant to be
-     * called once we deploy the checkpointing logic for the first time, so we have a starting checkpoint from all
-     * accounts in the system.
+     * @dev This is meant to be called by a checkpoint initialization script once we deploy the checkpointing logic for
+     * the first time, so we can efficiently initialize the checkpoint state for all accounts in the system.
      */
-    function hasCheckpoint(address _account) external virtual returns (bool) {
+    function hasCheckpoint(address _account) external view returns (bool) {
         return bondingCheckpoints[_account].startRounds.length > 0;
     }
 
@@ -278,7 +277,7 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
             return bond.bondedAmount;
         }
 
-        (uint256 stakeWithRewards, ) = bondingManager().delegatorCumulativeStakeAndFees(
+        (uint256 stakeWithRewards, ) = EarningsPoolLIP36.delegatorCumulativeStakeAndFees(
             startPool,
             endPool,
             bond.bondedAmount,

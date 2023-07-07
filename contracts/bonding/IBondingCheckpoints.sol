@@ -23,6 +23,8 @@ interface IBondingCheckpoints is IERC6372Upgradeable {
 
     // Historical stake access functions
 
+    function hasCheckpoint(address _account) external view returns (bool);
+
     function getTotalActiveStakeAt(uint256 _round) external view returns (uint256);
 
     function getBondingStateAt(address _account, uint256 _round)
