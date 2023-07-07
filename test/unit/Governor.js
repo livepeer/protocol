@@ -18,7 +18,9 @@ describe("Governor", () => {
         signers = await ethers.getSigners()
         fixture = new Fixture(web3)
         await fixture.deploy()
-        const govFac = await ethers.getContractFactory("Governor")
+        const govFac = await ethers.getContractFactory(
+            "contracts/governance/Governor.sol:Governor"
+        )
         governor = await govFac.deploy()
         const setUintFac = await ethers.getContractFactory("SetUint256")
         setUint256 = await setUintFac.deploy()
