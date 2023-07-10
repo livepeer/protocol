@@ -47,7 +47,6 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
          * Notice that this is the only field that comes from the Transcoder struct in BondingManager, not Delegator.
          */
         uint256 lastRewardRound;
-        // TODO: add a storage gap?
     }
 
     /**
