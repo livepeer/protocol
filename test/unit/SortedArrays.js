@@ -1,6 +1,6 @@
 import runSolidityTest from "./helpers/runSolidityTest"
 
-runSolidityTest.only(
+runSolidityTest(
     "TestSortedArrays",
     ["AssertUint", "AssertBool"],
     undefined,

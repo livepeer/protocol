@@ -9,7 +9,7 @@ import {constants} from "ethers"
 chai.use(solidity)
 const {expect} = chai
 
-describe.only("BondingCheckpoints", () => {
+describe("BondingCheckpoints", () => {
     let fixture
     let bondingCheckpoints
 

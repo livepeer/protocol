@@ -30,6 +30,10 @@ export default class Fixture {
             BondingManagerMock,
             "BondingManager"
         )
+        this.bondingCheckpoints = await this.deployAndRegister(
+            GenericMock,
+            "BondingCheckpoints"
+        )
         this.roundsManager = await this.deployAndRegister(
             GenericMock,
             "RoundsManager"
