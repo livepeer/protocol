@@ -60,6 +60,11 @@ contract GenericMock {
     }
 
     /**
+     * @dev Empty receive function as dummy impl to supress compiler warnings.
+     */
+    receive() external payable {}
+
+    /**
      * @dev Call a function on a target address using provided calldata for a function
      * @param _target Target contract to call with data
      * @param _data Transaction data to be used to call the target contract
