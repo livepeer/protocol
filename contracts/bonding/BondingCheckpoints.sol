@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/utils/Arrays.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 import "./libraries/EarningsPool.sol";
+import "./libraries/EarningsPoolLIP36.sol";
 import "./libraries/SortedArrays.sol";
 
 import "../ManagerProxyTarget.sol";
@@ -37,7 +38,7 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
         uint256 delegatedAmount;
         /**
          * @dev The last round during which the delegator claimed its earnings. This pegs the value of bondedAmount for
-         * rewards calculation in {BondingManager-delegatorCumulativeStakeAndFees}.
+         * rewards calculation in {EarningsPoolLIP36-delegatorCumulativeStakeAndFees}.
          */
         uint256 lastClaimRound;
         /**
@@ -121,13 +122,13 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
 
         BondingCheckpointsByRound storage checkpoints = bondingCheckpoints[_account];
 
-        checkpoints.data[_startRound] = BondingCheckpoint(
-            _bondedAmount,
-            _delegateAddress,
-            _delegatedAmount,
-            _lastClaimRound,
-            _lastRewardRound
-        );
+        checkpoints.data[_startRound] = BondingCheckpoint({
+            bondedAmount: _bondedAmount,
+            delegateAddress: _delegateAddress,
+            delegatedAmount: _delegatedAmount,
+            lastClaimRound: _lastClaimRound,
+            lastRewardRound: _lastRewardRound
+        });
 
         // now store the startRound itself in the startRounds array to allow us
         // to find it and lookup in the above mapping
@@ -276,7 +277,7 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
             return bond.bondedAmount;
         }
 
-        (uint256 stakeWithRewards, ) = bondingManager().delegatorCumulativeStakeAndFees(
+        (uint256 stakeWithRewards, ) = EarningsPoolLIP36.delegatorCumulativeStakeAndFees(
             startPool,
             endPool,
             bond.bondedAmount,
