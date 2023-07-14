@@ -106,6 +106,13 @@ describe("BondingCheckpoints", () => {
         )
     }
 
+    const customErrorAbi = (sig, args) => {
+        const iface = new ethers.utils.Interface([`function ${sig}`])
+        const funcDataHex = iface.encodeFunctionData(sig, args)
+        const abi = Buffer.from(funcDataHex, "hex")
+        return abi.toString()
+    }
+
     describe("checkpointTotalActiveStake", () => {
         let currentRound
 
@@ -119,7 +126,9 @@ describe("BondingCheckpoints", () => {
             const tx = bondingCheckpoints
                 .connect(signers[2])
                 .checkpointTotalActiveStake(1337, currentRound)
-            await expect(tx).to.be.revertedWith("caller must be BondingManager")
+            await expect(tx).to.be.revertedWith(
+                `InvalidCaller("${signers[2].address}", "${fixture.bondingManager.address}")`
+            )
         })
 
         it("should fail if checkpointing after current round", async () => {
@@ -134,7 +143,10 @@ describe("BondingCheckpoints", () => {
                     functionData
                 )
             ).to.be.revertedWith(
-                "can only checkpoint total active stake in the current round"
+                customErrorAbi("FutureCheckpoint(uint256,uint256)", [
+                    currentRound + 1,
+                    currentRound
+                ])
             )
         })
 
@@ -170,13 +182,13 @@ describe("BondingCheckpoints", () => {
                 currentRound + 1
             )
             await expect(tx).to.be.revertedWith(
-                "getTotalActiveStakeAt: future lookup"
+                `FutureLookup(${currentRound + 1}, ${currentRound})`
             )
         })
 
         it("should fail if round was not checkpointed", async () => {
             const tx = bondingCheckpoints.getTotalActiveStakeAt(currentRound)
-            await expect(tx).to.be.revertedWith("findLowerBound: empty array")
+            await expect(tx).to.be.revertedWith("NoRecordedCheckpoints()")
         })
 
         it("should query checkpointed value in the current round", async () => {
@@ -238,7 +250,7 @@ describe("BondingCheckpoints", () => {
 
         it("should fail if BondingManager is not the caller", async () => {
             const tx = bondingCheckpoints
-                .connect(signers[2])
+                .connect(signers[4])
                 .checkpointBondingState(
                     transcoder.address,
                     currentRound + 1,
@@ -248,7 +260,9 @@ describe("BondingCheckpoints", () => {
                     currentRound,
                     0
                 )
-            await expect(tx).to.be.revertedWith("caller must be BondingManager")
+            await expect(tx).to.be.revertedWith(
+                `InvalidCaller("${signers[4].address}", "${fixture.bondingManager.address}")`
+            )
         })
 
         it("should fail if checkpointing after next round", async () => {
@@ -268,7 +282,10 @@ describe("BondingCheckpoints", () => {
                     functionData
                 )
             ).to.be.revertedWith(
-                "can only checkpoint delegator up to the next round"
+                customErrorAbi("FutureCheckpoint(uint256,uint256)", [
+                    currentRound + 2,
+                    currentRound + 1
+                ])
             )
         })
 
@@ -289,7 +306,10 @@ describe("BondingCheckpoints", () => {
                     functionData
                 )
             ).to.be.revertedWith(
-                "claim round must always be lower than start round"
+                customErrorAbi("FutureLastClaimRound(uint256,uint256)", [
+                    currentRound,
+                    currentRound - 1
+                ])
             )
         })
 
@@ -435,7 +455,7 @@ describe("BondingCheckpoints", () => {
                 currentRound + 1
             )
             await expect(tx).to.be.revertedWith(
-                "getBondingCheckpointAt: future lookup"
+                `FutureLookup(${currentRound + 1}, ${currentRound})`
             )
         })
 
@@ -464,7 +484,7 @@ describe("BondingCheckpoints", () => {
                     currentRound - 2
                 )
                 await expect(tx).to.be.revertedWith(
-                    "findLowerBound: all values in array are higher than searched value"
+                    `PastLookup(${currentRound - 2}, ${currentRound})`
                 )
             })
 
@@ -587,7 +607,7 @@ describe("BondingCheckpoints", () => {
                     currentRound - 2
                 )
                 await expect(tx).to.be.revertedWith(
-                    "findLowerBound: all values in array are higher than searched value"
+                    `PastLookup(${currentRound - 2}, ${currentRound})`
                 )
             })
 
@@ -604,7 +624,9 @@ describe("BondingCheckpoints", () => {
                     currentRound
                 )
                 await expect(tx).to.be.revertedWith(
-                    "missing earning pool from delegator's last claim round"
+                    `MissingEarningsPool("${transcoder.address}", ${
+                        currentRound - 11
+                    })`
                 )
             })
 
@@ -719,13 +741,16 @@ describe("BondingCheckpoints", () => {
                     startRound: currentRound - 1,
                     lastRewardRound: currentRound - 2
                 })
+                // no earning pool for currentRound - 2
 
                 const tx = bondingCheckpoints.getBondingStateAt(
                     delegator.address,
                     currentRound
                 )
                 await expect(tx).to.be.revertedWith(
-                    "missing transcoder earning pool on reported last reward round"
+                    `MissingEarningsPool("${transcoder.address}", ${
+                        currentRound - 2
+                    })`
                 )
             })
 

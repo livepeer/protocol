@@ -104,7 +104,7 @@ contract BondingCheckpointsStateInitialization is GovernorBaseTest {
         uint256 currentRound = ROUNDS_MANAGER.currentRound();
 
         for (uint256 i = 0; i < _testAddresses.length; i++) {
-            CHEATS.expectRevert("findLowerBound: empty array");
+            CHEATS.expectRevert(IBondingCheckpoints.NoRecordedCheckpoints.selector);
             bondingCheckpoints.getBondingStateAt(_testAddresses[i], currentRound);
         }
     }
@@ -119,10 +119,14 @@ contract BondingCheckpointsStateInitialization is GovernorBaseTest {
             assertTrue(bondingCheckpoints.hasCheckpoint(addr));
 
             // Still doesn't allow lookup in the current round, that comes next.
-            CHEATS.expectRevert("findLowerBound: all values in array are higher than searched value");
+            CHEATS.expectRevert(
+                abi.encodeWithSelector(IBondingCheckpoints.PastLookup.selector, currentRound, currentRound + 1)
+            );
             bondingCheckpoints.getBondingStateAt(addr, currentRound);
 
-            CHEATS.expectRevert("getBondingCheckpointAt: future lookup");
+            CHEATS.expectRevert(
+                abi.encodeWithSelector(IBondingCheckpoints.FutureLookup.selector, currentRound + 1, currentRound)
+            );
             bondingCheckpoints.getBondingStateAt(addr, currentRound + 1);
         }
     }
@@ -172,7 +176,7 @@ contract BondingCheckpointsStateInitialization is GovernorBaseTest {
     function testDoesNotHaveTotalActiveStakeImmediately() public {
         uint256 currentRound = ROUNDS_MANAGER.currentRound();
 
-        CHEATS.expectRevert("findLowerBound: empty array");
+        CHEATS.expectRevert(IBondingCheckpoints.NoRecordedCheckpoints.selector);
         bondingCheckpoints.getTotalActiveStakeAt(currentRound);
     }
 
@@ -183,8 +187,25 @@ contract BondingCheckpointsStateInitialization is GovernorBaseTest {
         CHEATS.roll(nextRoundStartBlock);
         assertEq(ROUNDS_MANAGER.currentRound(), currentRound + 1);
 
-        CHEATS.expectRevert("findLowerBound: empty array");
-        bondingCheckpoints.getTotalActiveStakeAt(currentRound);
+        CHEATS.expectRevert(IBondingCheckpoints.NoRecordedCheckpoints.selector);
+        bondingCheckpoints.getTotalActiveStakeAt(currentRound + 1);
+    }
+
+    function testDoesNotUsePastCheckpointForTotalActiveStake() public {
+        uint256 currentRound = ROUNDS_MANAGER.currentRound();
+
+        uint256 nextRoundStartBlock = ROUNDS_MANAGER.currentRoundStartBlock() + ROUNDS_MANAGER.roundLength();
+        CHEATS.roll(nextRoundStartBlock);
+        ROUNDS_MANAGER.initializeRound();
+
+        nextRoundStartBlock = ROUNDS_MANAGER.currentRoundStartBlock() + ROUNDS_MANAGER.roundLength();
+        CHEATS.roll(nextRoundStartBlock);
+        assertEq(ROUNDS_MANAGER.currentRound(), currentRound + 2);
+
+        CHEATS.expectRevert(
+            abi.encodeWithSelector(IBondingCheckpoints.MissingRoundCheckpoint.selector, currentRound + 2)
+        );
+        bondingCheckpoints.getTotalActiveStakeAt(currentRound + 2);
     }
 
     function testCheckpointsTotalActiveStakeOnInitializeRound() public {
@@ -192,8 +213,8 @@ contract BondingCheckpointsStateInitialization is GovernorBaseTest {
 
         uint256 nextRoundStartBlock = ROUNDS_MANAGER.currentRoundStartBlock() + ROUNDS_MANAGER.roundLength();
         CHEATS.roll(nextRoundStartBlock);
-        assertEq(ROUNDS_MANAGER.currentRound(), currentRound + 1);
         ROUNDS_MANAGER.initializeRound();
+        assertEq(ROUNDS_MANAGER.currentRound(), currentRound + 1);
 
         uint256 totalBonded = BONDING_MANAGER.getTotalBonded();
 

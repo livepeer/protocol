@@ -791,7 +791,7 @@ describe("BondingCheckpoints", () => {
             it("should only allow querying total active stake on initialized rounds", async () => {
                 const expectRevertAt = r =>
                     expect(totalStakeAt(r)).to.be.revertedWith(
-                        "round was not initialized"
+                        `MissingRoundCheckpoint(${r})`
                     )
 
                 await expectTotalStakeAt(currentRound - 1, 0) // transcoder bonds here
