@@ -15,7 +15,6 @@ import "../snapshots/IMerkleSnapshot.sol";
 import "./IBondingCheckpoints.sol";
 
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-import "@openzeppelin/contracts/governance/IGovernor.sol";
 
 /**
  * @title BondingManager
