@@ -117,8 +117,11 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
         uint256 _lastClaimRound,
         uint256 _lastRewardRound
     ) public virtual onlyBondingManager {
-        require(_startRound <= clock() + 1, "can only checkpoint delegator up to the next round");
-        require(_lastClaimRound < _startRound, "claim round must always be lower than start round");
+        if (_startRound > clock() + 1) {
+            revert FutureCheckpoint(_startRound, clock() + 1);
+        } else if (_lastClaimRound >= _startRound) {
+            revert FutureLastClaimRound(_lastClaimRound, _startRound - 1);
+        }
 
         BondingCheckpointsByRound storage checkpoints = bondingCheckpoints[_account];
 
@@ -152,7 +155,9 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
      * @param _round The round for which the total active stake is valid. This is normally the current round.
      */
     function checkpointTotalActiveStake(uint256 _totalStake, uint256 _round) public virtual onlyBondingManager {
-        require(_round <= clock(), "can only checkpoint total active stake in the current round");
+        if (_round > clock()) {
+            revert FutureCheckpoint(_round, clock());
+        }
 
         totalActiveStakeCheckpoints[_round] = _totalStake;
 
@@ -166,15 +171,19 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
      * @param _round The round for which we want to get the total active stake.
      */
     function getTotalActiveStakeAt(uint256 _round) public view virtual returns (uint256) {
-        require(_round <= clock(), "getTotalActiveStakeAt: future lookup");
+        if (_round > clock()) {
+            revert FutureLookup(_round, clock());
+        }
 
         uint256 activeStake = totalActiveStakeCheckpoints[_round];
 
         if (activeStake == 0) {
-            uint256 lastInitialized = totalStakeCheckpointRounds.findLowerBound(_round);
+            uint256 lastInitialized = checkedFindLowerBound(totalStakeCheckpointRounds, _round);
 
             // Check that the round was in fact initialized so we don't return a 0 value accidentally.
-            require(lastInitialized == _round, "getTotalActiveStakeAt: round was not initialized");
+            if (lastInitialized != _round) {
+                revert MissingRoundCheckpoint(_round);
+            }
         }
 
         return activeStake;
@@ -226,7 +235,9 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
         view
         returns (BondingCheckpoint storage)
     {
-        require(_round <= clock(), "getBondingCheckpointAt: future lookup");
+        if (_round > clock()) {
+            revert FutureLookup(_round, clock());
+        }
 
         BondingCheckpointsByRound storage checkpoints = bondingCheckpoints[_account];
 
@@ -237,7 +248,7 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
             return bond;
         }
 
-        uint256 startRound = checkpoints.startRounds.findLowerBound(_round);
+        uint256 startRound = checkedFindLowerBound(checkpoints.startRounds, _round);
         return checkpoints.data[startRound];
     }
 
@@ -258,17 +269,10 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
             bond.delegateAddress,
             bond.lastClaimRound
         );
-        require(startPool.cumulativeRewardFactor > 0, "missing earning pool from delegator's last claim round");
 
         (uint256 rewardRound, EarningsPool.Data memory endPool) = getTranscoderLastRewardsEarningPool(
             bond.delegateAddress,
             _round
-        );
-
-        // Only allow reward factor to be zero if transcoder had never called reward()
-        require(
-            endPool.cumulativeRewardFactor > 0 || rewardRound == 0,
-            "missing transcoder earning pool on reported last reward round"
         );
 
         if (rewardRound < bond.lastClaimRound) {
@@ -303,7 +307,11 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
     {
         BondingCheckpoint storage bond = getBondingCheckpointAt(_transcoder, _round);
         rewardRound = bond.lastRewardRound;
-        pool = getTranscoderEarningPoolForRound(_transcoder, rewardRound);
+
+        // only fetch pool if there is a previous reward() call recorded
+        if (rewardRound > 0) {
+            pool = getTranscoderEarningPoolForRound(_transcoder, rewardRound);
+        }
     }
 
     /**
@@ -321,6 +329,22 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
             pool.cumulativeRewardFactor,
             pool.cumulativeFeeFactor
         ) = bondingManager().getTranscoderEarningsPoolForRound(_transcoder, _round);
+
+        if (pool.cumulativeRewardFactor == 0) {
+            revert MissingEarningsPool(_transcoder, _round);
+        }
+    }
+
+    /**
+     * @dev Helper to return more helpful custom errors in case of bad queries.
+     */
+    function checkedFindLowerBound(uint256[] storage array, uint256 value) internal view returns (uint256) {
+        if (array.length == 0) {
+            revert NoRecordedCheckpoints();
+        } else if (array[0] > value) {
+            revert PastLookup(value, array[0]);
+        }
+        return array.findLowerBound(value);
     }
 
     // Manager/Controller helpers
@@ -351,6 +375,8 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
      * @dev Ensure the sender is BondingManager
      */
     function _onlyBondingManager() internal view {
-        require(msg.sender == address(bondingManager()), "caller must be BondingManager");
+        if (msg.sender != address(bondingManager())) {
+            revert InvalidCaller(msg.sender, address(bondingManager()));
+        }
     }
 }
