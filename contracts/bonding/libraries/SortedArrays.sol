@@ -12,6 +12,9 @@ import "@openzeppelin/contracts/utils/Arrays.sol";
 library SortedArrays {
     using Arrays for uint256[];
 
+    error EmptyArray();
+    error NoLowerBoundInArray(uint256 queryValue, uint256 minValue);
+
     /**
      * @notice Searches a sorted _array and returns the last element to be lower or equal to _val.
      *
@@ -28,7 +31,9 @@ library SortedArrays {
      */
     function findLowerBound(uint256[] storage _array, uint256 _val) internal view returns (uint256) {
         uint256 len = _array.length;
-        require(len > 0, "findLowerBound: empty array");
+        if (len == 0) {
+            revert EmptyArray();
+        }
 
         uint256 lastElm = _array[len - 1];
         if (lastElm <= _val) {
@@ -47,7 +52,9 @@ library SortedArrays {
         }
 
         // a 0 idx means that the first elem is already higher than the searched value (and not equal, checked above)
-        require(upperIdx > 0, "findLowerBound: all values in array are higher than searched value");
+        if (upperIdx == 0) {
+            revert NoLowerBoundInArray(_val, _array[0]);
+        }
 
         // the upperElm is the first element higher than the value we want, so return the previous element
         return _array[upperIdx - 1];
