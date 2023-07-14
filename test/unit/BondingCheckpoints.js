@@ -272,6 +272,27 @@ describe("BondingCheckpoints", () => {
             )
         })
 
+        it("should fail if lastClaimRound is not lower than start round", async () => {
+            const functionData = encodeCheckpointBondingState({
+                account: transcoder.address,
+                startRound: currentRound,
+                bondedAmount: 1000,
+                delegateAddress: transcoder.address,
+                delegatedAmount: 1000,
+                lastClaimRound: currentRound,
+                lastRewardRound: 0
+            })
+
+            await expect(
+                fixture.bondingManager.execute(
+                    bondingCheckpoints.address,
+                    functionData
+                )
+            ).to.be.revertedWith(
+                "claim round must always be lower than start round"
+            )
+        })
+
         it("should allow checkpointing in the next round", async () => {
             const functionData = encodeCheckpointBondingState({
                 account: transcoder.address,
@@ -353,16 +374,6 @@ describe("BondingCheckpoints", () => {
             currentRound = 100
 
             await setRound(currentRound)
-
-            // await fixture.bondingManager.setMockTranscoderEarningsPoolForRound(
-            //     transcoder.address,
-            //     currentRound,
-            //     1000,
-            //     0,
-            //     0,
-            //     PERC_DIVISOR, // 1
-            //     0
-            // )
         })
 
         it("should return false for accounts without checkpoints", async () => {
@@ -551,18 +562,14 @@ describe("BondingCheckpoints", () => {
             beforeEach(async () => {
                 transcoder2 = signers[2]
 
-                currentRound = 200
-
-                await setRound(currentRound)
-
                 await checkpointTranscoder({
                     account: transcoder.address,
-                    startRound: currentRound - 100,
+                    startRound: currentRound - 50,
                     lastRewardRound: 0
                 })
                 await checkpointTranscoder({
                     account: transcoder2.address,
-                    startRound: currentRound - 100,
+                    startRound: currentRound - 50,
                     lastRewardRound: 0
                 })
             })
@@ -691,6 +698,34 @@ describe("BondingCheckpoints", () => {
                         .getBondingStateAt(delegator.address, currentRound)
                         .then(t => t.map(v => v.toString())),
                     ["1000", transcoder.address]
+                )
+            })
+
+            it("should fail if there's no earning pool on the lastRewardRound", async () => {
+                await checkpointDelegator({
+                    startRound: currentRound - 9,
+                    bondedAmount: 1000,
+                    delegateAddress: transcoder.address,
+                    lastClaimRound: currentRound - 10
+                })
+                await setEarningPoolRewardFactor(
+                    transcoder.address,
+                    currentRound - 10,
+                    PERC_DIVISOR
+                )
+
+                await checkpointTranscoder({
+                    account: transcoder.address,
+                    startRound: currentRound - 1,
+                    lastRewardRound: currentRound - 2
+                })
+
+                const tx = bondingCheckpoints.getBondingStateAt(
+                    delegator.address,
+                    currentRound
+                )
+                await expect(tx).to.be.revertedWith(
+                    "missing transcoder earning pool on reported last reward round"
                 )
             })
 

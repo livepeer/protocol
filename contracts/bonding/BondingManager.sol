@@ -433,10 +433,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     function setCurrentRoundTotalActiveStake() external onlyRoundsManager {
         currentRoundTotalActiveStake = nextRoundTotalActiveStake;
 
-        IBondingCheckpoints checkpoints = bondingCheckpoints();
-        if (address(checkpoints) != address(0)) {
-            checkpoints.checkpointTotalActiveStake(currentRoundTotalActiveStake, roundsManager().currentRound());
-        }
+        bondingCheckpoints().checkpointTotalActiveStake(currentRoundTotalActiveStake, roundsManager().currentRound());
     }
 
     /**
