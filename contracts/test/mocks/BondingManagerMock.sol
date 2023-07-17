@@ -14,7 +14,19 @@ contract BondingManagerMock is GenericMock {
         uint256 cumulativeFeeFactor;
     }
 
-    mapping(address => mapping(uint256 => EarningsPoolMock)) private earningPools;
+    struct DelegatorMock {
+        uint256 bondedAmount;
+        uint256 fees;
+        address delegateAddress;
+        uint256 delegatedAmount;
+        uint256 startRound;
+        uint256 lastClaimRound;
+        uint256 nextUnbondingLockId;
+    }
+
+    mapping(address => mapping(uint256 => EarningsPoolMock)) private earningPoolMocks;
+
+    mapping(address => DelegatorMock) private delegatorMocks;
 
     function updateTranscoderWithFees(
         address _transcoder,
@@ -35,7 +47,7 @@ contract BondingManagerMock is GenericMock {
             uint256 cumulativeFeeFactor
         )
     {
-        EarningsPoolMock storage pool = earningPools[_transcoder][_round];
+        EarningsPoolMock storage pool = earningPoolMocks[_transcoder][_round];
 
         totalStake = pool.totalStake;
         transcoderRewardCut = pool.transcoderRewardCut;
@@ -53,12 +65,57 @@ contract BondingManagerMock is GenericMock {
         uint256 _cumulativeRewardFactor,
         uint256 _cumulativeFeeFactor
     ) external {
-        earningPools[_transcoder][_round] = EarningsPoolMock({
+        earningPoolMocks[_transcoder][_round] = EarningsPoolMock({
             totalStake: _totalStake,
             transcoderRewardCut: _transcoderRewardCut,
             transcoderFeeShare: _transcoderFeeShare,
             cumulativeRewardFactor: _cumulativeRewardFactor,
             cumulativeFeeFactor: _cumulativeFeeFactor
         });
+    }
+
+    function setMockDelegator(
+        address _delegator,
+        uint256 _bondedAmount,
+        uint256 _fees,
+        address _delegateAddress,
+        uint256 _delegatedAmount,
+        uint256 _startRound,
+        uint256 _lastClaimRound,
+        uint256 _nextUnbondingLockId
+    ) external {
+        delegatorMocks[_delegator] = DelegatorMock({
+            bondedAmount: _bondedAmount,
+            fees: _fees,
+            delegateAddress: _delegateAddress,
+            delegatedAmount: _delegatedAmount,
+            startRound: _startRound,
+            lastClaimRound: _lastClaimRound,
+            nextUnbondingLockId: _nextUnbondingLockId
+        });
+    }
+
+    function getDelegator(address _delegator)
+        public
+        view
+        returns (
+            uint256 bondedAmount,
+            uint256 fees,
+            address delegateAddress,
+            uint256 delegatedAmount,
+            uint256 startRound,
+            uint256 lastClaimRound,
+            uint256 nextUnbondingLockId
+        )
+    {
+        DelegatorMock storage del = delegatorMocks[_delegator];
+
+        bondedAmount = del.bondedAmount;
+        fees = del.fees;
+        delegateAddress = del.delegateAddress;
+        delegatedAmount = del.delegatedAmount;
+        startRound = del.startRound;
+        lastClaimRound = del.lastClaimRound;
+        nextUnbondingLockId = del.nextUnbondingLockId;
     }
 }
