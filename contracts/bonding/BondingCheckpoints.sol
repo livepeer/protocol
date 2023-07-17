@@ -248,6 +248,17 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
             return bond;
         }
 
+        if (checkpoints.startRounds.length == 0) {
+            (uint256 bondedAmount, , , uint256 delegatedAmount, , uint256 lastClaimRound, ) = bondingManager()
+                .getDelegator(_account);
+            // we use lastClaimRound instead of startRound since the latter is cleared on a full unbond
+            if (lastClaimRound < _round && bondedAmount == 0 && delegatedAmount == 0) {
+                // If the account was not delegating to anyone at the queried round, we can just return the zero
+                // BondingCheckpoint value. This also handles the case of accounts that have never made a delegation.
+                return bond;
+            }
+        }
+
         uint256 startRound = checkedFindLowerBound(checkpoints.startRounds, _round);
         return checkpoints.data[startRound];
     }

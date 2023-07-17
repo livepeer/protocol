@@ -4,6 +4,7 @@ import {assert} from "chai"
 import {ethers, web3} from "hardhat"
 import chai from "chai"
 import {solidity} from "ethereum-waffle"
+import {constants} from "ethers"
 
 chai.use(solidity)
 const {expect} = chai
@@ -457,6 +458,75 @@ describe("BondingCheckpoints", () => {
             await expect(tx).to.be.revertedWith(
                 `FutureLookup(${currentRound + 1}, ${currentRound})`
             )
+        })
+
+        describe("on missing checkpoints", () => {
+            const setBondMock = async ({
+                bondedAmount,
+                delegateAddress,
+                delegatedAmount,
+                lastClaimRound // only required field
+            }) =>
+                await fixture.bondingManager.setMockDelegator(
+                    delegator.address,
+                    bondedAmount ?? 0,
+                    0,
+                    delegateAddress ?? constants.AddressZero,
+                    delegatedAmount ?? 0,
+                    0,
+                    lastClaimRound,
+                    0
+                )
+
+            const expectRevert = async queryRound => {
+                const tx = bondingCheckpoints.getBondingStateAt(
+                    delegator.address,
+                    queryRound
+                )
+                await expect(tx).to.be.revertedWith("NoRecordedCheckpoints()")
+            }
+
+            it("should fail if the account has a zero bond but updated on or after queried round", async () => {
+                await setBondMock({lastClaimRound: currentRound - 10})
+                await expectRevert(currentRound - 10)
+
+                await setBondMock({lastClaimRound: currentRound - 9})
+                await expectRevert(currentRound - 10)
+
+                await setBondMock({lastClaimRound: currentRound - 5})
+                await expectRevert(currentRound - 10)
+            })
+
+            it("should fail if the account has a non-zero bond", async () => {
+                await setBondMock({
+                    bondedAmount: 1,
+                    lastClaimRound: currentRound - 1
+                })
+                await expectRevert(currentRound)
+
+                await setBondMock({
+                    delegatedAmount: 1,
+                    lastClaimRound: currentRound - 1
+                })
+                await expectRevert(currentRound)
+            })
+
+            it("should succeed for never bonded (non-participant) accounts", async () => {
+                expect(
+                    await bondingCheckpoints
+                        .getBondingStateAt(delegator.address, currentRound)
+                        .then(t => t.map(v => v.toString()))
+                ).to.deep.equal(["0", constants.AddressZero])
+            })
+
+            it("should succeed for fully unbonded delegators before query round", async () => {
+                await setBondMock({lastClaimRound: currentRound - 1})
+                expect(
+                    await bondingCheckpoints
+                        .getBondingStateAt(delegator.address, currentRound)
+                        .then(t => t.map(v => v.toString()))
+                ).to.deep.equal(["0", constants.AddressZero])
+            })
         })
 
         describe("for transcoder", () => {

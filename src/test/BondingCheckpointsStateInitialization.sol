@@ -13,6 +13,7 @@ import "./interfaces/IL2Migrator.sol";
 
 // forge test --match-contract BondingCheckpointsStateInitialization --fork-url https://arbitrum-mainnet.infura.io/v3/$INFURA_KEY -vvv --fork-block-number 110930219
 contract BondingCheckpointsStateInitialization is GovernorBaseTest {
+    address public constant CURRENT_BONDING_MANAGER_TARGET = 0x3a941e1094B9E33efABB26a9047a8ABb4b257907;
     BondingManager public constant BONDING_MANAGER = BondingManager(0x35Bcf3c30594191d53231E4FF333E8A770453e40);
     RoundsManager public constant ROUNDS_MANAGER = RoundsManager(0xdd6f56DcC28D3F5f27084381fE8Df634985cc39f);
 
@@ -25,6 +26,7 @@ contract BondingCheckpointsStateInitialization is GovernorBaseTest {
     // Is a transcoder as of fork block
     address public constant TRANSCODER = 0x5D98F8d269C94B746A5c3C2946634dCfc75E5E60;
     // Initialized on test setup
+    address nonParticipant;
     address[] public _testAddresses;
 
     BondingManager public newBondingManagerTarget;
@@ -32,7 +34,7 @@ contract BondingCheckpointsStateInitialization is GovernorBaseTest {
     IBondingCheckpoints public bondingCheckpoints;
 
     function setUp() public {
-        address nonParticipant = CHEATS.addr(1);
+        nonParticipant = CHEATS.addr(1);
         _testAddresses = [DELEGATOR, TRANSCODER, nonParticipant];
 
         newBondingManagerTarget = new BondingManager(address(CONTROLLER));
@@ -100,13 +102,64 @@ contract BondingCheckpointsStateInitialization is GovernorBaseTest {
         }
     }
 
-    function testDisallowsQueryingEmptyState() public {
+    function testDisallowsQueryingParticipantUncheckpointedAccount() public {
         uint256 currentRound = ROUNDS_MANAGER.currentRound();
 
-        for (uint256 i = 0; i < _testAddresses.length; i++) {
-            CHEATS.expectRevert("findLowerBound: empty array");
-            bondingCheckpoints.getBondingStateAt(_testAddresses[i], currentRound);
+        address[2] memory testAddresses = [DELEGATOR, TRANSCODER];
+        for (uint256 i = 0; i < testAddresses.length; i++) {
+            CHEATS.expectRevert(IBondingCheckpoints.NoRecordedCheckpoints.selector);
+            bondingCheckpoints.getBondingStateAt(testAddresses[i], currentRound);
         }
+    }
+
+    function testAllowsQueryingNonParticipantZeroedAccount() public {
+        uint256 currentRound = ROUNDS_MANAGER.currentRound();
+
+        (uint256 checkedAmount, address checkedDelegate) = bondingCheckpoints.getBondingStateAt(
+            nonParticipant,
+            currentRound
+        );
+        assertEq(checkedAmount, 0);
+        assertEq(checkedDelegate, address(0));
+    }
+
+    function testAllowsQueryingFullyUnbondedAccountOnNextRound() public {
+        // Revert to old bonding manager in this test so it doesn't make any checkpoints
+        stageAndExecuteOne(
+            address(CONTROLLER),
+            0,
+            abi.encodeWithSelector(
+                CONTROLLER.setContractInfo.selector,
+                BONDING_MANAGER_TARGET_ID,
+                CURRENT_BONDING_MANAGER_TARGET,
+                gitCommitHash
+            )
+        );
+
+        uint256 currentRound = ROUNDS_MANAGER.currentRound();
+        uint256 pendingStake = BONDING_MANAGER.pendingStake(DELEGATOR, currentRound);
+
+        CHEATS.prank(DELEGATOR);
+        BONDING_MANAGER.unbond(pendingStake);
+
+        (uint256 bondedAmount, , , uint256 delegatedAmount, , uint256 lastClaimRound, ) = BONDING_MANAGER.getDelegator(
+            DELEGATOR
+        );
+        assertTrue(lastClaimRound == currentRound && bondedAmount == 0 && delegatedAmount == 0);
+
+        CHEATS.expectRevert(IBondingCheckpoints.NoRecordedCheckpoints.selector);
+        bondingCheckpoints.getBondingStateAt(DELEGATOR, currentRound);
+
+        uint256 nextRoundStartBlock = ROUNDS_MANAGER.currentRoundStartBlock() + ROUNDS_MANAGER.roundLength();
+        CHEATS.roll(nextRoundStartBlock);
+        assertEq(ROUNDS_MANAGER.currentRound(), currentRound + 1);
+
+        (uint256 checkedAmount, address checkedDelegate) = bondingCheckpoints.getBondingStateAt(
+            DELEGATOR,
+            currentRound + 1
+        );
+        assertEq(checkedAmount, 0);
+        assertEq(checkedDelegate, address(0));
     }
 
     function testInitializesCheckpointState() public {
@@ -119,10 +172,14 @@ contract BondingCheckpointsStateInitialization is GovernorBaseTest {
             assertTrue(bondingCheckpoints.hasCheckpoint(addr));
 
             // Still doesn't allow lookup in the current round, that comes next.
-            CHEATS.expectRevert("findLowerBound: all values in array are higher than searched value");
+            CHEATS.expectRevert(
+                abi.encodeWithSelector(IBondingCheckpoints.PastLookup.selector, currentRound, currentRound + 1)
+            );
             bondingCheckpoints.getBondingStateAt(addr, currentRound);
 
-            CHEATS.expectRevert("getBondingCheckpointAt: future lookup");
+            CHEATS.expectRevert(
+                abi.encodeWithSelector(IBondingCheckpoints.FutureLookup.selector, currentRound + 1, currentRound)
+            );
             bondingCheckpoints.getBondingStateAt(addr, currentRound + 1);
         }
     }
@@ -149,7 +206,7 @@ contract BondingCheckpointsStateInitialization is GovernorBaseTest {
     function testAllowsQueryingDelegatorStateOnNextRound() public {
         uint256 currentRound = ROUNDS_MANAGER.currentRound();
         (, , address delegateAddress, , , , ) = BONDING_MANAGER.getDelegator(DELEGATOR);
-        uint256 pendingStake = BONDING_MANAGER.pendingStake(DELEGATOR, currentRound + 1);
+        uint256 pendingStake = BONDING_MANAGER.pendingStake(DELEGATOR, currentRound);
 
         BONDING_MANAGER.checkpointBondingState(DELEGATOR);
         // the delegate also needs to be checkpointed in case of delegators
@@ -172,7 +229,7 @@ contract BondingCheckpointsStateInitialization is GovernorBaseTest {
     function testDoesNotHaveTotalActiveStakeImmediately() public {
         uint256 currentRound = ROUNDS_MANAGER.currentRound();
 
-        CHEATS.expectRevert("findLowerBound: empty array");
+        CHEATS.expectRevert(IBondingCheckpoints.NoRecordedCheckpoints.selector);
         bondingCheckpoints.getTotalActiveStakeAt(currentRound);
     }
 
@@ -183,8 +240,25 @@ contract BondingCheckpointsStateInitialization is GovernorBaseTest {
         CHEATS.roll(nextRoundStartBlock);
         assertEq(ROUNDS_MANAGER.currentRound(), currentRound + 1);
 
-        CHEATS.expectRevert("findLowerBound: empty array");
-        bondingCheckpoints.getTotalActiveStakeAt(currentRound);
+        CHEATS.expectRevert(IBondingCheckpoints.NoRecordedCheckpoints.selector);
+        bondingCheckpoints.getTotalActiveStakeAt(currentRound + 1);
+    }
+
+    function testDoesNotUsePastCheckpointForTotalActiveStake() public {
+        uint256 currentRound = ROUNDS_MANAGER.currentRound();
+
+        uint256 nextRoundStartBlock = ROUNDS_MANAGER.currentRoundStartBlock() + ROUNDS_MANAGER.roundLength();
+        CHEATS.roll(nextRoundStartBlock);
+        ROUNDS_MANAGER.initializeRound();
+
+        nextRoundStartBlock = ROUNDS_MANAGER.currentRoundStartBlock() + ROUNDS_MANAGER.roundLength();
+        CHEATS.roll(nextRoundStartBlock);
+        assertEq(ROUNDS_MANAGER.currentRound(), currentRound + 2);
+
+        CHEATS.expectRevert(
+            abi.encodeWithSelector(IBondingCheckpoints.MissingRoundCheckpoint.selector, currentRound + 2)
+        );
+        bondingCheckpoints.getTotalActiveStakeAt(currentRound + 2);
     }
 
     function testCheckpointsTotalActiveStakeOnInitializeRound() public {
@@ -192,8 +266,8 @@ contract BondingCheckpointsStateInitialization is GovernorBaseTest {
 
         uint256 nextRoundStartBlock = ROUNDS_MANAGER.currentRoundStartBlock() + ROUNDS_MANAGER.roundLength();
         CHEATS.roll(nextRoundStartBlock);
-        assertEq(ROUNDS_MANAGER.currentRound(), currentRound + 1);
         ROUNDS_MANAGER.initializeRound();
+        assertEq(ROUNDS_MANAGER.currentRound(), currentRound + 1);
 
         uint256 totalBonded = BONDING_MANAGER.getTotalBonded();
 
