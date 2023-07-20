@@ -11,6 +11,7 @@ interface IBondingManager {
     event TranscoderDeactivated(address indexed transcoder, uint256 deactivationRound);
     event TranscoderSlashed(address indexed transcoder, address finder, uint256 penalty, uint256 finderReward);
     event Reward(address indexed transcoder, uint256 amount);
+    event TreasuryReward(address indexed transcoder, address treasury, uint256 amount);
     event Bond(
         address indexed newDelegate,
         address indexed oldDelegate,
