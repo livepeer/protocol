@@ -13,7 +13,7 @@ import "../../treasury/GovernorCountingOverridable.sol";
  * @dev This is a concrete contract to test the GovernorCountingOverridable extension. It implements the minimum
  * necessary to get a working Governor to test the extension.
  */
-contract GovernorCountingOverridableTestable is
+contract GovernorCountingOverridableHarness is
     Initializable,
     GovernorUpgradeable,
     GovernorSettingsUpgradeable,

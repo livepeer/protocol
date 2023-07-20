@@ -72,7 +72,7 @@ describe("GovernorCountingOverridable", () => {
         // setup governor
 
         const governorFac = await ethers.getContractFactory(
-            "GovernorCountingOverridableTestable"
+            "GovernorCountingOverridableHarness"
         )
         governor = await governorFac.deploy()
         await governor.initialize(votes.address)
