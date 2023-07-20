@@ -14,7 +14,7 @@ import "../rounds/IRoundsManager.sol";
 import "../bonding/IBondingCheckpoints.sol";
 
 interface IVotes is IERC5805Upgradeable {
-    function delegatedAt(address delegatee, uint256 timepoint) external returns (address);
+    function delegatedAt(address account, uint256 timepoint) external returns (address);
 }
 
 /**
@@ -24,6 +24,9 @@ interface IVotes is IERC5805Upgradeable {
  */
 abstract contract GovernorCountingOverridable is Initializable, GovernorUpgradeable {
     using SafeMath for uint256;
+
+    error InvalidVoteType(uint8 voteType);
+    error VoteAlreadyCast();
 
     function __GovernorCountingOverridable_init() internal onlyInitializing {
         __GovernorCountingOverridable_init_unchained();
@@ -40,41 +43,48 @@ abstract contract GovernorCountingOverridable is Initializable, GovernorUpgradea
         Abstain
     }
 
-    struct ProposalVote {
+    /**
+     * @dev Tracks state of specicic voters in a single proposal.
+     */
+    struct ProposalVoterState {
+        bool hasVoted;
+        VoteType support;
+        // This vote deductions state is only necessary to support the case where a delegator might vote before their
+        // transcoder. When that happens, we need to deduct the delegator(s) votes before tallying the transcoder vote.
+        uint256 deductions;
+    }
+
+    /**
+     * @dev Tracks the tallying state for a proposal vote counting logic.
+     */
+    struct ProposalTally {
         uint256 againstVotes;
         uint256 forVotes;
         uint256 abstainVotes;
-        mapping(address => bool) hasVoted;
-        mapping(address => VoteType) votes;
-        // These vote deductions state is only necessary to support the case where a delegator might vote before their
-        // transcoder. When that happens, we need to deduct the delegator(s) votes before tallying the transcoder vote.
-        // This could be removed if we just require the transcoder to always vote first, tho that can be exploited by a
-        // transcoder that doesn't want to get overridden.
-        mapping(address => uint256) voteDeductions;
+        mapping(address => ProposalVoterState) voters;
     }
 
-    mapping(uint256 => ProposalVote) private _proposalVotes;
+    mapping(uint256 => ProposalTally) private _proposalTallies;
 
     /**
      * @dev See {IGovernor-COUNTING_MODE}.
      */
     // solhint-disable-next-line func-name-mixedcase
     function COUNTING_MODE() public pure virtual override returns (string memory) {
-        // TODO: Figure out the right value for this
         return "support=bravo&quorum=for,abstain,against";
     }
 
     /**
      * @dev See {IGovernor-hasVoted}.
      */
-    function hasVoted(uint256 proposalId, address account) public view virtual override returns (bool) {
-        return _proposalVotes[proposalId].hasVoted[account];
+    function hasVoted(uint256 _proposalId, address _account) public view virtual override returns (bool) {
+        return _proposalTallies[_proposalId].voters[_account].hasVoted;
     }
 
     /**
      * @dev Accessor to the internal vote counts.
      */
-    function proposalVotes(uint256 proposalId)
+    function proposalVotes(uint256 _proposalId)
         public
         view
         virtual
@@ -84,26 +94,26 @@ abstract contract GovernorCountingOverridable is Initializable, GovernorUpgradea
             uint256 abstainVotes
         )
     {
-        ProposalVote storage proposalVote = _proposalVotes[proposalId];
-        return (proposalVote.againstVotes, proposalVote.forVotes, proposalVote.abstainVotes);
+        ProposalTally storage tally = _proposalTallies[_proposalId];
+        return (tally.againstVotes, tally.forVotes, tally.abstainVotes);
     }
 
     /**
      * @dev See {Governor-_quorumReached}.
      */
-    function _quorumReached(uint256 proposalId) internal view virtual override returns (bool) {
-        (uint256 againstVotes, uint256 forVotes, uint256 abstainVotes) = proposalVotes(proposalId);
+    function _quorumReached(uint256 _proposalId) internal view virtual override returns (bool) {
+        (uint256 againstVotes, uint256 forVotes, uint256 abstainVotes) = proposalVotes(_proposalId);
 
         uint256 totalVotes = againstVotes.add(forVotes).add(abstainVotes);
 
-        return totalVotes >= quorum(proposalSnapshot(proposalId));
+        return totalVotes >= quorum(proposalSnapshot(_proposalId));
     }
 
     /**
      * @dev See {Governor-_voteSucceeded}. In this module, the forVotes must be at least QUOTA of the total votes.
      */
-    function _voteSucceeded(uint256 proposalId) internal view virtual override returns (bool) {
-        (uint256 againstVotes, uint256 forVotes, ) = proposalVotes(proposalId);
+    function _voteSucceeded(uint256 _proposalId) internal view virtual override returns (bool) {
+        (uint256 againstVotes, uint256 forVotes, ) = proposalVotes(_proposalId);
 
         // we ignore abstain votes for vote succeeded calculation
         uint256 totalValidVotes = againstVotes.add(forVotes);
@@ -115,28 +125,35 @@ abstract contract GovernorCountingOverridable is Initializable, GovernorUpgradea
      * @dev See {Governor-_countVote}. In this module, the support follows the `VoteType` enum (from Governor Bravo).
      */
     function _countVote(
-        uint256 proposalId,
-        address account,
-        uint8 support,
-        uint256 weight,
+        uint256 _proposalId,
+        address _account,
+        uint8 _supportInt,
+        uint256 _weight,
         bytes memory // params
     ) internal virtual override {
-        ProposalVote storage proposalVote = _proposalVotes[proposalId];
+        if (_supportInt > uint8(VoteType.Abstain)) {
+            revert InvalidVoteType(_supportInt);
+        }
+        VoteType support = VoteType(_supportInt);
 
-        require(!proposalVote.hasVoted[account], "GovernorVotingSimple: vote already cast");
-        proposalVote.hasVoted[account] = true;
-        proposalVote.votes[account] = VoteType(support);
+        ProposalTally storage tally = _proposalTallies[_proposalId];
+        ProposalVoterState storage voter = tally.voters[_account];
 
-        weight = _handleVoteOverrides(proposalId, proposalVote, account, weight);
+        if (voter.hasVoted) {
+            revert VoteAlreadyCast();
+        }
+        voter.hasVoted = true;
+        voter.support = support;
 
-        if (support == uint8(VoteType.Against)) {
-            proposalVote.againstVotes += weight;
-        } else if (support == uint8(VoteType.For)) {
-            proposalVote.forVotes += weight;
-        } else if (support == uint8(VoteType.Abstain)) {
-            proposalVote.abstainVotes += weight;
+        _weight = _handleVoteOverrides(_proposalId, tally, voter, _account, _weight);
+
+        if (support == VoteType.Against) {
+            tally.againstVotes += _weight;
+        } else if (support == VoteType.For) {
+            tally.forVotes += _weight;
         } else {
-            revert("Votes: invalid value for enum VoteType");
+            assert(support == VoteType.Abstain);
+            tally.abstainVotes += _weight;
         }
     }
 
@@ -146,48 +163,50 @@ abstract contract GovernorCountingOverridable is Initializable, GovernorUpgradea
      * vote on proposals, but any delegator can change their part of the vote.
      * This tracks past votes and deduction on separate mappings in order to
      * calculate the effective voting power of each vote.
-     * @param proposalId ID of the proposal being voted on
-     * @param proposalVote struct where the vote totals are tallied on
-     * @param account current user making a vote
-     * @param weight voting weight of the user making the vote
+     * @param _proposalId ID of the proposal being voted on
+     * @param _tally struct where the vote totals are tallied on
+     * @param _voter struct where the specific voter state is tracked
+     * @param _account current user making a vote
+     * @param _weight voting weight of the user making the vote
      */
     function _handleVoteOverrides(
-        uint256 proposalId,
-        ProposalVote storage proposalVote,
-        address account,
-        uint256 weight
+        uint256 _proposalId,
+        ProposalTally storage _tally,
+        ProposalVoterState storage _voter,
+        address _account,
+        uint256 _weight
     ) internal returns (uint256) {
-        uint256 timepoint = proposalSnapshot(proposalId);
-        address delegatee = votes().delegatedAt(account, timepoint);
+        uint256 timepoint = proposalSnapshot(_proposalId);
+        address delegate = votes().delegatedAt(_account, timepoint);
 
-        bool isTranscoder = account == delegatee;
+        bool isTranscoder = _account == delegate;
         if (isTranscoder) {
             // deduce weight from any previous delegators for this transcoder to
             // make a vote
-            return weight - proposalVote.voteDeductions[account];
+            return _weight - _voter.deductions;
         }
 
         // this is a delegator, so add a deduction to the delegated transcoder
-        proposalVote.voteDeductions[delegatee] += weight;
+        ProposalVoterState storage delegateVoter = _tally.voters[delegate];
+        delegateVoter.deductions += _weight;
 
-        if (proposalVote.hasVoted[delegatee]) {
+        if (delegateVoter.hasVoted) {
             // this is a delegator overriding its delegated transcoder vote,
             // we need to update the current totals to move the weight of
             // the delegator vote to the right outcome.
-            VoteType transcoderSupport = proposalVote.votes[delegatee];
+            VoteType delegateSupport = delegateVoter.support;
 
-            if (transcoderSupport == VoteType.Against) {
-                proposalVote.againstVotes -= weight;
-            } else if (transcoderSupport == VoteType.For) {
-                proposalVote.forVotes -= weight;
-            } else if (transcoderSupport == VoteType.Abstain) {
-                proposalVote.abstainVotes -= weight;
+            if (delegateSupport == VoteType.Against) {
+                _tally.againstVotes -= _weight;
+            } else if (delegateSupport == VoteType.For) {
+                _tally.forVotes -= _weight;
             } else {
-                revert("Votes: invalid recorded transcoder vote type");
+                assert(delegateSupport == VoteType.Abstain);
+                _tally.abstainVotes -= _weight;
             }
         }
 
-        return weight;
+        return _weight;
     }
 
     /**
@@ -196,9 +215,8 @@ abstract contract GovernorCountingOverridable is Initializable, GovernorUpgradea
     function votes() public view virtual returns (IVotes);
 
     /**
-     * @dev Implement in inheriting contract to provide quota value to use to decide on proposal success.
+     * @dev Implement in inheriting contract to provide quota value to use to decide proposal success.
+     * @return quota value as a MathUtils percentage value (e.g. 6 decimal places).
      */
     function quota() public view virtual returns (uint256);
-
-    // TODO: add a storage gap? we might have issues with LivepeerGovernor storage layout
 }

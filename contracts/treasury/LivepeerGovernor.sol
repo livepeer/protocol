@@ -18,6 +18,12 @@ import "../rounds/IRoundsManager.sol";
 import "./GovernorCountingOverridable.sol";
 import "./BondingCheckpointsVotes.sol";
 
+/**
+ * @title LivepeerGovernor
+ * @notice Core contract for Livepeer governance, starting as the treasury governor.
+ * @dev If we ever add fields to this class or more extensions, make sure to add a storage gap to our custom
+ * GovernorCountingOverridable extension.
+ */
 contract LivepeerGovernor is
     Initializable,
     ManagerProxyTarget,
@@ -83,7 +89,7 @@ contract LivepeerGovernor is
 
     /**
      * @dev See {GovernorCountingOverridable-quota}. We use the same QUOTA value from the protocol governance system for
-     * now, but can consider changing this in the future (e.g. to make it updateable through proposals).
+     * now, but can consider changing this in the future (e.g. to make it updateable through proposals without deploys).
      */
     function quota() public view override returns (uint256) {
         return pollCreator().QUOTA();
@@ -99,14 +105,23 @@ contract LivepeerGovernor is
         token = votes();
     }
 
+    /**
+     * @dev Returns the BondingCheckpointsVotes contract address from the controller.
+     */
     function bondingCheckpointVotes() internal view returns (BondingCheckpointsVotes) {
         return BondingCheckpointsVotes(controller.getContract(keccak256("BondingCheckpointsVotes")));
     }
 
+    /**
+     * @dev Returns the PollCreator contract address from the controller.
+     */
     function pollCreator() internal view returns (PollCreator) {
         return PollCreator(controller.getContract(keccak256("PollCreator")));
     }
 
+    /**
+     * @dev Returns the Treasury contract address from the controller.
+     */
     function treasury() internal view returns (TimelockControllerUpgradeable) {
         return TimelockControllerUpgradeable(payable(controller.getContract(keccak256("Treasury"))));
     }
