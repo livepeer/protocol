@@ -94,6 +94,11 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     // in the pool are locked into the active set for round N + 1
     SortedDoublyLL.Data private transcoderPool;
 
+    // The % of newly minted rewards to be routed to the treasury. Represented as a PreciseMathUtils percPoint value.
+    uint256 public treasuryRewardCutRate;
+    // If the balance of the treasury in LPT is above this value, automatic treasury contributions will halt.
+    uint256 public treasuryBalanceCeiling;
+
     // Check if sender is TicketBroker
     modifier onlyTicketBroker() {
         _onlyTicketBroker();
@@ -143,6 +148,30 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         unbondingPeriod = _unbondingPeriod;
 
         emit ParameterUpdate("unbondingPeriod");
+    }
+
+    /**
+     * @notice Set treasury reward cut rate. Only callable by Controller owner
+     * @param _cutRate Percentage of newly minted rewards to route to the treasury. Must be a valid PreciseMathUtils
+     * percentage (<100% specified with 27-digits precision).
+     */
+    function setTreasuryRewardCutRate(uint256 _cutRate) external onlyControllerOwner {
+        require(PreciseMathUtils.validPerc(_cutRate), "_cutRate is invalid precise percentage");
+
+        treasuryRewardCutRate = _cutRate;
+
+        emit ParameterUpdate("treasuryRewardCutRate");
+    }
+
+    /**
+     * @notice Set treasury balance ceiling. Only callable by Controller owner
+     * @param _ceiling Balance at which treasury reward contributions should halt. Specified in LPT fractional units
+     * (18-digit precision).
+     */
+    function setTreasuryBalanceCeiling(uint256 _ceiling) external onlyControllerOwner {
+        treasuryBalanceCeiling = _ceiling;
+
+        emit ParameterUpdate("treasuryBalanceCeiling");
     }
 
     /**
@@ -307,6 +336,11 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
                 totalStake,
                 currentRoundTotalActiveStake
             );
+
+            // Deduct what would have been the treasury rewards
+            uint256 treasuryRewards = MathUtils.percOf(rewards, treasuryRewardCutRate);
+            rewards = rewards.sub(treasuryRewards);
+
             uint256 transcoderCommissionRewards = MathUtils.percOf(rewards, earningsPool.transcoderRewardCut);
             uint256 delegatorsRewards = rewards.sub(transcoderCommissionRewards);
 
@@ -841,16 +875,39 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
         // Create reward based on active transcoder's stake relative to the total active stake
         // rewardTokens = (current mintable tokens for the round * active transcoder stake) / total active stake
-        uint256 rewardTokens = minter().createReward(earningsPool.totalStake, currentRoundTotalActiveStake);
+        IMinter mtr = minter();
+        uint256 totalRewardTokens = mtr.createReward(earningsPool.totalStake, currentRoundTotalActiveStake);
 
-        updateTranscoderWithRewards(msg.sender, rewardTokens, currentRound, _newPosPrev, _newPosNext);
+        uint256 treasuryRewards = PreciseMathUtils.percOf(totalRewardTokens, treasuryRewardCutRate);
+        if (treasuryRewards > 0) {
+            address trsy = treasury();
+            uint256 treasuryBalance = livepeerToken().balanceOf(trsy);
+
+            uint256 maxTreasuryRewards = treasuryBalanceCeiling > treasuryBalance
+                ? treasuryBalanceCeiling - treasuryBalance
+                : 0;
+            if (treasuryRewards > maxTreasuryRewards) {
+                treasuryRewards = maxTreasuryRewards;
+                // halt treasury contributions until the cut rate param is updated again
+                treasuryRewardCutRate = 0;
+            }
+
+            if (treasuryRewards > 0) {
+                mtr.trustedTransferTokens(trsy, treasuryRewards);
+                emit TreasuryReward(msg.sender, trsy, treasuryRewards);
+            }
+        }
+
+        uint256 transcoderRewards = totalRewardTokens.sub(treasuryRewards);
+
+        updateTranscoderWithRewards(msg.sender, transcoderRewards, currentRound, _newPosPrev, _newPosNext);
 
         // Set last round that transcoder called reward
         t.lastRewardRound = currentRound;
 
         checkpointBondingState(msg.sender, delegators[msg.sender], t);
 
-        emit Reward(msg.sender, rewardTokens);
+        emit Reward(msg.sender, transcoderRewards);
     }
 
     /**
@@ -1551,6 +1608,10 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      */
     function roundsManager() internal view returns (IRoundsManager) {
         return IRoundsManager(controller.getContract(keccak256("RoundsManager")));
+    }
+
+    function treasury() internal view returns (address payable) {
+        return payable(controller.getContract(keccak256("Treasury")));
     }
 
     function bondingCheckpoints() internal view returns (IBondingCheckpoints) {
