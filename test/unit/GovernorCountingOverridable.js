@@ -6,26 +6,10 @@ import {solidity} from "ethereum-waffle"
 
 import Fixture from "./helpers/Fixture"
 import math from "../helpers/math"
+import {ProposalState, VoteType} from "../helpers/governorEnums"
 
 chai.use(solidity)
 const {expect} = chai
-
-const VoteType = {
-    Against: 0,
-    For: 1,
-    Abstain: 2
-}
-
-const ProposalState = {
-    Pending: 0,
-    Active: 1,
-    Canceled: 2,
-    Defeated: 3,
-    Succeeded: 4,
-    Queued: 5,
-    Expired: 6,
-    Executed: 7
-}
 
 describe("GovernorCountingOverridable", () => {
     let signers
