@@ -11,6 +11,7 @@ import {
     BondingCheckpointsVotes,
     BondingManager,
     Controller,
+    GovernorInterfacesFixture,
     LivepeerGovernor,
     LivepeerToken,
     PollCreator,
@@ -101,10 +102,6 @@ describe("LivepeerGovernor", () => {
         await rpc.revert(snapshotId)
     })
 
-    it("ensure deployment success", async () => {
-        assert.equal(await governor.name(), "LivepeerGovernor")
-    })
-
     async function bond(
         delegator: Signer,
         amount: BigNumberish,
@@ -122,15 +119,24 @@ describe("LivepeerGovernor", () => {
         }
     }
 
-    async function governorExecute(
+    async function createProposal(
         signer: Signer,
         target: string,
         functionData: string,
         description: string
     ) {
+        const execArgs: GovernorExecuteArgs = [
+            [target],
+            [0],
+            [functionData],
+            description
+        ]
         const tx = await governor
             .connect(signer)
-            .propose([target], [0], [functionData], description)
+            .propose.apply(governor, execArgs)
+        // after the propose calls, description is replaced with hash
+        execArgs[3] = ethers.utils.solidityKeccak256(["string"], [description])
+
         const filter = governor.filters.ProposalCreated()
         const events = await governor.queryFilter(
             filter,
@@ -139,6 +145,25 @@ describe("LivepeerGovernor", () => {
         )
         const proposalId = events[0].args[0]
 
+        return [proposalId, execArgs] as const
+    }
+
+    type GovernorExecuteArgs = [string[], BigNumberish[], string[], string]
+
+    async function governorExecute(
+        signer: Signer,
+        target: string,
+        functionData: string,
+        description: string,
+        beforeExecute?: (args: GovernorExecuteArgs) => Promise<void>
+    ) {
+        const [proposalId, execArgs] = await createProposal(
+            signer,
+            target,
+            functionData,
+            description
+        )
+
         // let the voting begin
         await waitRounds(2)
 
@@ -146,24 +171,78 @@ describe("LivepeerGovernor", () => {
 
         await waitRounds(10)
 
-        const descriptionHash = ethers.utils.solidityKeccak256(
-            ["string"],
-            [description]
-        )
-        await governor
-            .connect(signer)
-            .queue([target], [0], [functionData], descriptionHash)
-        await governor
-            .connect(signer)
-            .execute([target], [0], [functionData], descriptionHash)
+        await governor.connect(signer).queue.apply(governor, execArgs)
+
+        if (beforeExecute) {
+            await beforeExecute(execArgs)
+        }
+        await governor.connect(signer).execute.apply(governor, execArgs)
 
         assert.equal(await governor.state(proposalId), ProposalState.Executed)
     }
+
+    it("ensure deployment success", async () => {
+        assert.equal(await governor.name(), "LivepeerGovernor")
+    })
+
+    describe("supportsInterface", () => {
+        const INVALID_ID = "0xffffffff"
+
+        let interfacesProvider: GovernorInterfacesFixture
+
+        before(async () => {
+            const factory = await ethers.getContractFactory(
+                "GovernorInterfacesFixture"
+            )
+            interfacesProvider =
+                (await factory.deploy()) as GovernorInterfacesFixture
+        })
+
+        it("should support all Governor interfaces", async () => {
+            const interfaces = await interfacesProvider.GovernorInterfaces()
+            for (const iface of interfaces) {
+                assert.isTrue(await governor.supportsInterface(iface))
+            }
+        })
+
+        it("should support TimelockController interface", async () => {
+            const iface =
+                await interfacesProvider.TimelockUpgradeableInterface()
+            assert.isTrue(await governor.supportsInterface(iface))
+        })
+
+        it("should not support an invalid interface", async () => {
+            assert.isFalse(await governor.supportsInterface(INVALID_ID))
+        })
+    })
 
     describe("treasury timelock", async () => {
         it("should have 0 initial minDelay", async () => {
             const minDelay = await treasury.getMinDelay()
             assert.equal(minDelay.toNumber(), 0)
+        })
+
+        it("should be able to cancel proposal before voting starts", async () => {
+            // Cancellation is not really a timelock feature, but we only override _cancel() because we inherit from
+            // GovernorTimelockControlUpgradeable, so test that cancelling still works here.
+
+            const [proposalId, cancelArgs] = await createProposal(
+                signers[0],
+                treasury.address,
+                token.interface.encodeFunctionData("transfer", [
+                    signers[1].address,
+                    ethers.utils.parseEther("500")
+                ]),
+                "sample transfer"
+            )
+            await governor
+                .connect(signers[0])
+                .cancel.apply(governor, cancelArgs)
+
+            assert.equal(
+                await governor.state(proposalId),
+                ProposalState.Canceled
+            )
         })
 
         describe("should allow updating minDelay", () => {
@@ -200,6 +279,20 @@ describe("LivepeerGovernor", () => {
                 await expect(tx).to.be.revertedWith(
                     "TimelockController: operation is not ready"
                 )
+            })
+
+            it("should work after waiting for the delay", async () => {
+                await governorExecute(
+                    signers[0],
+                    treasury.address,
+                    treasury.interface.encodeFunctionData("updateDelay", [0]),
+                    "set treasury minDelay back to 0",
+                    // wait for 3 day-long rounds before executing
+                    () => rpc.wait(3, 24 * 60 * 60)
+                )
+
+                const minDelay = await treasury.getMinDelay()
+                assert.equal(minDelay.toNumber(), 0)
             })
         })
     })
