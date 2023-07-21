@@ -29,6 +29,7 @@ export default class Fixture {
 
         this.token = await this.deployAndRegister(GenericMock, "LivepeerToken")
         this.minter = await this.deployAndRegister(MinterMock, "Minter")
+        this.treasury = await this.deployAndRegister(GenericMock, "Treasury")
         this.bondingManager = await this.deployAndRegister(
             BondingManagerMock,
             "BondingManager"
