@@ -138,6 +138,68 @@ describe("BondingManager", () => {
         })
     })
 
+    describe("setTreasuryRewardCutRate", () => {
+        const FIFTY_PCT = math.precise.percPoints(BigNumber.from(50), 100)
+
+        it("should start as zero", async () => {
+            assert.equal(
+                await bondingManager.treasuryRewardCutRate(),
+                0,
+                "initial treasuryRewardCutRate not zero"
+            )
+        })
+
+        it("should fail if caller is not Controller owner", async () => {
+            await expect(
+                bondingManager
+                    .connect(signers[2])
+                    .setTreasuryRewardCutRate(FIFTY_PCT)
+            ).to.be.revertedWith("caller must be Controller owner")
+        })
+
+        it("should set treasuryRewardCutRate", async () => {
+            await bondingManager.setTreasuryRewardCutRate(FIFTY_PCT)
+
+            const newValue = await bondingManager.treasuryRewardCutRate()
+            assert.equal(
+                newValue.toString(),
+                FIFTY_PCT.toString(),
+                "wrong treasuryRewardCutRate"
+            )
+        })
+    })
+
+    describe("setTreasuryBalanceCeiling", () => {
+        const HUNDRED_LPT = ethers.utils.parseEther("100")
+
+        it("should start as zero", async () => {
+            assert.equal(
+                await bondingManager.treasuryBalanceCeiling(),
+                0,
+                "initial treasuryBalanceCeiling not zero"
+            )
+        })
+
+        it("should fail if caller is not Controller owner", async () => {
+            await expect(
+                bondingManager
+                    .connect(signers[2])
+                    .setTreasuryBalanceCeiling(HUNDRED_LPT)
+            ).to.be.revertedWith("caller must be Controller owner")
+        })
+
+        it("should set treasuryBalanceCeiling", async () => {
+            await bondingManager.setTreasuryBalanceCeiling(HUNDRED_LPT)
+
+            const newValue = await bondingManager.treasuryBalanceCeiling()
+            assert.equal(
+                newValue.toString(),
+                HUNDRED_LPT.toString(),
+                "wrong treasuryBalanceCeiling"
+            )
+        })
+    })
+
     describe("transcoder", () => {
         const currentRound = 100
         beforeEach(async () => {
@@ -4647,6 +4709,191 @@ describe("BondingManager", () => {
             await expect(txRes)
                 .to.emit(bondingManager, "Reward")
                 .withArgs(transcoder.address, 1000)
+        })
+
+        describe("treasury contribution", () => {
+            const TREASURY_CUT = math.precise.percPoints(
+                BigNumber.from(631),
+                10000
+            ) // 6.31%
+
+            beforeEach(async () => {
+                await fixture.token.setMockUint256(
+                    functionSig("balanceOf(address)"),
+                    0
+                )
+
+                await bondingManager.setTreasuryRewardCutRate(TREASURY_CUT)
+                await bondingManager.setTreasuryBalanceCeiling(1000)
+            })
+
+            it("should update caller with rewards after treasury contribution", async () => {
+                const startDelegatedAmount = (
+                    await bondingManager.getDelegator(transcoder.address)
+                )[3]
+                const startTotalStake =
+                    await bondingManager.transcoderTotalStake(
+                        transcoder.address
+                    )
+                const startNextTotalStake =
+                    await bondingManager.nextRoundTotalActiveStake()
+                await bondingManager.connect(transcoder).reward()
+
+                const endDelegatedAmount = (
+                    await bondingManager.getDelegator(transcoder.address)
+                )[3]
+                const endTotalStake = await bondingManager.transcoderTotalStake(
+                    transcoder.address
+                )
+                const endNextTotalStake =
+                    await bondingManager.nextRoundTotalActiveStake()
+
+                const earningsPool =
+                    await bondingManager.getTranscoderEarningsPoolForRound(
+                        transcoder.address,
+                        currentRound + 1
+                    )
+
+                const expRewardFactor = constants.PERC_DIVISOR_PRECISE.add(
+                    math.precise.percPoints(
+                        BigNumber.from(469), // (1000 - 6.31% = 937) - 50% = 469 (cuts are calculated first and subtracted)
+                        BigNumber.from(1000)
+                    )
+                )
+                assert.equal(
+                    earningsPool.cumulativeRewardFactor.toString(),
+                    expRewardFactor.toString(),
+                    "should update cumulativeRewardFactor in earningsPool"
+                )
+
+                assert.equal(
+                    endDelegatedAmount.sub(startDelegatedAmount),
+                    937,
+                    "should update delegatedAmount with rewards after treasury cut"
+                )
+                assert.equal(
+                    endTotalStake.sub(startTotalStake),
+                    937,
+                    "should update transcoder's total stake in the pool with rewards after treasury cut"
+                )
+                assert.equal(
+                    endNextTotalStake.sub(startNextTotalStake),
+                    937,
+                    "should update next total stake with rewards after treasury cut"
+                )
+            })
+
+            it("should transfer tokens to the treasury", async () => {
+                const tx = await bondingManager.connect(transcoder).reward()
+
+                await expect(tx)
+                    .to.emit(fixture.minter, "TrustedTransferTokens")
+                    .withArgs(fixture.treasury.address, 63)
+            })
+
+            it("should emit TreasuryReward event", async () => {
+                const tx = await bondingManager.connect(transcoder).reward()
+
+                await expect(tx)
+                    .to.emit(bondingManager, "TreasuryReward")
+                    .withArgs(transcoder.address, fixture.treasury.address, 63)
+            })
+
+            describe("ceiling behavior", () => {
+                beforeEach(async () => {
+                    await fixture.token.setMockUint256(
+                        functionSig("balanceOf(address)"),
+                        990
+                    )
+                })
+
+                it("should limit contribution to ceiling", async () => {
+                    const tx = await bondingManager.connect(transcoder).reward()
+
+                    await expect(tx)
+                        .to.emit(fixture.minter, "TrustedTransferTokens")
+                        .withArgs(fixture.treasury.address, 10) // 1000 - 990
+                })
+
+                it("should clear treasuryRewardCutRate param", async () => {
+                    await bondingManager.connect(transcoder).reward()
+
+                    const cutRate = await bondingManager.treasuryRewardCutRate()
+                    assert.equal(cutRate.toNumber(), 0, "cut rate not cleared")
+                })
+
+                describe("when at limit", () => {
+                    beforeEach(async () => {
+                        await fixture.token.setMockUint256(
+                            functionSig("balanceOf(address)"),
+                            1000
+                        )
+                    })
+
+                    it("should not mint any treasury rewards", async () => {
+                        const tx = await bondingManager
+                            .connect(transcoder)
+                            .reward()
+
+                        await expect(tx).not.to.emit(
+                            fixture.minter,
+                            "TrustedTransferTokens"
+                        )
+                        await expect(tx).not.to.emit(
+                            bondingManager,
+                            "TreasuryReward"
+                        )
+                    })
+
+                    it("should also clear treasuryRewardCutRate param", async () => {
+                        await bondingManager.connect(transcoder).reward()
+
+                        const cutRate =
+                            await bondingManager.treasuryRewardCutRate()
+                        assert.equal(
+                            cutRate.toNumber(),
+                            0,
+                            "cut rate not cleared"
+                        )
+                    })
+                })
+
+                describe("when above limit", () => {
+                    beforeEach(async () => {
+                        await fixture.token.setMockUint256(
+                            functionSig("balanceOf(address)"),
+                            1500
+                        )
+                    })
+
+                    it("should not mint any treasury rewards", async () => {
+                        const tx = await bondingManager
+                            .connect(transcoder)
+                            .reward()
+
+                        await expect(tx).not.to.emit(
+                            fixture.minter,
+                            "TrustedTransferTokens"
+                        )
+                        await expect(tx).not.to.emit(
+                            bondingManager,
+                            "TreasuryReward"
+                        )
+                    })
+
+                    it("should also clear treasuryRewardCutRate param", async () => {
+                        await bondingManager.connect(transcoder).reward()
+
+                        const cutRate =
+                            await bondingManager.treasuryRewardCutRate()
+                        assert.equal(
+                            cutRate.toNumber(),
+                            0,
+                            "cut rate not cleared"
+                        )
+                    })
+                })
+            })
         })
     })
 
