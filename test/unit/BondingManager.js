@@ -4800,26 +4800,35 @@ describe("BondingManager", () => {
             })
 
             describe("ceiling behavior", () => {
-                beforeEach(async () => {
-                    await fixture.token.setMockUint256(
-                        functionSig("balanceOf(address)"),
-                        990
-                    )
-                })
+                describe("under the limit", () => {
+                    beforeEach(async () => {
+                        await fixture.token.setMockUint256(
+                            functionSig("balanceOf(address)"),
+                            990
+                        )
+                    })
 
-                it("should limit contribution to ceiling", async () => {
-                    const tx = await bondingManager.connect(transcoder).reward()
+                    it("should contribute normally", async () => {
+                        const tx = await bondingManager
+                            .connect(transcoder)
+                            .reward()
 
-                    await expect(tx)
-                        .to.emit(fixture.minter, "TrustedTransferTokens")
-                        .withArgs(fixture.treasury.address, 10) // 1000 - 990
-                })
+                        await expect(tx)
+                            .to.emit(fixture.minter, "TrustedTransferTokens")
+                            .withArgs(fixture.treasury.address, 63)
+                    })
 
-                it("should clear treasuryRewardCutRate param", async () => {
-                    await bondingManager.connect(transcoder).reward()
+                    it("should not clear treasuryRewardCutRate param", async () => {
+                        await bondingManager.connect(transcoder).reward()
 
-                    const cutRate = await bondingManager.treasuryRewardCutRate()
-                    assert.equal(cutRate.toNumber(), 0, "cut rate not cleared")
+                        const cutRate =
+                            await bondingManager.treasuryRewardCutRate()
+                        assert.equal(
+                            cutRate.toString(),
+                            TREASURY_CUT.toString(),
+                            "cut rate updated"
+                        )
+                    })
                 })
 
                 describe("when at limit", () => {
