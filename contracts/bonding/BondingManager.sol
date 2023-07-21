@@ -873,29 +873,25 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             earningsPool.setStake(t.earningsPoolPerRound[lastUpdateRound].totalStake);
         }
 
+        if (treasuryBalanceCeiling > 0) {
+            uint256 treasuryBalance = livepeerToken().balanceOf(treasury());
+            if (treasuryBalance >= treasuryBalanceCeiling) {
+                // halt treasury contributions until the cut rate param is updated again
+                treasuryRewardCutRate = 0;
+            }
+        }
+
         // Create reward based on active transcoder's stake relative to the total active stake
         // rewardTokens = (current mintable tokens for the round * active transcoder stake) / total active stake
         IMinter mtr = minter();
         uint256 totalRewardTokens = mtr.createReward(earningsPool.totalStake, currentRoundTotalActiveStake);
-
         uint256 treasuryRewards = PreciseMathUtils.percOf(totalRewardTokens, treasuryRewardCutRate);
         if (treasuryRewards > 0) {
-            address trsy = treasury();
-            uint256 treasuryBalance = livepeerToken().balanceOf(trsy);
+            address trsry = treasury();
 
-            uint256 maxTreasuryRewards = treasuryBalanceCeiling > treasuryBalance
-                ? treasuryBalanceCeiling - treasuryBalance
-                : 0;
-            if (treasuryRewards > maxTreasuryRewards) {
-                treasuryRewards = maxTreasuryRewards;
-                // halt treasury contributions until the cut rate param is updated again
-                treasuryRewardCutRate = 0;
-            }
+            mtr.trustedTransferTokens(trsry, treasuryRewards);
 
-            if (treasuryRewards > 0) {
-                mtr.trustedTransferTokens(trsy, treasuryRewards);
-                emit TreasuryReward(msg.sender, trsy, treasuryRewards);
-            }
+            emit TreasuryReward(msg.sender, trsry, treasuryRewards);
         }
 
         uint256 transcoderRewards = totalRewardTokens.sub(treasuryRewards);
