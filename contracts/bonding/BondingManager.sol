@@ -332,8 +332,6 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             // based on rewards for currentRound
             IMinter mtr = minter();
             uint256 rewards = PreciseMathUtils.percOf(
-                // TODO: Should this be only `currentMintableTokens()`? The math here is different than what we have in
-                // `minter().createReward`, seems like we're double-counting the already minted tokens here.
                 mtr.currentMintableTokens().add(mtr.currentMintedTokens()),
                 totalStake,
                 currentRoundTotalActiveStake
@@ -344,7 +342,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             rewards = rewards.sub(treasuryRewards);
 
             uint256 transcoderCommissionRewards = MathUtils.percOf(rewards, earningsPool.transcoderRewardCut);
-            uint256 delegatorsRewards = rewards.sub(transcoderCommissionRewards).sub(treasuryRewards);
+            uint256 delegatorsRewards = rewards.sub(transcoderCommissionRewards);
 
             prevEarningsPool.cumulativeRewardFactor = PreciseMathUtils.percOf(
                 earningsPool.cumulativeRewardFactor,
@@ -385,7 +383,6 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         uint256 _slashAmount,
         uint256 _finderFee
     ) external whenSystemNotPaused onlyVerifier {
-        // TODO: Verify if this is right? Seems like it was missing from this func.
         _autoClaimEarnings(_transcoder);
 
         Delegator storage del = delegators[_transcoder];
