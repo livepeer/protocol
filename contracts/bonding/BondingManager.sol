@@ -94,8 +94,10 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     // in the pool are locked into the active set for round N + 1
     SortedDoublyLL.Data private transcoderPool;
 
-    // Rate of global rewards that will be sent to the treasury
+    // The % of newly minted rewards to be routed to the treasury. Represented as a PreciseMathUtils percPoint value.
     uint256 public treasuryRewardCutRate;
+    // If the balance of the treasury in LPT is above this value, automatic treasury contributions will halt.
+    uint256 public treasuryBalanceCeiling;
 
     // Check if sender is TicketBroker
     modifier onlyTicketBroker() {
@@ -148,13 +150,28 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         emit ParameterUpdate("unbondingPeriod");
     }
 
+    /**
+     * @notice Set treasury reward cut rate. Only callable by Controller owner
+     * @param _cutRate Percentage of newly minted rewards to route to the treasury. Must be a valid PreciseMathUtils
+     * percentage (<100% specified with 27-digits precision).
+     */
     function setTreasuryRewardCutRate(uint256 _cutRate) external onlyControllerOwner {
-        // Must be a valid percentage from PreciseMathUtils
         require(PreciseMathUtils.validPerc(_cutRate), "_cutRate is invalid precise percentage");
 
         treasuryRewardCutRate = _cutRate;
 
         emit ParameterUpdate("treasuryRewardCutRate");
+    }
+
+    /**
+     * @notice Set treasury balance ceiling. Only callable by Controller owner
+     * @param _ceiling Balance at which treasury reward contributions should halt. Specified in LPT fractional units
+     * (18-digit precision).
+     */
+    function setTreasuryBalanceCeiling(uint256 _ceiling) external onlyControllerOwner {
+        treasuryBalanceCeiling = _ceiling;
+
+        emit ParameterUpdate("treasuryBalanceCeiling");
     }
 
     /**
@@ -322,6 +339,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
                 currentRoundTotalActiveStake
             );
 
+            // Deduct what would have been the treasury rewards
             uint256 treasuryRewards = MathUtils.percOf(rewards, treasuryRewardCutRate);
             rewards = rewards.sub(treasuryRewards);
 
@@ -858,17 +876,28 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             earningsPool.setStake(t.earningsPoolPerRound[lastUpdateRound].totalStake);
         }
 
-        // Create reward based on active transcoder's stake relative to the total active stake
-        // rewardTokens = (current mintable tokens for the round * active transcoder stake) / (total active stake + treasury stake adjustment)
-        uint256 totalRewardTokens = minter().createReward(earningsPool.totalStake, currentRoundTotalActiveStake);
-
-        uint256 treasuryRewards = PreciseMathUtils.percOf(totalRewardTokens, treasuryRewardCutRate);
-        uint256 transcoderRewards = totalRewardTokens.sub(treasuryRewards);
-
-        if (treasuryRewards > 0) {
-            // TODO: emit an event about this as well?
-            minter().trustedTransferTokens(address(treasury()), treasuryRewards);
+        if (treasuryBalanceCeiling > 0) {
+            uint256 treasuryBalance = livepeerToken().balanceOf(treasury());
+            if (treasuryBalance >= treasuryBalanceCeiling) {
+                // halt treasury contributions until the cut rate param is updated again
+                treasuryRewardCutRate = 0;
+            }
         }
+
+        // Create reward based on active transcoder's stake relative to the total active stake
+        // rewardTokens = (current mintable tokens for the round * active transcoder stake) / total active stake
+        IMinter mtr = minter();
+        uint256 totalRewardTokens = mtr.createReward(earningsPool.totalStake, currentRoundTotalActiveStake);
+        uint256 treasuryRewards = PreciseMathUtils.percOf(totalRewardTokens, treasuryRewardCutRate);
+        if (treasuryRewards > 0) {
+            address trsry = treasury();
+
+            mtr.trustedTransferTokens(trsry, treasuryRewards);
+
+            emit TreasuryReward(msg.sender, trsry, treasuryRewards);
+        }
+
+        uint256 transcoderRewards = totalRewardTokens.sub(treasuryRewards);
 
         updateTranscoderWithRewards(msg.sender, transcoderRewards, currentRound, _newPosPrev, _newPosNext);
 
