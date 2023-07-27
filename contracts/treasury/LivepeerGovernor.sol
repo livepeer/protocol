@@ -25,8 +25,8 @@ import "./BondingCheckpointsVotes.sol";
  * GovernorCountingOverridable extension.
  */
 contract LivepeerGovernor is
-    Initializable,
     ManagerProxyTarget,
+    Initializable,
     GovernorUpgradeable,
     GovernorSettingsUpgradeable,
     GovernorTimelockControlUpgradeable,

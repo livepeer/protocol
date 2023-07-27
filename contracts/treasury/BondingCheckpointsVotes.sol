@@ -32,14 +32,14 @@ contract BondingCheckpointsVotes is Manager, IVotes {
     }
 
     /**
-     * @notice Returns the current amount of votes that `account` has.
+     * @notice Returns the current amount of votes that `_account` has.
      */
     function getVotes(address _account) external view returns (uint256) {
         return getPastVotes(_account, clock());
     }
 
     /**
-     * @notice Returns the amount of votes that `account` had at a specific moment in the past. If the `clock()` is
+     * @notice Returns the amount of votes that `_account` had at a specific moment in the past. If the `clock()` is
      * configured to use block numbers, this will return the value at the end of the corresponding block.
      */
     function getPastVotes(address _account, uint256 _round) public view returns (uint256) {
@@ -59,7 +59,7 @@ contract BondingCheckpointsVotes is Manager, IVotes {
 
     /**
      * @notice Returns the delegate that _account has chosen. This means the delegated transcoder address in case of
-     * delegators, and the account own address for transcoders (self-delegated).
+     * delegators, and the account's own address for transcoders (self-delegated).
      */
     function delegates(address _account) external view returns (address) {
         return delegatedAt(_account, clock());

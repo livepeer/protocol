@@ -62,7 +62,6 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
         [constants.AddressZero], // let anyone execute proposals
         deployer // temporary admin role for deployer
     ).then(tx => tx.wait())
-    console.log("I am deployer of worlds ", deployer)
 
     const livepeerGovernor = await contractDeployer.deployAndRegister({
         contract: "LivepeerGovernor",
