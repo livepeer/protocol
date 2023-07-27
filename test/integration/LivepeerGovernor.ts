@@ -13,6 +13,7 @@ import {
     Controller,
     GovernorInterfacesFixture,
     LivepeerGovernor,
+    LivepeerGovernorUpgradeMock,
     LivepeerToken,
     PollCreator,
     Treasury
@@ -35,6 +36,7 @@ describe("LivepeerGovernor", () => {
 
     let treasury: Treasury
     let governor: LivepeerGovernor
+    let governorTarget: LivepeerGovernor
 
     let signers: Signer[]
     let proposer: Signer // the only participant here
@@ -81,6 +83,10 @@ describe("LivepeerGovernor", () => {
         governor = await ethers.getContractAt(
             "LivepeerGovernor",
             fixture.LivepeerGovernor.address
+        )
+        governorTarget = await ethers.getContractAt(
+            "LivepeerGovernor",
+            fixture.LivepeerGovernorTarget.address
         )
 
         await controller.unpause()
@@ -183,6 +189,105 @@ describe("LivepeerGovernor", () => {
 
     it("ensure deployment success", async () => {
         assert.equal(await governor.name(), "LivepeerGovernor")
+    })
+
+    describe("upgradeability", () => {
+        describe("target", () => {
+            it("should implement ManagerProxyTarget", async () => {
+                // these would get handled by the proxy, so check the target state directly
+                assert.equal(
+                    await governorTarget.controller(),
+                    controller.address
+                )
+                assert.equal(
+                    await governorTarget.targetContractId(),
+                    constants.NULL_BYTES
+                )
+            })
+
+            it("should not be initializable", async () => {
+                // revert msg is misleading, but it's not initializable because initializers are disabled
+                await expect(governorTarget.initialize()).to.be.revertedWith(
+                    "Initializable: contract is already initialized"
+                )
+
+                // to be more certain, we check if the `initialized` event was emitted with MaxInt8
+                const filter = governorTarget.filters.Initialized()
+                const events = await governorTarget.queryFilter(
+                    filter,
+                    0,
+                    "latest"
+                )
+                assert.equal(events.length, 1)
+                assert.equal(events[0].args[0], 255) // MaxUint8 (disabled) instead of 1 (initialized)
+            })
+        })
+
+        describe("proxy", () => {
+            let newGovernorTarget: LivepeerGovernorUpgradeMock
+
+            before(async () => {
+                const factory = await ethers.getContractFactory(
+                    "LivepeerGovernorUpgradeMock"
+                )
+                newGovernorTarget = (await factory.deploy(
+                    controller.address
+                )) as LivepeerGovernorUpgradeMock
+            })
+
+            it("should have the right configuration", async () => {
+                assert.equal(await governor.controller(), controller.address)
+                assert.equal(
+                    await governor.targetContractId(),
+                    contractId("LivepeerGovernorTarget")
+                )
+            })
+
+            it("should not be re-initializable", async () => {
+                await expect(governor.initialize()).to.be.revertedWith(
+                    "Initializable: contract is already initialized"
+                )
+
+                // check if there has been a regular initialization in the past
+                const filter = governor.filters.Initialized()
+                const events = await governor.queryFilter(filter, 0, "latest")
+                assert.equal(events.length, 1)
+                assert.equal(events[0].args[0], 1) // 1 (initialized) instead of MaxUint8 (disabled)
+            })
+
+            it("should allow upgrades", async () => {
+                const [, gitCommitHash] = await controller.getContractInfo(
+                    contractId("LivepeerGovernorTarget")
+                )
+                await controller.setContractInfo(
+                    contractId("LivepeerGovernorTarget"),
+                    newGovernorTarget.address,
+                    gitCommitHash
+                )
+
+                // should keep initialized state
+                await expect(governor.initialize()).to.be.revertedWith(
+                    "Initializable: contract is already initialized"
+                )
+
+                // should have the new logic
+                const newGovernor = (await ethers.getContractAt(
+                    "LivepeerGovernorUpgradeMock", // same proxy, just grab the new abi
+                    governor.address
+                )) as LivepeerGovernorUpgradeMock
+
+                assert.equal(
+                    await newGovernor.customField().then(bn => bn.toNumber()),
+                    0
+                )
+
+                await newGovernor.setCustomField(123)
+                assert.equal(
+                    await newGovernor.customField().then(bn => bn.toNumber()),
+                    123
+                )
+            })
+        })
     })
 
     describe("supportsInterface", () => {
