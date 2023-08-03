@@ -30,6 +30,7 @@ const LIVE_NETWORKS = [
     "rinkebyDevnet",
     "arbitrumRinkeby",
     "arbitrumRinkebyDevnet",
+    "arbitrumGoerliDevnet",
     "gethDev"
 ]
 

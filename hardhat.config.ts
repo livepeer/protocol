@@ -1,3 +1,6 @@
+import * as dotenv from "dotenv"
+dotenv.config()
+
 import "@nomiclabs/hardhat-ethers"
 import "@nomiclabs/hardhat-web3"
 import "@typechain/hardhat"
@@ -82,6 +85,10 @@ const config: HardhatUserConfig = {
         },
         arbitrumRinkebyDevnet: {
             url: `https://arbitrum-rinkeby.infura.io/v3/${INFURA_KEY}`,
+            accounts: PRIVATE_KEY ? [`0x${PRIVATE_KEY}`] : undefined
+        },
+        arbitrumGoerliDevnet: {
+            url: `https://arbitrum-goerli.infura.io/v3/${INFURA_KEY}`,
             accounts: PRIVATE_KEY ? [`0x${PRIVATE_KEY}`] : undefined
         },
         localhost: {

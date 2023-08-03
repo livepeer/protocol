@@ -122,6 +122,22 @@ const arbitrumRinkeby = {
 
 const arbitrumRinkebyDevnet = arbitrumRinkeby
 
+const arbitrumGoerliDevnet = {
+    ...arbitrumRinkeby,
+    roundsManager: {
+        roundLength: 360,
+        roundLockAmount: 100000
+    },
+    treasury: {
+        minDelay: 0 // 0s initial proposal delay
+    },
+    livepeerGovernor: {
+        initialVotingDelay: 1, // 1 round
+        initialVotingPeriod: 10, // 10 rounds
+        initialProposalThreshold: ethers.utils.parseEther("100") // 100 LPT
+    }
+}
+
 const arbitrumMainnet = {
     governor: {
         // Governance multisig
@@ -159,6 +175,7 @@ const networkConfigs: any = {
     rinkebyDevnet,
     arbitrumRinkeby,
     arbitrumRinkebyDevnet,
+    arbitrumGoerliDevnet,
     arbitrumMainnet,
     gethDev
 }
