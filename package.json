@@ -10,6 +10,8 @@
     "deploy": "npx hardhat deploy --tags Contracts,Poll",
     "deploy:poll": "npx hardhat deploy --tags Poll",
     "deploy:contracts": "npx hardhat deploy --tags Contracts",
+    "deploy:livepeerGovernor": "npx hardhat deploy --tags LivepeerGovernor",
+    "deploy:testnet": "npx hardhat deploy --tags Contracts,Poll,LivepeerGovernor,ARBITRUM_LPT_DUMMIES",
     "lint": "yarn eslint && yarn solhint",
     "eslint:fix": "eslint . --ext .js,.ts --fix",
     "eslint": "eslint . --ext .js,.ts",

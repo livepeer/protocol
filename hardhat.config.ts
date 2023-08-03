@@ -103,7 +103,20 @@ const config: HardhatUserConfig = {
         enabled: process.env.REPORT_GAS ? true : false
     },
     etherscan: {
-        apiKey: process.env.ETHERSCAN_API_KEY
+        apiKey: {
+            mainnet: process.env.ETHERSCAN_API_KEY ?? "",
+            arbitrumGoerliDevnet: process.env.ARBISCAN_API_KEY ?? ""
+        },
+        customChains: [
+            {
+                network: "arbitrumGoerliDevnet",
+                chainId: 421613,
+                urls: {
+                    apiURL: "https://api-goerli.arbiscan.io/api",
+                    browserURL: "https://goerli.arbiscan.io/"
+                }
+            }
+        ]
     },
     abiExporter: {
         path: "./abi",
