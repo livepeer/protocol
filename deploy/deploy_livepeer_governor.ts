@@ -57,7 +57,7 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
     )
 
     await Treasury.initialize(
-        0, // no min delay
+        config.treasury.minDelay,
         [], // governor will be added as a proposer later
         [constants.AddressZero], // let anyone execute proposals
         deployer // temporary admin role for deployer
@@ -74,7 +74,11 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
         livepeerGovernor.address
     )
 
-    await LivepeerGovernor.initialize().then(tx => tx.wait())
+    await LivepeerGovernor.initialize(
+        config.livepeerGovernor.initialVotingDelay,
+        config.livepeerGovernor.initialVotingPeriod,
+        config.livepeerGovernor.initialProposalThreshold
+    ).then(tx => tx.wait())
 
     // Now grant proposer and executor roles to governor and renounce deployer admin role
     const roles = {

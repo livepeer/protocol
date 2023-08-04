@@ -11,7 +11,7 @@ import "./GovernorCountingOverridable.sol";
 contract BondingCheckpointsVotes is Manager, IVotes {
     // Indicates that the called function is not supported in this contract and should be performed through the
     // BondingManager instead. This is mostly used for delegation methods, which must be bonds instead.
-    error MustCallBondingManager();
+    error MustCallBondingManager(string bondingManagerFunction);
 
     constructor(address _controller) Manager(_controller) {}
 
@@ -80,7 +80,7 @@ contract BondingCheckpointsVotes is Manager, IVotes {
      * @notice Delegation through BondingCheckpoints is not supported.
      */
     function delegate(address) external pure {
-        revert MustCallBondingManager();
+        revert MustCallBondingManager("bond");
     }
 
     /**
@@ -94,7 +94,7 @@ contract BondingCheckpointsVotes is Manager, IVotes {
         bytes32,
         bytes32
     ) external pure {
-        revert MustCallBondingManager();
+        revert MustCallBondingManager("bond");
     }
 
     /**
