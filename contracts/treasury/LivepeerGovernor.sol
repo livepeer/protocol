@@ -52,13 +52,13 @@ contract LivepeerGovernor is
      * - "BondingCheckpointsVotes"
      * - "PollCreator"
      */
-    function initialize() public initializer {
+    function initialize(
+        uint256 initialVotingDelay,
+        uint256 initialVotingPeriod,
+        uint256 initialProposalThreshold
+    ) public initializer {
         __Governor_init("LivepeerGovernor");
-        __GovernorSettings_init(
-            1, /* 1 round/day voting delay */
-            10, /* 10 rounds/days voting period */
-            100e18 /* 100 LPT min proposal threshold */
-        );
+        __GovernorSettings_init(initialVotingDelay, initialVotingPeriod, initialProposalThreshold);
         __GovernorTimelockControl_init(treasury());
 
         // The GovernorVotes module will hold a fixed reference to the votes contract. If we ever change its address we

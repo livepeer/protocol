@@ -52,6 +52,14 @@ const defaultConfig = {
         inflation: 137,
         inflationChange: 3,
         targetBondingRate: 500000
+    },
+    treasury: {
+        minDelay: 0 // 0s initial proposal delay
+    },
+    livepeerGovernor: {
+        initialVotingDelay: 1, // 1 round
+        initialVotingPeriod: 10, // 10 rounds
+        initialProposalThreshold: ethers.utils.parseEther("100") // 100 LPT
     }
 }
 
