@@ -68,7 +68,7 @@ yarn lint
 
 All tests will be executed via [hardhat](https://hardhat.org/guides/waffle-testing.html).
 
-Make sure to add relevant API keys inside `.env` file (by copying provided `.env.example`) to assist tests and deployments.
+Make sure to add relevant API keys inside `.env` file (by copying provided `.env.sample`) to assist tests and deployments.
 
 To run all tests:
 
