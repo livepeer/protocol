@@ -145,8 +145,8 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
     })
 
     await contractDeployer.deployAndRegister({
-        contract: "BondingCheckpoints",
-        name: "BondingCheckpoints",
+        contract: "BondingVotes",
+        name: "BondingVotes",
         proxy: true,
         args: [Controller.address]
     })

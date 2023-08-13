@@ -8,8 +8,8 @@ import {contractId} from "../../utils/helpers"
 import setupIntegrationTest from "../helpers/setupIntegrationTest"
 import {
     AdjustableRoundsManager,
-    BondingCheckpointsVotes,
     BondingManager,
+    BondingVotes,
     Controller,
     GovernorInterfacesFixture,
     LivepeerGovernor,
@@ -30,7 +30,7 @@ describe("LivepeerGovernor", () => {
 
     let roundsManager: AdjustableRoundsManager
     let bondingManager: BondingManager
-    let bondingCheckpointsVotes: BondingCheckpointsVotes
+    let bondingVotes: BondingVotes
     let token: LivepeerToken
     let pollCreator: PollCreator
 
@@ -63,9 +63,9 @@ describe("LivepeerGovernor", () => {
             "BondingManager",
             fixture.BondingManager.address
         )
-        bondingCheckpointsVotes = await ethers.getContractAt(
-            "BondingCheckpointsVotes",
-            fixture.BondingCheckpointsVotes.address
+        bondingVotes = await ethers.getContractAt(
+            "BondingVotes",
+            fixture.BondingVotes.address
         )
         token = await ethers.getContractAt(
             "LivepeerToken",
@@ -464,42 +464,35 @@ describe("LivepeerGovernor", () => {
     describe("voting module", () => {
         it("should use BondingCheckpointVotes as the token", async () => {
             const tokenAddr = await governor.token()
-            assert.equal(tokenAddr, bondingCheckpointsVotes.address)
+            assert.equal(tokenAddr, bondingVotes.address)
         })
 
-        describe("bumpVotesAddress()", () => {
-            let newBondingCheckpointsVotes: BondingCheckpointsVotes
+        describe("bumpGovernorVotesTokenAddress()", () => {
+            let newBondingVotes: BondingVotes
 
             before(async () => {
-                const factory = await ethers.getContractFactory(
-                    "BondingCheckpoints"
-                )
-                newBondingCheckpointsVotes = (await factory.deploy(
+                const factory = await ethers.getContractFactory("BondingVotes")
+                newBondingVotes = (await factory.deploy(
                     controller.address
-                )) as BondingCheckpointsVotes
+                )) as BondingVotes
 
-                const id = contractId("BondingCheckpointsVotes")
+                // Replace the proxy directly
+                const id = contractId("BondingVotes")
                 const [, gitCommitHash] = await controller.getContractInfo(id)
                 await controller.setContractInfo(
                     id,
-                    newBondingCheckpointsVotes.address,
+                    newBondingVotes.address,
                     gitCommitHash
                 )
             })
 
             it("should not update the reference automatically", async () => {
-                assert.equal(
-                    await governor.token(),
-                    bondingCheckpointsVotes.address
-                )
+                assert.equal(await governor.token(), bondingVotes.address)
             })
 
-            it("should update reference after calling bumpVotesAddress", async () => {
-                await governor.bumpVotesAddress()
-                assert.equal(
-                    await governor.token(),
-                    newBondingCheckpointsVotes.address
-                )
+            it("should update reference after calling bumpGovernorVotesTokenAddress", async () => {
+                await governor.bumpGovernorVotesTokenAddress()
+                assert.equal(await governor.token(), newBondingVotes.address)
             })
         })
 

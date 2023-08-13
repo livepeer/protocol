@@ -12,7 +12,7 @@ import "../token/ILivepeerToken.sol";
 import "../token/IMinter.sol";
 import "../rounds/IRoundsManager.sol";
 import "../snapshots/IMerkleSnapshot.sol";
-import "./IBondingCheckpoints.sol";
+import "./IBondingVotes.sol";
 
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
@@ -453,7 +453,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     function setCurrentRoundTotalActiveStake() external onlyRoundsManager {
         currentRoundTotalActiveStake = nextRoundTotalActiveStake;
 
-        bondingCheckpoints().checkpointTotalActiveStake(currentRoundTotalActiveStake, roundsManager().currentRound());
+        bondingVotes().checkpointTotalActiveStake(currentRoundTotalActiveStake, roundsManager().currentRound());
     }
 
     /**
@@ -614,7 +614,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // in the delegators doesn't get updated on bond or claim earnings though, so we use currentRound() + 1
         // which is the only guaranteed round where the currently stored stake will be active.
         uint256 startRound = roundsManager().currentRound() + 1;
-        bondingCheckpoints().checkpointBondingState(
+        bondingVotes().checkpointBondingState(
             _owner,
             startRound,
             _delegator.bondedAmount,
@@ -628,7 +628,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     /**
      * @notice Checkpoints the bonding state for a given account.
      * @dev This is to allow checkpointing an account that has an inconsistent checkpoint with its current state.
-     * Implemented as a deploy utility to checkpoint the existing state when deploying the BondingCheckpoints contract.
+     * Implemented as a deploy utility to checkpoint the existing state when deploying the BondingVotes contract.
      * @param _account The account to initialize the bonding checkpoint for
      */
     function checkpointBondingState(address _account) public {
@@ -1228,7 +1228,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * @param _transcoder Storage pointer to a transcoder struct for a delegator's delegate
      * @param _startRound The round for the start cumulative factors
      * @param _endRound The round for the end cumulative factors. Normally this is the current round as historical
-     * lookup is only supported through BondingCheckpoints
+     * lookup is only supported through BondingVotes
      * @param _stake The delegator's initial stake before including earned rewards
      * @param _fees The delegator's initial fees before including earned fees
      * @return cStake , cFees where cStake is the delegator's cumulative stake including earned rewards and cFees is the delegator's cumulative fees including earned fees
@@ -1618,8 +1618,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         return payable(controller.getContract(keccak256("Treasury")));
     }
 
-    function bondingCheckpoints() internal view returns (IBondingCheckpoints) {
-        return IBondingCheckpoints(controller.getContract(keccak256("BondingCheckpoints")));
+    function bondingVotes() internal view returns (IBondingVotes) {
+        return IBondingVotes(controller.getContract(keccak256("BondingVotes")));
     }
 
     function _onlyTicketBroker() internal view {

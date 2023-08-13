@@ -11,11 +11,7 @@ import "../bonding/libraries/EarningsPoolLIP36.sol";
 import "../Manager.sol";
 import "../IController.sol";
 import "../rounds/IRoundsManager.sol";
-import "../bonding/IBondingCheckpoints.sol";
-
-interface IVotes is IERC5805Upgradeable {
-    function delegatedAt(address account, uint256 timepoint) external returns (address);
-}
+import "./IVotes.sol";
 
 /**
  * @title GovernorCountingOverridable
@@ -71,6 +67,7 @@ abstract contract GovernorCountingOverridable is Initializable, GovernorUpgradea
      */
     // solhint-disable-next-line func-name-mixedcase
     function COUNTING_MODE() public pure virtual override returns (string memory) {
+        // TODO: Consider a different counting mode
         return "support=bravo&quorum=for,abstain,against";
     }
 
@@ -225,5 +222,5 @@ abstract contract GovernorCountingOverridable is Initializable, GovernorUpgradea
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
      */
-    uint256[50] private __gap;
+    uint256[49] private __gap;
 }

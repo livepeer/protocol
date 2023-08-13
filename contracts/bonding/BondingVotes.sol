@@ -14,10 +14,10 @@ import "../rounds/IRoundsManager.sol";
 import "./BondingManager.sol";
 
 /**
- * @title BondingCheckpoints
+ * @title BondingVotes
  * @dev Checkpointing logic for BondingManager state for historical stake calculations.
  */
-contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
+contract BondingVotes is ManagerProxyTarget, IBondingVotes {
     using SortedArrays for uint256[];
 
     constructor(address _controller) Manager(_controller) {}
@@ -61,22 +61,27 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
     }
 
     /**
+     * @dev Stores a list of checkpoints for the total active stake, queryable and mapped by round. Notce that
+     * differently from bonding checkpoints, it's only accessible on the specific round. To access the checkpoint for a
+     * given round, look for the checkpoint in the {data}} and if it's zero ensure the round was actually checkpointed on
+     * the {rounds} array ({SortedArrays-findLowerBound}).
+     */
+    struct TotalActiveStakeByRound {
+        uint256[] rounds;
+        mapping(uint256 => uint256) data;
+    }
+
+    /**
      * @dev Checkpoints by account (delegators and transcoders).
      */
     mapping(address => BondingCheckpointsByRound) private bondingCheckpoints;
-
     /**
-     * @dev Rounds in which we have checkpoints for the total active stake. This and {totalActiveStakeCheckpoints} are
-     * handled in the same wat that {BondingCheckpointsByRound}, with rounds stored and queried on this array and
-     * checkpointed value stored and retrieved from the mapping.
+     * @dev Total active stake checkpoints.
      */
-    uint256[] totalStakeCheckpointRounds;
-    /**
-     * @dev See {totalStakeCheckpointRounds} above.
-     */
-    mapping(uint256 => uint256) private totalActiveStakeCheckpoints;
+    TotalActiveStakeByRound private totalStakeCheckpoints;
 
-    // IERC6372 interface implementation
+    // IVotes interface implementation.
+    // These should not access any storage directly but proxy to the bonding state functions.
 
     /**
      * @notice Clock is set to match the current round, which is the checkpointing
@@ -92,6 +97,72 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
     // solhint-disable-next-line func-name-mixedcase
     function CLOCK_MODE() public pure returns (string memory) {
         return "mode=livepeer_round";
+    }
+
+    /**
+     * @notice Returns the current amount of votes that `_account` has.
+     */
+    function getVotes(address _account) external view returns (uint256) {
+        return getPastVotes(_account, clock());
+    }
+
+    /**
+     * @notice Returns the amount of votes that `_account` had at a specific moment in the past. If the `clock()` is
+     * configured to use block numbers, this will return the value at the end of the corresponding block.
+     */
+    function getPastVotes(address _account, uint256 _round) public view returns (uint256) {
+        (uint256 amount, ) = getBondingStateAt(_account, _round);
+        return amount;
+    }
+
+    /**
+     * @notice Returns the total supply of votes available at a specific round in the past.
+     * @dev This value is the sum of all *active* stake, which is not necessarily the sum of all voting power.
+     * Bonded stake that is not part of the top 100 active transcoder set is still given voting power, but is not
+     * considered here.
+     */
+    function getPastTotalSupply(uint256 _round) external view returns (uint256) {
+        return getTotalActiveStakeAt(_round);
+    }
+
+    /**
+     * @notice Returns the delegate that _account has chosen. This means the delegated transcoder address in case of
+     * delegators, and the account's own address for transcoders (self-delegated).
+     */
+    function delegates(address _account) external view returns (address) {
+        return delegatedAt(_account, clock());
+    }
+
+    /**
+     * @notice Returns the delegate that _account had chosen in a specific round in the past. See `delegates()` above
+     * for more details.
+     * @dev This is an addition to the IERC5805 interface to support our custom vote counting logic that allows
+     * delegators to override their transcoders votes. See {GovernorVotesBondingVotes-_handleVoteOverrides}.
+     */
+    function delegatedAt(address _account, uint256 _round) public view returns (address) {
+        (, address delegateAddress) = getBondingStateAt(_account, _round);
+        return delegateAddress;
+    }
+
+    /**
+     * @notice Delegation through BondingVotes is not supported.
+     */
+    function delegate(address) external pure {
+        revert MustCallBondingManager("bond");
+    }
+
+    /**
+     * @notice Delegation through BondingVotes is not supported.
+     */
+    function delegateBySig(
+        address,
+        uint256,
+        uint256,
+        uint8,
+        bytes32,
+        bytes32
+    ) external pure {
+        revert MustCallBondingManager("bondFor");
     }
 
     // BondingManager checkpointing hooks
@@ -117,25 +188,60 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
         uint256 _lastClaimRound,
         uint256 _lastRewardRound
     ) public virtual onlyBondingManager {
-        if (_startRound > clock() + 1) {
-            revert FutureCheckpoint(_startRound, clock() + 1);
+        if (_startRound != clock() + 1) {
+            revert InvalidCheckpoint(_startRound, clock() + 1);
         } else if (_lastClaimRound >= _startRound) {
             revert FutureLastClaimRound(_lastClaimRound, _startRound - 1);
         }
 
+        BondingCheckpoint memory previous;
+        if (hasCheckpoint(_account)) {
+            previous = getBondingCheckpointAt(_account, _startRound);
+        }
+
         BondingCheckpointsByRound storage checkpoints = bondingCheckpoints[_account];
 
-        checkpoints.data[_startRound] = BondingCheckpoint({
+        BondingCheckpoint memory bond = BondingCheckpoint({
             bondedAmount: _bondedAmount,
             delegateAddress: _delegateAddress,
             delegatedAmount: _delegatedAmount,
             lastClaimRound: _lastClaimRound,
             lastRewardRound: _lastRewardRound
         });
+        checkpoints.data[_startRound] = bond;
 
         // now store the startRound itself in the startRounds array to allow us
         // to find it and lookup in the above mapping
         checkpoints.startRounds.pushSorted(_startRound);
+
+        onCheckpointChanged(_account, previous, bond);
+    }
+
+    function onCheckpointChanged(
+        address _account,
+        BondingCheckpoint memory previous,
+        BondingCheckpoint memory current
+    ) internal {
+        address previousDelegate = previous.delegateAddress;
+        address newDelegate = current.delegateAddress;
+        if (previousDelegate != newDelegate) {
+            emit DelegateChanged(_account, previousDelegate, newDelegate);
+        }
+
+        bool isTranscoder = newDelegate == _account;
+        bool wasTranscoder = previousDelegate == _account;
+        if (isTranscoder) {
+            emit DelegateVotesChanged(_account, previous.delegatedAmount, current.delegatedAmount);
+        } else if (wasTranscoder) {
+            // if the account stopped being a transcoder, we want to emit an event zeroing its "delegate votes"
+            emit DelegateVotesChanged(_account, previous.delegatedAmount, 0);
+        }
+
+        // Always send delegator events since transcoders are delegators themselves. The way our rewards work, the
+        // delegator voting power calculated from events will only reflect their claimed stake without pending rewards.
+        if (previous.bondedAmount != current.bondedAmount) {
+            emit DelegatorVotesChanged(_account, previous.bondedAmount, current.bondedAmount);
+        }
     }
 
     /**
@@ -143,7 +249,7 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
      * @dev This is meant to be called by a checkpoint initialization script once we deploy the checkpointing logic for
      * the first time, so we can efficiently initialize the checkpoint state for all accounts in the system.
      */
-    function hasCheckpoint(address _account) external view returns (bool) {
+    function hasCheckpoint(address _account) public view returns (bool) {
         return bondingCheckpoints[_account].startRounds.length > 0;
     }
 
@@ -156,12 +262,11 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
      */
     function checkpointTotalActiveStake(uint256 _totalStake, uint256 _round) public virtual onlyBondingManager {
         if (_round > clock()) {
-            revert FutureCheckpoint(_round, clock());
+            revert InvalidCheckpoint(_round, clock());
         }
 
-        totalActiveStakeCheckpoints[_round] = _totalStake;
-
-        totalStakeCheckpointRounds.pushSorted(_round);
+        totalStakeCheckpoints.data[_round] = _totalStake;
+        totalStakeCheckpoints.rounds.pushSorted(_round);
     }
 
     // Historical stake access functions
@@ -175,10 +280,10 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
             revert FutureLookup(_round, clock());
         }
 
-        uint256 activeStake = totalActiveStakeCheckpoints[_round];
+        uint256 activeStake = totalStakeCheckpoints.data[_round];
 
         if (activeStake == 0) {
-            uint256 lastInitialized = checkedFindLowerBound(totalStakeCheckpointRounds, _round);
+            uint256 lastInitialized = checkedFindLowerBound(totalStakeCheckpoints.rounds, _round);
 
             // Check that the round was in fact initialized so we don't return a 0 value accidentally.
             if (lastInitialized != _round) {
@@ -235,8 +340,8 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
         view
         returns (BondingCheckpoint storage)
     {
-        if (_round > clock()) {
-            revert FutureLookup(_round, clock());
+        if (_round > clock() + 1) {
+            revert FutureLookup(_round, clock() + 1);
         }
 
         BondingCheckpointsByRound storage checkpoints = bondingCheckpoints[_account];
