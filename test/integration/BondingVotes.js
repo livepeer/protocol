@@ -11,11 +11,11 @@ import math from "../helpers/math"
 chai.use(solidity)
 const {expect} = chai
 
-describe("BondingCheckpoints", () => {
+describe("BondingVotes", () => {
     let rpc
 
     let signers
-    let bondingCheckpoints
+    let bondingVotes
     let bondingManager
     let roundsManager
     let roundLength
@@ -38,9 +38,9 @@ describe("BondingCheckpoints", () => {
             fixture.BondingManager.address
         )
 
-        bondingCheckpoints = await ethers.getContractAt(
-            "BondingCheckpoints",
-            fixture.BondingCheckpoints.address
+        bondingVotes = await ethers.getContractAt(
+            "BondingVotes",
+            fixture.BondingVotes.address
         )
 
         token = await ethers.getContractAt(
@@ -156,7 +156,7 @@ describe("BondingCheckpoints", () => {
                 )
 
                 const stakeAt = round =>
-                    bondingCheckpoints
+                    bondingVotes
                         .getBondingStateAt(delegator.address, round)
                         .then(n => n[0].toString())
 
@@ -175,7 +175,7 @@ describe("BondingCheckpoints", () => {
 
             it("should return partial rewards for all transcoder stake", async () => {
                 const stakeAt = round =>
-                    bondingCheckpoints
+                    bondingVotes
                         .getBondingStateAt(transcoder.address, round)
                         .then(n => n[0].toString())
 
@@ -198,7 +198,7 @@ describe("BondingCheckpoints", () => {
 
         describe("getTotalActiveStakeAt", () => {
             const totalStakeAt = round =>
-                bondingCheckpoints
+                bondingVotes
                     .getTotalActiveStakeAt(round)
                     .then(n => n.toString())
 
@@ -324,7 +324,7 @@ describe("BondingCheckpoints", () => {
                 const delegator = delegators[delegators.length - 1].address
 
                 const testHasStake = async (address, round) => {
-                    const [stake] = await bondingCheckpoints.getBondingStateAt(
+                    const [stake] = await bondingVotes.getBondingStateAt(
                         address,
                         round
                     )
@@ -354,10 +354,7 @@ describe("BondingCheckpoints", () => {
                         const expectedStake = pendingStakes[address]
 
                         const [stakeCheckpoint] =
-                            await bondingCheckpoints.getBondingStateAt(
-                                address,
-                                round
-                            )
+                            await bondingVotes.getBondingStateAt(address, round)
                         assert.equal(
                             stakeCheckpoint.toString(),
                             expectedStake,
@@ -372,7 +369,7 @@ describe("BondingCheckpoints", () => {
             it("should return total supply from only the active stake at any point in time", async () => {
                 for (const round of Object.keys(totalActiveStakeByRound)) {
                     const totalStakeCheckpoint =
-                        await bondingCheckpoints.getTotalActiveStakeAt(round)
+                        await bondingVotes.getTotalActiveStakeAt(round)
                     assert.equal(
                         totalStakeCheckpoint.toString(),
                         totalActiveStakeByRound[round],
@@ -385,16 +382,16 @@ describe("BondingCheckpoints", () => {
                 for (const r = currentRound - 2; r <= currentRound + 2; r++) {
                     const activeStakeSum = BigNumber.from(0)
                     for (const transcoder of activeTranscoders) {
-                        const [stake] =
-                            await bondingCheckpoints.getBondingStateAt(
-                                transcoder.address,
-                                r
-                            )
+                        const [stake] = await bondingVotes.getBondingStateAt(
+                            transcoder.address,
+                            r
+                        )
                         activeStakeSum = activeStakeSum.add(stake)
                     }
 
-                    const totalStake =
-                        await bondingCheckpoints.getTotalActiveStakeAt(r)
+                    const totalStake = await bondingVotes.getTotalActiveStakeAt(
+                        r
+                    )
                     assert.equal(
                         totalStake.toString(),
                         activeStakeSum.toString(),
@@ -463,7 +460,7 @@ describe("BondingCheckpoints", () => {
 
         describe("getBondingStateAt", () => {
             const stakeAt = (account, round) =>
-                bondingCheckpoints
+                bondingVotes
                     .getBondingStateAt(account.address, round)
                     .then(n => n[0].toString())
             const expectStakeAt = async (account, round, expected) => {
@@ -547,7 +544,7 @@ describe("BondingCheckpoints", () => {
 
         describe("getTotalActiveStakeAt", () => {
             const totalStakeAt = round =>
-                bondingCheckpoints
+                bondingVotes
                     .getTotalActiveStakeAt(round)
                     .then(n => n.toString())
             const expectTotalStakeAt = async (round, expected) => {
@@ -611,7 +608,7 @@ describe("BondingCheckpoints", () => {
         })
 
         const expectStakeAt = async (account, round, expected, delegate) => {
-            const stakeAndAddress = await bondingCheckpoints.getBondingStateAt(
+            const stakeAndAddress = await bondingVotes.getBondingStateAt(
                 account.address,
                 round
             )
@@ -630,9 +627,7 @@ describe("BondingCheckpoints", () => {
         }
 
         const totalStakeAt = round =>
-            bondingCheckpoints
-                .getTotalActiveStakeAt(round)
-                .then(n => n.toString())
+            bondingVotes.getTotalActiveStakeAt(round).then(n => n.toString())
         const expectTotalStakeAt = async (round, expected) => {
             assert.equal(
                 await totalStakeAt(round),

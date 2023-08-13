@@ -69,16 +69,16 @@ describe("checkpoint bonding state gas report", () => {
         await roundsManager.mineBlocks(roundLength.toNumber())
         await roundsManager.initializeRound()
 
-        // Deploy a new BondingCheckpoints contract so we can simulate a fresh deploy on existing BondingManager state
+        // Deploy a new BondingVotes contract so we can simulate a fresh deploy on existing BondingManager state
         const [, gitCommitHash] = await controller.getContractInfo(
-            contractId("BondingCheckpoints")
+            contractId("BondingVotes")
         )
-        const newBondingCheckpoints = await ethers
-            .getContractFactory("BondingCheckpoints")
+        const newBondingVotes = await ethers
+            .getContractFactory("BondingVotes")
             .then(fac => fac.deploy(controller.address))
         await controller.setContractInfo(
-            contractId("BondingCheckpoints"),
-            newBondingCheckpoints.address,
+            contractId("BondingVotes"),
+            newBondingVotes.address,
             gitCommitHash
         )
     })

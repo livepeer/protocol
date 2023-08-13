@@ -2850,15 +2850,15 @@ describe("BondingManager", () => {
                 .bond(1000, transcoder.address)
         })
 
-        it("should fail if BondingCheckpoints is not registered", async () => {
-            await fixture.register("BondingCheckpoints", ZERO_ADDRESS)
+        it("should fail if BondingVotes is not registered", async () => {
+            await fixture.register("BondingVotes", ZERO_ADDRESS)
 
             await expect(
                 bondingManager.checkpointBondingState(transcoder.address)
             ).to.be.revertedWith("function call to a non-contract account")
         })
 
-        it("should call BondingCheckpoints with non-participant zeroed state", async () => {
+        it("should call BondingVotes with non-participant zeroed state", async () => {
             const tx = await bondingManager.checkpointBondingState(
                 nonParticipant.address
             )
@@ -2874,7 +2874,7 @@ describe("BondingManager", () => {
             })
         })
 
-        it("should call BondingCheckpoints with current transcoder state", async () => {
+        it("should call BondingVotes with current transcoder state", async () => {
             const tx = await bondingManager.checkpointBondingState(
                 transcoder.address
             )
@@ -2890,7 +2890,7 @@ describe("BondingManager", () => {
             })
         })
 
-        it("should call BondingCheckpoints with current delegator state", async () => {
+        it("should call BondingVotes with current delegator state", async () => {
             const tx = await bondingManager.checkpointBondingState(
                 delegator.address
             )
@@ -6838,10 +6838,7 @@ describe("BondingManager", () => {
             )
 
             await expect(tx)
-                .to.emit(
-                    fixture.BondingCheckpoints,
-                    "CheckpointTotalActiveStake"
-                )
+                .to.emit(fixture.bondingVotes, "CheckpointTotalActiveStake")
                 .withArgs(1000, currentRound)
         })
     })
