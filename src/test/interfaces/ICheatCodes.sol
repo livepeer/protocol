@@ -25,4 +25,6 @@ interface ICheatCodes {
     ) external;
 
     function addr(uint256) external returns (address);
+
+    function deal(address, uint256) external;
 }
