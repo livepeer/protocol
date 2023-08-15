@@ -4,15 +4,15 @@ import "ds-test/test.sol";
 import "./base/GovernorBaseTest.sol";
 import "contracts/ManagerProxy.sol";
 import "contracts/bonding/BondingManager.sol";
-import "contracts/bonding/bondingVotes.sol";
+import "contracts/bonding/BondingVotes.sol";
 import "contracts/rounds/RoundsManager.sol";
 import "contracts/token/LivepeerToken.sol";
 import "contracts/snapshots/MerkleSnapshot.sol";
 import "./interfaces/ICheatCodes.sol";
 import "./interfaces/IL2Migrator.sol";
 
-// forge test --match-contract bondingVotesStateInitialization --fork-url https://arbitrum-mainnet.infura.io/v3/$INFURA_KEY -vvv --fork-block-number 110930219
-contract bondingVotesStateInitialization is GovernorBaseTest {
+// forge test --match-contract BondingVotesStateInitialization --fork-url https://arbitrum-mainnet.infura.io/v3/$INFURA_KEY -vvv --fork-block-number 110930219
+contract BondingVotesStateInitialization is GovernorBaseTest {
     address public constant CURRENT_BONDING_MANAGER_TARGET = 0x3a941e1094B9E33efABB26a9047a8ABb4b257907;
     BondingManager public constant BONDING_MANAGER = BondingManager(0x35Bcf3c30594191d53231E4FF333E8A770453e40);
     RoundsManager public constant ROUNDS_MANAGER = RoundsManager(0xdd6f56DcC28D3F5f27084381fE8Df634985cc39f);
@@ -233,7 +233,19 @@ contract bondingVotesStateInitialization is GovernorBaseTest {
         bondingVotes.getTotalActiveStakeAt(currentRound + 1);
     }
 
-    function testDoesNotUsePastCheckpointForTotalActiveStake() public {
+    function testDoesNotUseFutureCheckpointForTotalActiveStake() public {
+        uint256 currentRound = ROUNDS_MANAGER.currentRound();
+
+        uint256 nextRoundStartBlock = ROUNDS_MANAGER.currentRoundStartBlock() + ROUNDS_MANAGER.roundLength();
+        CHEATS.roll(nextRoundStartBlock);
+        ROUNDS_MANAGER.initializeRound();
+        assertEq(ROUNDS_MANAGER.currentRound(), currentRound + 1);
+
+        CHEATS.expectRevert(abi.encodeWithSelector(IBondingVotes.PastLookup.selector, currentRound, currentRound + 1));
+        bondingVotes.getTotalActiveStakeAt(currentRound);
+    }
+
+    function testUsesNextRoundTotalActiveStakeForCurrentRounds() public {
         uint256 currentRound = ROUNDS_MANAGER.currentRound();
 
         uint256 nextRoundStartBlock = ROUNDS_MANAGER.currentRoundStartBlock() + ROUNDS_MANAGER.roundLength();
@@ -244,8 +256,10 @@ contract bondingVotesStateInitialization is GovernorBaseTest {
         CHEATS.roll(nextRoundStartBlock);
         assertEq(ROUNDS_MANAGER.currentRound(), currentRound + 2);
 
-        CHEATS.expectRevert(abi.encodeWithSelector(IBondingVotes.MissingRoundCheckpoint.selector, currentRound + 2));
-        bondingVotes.getTotalActiveStakeAt(currentRound + 2);
+        uint256 expected = BONDING_MANAGER.nextRoundTotalActiveStake();
+        assertEq(bondingVotes.getTotalActiveStakeAt(currentRound + 2), expected);
+        // should work up to the next round as well
+        assertEq(bondingVotes.getTotalActiveStakeAt(currentRound + 3), expected);
     }
 
     function testCheckpointsTotalActiveStakeOnInitializeRound() public {

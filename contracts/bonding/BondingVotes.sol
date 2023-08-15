@@ -18,6 +18,7 @@ import "./BondingManager.sol";
  * @dev Checkpointing logic for BondingManager state for historical stake calculations.
  */
 contract BondingVotes is ManagerProxyTarget, IBondingVotes {
+    using Arrays for uint256[];
     using SortedArrays for uint256[];
 
     constructor(address _controller) Manager(_controller) {}
@@ -109,9 +110,12 @@ contract BondingVotes is ManagerProxyTarget, IBondingVotes {
     /**
      * @notice Returns the amount of votes that `_account` had at a specific moment in the past. If the `clock()` is
      * configured to use block numbers, this will return the value at the end of the corresponding block.
+     * @dev Keep in mind that since this function should return the votes at the end of the _round (or timepoint in OZ
+     * terms), we need to fetch the bonding state at the next round instead. That because the bonding state reflects the
+     * active stake in the current round, which is the snapshotted stake from the end of the previous round.
      */
     function getPastVotes(address _account, uint256 _round) public view returns (uint256) {
-        (uint256 amount, ) = getBondingStateAt(_account, _round);
+        (uint256 amount, ) = getBondingStateAt(_account, _round + 1);
         return amount;
     }
 
@@ -120,9 +124,12 @@ contract BondingVotes is ManagerProxyTarget, IBondingVotes {
      * @dev This value is the sum of all *active* stake, which is not necessarily the sum of all voting power.
      * Bonded stake that is not part of the top 100 active transcoder set is still given voting power, but is not
      * considered here.
+     * @dev Keep in mind that since this function should return the votes at the end of the _round (or timepoint in OZ
+     * terms), we need to fetch the total active stake at the next round instead. That because the active stake in the
+     * current round is the snapshotted stake from the end of the previous round.
      */
-    function getPastTotalSupply(uint256 _round) external view returns (uint256) {
-        return getTotalActiveStakeAt(_round);
+    function getPastTotalSupply(uint256 _round) public view returns (uint256) {
+        return getTotalActiveStakeAt(_round + 1);
     }
 
     /**
@@ -138,9 +145,12 @@ contract BondingVotes is ManagerProxyTarget, IBondingVotes {
      * for more details.
      * @dev This is an addition to the IERC5805 interface to support our custom vote counting logic that allows
      * delegators to override their transcoders votes. See {GovernorVotesBondingVotes-_handleVoteOverrides}.
+     * @dev Keep in mind that since this function should return the delegate at the end of the _round (or timepoint in
+     * OZ terms), we need to fetch the bonding state at the next round instead. That because the bonding state reflects
+     * the active stake in the current round, which is the snapshotted stake from the end of the previous round.
      */
     function delegatedAt(address _account, uint256 _round) public view returns (address) {
-        (, address delegateAddress) = getBondingStateAt(_account, _round);
+        (, address delegateAddress) = getBondingStateAt(_account, _round + 1);
         return delegateAddress;
     }
 
@@ -276,22 +286,32 @@ contract BondingVotes is ManagerProxyTarget, IBondingVotes {
      * @param _round The round for which we want to get the total active stake.
      */
     function getTotalActiveStakeAt(uint256 _round) public view virtual returns (uint256) {
-        if (_round > clock()) {
-            revert FutureLookup(_round, clock());
+        if (_round > clock() + 1) {
+            revert FutureLookup(_round, clock() + 1);
         }
 
-        uint256 activeStake = totalStakeCheckpoints.data[_round];
-
-        if (activeStake == 0) {
-            uint256 lastInitialized = checkedFindLowerBound(totalStakeCheckpoints.rounds, _round);
-
-            // Check that the round was in fact initialized so we don't return a 0 value accidentally.
-            if (lastInitialized != _round) {
-                revert MissingRoundCheckpoint(_round);
-            }
+        uint256 exactCheckpoint = totalStakeCheckpoints.data[_round];
+        if (exactCheckpoint > 0) {
+            return exactCheckpoint;
         }
 
-        return activeStake;
+        uint256[] storage initializedRounds = totalStakeCheckpoints.rounds;
+        if (initializedRounds.length == 0) {
+            revert NoRecordedCheckpoints();
+        }
+
+        uint256 upper = initializedRounds.findUpperBound(_round);
+        if (upper == 0) {
+            // we can't use the first checkpoint as an upper bound since we don't know any state before that
+            revert PastLookup(_round, initializedRounds[0]);
+        } else if (upper < initializedRounds.length) {
+            // use the checkpoint from the next round that has been initialized
+            uint256 nextInitedRound = initializedRounds[upper];
+            return totalStakeCheckpoints.data[nextInitedRound];
+        }
+
+        // the _round is after any initialized round, so grab its stake from nextRoundTotalActiveStake()
+        return bondingManager().nextRoundTotalActiveStake();
     }
 
     /**

@@ -587,7 +587,7 @@ describe("BondingVotes", () => {
             delegator = signers[1]
 
             // Initialize the first round ever
-            await nextRound()
+            await nextRound(10)
 
             for (const account of [transcoder, delegator]) {
                 await bondingManager.checkpointBondingState(account.address)
@@ -783,32 +783,66 @@ describe("BondingVotes", () => {
                 }
             })
 
-            it("should only allow querying total active stake on initialized rounds", async () => {
-                const expectRevertAt = r =>
-                    expect(totalStakeAt(r)).to.be.revertedWith(
-                        `MissingRoundCheckpoint(${r})`
+            it("should only allow querying total active stake after the first initialized round", async () => {
+                // first checkpointed round was R-2
+                for (const i = 3; i <= 10; i++) {
+                    const round = currentRound - i
+                    await expect(totalStakeAt(round)).to.be.revertedWith(
+                        `PastLookup(${round}, ${currentRound - 2})`
                     )
+                }
+            })
 
+            it("should return the next checkpointed round stake on uninitialized rounds", async () => {
                 await expectTotalStakeAt(currentRound - 1, 0) // transcoder bonds here
                 await expectTotalStakeAt(currentRound, lptAmount(1)) // delegator bonds here
 
-                // initialize gap, bonding not reflected yet
-                await expectRevertAt(currentRound + 1)
-                await expectRevertAt(currentRound + 25)
-                await expectRevertAt(currentRound + 49)
+                // initialize gap, return the state at the end of the gap
+                await expectTotalStakeAt(currentRound + 1, lptAmount(2))
+                await expectTotalStakeAt(currentRound + 25, lptAmount(2))
+                await expectTotalStakeAt(currentRound + 49, lptAmount(2))
 
-                // only when a round is initialized it picks up the change
-                await expectTotalStakeAt(currentRound + 50, lptAmount(2)) // transcoder calls reward
+                // this is initialized round
+                await expectTotalStakeAt(currentRound + 50, lptAmount(2)) // transcoder also calls reward here
+                const totalStake = lptAmount(2).add(
+                    mintableTokens[currentRound + 50]
+                )
 
-                // same thing here, reward only gets picked up on next initialized round
-                await expectRevertAt(currentRound + 51)
-                await expectRevertAt(currentRound + 75)
-                await expectRevertAt(currentRound + 99)
+                // same thing here, the stake from currentRound + 100 will be returned
+                await expectTotalStakeAt(currentRound + 51, totalStake)
+                await expectTotalStakeAt(currentRound + 75, totalStake)
+                await expectTotalStakeAt(currentRound + 99, totalStake)
 
-                // first round to be initialized
+                // last round to be initialized
                 await expectTotalStakeAt(
                     currentRound + 100,
                     lptAmount(2).add(mintableTokens[currentRound + 50])
+                )
+
+                // next rounds to be initialized, including current
+                await expectTotalStakeAt(currentRound + 100, totalStake)
+                await expectTotalStakeAt(currentRound + 101, totalStake)
+            })
+
+            it("should return the nextRountTotalActiveStake for rounds after the last initialized", async () => {
+                // sanity check
+                expect(await roundsManager.currentRound()).to.equal(
+                    currentRound + 101
+                )
+
+                const totalStake = lptAmount(2).add(
+                    mintableTokens[currentRound + 50]
+                )
+                await expectTotalStakeAt(currentRound + 101, totalStake)
+                // this is already the next round, which has the same active stake as the current
+                await expectTotalStakeAt(currentRound + 102, totalStake)
+
+                // now add some stake to the system and the next round should return the updated value, which is
+                // consistent to what gets returned by the checkpointed bonding state on the next round as well.
+                await bond(delegator, lptAmount(1), transcoder)
+                await expectTotalStakeAt(
+                    currentRound + 102,
+                    totalStake.add(lptAmount(1))
                 )
             })
         })
