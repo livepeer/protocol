@@ -169,16 +169,32 @@ describe("BondingVotes", () => {
             await setRound(currentRound)
         })
 
-        it("should fail if round is in the future", async () => {
-            const tx = bondingVotes.getTotalActiveStakeAt(currentRound + 1)
+        it("should fail if round is after the next round", async () => {
+            const tx = bondingVotes.getTotalActiveStakeAt(currentRound + 2)
             await expect(tx).to.be.revertedWith(
-                `FutureLookup(${currentRound + 1}, ${currentRound})`
+                `FutureLookup(${currentRound + 2}, ${currentRound + 1})`
             )
         })
 
-        it("should fail if round was not checkpointed", async () => {
+        it("should fail if there are no checkpointed rounds", async () => {
             const tx = bondingVotes.getTotalActiveStakeAt(currentRound)
             await expect(tx).to.be.revertedWith("NoRecordedCheckpoints()")
+        })
+
+        it("should fail to query before the first checkpoint", async () => {
+            const functionData = encodeCheckpointTotalActiveStake(
+                1337,
+                currentRound - 1
+            )
+            await fixture.bondingManager.execute(
+                bondingVotes.address,
+                functionData
+            )
+
+            const tx = bondingVotes.getTotalActiveStakeAt(currentRound - 2)
+            await expect(tx).to.be.revertedWith(
+                `PastLookup(${currentRound - 2}, ${currentRound - 1})`
+            )
         })
 
         it("should query checkpointed value in the current round", async () => {
@@ -195,6 +211,28 @@ describe("BondingVotes", () => {
                 await bondingVotes.getTotalActiveStakeAt(currentRound),
                 1337
             )
+        })
+
+        it("should query next rounds value from next round total active stake", async () => {
+            const functionData = encodeCheckpointTotalActiveStake(
+                1337,
+                currentRound - 5
+            )
+            await fixture.bondingManager.execute(
+                bondingVotes.address,
+                functionData
+            )
+            await fixture.bondingManager.setMockUint256(
+                functionSig("nextRoundTotalActiveStake()"),
+                1674
+            )
+
+            const totalStakeAt = r =>
+                bondingVotes.getTotalActiveStakeAt(r).then(bn => bn.toString())
+
+            assert.equal(await totalStakeAt(currentRound - 3), "1674")
+            assert.equal(await totalStakeAt(currentRound), "1674")
+            assert.equal(await totalStakeAt(currentRound + 1), "1674")
         })
 
         it("should allow querying the past checkpointed values", async () => {
@@ -221,6 +259,36 @@ describe("BondingVotes", () => {
             for (const [expectedStake, round] of roundStakes) {
                 assert.equal(
                     await bondingVotes.getTotalActiveStakeAt(round),
+                    expectedStake
+                )
+            }
+        })
+
+        it("should use the next checkpointed round values for intermediate queries", async () => {
+            const roundStakes = [
+                [500, currentRound - 50],
+                [1000, currentRound - 40],
+                [1500, currentRound - 30],
+                [2000, currentRound - 20],
+                [2500, currentRound - 10]
+            ]
+
+            for (const [totalStake, round] of roundStakes) {
+                const functionData = encodeCheckpointTotalActiveStake(
+                    totalStake,
+                    round
+                )
+                await fixture.bondingManager.execute(
+                    bondingVotes.address,
+                    functionData
+                )
+            }
+
+            // now query 1 round in between each of the checkpoints
+            for (const idx = 1; idx < roundStakes.length; idx++) {
+                const [expectedStake, round] = roundStakes[idx]
+                assert.equal(
+                    await bondingVotes.getTotalActiveStakeAt(round - 1 - idx),
                     expectedStake
                 )
             }
@@ -1054,6 +1122,24 @@ describe("BondingVotes", () => {
             )
         })
 
+        // Same implementation as the BondingVotesERC5805Mock
+        const mock = {
+            getBondingStateAt: (_account, _round) => {
+                const intAddr = BigNumber.from(_account)
+
+                // lowest 4 bytes of address + _round
+                const amount = intAddr.mask(32).add(_round)
+                // (_account << 4) | _round
+                const delegateAddress = intAddr.shl(4).mask(160).or(_round)
+
+                return [
+                    amount.toNumber(),
+                    ethers.utils.getAddress(delegateAddress.toHexString())
+                ]
+            },
+            getTotalActiveStakeAt: _round => 4 * _round
+        }
+
         it("ensure harness was deployed", async () => {
             assert.equal(
                 await fixture.controller.getContract(
@@ -1063,27 +1149,12 @@ describe("BondingVotes", () => {
             )
         })
 
-        // Same implementation as the BondingVotesERC5805Mock
-        const mockGetBondingStateAt = (_account, _round) => {
-            const intAddr = BigNumber.from(_account)
-
-            // lowest 4 bytes of address + _round
-            const amount = intAddr.mask(32).add(_round)
-            // (_account << 4) | _round
-            const delegateAddress = intAddr.shl(4).mask(160).or(_round)
-
-            return [
-                amount.toNumber(),
-                ethers.utils.getAddress(delegateAddress.toHexString())
-            ]
-        }
-
         describe("get(Past)?Votes", () => {
-            it("getPastVotes should proxy to getBondingStateAt", async () => {
+            it("getPastVotes should proxy to getBondingStateAt from next round", async () => {
                 const testOnce = async (account, round) => {
-                    const [expected] = mockGetBondingStateAt(
+                    const [expected] = mock.getBondingStateAt(
                         account.address,
-                        round
+                        round + 1
                     )
 
                     const votes = await bondingVotes.getPastVotes(
@@ -1104,9 +1175,9 @@ describe("BondingVotes", () => {
                         functionSig("currentRound()"),
                         round
                     )
-                    const [expected] = mockGetBondingStateAt(
+                    const [expected] = mock.getBondingStateAt(
                         account.address,
-                        round
+                        round + 1
                     )
 
                     const votes = await bondingVotes.getVotes(account.address)
@@ -1120,11 +1191,11 @@ describe("BondingVotes", () => {
         })
 
         describe("delegate(s|dAt)", () => {
-            it("delegatedAt should proxy to BondingVotes.getBondingStateAt", async () => {
+            it("delegatedAt should proxy to BondingVotes.getBondingStateAt at next round", async () => {
                 const testOnce = async (account, round) => {
-                    const [, expected] = mockGetBondingStateAt(
+                    const [, expected] = mock.getBondingStateAt(
                         account.address,
-                        round
+                        round + 1
                     )
 
                     const delegate = await bondingVotes.delegatedAt(
@@ -1145,9 +1216,9 @@ describe("BondingVotes", () => {
                         functionSig("currentRound()"),
                         round
                     )
-                    const [, expected] = mockGetBondingStateAt(
+                    const [, expected] = mock.getBondingStateAt(
                         account.address,
-                        round
+                        round + 1
                     )
 
                     assert.equal(
@@ -1163,9 +1234,9 @@ describe("BondingVotes", () => {
         })
 
         describe("getPastTotalSupply", () => {
-            it("should proxy to getTotalActiveStakeAt", async () => {
+            it("should proxy to getTotalActiveStakeAt at next round", async () => {
                 const testOnce = async round => {
-                    const expected = 4 * round // same as BondingVotesERC5805Harness impl
+                    const expected = mock.getTotalActiveStakeAt(round + 1)
 
                     const totalSupply = await bondingVotes.getPastTotalSupply(
                         round
