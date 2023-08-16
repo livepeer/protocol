@@ -337,7 +337,7 @@ contract BondingVotes is ManagerProxyTarget, IBondingVotes {
         virtual
         returns (uint256 amount, address delegateAddress)
     {
-        BondingCheckpoint storage bond = getBondingCheckpointAt(_account, _round);
+        BondingCheckpoint memory bond = getBondingCheckpointAt(_account, _round);
 
         delegateAddress = bond.delegateAddress;
         bool isTranscoder = delegateAddress == _account;
@@ -362,11 +362,7 @@ contract BondingVotes is ManagerProxyTarget, IBondingVotes {
      * @param _round The round for which we want to get the bonding state.
      * @return The {BondingCheckpoint} pointer to the checkpoints storage.
      */
-    function getBondingCheckpointAt(address _account, uint256 _round)
-        internal
-        view
-        returns (BondingCheckpoint storage)
-    {
+    function getBondingCheckpointAt(address _account, uint256 _round) internal view returns (BondingCheckpoint memory) {
         if (_round > clock() + 1) {
             revert FutureLookup(_round, clock() + 1);
         }
@@ -375,7 +371,7 @@ contract BondingVotes is ManagerProxyTarget, IBondingVotes {
 
         // Most of the time we will be calling this for a transcoder which checkpoints on every round through reward().
         // On those cases we will have a checkpoint for exactly the round we want, so optimize for that.
-        BondingCheckpoint storage bond = checkpoints.data[_round];
+        BondingCheckpoint memory bond = checkpoints.data[_round];
         if (bond.bondedAmount > 0) {
             return bond;
         }
@@ -399,11 +395,7 @@ contract BondingVotes is ManagerProxyTarget, IBondingVotes {
      * @param _round The round for which we want to get the cumulative stake.
      * @return The cumulative stake of the delegator at the given round.
      */
-    function delegatorCumulativeStakeAt(BondingCheckpoint storage bond, uint256 _round)
-        internal
-        view
-        returns (uint256)
-    {
+    function delegatorCumulativeStakeAt(BondingCheckpoint memory bond, uint256 _round) internal view returns (uint256) {
         EarningsPool.Data memory startPool = getTranscoderEarningsPoolForRound(
             bond.delegateAddress,
             bond.lastClaimRound
@@ -444,7 +436,7 @@ contract BondingVotes is ManagerProxyTarget, IBondingVotes {
         view
         returns (uint256 rewardRound, EarningsPool.Data memory pool)
     {
-        BondingCheckpoint storage bond = getBondingCheckpointAt(_transcoder, _round);
+        BondingCheckpoint memory bond = getBondingCheckpointAt(_transcoder, _round);
         rewardRound = bond.lastRewardRound;
 
         if (rewardRound > 0) {
