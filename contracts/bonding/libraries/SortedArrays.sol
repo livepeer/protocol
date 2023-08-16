@@ -12,6 +12,8 @@ import "@openzeppelin/contracts/utils/Arrays.sol";
 library SortedArrays {
     using Arrays for uint256[];
 
+    error DecreasingValues(uint256 newValue, uint256 lastValue);
+
     /**
      * @notice Searches a sorted _array and returns the last element to be lower or equal to _val. If there is no such
      * element (all elements in array are higher than the searched element), the array length is returned.
@@ -66,7 +68,9 @@ library SortedArrays {
             uint256 last = array[array.length - 1];
 
             // values must be pushed in order
-            require(val >= last, "pushSorted: decreasing values");
+            if (val < last) {
+                revert DecreasingValues(val, last);
+            }
 
             // don't push duplicate values
             if (val != last) {

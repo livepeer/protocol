@@ -14,6 +14,7 @@ describe("checkpoint bonding state gas report", () => {
 
     let controller
     let bondingManager
+    let bondingVotes
     let roundsManager
     let token
 
@@ -21,6 +22,7 @@ describe("checkpoint bonding state gas report", () => {
     let delegator
 
     const stake = 1000
+    let currentRound
 
     let signers
 
@@ -69,16 +71,20 @@ describe("checkpoint bonding state gas report", () => {
         await roundsManager.mineBlocks(roundLength.toNumber())
         await roundsManager.initializeRound()
 
+        currentRound = await roundsManager
+            .currentRound()
+            .then(bn => bn.toNumber())
+
         // Deploy a new BondingVotes contract so we can simulate a fresh deploy on existing BondingManager state
         const [, gitCommitHash] = await controller.getContractInfo(
             contractId("BondingVotes")
         )
-        const newBondingVotes = await ethers
+        bondingVotes = await ethers
             .getContractFactory("BondingVotes")
             .then(fac => fac.deploy(controller.address))
         await controller.setContractInfo(
             contractId("BondingVotes"),
-            newBondingVotes.address,
+            bondingVotes.address,
             gitCommitHash
         )
     })
@@ -91,15 +97,45 @@ describe("checkpoint bonding state gas report", () => {
         await rpc.revert(snapshotId)
     })
 
-    it("checkpoint delegator", async () => {
-        await bondingManager.checkpointBondingState(delegator.address)
+    describe("checkpointBondingState", () => {
+        it("delegator", async () => {
+            await bondingManager.checkpointBondingState(delegator.address)
+        })
+
+        it("transcoder", async () => {
+            await bondingManager.checkpointBondingState(transcoder.address)
+        })
+
+        it("non-participant", async () => {
+            await bondingManager.checkpointBondingState(signers[99].address)
+        })
     })
 
-    it("checkpoint transcoder", async () => {
-        await bondingManager.checkpointBondingState(transcoder.address)
-    })
+    describe("getBondingStateAt", () => {
+        beforeEach(async () => {
+            await bondingManager.checkpointBondingState(transcoder.address)
+            await bondingManager.checkpointBondingState(delegator.address)
+            await bondingManager.checkpointBondingState(signers[99].address)
+        })
 
-    it("checkpoint non-participant", async () => {
-        await bondingManager.checkpointBondingState(signers[99].address)
+        const gasGetBondingStateAt = async (address, round) => {
+            const tx = await bondingVotes.populateTransaction.getBondingStateAt(
+                address,
+                round
+            )
+            await signers[0].sendTransaction(tx)
+        }
+
+        it("delegator", async () => {
+            await gasGetBondingStateAt(delegator.address, currentRound + 1)
+        })
+
+        it("transcoder", async () => {
+            await gasGetBondingStateAt(transcoder.address, currentRound + 1)
+        })
+
+        it("non-participant", async () => {
+            await gasGetBondingStateAt(signers[99].address, currentRound + 1)
+        })
     })
 })

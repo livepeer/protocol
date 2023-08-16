@@ -102,7 +102,10 @@ describe("BondingVotes", () => {
     const customErrorAbi = (sig, args) => {
         const iface = new ethers.utils.Interface([`function ${sig}`])
         const funcDataHex = iface.encodeFunctionData(sig, args)
-        const abi = Buffer.from(funcDataHex, "hex")
+        expect(funcDataHex.substring(0, 2)).to.equal("0x")
+
+        const abi = Buffer.from(funcDataHex.substring(2), "hex")
+        expect(abi.length).to.be.greaterThan(4)
         return abi.toString()
     }
 
@@ -136,7 +139,7 @@ describe("BondingVotes", () => {
                     functionData
                 )
             ).to.be.revertedWith(
-                customErrorAbi("FutureCheckpoint(uint256,uint256)", [
+                customErrorAbi("FutureTotalStakeCheckpoint(uint256,uint256)", [
                     currentRound + 1,
                     currentRound
                 ])
@@ -330,7 +333,7 @@ describe("BondingVotes", () => {
             )
         })
 
-        it("should fail if checkpointing after next round", async () => {
+        it("should fail if checkpointing after the next round", async () => {
             const functionData = encodeCheckpointBondingState({
                 account: transcoder.address,
                 startRound: currentRound + 2,
@@ -347,8 +350,32 @@ describe("BondingVotes", () => {
                     functionData
                 )
             ).to.be.revertedWith(
-                customErrorAbi("FutureCheckpoint(uint256,uint256)", [
+                customErrorAbi("InvalidStartRound(uint256,uint256)", [
                     currentRound + 2,
+                    currentRound + 1
+                ])
+            )
+        })
+
+        it("should fail if checkpointing before the next round", async () => {
+            const functionData = encodeCheckpointBondingState({
+                account: transcoder.address,
+                startRound: currentRound,
+                bondedAmount: 1000,
+                delegateAddress: transcoder.address,
+                delegatedAmount: 1000,
+                lastClaimRound: currentRound - 1,
+                lastRewardRound: 0
+            })
+
+            await expect(
+                fixture.bondingManager.execute(
+                    bondingVotes.address,
+                    functionData
+                )
+            ).to.be.revertedWith(
+                customErrorAbi("InvalidStartRound(uint256,uint256)", [
+                    currentRound,
                     currentRound + 1
                 ])
             )
@@ -357,11 +384,11 @@ describe("BondingVotes", () => {
         it("should fail if lastClaimRound is not lower than start round", async () => {
             const functionData = encodeCheckpointBondingState({
                 account: transcoder.address,
-                startRound: currentRound,
+                startRound: currentRound + 1,
                 bondedAmount: 1000,
                 delegateAddress: transcoder.address,
                 delegatedAmount: 1000,
-                lastClaimRound: currentRound,
+                lastClaimRound: currentRound + 1,
                 lastRewardRound: 0
             })
 
@@ -372,8 +399,8 @@ describe("BondingVotes", () => {
                 )
             ).to.be.revertedWith(
                 customErrorAbi("FutureLastClaimRound(uint256,uint256)", [
-                    currentRound,
-                    currentRound - 1
+                    currentRound + 1,
+                    currentRound
                 ])
             )
         })
