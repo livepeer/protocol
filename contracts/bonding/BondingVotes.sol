@@ -25,7 +25,7 @@ contract BondingVotes is ManagerProxyTarget, IBondingVotes {
 
     struct BondingCheckpoint {
         /**
-         * @dev The amount of bonded tokens to another delegate as per the lastClaimRound.
+         * @dev The amount of bonded tokens to another delegate as of the lastClaimRound.
          */
         uint256 bondedAmount;
         /**
@@ -43,8 +43,10 @@ contract BondingVotes is ManagerProxyTarget, IBondingVotes {
          */
         uint256 lastClaimRound;
         /**
-         * @dev The last round during which the transcoder called {BondingManager-reward}. This is needed to find a
-         * reward pool for any round when calculating historical rewards.
+         * @dev The last round during which the checkpointed account called {BondingManager-reward}. This is needed to
+         * when calculating pending rewards for a delegator to this transcoder, to find the last earning pool available
+         * for a given round. In that case we start from the delegator checkpoint and then fetch its delegate address
+         * checkpoint as well to find the last earning pool.
          *
          * Notice that this is the only field that comes from the Transcoder struct in BondingManager, not Delegator.
          */
@@ -80,6 +82,14 @@ contract BondingVotes is ManagerProxyTarget, IBondingVotes {
      * @dev Total active stake checkpoints.
      */
     TotalActiveStakeByRound private totalStakeCheckpoints;
+
+    /**
+     * @dev Modifier to ensure the sender is BondingManager
+     */
+    modifier onlyBondingManager() {
+        _onlyBondingManager();
+        _;
+    }
 
     // IVotes interface implementation.
     // These should not access any storage directly but proxy to the bonding state functions.
@@ -199,7 +209,7 @@ contract BondingVotes is ManagerProxyTarget, IBondingVotes {
         uint256 _lastRewardRound
     ) public virtual onlyBondingManager {
         if (_startRound != clock() + 1) {
-            revert InvalidCheckpoint(_startRound, clock() + 1);
+            revert InvalidStartRound(_startRound, clock() + 1);
         } else if (_lastClaimRound >= _startRound) {
             revert FutureLastClaimRound(_lastClaimRound, _startRound - 1);
         }
@@ -272,7 +282,7 @@ contract BondingVotes is ManagerProxyTarget, IBondingVotes {
      */
     function checkpointTotalActiveStake(uint256 _totalStake, uint256 _round) public virtual onlyBondingManager {
         if (_round > clock()) {
-            revert InvalidCheckpoint(_round, clock());
+            revert FutureTotalStakeCheckpoint(_round, clock());
         }
 
         totalStakeCheckpoints.data[_round] = _totalStake;
@@ -467,14 +477,6 @@ contract BondingVotes is ManagerProxyTarget, IBondingVotes {
     // Manager/Controller helpers
 
     /**
-     * @dev Modified to ensure the sender is BondingManager
-     */
-    modifier onlyBondingManager() {
-        _onlyBondingManager();
-        _;
-    }
-
-    /**
      * @dev Return BondingManager interface
      */
     function bondingManager() internal view returns (BondingManager) {
@@ -484,7 +486,7 @@ contract BondingVotes is ManagerProxyTarget, IBondingVotes {
     /**
      * @dev Return IRoundsManager interface
      */
-    function roundsManager() public view returns (IRoundsManager) {
+    function roundsManager() internal view returns (IRoundsManager) {
         return IRoundsManager(controller.getContract(keccak256("RoundsManager")));
     }
 

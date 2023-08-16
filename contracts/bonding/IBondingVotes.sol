@@ -10,8 +10,9 @@ import "../treasury/IVotes.sol";
  */
 interface IBondingVotes is IERC6372Upgradeable, IVotes {
     error InvalidCaller(address caller, address required);
-    error InvalidCheckpoint(uint256 checkpointRound, uint256 requiredRound);
+    error InvalidStartRound(uint256 checkpointRound, uint256 requiredRound);
     error FutureLastClaimRound(uint256 lastClaimRound, uint256 maxAllowed);
+    error FutureTotalStakeCheckpoint(uint256 checkpointRound, uint256 maxAllowedRound);
 
     error FutureLookup(uint256 queryRound, uint256 maxAllowed);
     error MissingEarningsPool(address transcoder, uint256 round);
