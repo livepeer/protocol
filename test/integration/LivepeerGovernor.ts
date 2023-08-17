@@ -208,7 +208,7 @@ describe("LivepeerGovernor", () => {
             it("should not be initializable", async () => {
                 // revert msg is misleading, but it's not initializable because initializers are disabled
                 await expect(
-                    governorTarget.initialize(0, 0, 0)
+                    governorTarget.initialize(0, 0, 0, 0, 0)
                 ).to.be.revertedWith(
                     "Initializable: contract is already initialized"
                 )
@@ -246,7 +246,9 @@ describe("LivepeerGovernor", () => {
             })
 
             it("should not be re-initializable", async () => {
-                await expect(governor.initialize(0, 0, 0)).to.be.revertedWith(
+                await expect(
+                    governor.initialize(0, 0, 0, 0, 0)
+                ).to.be.revertedWith(
                     "Initializable: contract is already initialized"
                 )
 
@@ -268,7 +270,9 @@ describe("LivepeerGovernor", () => {
                 )
 
                 // should keep initialized state
-                await expect(governor.initialize(0, 0, 0)).to.be.revertedWith(
+                await expect(
+                    governor.initialize(0, 0, 0, 0, 0)
+                ).to.be.revertedWith(
                     "Initializable: contract is already initialized"
                 )
 
