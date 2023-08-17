@@ -164,13 +164,13 @@ describe("BondingVotes", () => {
                 assert.equal(await stakeAt(currentRound - 1), 0)
 
                 let stake = lptAmount(1) // bonded on previous round
-                assert.equal(await stakeAt(currentRound), stake)
+                assert.equal(await stakeAt(currentRound), stake.toString())
 
                 stake = stake.add(pendingRewards0) // reward call
-                assert.equal(await stakeAt(currentRound + 1), stake)
+                assert.equal(await stakeAt(currentRound + 1), stake.toString())
 
                 stake = stake.add(pendingRewards1) // reward call
-                assert.equal(await stakeAt(currentRound + 2), stake)
+                assert.equal(await stakeAt(currentRound + 2), stake.toString())
             })
 
             it("should return partial rewards for all transcoder stake", async () => {
@@ -783,13 +783,11 @@ describe("BondingVotes", () => {
                 }
             })
 
-            it("should only allow querying total active stake after the first initialized round", async () => {
+            it("should return zero total active stake before the first initialized round", async () => {
                 // first checkpointed round was R-2
                 for (const i = 3; i <= 10; i++) {
                     const round = currentRound - i
-                    await expect(totalStakeAt(round)).to.be.revertedWith(
-                        `PastLookup(${round}, ${currentRound - 2})`
-                    )
+                    await expectTotalStakeAt(round, 0)
                 }
             })
 

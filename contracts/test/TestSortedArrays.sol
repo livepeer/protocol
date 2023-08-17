@@ -53,10 +53,10 @@ contract TestSortedArrays {
         fixture.pushSorted(7);
         fixture.pushSorted(11);
 
-        Assert.equal(fixture.findLowerBound(3), 2, "found incorrect element");
-        Assert.equal(fixture.findLowerBound(6), 4, "found incorrect element");
-        Assert.equal(fixture.findLowerBound(10), 7, "found incorrect element");
-        Assert.equal(fixture.findLowerBound(15), 11, "found incorrect element");
+        Assert.equal(fixture.findLowerBound(3), 0, "found incorrect element");
+        Assert.equal(fixture.findLowerBound(6), 1, "found incorrect element");
+        Assert.equal(fixture.findLowerBound(10), 2, "found incorrect element");
+        Assert.equal(fixture.findLowerBound(15), 3, "found incorrect element");
     }
 
     function test_findLowerBound_exactElement() public {
@@ -65,27 +65,23 @@ contract TestSortedArrays {
         fixture.pushSorted(8);
         fixture.pushSorted(13);
 
-        Assert.equal(fixture.findLowerBound(3), 3, "found incorrect element");
-        Assert.equal(fixture.findLowerBound(5), 5, "found incorrect element");
-        Assert.equal(fixture.findLowerBound(8), 8, "found incorrect element");
-        Assert.equal(fixture.findLowerBound(13), 13, "found incorrect element");
+        Assert.equal(fixture.findLowerBound(3), 0, "found incorrect element");
+        Assert.equal(fixture.findLowerBound(5), 1, "found incorrect element");
+        Assert.equal(fixture.findLowerBound(8), 2, "found incorrect element");
+        Assert.equal(fixture.findLowerBound(13), 3, "found incorrect element");
     }
 
-    function test_findLowerBound_revertsOnEmpty() public {
-        SortedArraysFixture(address(proxy)).callFindLowerBound(3);
-        bool ok = proxy.execute(address(fixture));
-        Assert.isFalse(ok, "did not revert");
+    function test_findLowerBound_returnsLengthOnEmpty() public {
+        Assert.equal(fixture.length(), 0, "incorrect array length");
+        Assert.equal(fixture.findLowerBound(3), 0, "incorrect return on empty array");
     }
 
-    function test_findLowerBound_revertsOnNotFound() public {
+    function test_findLowerBound_returnsLengthOnNotFound() public {
         fixture.pushSorted(8);
         fixture.pushSorted(13);
 
-        Assert.equal(fixture.findLowerBound(22), 13, "found incorrect element");
-
-        // looking for a value lower than min should revert
-        SortedArraysFixture(address(proxy)).callFindLowerBound(5);
-        bool ok = proxy.execute(address(fixture));
-        Assert.isFalse(ok, "did not revert");
+        Assert.equal(fixture.findLowerBound(22), 1, "found incorrect element");
+        // looking for a value lower than min should return the array length
+        Assert.equal(fixture.findLowerBound(5), 2, "incorrect return on not found");
     }
 }

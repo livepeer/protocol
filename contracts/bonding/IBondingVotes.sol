@@ -14,9 +14,6 @@ interface IBondingVotes is IERC6372Upgradeable, IVotes {
     error FutureLastClaimRound(uint256 lastClaimRound, uint256 maxAllowed);
 
     error FutureLookup(uint256 queryRound, uint256 maxAllowed);
-    error MissingRoundCheckpoint(uint256 round);
-    error NoRecordedCheckpoints();
-    error PastLookup(uint256 queryRound, uint256 firstCheckpointRound);
     error MissingEarningsPool(address transcoder, uint256 round);
 
     // Indicates that the called function is not supported in this contract and should be performed through the
