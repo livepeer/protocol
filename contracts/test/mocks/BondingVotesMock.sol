@@ -3,7 +3,7 @@ pragma solidity 0.8.9;
 
 import "./GenericMock.sol";
 
-contract BondingCheckpointsMock is GenericMock {
+contract BondingVotesMock is GenericMock {
     event CheckpointBondingState(
         address account,
         uint256 startRound,

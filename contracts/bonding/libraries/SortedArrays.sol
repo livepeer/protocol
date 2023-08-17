@@ -12,32 +12,27 @@ import "@openzeppelin/contracts/utils/Arrays.sol";
 library SortedArrays {
     using Arrays for uint256[];
 
-    error EmptyArray();
-    error NoLowerBoundInArray(uint256 queryValue, uint256 minValue);
+    error DecreasingValues(uint256 newValue, uint256 lastValue);
 
     /**
-     * @notice Searches a sorted _array and returns the last element to be lower or equal to _val.
+     * @notice Searches a sorted _array and returns the last element to be lower or equal to _val. If there is no such
+     * element (all elements in array are higher than the searched element), the array length is returned.
      *
      * @dev This basically converts OpenZeppelin's {Arrays-findUpperBound} into findLowerBound, meaning it also uses a
-     * binary search in the worst case after trying some shortcuts. Worst case time complexity is O(log n).
-     *
-     * The main differences from the OZ version (apart from the obvious lower vs upper bound) are:
-     *  - It returns the array element directly instead of its index
-     *  - If no such element exists (i.e. all values in the array are higher than _val) this function will fail instead
-     *    of returning some default value.
+     * binary search in the worst case after trying some shortcuts. Worst case time complexity is O(log n). The only
+     * change being that the returned index points to the element lower or equal to _val, instead of higher or equal.
      * @param _array Array to search in
      * @param _val Value to search for
-     * @return lower Lower bound value found in array
+     * @return lower Index of the lower bound found in array
      */
     function findLowerBound(uint256[] storage _array, uint256 _val) internal view returns (uint256) {
         uint256 len = _array.length;
         if (len == 0) {
-            revert EmptyArray();
+            return 0;
         }
 
-        uint256 lastElm = _array[len - 1];
-        if (lastElm <= _val) {
-            return lastElm;
+        if (_array[len - 1] <= _val) {
+            return len - 1;
         }
 
         uint256 upperIdx = _array.findUpperBound(_val);
@@ -45,19 +40,18 @@ library SortedArrays {
         // we already checked the last element above so the upper will always be inside the array
         assert(upperIdx < len);
 
-        uint256 upperElm = _array[upperIdx];
         // the exact value we were searching is in the array
-        if (upperElm == _val) {
-            return upperElm;
+        if (_array[upperIdx] == _val) {
+            return upperIdx;
         }
 
         // a 0 idx means that the first elem is already higher than the searched value (and not equal, checked above)
         if (upperIdx == 0) {
-            revert NoLowerBoundInArray(_val, _array[0]);
+            return len;
         }
 
-        // the upperElm is the first element higher than the value we want, so return the previous element
-        return _array[upperIdx - 1];
+        // the element at upperIdx is the first element higher than the value we want, so return the previous element
+        return upperIdx - 1;
     }
 
     /**
@@ -74,7 +68,9 @@ library SortedArrays {
             uint256 last = array[array.length - 1];
 
             // values must be pushed in order
-            require(val >= last, "pushSorted: decreasing values");
+            if (val < last) {
+                revert DecreasingValues(val, last);
+            }
 
             // don't push duplicate values
             if (val != last) {

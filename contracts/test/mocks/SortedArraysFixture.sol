@@ -10,11 +10,6 @@ contract SortedArraysFixture {
         return SortedArrays.findLowerBound(array, val);
     }
 
-    // this function cannot be 'view' or the RevertProxy will fail weirdly
-    function callFindLowerBound(uint256 val) external {
-        SortedArrays.findLowerBound(array, val);
-    }
-
     function pushSorted(uint256 val) external {
         SortedArrays.pushSorted(array, val);
     }
