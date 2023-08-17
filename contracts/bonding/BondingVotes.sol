@@ -296,22 +296,19 @@ contract BondingVotes is ManagerProxyTarget, IBondingVotes {
         }
 
         uint256[] storage initializedRounds = totalStakeCheckpoints.rounds;
-        if (initializedRounds.length == 0) {
-            revert NoRecordedCheckpoints();
-        }
-
         uint256 upper = initializedRounds.findUpperBound(_round);
         if (upper == 0) {
-            // we can't use the first checkpoint as an upper bound since we don't know any state before that
-            revert PastLookup(_round, initializedRounds[0]);
+            // Return a zero voting power supply for any round before the first checkpoint. This also happens if there
+            // are no checkpoints at all.
+            return 0;
         } else if (upper < initializedRounds.length) {
-            // use the checkpoint from the next round that has been initialized
+            // Use the checkpoint from the next initialized round, which got the next total active stake checkpointed.
             uint256 nextInitedRound = initializedRounds[upper];
             return totalStakeCheckpoints.data[nextInitedRound];
+        } else {
+            // Here the _round is after any initialized round, so grab its stake from nextRoundTotalActiveStake()
+            return bondingManager().nextRoundTotalActiveStake();
         }
-
-        // the _round is after any initialized round, so grab its stake from nextRoundTotalActiveStake()
-        return bondingManager().nextRoundTotalActiveStake();
     }
 
     /**
@@ -373,18 +370,14 @@ contract BondingVotes is ManagerProxyTarget, IBondingVotes {
             return bond;
         }
 
-        if (checkpoints.startRounds.length == 0) {
-            (uint256 bondedAmount, , , uint256 delegatedAmount, , uint256 lastClaimRound, ) = bondingManager()
-                .getDelegator(_account);
-            // we use lastClaimRound instead of startRound since the latter is cleared on a full unbond
-            if (lastClaimRound < _round && bondedAmount == 0 && delegatedAmount == 0) {
-                // If the account was not delegating to anyone at the queried round, we can just return the zero
-                // BondingCheckpoint value. This also handles the case of accounts that have never made a delegation.
-                return bond;
-            }
+        uint256 startRoundIdx = checkpoints.startRounds.findLowerBound(_round);
+        if (startRoundIdx == checkpoints.startRounds.length) {
+            // No checkpoint at or before _round, so return the zero BondingCheckpoint value. This also happens if there
+            // are no checkpoints for _account. The voting power will be zero until the first checkpoint is made.
+            return bond;
         }
 
-        uint256 startRound = checkedFindLowerBound(checkpoints.startRounds, _round);
+        uint256 startRound = checkpoints.startRounds[startRoundIdx];
         return checkpoints.data[startRound];
     }
 
@@ -401,12 +394,12 @@ contract BondingVotes is ManagerProxyTarget, IBondingVotes {
         view
         returns (uint256)
     {
-        EarningsPool.Data memory startPool = getTranscoderEarningPoolForRound(
+        EarningsPool.Data memory startPool = getTranscoderEarningsPoolForRound(
             bond.delegateAddress,
             bond.lastClaimRound
         );
 
-        (uint256 rewardRound, EarningsPool.Data memory endPool) = getTranscoderLastRewardsEarningPool(
+        (uint256 rewardRound, EarningsPool.Data memory endPool) = getLastTranscoderRewardsEarningsPool(
             bond.delegateAddress,
             _round
         );
@@ -436,7 +429,7 @@ contract BondingVotes is ManagerProxyTarget, IBondingVotes {
      * @return rewardRound Round in which the returned earning pool was calculated.
      * @return pool EarningsPool.Data struct with the last initialized earning pool.
      */
-    function getTranscoderLastRewardsEarningPool(address _transcoder, uint256 _round)
+    function getLastTranscoderRewardsEarningsPool(address _transcoder, uint256 _round)
         internal
         view
         returns (uint256 rewardRound, EarningsPool.Data memory pool)
@@ -444,16 +437,20 @@ contract BondingVotes is ManagerProxyTarget, IBondingVotes {
         BondingCheckpoint storage bond = getBondingCheckpointAt(_transcoder, _round);
         rewardRound = bond.lastRewardRound;
 
-        // only fetch pool if there is a previous reward() call recorded
         if (rewardRound > 0) {
-            pool = getTranscoderEarningPoolForRound(_transcoder, rewardRound);
+            pool = getTranscoderEarningsPoolForRound(_transcoder, rewardRound);
+
+            if (pool.cumulativeRewardFactor == 0) {
+                // Invalid state: a lastRewardRound is registered but there's no recorded earnings pool.
+                revert MissingEarningsPool(_transcoder, rewardRound);
+            }
         }
     }
 
     /**
      * @dev Proxy for {BondingManager-getTranscoderEarningsPoolForRound} that returns an EarningsPool.Data struct.
      */
-    function getTranscoderEarningPoolForRound(address _transcoder, uint256 _round)
+    function getTranscoderEarningsPoolForRound(address _transcoder, uint256 _round)
         internal
         view
         returns (EarningsPool.Data memory pool)
@@ -465,22 +462,6 @@ contract BondingVotes is ManagerProxyTarget, IBondingVotes {
             pool.cumulativeRewardFactor,
             pool.cumulativeFeeFactor
         ) = bondingManager().getTranscoderEarningsPoolForRound(_transcoder, _round);
-
-        if (pool.cumulativeRewardFactor == 0) {
-            revert MissingEarningsPool(_transcoder, _round);
-        }
-    }
-
-    /**
-     * @dev Helper to return more helpful custom errors in case of bad queries.
-     */
-    function checkedFindLowerBound(uint256[] storage array, uint256 value) internal view returns (uint256) {
-        if (array.length == 0) {
-            revert NoRecordedCheckpoints();
-        } else if (array[0] > value) {
-            revert PastLookup(value, array[0]);
-        }
-        return array.findLowerBound(value);
     }
 
     // Manager/Controller helpers

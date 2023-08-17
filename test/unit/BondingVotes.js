@@ -4,7 +4,8 @@ import {assert} from "chai"
 import {ethers, web3} from "hardhat"
 import chai from "chai"
 import {solidity} from "ethereum-waffle"
-import {BigNumber, constants} from "ethers"
+import {BigNumber} from "ethers"
+import {constants} from "../../utils/constants"
 
 chai.use(solidity)
 const {expect} = chai
@@ -16,7 +17,7 @@ describe("BondingVotes", () => {
     let bondingVotes
     let roundsManager
 
-    const PERC_DIVISOR = 1000000
+    const PERC_DIVISOR = constants.PERC_DIVISOR_PRECISE
 
     const setRound = async round => {
         await fixture.roundsManager.setMockUint256(
@@ -176,24 +177,30 @@ describe("BondingVotes", () => {
             )
         })
 
-        it("should fail if there are no checkpointed rounds", async () => {
-            const tx = bondingVotes.getTotalActiveStakeAt(currentRound)
-            await expect(tx).to.be.revertedWith("NoRecordedCheckpoints()")
+        it("should return zero if there are no checkpointed rounds", async () => {
+            assert.equal(
+                await bondingVotes.getTotalActiveStakeAt(currentRound),
+                0
+            )
         })
 
-        it("should fail to query before the first checkpoint", async () => {
+        it("should return zero before the first checkpoint", async () => {
             const functionData = encodeCheckpointTotalActiveStake(
                 1337,
-                currentRound - 1
+                currentRound
             )
             await fixture.bondingManager.execute(
                 bondingVotes.address,
                 functionData
             )
 
-            const tx = bondingVotes.getTotalActiveStakeAt(currentRound - 2)
-            await expect(tx).to.be.revertedWith(
-                `PastLookup(${currentRound - 2}, ${currentRound - 1})`
+            assert.equal(
+                await bondingVotes.getTotalActiveStakeAt(currentRound - 1),
+                0
+            )
+            assert.equal(
+                await bondingVotes.getTotalActiveStakeAt(currentRound - 2),
+                0
             )
         })
 
@@ -493,7 +500,7 @@ describe("BondingVotes", () => {
                     .to.emit(bondingVotes, "DelegateChanged")
                     .withArgs(
                         delegator.address,
-                        constants.AddressZero,
+                        constants.NULL_ADDRESS,
                         transcoder.address
                     )
                 await expect(tx)
@@ -547,7 +554,7 @@ describe("BondingVotes", () => {
                     .to.emit(bondingVotes, "DelegateChanged")
                     .withArgs(
                         transcoder.address,
-                        constants.AddressZero,
+                        constants.NULL_ADDRESS,
                         transcoder.address
                     )
                 await expect(tx)
@@ -687,61 +694,46 @@ describe("BondingVotes", () => {
                     delegator.address,
                     bondedAmount ?? 0,
                     0,
-                    delegateAddress ?? constants.AddressZero,
+                    delegateAddress ?? constants.NULL_ADDRESS,
                     delegatedAmount ?? 0,
                     0,
                     lastClaimRound,
                     0
                 )
 
-            const expectRevert = async queryRound => {
-                const tx = bondingVotes.getBondingStateAt(
-                    delegator.address,
-                    queryRound
-                )
-                await expect(tx).to.be.revertedWith("NoRecordedCheckpoints()")
+            const expectZeroCheckpoint = async queryRound => {
+                expect(
+                    await bondingVotes
+                        .getBondingStateAt(delegator.address, queryRound)
+                        .then(t => t.map(v => v.toString()))
+                ).to.deep.equal(["0", constants.NULL_ADDRESS])
             }
 
-            it("should fail if the account has a zero bond but updated on or after queried round", async () => {
-                await setBondMock({lastClaimRound: currentRound - 10})
-                await expectRevert(currentRound - 10)
+            it("should return zero regardless of the account current bonding state", async () => {
+                const mockBondStates = [
+                    {lastClaimRound: currentRound - 10},
+                    {lastClaimRound: currentRound - 9},
+                    {lastClaimRound: currentRound - 5},
+                    {lastClaimRound: currentRound - 1},
+                    {
+                        bondedAmount: 1,
+                        lastClaimRound: currentRound - 1
+                    },
+                    {
+                        delegateAddress: delegator.address,
+                        delegatedAmount: 1,
+                        lastClaimRound: currentRound - 1
+                    }
+                ]
 
-                await setBondMock({lastClaimRound: currentRound - 9})
-                await expectRevert(currentRound - 10)
+                // should work even without any state (zero)
+                await expectZeroCheckpoint(currentRound)
 
-                await setBondMock({lastClaimRound: currentRound - 5})
-                await expectRevert(currentRound - 10)
-            })
-
-            it("should fail if the account has a non-zero bond", async () => {
-                await setBondMock({
-                    bondedAmount: 1,
-                    lastClaimRound: currentRound - 1
-                })
-                await expectRevert(currentRound)
-
-                await setBondMock({
-                    delegatedAmount: 1,
-                    lastClaimRound: currentRound - 1
-                })
-                await expectRevert(currentRound)
-            })
-
-            it("should succeed for never bonded (non-participant) accounts", async () => {
-                expect(
-                    await bondingVotes
-                        .getBondingStateAt(delegator.address, currentRound)
-                        .then(t => t.map(v => v.toString()))
-                ).to.deep.equal(["0", constants.AddressZero])
-            })
-
-            it("should succeed for fully unbonded delegators before query round", async () => {
-                await setBondMock({lastClaimRound: currentRound - 1})
-                expect(
-                    await bondingVotes
-                        .getBondingStateAt(delegator.address, currentRound)
-                        .then(t => t.map(v => v.toString()))
-                ).to.deep.equal(["0", constants.AddressZero])
+                for (const mockBond of mockBondStates) {
+                    await setBondMock(mockBond)
+                    await expectZeroCheckpoint(currentRound - 10)
+                    await expectZeroCheckpoint(currentRound)
+                }
             })
         })
 
@@ -763,15 +755,14 @@ describe("BondingVotes", () => {
                     )
                 })
 
-            it("should disallow querying before the first checkpoint", async () => {
+            it("should return zero before the first checkpoint", async () => {
                 await makeCheckpoint(currentRound, 1000)
 
-                const tx = bondingVotes.getBondingStateAt(
-                    transcoder.address,
-                    currentRound - 2
-                )
-                await expect(tx).to.be.revertedWith(
-                    `PastLookup(${currentRound - 2}, ${currentRound})`
+                assert.deepEqual(
+                    await bondingVotes
+                        .getBondingStateAt(transcoder.address, currentRound - 2)
+                        .then(t => t.map(v => v.toString())),
+                    ["0", constants.NULL_ADDRESS]
                 )
             })
 
@@ -883,7 +874,7 @@ describe("BondingVotes", () => {
                 })
             })
 
-            it("should disallow querying before the first checkpoint", async () => {
+            it("should return zero before the first checkpoint", async () => {
                 await checkpointDelegator({
                     startRound: currentRound + 1,
                     bondedAmount: 1000,
@@ -891,46 +882,21 @@ describe("BondingVotes", () => {
                     lastClaimRound: currentRound
                 })
 
-                const tx = bondingVotes.getBondingStateAt(
-                    delegator.address,
-                    currentRound
-                )
-                await expect(tx).to.be.revertedWith(
-                    `PastLookup(${currentRound}, ${currentRound + 1})`
+                assert.deepEqual(
+                    await bondingVotes
+                        .getBondingStateAt(delegator.address, currentRound)
+                        .then(t => t.map(v => v.toString())),
+                    ["0", constants.NULL_ADDRESS]
                 )
             })
 
-            it("should fail if there's no earning pool on the lastClaimRound", async () => {
+            it("should return the bonded amount if there's no earning pool on the lastClaimRound", async () => {
                 await checkpointDelegator({
                     startRound: currentRound - 10,
                     bondedAmount: 1000,
                     delegateAddress: transcoder.address,
                     lastClaimRound: currentRound - 11
                 })
-
-                const tx = bondingVotes.getBondingStateAt(
-                    delegator.address,
-                    currentRound
-                )
-                await expect(tx).to.be.revertedWith(
-                    `MissingEarningsPool("${transcoder.address}", ${
-                        currentRound - 11
-                    })`
-                )
-            })
-
-            it("should return the bonded amount if transcoder never called reward", async () => {
-                await checkpointDelegator({
-                    startRound: currentRound - 10,
-                    bondedAmount: 1000,
-                    delegateAddress: transcoder.address,
-                    lastClaimRound: currentRound - 11
-                })
-                await setEarningPoolRewardFactor(
-                    transcoder.address,
-                    currentRound - 11,
-                    PERC_DIVISOR
-                )
 
                 assert.deepEqual(
                     await bondingVotes
@@ -947,11 +913,6 @@ describe("BondingVotes", () => {
                     delegateAddress: transcoder.address,
                     lastClaimRound: currentRound - 11
                 })
-                await setEarningPoolRewardFactor(
-                    transcoder.address,
-                    currentRound - 11,
-                    PERC_DIVISOR
-                )
 
                 await checkpointDelegator({
                     startRound: currentRound - 5,
@@ -959,11 +920,6 @@ describe("BondingVotes", () => {
                     delegateAddress: transcoder2.address,
                     lastClaimRound: currentRound - 6
                 })
-                await setEarningPoolRewardFactor(
-                    transcoder2.address,
-                    currentRound - 6,
-                    PERC_DIVISOR
-                )
 
                 assert.deepEqual(
                     await bondingVotes
@@ -1001,7 +957,7 @@ describe("BondingVotes", () => {
                 await setEarningPoolRewardFactor(
                     transcoder.address,
                     currentRound - 1,
-                    2 * PERC_DIVISOR
+                    PERC_DIVISOR.mul(2)
                 )
 
                 assert.deepEqual(
@@ -1053,7 +1009,7 @@ describe("BondingVotes", () => {
                 await setEarningPoolRewardFactor(
                     transcoder.address,
                     currentRound - 10,
-                    PERC_DIVISOR
+                    PERC_DIVISOR.mul(2)
                 )
 
                 await checkpointTranscoder({
@@ -1064,7 +1020,7 @@ describe("BondingVotes", () => {
                 await setEarningPoolRewardFactor(
                     transcoder.address,
                     currentRound - 2,
-                    3 * PERC_DIVISOR
+                    PERC_DIVISOR.mul(6)
                 )
 
                 assert.deepEqual(
@@ -1072,6 +1028,34 @@ describe("BondingVotes", () => {
                         .getBondingStateAt(delegator.address, currentRound)
                         .then(t => t.map(v => v.toString())),
                     ["3000", transcoder.address]
+                )
+            })
+
+            it("should return the accrued rewards even if there had been no reward calls on claim round", async () => {
+                await checkpointDelegator({
+                    startRound: currentRound - 9,
+                    bondedAmount: 1000,
+                    delegateAddress: transcoder.address,
+                    lastClaimRound: currentRound - 10
+                })
+                // no earning pool saved here, which we expect the code to just assume 1
+
+                await checkpointTranscoder({
+                    account: transcoder.address,
+                    startRound: currentRound - 1,
+                    lastRewardRound: currentRound - 2
+                })
+                await setEarningPoolRewardFactor(
+                    transcoder.address,
+                    currentRound - 2,
+                    PERC_DIVISOR.mul(5)
+                )
+
+                assert.deepEqual(
+                    await bondingVotes
+                        .getBondingStateAt(delegator.address, currentRound)
+                        .then(t => t.map(v => v.toString())),
+                    ["5000", transcoder.address]
                 )
             })
         })

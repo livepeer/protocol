@@ -571,9 +571,6 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             if (currPool.cumulativeRewardFactor == 0) {
                 currPool.cumulativeRewardFactor = cumulativeFactorsPool(newDelegate, newDelegate.lastRewardRound)
                     .cumulativeRewardFactor;
-                if (currPool.cumulativeRewardFactor == 0) {
-                    currPool.cumulativeRewardFactor = PreciseMathUtils.percPoints(1, 1);
-                }
             }
             if (currPool.cumulativeFeeFactor == 0) {
                 currPool.cumulativeFeeFactor = cumulativeFactorsPool(newDelegate, newDelegate.lastFeeRound)
