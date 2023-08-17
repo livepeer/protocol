@@ -24,9 +24,6 @@ contract VotesMock is
     ERC20VotesUpgradeable,
     IVotes
 {
-    mapping(address => uint256[]) private _delegateChangingTimes;
-    mapping(address => mapping(uint256 => address)) private _delegatedAtTime;
-
     function initialize() public initializer {
         __ERC20_init("VotesMock", "VTCK");
         __ERC20Burnable_init();
@@ -35,23 +32,10 @@ contract VotesMock is
     }
 
     function delegatedAt(address _account, uint256 _timepoint) external view returns (address) {
-        uint256[] storage rounds = _delegateChangingTimes[_account];
-        if (rounds.length == 0 || _timepoint < rounds[0]) {
-            return address(0);
-        }
-
-        uint256 prevRound = SortedArrays.findLowerBound(rounds, _timepoint);
-        return _delegatedAtTime[_account][prevRound];
-    }
-
-    function _delegate(address _delegator, address _to) internal override {
-        super._delegate(_delegator, _to);
-
-        uint256 currTime = clock();
-
-        uint256[] storage rounds = _delegateChangingTimes[_delegator];
-        SortedArrays.pushSorted(rounds, currTime);
-        _delegatedAtTime[_delegator][currTime] = _to;
+        _timepoint; // unused
+        // Blatant simplification that only works in our tests where we never change participants balance during
+        // proposal voting period. We check and return delegators current state instead of tracking historical values.
+        return delegates(_account);
     }
 
     /**

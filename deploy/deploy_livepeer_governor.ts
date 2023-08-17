@@ -39,12 +39,6 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
         await contractDeployer.register("PollCreator", pollCreator.address)
     }
 
-    await contractDeployer.deployAndRegister({
-        contract: "BondingCheckpointsVotes",
-        name: "BondingCheckpointsVotes",
-        args: [controller.address]
-    })
-
     // Onchain treasury governor (LivepeerGovernor)
     const treasury = await contractDeployer.deployAndRegister({
         contract: "Treasury",

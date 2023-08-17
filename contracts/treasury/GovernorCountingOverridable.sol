@@ -11,11 +11,7 @@ import "../bonding/libraries/EarningsPoolLIP36.sol";
 import "../Manager.sol";
 import "../IController.sol";
 import "../rounds/IRoundsManager.sol";
-import "../bonding/IBondingCheckpoints.sol";
-
-interface IVotes is IERC5805Upgradeable {
-    function delegatedAt(address account, uint256 timepoint) external returns (address);
-}
+import "./IVotes.sol";
 
 /**
  * @title GovernorCountingOverridable

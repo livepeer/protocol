@@ -16,7 +16,6 @@ import "../ManagerProxyTarget.sol";
 import "../IController.sol";
 import "../rounds/IRoundsManager.sol";
 import "./GovernorCountingOverridable.sol";
-import "./BondingCheckpointsVotes.sol";
 
 /**
  * @title LivepeerGovernor
@@ -48,8 +47,8 @@ contract LivepeerGovernor is
     /**
      * Initializes the LivepeerGovernor instance. This requires the following contracts to have already been deployed
      * and registered on the controller:
-     * - "Treasury" (TimelockControllerUpgradeable)
-     * - "BondingCheckpointsVotes"
+     * - "Treasury"
+     * - "BondingVotes"
      * - "PollCreator"
      */
     function initialize(
@@ -62,7 +61,7 @@ contract LivepeerGovernor is
         __GovernorTimelockControl_init(treasury());
 
         // The GovernorVotes module will hold a fixed reference to the votes contract. If we ever change its address we
-        // need to call the {bumpVotesAddress} function to update it in here as well.
+        // need to call the {bumpGovernorVotesTokenAddress} function to update it in here as well.
         __GovernorVotes_init(votes());
 
         // Initialize with the same value from the existing polling system.
@@ -84,7 +83,7 @@ contract LivepeerGovernor is
      * @dev See {GovernorCountingOverridable-votes}.
      */
     function votes() public view override returns (IVotes) {
-        return bondingCheckpointVotes();
+        return bondingVotes();
     }
 
     /**
@@ -96,20 +95,19 @@ contract LivepeerGovernor is
     }
 
     /**
-     * @dev This should be called if we ever change the address of the BondingCheckpointsVotes contract. It is a simple
-     * non upgradeable proxy to the BondingCheckpoints not to require any upgrades, but its address could still
-     * eventually change in the controller so we provide this function as a future-proof commodity. This function is
-     * callable by anyone because always fetch the current address from the controller, so it's not exploitable.
+     * @dev This should be called if we ever change the address of the BondingVotes contract. Not a normal flow, but its
+     * address could still eventually change in the controller so we provide this function as a future-proof commodity.
+     * This is callable by anyone because it always fetches the current address from the controller, so not exploitable.
      */
-    function bumpVotesAddress() external {
+    function bumpGovernorVotesTokenAddress() external {
         token = votes();
     }
 
     /**
-     * @dev Returns the BondingCheckpointsVotes contract address from the controller.
+     * @dev Returns the BondingVotes contract address from the controller.
      */
-    function bondingCheckpointVotes() internal view returns (BondingCheckpointsVotes) {
-        return BondingCheckpointsVotes(controller.getContract(keccak256("BondingCheckpointsVotes")));
+    function bondingVotes() internal view returns (IVotes) {
+        return IVotes(controller.getContract(keccak256("BondingVotes")));
     }
 
     /**
