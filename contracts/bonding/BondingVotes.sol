@@ -21,8 +21,6 @@ contract BondingVotes is ManagerProxyTarget, IBondingVotes {
     using Arrays for uint256[];
     using SortedArrays for uint256[];
 
-    constructor(address _controller) Manager(_controller) {}
-
     struct BondingCheckpoint {
         /**
          * @dev The amount of bonded tokens to another delegate as of the lastClaimRound.
@@ -90,6 +88,12 @@ contract BondingVotes is ManagerProxyTarget, IBondingVotes {
         _onlyBondingManager();
         _;
     }
+
+    /**
+     * @notice BondingVotes constructor. Only invokes constructor of base Manager contract with provided Controller address
+     * @param _controller Address of Controller that this contract will be registered with
+     */
+    constructor(address _controller) Manager(_controller) {}
 
     // IVotes interface implementation.
     // These should not access any storage directly but proxy to the bonding state functions.
