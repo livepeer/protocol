@@ -1611,8 +1611,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         return IRoundsManager(controller.getContract(keccak256("RoundsManager")));
     }
 
-    function treasury() internal view returns (address payable) {
-        return payable(controller.getContract(keccak256("Treasury")));
+    function treasury() internal view returns (address) {
+        return controller.getContract(keccak256("Treasury"));
     }
 
     function bondingVotes() internal view returns (IBondingVotes) {
