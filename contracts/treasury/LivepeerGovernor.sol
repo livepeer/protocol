@@ -10,7 +10,6 @@ import "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorTimelo
 
 import "../bonding/libraries/EarningsPool.sol";
 import "../bonding/libraries/EarningsPoolLIP36.sol";
-import "../polling/PollCreator.sol";
 
 import "../ManagerProxyTarget.sol";
 import "../IController.sol";
@@ -54,7 +53,9 @@ contract LivepeerGovernor is
     function initialize(
         uint256 initialVotingDelay,
         uint256 initialVotingPeriod,
-        uint256 initialProposalThreshold
+        uint256 initialProposalThreshold,
+        uint256 initialQuorum,
+        uint256 quota
     ) public initializer {
         __Governor_init("LivepeerGovernor");
         __GovernorSettings_init(initialVotingDelay, initialVotingPeriod, initialProposalThreshold);
@@ -64,11 +65,9 @@ contract LivepeerGovernor is
         // need to call the {bumpGovernorVotesTokenAddress} function to update it in here as well.
         __GovernorVotes_init(votes());
 
-        // Initialize with the same value from the existing polling system.
-        uint256 initialQuorum = pollCreator().QUORUM();
         __GovernorVotesQuorumFraction_init(initialQuorum);
 
-        __GovernorCountingOverridable_init();
+        __GovernorCountingOverridable_init(quota);
     }
 
     /**
@@ -87,14 +86,6 @@ contract LivepeerGovernor is
     }
 
     /**
-     * @dev See {GovernorCountingOverridable-quota}. We use the same QUOTA value from the protocol governance system for
-     * now, but can consider changing this in the future (e.g. to make it updateable through proposals without deploys).
-     */
-    function quota() public view override returns (uint256) {
-        return pollCreator().QUOTA();
-    }
-
-    /**
      * @dev This should be called if we ever change the address of the BondingVotes contract. Not a normal flow, but its
      * address could still eventually change in the controller so we provide this function as a future-proof commodity.
      * This is callable by anyone because it always fetches the current address from the controller, so not exploitable.
@@ -108,13 +99,6 @@ contract LivepeerGovernor is
      */
     function bondingVotes() internal view returns (IVotes) {
         return IVotes(controller.getContract(keccak256("BondingVotes")));
-    }
-
-    /**
-     * @dev Returns the PollCreator contract address from the controller.
-     */
-    function pollCreator() internal view returns (PollCreator) {
-        return PollCreator(controller.getContract(keccak256("PollCreator")));
     }
 
     /**

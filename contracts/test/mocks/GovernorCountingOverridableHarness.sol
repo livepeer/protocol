@@ -37,15 +37,11 @@ contract GovernorCountingOverridableHarness is
         );
 
         __GovernorVotes_init(iVotes);
-        __GovernorCountingOverridable_init();
+        __GovernorCountingOverridable_init(QUOTA);
     }
 
     function votes() public view override returns (IVotes) {
         return iVotes;
-    }
-
-    function quota() public pure override returns (uint256) {
-        return QUOTA;
     }
 
     function quorum(uint256 timepoint) public view virtual override returns (uint256) {

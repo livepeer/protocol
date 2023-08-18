@@ -2,7 +2,7 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorVotesQuorumFractionUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/governance/GovernorUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/interfaces/IERC5805Upgradeable.sol";
 
 import "../bonding/libraries/EarningsPool.sol";
@@ -19,16 +19,8 @@ import "./IVotes.sol";
  * delegated transcoder's vote. This module is used through inheritance by the Governor contract.
  */
 abstract contract GovernorCountingOverridable is Initializable, GovernorUpgradeable {
-    using SafeMath for uint256;
-
     error InvalidVoteType(uint8 voteType);
     error VoteAlreadyCast();
-
-    function __GovernorCountingOverridable_init() internal onlyInitializing {
-        __GovernorCountingOverridable_init_unchained();
-    }
-
-    function __GovernorCountingOverridable_init_unchained() internal onlyInitializing {}
 
     /**
      * @dev Supported vote types. Matches Governor Bravo ordering.
@@ -60,7 +52,22 @@ abstract contract GovernorCountingOverridable is Initializable, GovernorUpgradea
         mapping(address => ProposalVoterState) voters;
     }
 
+    /**
+     * @notice The required percentage of "for" votes in relation to the total opinionated votes (for and abstain) for
+     * a proposal to succeed. Represented as a MathUtils percentage value (e.g. 6 decimal places).
+     */
+    uint256 public quota;
+
+    // Maps proposal IDs to their corresponding vote tallies.
     mapping(uint256 => ProposalTally) private _proposalTallies;
+
+    function __GovernorCountingOverridable_init(uint256 _quota) internal onlyInitializing {
+        __GovernorCountingOverridable_init_unchained(_quota);
+    }
+
+    function __GovernorCountingOverridable_init_unchained(uint256 _quota) internal onlyInitializing {
+        quota = _quota;
+    }
 
     /**
      * @dev See {IGovernor-COUNTING_MODE}.
@@ -101,7 +108,7 @@ abstract contract GovernorCountingOverridable is Initializable, GovernorUpgradea
     function _quorumReached(uint256 _proposalId) internal view virtual override returns (bool) {
         (uint256 againstVotes, uint256 forVotes, uint256 abstainVotes) = proposalVotes(_proposalId);
 
-        uint256 totalVotes = againstVotes.add(forVotes).add(abstainVotes);
+        uint256 totalVotes = againstVotes + forVotes + abstainVotes;
 
         return totalVotes >= quorum(proposalSnapshot(_proposalId));
     }
@@ -113,9 +120,9 @@ abstract contract GovernorCountingOverridable is Initializable, GovernorUpgradea
         (uint256 againstVotes, uint256 forVotes, ) = proposalVotes(_proposalId);
 
         // we ignore abstain votes for vote succeeded calculation
-        uint256 totalValidVotes = againstVotes.add(forVotes);
+        uint256 opinionatedVotes = againstVotes + forVotes;
 
-        return forVotes >= MathUtils.percOf(totalValidVotes, quota());
+        return forVotes >= MathUtils.percOf(opinionatedVotes, quota);
     }
 
     /**
@@ -149,7 +156,6 @@ abstract contract GovernorCountingOverridable is Initializable, GovernorUpgradea
         } else if (support == VoteType.For) {
             tally.forVotes += _weight;
         } else {
-            assert(support == VoteType.Abstain);
             tally.abstainVotes += _weight;
         }
     }
@@ -212,15 +218,9 @@ abstract contract GovernorCountingOverridable is Initializable, GovernorUpgradea
     function votes() public view virtual returns (IVotes);
 
     /**
-     * @dev Implement in inheriting contract to provide quota value to use to decide proposal success.
-     * @return quota value as a MathUtils percentage value (e.g. 6 decimal places).
-     */
-    function quota() public view virtual returns (uint256);
-
-    /**
      * @dev This empty reserved space is put in place to allow future versions to add new
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
      */
-    uint256[49] private __gap;
+    uint256[48] private __gap;
 }
