@@ -96,6 +96,9 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
     // The % of newly minted rewards to be routed to the treasury. Represented as a PreciseMathUtils percPoint value.
     uint256 public treasuryRewardCutRate;
+    // The value for `treasuryRewardCutRate` to be set on the next round initialization.
+    uint256 public nextRoundTreasuryRewardCutRate;
+
     // If the balance of the treasury in LPT is above this value, automatic treasury contributions will halt.
     uint256 public treasuryBalanceCeiling;
 
@@ -161,11 +164,15 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * percentage (<100% specified with 27-digits precision).
      */
     function setTreasuryRewardCutRate(uint256 _cutRate) external onlyControllerOwner {
+        _setTreasuryRewardCutRate(_cutRate);
+    }
+
+    function _setTreasuryRewardCutRate(uint256 _cutRate) internal {
         require(PreciseMathUtils.validPerc(_cutRate), "_cutRate is invalid precise percentage");
 
-        treasuryRewardCutRate = _cutRate;
+        nextRoundTreasuryRewardCutRate = _cutRate;
 
-        emit ParameterUpdate("treasuryRewardCutRate");
+        emit ParameterUpdate("nextRoundTreasuryRewardCutRate");
     }
 
     /**
@@ -452,6 +459,12 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      */
     function setCurrentRoundTotalActiveStake() external onlyRoundsManager {
         currentRoundTotalActiveStake = nextRoundTotalActiveStake;
+
+        if (nextRoundTreasuryRewardCutRate != treasuryRewardCutRate) {
+            treasuryRewardCutRate = nextRoundTreasuryRewardCutRate;
+            // The treasury cut rate changes in a delayed fashion so we want to emit the parameter update event here
+            emit ParameterUpdate("treasuryRewardCutRate");
+        }
 
         bondingVotes().checkpointTotalActiveStake(currentRoundTotalActiveStake, roundsManager().currentRound());
     }
@@ -877,9 +890,9 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
         if (treasuryBalanceCeiling > 0) {
             uint256 treasuryBalance = livepeerToken().balanceOf(treasury());
-            if (treasuryBalance >= treasuryBalanceCeiling) {
+            if (treasuryBalance >= treasuryBalanceCeiling && nextRoundTreasuryRewardCutRate > 0) {
                 // halt treasury contributions until the cut rate param is updated again
-                treasuryRewardCutRate = 0;
+                _setTreasuryRewardCutRate(0);
             }
         }
 

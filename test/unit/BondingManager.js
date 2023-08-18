@@ -141,6 +141,17 @@ describe("BondingManager", () => {
     describe("setTreasuryRewardCutRate", () => {
         const FIFTY_PCT = math.precise.percPoints(BigNumber.from(50), 100)
 
+        let currentRound
+
+        beforeEach(async () => {
+            currentRound = 100
+
+            await fixture.roundsManager.setMockUint256(
+                functionSig("currentRound()"),
+                currentRound
+            )
+        })
+
         it("should start as zero", async () => {
             assert.equal(
                 await bondingManager.treasuryRewardCutRate(),
@@ -157,14 +168,49 @@ describe("BondingManager", () => {
             ).to.be.revertedWith("caller must be Controller owner")
         })
 
-        it("should set treasuryRewardCutRate", async () => {
+        it("should set only nextRoundTreasuryRewardCutRate", async () => {
+            const tx = await bondingManager.setTreasuryRewardCutRate(FIFTY_PCT)
+            await expect(tx)
+                .to.emit(bondingManager, "ParameterUpdate")
+                .withArgs("nextRoundTreasuryRewardCutRate")
+
+            assert.equal(
+                await bondingManager.nextRoundTreasuryRewardCutRate(),
+                FIFTY_PCT.toString(),
+                "wrong nextRoundTreasuryRewardCutRate"
+            )
+            assert.equal(
+                await bondingManager.treasuryRewardCutRate(),
+                0,
+                "wrong treasuryRewardCutRate"
+            )
+        })
+
+        it("should set treasuryRewardCutRate on the next round", async () => {
             await bondingManager.setTreasuryRewardCutRate(FIFTY_PCT)
 
-            const newValue = await bondingManager.treasuryRewardCutRate()
+            await fixture.roundsManager.setMockUint256(
+                functionSig("currentRound()"),
+                currentRound + 1
+            )
+            const tx = await fixture.roundsManager.execute(
+                bondingManager.address,
+                functionSig("setCurrentRoundTotalActiveStake()")
+            )
+            await expect(tx)
+                .to.emit(bondingManager, "ParameterUpdate")
+                .withArgs("treasuryRewardCutRate")
+
             assert.equal(
-                newValue.toString(),
+                await bondingManager.treasuryRewardCutRate(),
                 FIFTY_PCT.toString(),
                 "wrong treasuryRewardCutRate"
+            )
+            // sanity check that this hasn't changed either
+            assert.equal(
+                await bondingManager.nextRoundTreasuryRewardCutRate(),
+                FIFTY_PCT.toString(),
+                "wrong nextRoundTreasuryRewardCutRate"
             )
         })
     })
@@ -4697,6 +4743,16 @@ describe("BondingManager", () => {
 
                 await bondingManager.setTreasuryRewardCutRate(TREASURY_CUT)
                 await bondingManager.setTreasuryBalanceCeiling(1000)
+
+                // treasury cut rate update only takes place on the next round
+                await fixture.roundsManager.setMockUint256(
+                    functionSig("currentRound()"),
+                    currentRound + 1
+                )
+                await fixture.roundsManager.execute(
+                    bondingManager.address,
+                    functionSig("setCurrentRoundTotalActiveStake()")
+                )
             })
 
             it("should update caller with rewards after treasury contribution", async () => {
@@ -4803,77 +4859,89 @@ describe("BondingManager", () => {
                     })
                 })
 
-                describe("when at limit", () => {
-                    beforeEach(async () => {
-                        await fixture.token.setMockUint256(
-                            functionSig("balanceOf(address)"),
-                            1000
-                        )
+                const atCeilingTest = (title, balance) => {
+                    describe(title, () => {
+                        beforeEach(async () => {
+                            await fixture.token.setMockUint256(
+                                functionSig("balanceOf(address)"),
+                                balance
+                            )
+                        })
+
+                        it("should zero the nextRoundTreasuryRewardCutRate", async () => {
+                            const tx = await bondingManager
+                                .connect(transcoder)
+                                .reward()
+
+                            // it should still send treasury rewards
+                            await expect(tx).to.emit(
+                                fixture.minter,
+                                "TrustedTransferTokens"
+                            )
+                            await expect(tx).to.emit(
+                                bondingManager,
+                                "TreasuryReward"
+                            )
+
+                            await expect(tx)
+                                .to.emit(bondingManager, "ParameterUpdate")
+                                .withArgs("nextRoundTreasuryRewardCutRate")
+                            assert.equal(
+                                await bondingManager.nextRoundTreasuryRewardCutRate(),
+                                0
+                            )
+                        })
+
+                        it("should not mint any treasury rewards in the next round", async () => {
+                            await bondingManager.connect(transcoder).reward()
+
+                            await fixture.roundsManager.setMockUint256(
+                                functionSig("currentRound()"),
+                                currentRound + 2
+                            )
+                            await fixture.roundsManager.execute(
+                                bondingManager.address,
+                                functionSig("setCurrentRoundTotalActiveStake()")
+                            )
+
+                            const tx = await bondingManager
+                                .connect(transcoder)
+                                .reward()
+                            await expect(tx).not.to.emit(
+                                fixture.minter,
+                                "TrustedTransferTokens"
+                            )
+                            await expect(tx).not.to.emit(
+                                bondingManager,
+                                "TreasuryReward"
+                            )
+                        })
+
+                        it("should also clear treasuryRewardCutRate param in the next round", async () => {
+                            await bondingManager.connect(transcoder).reward()
+
+                            await fixture.roundsManager.setMockUint256(
+                                functionSig("currentRound()"),
+                                currentRound + 2
+                            )
+                            await fixture.roundsManager.execute(
+                                bondingManager.address,
+                                functionSig("setCurrentRoundTotalActiveStake()")
+                            )
+
+                            const cutRate =
+                                await bondingManager.treasuryRewardCutRate()
+                            assert.equal(
+                                cutRate.toNumber(),
+                                0,
+                                "cut rate not cleared"
+                            )
+                        })
                     })
+                }
 
-                    it("should not mint any treasury rewards", async () => {
-                        const tx = await bondingManager
-                            .connect(transcoder)
-                            .reward()
-
-                        await expect(tx).not.to.emit(
-                            fixture.minter,
-                            "TrustedTransferTokens"
-                        )
-                        await expect(tx).not.to.emit(
-                            bondingManager,
-                            "TreasuryReward"
-                        )
-                    })
-
-                    it("should also clear treasuryRewardCutRate param", async () => {
-                        await bondingManager.connect(transcoder).reward()
-
-                        const cutRate =
-                            await bondingManager.treasuryRewardCutRate()
-                        assert.equal(
-                            cutRate.toNumber(),
-                            0,
-                            "cut rate not cleared"
-                        )
-                    })
-                })
-
-                describe("when above limit", () => {
-                    beforeEach(async () => {
-                        await fixture.token.setMockUint256(
-                            functionSig("balanceOf(address)"),
-                            1500
-                        )
-                    })
-
-                    it("should not mint any treasury rewards", async () => {
-                        const tx = await bondingManager
-                            .connect(transcoder)
-                            .reward()
-
-                        await expect(tx).not.to.emit(
-                            fixture.minter,
-                            "TrustedTransferTokens"
-                        )
-                        await expect(tx).not.to.emit(
-                            bondingManager,
-                            "TreasuryReward"
-                        )
-                    })
-
-                    it("should also clear treasuryRewardCutRate param", async () => {
-                        await bondingManager.connect(transcoder).reward()
-
-                        const cutRate =
-                            await bondingManager.treasuryRewardCutRate()
-                        assert.equal(
-                            cutRate.toNumber(),
-                            0,
-                            "cut rate not cleared"
-                        )
-                    })
-                })
+                atCeilingTest("when at limit", 1000)
+                atCeilingTest("when above limit", 1500)
             })
         })
     })
