@@ -664,8 +664,11 @@ describe("TicketBroker", () => {
             expect(endSenderInfo.sender.deposit).to.be.equal(deposit)
             expect(endSenderInfo.reserve.fundsRemaining).to.be.equal(reserve)
 
-            expect(tx).to.changeEtherBalance(funder, -(deposit + reserve))
-            expect(tx).to.changeEtherBalance(fixture.minter, deposit + reserve)
+            await expect(tx).to.changeEtherBalance(funder, -(deposit + reserve))
+            await expect(tx).to.changeEtherBalance(
+                fixture.minter,
+                deposit + reserve
+            )
         })
     })
 
