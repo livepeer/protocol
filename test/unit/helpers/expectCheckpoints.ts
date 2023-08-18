@@ -17,8 +17,8 @@ export default async function expectCheckpoints(
     tx: ethers.providers.TransactionReceipt,
     ...checkpoints: Checkpoint[]
 ) {
-    const filter = fixture.bondingCheckpoints.filters.CheckpointBondingState()
-    const events = await fixture.bondingCheckpoints.queryFilter(
+    const filter = fixture.bondingVotes.filters.CheckpointBondingState()
+    const events = await fixture.bondingVotes.queryFilter(
         filter,
         tx.blockNumber,
         tx.blockNumber

@@ -15,7 +15,7 @@ const isProdNetwork = (name: string): boolean => {
 
 const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
     const {deployments, getNamedAccounts} = hre // Get the deployments and getNamedAccounts which are provided by hardhat-deploy
-    const {deploy, get} = deployments // the deployments object itself contains the deploy function
+    const {deploy} = deployments // the deployments object itself contains the deploy function
 
     const {deployer} = await getNamedAccounts() // Fetch named accounts from hardhat.config.ts
 
@@ -24,28 +24,6 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
     const contractDeployer = new ContractDeployer(deploy, deployer, deployments)
     const controller = await contractDeployer.fetchDeployedController()
 
-    // PollCreator is deployed without being registered to Controller, so we do that here
-    const registeredPollCreator = await controller.getContract(
-        ethers.utils.solidityKeccak256(["string"], ["PollCreator"])
-    )
-    if (registeredPollCreator === constants.AddressZero) {
-        const pollCreator = await ethers.getContractAt(
-            "PollCreator",
-            isProdNetwork(hre.network.name) ?
-                config.livepeerGovernor.pollCreatorAddress :
-                await get("PollCreator").then(p => p.address)
-        )
-
-        await contractDeployer.register("PollCreator", pollCreator.address)
-    }
-
-    await contractDeployer.deployAndRegister({
-        contract: "BondingCheckpointsVotes",
-        name: "BondingCheckpointsVotes",
-        args: [controller.address]
-    })
-
-    // Onchain treasury governor (LivepeerGovernor)
     const treasury = await contractDeployer.deployAndRegister({
         contract: "Treasury",
         name: "Treasury",
@@ -77,7 +55,9 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
     await LivepeerGovernor.initialize(
         config.livepeerGovernor.initialVotingDelay,
         config.livepeerGovernor.initialVotingPeriod,
-        config.livepeerGovernor.initialProposalThreshold
+        config.livepeerGovernor.initialProposalThreshold,
+        config.livepeerGovernor.initialQuorum,
+        config.livepeerGovernor.quota
     ).then(tx => tx.wait())
 
     // Now grant proposer and executor roles to governor and renounce deployer admin role

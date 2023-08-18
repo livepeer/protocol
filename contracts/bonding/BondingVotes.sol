@@ -14,17 +14,18 @@ import "../rounds/IRoundsManager.sol";
 import "./BondingManager.sol";
 
 /**
- * @title BondingCheckpoints
+ * @title BondingVotes
  * @dev Checkpointing logic for BondingManager state for historical stake calculations.
  */
-contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
+contract BondingVotes is ManagerProxyTarget, IBondingVotes {
+    using Arrays for uint256[];
     using SortedArrays for uint256[];
 
     constructor(address _controller) Manager(_controller) {}
 
     struct BondingCheckpoint {
         /**
-         * @dev The amount of bonded tokens to another delegate as per the lastClaimRound.
+         * @dev The amount of bonded tokens to another delegate as of the lastClaimRound.
          */
         uint256 bondedAmount;
         /**
@@ -42,8 +43,10 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
          */
         uint256 lastClaimRound;
         /**
-         * @dev The last round during which the transcoder called {BondingManager-reward}. This is needed to find a
-         * reward pool for any round when calculating historical rewards.
+         * @dev The last round during which the checkpointed account called {BondingManager-reward}. This is needed to
+         * when calculating pending rewards for a delegator to this transcoder, to find the last earning pool available
+         * for a given round. In that case we start from the delegator checkpoint and then fetch its delegate address
+         * checkpoint as well to find the last earning pool.
          *
          * Notice that this is the only field that comes from the Transcoder struct in BondingManager, not Delegator.
          */
@@ -61,22 +64,35 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
     }
 
     /**
+     * @dev Stores a list of checkpoints for the total active stake, queryable and mapped by round. Notce that
+     * differently from bonding checkpoints, it's only accessible on the specific round. To access the checkpoint for a
+     * given round, look for the checkpoint in the {data}} and if it's zero ensure the round was actually checkpointed on
+     * the {rounds} array ({SortedArrays-findLowerBound}).
+     */
+    struct TotalActiveStakeByRound {
+        uint256[] rounds;
+        mapping(uint256 => uint256) data;
+    }
+
+    /**
      * @dev Checkpoints by account (delegators and transcoders).
      */
     mapping(address => BondingCheckpointsByRound) private bondingCheckpoints;
+    /**
+     * @dev Total active stake checkpoints.
+     */
+    TotalActiveStakeByRound private totalStakeCheckpoints;
 
     /**
-     * @dev Rounds in which we have checkpoints for the total active stake. This and {totalActiveStakeCheckpoints} are
-     * handled in the same wat that {BondingCheckpointsByRound}, with rounds stored and queried on this array and
-     * checkpointed value stored and retrieved from the mapping.
+     * @dev Modifier to ensure the sender is BondingManager
      */
-    uint256[] totalStakeCheckpointRounds;
-    /**
-     * @dev See {totalStakeCheckpointRounds} above.
-     */
-    mapping(uint256 => uint256) private totalActiveStakeCheckpoints;
+    modifier onlyBondingManager() {
+        _onlyBondingManager();
+        _;
+    }
 
-    // IERC6372 interface implementation
+    // IVotes interface implementation.
+    // These should not access any storage directly but proxy to the bonding state functions.
 
     /**
      * @notice Clock is set to match the current round, which is the checkpointing
@@ -92,6 +108,81 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
     // solhint-disable-next-line func-name-mixedcase
     function CLOCK_MODE() public pure returns (string memory) {
         return "mode=livepeer_round";
+    }
+
+    /**
+     * @notice Returns the current amount of votes that `_account` has.
+     */
+    function getVotes(address _account) external view returns (uint256) {
+        return getPastVotes(_account, clock());
+    }
+
+    /**
+     * @notice Returns the amount of votes that `_account` had at a specific moment in the past. If the `clock()` is
+     * configured to use block numbers, this will return the value at the end of the corresponding block.
+     * @dev Keep in mind that since this function should return the votes at the end of the _round (or timepoint in OZ
+     * terms), we need to fetch the bonding state at the next round instead. That because the bonding state reflects the
+     * active stake in the current round, which is the snapshotted stake from the end of the previous round.
+     */
+    function getPastVotes(address _account, uint256 _round) public view returns (uint256) {
+        (uint256 amount, ) = getBondingStateAt(_account, _round + 1);
+        return amount;
+    }
+
+    /**
+     * @notice Returns the total supply of votes available at a specific round in the past.
+     * @dev This value is the sum of all *active* stake, which is not necessarily the sum of all voting power.
+     * Bonded stake that is not part of the top 100 active transcoder set is still given voting power, but is not
+     * considered here.
+     * @dev Keep in mind that since this function should return the votes at the end of the _round (or timepoint in OZ
+     * terms), we need to fetch the total active stake at the next round instead. That because the active stake in the
+     * current round is the snapshotted stake from the end of the previous round.
+     */
+    function getPastTotalSupply(uint256 _round) public view returns (uint256) {
+        return getTotalActiveStakeAt(_round + 1);
+    }
+
+    /**
+     * @notice Returns the delegate that _account has chosen. This means the delegated transcoder address in case of
+     * delegators, and the account's own address for transcoders (self-delegated).
+     */
+    function delegates(address _account) external view returns (address) {
+        return delegatedAt(_account, clock());
+    }
+
+    /**
+     * @notice Returns the delegate that _account had chosen in a specific round in the past. See `delegates()` above
+     * for more details.
+     * @dev This is an addition to the IERC5805 interface to support our custom vote counting logic that allows
+     * delegators to override their transcoders votes. See {GovernorVotesBondingVotes-_handleVoteOverrides}.
+     * @dev Keep in mind that since this function should return the delegate at the end of the _round (or timepoint in
+     * OZ terms), we need to fetch the bonding state at the next round instead. That because the bonding state reflects
+     * the active stake in the current round, which is the snapshotted stake from the end of the previous round.
+     */
+    function delegatedAt(address _account, uint256 _round) public view returns (address) {
+        (, address delegateAddress) = getBondingStateAt(_account, _round + 1);
+        return delegateAddress;
+    }
+
+    /**
+     * @notice Delegation through BondingVotes is not supported.
+     */
+    function delegate(address) external pure {
+        revert MustCallBondingManager("bond");
+    }
+
+    /**
+     * @notice Delegation through BondingVotes is not supported.
+     */
+    function delegateBySig(
+        address,
+        uint256,
+        uint256,
+        uint8,
+        bytes32,
+        bytes32
+    ) external pure {
+        revert MustCallBondingManager("bondFor");
     }
 
     // BondingManager checkpointing hooks
@@ -117,25 +208,60 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
         uint256 _lastClaimRound,
         uint256 _lastRewardRound
     ) public virtual onlyBondingManager {
-        if (_startRound > clock() + 1) {
-            revert FutureCheckpoint(_startRound, clock() + 1);
+        if (_startRound != clock() + 1) {
+            revert InvalidStartRound(_startRound, clock() + 1);
         } else if (_lastClaimRound >= _startRound) {
             revert FutureLastClaimRound(_lastClaimRound, _startRound - 1);
         }
 
+        BondingCheckpoint memory previous;
+        if (hasCheckpoint(_account)) {
+            previous = getBondingCheckpointAt(_account, _startRound);
+        }
+
         BondingCheckpointsByRound storage checkpoints = bondingCheckpoints[_account];
 
-        checkpoints.data[_startRound] = BondingCheckpoint({
+        BondingCheckpoint memory bond = BondingCheckpoint({
             bondedAmount: _bondedAmount,
             delegateAddress: _delegateAddress,
             delegatedAmount: _delegatedAmount,
             lastClaimRound: _lastClaimRound,
             lastRewardRound: _lastRewardRound
         });
+        checkpoints.data[_startRound] = bond;
 
         // now store the startRound itself in the startRounds array to allow us
         // to find it and lookup in the above mapping
         checkpoints.startRounds.pushSorted(_startRound);
+
+        onCheckpointChanged(_account, previous, bond);
+    }
+
+    function onCheckpointChanged(
+        address _account,
+        BondingCheckpoint memory previous,
+        BondingCheckpoint memory current
+    ) internal {
+        address previousDelegate = previous.delegateAddress;
+        address newDelegate = current.delegateAddress;
+        if (previousDelegate != newDelegate) {
+            emit DelegateChanged(_account, previousDelegate, newDelegate);
+        }
+
+        bool isTranscoder = newDelegate == _account;
+        bool wasTranscoder = previousDelegate == _account;
+        if (isTranscoder) {
+            emit DelegateVotesChanged(_account, previous.delegatedAmount, current.delegatedAmount);
+        } else if (wasTranscoder) {
+            // if the account stopped being a transcoder, we want to emit an event zeroing its "delegate votes"
+            emit DelegateVotesChanged(_account, previous.delegatedAmount, 0);
+        }
+
+        // Always send delegator events since transcoders are delegators themselves. The way our rewards work, the
+        // delegator voting power calculated from events will only reflect their claimed stake without pending rewards.
+        if (previous.bondedAmount != current.bondedAmount) {
+            emit DelegatorVotesChanged(_account, previous.bondedAmount, current.bondedAmount);
+        }
     }
 
     /**
@@ -143,7 +269,7 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
      * @dev This is meant to be called by a checkpoint initialization script once we deploy the checkpointing logic for
      * the first time, so we can efficiently initialize the checkpoint state for all accounts in the system.
      */
-    function hasCheckpoint(address _account) external view returns (bool) {
+    function hasCheckpoint(address _account) public view returns (bool) {
         return bondingCheckpoints[_account].startRounds.length > 0;
     }
 
@@ -156,12 +282,11 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
      */
     function checkpointTotalActiveStake(uint256 _totalStake, uint256 _round) public virtual onlyBondingManager {
         if (_round > clock()) {
-            revert FutureCheckpoint(_round, clock());
+            revert FutureTotalStakeCheckpoint(_round, clock());
         }
 
-        totalActiveStakeCheckpoints[_round] = _totalStake;
-
-        totalStakeCheckpointRounds.pushSorted(_round);
+        totalStakeCheckpoints.data[_round] = _totalStake;
+        totalStakeCheckpoints.rounds.pushSorted(_round);
     }
 
     // Historical stake access functions
@@ -171,22 +296,29 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
      * @param _round The round for which we want to get the total active stake.
      */
     function getTotalActiveStakeAt(uint256 _round) public view virtual returns (uint256) {
-        if (_round > clock()) {
-            revert FutureLookup(_round, clock());
+        if (_round > clock() + 1) {
+            revert FutureLookup(_round, clock() + 1);
         }
 
-        uint256 activeStake = totalActiveStakeCheckpoints[_round];
-
-        if (activeStake == 0) {
-            uint256 lastInitialized = checkedFindLowerBound(totalStakeCheckpointRounds, _round);
-
-            // Check that the round was in fact initialized so we don't return a 0 value accidentally.
-            if (lastInitialized != _round) {
-                revert MissingRoundCheckpoint(_round);
-            }
+        uint256 exactCheckpoint = totalStakeCheckpoints.data[_round];
+        if (exactCheckpoint > 0) {
+            return exactCheckpoint;
         }
 
-        return activeStake;
+        uint256[] storage initializedRounds = totalStakeCheckpoints.rounds;
+        uint256 upper = initializedRounds.findUpperBound(_round);
+        if (upper == 0) {
+            // Return a zero voting power supply for any round before the first checkpoint. This also happens if there
+            // are no checkpoints at all.
+            return 0;
+        } else if (upper < initializedRounds.length) {
+            // Use the checkpoint from the next initialized round, which got the next total active stake checkpointed.
+            uint256 nextInitedRound = initializedRounds[upper];
+            return totalStakeCheckpoints.data[nextInitedRound];
+        } else {
+            // Here the _round is after any initialized round, so grab its stake from nextRoundTotalActiveStake()
+            return bondingManager().nextRoundTotalActiveStake();
+        }
     }
 
     /**
@@ -235,8 +367,8 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
         view
         returns (BondingCheckpoint storage)
     {
-        if (_round > clock()) {
-            revert FutureLookup(_round, clock());
+        if (_round > clock() + 1) {
+            revert FutureLookup(_round, clock() + 1);
         }
 
         BondingCheckpointsByRound storage checkpoints = bondingCheckpoints[_account];
@@ -248,18 +380,14 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
             return bond;
         }
 
-        if (checkpoints.startRounds.length == 0) {
-            (uint256 bondedAmount, , , uint256 delegatedAmount, , uint256 lastClaimRound, ) = bondingManager()
-                .getDelegator(_account);
-            // we use lastClaimRound instead of startRound since the latter is cleared on a full unbond
-            if (lastClaimRound < _round && bondedAmount == 0 && delegatedAmount == 0) {
-                // If the account was not delegating to anyone at the queried round, we can just return the zero
-                // BondingCheckpoint value. This also handles the case of accounts that have never made a delegation.
-                return bond;
-            }
+        uint256 startRoundIdx = checkpoints.startRounds.findLowerBound(_round);
+        if (startRoundIdx == checkpoints.startRounds.length) {
+            // No checkpoint at or before _round, so return the zero BondingCheckpoint value. This also happens if there
+            // are no checkpoints for _account. The voting power will be zero until the first checkpoint is made.
+            return bond;
         }
 
-        uint256 startRound = checkedFindLowerBound(checkpoints.startRounds, _round);
+        uint256 startRound = checkpoints.startRounds[startRoundIdx];
         return checkpoints.data[startRound];
     }
 
@@ -276,12 +404,12 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
         view
         returns (uint256)
     {
-        EarningsPool.Data memory startPool = getTranscoderEarningPoolForRound(
+        EarningsPool.Data memory startPool = getTranscoderEarningsPoolForRound(
             bond.delegateAddress,
             bond.lastClaimRound
         );
 
-        (uint256 rewardRound, EarningsPool.Data memory endPool) = getTranscoderLastRewardsEarningPool(
+        (uint256 rewardRound, EarningsPool.Data memory endPool) = getLastTranscoderRewardsEarningsPool(
             bond.delegateAddress,
             _round
         );
@@ -311,7 +439,7 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
      * @return rewardRound Round in which the returned earning pool was calculated.
      * @return pool EarningsPool.Data struct with the last initialized earning pool.
      */
-    function getTranscoderLastRewardsEarningPool(address _transcoder, uint256 _round)
+    function getLastTranscoderRewardsEarningsPool(address _transcoder, uint256 _round)
         internal
         view
         returns (uint256 rewardRound, EarningsPool.Data memory pool)
@@ -319,16 +447,20 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
         BondingCheckpoint storage bond = getBondingCheckpointAt(_transcoder, _round);
         rewardRound = bond.lastRewardRound;
 
-        // only fetch pool if there is a previous reward() call recorded
         if (rewardRound > 0) {
-            pool = getTranscoderEarningPoolForRound(_transcoder, rewardRound);
+            pool = getTranscoderEarningsPoolForRound(_transcoder, rewardRound);
+
+            if (pool.cumulativeRewardFactor == 0) {
+                // Invalid state: a lastRewardRound is registered but there's no recorded earnings pool.
+                revert MissingEarningsPool(_transcoder, rewardRound);
+            }
         }
     }
 
     /**
      * @dev Proxy for {BondingManager-getTranscoderEarningsPoolForRound} that returns an EarningsPool.Data struct.
      */
-    function getTranscoderEarningPoolForRound(address _transcoder, uint256 _round)
+    function getTranscoderEarningsPoolForRound(address _transcoder, uint256 _round)
         internal
         view
         returns (EarningsPool.Data memory pool)
@@ -340,33 +472,9 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
             pool.cumulativeRewardFactor,
             pool.cumulativeFeeFactor
         ) = bondingManager().getTranscoderEarningsPoolForRound(_transcoder, _round);
-
-        if (pool.cumulativeRewardFactor == 0) {
-            revert MissingEarningsPool(_transcoder, _round);
-        }
-    }
-
-    /**
-     * @dev Helper to return more helpful custom errors in case of bad queries.
-     */
-    function checkedFindLowerBound(uint256[] storage array, uint256 value) internal view returns (uint256) {
-        if (array.length == 0) {
-            revert NoRecordedCheckpoints();
-        } else if (array[0] > value) {
-            revert PastLookup(value, array[0]);
-        }
-        return array.findLowerBound(value);
     }
 
     // Manager/Controller helpers
-
-    /**
-     * @dev Modified to ensure the sender is BondingManager
-     */
-    modifier onlyBondingManager() {
-        _onlyBondingManager();
-        _;
-    }
 
     /**
      * @dev Return BondingManager interface
@@ -378,7 +486,7 @@ contract BondingCheckpoints is ManagerProxyTarget, IBondingCheckpoints {
     /**
      * @dev Return IRoundsManager interface
      */
-    function roundsManager() public view returns (IRoundsManager) {
+    function roundsManager() internal view returns (IRoundsManager) {
         return IRoundsManager(controller.getContract(keccak256("RoundsManager")));
     }
 
