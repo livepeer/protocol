@@ -3,6 +3,7 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/utils/Arrays.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 import "./libraries/EarningsPool.sol";
 import "./libraries/EarningsPoolLIP36.sol";
@@ -99,6 +100,27 @@ contract BondingVotes is ManagerProxyTarget, IBondingVotes {
     // These should not access any storage directly but proxy to the bonding state functions.
 
     /**
+     * @notice Returns the name of the virtual token implemented by this.
+     */
+    function name() external pure returns (string memory) {
+        return "Livepeer Stake";
+    }
+
+    /**
+     * @notice Returns the symbol of the token underlying the voting power.
+     */
+    function symbol() external view returns (string memory) {
+        return livepeerToken().symbol();
+    }
+
+    /**
+     * @notice Returns the decimals places of the token underlying the voting.
+     */
+    function decimals() external view returns (uint8) {
+        return livepeerToken().decimals();
+    }
+
+    /**
      * @notice Clock is set to match the current round, which is the checkpointing
      *  method implemented here.
      */
@@ -158,7 +180,7 @@ contract BondingVotes is ManagerProxyTarget, IBondingVotes {
      * @notice Returns the delegate that _account had chosen in a specific round in the past. See `delegates()` above
      * for more details.
      * @dev This is an addition to the IERC5805 interface to support our custom vote counting logic that allows
-     * delegators to override their transcoders votes. See {GovernorVotesBondingVotes-_handleVoteOverrides}.
+     * delegators to override their transcoders votes. See {GaovernorCountingOverridable-_handleVoteOverrides}.
      * @dev Keep in mind that since this function should return the delegate at the end of the _round (or timepoint in
      * OZ terms), we need to fetch the bonding state at the next round instead. That because the bonding state reflects
      * the active stake in the current round, which is the snapshotted stake from the end of the previous round.
@@ -492,6 +514,13 @@ contract BondingVotes is ManagerProxyTarget, IBondingVotes {
      */
     function roundsManager() internal view returns (IRoundsManager) {
         return IRoundsManager(controller.getContract(keccak256("RoundsManager")));
+    }
+
+    /**
+     * @dev Return LivepeerToken interface
+     */
+    function livepeerToken() internal view returns (IERC20Metadata) {
+        return IERC20Metadata(controller.getContract(keccak256("LivepeerToken")));
     }
 
     /**

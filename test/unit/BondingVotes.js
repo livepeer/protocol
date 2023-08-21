@@ -1088,6 +1088,41 @@ describe("BondingVotes", () => {
         })
     })
 
+    describe("IERC20 Metadata", () => {
+        describe("name", () => {
+            it("should return 'Livepeer Stake'", async () => {
+                assert.equal(await bondingVotes.name(), "Livepeer Stake")
+            })
+        })
+
+        describe("symbol", () => {
+            beforeEach(async () => {
+                // easier to replace the token than mock a string on the GenericMock
+                const erc20Fac = await ethers.getContractFactory("ERC20")
+                await fixture.deployAndRegister(
+                    erc20Fac,
+                    "LivepeerToken",
+                    "Mock Livepeer Token",
+                    "LIVEPI"
+                )
+            })
+
+            it("should proxy to LivepeerToken", async () => {
+                assert.equal(await bondingVotes.symbol(), "LIVEPI")
+            })
+        })
+
+        describe("decimals", () => {
+            it("should proxy to LivepeerToken", async () => {
+                await fixture.token.setMockUint256(
+                    functionSig("decimals()"),
+                    19
+                )
+                assert.equal(await bondingVotes.decimals(), 19)
+            })
+        })
+    })
+
     describe("IERC6372", () => {
         describe("clock", () => {
             let currentRound

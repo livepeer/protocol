@@ -11,4 +11,12 @@ interface IVotes is IERC5805Upgradeable {
     event DelegatorVotesChanged(address indexed delegate, uint256 previousBalance, uint256 newBalance);
 
     function delegatedAt(address account, uint256 timepoint) external returns (address);
+
+    // ERC-20 metadata functions that improve compatibility with tools like Tally
+
+    function name() external view returns (string memory);
+
+    function symbol() external view returns (string memory);
+
+    function decimals() external view returns (uint8);
 }
