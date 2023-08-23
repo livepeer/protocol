@@ -3,16 +3,15 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/utils/Arrays.sol";
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 import "./libraries/EarningsPool.sol";
 import "./libraries/EarningsPoolLIP36.sol";
 import "./libraries/SortedArrays.sol";
 
 import "../ManagerProxyTarget.sol";
-import "../IController.sol";
+import "./IBondingVotes.sol";
+import "./IBondingManager.sol";
 import "../rounds/IRoundsManager.sol";
-import "./BondingManager.sol";
 
 /**
  * @title BondingVotes
@@ -91,6 +90,17 @@ contract BondingVotes is ManagerProxyTarget, IBondingVotes {
     }
 
     /**
+     * @dev Ensures that the provided round is in the past.
+     */
+    modifier onlyPastRounds(uint256 _round) {
+        uint256 currentRound = clock();
+        if (_round >= currentRound) {
+            revert FutureLookup(_round, currentRound == 0 ? 0 : currentRound - 1);
+        }
+        _;
+    }
+
+    /**
      * @notice BondingVotes constructor. Only invokes constructor of base Manager contract with provided Controller address
      * @param _controller Address of Controller that this contract will be registered with
      */
@@ -103,21 +113,21 @@ contract BondingVotes is ManagerProxyTarget, IBondingVotes {
      * @notice Returns the name of the virtual token implemented by this.
      */
     function name() external pure returns (string memory) {
-        return "Livepeer Stake";
+        return "Livepeer Voting Power";
     }
 
     /**
      * @notice Returns the symbol of the token underlying the voting power.
      */
-    function symbol() external view returns (string memory) {
-        return livepeerToken().symbol();
+    function symbol() external pure returns (string memory) {
+        return "vLPT";
     }
 
     /**
      * @notice Returns the decimals places of the token underlying the voting.
      */
-    function decimals() external view returns (uint8) {
-        return livepeerToken().decimals();
+    function decimals() external pure returns (uint8) {
+        return 18;
     }
 
     /**
@@ -132,15 +142,19 @@ contract BondingVotes is ManagerProxyTarget, IBondingVotes {
      * @notice Machine-readable description of the clock as specified in EIP-6372.
      */
     // solhint-disable-next-line func-name-mixedcase
-    function CLOCK_MODE() public pure returns (string memory) {
+    function CLOCK_MODE() external pure returns (string memory) {
         return "mode=livepeer_round";
     }
 
     /**
      * @notice Returns the current amount of votes that `_account` has.
+     * @dev Keep in mind that since this function should return the votes at the end of the current round, we need to
+     * fetch the bonding state at the next round instead. That because the bonding state reflects the active stake in
+     * the current round, which is the snapshotted stake from the end of the previous round.
      */
     function getVotes(address _account) external view returns (uint256) {
-        return getPastVotes(_account, clock());
+        (uint256 amount, ) = getBondingStateAt(_account, clock() + 1);
+        return amount;
     }
 
     /**
@@ -150,9 +164,22 @@ contract BondingVotes is ManagerProxyTarget, IBondingVotes {
      * terms), we need to fetch the bonding state at the next round instead. That because the bonding state reflects the
      * active stake in the current round, which is the snapshotted stake from the end of the previous round.
      */
-    function getPastVotes(address _account, uint256 _round) public view returns (uint256) {
+    function getPastVotes(address _account, uint256 _round) external view onlyPastRounds(_round) returns (uint256) {
         (uint256 amount, ) = getBondingStateAt(_account, _round + 1);
         return amount;
+    }
+
+    /**
+     * @notice Returns the current total supply of votes available.
+     * @dev This value is the sum of all *active* stake, which is not necessarily the sum of all voting power.
+     * Bonded stake that is not part of the top 100 active transcoder set is still given voting power, but is not
+     * considered here.
+     * @dev Keep in mind that since this function should return the votes at the end of the current round, we need to
+     * fetch the total active stake at the next round instead. That because the active stake in the current round is the
+     * snapshotted stake from the end of the previous round.
+     */
+    function totalSupply() external view returns (uint256) {
+        return getTotalActiveStakeAt(clock() + 1);
     }
 
     /**
@@ -164,28 +191,31 @@ contract BondingVotes is ManagerProxyTarget, IBondingVotes {
      * terms), we need to fetch the total active stake at the next round instead. That because the active stake in the
      * current round is the snapshotted stake from the end of the previous round.
      */
-    function getPastTotalSupply(uint256 _round) public view returns (uint256) {
+    function getPastTotalSupply(uint256 _round) external view onlyPastRounds(_round) returns (uint256) {
         return getTotalActiveStakeAt(_round + 1);
     }
 
     /**
      * @notice Returns the delegate that _account has chosen. This means the delegated transcoder address in case of
      * delegators, and the account's own address for transcoders (self-delegated).
+     * @dev Keep in mind that since this function should return the delegate at the end of the current round, we need to
+     * fetch the bonding state at the next round instead. That because the bonding state reflects the active stake in
+     * the current round, or the snapshotted stake from the end of the previous round.
      */
     function delegates(address _account) external view returns (address) {
-        return delegatedAt(_account, clock());
+        (, address delegateAddress) = getBondingStateAt(_account, clock() + 1);
+        return delegateAddress;
     }
 
     /**
-     * @notice Returns the delegate that _account had chosen in a specific round in the past. See `delegates()` above
-     * for more details.
+     * @notice Returns the delegate that _account had chosen in a specific round in the past.
      * @dev This is an addition to the IERC5805 interface to support our custom vote counting logic that allows
-     * delegators to override their transcoders votes. See {GaovernorCountingOverridable-_handleVoteOverrides}.
+     * delegators to override their transcoders votes. See {GovernorCountingOverridable-_handleVoteOverrides}.
      * @dev Keep in mind that since this function should return the delegate at the end of the _round (or timepoint in
      * OZ terms), we need to fetch the bonding state at the next round instead. That because the bonding state reflects
      * the active stake in the current round, which is the snapshotted stake from the end of the previous round.
      */
-    function delegatedAt(address _account, uint256 _round) public view returns (address) {
+    function delegatedAt(address _account, uint256 _round) external view onlyPastRounds(_round) returns (address) {
         (, address delegateAddress) = getBondingStateAt(_account, _round + 1);
         return delegateAddress;
     }
@@ -233,7 +263,7 @@ contract BondingVotes is ManagerProxyTarget, IBondingVotes {
         uint256 _delegatedAmount,
         uint256 _lastClaimRound,
         uint256 _lastRewardRound
-    ) public virtual onlyBondingManager {
+    ) external virtual onlyBondingManager {
         if (_startRound != clock() + 1) {
             revert InvalidStartRound(_startRound, clock() + 1);
         } else if (_lastClaimRound >= _startRound) {
@@ -260,43 +290,7 @@ contract BondingVotes is ManagerProxyTarget, IBondingVotes {
         // to find it and lookup in the above mapping
         checkpoints.startRounds.pushSorted(_startRound);
 
-        onCheckpointChanged(_account, previous, bond);
-    }
-
-    function onCheckpointChanged(
-        address _account,
-        BondingCheckpoint memory previous,
-        BondingCheckpoint memory current
-    ) internal {
-        address previousDelegate = previous.delegateAddress;
-        address newDelegate = current.delegateAddress;
-        if (previousDelegate != newDelegate) {
-            emit DelegateChanged(_account, previousDelegate, newDelegate);
-        }
-
-        bool isTranscoder = newDelegate == _account;
-        bool wasTranscoder = previousDelegate == _account;
-        if (isTranscoder) {
-            emit DelegateVotesChanged(_account, previous.delegatedAmount, current.delegatedAmount);
-        } else if (wasTranscoder) {
-            // if the account stopped being a transcoder, we want to emit an event zeroing its "delegate votes"
-            emit DelegateVotesChanged(_account, previous.delegatedAmount, 0);
-        }
-
-        // Always send delegator events since transcoders are delegators themselves. The way our rewards work, the
-        // delegator voting power calculated from events will only reflect their claimed stake without pending rewards.
-        if (previous.bondedAmount != current.bondedAmount) {
-            emit DelegatorVotesChanged(_account, previous.bondedAmount, current.bondedAmount);
-        }
-    }
-
-    /**
-     * @notice Returns whether an account already has any checkpoint.
-     * @dev This is meant to be called by a checkpoint initialization script once we deploy the checkpointing logic for
-     * the first time, so we can efficiently initialize the checkpoint state for all accounts in the system.
-     */
-    function hasCheckpoint(address _account) public view returns (bool) {
-        return bondingCheckpoints[_account].startRounds.length > 0;
+        onBondingCheckpointChanged(_account, previous, bond);
     }
 
     /**
@@ -306,13 +300,20 @@ contract BondingVotes is ManagerProxyTarget, IBondingVotes {
      * @param _totalStake From {BondingManager-currentRoundTotalActiveStake}
      * @param _round The round for which the total active stake is valid. This is normally the current round.
      */
-    function checkpointTotalActiveStake(uint256 _totalStake, uint256 _round) public virtual onlyBondingManager {
-        if (_round > clock()) {
-            revert FutureTotalStakeCheckpoint(_round, clock());
+    function checkpointTotalActiveStake(uint256 _totalStake, uint256 _round) external virtual onlyBondingManager {
+        if (_round != clock()) {
+            revert InvalidTotalStakeCheckpointRound(_round, clock());
         }
 
         totalStakeCheckpoints.data[_round] = _totalStake;
         totalStakeCheckpoints.rounds.pushSorted(_round);
+    }
+
+    /**
+     * @notice Returns whether an account already has any checkpoint.
+     */
+    function hasCheckpoint(address _account) public view returns (bool) {
+        return bondingCheckpoints[_account].startRounds.length > 0;
     }
 
     // Historical stake access functions
@@ -377,6 +378,36 @@ contract BondingVotes is ManagerProxyTarget, IBondingVotes {
         } else {
             // Address is NOT a registered transcoder so we calculate its cumulative stake for the voting power
             amount = delegatorCumulativeStakeAt(bond, _round);
+        }
+    }
+
+    /**
+     * @dev Reacts to changes in the bonding checkpoints of an account by emitting the corresponding events.
+     */
+    function onBondingCheckpointChanged(
+        address _account,
+        BondingCheckpoint memory previous,
+        BondingCheckpoint memory current
+    ) internal {
+        address previousDelegate = previous.delegateAddress;
+        address newDelegate = current.delegateAddress;
+        if (previousDelegate != newDelegate) {
+            emit DelegateChanged(_account, previousDelegate, newDelegate);
+        }
+
+        bool isTranscoder = newDelegate == _account;
+        bool wasTranscoder = previousDelegate == _account;
+        // we want to register zero "delegate votes" when the account is/was not a transcoder
+        uint256 previousDelegateVotes = wasTranscoder ? previous.delegatedAmount : 0;
+        uint256 currentDelegateVotes = isTranscoder ? current.delegatedAmount : 0;
+        if (previousDelegateVotes != currentDelegateVotes) {
+            emit DelegateVotesChanged(_account, previousDelegateVotes, currentDelegateVotes);
+        }
+
+        // Always send delegator events since transcoders are delegators themselves. The way our rewards work, the
+        // delegator voting power calculated from events will only reflect their claimed stake without pending rewards.
+        if (previous.bondedAmount != current.bondedAmount) {
+            emit DelegatorBondedAmountChanged(_account, previous.bondedAmount, current.bondedAmount);
         }
     }
 
@@ -505,8 +536,8 @@ contract BondingVotes is ManagerProxyTarget, IBondingVotes {
     /**
      * @dev Return BondingManager interface
      */
-    function bondingManager() internal view returns (BondingManager) {
-        return BondingManager(controller.getContract(keccak256("BondingManager")));
+    function bondingManager() internal view returns (IBondingManager) {
+        return IBondingManager(controller.getContract(keccak256("BondingManager")));
     }
 
     /**
@@ -514,13 +545,6 @@ contract BondingVotes is ManagerProxyTarget, IBondingVotes {
      */
     function roundsManager() internal view returns (IRoundsManager) {
         return IRoundsManager(controller.getContract(keccak256("RoundsManager")));
-    }
-
-    /**
-     * @dev Return LivepeerToken interface
-     */
-    function livepeerToken() internal view returns (IERC20Metadata) {
-        return IERC20Metadata(controller.getContract(keccak256("LivepeerToken")));
     }
 
     /**

@@ -127,23 +127,31 @@ describe("BondingVotes", () => {
             )
         })
 
-        it("should fail if checkpointing after current round", async () => {
-            const functionData = encodeCheckpointTotalActiveStake(
-                1337,
-                currentRound + 1
-            )
+        it("should fail if not checkpointing in the current round", async () => {
+            const rounds = [
+                currentRound - 1,
+                currentRound + 1,
+                currentRound + 2
+            ]
 
-            await expect(
-                fixture.bondingManager.execute(
-                    bondingVotes.address,
-                    functionData
+            for (const round of rounds) {
+                const functionData = encodeCheckpointTotalActiveStake(
+                    1337,
+                    round
                 )
-            ).to.be.revertedWith(
-                customErrorAbi("FutureTotalStakeCheckpoint(uint256,uint256)", [
-                    currentRound + 1,
-                    currentRound
-                ])
-            )
+
+                await expect(
+                    fixture.bondingManager.execute(
+                        bondingVotes.address,
+                        functionData
+                    )
+                ).to.be.revertedWith(
+                    customErrorAbi(
+                        "InvalidTotalStakeCheckpointRound(uint256,uint256)",
+                        [round, currentRound]
+                    )
+                )
+            }
         })
 
         it("should allow checkpointing in the current round", async () => {
@@ -223,7 +231,11 @@ describe("BondingVotes", () => {
             )
         })
 
-        it("should query next rounds value from next round total active stake", async () => {
+        it("should return nextRoundTotalActiveStake if querying after last checkpoint", async () => {
+            await fixture.roundsManager.setMockUint256(
+                functionSig("currentRound()"),
+                currentRound - 5
+            )
             const functionData = encodeCheckpointTotalActiveStake(
                 1337,
                 currentRound - 5
@@ -231,6 +243,11 @@ describe("BondingVotes", () => {
             await fixture.bondingManager.execute(
                 bondingVotes.address,
                 functionData
+            )
+
+            await fixture.roundsManager.setMockUint256(
+                functionSig("currentRound()"),
+                currentRound
             )
             await fixture.bondingManager.setMockUint256(
                 functionSig("nextRoundTotalActiveStake()"),
@@ -255,6 +272,10 @@ describe("BondingVotes", () => {
             ]
 
             for (const [totalStake, round] of roundStakes) {
+                await fixture.roundsManager.setMockUint256(
+                    functionSig("currentRound()"),
+                    round
+                )
                 const functionData = encodeCheckpointTotalActiveStake(
                     totalStake,
                     round
@@ -284,6 +305,10 @@ describe("BondingVotes", () => {
             ]
 
             for (const [totalStake, round] of roundStakes) {
+                await fixture.roundsManager.setMockUint256(
+                    functionSig("currentRound()"),
+                    round
+                )
                 const functionData = encodeCheckpointTotalActiveStake(
                     totalStake,
                     round
@@ -531,7 +556,7 @@ describe("BondingVotes", () => {
                         transcoder.address
                     )
                 await expect(tx)
-                    .to.emit(bondingVotes, "DelegatorVotesChanged")
+                    .to.emit(bondingVotes, "DelegatorBondedAmountChanged")
                     .withArgs(delegator.address, 0, 1000)
 
                 // Changing only bondedAmount
@@ -544,7 +569,7 @@ describe("BondingVotes", () => {
 
                 await expect(tx).not.to.emit(bondingVotes, "DelegateChanged")
                 await expect(tx)
-                    .to.emit(bondingVotes, "DelegatorVotesChanged")
+                    .to.emit(bondingVotes, "DelegatorBondedAmountChanged")
                     .withArgs(delegator.address, 1000, 2000)
 
                 // Changing only delegateAddress
@@ -557,7 +582,7 @@ describe("BondingVotes", () => {
 
                 await expect(tx).not.to.emit(
                     bondingVotes,
-                    "DelegatorVotesChanged"
+                    "DelegatorBondedAmountChanged"
                 )
                 await expect(tx)
                     .to.emit(bondingVotes, "DelegateChanged")
@@ -589,7 +614,7 @@ describe("BondingVotes", () => {
                     .withArgs(transcoder.address, 0, 50000)
                 // Still emits a delegator event
                 await expect(tx)
-                    .to.emit(bondingVotes, "DelegatorVotesChanged")
+                    .to.emit(bondingVotes, "DelegatorBondedAmountChanged")
                     .withArgs(transcoder.address, 0, 20000)
 
                 // Changing only delegatedAmount
@@ -603,7 +628,7 @@ describe("BondingVotes", () => {
                 await expect(tx).not.to.emit(bondingVotes, "DelegateChanged")
                 await expect(tx).not.to.emit(
                     bondingVotes,
-                    "DelegatorVotesChanged"
+                    "DelegatorBondedAmountChanged"
                 )
                 await expect(tx)
                     .to.emit(bondingVotes, "DelegateVotesChanged")
@@ -630,7 +655,7 @@ describe("BondingVotes", () => {
                 // Voting power as a delegator stayed the same
                 await expect(tx).not.to.emit(
                     bondingVotes,
-                    "DelegatorVotesChanged"
+                    "DelegatorBondedAmountChanged"
                 )
             })
         })
@@ -1090,35 +1115,20 @@ describe("BondingVotes", () => {
 
     describe("IERC20 Metadata", () => {
         describe("name", () => {
-            it("should return 'Livepeer Stake'", async () => {
-                assert.equal(await bondingVotes.name(), "Livepeer Stake")
+            it("should return 'Livepeer Voting Power'", async () => {
+                assert.equal(await bondingVotes.name(), "Livepeer Voting Power")
             })
         })
 
         describe("symbol", () => {
-            beforeEach(async () => {
-                // easier to replace the token than mock a string on the GenericMock
-                const erc20Fac = await ethers.getContractFactory("ERC20")
-                await fixture.deployAndRegister(
-                    erc20Fac,
-                    "LivepeerToken",
-                    "Mock Livepeer Token",
-                    "LIVEPI"
-                )
-            })
-
-            it("should proxy to LivepeerToken", async () => {
-                assert.equal(await bondingVotes.symbol(), "LIVEPI")
+            it("should return 'vLPT'", async () => {
+                assert.equal(await bondingVotes.symbol(), "vLPT")
             })
         })
 
         describe("decimals", () => {
-            it("should proxy to LivepeerToken", async () => {
-                await fixture.token.setMockUint256(
-                    functionSig("decimals()"),
-                    19
-                )
-                assert.equal(await bondingVotes.decimals(), 19)
+            it("should return 18", async () => {
+                assert.equal(await bondingVotes.decimals(), 18)
             })
         })
     })
@@ -1152,9 +1162,11 @@ describe("BondingVotes", () => {
         })
     })
 
-    describe("IERC5805", () => {
+    describe("IVotes", () => {
         // redefine it here to avoid overriding top-level var
         let bondingVotes
+
+        const currentRound = 1000
 
         before(async () => {
             const HarnessFac = await ethers.getContractFactory(
@@ -1165,6 +1177,13 @@ describe("BondingVotes", () => {
                 HarnessFac,
                 "BondingVotes",
                 fixture.controller.address
+            )
+        })
+
+        beforeEach(async () => {
+            await fixture.roundsManager.setMockUint256(
+                functionSig("currentRound()"),
+                currentRound
             )
         })
 
@@ -1195,8 +1214,28 @@ describe("BondingVotes", () => {
             )
         })
 
-        describe("get(Past)?Votes", () => {
-            it("getPastVotes should proxy to getBondingStateAt from next round", async () => {
+        describe("getVotes", () => {
+            it("should proxy to getBondingStateAt with the next round", async () => {
+                const [expected] = mock.getBondingStateAt(
+                    signers[0].address,
+                    currentRound + 1
+                )
+
+                const votes = await bondingVotes.getVotes(signers[0].address)
+                assert.equal(votes.toNumber(), expected)
+            })
+        })
+
+        describe("getPastVotes", () => {
+            it("should fail if not querying in the past", async () => {
+                const tx = bondingVotes.getPastVotes(
+                    signers[0].address,
+                    currentRound
+                )
+                await expect(tx).to.be.revertedWith("FutureLookup(1000, 999)")
+            })
+
+            it("should proxy to getBondingStateAt with next round", async () => {
                 const testOnce = async (account, round) => {
                     const [expected] = mock.getBondingStateAt(
                         account.address,
@@ -1210,34 +1249,28 @@ describe("BondingVotes", () => {
                     assert.equal(votes.toNumber(), expected)
                 }
 
-                await testOnce(signers[0], 123)
-                await testOnce(signers[1], 256)
-                await testOnce(signers[2], 34784)
-            })
-
-            it("getVotes should query with the current round", async () => {
-                const testOnce = async (account, round) => {
-                    await fixture.roundsManager.setMockUint256(
-                        functionSig("currentRound()"),
-                        round
-                    )
-                    const [expected] = mock.getBondingStateAt(
-                        account.address,
-                        round + 1
-                    )
-
-                    const votes = await bondingVotes.getVotes(account.address)
-                    assert.equal(votes.toNumber(), expected)
-                }
-
-                await testOnce(signers[3], 321)
-                await testOnce(signers[4], 652)
-                await testOnce(signers[5], 48743)
+                await testOnce(signers[1], 123)
+                await testOnce(signers[2], 256)
+                await testOnce(signers[3], 784)
+                await testOnce(signers[4], currentRound - 1)
             })
         })
 
-        describe("delegate(s|dAt)", () => {
-            it("delegatedAt should proxy to BondingVotes.getBondingStateAt at next round", async () => {
+        describe("delegates", () => {
+            it("should proxy to getBondingStateAt with the next round", async () => {
+                const [, expected] = mock.getBondingStateAt(
+                    signers[5].address,
+                    currentRound + 1
+                )
+                assert.equal(
+                    await bondingVotes.delegates(signers[5].address),
+                    expected
+                )
+            })
+        })
+
+        describe("delegatedAt", () => {
+            it("should proxy to getBondingStateAt with next round", async () => {
                 const testOnce = async (account, round) => {
                     const [, expected] = mock.getBondingStateAt(
                         account.address,
@@ -1253,34 +1286,27 @@ describe("BondingVotes", () => {
 
                 await testOnce(signers[6], 123)
                 await testOnce(signers[7], 256)
-                await testOnce(signers[8], 34784)
+                await testOnce(signers[8], 784)
+                await testOnce(signers[9], 784)
             })
+        })
 
-            it("delegates should query with the current round", async () => {
-                const testOnce = async (account, round) => {
-                    await fixture.roundsManager.setMockUint256(
-                        functionSig("currentRound()"),
-                        round
-                    )
-                    const [, expected] = mock.getBondingStateAt(
-                        account.address,
-                        round + 1
-                    )
+        describe("totalSupply", () => {
+            it("should proxy to getTotalActiveStakeAt at next round", async () => {
+                const expected = mock.getTotalActiveStakeAt(currentRound + 1)
 
-                    assert.equal(
-                        await bondingVotes.delegates(account.address),
-                        expected
-                    )
-                }
-
-                await testOnce(signers[9], 321)
-                await testOnce(signers[10], 652)
-                await testOnce(signers[11], 48743)
+                const totalSupply = await bondingVotes.totalSupply()
+                assert.equal(totalSupply.toNumber(), expected)
             })
         })
 
         describe("getPastTotalSupply", () => {
-            it("should proxy to getTotalActiveStakeAt at next round", async () => {
+            it("should fail if not querying in the past", async () => {
+                const tx = bondingVotes.getPastTotalSupply(currentRound)
+                await expect(tx).to.be.revertedWith("FutureLookup(1000, 999)")
+            })
+
+            it("should proxy to getTotalActiveStakeAt with next round", async () => {
                 const testOnce = async round => {
                     const expected = mock.getTotalActiveStakeAt(round + 1)
 
@@ -1292,7 +1318,8 @@ describe("BondingVotes", () => {
 
                 await testOnce(213)
                 await testOnce(526)
-                await testOnce(784347)
+                await testOnce(784)
+                await testOnce(currentRound - 1)
             })
         })
 

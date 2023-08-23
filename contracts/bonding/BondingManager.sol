@@ -126,7 +126,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
     modifier autoCheckpoint(address _account) {
         _;
-        checkpointBondingState(_account);
+        _checkpointBondingState(_account, delegators[_account], transcoders[_account]);
     }
 
     /**
@@ -202,6 +202,15 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      */
     function rebondFromUnbonded(address _to, uint256 _unbondingLockId) external {
         rebondFromUnbondedWithHint(_to, _unbondingLockId, address(0), address(0));
+    }
+
+    /**
+     * @notice Checkpoints the bonding state for a given account.
+     * @dev This is to allow checkpointing an account that has an inconsistent checkpoint with its current state.
+     * @param _account The account to make the checkpoint for
+     */
+    function checkpointBondingState(address _account) external {
+        _checkpointBondingState(_account, delegators[_account], transcoders[_account]);
     }
 
     /**
@@ -561,16 +570,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         emit Bond(_to, currentDelegate, _owner, _amount, del.bondedAmount);
 
         // the `autoCheckpoint` modifier has been replaced with its internal function as a `Stack too deep` error work-around
-        checkpointBondingState(_owner, del, transcoders[_owner]);
-    }
-
-    /**
-     * @notice Checkpoints the bonding state for a given account.
-     * @dev This is to allow checkpointing an account that has an inconsistent checkpoint with its current state.
-     * @param _account The account to make the checkpoint for
-     */
-    function checkpointBondingState(address _account) public {
-        checkpointBondingState(_account, delegators[_account], transcoders[_account]);
+        _checkpointBondingState(_owner, del, transcoders[_owner]);
     }
 
     /**
@@ -1505,7 +1505,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * @notice Checkpoints a delegator state after changes, to be used for historical voting power calculations in
      * on-chain governor logic.
      */
-    function checkpointBondingState(
+    function _checkpointBondingState(
         address _owner,
         Delegator storage _delegator,
         Transcoder storage _transcoder
