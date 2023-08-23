@@ -124,9 +124,9 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         _;
     }
 
-    modifier autoCheckpoint(address account) {
+    modifier autoCheckpoint(address _account) {
         _;
-        checkpointBondingState(account);
+        _checkpointBondingState(_account, delegators[_account], transcoders[_account]);
     }
 
     /**
@@ -202,6 +202,15 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      */
     function rebondFromUnbonded(address _to, uint256 _unbondingLockId) external {
         rebondFromUnbondedWithHint(_to, _unbondingLockId, address(0), address(0));
+    }
+
+    /**
+     * @notice Checkpoints the bonding state for a given account.
+     * @dev This is to allow checkpointing an account that has an inconsistent checkpoint with its current state.
+     * @param _account The account to make the checkpoint for
+     */
+    function checkpointBondingState(address _account) external {
+        _checkpointBondingState(_account, delegators[_account], transcoders[_account]);
     }
 
     /**
@@ -561,41 +570,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         emit Bond(_to, currentDelegate, _owner, _amount, del.bondedAmount);
 
         // the `autoCheckpoint` modifier has been replaced with its internal function as a `Stack too deep` error work-around
-        checkpointBondingState(_owner, del, transcoders[_to]);
-    }
-
-    /**
-     * @notice Checkpoints a delegator state after changes, to be used for historical voting power calculations in
-     * on-chain governor logic.
-     */
-    function checkpointBondingState(
-        address _owner,
-        Delegator storage _delegator,
-        Transcoder storage _transcoder
-    ) internal {
-        // start round refers to the round where the checkpointed stake will be active. The actual `startRound` value
-        // in the delegators doesn't get updated on bond or claim earnings though, so we use currentRound() + 1
-        // which is the only guaranteed round where the currently stored stake will be active.
-        uint256 startRound = roundsManager().currentRound() + 1;
-        bondingVotes().checkpointBondingState(
-            _owner,
-            startRound,
-            _delegator.bondedAmount,
-            _delegator.delegateAddress,
-            _delegator.delegatedAmount,
-            _delegator.lastClaimRound,
-            _transcoder.lastRewardRound
-        );
-    }
-
-    /**
-     * @notice Checkpoints the bonding state for a given account.
-     * @dev This is to allow checkpointing an account that has an inconsistent checkpoint with its current state.
-     * Implemented as a deploy utility to checkpoint the existing state when deploying the BondingVotes contract.
-     * @param _account The account to initialize the bonding checkpoint for
-     */
-    function checkpointBondingState(address _account) public {
-        checkpointBondingState(_account, delegators[_account], transcoders[_account]);
+        _checkpointBondingState(_owner, del, transcoders[_owner]);
     }
 
     /**
@@ -1433,7 +1408,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     /**
      * @dev Update a delegator with token pools shares from its lastClaimRound through a given round
      *
-     * Notice that this function udpates the delegator storage but does not checkpoint its state. Since it is internal
+     * Notice that this function updates the delegator storage but does not checkpoint its state. Since it is internal
      * it assumes the top-level caller will checkpoint it instead.
      * @param _delegator Delegator address
      * @param _endRound The last round for which to update a delegator's stake with earnings pool shares
@@ -1524,6 +1499,30 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         increaseTotalStake(del.delegateAddress, amount, _newPosPrev, _newPosNext);
 
         emit Rebond(del.delegateAddress, _delegator, _unbondingLockId, amount);
+    }
+
+    /**
+     * @notice Checkpoints a delegator state after changes, to be used for historical voting power calculations in
+     * on-chain governor logic.
+     */
+    function _checkpointBondingState(
+        address _owner,
+        Delegator storage _delegator,
+        Transcoder storage _transcoder
+    ) internal {
+        // start round refers to the round where the checkpointed stake will be active. The actual `startRound` value
+        // in the delegators doesn't get updated on bond or claim earnings though, so we use currentRound() + 1
+        // which is the only guaranteed round where the currently stored stake will be active.
+        uint256 startRound = roundsManager().currentRound() + 1;
+        bondingVotes().checkpointBondingState(
+            _owner,
+            startRound,
+            _delegator.bondedAmount,
+            _delegator.delegateAddress,
+            _delegator.delegatedAmount,
+            _delegator.lastClaimRound,
+            _transcoder.lastRewardRound
+        );
     }
 
     /**

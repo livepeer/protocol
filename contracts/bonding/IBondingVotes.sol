@@ -1,18 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-import "@openzeppelin/contracts-upgradeable/interfaces/IERC6372Upgradeable.sol";
-
 import "../treasury/IVotes.sol";
 
 /**
  * @title Interface for BondingVotes
  */
-interface IBondingVotes is IERC6372Upgradeable, IVotes {
+interface IBondingVotes is IVotes {
     error InvalidCaller(address caller, address required);
     error InvalidStartRound(uint256 checkpointRound, uint256 requiredRound);
     error FutureLastClaimRound(uint256 lastClaimRound, uint256 maxAllowed);
-    error FutureTotalStakeCheckpoint(uint256 checkpointRound, uint256 maxAllowedRound);
+    error InvalidTotalStakeCheckpointRound(uint256 checkpointRound, uint256 requiredRound);
 
     error FutureLookup(uint256 queryRound, uint256 maxAllowed);
     error MissingEarningsPool(address transcoder, uint256 round);
@@ -20,6 +18,13 @@ interface IBondingVotes is IERC6372Upgradeable, IVotes {
     // Indicates that the called function is not supported in this contract and should be performed through the
     // BondingManager instead. This is mostly used for IVotes delegation methods which must be bonds instead.
     error MustCallBondingManager(string bondingManagerFunction);
+
+    /**
+     * @dev Emitted when a checkpoint results in changes to a delegator's `bondedAmount`. This complements the events
+     * from IERC5805 by also supporting voting power for the delegators themselves, though requiring knowledge about our
+     * specific reward-claiming protocol to calculate voting power based on this value.
+     */
+    event DelegatorBondedAmountChanged(address indexed delegate, uint256 previousBondedAmount, uint256 newBondedAmount);
 
     // BondingManager hooks
 

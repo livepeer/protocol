@@ -104,54 +104,17 @@ contract BondingVotesStateInitialization is GovernorBaseTest {
         }
     }
 
-    function testDisallowsQueryingParticipantUncheckpointedAccount() public {
+    function testReturnsZeroBalanceForUncheckpointedAccount() public {
         uint256 currentRound = ROUNDS_MANAGER.currentRound();
 
-        address[2] memory testAddresses = [DELEGATOR, TRANSCODER];
-        for (uint256 i = 0; i < testAddresses.length; i++) {
-            CHEATS.expectRevert(IBondingVotes.NoRecordedCheckpoints.selector);
-            bondingVotes.getBondingStateAt(testAddresses[i], currentRound);
+        for (uint256 i = 0; i < _testAddresses.length; i++) {
+            (uint256 checkedAmount, address checkedDelegate) = bondingVotes.getBondingStateAt(
+                _testAddresses[i],
+                currentRound
+            );
+            assertEq(checkedAmount, 0);
+            assertEq(checkedDelegate, address(0));
         }
-    }
-
-    function testAllowsQueryingNonParticipantZeroedAccount() public {
-        uint256 currentRound = ROUNDS_MANAGER.currentRound();
-
-        (uint256 checkedAmount, address checkedDelegate) = bondingVotes.getBondingStateAt(nonParticipant, currentRound);
-        assertEq(checkedAmount, 0);
-        assertEq(checkedDelegate, address(0));
-    }
-
-    function testAllowsQueryingFullyUnbondedAccountOnNextRound() public {
-        // Revert to old bonding manager in this test so it doesn't make any checkpoints
-        stageAndExecuteOne(
-            address(CONTROLLER),
-            0,
-            abi.encodeWithSelector(
-                CONTROLLER.setContractInfo.selector,
-                BONDING_MANAGER_TARGET_ID,
-                CURRENT_BONDING_MANAGER_TARGET,
-                gitCommitHash
-            )
-        );
-
-        uint256 currentRound = ROUNDS_MANAGER.currentRound();
-        uint256 pendingStake = BONDING_MANAGER.pendingStake(DELEGATOR, currentRound);
-
-        CHEATS.prank(DELEGATOR);
-        BONDING_MANAGER.unbond(pendingStake);
-
-        (uint256 bondedAmount, , , uint256 delegatedAmount, , uint256 lastClaimRound, ) = BONDING_MANAGER.getDelegator(
-            DELEGATOR
-        );
-        assertTrue(lastClaimRound == currentRound && bondedAmount == 0 && delegatedAmount == 0);
-
-        CHEATS.expectRevert(IBondingVotes.NoRecordedCheckpoints.selector);
-        bondingVotes.getBondingStateAt(DELEGATOR, currentRound);
-
-        (uint256 checkedAmount, address checkedDelegate) = bondingVotes.getBondingStateAt(DELEGATOR, currentRound + 1);
-        assertEq(checkedAmount, 0);
-        assertEq(checkedDelegate, address(0));
     }
 
     function testInitializesCheckpointState() public {
@@ -163,15 +126,13 @@ contract BondingVotesStateInitialization is GovernorBaseTest {
             BONDING_MANAGER.checkpointBondingState(addr);
             assertTrue(bondingVotes.hasCheckpoint(addr));
 
-            // Still doesn't allow lookup in the current round, checkpoint is made for the next
-            CHEATS.expectRevert(
-                abi.encodeWithSelector(IBondingVotes.PastLookup.selector, currentRound, currentRound + 1)
-            );
-            bondingVotes.getBondingStateAt(addr, currentRound);
+            // Still returns zero checkpoint in the current round, checkpoint is made for the next.
+            // We don't check delegatedAmount for simplicity here, it is checked in the other tests.
+            (, address checkedDelegate) = bondingVotes.getBondingStateAt(addr, currentRound);
+            assertEq(checkedDelegate, address(0));
 
             // Allows querying up to the next round.
-            // We don't check delegatedAmount for simplicity here, it is checked in he other tests.
-            (, address checkedDelegate) = bondingVotes.getBondingStateAt(addr, currentRound + 1);
+            (, checkedDelegate) = bondingVotes.getBondingStateAt(addr, currentRound + 1);
             assertEq(
                 checkedDelegate,
                 addr == DELEGATOR || addr == DELEGATOR_DELEGATE ? DELEGATOR_DELEGATE : addr == TRANSCODER
@@ -218,19 +179,27 @@ contract BondingVotesStateInitialization is GovernorBaseTest {
     function testDoesNotHaveTotalActiveStakeImmediately() public {
         uint256 currentRound = ROUNDS_MANAGER.currentRound();
 
-        CHEATS.expectRevert(IBondingVotes.NoRecordedCheckpoints.selector);
-        bondingVotes.getTotalActiveStakeAt(currentRound);
+        assertEq(bondingVotes.getTotalActiveStakeAt(currentRound), 0);
     }
 
-    function testDoesNotHaveTotalActiveStakeIfRoundNotInitialized() public {
+    function testReturnsZeroTotalActiveStakeIfNoCheckpointsMade() public {
+        uint256 currentRound = ROUNDS_MANAGER.currentRound();
+        assertEq(bondingVotes.getTotalActiveStakeAt(currentRound), 0);
+    }
+
+    function testReturnsNextRoundTotalActiveStakeIfAfterLastCheckpoint() public {
         uint256 currentRound = ROUNDS_MANAGER.currentRound();
 
         uint256 nextRoundStartBlock = ROUNDS_MANAGER.currentRoundStartBlock() + ROUNDS_MANAGER.roundLength();
         CHEATS.roll(nextRoundStartBlock);
-        assertEq(ROUNDS_MANAGER.currentRound(), currentRound + 1);
+        ROUNDS_MANAGER.initializeRound();
 
-        CHEATS.expectRevert(IBondingVotes.NoRecordedCheckpoints.selector);
-        bondingVotes.getTotalActiveStakeAt(currentRound + 1);
+        CHEATS.roll(nextRoundStartBlock + 2 * ROUNDS_MANAGER.roundLength());
+        assertEq(ROUNDS_MANAGER.currentRound(), currentRound + 3);
+
+        uint256 expected = BONDING_MANAGER.nextRoundTotalActiveStake();
+        assertEq(bondingVotes.getTotalActiveStakeAt(currentRound + 2), expected);
+        assertEq(bondingVotes.getTotalActiveStakeAt(currentRound + 3), expected);
     }
 
     function testDoesNotUseFutureCheckpointForTotalActiveStake() public {
@@ -241,8 +210,7 @@ contract BondingVotesStateInitialization is GovernorBaseTest {
         ROUNDS_MANAGER.initializeRound();
         assertEq(ROUNDS_MANAGER.currentRound(), currentRound + 1);
 
-        CHEATS.expectRevert(abi.encodeWithSelector(IBondingVotes.PastLookup.selector, currentRound, currentRound + 1));
-        bondingVotes.getTotalActiveStakeAt(currentRound);
+        assertEq(bondingVotes.getTotalActiveStakeAt(currentRound), 0);
     }
 
     function testUsesNextRoundTotalActiveStakeForCurrentRounds() public {
