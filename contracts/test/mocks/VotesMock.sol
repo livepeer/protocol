@@ -93,4 +93,20 @@ contract VotesMock is
     function _burn(address account, uint256 amount) internal override(ERC20Upgradeable, ERC20VotesUpgradeable) {
         super._burn(account, amount);
     }
+
+    function name() public view override(IVotes, ERC20Upgradeable) returns (string memory) {
+        return super.name();
+    }
+
+    function symbol() public view override(IVotes, ERC20Upgradeable) returns (string memory) {
+        return super.symbol();
+    }
+
+    function decimals() public view override(IVotes, ERC20Upgradeable) returns (uint8) {
+        return super.decimals();
+    }
+
+    function totalSupply() public view override(IVotes, ERC20Upgradeable) returns (uint256) {
+        return super.totalSupply();
+    }
 }
