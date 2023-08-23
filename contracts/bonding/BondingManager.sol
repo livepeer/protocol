@@ -159,20 +159,13 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     }
 
     /**
-     * @notice Set treasury reward cut rate. Only callable by Controller owner
+     * @notice Set treasury reward cut rate. Only callable by Controller owner. Notice that the change will only be
+     * effective on the next round.
      * @param _cutRate Percentage of newly minted rewards to route to the treasury. Must be a valid PreciseMathUtils
      * percentage (<100% specified with 27-digits precision).
      */
     function setTreasuryRewardCutRate(uint256 _cutRate) external onlyControllerOwner {
         _setTreasuryRewardCutRate(_cutRate);
-    }
-
-    function _setTreasuryRewardCutRate(uint256 _cutRate) internal {
-        require(PreciseMathUtils.validPerc(_cutRate), "_cutRate is invalid precise percentage");
-
-        nextRoundTreasuryRewardCutRate = _cutRate;
-
-        emit ParameterUpdate("nextRoundTreasuryRewardCutRate");
     }
 
     /**
@@ -1162,6 +1155,18 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     function isValidUnbondingLock(address _delegator, uint256 _unbondingLockId) public view returns (bool) {
         // A unbonding lock is only valid if it has a non-zero withdraw round (the default value is zero)
         return delegators[_delegator].unbondingLocks[_unbondingLockId].withdrawRound > 0;
+    }
+
+    /**
+     * @dev Internal version of setTreasuryRewardCutRate. Sets the treasury reward cut rate for the next round and emits
+     * corresponding event.
+     */
+    function _setTreasuryRewardCutRate(uint256 _cutRate) internal {
+        require(PreciseMathUtils.validPerc(_cutRate), "_cutRate is invalid precise percentage");
+
+        nextRoundTreasuryRewardCutRate = _cutRate;
+
+        emit ParameterUpdate("nextRoundTreasuryRewardCutRate");
     }
 
     /**
