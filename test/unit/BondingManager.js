@@ -1961,6 +1961,9 @@ describe("BondingManager", () => {
         })
 
         it("should checkpoint the delegator and transcoder states", async () => {
+            // make sure trancoder has a non-null `lastRewardRound`
+            await bondingManager.connect(transcoder0).reward()
+
             const tx = await bondingManager
                 .connect(delegator)
                 .bond(1000, transcoder0.address)
@@ -1975,7 +1978,7 @@ describe("BondingManager", () => {
                     delegateAddress: transcoder0.address,
                     delegatedAmount: 2000,
                     lastClaimRound: currentRound - 1,
-                    lastRewardRound: 0
+                    lastRewardRound: 100
                 },
                 {
                     account: delegator.address,
@@ -2402,6 +2405,9 @@ describe("BondingManager", () => {
         })
 
         it("should checkpoint the delegator and transcoder states", async () => {
+            // make sure trancoder has a non-null `lastRewardRound`
+            await bondingManager.connect(transcoder0).reward()
+
             const {bondedAmount: startBondedAmount} =
                 await bondingManager.getDelegator(delegator1.address)
             const {
@@ -2431,7 +2437,7 @@ describe("BondingManager", () => {
                     delegateAddress: transcoder0.address,
                     delegatedAmount: startDelegatedAmount.add(1000),
                     lastClaimRound: currentRound - 1,
-                    lastRewardRound: 0
+                    lastRewardRound: 100
                 },
                 {
                     account: delegator1.address,
@@ -2604,6 +2610,9 @@ describe("BondingManager", () => {
         })
 
         it("should checkpoint the delegator and transcoder states", async () => {
+            // make sure trancoder has a non-null `lastRewardRound`
+            await bondingManager.connect(transcoder).reward()
+
             const tx = await bondingManager.connect(delegator).unbond(500)
 
             await expectCheckpoints(
@@ -2616,7 +2625,7 @@ describe("BondingManager", () => {
                     delegateAddress: transcoder.address,
                     delegatedAmount: 1500,
                     lastClaimRound: currentRound,
-                    lastRewardRound: 0
+                    lastRewardRound: currentRound + 1
                 },
                 {
                     account: delegator.address,
@@ -3241,6 +3250,9 @@ describe("BondingManager", () => {
         })
 
         it("should checkpoint the delegator and transcoder states", async () => {
+            // make sure trancoder has a non-null `lastRewardRound`
+            await bondingManager.connect(transcoder).reward()
+
             const tx = await bondingManager
                 .connect(delegator)
                 .rebond(unbondingLockID)
@@ -3255,7 +3267,7 @@ describe("BondingManager", () => {
                     delegateAddress: transcoder.address,
                     delegatedAmount: 2000,
                     lastClaimRound: currentRound,
-                    lastRewardRound: 0
+                    lastRewardRound: currentRound + 1
                 },
                 {
                     account: delegator.address,
@@ -3514,6 +3526,9 @@ describe("BondingManager", () => {
         })
 
         it("should checkpoint the delegator and transcoder states", async () => {
+            // make sure trancoder has a non-null `lastRewardRound`
+            await bondingManager.connect(transcoder).reward()
+
             // Delegator unbonds rest of tokens transitioning to the Unbonded state
             await bondingManager.connect(delegator).unbond(500)
 
@@ -3531,7 +3546,7 @@ describe("BondingManager", () => {
                     delegateAddress: transcoder.address,
                     delegatedAmount: 1500,
                     lastClaimRound: currentRound,
-                    lastRewardRound: 0
+                    lastRewardRound: currentRound + 1
                 },
                 {
                     account: delegator.address,
@@ -4033,6 +4048,9 @@ describe("BondingManager", () => {
                 })
 
                 it("should checkpoint both delegators and transcoders states", async () => {
+                    // make sure trancoder has a non-null `lastRewardRound`
+                    await bondingManager.connect(transcoder0).reward()
+
                     const tx = await bondingManager
                         .connect(delegator1)
                         .transferBond(
@@ -4054,7 +4072,7 @@ describe("BondingManager", () => {
                             delegateAddress: transcoder0.address,
                             delegatedAmount: 1200,
                             lastClaimRound: currentRound - 1,
-                            lastRewardRound: 0
+                            lastRewardRound: currentRound + 3
                         },
                         {
                             account: delegator1.address,
@@ -4597,7 +4615,7 @@ describe("BondingManager", () => {
                 delegateAddress: transcoder.address,
                 delegatedAmount: 2000,
                 lastClaimRound: currentRound,
-                lastRewardRound: currentRound + 1 // then it's made again when the lastRewardRound is bumped
+                lastRewardRound: currentRound + 1
             })
         })
 
@@ -5446,6 +5464,9 @@ describe("BondingManager", () => {
         })
 
         it("should checkpoint the transcoder state", async () => {
+            // make sure trancoder has a non-null `lastRewardRound`
+            await bondingManager.connect(transcoder).reward()
+
             const startBondedAmount = (
                 await bondingManager.getDelegator(transcoder.address)
             )[0].toNumber()
@@ -5470,7 +5491,7 @@ describe("BondingManager", () => {
                 delegateAddress: transcoder.address,
                 delegatedAmount: startBondedAmount / 2,
                 lastClaimRound: currentRound + 1,
-                lastRewardRound: 0
+                lastRewardRound: currentRound + 1
             })
         })
 

@@ -15,6 +15,7 @@ import "../ManagerProxyTarget.sol";
 import "../IController.sol";
 import "../rounds/IRoundsManager.sol";
 import "./GovernorCountingOverridable.sol";
+import "./Treasury.sol";
 
 /**
  * @title LivepeerGovernor
@@ -104,8 +105,8 @@ contract LivepeerGovernor is
     /**
      * @dev Returns the Treasury contract address from the controller.
      */
-    function treasury() internal view returns (TimelockControllerUpgradeable) {
-        return TimelockControllerUpgradeable(payable(controller.getContract(keccak256("Treasury"))));
+    function treasury() internal view returns (Treasury) {
+        return Treasury(payable(controller.getContract(keccak256("Treasury"))));
     }
 
     // The following functions are overrides required by Solidity.
