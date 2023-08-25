@@ -1162,11 +1162,35 @@ describe("BondingVotes", () => {
         })
     })
 
+    /**
+     * These tests mock the internal checkpointing logic from `BondingVotes` and tests only the methods from the
+     * `IVotes` interface that are expected to proxy to that internal implementation. It deploys a new BondingVotes
+     * contract (BondingVotesERC5805Harness) which has a mocked implementation of those internal functions, with a
+     * corresponding implementation here in the `mock` object.
+     */
     describe("IVotes", () => {
+        const currentRound = 1000
+
         // redefine it here to avoid overriding top-level var
         let bondingVotes
 
-        const currentRound = 1000
+        // Same implementation as the BondingVotesERC5805Mock
+        const mock = {
+            getBondingStateAt: (_account, _round) => {
+                const intAddr = BigNumber.from(_account)
+
+                // lowest 4 bytes of address + _round
+                const amount = intAddr.mask(32).add(_round)
+                // (_account << 4) | _round
+                const delegateAddress = intAddr.shl(4).mask(160).or(_round)
+
+                return [
+                    amount.toNumber(),
+                    ethers.utils.getAddress(delegateAddress.toHexString())
+                ]
+            },
+            getTotalActiveStakeAt: _round => 4 * _round
+        }
 
         before(async () => {
             const HarnessFac = await ethers.getContractFactory(
@@ -1186,24 +1210,6 @@ describe("BondingVotes", () => {
                 currentRound
             )
         })
-
-        // Same implementation as the BondingVotesERC5805Mock
-        const mock = {
-            getBondingStateAt: (_account, _round) => {
-                const intAddr = BigNumber.from(_account)
-
-                // lowest 4 bytes of address + _round
-                const amount = intAddr.mask(32).add(_round)
-                // (_account << 4) | _round
-                const delegateAddress = intAddr.shl(4).mask(160).or(_round)
-
-                return [
-                    amount.toNumber(),
-                    ethers.utils.getAddress(delegateAddress.toHexString())
-                ]
-            },
-            getTotalActiveStakeAt: _round => 4 * _round
-        }
 
         it("ensure harness was deployed", async () => {
             assert.equal(
