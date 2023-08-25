@@ -143,6 +143,13 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
         args: [Controller.address]
     })
 
+    await contractDeployer.deployAndRegister({
+        contract: "BondingVotes",
+        name: "BondingVotes",
+        proxy: true,
+        args: [Controller.address]
+    })
+
     // rounds manager
     let roundsManager
     if (!isLiveNetwork(hre.network.name)) {
@@ -178,6 +185,7 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
 
     // governor
     const governor = await deploy("Governor", {
+        contract: "contracts/governance/Governor.sol:Governor",
         from: deployer,
         args: [],
         log: true
@@ -185,7 +193,7 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
 
     // Transfer ownership of Governor to governance multisig
     const Governor: Governor = (await ethers.getContractAt(
-        "Governor",
+        "contracts/governance/Governor.sol:Governor",
         governor.address
     )) as Governor
 
