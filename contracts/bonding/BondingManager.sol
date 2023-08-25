@@ -94,6 +94,14 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     // in the pool are locked into the active set for round N + 1
     SortedDoublyLL.Data private transcoderPool;
 
+    // The % of newly minted rewards to be routed to the treasury. Represented as a PreciseMathUtils percPoint value.
+    uint256 public treasuryRewardCutRate;
+    // The value for `treasuryRewardCutRate` to be set on the next round initialization.
+    uint256 public nextRoundTreasuryRewardCutRate;
+
+    // If the balance of the treasury in LPT is above this value, automatic treasury contributions will halt.
+    uint256 public treasuryBalanceCeiling;
+
     // Check if sender is TicketBroker
     modifier onlyTicketBroker() {
         _onlyTicketBroker();
@@ -147,6 +155,27 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         unbondingPeriod = _unbondingPeriod;
 
         emit ParameterUpdate("unbondingPeriod");
+    }
+
+    /**
+     * @notice Set treasury reward cut rate. Only callable by Controller owner. Notice that the change will only be
+     * effective on the next round.
+     * @param _cutRate Percentage of newly minted rewards to route to the treasury. Must be a valid PreciseMathUtils
+     * percentage (<100% specified with 27-digits precision).
+     */
+    function setTreasuryRewardCutRate(uint256 _cutRate) external onlyControllerOwner {
+        _setTreasuryRewardCutRate(_cutRate);
+    }
+
+    /**
+     * @notice Set treasury balance ceiling. Only callable by Controller owner
+     * @param _ceiling Balance at which treasury reward contributions should halt. Specified in LPT fractional units
+     * (18-digit precision).
+     */
+    function setTreasuryBalanceCeiling(uint256 _ceiling) external onlyControllerOwner {
+        treasuryBalanceCeiling = _ceiling;
+
+        emit ParameterUpdate("treasuryBalanceCeiling");
     }
 
     /**
@@ -321,6 +350,11 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
                 totalStake,
                 currentRoundTotalActiveStake
             );
+
+            // Deduct what would have been the treasury rewards
+            uint256 treasuryRewards = MathUtils.percOf(rewards, treasuryRewardCutRate);
+            rewards = rewards.sub(treasuryRewards);
+
             uint256 transcoderCommissionRewards = MathUtils.percOf(rewards, earningsPool.transcoderRewardCut);
             uint256 delegatorsRewards = rewards.sub(transcoderCommissionRewards);
 
@@ -433,6 +467,12 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      */
     function setCurrentRoundTotalActiveStake() external onlyRoundsManager {
         currentRoundTotalActiveStake = nextRoundTotalActiveStake;
+
+        if (nextRoundTreasuryRewardCutRate != treasuryRewardCutRate) {
+            treasuryRewardCutRate = nextRoundTreasuryRewardCutRate;
+            // The treasury cut rate changes in a delayed fashion so we want to emit the parameter update event here
+            emit ParameterUpdate("treasuryRewardCutRate");
+        }
 
         bondingVotes().checkpointTotalActiveStake(currentRoundTotalActiveStake, roundsManager().currentRound());
     }
@@ -849,16 +889,35 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             earningsPool.setStake(t.earningsPoolPerRound[lastUpdateRound].totalStake);
         }
 
+        if (treasuryBalanceCeiling > 0) {
+            uint256 treasuryBalance = livepeerToken().balanceOf(treasury());
+            if (treasuryBalance >= treasuryBalanceCeiling && nextRoundTreasuryRewardCutRate > 0) {
+                // halt treasury contributions until the cut rate param is updated again
+                _setTreasuryRewardCutRate(0);
+            }
+        }
+
         // Create reward based on active transcoder's stake relative to the total active stake
         // rewardTokens = (current mintable tokens for the round * active transcoder stake) / total active stake
-        uint256 rewardTokens = minter().createReward(earningsPool.totalStake, currentRoundTotalActiveStake);
+        IMinter mtr = minter();
+        uint256 totalRewardTokens = mtr.createReward(earningsPool.totalStake, currentRoundTotalActiveStake);
+        uint256 treasuryRewards = PreciseMathUtils.percOf(totalRewardTokens, treasuryRewardCutRate);
+        if (treasuryRewards > 0) {
+            address trsry = treasury();
 
-        updateTranscoderWithRewards(msg.sender, rewardTokens, currentRound, _newPosPrev, _newPosNext);
+            mtr.trustedTransferTokens(trsry, treasuryRewards);
+
+            emit TreasuryReward(msg.sender, trsry, treasuryRewards);
+        }
+
+        uint256 transcoderRewards = totalRewardTokens.sub(treasuryRewards);
+
+        updateTranscoderWithRewards(msg.sender, transcoderRewards, currentRound, _newPosPrev, _newPosNext);
 
         // Set last round that transcoder called reward
         t.lastRewardRound = currentRound;
 
-        emit Reward(msg.sender, rewardTokens);
+        emit Reward(msg.sender, transcoderRewards);
     }
 
     /**
@@ -1131,6 +1190,18 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     function isValidUnbondingLock(address _delegator, uint256 _unbondingLockId) public view returns (bool) {
         // A unbonding lock is only valid if it has a non-zero withdraw round (the default value is zero)
         return delegators[_delegator].unbondingLocks[_unbondingLockId].withdrawRound > 0;
+    }
+
+    /**
+     * @dev Internal version of setTreasuryRewardCutRate. Sets the treasury reward cut rate for the next round and emits
+     * corresponding event.
+     */
+    function _setTreasuryRewardCutRate(uint256 _cutRate) internal {
+        require(PreciseMathUtils.validPerc(_cutRate), "_cutRate is invalid precise percentage");
+
+        nextRoundTreasuryRewardCutRate = _cutRate;
+
+        emit ParameterUpdate("nextRoundTreasuryRewardCutRate");
     }
 
     /**
@@ -1584,6 +1655,10 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      */
     function roundsManager() internal view returns (IRoundsManager) {
         return IRoundsManager(controller.getContract(keccak256("RoundsManager")));
+    }
+
+    function treasury() internal view returns (address) {
+        return controller.getContract(keccak256("Treasury"));
     }
 
     function bondingVotes() internal view returns (IBondingVotes) {

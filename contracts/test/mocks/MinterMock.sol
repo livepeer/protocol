@@ -5,8 +5,13 @@ import "./GenericMock.sol";
 
 contract MinterMock is GenericMock {
     event TrustedWithdrawETH(address to, uint256 amount);
+    event TrustedTransferTokens(address to, uint256 amount);
 
     function trustedWithdrawETH(address _to, uint256 _amount) external {
         emit TrustedWithdrawETH(_to, _amount);
+    }
+
+    function trustedTransferTokens(address _to, uint256 _amount) external {
+        emit TrustedTransferTokens(_to, _amount);
     }
 }
