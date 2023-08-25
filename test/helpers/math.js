@@ -8,7 +8,7 @@ const percPoints = (a, b) => {
 
 // Returns a * (b / c) scaled by PERC_DIVISOR
 // See percOf() in contracts/libraries/MathUtils.sol
-const percOf = (a, b, c) => {
+const percOf = (a, b, c = BigNumber.from(constants.PERC_DIVISOR)) => {
     return _percOf(a, b, c, BigNumber.from(constants.PERC_DIVISOR))
 }
 
@@ -16,7 +16,7 @@ const precise = {
     percPoints: (a, b) => {
         return _percPoints(a, b, constants.PERC_DIVISOR_PRECISE)
     },
-    percOf: (a, b, c) => {
+    percOf: (a, b, c = constants.PERC_DIVISOR_PRECISE) => {
         return _percOf(a, b, c, constants.PERC_DIVISOR_PRECISE)
     }
 }
@@ -25,7 +25,7 @@ const v2 = {
     percPoints: (a, b) => {
         return _percPoints(a, b, constants.PERC_DIVISOR_V2)
     },
-    percOf: (a, b, c) => {
+    percOf: (a, b, c = constants.PERC_DIVISOR_V2) => {
         return _percOf(a, b, c, constants.PERC_DIVISOR_V2)
     }
 }

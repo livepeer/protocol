@@ -3,8 +3,12 @@ import {GenericMock__factory} from "../../typechain"
 import {contractId} from "../../utils/helpers"
 
 const setupIntegrationTest = deployments.createFixture(
-    async ({deployments, getNamedAccounts, ethers}) => {
-        const fixture = await deployments.fixture(["Contracts"])
+    async (
+        {deployments, getNamedAccounts, ethers},
+        opts?: { tags: string[] }
+    ) => {
+        const tags = opts?.tags ?? ["Contracts"]
+        const fixture = await deployments.fixture(tags)
         const {deployer} = await getNamedAccounts()
         const signer = await ethers.getSigner(deployer)
 
@@ -33,4 +37,4 @@ const setupIntegrationTest = deployments.createFixture(
     }
 )
 
-module.exports = setupIntegrationTest
+export default setupIntegrationTest
