@@ -69,6 +69,15 @@ export default class ContractDeployer {
         return this.controller
     }
 
+    async fetchDeployedController(): Promise<Controller> {
+        const deployment = await this.deployments.get("Controller")
+        this.controller = (await ethers.getContractAt(
+            "Controller",
+            deployment.address
+        )) as Controller
+        return this.controller
+    }
+
     async deployAndRegister(config: {
         contract: string
         name: string
