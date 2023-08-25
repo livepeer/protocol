@@ -555,6 +555,17 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // Current bonded amount
         uint256 currentBondedAmount = del.bondedAmount;
 
+        // Requirements for a third party caller that is not the L2Migrator
+        if (msg.sender != _owner && msg.sender != l2Migrator()) {
+            // Does not trigger self-delegation
+            // Does not change the delegate if it is already non-null
+            if (delegatorStatus(_owner) == DelegatorStatus.Unbonded) {
+                require(_to != _owner, "INVALID_DELEGATE");
+            } else {
+                require(currentDelegate == _to, "INVALID_DELEGATE_CHANGE");
+            }
+        }
+
         if (delegatorStatus(_owner) == DelegatorStatus.Unbonded) {
             // New delegate
             // Set start round
@@ -563,8 +574,6 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             // Unbonded state = no existing delegate and no bonded stake
             // Thus, delegation amount = provided amount
         } else if (currentBondedAmount > 0 && currentDelegate != _to) {
-            // Prevents third-party caller to change the delegate of a delegator
-            require(msg.sender == _owner || msg.sender == l2Migrator(), "INVALID_CALLER");
             // A registered transcoder cannot delegate its bonded stake toward another address
             // because it can only be delegated toward itself
             // In the future, if delegation towards another registered transcoder as an already
@@ -678,13 +687,12 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // the `autoClaimEarnings` modifier has been replaced with its internal function as a `Stack too deep` error work-around
         _autoClaimEarnings(msg.sender);
         Delegator storage oldDel = delegators[msg.sender];
+        Delegator storage newDel = delegators[_delegator];
         // Cache delegate address of caller before unbondWithHint because
         // if unbondWithHint is for a full unbond the caller's delegate address will be set to null
         address oldDelDelegate = oldDel.delegateAddress;
 
         unbondWithHint(_amount, _oldDelegateNewPosPrev, _oldDelegateNewPosNext);
-
-        Delegator storage newDel = delegators[_delegator];
 
         uint256 oldDelUnbondingLockId = oldDel.nextUnbondingLockId.sub(1);
         uint256 withdrawRound = oldDel.unbondingLocks[oldDelUnbondingLockId].withdrawRound;
@@ -709,6 +717,10 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
         // Rebond lock for new owner
         if (newDel.delegateAddress == address(0) && newDel.bondedAmount == 0) {
+            // Requirements for caller
+            // Does not trigger self-delegation
+            require(oldDelDelegate != _delegator, "INVALID_DELEGATOR");
+
             newDel.delegateAddress = oldDelDelegate;
         }
 
