@@ -9,6 +9,8 @@ interface ICheatCodes {
 
     function stopPrank() external;
 
+    function expectRevert(bytes4 message) external;
+
     function expectRevert(bytes calldata) external;
 
     function expectEmit(
