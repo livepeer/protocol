@@ -11,7 +11,8 @@ contract BondingVotesMock is GenericMock {
         address delegateAddress,
         uint256 delegatedAmount,
         uint256 lastClaimRound,
-        uint256 lastRewardRound
+        uint256 lastRewardRound,
+        bool isActiveTranscoder
     );
     event CheckpointTotalActiveStake(uint256 totalStake, uint256 round);
 
@@ -22,7 +23,8 @@ contract BondingVotesMock is GenericMock {
         address _delegateAddress,
         uint256 _delegatedAmount,
         uint256 _lastClaimRound,
-        uint256 _lastRewardRound
+        uint256 _lastRewardRound,
+        bool _isActiveTranscoder
     ) external {
         emit CheckpointBondingState(
             _account,
@@ -31,7 +33,8 @@ contract BondingVotesMock is GenericMock {
             _delegateAddress,
             _delegatedAmount,
             _lastClaimRound,
-            _lastRewardRound
+            _lastRewardRound,
+            _isActiveTranscoder
         );
     }
 

@@ -35,7 +35,8 @@ interface IBondingVotes is IVotes {
         address _delegateAddress,
         uint256 _delegatedAmount,
         uint256 _lastClaimRound,
-        uint256 _lastRewardRound
+        uint256 _lastRewardRound,
+        bool _isActiveTranscoder
     ) external;
 
     function checkpointTotalActiveStake(uint256 _totalStake, uint256 _round) external;

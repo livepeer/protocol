@@ -44,11 +44,15 @@ contract BondingVotes is ManagerProxyTarget, IBondingVotes {
          * @dev The last round during which the checkpointed account called {BondingManager-reward}. This is needed to
          * when calculating pending rewards for a delegator to this transcoder, to find the last earning pool available
          * for a given round. In that case we start from the delegator checkpoint and then fetch its delegate address
-         * checkpoint as well to find the last earning pool.
-         *
-         * Notice that this is the only field that comes from the Transcoder struct in BondingManager, not Delegator.
+         * checkpoint as well to find the last earning pool. This field comes from the Transcoder struct in
+         * BondingManager, not Delegator.
          */
         uint256 lastRewardRound;
+        /**
+         * @dev Whether the account was registered as an active transcoder when this checkpoint was made. This field is
+         * computed from the Transcoder struct in BondingManager throught the `isActiveTranscoder` function.
+         */
+        bool isActiveTranscoder;
     }
 
     /**
@@ -262,7 +266,8 @@ contract BondingVotes is ManagerProxyTarget, IBondingVotes {
         address _delegateAddress,
         uint256 _delegatedAmount,
         uint256 _lastClaimRound,
-        uint256 _lastRewardRound
+        uint256 _lastRewardRound,
+        bool _isActiveTranscoder
     ) external virtual onlyBondingManager {
         if (_startRound != clock() + 1) {
             revert InvalidStartRound(_startRound, clock() + 1);
@@ -282,7 +287,8 @@ contract BondingVotes is ManagerProxyTarget, IBondingVotes {
             delegateAddress: _delegateAddress,
             delegatedAmount: _delegatedAmount,
             lastClaimRound: _lastClaimRound,
-            lastRewardRound: _lastRewardRound
+            lastRewardRound: _lastRewardRound,
+            isActiveTranscoder: _isActiveTranscoder
         });
         checkpoints.data[_startRound] = bond;
 
@@ -373,8 +379,8 @@ contract BondingVotes is ManagerProxyTarget, IBondingVotes {
             amount = 0;
         } else if (isTranscoder) {
             // Address is a registered transcoder so we use its delegated amount. This includes self and delegated stake
-            // as well as any accrued rewards, even unclaimed ones
-            amount = bond.delegatedAmount;
+            // as well as any accrued rewards, even unclaimed ones. Notice that only active transcoders get voting power.
+            amount = bond.isActiveTranscoder ? bond.delegatedAmount : 0;
         } else {
             // Address is NOT a registered transcoder so we calculate its cumulative stake for the voting power
             amount = delegatorCumulativeStakeAt(bond, _round);
@@ -395,11 +401,9 @@ contract BondingVotes is ManagerProxyTarget, IBondingVotes {
             emit DelegateChanged(_account, previousDelegate, newDelegate);
         }
 
-        bool isTranscoder = newDelegate == _account;
-        bool wasTranscoder = previousDelegate == _account;
-        // we want to register zero "delegate votes" when the account is/was not a transcoder
-        uint256 previousDelegateVotes = wasTranscoder ? previous.delegatedAmount : 0;
-        uint256 currentDelegateVotes = isTranscoder ? current.delegatedAmount : 0;
+        // we want to register zero "delegate votes" when the account is/was not an active transcoder
+        uint256 previousDelegateVotes = previous.isActiveTranscoder ? previous.delegatedAmount : 0;
+        uint256 currentDelegateVotes = current.isActiveTranscoder ? current.delegatedAmount : 0;
         if (previousDelegateVotes != currentDelegateVotes) {
             emit DelegateVotesChanged(_account, previousDelegateVotes, currentDelegateVotes);
         }
@@ -461,19 +465,22 @@ contract BondingVotes is ManagerProxyTarget, IBondingVotes {
         view
         returns (uint256)
     {
-        EarningsPool.Data memory startPool = getTranscoderEarningsPoolForRound(
-            bond.delegateAddress,
-            bond.lastClaimRound
-        );
+        address transcoder = bond.delegateAddress;
+        EarningsPool.Data memory startPool = getTranscoderEarningsPoolForRound(transcoder, bond.lastClaimRound);
 
-        (uint256 rewardRound, EarningsPool.Data memory endPool) = getLastTranscoderRewardsEarningsPool(
-            bond.delegateAddress,
-            _round
-        );
+        (
+            BondingCheckpoint storage transcoderBond,
+            EarningsPool.Data memory endPool
+        ) = getLastTranscoderRewardsEarningsPool(transcoder, _round);
 
-        if (rewardRound < bond.lastClaimRound) {
-            // If the transcoder hasn't called reward() since the last time the delegator claimed earnings, there wil be
-            // no rewards to add to the delegator's stake so we just return the originally bonded amount.
+        if (!transcoderBond.isActiveTranscoder) {
+            // Delegating to an inactive transcoder should not provide any voting power.
+            return 0;
+        }
+
+        if (transcoderBond.lastRewardRound < bond.lastClaimRound) {
+            // If the transcoder hasn't called reward() since the last time the delegator claimed earnings, there will
+            // be no rewards to add to the delegator's stake so we just return the originally bonded amount.
             return bond.bondedAmount;
         }
 
@@ -493,16 +500,16 @@ contract BondingVotes is ManagerProxyTarget, IBondingVotes {
      * returns a zero earning pool is if the transcoder had never called reward() before _round.
      * @param _transcoder Address of the transcoder to look for
      * @param _round Past round at which we want the valid earning pool from
-     * @return rewardRound Round in which the returned earning pool was calculated.
+     * @return bond The BondingCheckpoint from the transcoder at the given _round.
      * @return pool EarningsPool.Data struct with the last initialized earning pool.
      */
     function getLastTranscoderRewardsEarningsPool(address _transcoder, uint256 _round)
         internal
         view
-        returns (uint256 rewardRound, EarningsPool.Data memory pool)
+        returns (BondingCheckpoint storage bond, EarningsPool.Data memory pool)
     {
-        BondingCheckpoint storage bond = getBondingCheckpointAt(_transcoder, _round);
-        rewardRound = bond.lastRewardRound;
+        bond = getBondingCheckpointAt(_transcoder, _round);
+        uint256 rewardRound = bond.lastRewardRound;
 
         if (rewardRound > 0) {
             pool = getTranscoderEarningsPoolForRound(_transcoder, rewardRound);

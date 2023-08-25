@@ -505,13 +505,16 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         t.feeShare = _feeShare;
 
         if (!transcoderPool.contains(msg.sender)) {
-            tryToJoinActiveSet(
+            bool joined = tryToJoinActiveSet(
                 msg.sender,
                 delegators[msg.sender].delegatedAmount,
                 currentRound.add(1),
                 _newPosPrev,
                 _newPosNext
             );
+            if (joined) {
+                _checkpointBondingState(msg.sender, delegators[msg.sender], t);
+            }
         }
 
         emit TranscoderUpdate(msg.sender, _rewardCut, _feeShare);
@@ -1388,6 +1391,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * @param _transcoder The transcoder to insert into the transcoder pool
      * @param _totalStake The total stake for '_transcoder'
      * @param _activationRound The round in which the transcoder should become active
+     * @return True if the transcoder was added to the active set, false otherwise
      */
     function tryToJoinActiveSet(
         address _transcoder,
@@ -1395,17 +1399,20 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         uint256 _activationRound,
         address _newPosPrev,
         address _newPosNext
-    ) internal {
+    ) internal returns (bool) {
         uint256 pendingNextRoundTotalActiveStake = nextRoundTotalActiveStake;
 
         if (transcoderPool.isFull()) {
             address lastTranscoder = transcoderPool.getLast();
-            uint256 lastStake = transcoderTotalStake(lastTranscoder);
+            Transcoder storage lastT = transcoders[lastTranscoder];
+            Delegator storage lastD = delegators[lastTranscoder];
+
+            uint256 lastStake = lastD.delegatedAmount;
 
             // If the pool is full and the transcoder has less stake than the least stake transcoder in the pool
             // then the transcoder is unable to join the active set for the next round
             if (_totalStake <= lastStake) {
-                return;
+                return false;
             }
 
             // Evict the least stake transcoder from the active set for the next round
@@ -1414,10 +1421,12 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             // Not zeroing the stake on the current round's 'EarningsPool' saves gas and should have no side effects as long as
             // 'EarningsPool.setStake()' is called whenever a transcoder becomes active again.
             transcoderPool.remove(lastTranscoder);
-            transcoders[lastTranscoder].deactivationRound = _activationRound;
+            lastT.deactivationRound = _activationRound;
             pendingNextRoundTotalActiveStake = pendingNextRoundTotalActiveStake.sub(lastStake);
 
             emit TranscoderDeactivated(lastTranscoder, _activationRound);
+
+            _checkpointBondingState(lastTranscoder, lastD, lastT);
         }
 
         transcoderPool.insert(_transcoder, _totalStake, _newPosPrev, _newPosNext);
@@ -1429,6 +1438,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         t.earningsPoolPerRound[_activationRound].setStake(_totalStake);
         nextRoundTotalActiveStake = pendingNextRoundTotalActiveStake;
         emit TranscoderActivated(_transcoder, _activationRound);
+
+        return true;
     }
 
     /**
@@ -1585,8 +1596,9 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     }
 
     /**
-     * @notice Checkpoints a delegator state after changes, to be used for historical voting power calculations in
-     * on-chain governor logic.
+     * @dev Checkpoints a delegator state after changes, to be used for historical voting power calculations in
+     * on-chain governor logic. This function MUST be called exactly once per transaction for each account that was
+     * modified. It can be called either directly or through the {autoCheckpoint} modifier.
      */
     function _checkpointBondingState(
         address _owner,
@@ -1597,6 +1609,15 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // in the delegators doesn't get updated on bond or claim earnings though, so we use currentRound() + 1
         // which is the only guaranteed round where the currently stored stake will be active.
         uint256 startRound = roundsManager().currentRound() + 1;
+
+        uint256 activationRound = _transcoder.activationRound;
+        uint256 deactivationRound = _transcoder.deactivationRound;
+        assert(
+            // Checkpoints must be constant from the startRound forward, so require (de)activation rounds to be up to
+            // the start round. This works because these are only ever set to the next round (the start round itself).
+            activationRound <= startRound && (deactivationRound <= startRound || deactivationRound == MAX_FUTURE_ROUND)
+        );
+
         bondingVotes().checkpointBondingState(
             _owner,
             startRound,
@@ -1604,7 +1625,9 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             _delegator.delegateAddress,
             _delegator.delegatedAmount,
             _delegator.lastClaimRound,
-            _transcoder.lastRewardRound
+            _transcoder.lastRewardRound,
+            // Same logic as {isActiveTranscoder} but using startRound instead of currentRound.
+            activationRound <= startRound && startRound < deactivationRound
         );
     }
 
