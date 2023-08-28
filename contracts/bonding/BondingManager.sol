@@ -587,6 +587,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             delegationAmount = delegationAmount.add(currentBondedAmount);
 
             decreaseTotalStake(currentDelegate, currentBondedAmount, _oldDelegateNewPosPrev, _oldDelegateNewPosNext);
+            // currentDelegate is always different than msg.sender so no need to avoid double checkpointing
+            _checkpointBondingState(currentDelegate, delegators[currentDelegate], transcoders[currentDelegate]);
         }
 
         {
@@ -610,6 +612,10 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         del.bondedAmount = currentBondedAmount.add(_amount);
 
         increaseTotalStake(_to, delegationAmount, _currDelegateNewPosPrev, _currDelegateNewPosNext);
+        if (_to != _owner) {
+            // Avoid double checkpointing of the transcoder if it's a self-bond
+            _checkpointBondingState(_to, delegators[_to], transcoders[_to]);
+        }
 
         if (_amount > 0) {
             // Transfer the LPT to the Minter
@@ -779,6 +785,10 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
         // If msg.sender was resigned this statement will only decrease delegators[currentDelegate].delegatedAmount
         decreaseTotalStake(currentDelegate, _amount, _newPosPrev, _newPosNext);
+        if (currentDelegate != msg.sender) {
+            // Avoid double checkpointing of the transcoder if it's a self-unbond
+            _checkpointBondingState(currentDelegate, delegators[currentDelegate], transcoders[currentDelegate]);
+        }
 
         emit Unbond(currentDelegate, msg.sender, unbondingLockId, _amount, withdrawRound);
     }
@@ -1287,24 +1297,12 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     }
 
     /**
-     * @dev Increase the total stake for a delegate and updates its 'lastActiveStakeUpdateRound'
+     * @dev Increase the total stake for a delegate and updates its 'lastActiveStakeUpdateRound'. Notice that this
+     * function does not checkpoint the delegate and callers should take care of it themselves.
      * @param _delegate The delegate to increase the stake for
      * @param _amount The amount to increase the stake for '_delegate' by
      */
     function increaseTotalStake(
-        address _delegate,
-        uint256 _amount,
-        address _newPosPrev,
-        address _newPosNext
-    ) internal autoCheckpoint(_delegate) {
-        return increaseTotalStakeUncheckpointed(_delegate, _amount, _newPosPrev, _newPosNext);
-    }
-
-    /**
-     * @dev Implementation of increaseTotalStake that does not checkpoint the caller, to be used by functions that
-     * guarantee the checkpointing themselves.
-     */
-    function increaseTotalStakeUncheckpointed(
         address _delegate,
         uint256 _amount,
         address _newPosPrev,
@@ -1354,7 +1352,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         uint256 _amount,
         address _newPosPrev,
         address _newPosNext
-    ) internal autoCheckpoint(_delegate) {
+    ) internal {
         Transcoder storage t = transcoders[_delegate];
 
         uint256 currStake = transcoderTotalStake(_delegate);
@@ -1485,7 +1483,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // the earnings claiming algorithm and instead that amount is accounted for in the transcoder's cumulativeRewards field
         earningsPool.updateCumulativeRewardFactor(prevEarningsPool, delegatorsRewards);
         // Update transcoder's total stake with rewards
-        increaseTotalStakeUncheckpointed(_transcoder, _rewards, _newPosPrev, _newPosNext);
+        increaseTotalStake(_transcoder, _rewards, _newPosPrev, _newPosNext);
     }
 
     /**
@@ -1579,9 +1577,15 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // Delete lock
         delete del.unbondingLocks[_unbondingLockId];
 
-        increaseTotalStake(del.delegateAddress, amount, _newPosPrev, _newPosNext);
+        address delegate = del.delegateAddress;
 
-        emit Rebond(del.delegateAddress, _delegator, _unbondingLockId, amount);
+        increaseTotalStake(delegate, amount, _newPosPrev, _newPosNext);
+        if (delegate != _delegator) {
+            // Avoid double checkpointing of the transcoder if it's a self-rebond
+            _checkpointBondingState(delegate, delegators[delegate], transcoders[delegate]);
+        }
+
+        emit Rebond(delegate, _delegator, _unbondingLockId, amount);
     }
 
     /**
