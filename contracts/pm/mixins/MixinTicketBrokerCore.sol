@@ -39,7 +39,8 @@ abstract contract MixinTicketBrokerCore is MixinContractRegistry, MReserve, MTic
     modifier processDeposit(address _sender, uint256 _amount) {
         Sender storage sender = senders[_sender];
         sender.deposit = sender.deposit.add(_amount);
-        if (_isUnlockInProgress(sender)) {
+        // If the sender themselves funds their deposit, cancel the unlock
+        if (msg.sender == _sender && _isUnlockInProgress(sender)) {
             _cancelUnlock(sender, _sender);
         }
 
@@ -52,7 +53,8 @@ abstract contract MixinTicketBrokerCore is MixinContractRegistry, MReserve, MTic
     modifier processReserve(address _sender, uint256 _amount) {
         Sender storage sender = senders[_sender];
         addReserve(_sender, _amount);
-        if (_isUnlockInProgress(sender)) {
+        // If the sender themselves funds their reserve, cancel the unlock
+        if (msg.sender == _sender && _isUnlockInProgress(sender)) {
             _cancelUnlock(sender, _sender);
         }
 

@@ -667,6 +667,54 @@ describe("TicketBroker", () => {
             expect(tx).to.changeEtherBalance(funder, -(deposit + reserve))
             expect(tx).to.changeEtherBalance(fixture.minter, deposit + reserve)
         })
+
+        describe("msg.sender = _addr", () => {
+            it("resets an unlock request in progress", async () => {
+                await broker.fundDeposit({value: 1000})
+                await broker.unlock()
+
+                expect(await broker.isUnlockInProgress(sender)).to.be.true
+
+                // msg.value > 0
+                await broker.fundDepositAndReserveFor(sender, 1, 1, {
+                    value: 2
+                })
+
+                expect(await broker.isUnlockInProgress(sender)).to.be.false
+
+                await broker.unlock()
+
+                // msg.value = 0
+                await broker.fundDepositAndReserveFor(sender, 0, 0)
+
+                expect(await broker.isUnlockInProgress(sender)).to.be.false
+            })
+        })
+
+        describe("msg.sender != _addr", () => {
+            it("does not reset an unlock request in progress", async () => {
+                await broker.fundDeposit({value: 1000})
+                await broker.unlock()
+
+                expect(await broker.isUnlockInProgress(sender)).to.be.true
+
+                // msg.value > 0
+                await broker
+                    .connect(funder)
+                    .fundDepositAndReserveFor(sender, 1, 1, {
+                        value: 2
+                    })
+
+                expect(await broker.isUnlockInProgress(sender)).to.be.true
+
+                // msg.value = 0
+                await broker
+                    .connect(funder)
+                    .fundDepositAndReserveFor(sender, 0, 0)
+
+                expect(await broker.isUnlockInProgress(sender)).to.be.true
+            })
+        })
     })
 
     describe("redeemWinningTicket", () => {

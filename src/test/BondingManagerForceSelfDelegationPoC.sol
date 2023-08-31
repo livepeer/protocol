@@ -15,16 +15,9 @@ contract BondingManagerForceSelfDelegationPoC is GovernorBaseTest {
 
     address public constant MINTER = 0xc20DE37170B45774e6CD3d2304017fc962f27252;
 
-    uint256 public testAccountCtr = 1;
     address public attacker;
     address public delegator;
     address public transcoder;
-
-    function newAddr() public returns (address) {
-        address addr = CHEATS.addr(testAccountCtr);
-        testAccountCtr++;
-        return addr;
-    }
 
     function setUp() public {
         // Setup accounts

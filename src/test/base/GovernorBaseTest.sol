@@ -14,6 +14,14 @@ contract GovernorBaseTest is DSTest {
 
     bytes20 internal gitCommitHash;
 
+    uint256 public testAccountCtr = 1;
+
+    function newAddr() public returns (address) {
+        address addr = CHEATS.addr(testAccountCtr);
+        testAccountCtr++;
+        return addr;
+    }
+
     function stageAndExecuteOne(
         address _target,
         uint256 _value,

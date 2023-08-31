@@ -9,15 +9,8 @@ import "./interfaces/ICheatCodes.sol";
 contract TicketBrokerForceCancelUnlockPoC is GovernorBaseTest {
     TicketBroker public constant TICKET_BROKER = TicketBroker(0xa8bB618B1520E284046F3dFc448851A1Ff26e41B);
 
-    uint256 public testAccountCtr = 1;
     address public attacker;
     address public broadcaster;
-
-    function newAddr() public returns (address) {
-        address addr = CHEATS.addr(testAccountCtr);
-        testAccountCtr++;
-        return addr;
-    }
 
     function setUp() public {
         // Setup accounts
