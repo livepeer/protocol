@@ -43,7 +43,7 @@ describe("TicketBroker", () => {
         sender = signers[0].address
         recipient = signers[1].address
         funder = signers[3]
-        fixture = new Fixture(web3)
+        fixture = new Fixture(ethers.provider)
         await fixture.deploy()
 
         broker = await (
@@ -937,7 +937,7 @@ describe("TicketBroker", () => {
             const recipientRand = 5
             const recipientRandHash = web3.utils.soliditySha3(recipientRand)
 
-            const sig = await signMsg("junk", sender)
+            const sig = await signMsg("0xdabbad00", sender)
 
             await expect(
                 broker.redeemWinningTicket(

@@ -21,7 +21,7 @@ describe("RoundsManager", () => {
 
     before(async () => {
         signers = await ethers.getSigners()
-        fixture = new Fixture(web3)
+        fixture = new Fixture(ethers.provider)
         await fixture.deploy()
 
         roundsManager = await fixture.deployAndRegister(

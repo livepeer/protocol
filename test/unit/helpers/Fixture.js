@@ -3,8 +3,8 @@ import {contractId} from "../../../utils/helpers"
 import {ethers} from "hardhat"
 
 export default class Fixture {
-    constructor(web3) {
-        this.rpc = new RPC(web3)
+    constructor(provider) {
+        this.rpc = new RPC(provider)
         this.commitHash = "0x3031323334353637383930313233343536373839"
     }
 
