@@ -1,5 +1,5 @@
 import Fixture from "./helpers/Fixture"
-import {web3, ethers} from "hardhat"
+import {ethers} from "hardhat"
 
 import chai, {expect, assert} from "chai"
 import {solidity} from "ethereum-waffle"
@@ -12,7 +12,7 @@ describe("ServiceRegistry", () => {
     let controller
     before(async () => {
         signers = await ethers.getSigners()
-        fixture = new Fixture(web3)
+        fixture = new Fixture(ethers.provider)
         // Use dummy Controller in these unit tests
         // We are testing the logic of ServiceRegistry directly so we do not
         // interact with the contract via a proxy

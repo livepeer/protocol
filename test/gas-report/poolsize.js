@@ -1,5 +1,5 @@
 import RPC from "../../utils/rpc"
-import {web3, ethers} from "hardhat"
+import {ethers} from "hardhat"
 import setupIntegrationTest from "../helpers/setupIntegrationTest"
 
 import chai from "chai"
@@ -40,7 +40,7 @@ describe("transcoder pool size gas report", () => {
     }
 
     before(async () => {
-        rpc = new RPC(web3)
+        rpc = new RPC(ethers.provider)
 
         const fixture = await setupIntegrationTest()
         controller = await ethers.getContractAt(

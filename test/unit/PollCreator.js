@@ -1,5 +1,5 @@
 import Fixture from "./helpers/Fixture"
-import {web3, ethers} from "hardhat"
+import {ethers} from "hardhat"
 
 import {expect, use} from "chai"
 import {solidity} from "ethereum-waffle"
@@ -22,7 +22,7 @@ describe("PollCreator", () => {
     before(async () => {
         ;[, mockBondingManagerEOA] = await ethers.getSigners()
 
-        fixture = new Fixture(web3)
+        fixture = new Fixture(ethers.provider)
 
         bondingManagerMock = await smock.fake(
             "contracts/polling/PollCreator.sol:IBondingManager",

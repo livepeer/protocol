@@ -1,6 +1,6 @@
 import Fixture from "./helpers/Fixture"
 import {contractId} from "../../utils/helpers"
-import {web3, ethers} from "hardhat"
+import {ethers} from "hardhat"
 
 import chai, {expect, assert} from "chai"
 import {solidity} from "ethereum-waffle"
@@ -14,7 +14,7 @@ describe("Controller", () => {
 
     before(async () => {
         signers = await ethers.getSigners()
-        fixture = new Fixture(web3)
+        fixture = new Fixture(ethers.provider)
         await fixture.deploy()
         controller = fixture.controller
         commitHash = fixture.commitHash

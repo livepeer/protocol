@@ -38,7 +38,7 @@ describe("ManagerProxy", () => {
 
     before(async () => {
         signers = await ethers.getSigners()
-        fixture = new Fixture(web3)
+        fixture = new Fixture(ethers.provider)
         await fixture.deploy()
         await fixture.deployAndRegister(
             await ethers.getContractFactory("ManagerProxyTargetMockV1"),
