@@ -275,6 +275,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         whenSystemNotPaused
         currentRoundInitialized
         autoClaimEarnings(msg.sender)
+        autoCheckpoint(msg.sender)
     {
         require(_recipient != address(0), "invalid recipient");
         uint256 fees = delegators[msg.sender].fees;
