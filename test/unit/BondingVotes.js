@@ -861,7 +861,7 @@ describe("BondingVotes", () => {
                     const functionData = encodeCheckpointBondingState({
                         account,
                         startRound,
-                        bondedAmount: 0, // not used in these tests
+                        bondedAmount: 1, // required to be considered a registered transcoder
                         delegateAddress: account,
                         delegatedAmount: 0, // not used in these tests
                         lastClaimRound: startRound - 1,
