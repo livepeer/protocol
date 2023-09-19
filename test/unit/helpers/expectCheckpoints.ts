@@ -1,6 +1,6 @@
 import {assert} from "chai"
 import {ethers} from "ethers"
-import Fixture from "./Fixture"
+import {BondingVotesMock} from "../../../typechain"
 
 type Checkpoint = {
     account: string
@@ -10,10 +10,11 @@ type Checkpoint = {
     delegatedAmount: number
     lastClaimRound: number
     lastRewardRound: number
+    isActiveTranscoder: boolean
 }
 
 export default async function expectCheckpoints(
-    fixture: Fixture,
+    fixture: { bondingVotes: BondingVotesMock },
     tx: ethers.providers.TransactionReceipt,
     ...checkpoints: Checkpoint[]
 ) {
@@ -21,7 +22,7 @@ export default async function expectCheckpoints(
     const events = await fixture.bondingVotes.queryFilter(
         filter,
         tx.blockNumber,
-        tx.blockNumber
+        tx.blockNumber + 1
     )
 
     assert.equal(events.length, checkpoints.length, "Checkpoint count")
@@ -36,7 +37,8 @@ export default async function expectCheckpoints(
             delegateAddress: args[3].toString(),
             delegatedAmount: args[4].toNumber(),
             lastClaimRound: args[5].toNumber(),
-            lastRewardRound: args[6].toNumber()
+            lastRewardRound: args[6].toNumber(),
+            isActiveTranscoder: args[7] as boolean
         }
 
         for (const keyStr of Object.keys(expected)) {

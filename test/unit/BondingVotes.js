@@ -76,7 +76,8 @@ describe("BondingVotes", () => {
         delegateAddress,
         delegatedAmount,
         lastClaimRound,
-        lastRewardRound
+        lastRewardRound,
+        isActiveTranscoder
     }) => {
         return bondingVotes.interface.encodeFunctionData(
             "checkpointBondingState",
@@ -87,7 +88,8 @@ describe("BondingVotes", () => {
                 delegateAddress,
                 delegatedAmount,
                 lastClaimRound,
-                lastRewardRound
+                lastRewardRound,
+                isActiveTranscoder
             ]
         )
     }
@@ -351,7 +353,8 @@ describe("BondingVotes", () => {
                     transcoder.address,
                     1000,
                     currentRound,
-                    0
+                    0,
+                    true
                 )
             await expect(tx).to.be.revertedWith(
                 `InvalidCaller("${signers[4].address}", "${fixture.bondingManager.address}")`
@@ -366,7 +369,8 @@ describe("BondingVotes", () => {
                 delegateAddress: transcoder.address,
                 delegatedAmount: 1000,
                 lastClaimRound: currentRound + 1,
-                lastRewardRound: 0
+                lastRewardRound: 0,
+                isActiveTranscoder: true
             })
 
             await expect(
@@ -390,7 +394,8 @@ describe("BondingVotes", () => {
                 delegateAddress: transcoder.address,
                 delegatedAmount: 1000,
                 lastClaimRound: currentRound - 1,
-                lastRewardRound: 0
+                lastRewardRound: 0,
+                isActiveTranscoder: true
             })
 
             await expect(
@@ -414,7 +419,8 @@ describe("BondingVotes", () => {
                 delegateAddress: transcoder.address,
                 delegatedAmount: 1000,
                 lastClaimRound: currentRound + 1,
-                lastRewardRound: 0
+                lastRewardRound: 0,
+                isActiveTranscoder: true
             })
 
             await expect(
@@ -438,7 +444,8 @@ describe("BondingVotes", () => {
                 delegateAddress: transcoder.address,
                 delegatedAmount: 1000,
                 lastClaimRound: currentRound - 1,
-                lastRewardRound: 0
+                lastRewardRound: 0,
+                isActiveTranscoder: true
             })
             await fixture.bondingManager.execute(
                 bondingVotes.address,
@@ -454,7 +461,8 @@ describe("BondingVotes", () => {
                 delegateAddress: transcoder.address,
                 delegatedAmount: 1000,
                 lastClaimRound: currentRound - 1,
-                lastRewardRound: 0
+                lastRewardRound: 0,
+                isActiveTranscoder: true
             })
             await fixture.bondingManager.execute(
                 bondingVotes.address,
@@ -478,7 +486,8 @@ describe("BondingVotes", () => {
                     delegateAddress: transcoder.address,
                     delegatedAmount: amount,
                     lastClaimRound: currentRound,
-                    lastRewardRound: 0
+                    lastRewardRound: 0,
+                    isActiveTranscoder: true
                 })
                 await fixture.bondingManager.execute(
                     bondingVotes.address,
@@ -525,7 +534,8 @@ describe("BondingVotes", () => {
                     delegateAddress,
                     delegatedAmount,
                     lastClaimRound: currentRound,
-                    lastRewardRound: 0
+                    lastRewardRound: 0,
+                    isActiveTranscoder: delegateAddress === account
                 })
                 return await fixture.bondingManager.execute(
                     bondingVotes.address,
@@ -690,7 +700,8 @@ describe("BondingVotes", () => {
                     delegateAddress: transcoder.address,
                     delegatedAmount: 1000,
                     lastClaimRound: startRound - 1,
-                    lastRewardRound: 0
+                    lastRewardRound: 0,
+                    isActiveTranscoder: true
                 })
                 await fixture.bondingManager.execute(
                     bondingVotes.address,
@@ -790,16 +801,21 @@ describe("BondingVotes", () => {
         })
 
         describe("for transcoder", () => {
-            const makeCheckpoint = (startRound, delegatedAmount) =>
+            const makeCheckpoint = (
+                startRound,
+                delegatedAmount,
+                isActiveTranscoder = true
+            ) =>
                 inRound(startRound - 1, async () => {
                     const functionData = encodeCheckpointBondingState({
                         account: transcoder.address,
                         startRound,
-                        bondedAmount: 1, // doesn't matter, shouldn't be used
+                        bondedAmount: 1, // needs to be non-zero
                         delegateAddress: transcoder.address,
                         delegatedAmount,
                         lastClaimRound: startRound - 1,
-                        lastRewardRound: 0
+                        lastRewardRound: 0,
+                        isActiveTranscoder
                     })
                     await fixture.bondingManager.execute(
                         bondingVotes.address,
@@ -847,6 +863,25 @@ describe("BondingVotes", () => {
                     ["2000", transcoder.address]
                 )
             })
+
+            it("should not provide voting power if inactive", async () => {
+                await makeCheckpoint(currentRound - 10, 1000, false)
+                await makeCheckpoint(currentRound - 5, 2000, false)
+
+                const checkRound = async round => {
+                    assert.deepEqual(
+                        await bondingVotes
+                            .getBondingStateAt(transcoder.address, round)
+                            .then(t => t.map(v => v.toString())),
+                        ["0", transcoder.address]
+                    )
+                }
+
+                await checkRound(currentRound - 10)
+                await checkRound(currentRound - 7)
+                await checkRound(currentRound - 5)
+                await checkRound(currentRound)
+            })
         })
 
         describe("for delegator", () => {
@@ -855,7 +890,8 @@ describe("BondingVotes", () => {
             const checkpointTranscoder = ({
                 account,
                 startRound,
-                lastRewardRound
+                lastRewardRound,
+                isActiveTranscoder = true
             }) =>
                 inRound(startRound - 1, async () => {
                     const functionData = encodeCheckpointBondingState({
@@ -865,7 +901,8 @@ describe("BondingVotes", () => {
                         delegateAddress: account,
                         delegatedAmount: 0, // not used in these tests
                         lastClaimRound: startRound - 1,
-                        lastRewardRound
+                        lastRewardRound,
+                        isActiveTranscoder
                     })
                     await fixture.bondingManager.execute(
                         bondingVotes.address,
@@ -903,7 +940,8 @@ describe("BondingVotes", () => {
                         delegateAddress,
                         delegatedAmount: 0, // not used for delegators
                         lastClaimRound,
-                        lastRewardRound: 0 // not used for delegators
+                        lastRewardRound: 0, // not used for delegators
+                        isActiveTranscoder: false
                     })
                     await fixture.bondingManager.execute(
                         bondingVotes.address,
@@ -1108,6 +1146,43 @@ describe("BondingVotes", () => {
                         .getBondingStateAt(delegator.address, currentRound)
                         .then(t => t.map(v => v.toString())),
                     ["5000", transcoder.address]
+                )
+            })
+
+            it("should return zero if the delegated transcoder is not active on queried round", async () => {
+                await checkpointDelegator({
+                    startRound: currentRound - 9,
+                    bondedAmount: 1000,
+                    delegateAddress: transcoder.address,
+                    lastClaimRound: currentRound - 10
+                })
+
+                await checkpointTranscoder({
+                    account: transcoder.address,
+                    startRound: currentRound - 1,
+                    lastRewardRound: 0,
+                    isActiveTranscoder: false
+                })
+
+                assert.deepEqual(
+                    await bondingVotes
+                        .getBondingStateAt(delegator.address, currentRound - 1)
+                        .then(t => t.map(v => v.toString())),
+                    ["0", transcoder.address]
+                )
+                assert.deepEqual(
+                    await bondingVotes
+                        .getBondingStateAt(delegator.address, currentRound)
+                        .then(t => t.map(v => v.toString())),
+                    ["0", transcoder.address]
+                )
+
+                // before it became inactive it should still have stake
+                assert.deepEqual(
+                    await bondingVotes
+                        .getBondingStateAt(delegator.address, currentRound - 2)
+                        .then(t => t.map(v => v.toString())),
+                    ["1000", transcoder.address]
                 )
             })
         })

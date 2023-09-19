@@ -168,6 +168,12 @@ describe("BondingManager", () => {
             ).to.be.revertedWith("caller must be Controller owner")
         })
 
+        it("should fail if value is not a valid percentage", async () => {
+            await expect(
+                bondingManager.setTreasuryRewardCutRate(FIFTY_PCT.mul(3)) // 150%
+            ).to.be.revertedWith("_cutRate is invalid precise percentage")
+        })
+
         it("should set only nextRoundTreasuryRewardCutRate", async () => {
             const tx = await bondingManager.setTreasuryRewardCutRate(FIFTY_PCT)
             await expect(tx)
@@ -393,6 +399,31 @@ describe("BondingManager", () => {
                         "wrong second transcoder total stake"
                     )
                 })
+
+                it("should checkpoint the joining transcoder", async () => {
+                    await bondingManager.bond(1000, signers[0].address)
+                    // force a transcoder resign through slash
+                    await fixture.verifier.execute(
+                        bondingManager.address,
+                        functionEncodedABI(
+                            "slashTranscoder(address,address,uint256,uint256)",
+                            ["address", "uint256", "uint256", "uint256"],
+                            [signers[0].address, constants.NULL_ADDRESS, 0, 0]
+                        )
+                    )
+
+                    const tx = await bondingManager.transcoder(5, 10)
+                    await expectCheckpoints(fixture, tx, {
+                        account: signers[0].address,
+                        startRound: currentRound + 1,
+                        bondedAmount: 1000,
+                        delegateAddress: signers[0].address,
+                        delegatedAmount: 1000,
+                        lastClaimRound: currentRound,
+                        lastRewardRound: 0,
+                        isActiveTranscoder: true
+                    })
+                })
             })
 
             describe("transcoder pool is full", () => {
@@ -599,6 +630,12 @@ describe("BondingManager", () => {
                 )
                 assert.equal(transcoder.rewardCut, 10, "wrong rewardCut")
                 assert.equal(transcoder.feeShare, 20, "wrong feeShare")
+            })
+
+            it("should not checkpoint the transcoder", async () => {
+                await bondingManager.reward()
+                const tx = await bondingManager.transcoder(10, 20)
+                await expectCheckpoints(fixture, tx) // no checkpoints
             })
         })
     })
@@ -883,6 +920,46 @@ describe("BondingManager", () => {
                     await expect(txRes)
                         .to.emit(bondingManager, "TranscoderActivated")
                         .withArgs(transcoder2.address, currentRound + 2)
+                })
+
+                it("should checkpoint the delegator, old and new active transcoders", async () => {
+                    const tx = await bondingManager
+                        .connect(delegator)
+                        .bond(2000, transcoder2.address)
+                    await expectCheckpoints(
+                        fixture,
+                        tx,
+                        {
+                            account: transcoder0.address,
+                            startRound: currentRound + 2,
+                            bondedAmount: 1000,
+                            delegateAddress: transcoder0.address,
+                            delegatedAmount: 1000,
+                            lastClaimRound: currentRound - 1,
+                            lastRewardRound: 0,
+                            isActiveTranscoder: false
+                        },
+                        {
+                            account: transcoder2.address,
+                            startRound: currentRound + 2,
+                            bondedAmount: 500,
+                            delegateAddress: transcoder2.address,
+                            delegatedAmount: 2500,
+                            lastClaimRound: currentRound,
+                            lastRewardRound: 0,
+                            isActiveTranscoder: true
+                        },
+                        {
+                            account: delegator.address,
+                            startRound: currentRound + 2,
+                            bondedAmount: 2000,
+                            delegateAddress: transcoder2.address,
+                            delegatedAmount: 0,
+                            lastClaimRound: currentRound + 1,
+                            lastRewardRound: 0,
+                            isActiveTranscoder: false
+                        }
+                    )
                 })
             })
 
@@ -1243,6 +1320,45 @@ describe("BondingManager", () => {
                         )[2],
                         transcoder1.address,
                         "wrong delegateAddress"
+                    )
+                })
+                it("should checkpoint the delegator, old and new delegates", async () => {
+                    const tx = await bondingManager
+                        .connect(delegator)
+                        .bond(0, transcoder1.address)
+                    await expectCheckpoints(
+                        fixture,
+                        tx,
+                        {
+                            account: transcoder0.address,
+                            startRound: currentRound + 1,
+                            bondedAmount: 1000,
+                            delegateAddress: transcoder0.address,
+                            delegatedAmount: 1000,
+                            lastClaimRound: currentRound - 1,
+                            lastRewardRound: 0,
+                            isActiveTranscoder: true
+                        },
+                        {
+                            account: transcoder1.address,
+                            startRound: currentRound + 1,
+                            bondedAmount: 2000,
+                            delegateAddress: transcoder1.address,
+                            delegatedAmount: 4000,
+                            lastClaimRound: currentRound - 1,
+                            lastRewardRound: 0,
+                            isActiveTranscoder: true
+                        },
+                        {
+                            account: delegator.address,
+                            startRound: currentRound + 1,
+                            bondedAmount: 2000,
+                            delegateAddress: transcoder1.address,
+                            delegatedAmount: 0,
+                            lastClaimRound: currentRound,
+                            lastRewardRound: 0,
+                            isActiveTranscoder: false
+                        }
                     )
                 })
                 describe("old delegate is registered transcoder", () => {
@@ -1978,7 +2094,8 @@ describe("BondingManager", () => {
                     delegateAddress: transcoder0.address,
                     delegatedAmount: 2000,
                     lastClaimRound: currentRound - 1,
-                    lastRewardRound: 100
+                    lastRewardRound: 100,
+                    isActiveTranscoder: true
                 },
                 {
                     account: delegator.address,
@@ -1987,7 +2104,8 @@ describe("BondingManager", () => {
                     delegateAddress: transcoder0.address,
                     delegatedAmount: 0,
                     lastClaimRound: currentRound,
-                    lastRewardRound: 0
+                    lastRewardRound: 0,
+                    isActiveTranscoder: false
                 }
             )
         })
@@ -2467,7 +2585,8 @@ describe("BondingManager", () => {
                     delegateAddress: transcoder0.address,
                     delegatedAmount: startDelegatedAmount.add(1000),
                     lastClaimRound: currentRound - 1,
-                    lastRewardRound: 100
+                    lastRewardRound: 100,
+                    isActiveTranscoder: true
                 },
                 {
                     account: delegator1.address,
@@ -2476,7 +2595,8 @@ describe("BondingManager", () => {
                     delegateAddress: transcoder0.address,
                     delegatedAmount: 0,
                     lastClaimRound: currentRound,
-                    lastRewardRound: 0
+                    lastRewardRound: 0,
+                    isActiveTranscoder: false
                 }
             )
         })
@@ -2655,7 +2775,8 @@ describe("BondingManager", () => {
                     delegateAddress: transcoder.address,
                     delegatedAmount: 1500,
                     lastClaimRound: currentRound,
-                    lastRewardRound: currentRound + 1
+                    lastRewardRound: currentRound + 1,
+                    isActiveTranscoder: true
                 },
                 {
                     account: delegator.address,
@@ -2664,7 +2785,8 @@ describe("BondingManager", () => {
                     delegateAddress: transcoder.address,
                     delegatedAmount: 1000, // delegator2 delegates to delegator
                     lastClaimRound: currentRound + 1, // gets updated on unbond
-                    lastRewardRound: 0
+                    lastRewardRound: 0,
+                    isActiveTranscoder: false
                 }
             )
         })
@@ -3017,7 +3139,8 @@ describe("BondingManager", () => {
                 delegateAddress: ZERO_ADDRESS,
                 delegatedAmount: 0,
                 lastClaimRound: 0,
-                lastRewardRound: 0
+                lastRewardRound: 0,
+                isActiveTranscoder: false
             })
         })
 
@@ -3033,7 +3156,8 @@ describe("BondingManager", () => {
                 delegateAddress: transcoder.address,
                 delegatedAmount: 2000, // total amount delegated towards transcoder
                 lastClaimRound: currentRound,
-                lastRewardRound: 0 // reward was never called
+                lastRewardRound: 0, // reward was never called
+                isActiveTranscoder: true
             })
         })
 
@@ -3049,7 +3173,8 @@ describe("BondingManager", () => {
                 delegateAddress: transcoder.address,
                 delegatedAmount: 0, // no one delegates to the delegator :'(
                 lastClaimRound: currentRound,
-                lastRewardRound: 0 // reward was never called
+                lastRewardRound: 0, // reward was never called
+                isActiveTranscoder: false
             })
         })
 
@@ -3079,7 +3204,8 @@ describe("BondingManager", () => {
                     delegateAddress: transcoder.address,
                     delegatedAmount: 3000, // 1000 self bonded + 1000 delegated + 1000 rewards
                     lastClaimRound: currentRound, // not updated by reward call
-                    lastRewardRound: currentRound + 1
+                    lastRewardRound: currentRound + 1,
+                    isActiveTranscoder: true
                 })
             })
 
@@ -3095,7 +3221,8 @@ describe("BondingManager", () => {
                     delegateAddress: transcoder.address,
                     delegatedAmount: 0,
                     lastClaimRound: currentRound,
-                    lastRewardRound: 0 // still zero, only gets set for transcoders
+                    lastRewardRound: 0, // still zero, only gets set for transcoders
+                    isActiveTranscoder: false
                 })
             })
 
@@ -3118,7 +3245,8 @@ describe("BondingManager", () => {
                         delegateAddress: transcoder.address,
                         delegatedAmount: 3000,
                         lastClaimRound: currentRound + 1,
-                        lastRewardRound: currentRound + 1
+                        lastRewardRound: currentRound + 1,
+                        isActiveTranscoder: true
                     })
                 })
 
@@ -3134,7 +3262,8 @@ describe("BondingManager", () => {
                         delegateAddress: transcoder.address,
                         delegatedAmount: 0,
                         lastClaimRound: currentRound,
-                        lastRewardRound: 0
+                        lastRewardRound: 0,
+                        isActiveTranscoder: false
                     })
                 })
             })
@@ -3158,7 +3287,8 @@ describe("BondingManager", () => {
                         delegateAddress: transcoder.address,
                         delegatedAmount: 3000,
                         lastClaimRound: currentRound,
-                        lastRewardRound: currentRound + 1
+                        lastRewardRound: currentRound + 1,
+                        isActiveTranscoder: true
                     })
                 })
 
@@ -3174,7 +3304,8 @@ describe("BondingManager", () => {
                         delegateAddress: transcoder.address,
                         delegatedAmount: 0,
                         lastClaimRound: currentRound + 1,
-                        lastRewardRound: 0
+                        lastRewardRound: 0,
+                        isActiveTranscoder: false
                     })
                 })
             })
@@ -3297,7 +3428,8 @@ describe("BondingManager", () => {
                     delegateAddress: transcoder.address,
                     delegatedAmount: 2000,
                     lastClaimRound: currentRound,
-                    lastRewardRound: currentRound + 1
+                    lastRewardRound: currentRound + 1,
+                    isActiveTranscoder: true
                 },
                 {
                     account: delegator.address,
@@ -3306,7 +3438,8 @@ describe("BondingManager", () => {
                     delegateAddress: transcoder.address,
                     delegatedAmount: 0,
                     lastClaimRound: currentRound + 1,
-                    lastRewardRound: 0
+                    lastRewardRound: 0,
+                    isActiveTranscoder: false
                 }
             )
         })
@@ -3576,7 +3709,8 @@ describe("BondingManager", () => {
                     delegateAddress: transcoder.address,
                     delegatedAmount: 1500,
                     lastClaimRound: currentRound,
-                    lastRewardRound: currentRound + 1
+                    lastRewardRound: currentRound + 1,
+                    isActiveTranscoder: true
                 },
                 {
                     account: delegator.address,
@@ -3585,7 +3719,8 @@ describe("BondingManager", () => {
                     delegateAddress: transcoder.address,
                     delegatedAmount: 0,
                     lastClaimRound: currentRound + 1,
-                    lastRewardRound: 0
+                    lastRewardRound: 0,
+                    isActiveTranscoder: false
                 }
             )
         })
@@ -4124,7 +4259,8 @@ describe("BondingManager", () => {
                             delegateAddress: transcoder0.address,
                             delegatedAmount: 1200,
                             lastClaimRound: currentRound - 1,
-                            lastRewardRound: currentRound + 3
+                            lastRewardRound: currentRound + 3,
+                            isActiveTranscoder: true
                         },
                         {
                             account: delegator1.address,
@@ -4133,7 +4269,8 @@ describe("BondingManager", () => {
                             delegateAddress: transcoder0.address,
                             delegatedAmount: 0,
                             lastClaimRound: currentRound + 3,
-                            lastRewardRound: 0
+                            lastRewardRound: 0,
+                            isActiveTranscoder: false
                         },
                         {
                             account: transcoder1.address,
@@ -4142,7 +4279,8 @@ describe("BondingManager", () => {
                             delegateAddress: transcoder1.address,
                             delegatedAmount: 5800,
                             lastClaimRound: currentRound - 1,
-                            lastRewardRound: 0
+                            lastRewardRound: 0,
+                            isActiveTranscoder: true
                         },
                         {
                             account: delegator2.address,
@@ -4151,7 +4289,8 @@ describe("BondingManager", () => {
                             delegateAddress: transcoder1.address,
                             delegatedAmount: 0,
                             lastClaimRound: currentRound + 3,
-                            lastRewardRound: 0
+                            lastRewardRound: 0,
+                            isActiveTranscoder: false
                         }
                     )
                 })
@@ -4667,7 +4806,8 @@ describe("BondingManager", () => {
                 delegateAddress: transcoder.address,
                 delegatedAmount: 2000,
                 lastClaimRound: currentRound,
-                lastRewardRound: currentRound + 1
+                lastRewardRound: currentRound + 1,
+                isActiveTranscoder: true
             })
         })
 
@@ -5543,7 +5683,8 @@ describe("BondingManager", () => {
                 delegateAddress: transcoder.address,
                 delegatedAmount: startBondedAmount / 2,
                 lastClaimRound: currentRound + 1,
-                lastRewardRound: currentRound + 1
+                lastRewardRound: currentRound + 1,
+                isActiveTranscoder: false // slashed transcoders are removed from the active set
             })
         })
 
@@ -6038,7 +6179,8 @@ describe("BondingManager", () => {
                 delegateAddress: transcoder.address,
                 delegatedAmount: 0,
                 lastClaimRound: currentRound + 1,
-                lastRewardRound: 0
+                lastRewardRound: 0,
+                isActiveTranscoder: false
             })
         })
 

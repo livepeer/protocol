@@ -319,7 +319,7 @@ describe("BondingVotes", () => {
         })
 
         describe("getBondingStateAt", () => {
-            it("should provide voting power even for inactive transcoders and their delegators", async () => {
+            it("should not provide voting power for inactive transcoders and their delegators", async () => {
                 const transcoder = transcoders[transcoders.length - 1].address
                 const delegator = delegators[delegators.length - 1].address
 
@@ -328,10 +328,10 @@ describe("BondingVotes", () => {
                         address,
                         round
                     )
-                    assert.isAbove(
+                    assert.equal(
                         stake,
                         0,
-                        `expected non-zero stake checkpoint at round ${round} for account ${address}`
+                        `expected zero stake checkpoint at round ${round} for account ${address}`
                     )
                 }
 
@@ -346,12 +346,17 @@ describe("BondingVotes", () => {
                 }
             })
 
-            it("should return exactly the account pendingStake in the corresponding round", async () => {
+            it("should return the account pendingStake in the corresponding round if active", async () => {
+                const isInactive = address =>
+                    address === transcoders[transcoders.length - 1].address ||
+                    address === delegators[delegators.length - 1].address
                 for (const round of Object.keys(pendingStakesByRound)) {
                     const pendingStakes = pendingStakesByRound[round]
 
                     for (const address of Object.keys(pendingStakes)) {
-                        const expectedStake = pendingStakes[address]
+                        const expectedStake = isInactive(address) ?
+                            0 :
+                            pendingStakes[address]
 
                         const [stakeCheckpoint] =
                             await bondingVotes.getBondingStateAt(address, round)
