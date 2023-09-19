@@ -351,8 +351,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
                 currentRoundTotalActiveStake
             );
 
-            // Deduct what would have been the treasury rewards
-            uint256 treasuryRewards = MathUtils.percOf(rewards, treasuryRewardCutRate);
+            // deduct what were the treasury rewards
+            uint256 treasuryRewards = PreciseMathUtils.percOf(rewards, treasuryRewardCutRate);
             rewards = rewards.sub(treasuryRewards);
 
             uint256 transcoderCommissionRewards = MathUtils.percOf(rewards, earningsPool.transcoderRewardCut);
