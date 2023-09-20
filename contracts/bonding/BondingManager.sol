@@ -441,7 +441,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
     /**
      * @notice Claim token pools shares for a delegator from its lastClaimRound through the end round
-     * @param _endRound The last round for which to claim token pools shares for a delegator
+     * @param _endRound Unused, represented the last round for which to claim token pools shares for a delegator.
+     * Currently, the earnings are always claimed until the current round instead.
      */
     function claimEarnings(uint256 _endRound)
         external
@@ -911,7 +912,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     /**
      * @notice Returns pending bonded stake for a delegator from its lastClaimRound through an end round
      * @param _delegator Address of delegator
-     * @param _endRound The last round to compute pending stake from
+     * @param _endRound Unused, but represented the last round to compute pending stake from. Currently, the pending
+     * stake is always calculated for the current round instead.
      * @return Pending bonded stake for '_delegator' since last claiming rewards
      */
     function pendingStake(address _delegator, uint256 _endRound) public view returns (uint256) {
