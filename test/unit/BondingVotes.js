@@ -790,12 +790,16 @@ describe("BondingVotes", () => {
         })
 
         describe("for transcoder", () => {
-            const makeCheckpoint = (startRound, delegatedAmount) =>
+            const makeCheckpoint = (
+                startRound,
+                delegatedAmount,
+                bondedAmount = 1
+            ) =>
                 inRound(startRound - 1, async () => {
                     const functionData = encodeCheckpointBondingState({
                         account: transcoder.address,
                         startRound,
-                        bondedAmount: 1, // doesn't matter, shouldn't be used
+                        bondedAmount,
                         delegateAddress: transcoder.address,
                         delegatedAmount,
                         lastClaimRound: startRound - 1,
@@ -845,6 +849,17 @@ describe("BondingVotes", () => {
                         .getBondingStateAt(transcoder.address, currentRound)
                         .then(t => t.map(v => v.toString())),
                     ["2000", transcoder.address]
+                )
+            })
+
+            it("should return the delegatedAmount even if there's no bondedAmount", async () => {
+                await makeCheckpoint(currentRound, 1000, 0)
+
+                assert.deepEqual(
+                    await bondingVotes
+                        .getBondingStateAt(transcoder.address, currentRound)
+                        .then(t => t.map(v => v.toString())),
+                    ["1000", transcoder.address]
                 )
             })
         })
@@ -939,6 +954,22 @@ describe("BondingVotes", () => {
                         .getBondingStateAt(delegator.address, currentRound)
                         .then(t => t.map(v => v.toString())),
                     ["0", constants.NULL_ADDRESS]
+                )
+            })
+
+            it("should return zero if the bonded amount is zero", async () => {
+                await checkpointDelegator({
+                    startRound: currentRound - 10,
+                    bondedAmount: 0,
+                    delegateAddress: transcoder.address,
+                    lastClaimRound: currentRound - 11
+                })
+
+                assert.deepEqual(
+                    await bondingVotes
+                        .getBondingStateAt(delegator.address, currentRound)
+                        .then(t => t.map(v => v.toString())),
+                    ["0", transcoder.address]
                 )
             })
 
