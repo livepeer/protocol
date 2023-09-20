@@ -369,9 +369,7 @@ contract BondingVotes is ManagerProxyTarget, IBondingVotes {
         delegateAddress = bond.delegateAddress;
         bool isTranscoder = delegateAddress == _account;
 
-        if (bond.bondedAmount == 0) {
-            amount = 0;
-        } else if (isTranscoder) {
+        if (isTranscoder) {
             // Address is a registered transcoder so we use its delegated amount. This includes self and delegated stake
             // as well as any accrued rewards, even unclaimed ones
             amount = bond.delegatedAmount;
@@ -461,6 +459,10 @@ contract BondingVotes is ManagerProxyTarget, IBondingVotes {
         view
         returns (uint256)
     {
+        if (bond.bondedAmount == 0) {
+            return 0;
+        }
+
         EarningsPool.Data memory startPool = getTranscoderEarningsPoolForRound(
             bond.delegateAddress,
             bond.lastClaimRound
