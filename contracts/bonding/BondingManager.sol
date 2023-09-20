@@ -41,7 +41,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         uint256 feeShare; // % of fees paid to delegators by transcoder
         mapping(uint256 => EarningsPool.Data) earningsPoolPerRound; // Mapping of round => earnings pool for the round
         uint256 lastActiveStakeUpdateRound; // Round for which the stake was last updated while the transcoder is active
-        uint256 activationRound; // Round in which the transcoder became active - 0 if inactive
+        uint256 activationRound; // Round in which the transcoder became active - if inactive will be 0 or <=deactivationRound
         uint256 deactivationRound; // Round in which the transcoder will become inactive
         uint256 activeCumulativeRewards; // The transcoder's cumulative rewards that are active in the current round
         uint256 cumulativeRewards; // The transcoder's cumulative rewards (earned via the its active staked rewards and its reward cut).
@@ -143,7 +143,6 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * should be used to initialize state variables post-deployment:
      * - setUnbondingPeriod()
      * - setNumActiveTranscoders()
-     * - setMaxEarningsClaimsRounds()
      * @param _controller Address of Controller that this contract will be registered with
      */
     constructor(address _controller) Manager(_controller) {}
