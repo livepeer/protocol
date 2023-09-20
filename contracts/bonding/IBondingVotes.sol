@@ -24,7 +24,13 @@ interface IBondingVotes is IVotes {
      * from IERC5805 by also supporting voting power for the delegators themselves, though requiring knowledge about our
      * specific reward-claiming protocol to calculate voting power based on this value.
      */
-    event DelegatorBondedAmountChanged(address indexed delegate, uint256 previousBondedAmount, uint256 newBondedAmount);
+    event DelegatorBondedAmountChanged(
+        address indexed delegate,
+        uint256 previousBondedAmount,
+        uint256 previousLastClaimRound,
+        uint256 newBondedAmount,
+        uint256 newLastClaimRound
+    );
 
     // BondingManager hooks
 

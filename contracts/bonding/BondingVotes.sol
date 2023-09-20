@@ -406,8 +406,14 @@ contract BondingVotes is ManagerProxyTarget, IBondingVotes {
 
         // Always send delegator events since transcoders are delegators themselves. The way our rewards work, the
         // delegator voting power calculated from events will only reflect their claimed stake without pending rewards.
-        if (previous.bondedAmount != current.bondedAmount) {
-            emit DelegatorBondedAmountChanged(_account, previous.bondedAmount, current.bondedAmount);
+        if (previous.bondedAmount != current.bondedAmount || previous.lastClaimRound != current.lastClaimRound) {
+            emit DelegatorBondedAmountChanged(
+                _account,
+                previous.bondedAmount,
+                previous.lastClaimRound,
+                current.bondedAmount,
+                current.lastClaimRound
+            );
         }
     }
 
