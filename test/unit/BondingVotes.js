@@ -658,6 +658,32 @@ describe("BondingVotes", () => {
                     "DelegatorBondedAmountChanged"
                 )
             })
+
+            it("should not emit DelegateVotesChanged for a 0 amount self-delegating account", async () => {
+                // Has a self-delegation and delegatedAmount but no bondedAmount
+                const tx = await makeCheckpoint(
+                    transcoder.address,
+                    transcoder.address,
+                    0,
+                    50000
+                )
+
+                await expect(tx)
+                    .to.emit(bondingVotes, "DelegateChanged")
+                    .withArgs(
+                        transcoder.address,
+                        constants.NULL_ADDRESS,
+                        transcoder.address
+                    )
+                await expect(tx).not.to.emit(
+                    bondingVotes,
+                    "DelegateVotesChanged"
+                )
+                await expect(tx).not.to.emit(
+                    bondingVotes,
+                    "DelegatorBondedAmountChanged"
+                )
+            })
         })
     })
 
@@ -1109,6 +1135,141 @@ describe("BondingVotes", () => {
                         .then(t => t.map(v => v.toString())),
                     ["5000", transcoder.address]
                 )
+            })
+        })
+
+        describe("zero bonded amount with non-transcoder delegates", () => {
+            let nonParticipant
+            let otherDelegator
+            let slashedTranscoder
+            let unbondedTranscoder
+
+            const checkpoint = ({
+                account,
+                startRound,
+                bondedAmount,
+                delegateAddress,
+                delegatedAmount = 0
+            }) =>
+                inRound(startRound - 1, async () => {
+                    const functionData = encodeCheckpointBondingState({
+                        account,
+                        startRound,
+                        bondedAmount,
+                        delegateAddress,
+                        delegatedAmount,
+                        lastClaimRound: startRound - 1,
+                        lastRewardRound: 0 // not used in these tests
+                    })
+                    await fixture.bondingManager.execute(
+                        bondingVotes.address,
+                        functionData
+                    )
+                })
+
+            beforeEach(async () => {
+                nonParticipant = signers[3]
+                otherDelegator = signers[4]
+                slashedTranscoder = signers[5]
+                unbondedTranscoder = signers[6]
+
+                const startRound = currentRound - 10
+
+                await checkpoint({
+                    account: transcoder.address,
+                    startRound,
+                    bondedAmount: 1000,
+                    delegateAddress: transcoder.address,
+                    delegatedAmount: 2000
+                })
+                await checkpoint({
+                    account: otherDelegator.address,
+                    startRound,
+                    bondedAmount: 1000,
+                    delegateAddress: transcoder.address
+                })
+
+                // Transcoders that get slashed 100% end up with a 0 `bondedAmount` but a non-zero `delegateAddress`
+                await checkpoint({
+                    account: slashedTranscoder.address,
+                    startRound,
+                    bondedAmount: 0,
+                    delegateAddress: slashedTranscoder.address,
+                    delegatedAmount: 1000
+                })
+                // While transcoders that unbond get zeroed `bondedAmount` and `delegateAddress`
+                await checkpoint({
+                    account: unbondedTranscoder.address,
+                    startRound,
+                    bondedAmount: 0,
+                    delegateAddress: constants.NULL_ADDRESS,
+                    delegatedAmount: 1000
+                })
+            })
+
+            const expectBondingState = async (
+                delegator,
+                [expectedAmount, expectedDelegate]
+            ) => {
+                const actual = await bondingVotes
+                    .getBondingStateAt(delegator.address, currentRound)
+                    .then(t => t.map(v => v.toString()))
+                const expected = [
+                    expectedAmount.toString(),
+                    expectedDelegate?.address ?? constants.NULL_ADDRESS
+                ]
+                assert.deepEqual(actual, expected)
+            }
+
+            it("non-participant", async () => {
+                await checkpoint({
+                    account: delegator.address,
+                    startRound: currentRound,
+                    bondedAmount: 1000,
+                    delegateAddress: nonParticipant.address
+                })
+
+                await expectBondingState(delegator, [0, nonParticipant])
+                await expectBondingState(nonParticipant, [0, null])
+            })
+
+            it("another delegator", async () => {
+                await checkpoint({
+                    account: delegator.address,
+                    startRound: currentRound,
+                    bondedAmount: 1000,
+                    delegateAddress: otherDelegator.address
+                })
+
+                await expectBondingState(delegator, [0, otherDelegator])
+                await expectBondingState(otherDelegator, [1000, transcoder])
+            })
+
+            it("slashed transcoder", async () => {
+                await checkpoint({
+                    account: delegator.address,
+                    startRound: currentRound,
+                    bondedAmount: 1000,
+                    delegateAddress: slashedTranscoder.address
+                })
+
+                await expectBondingState(delegator, [0, slashedTranscoder])
+                await expectBondingState(slashedTranscoder, [
+                    0,
+                    slashedTranscoder
+                ])
+            })
+
+            it("unbonded transcoder", async () => {
+                await checkpoint({
+                    account: delegator.address,
+                    startRound: currentRound,
+                    bondedAmount: 1000,
+                    delegateAddress: unbondedTranscoder.address
+                })
+
+                await expectBondingState(delegator, [0, unbondedTranscoder])
+                await expectBondingState(unbondedTranscoder, [0, null])
             })
         })
     })
