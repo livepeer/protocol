@@ -14,9 +14,8 @@
 
 ## Deployment
 
-- `yarn deploy --network <network>` to deploy the `Contracts` and `Poll` tags
+- `yarn deploy --network <network>` to deploy all the core protocol contracts
 - `npx hardhat deploy --tags ARBITRUM_LPT_DUMMIES --network <network>` to deploy the L2 bridge no-ops
-- `npx hardhat deploy --tags LivepeerGovernor --network <network>` to deploy the treasury and governor contracts
 
 ## Verification
 

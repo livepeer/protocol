@@ -48,7 +48,7 @@ describe("LivepeerGovernor", () => {
         proposer = signers[0]
 
         const fixture = await setupIntegrationTest({
-            tags: ["LivepeerGovernor"]
+            tags: ["Contracts", "Poll"]
         })
         controller = await ethers.getContractAt(
             "Controller",
