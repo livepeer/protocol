@@ -181,15 +181,14 @@ abstract contract GovernorCountingOverridable is Initializable, GovernorUpgradea
         uint256 timepoint = proposalSnapshot(_proposalId);
         address delegate = votes().delegatedAt(_account, timepoint);
 
-        bool selfDelegates = _account == delegate;
-        if (selfDelegates) {
+        bool isSelfDelegated = _account == delegate;
+        if (isSelfDelegated) {
             // deduce weight from any previous delegators for this self-delegating account to cast a vote
             return _weight - _voter.deductions;
         }
 
-        address delegatesDelegate = votes().delegatedAt(delegate, timepoint);
-        bool delegateSelfDelegates = delegate == delegatesDelegate;
-        if (!delegateSelfDelegates) {
+        bool isDelegateSelfDelegated = delegate == votes().delegatedAt(delegate, timepoint);
+        if (!isDelegateSelfDelegated) {
             // do not override votes of non-self-delegating accounts since those don't get their voting power from the
             // sum of delegations to them, so the override logic doesn't apply.
             return _weight;
