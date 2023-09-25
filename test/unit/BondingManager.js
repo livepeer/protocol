@@ -5343,6 +5343,79 @@ describe("BondingManager", () => {
             )
         })
 
+        it("should retroactively calculate previous round cumulative factors considering treasury rewards", async () => {
+            const FIFTY_PCT = math.precise.percPoints(BigNumber.from(50), 100)
+            await bondingManager.setTreasuryRewardCutRate(FIFTY_PCT)
+
+            await fixture.roundsManager.setMockUint256(
+                functionSig("currentRound()"),
+                currentRound + 2
+            )
+            await fixture.roundsManager.execute(
+                bondingManager.address,
+                functionSig("setCurrentRoundTotalActiveStake()")
+            )
+
+            // rewards on each round will be 500 due to treasury cut
+            await fixture.minter.setMockUint256(
+                functionSig("createReward(uint256,uint256)"),
+                1000
+            )
+            await bondingManager.reward()
+
+            // currently at currentRound + 2, skip to currentRound + 4
+            await fixture.roundsManager.setMockUint256(
+                functionSig("currentRound()"),
+                currentRound + 4
+            )
+            await fixture.roundsManager.execute(
+                bondingManager.address,
+                functionSig("setCurrentRoundTotalActiveStake()")
+            )
+            // notice that we DO call reward for currentRound + 4, but no rewards in currentRound + 3
+            await bondingManager.reward()
+
+            const tr = await bondingManager.getTranscoder(transcoder.address)
+            const cumulativeRewards = tr.cumulativeRewards
+            assert.equal(cumulativeRewards.toString(), "541") // 2 x 250 commissions + (250 / 1500) * 250 commission interest on 2nd round
+
+            await fixture.minter.setMockUint256(
+                functionSig("currentMintableTokens()"),
+                1000
+            )
+            await fixture.ticketBroker.execute(
+                bondingManager.address,
+                functionEncodedABI(
+                    "updateTranscoderWithFees(address,uint256,uint256)",
+                    ["address", "uint256", "uint256"],
+                    [transcoder.address, 1000, currentRound + 3]
+                )
+            )
+
+            const earningsPool =
+                await bondingManager.getTranscoderEarningsPoolForRound(
+                    transcoder.address,
+                    currentRound + 4
+                )
+            assert.equal(
+                earningsPool.cumulativeFeeFactor.toString(),
+                "416666666666666666666666665", // ~ 124999... * 500 / 1500
+                "wrong cumulativeFeeFactor"
+            )
+            assert.equal(
+                (
+                    await bondingManager.getTranscoder(transcoder.address)
+                ).cumulativeFees.toString(),
+                "583" // 500 commission + (250 / 1500) * 500 rewards commission piece
+            )
+            assert.equal(
+                (
+                    await bondingManager.pendingFees(transcoder.address, 0)
+                ).toString(),
+                "999" // rounding error, should be 1000
+            )
+        })
+
         it("should update transcoder's pendingFees when lastActiveStakeUpdateRound > currentRound when stake decreases before function call", async () => {
             // Make sure that lastActiveStakeUpdateRound > currentRound
             await bondingManager
