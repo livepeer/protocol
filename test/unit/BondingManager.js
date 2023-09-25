@@ -3815,6 +3815,21 @@ describe("BondingManager", () => {
             })
 
             describe("receiver is not bonded", () => {
+                it("should fail if receiver is the zero address", async () => {
+                    const tx = bondingManager
+                        .connect(delegator3)
+                        .transferBond(
+                            ZERO_ADDRESS,
+                            1,
+                            ZERO_ADDRESS,
+                            ZERO_ADDRESS,
+                            ZERO_ADDRESS,
+                            ZERO_ADDRESS
+                        )
+
+                    await expect(tx).to.be.revertedWith("INVALID_DELEGATOR")
+                })
+
                 it("should fail if caller is delegated to receiver", async () => {
                     const tx = bondingManager
                         .connect(delegator3)

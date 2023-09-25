@@ -724,6 +724,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             // Requirements for caller
             // Does not trigger self-delegation
             require(oldDelDelegate != _delegator, "INVALID_DELEGATOR");
+            // Does not transfer bond to the zero address
+            require(address(0) != _delegator, "INVALID_DELEGATOR");
 
             newDel.delegateAddress = oldDelDelegate;
         }
