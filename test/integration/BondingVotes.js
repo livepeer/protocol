@@ -142,7 +142,7 @@ describe("BondingVotes", () => {
             await nextRound()
         })
 
-        describe("getBondingStateAt", () => {
+        describe("getVotesAndDelegateAtRoundStart", () => {
             it("should return partial rewards for any rounds since bonding", async () => {
                 const pendingRewards0 = math.precise.percOf(
                     mintableTokens[currentRound].div(2), // 50% cut rate
@@ -157,7 +157,10 @@ describe("BondingVotes", () => {
 
                 const stakeAt = round =>
                     bondingVotes
-                        .getBondingStateAt(delegator.address, round)
+                        .getVotesAndDelegateAtRoundStart(
+                            delegator.address,
+                            round
+                        )
                         .then(n => n[0].toString())
 
                 assert.equal(await stakeAt(2), 0)
@@ -176,7 +179,10 @@ describe("BondingVotes", () => {
             it("should return partial rewards for all transcoder stake", async () => {
                 const stakeAt = round =>
                     bondingVotes
-                        .getBondingStateAt(transcoder.address, round)
+                        .getVotesAndDelegateAtRoundStart(
+                            transcoder.address,
+                            round
+                        )
                         .then(n => n[0].toString())
 
                 assert.equal(await stakeAt(2), 0)
@@ -318,16 +324,17 @@ describe("BondingVotes", () => {
             assert.isFalse(await isActive(inactiveTranscoder.address))
         })
 
-        describe("getBondingStateAt", () => {
+        describe("getVotesAndDelegateAtRoundStart", () => {
             it("should provide voting power even for inactive transcoders and their delegators", async () => {
                 const transcoder = transcoders[transcoders.length - 1].address
                 const delegator = delegators[delegators.length - 1].address
 
                 const testHasStake = async (address, round) => {
-                    const [stake] = await bondingVotes.getBondingStateAt(
-                        address,
-                        round
-                    )
+                    const [stake] =
+                        await bondingVotes.getVotesAndDelegateAtRoundStart(
+                            address,
+                            round
+                        )
                     assert.isAbove(
                         stake,
                         0,
@@ -354,7 +361,10 @@ describe("BondingVotes", () => {
                         const expectedStake = pendingStakes[address]
 
                         const [stakeCheckpoint] =
-                            await bondingVotes.getBondingStateAt(address, round)
+                            await bondingVotes.getVotesAndDelegateAtRoundStart(
+                                address,
+                                round
+                            )
                         assert.equal(
                             stakeCheckpoint.toString(),
                             expectedStake,
@@ -382,10 +392,11 @@ describe("BondingVotes", () => {
                 for (const r = currentRound - 2; r <= currentRound + 2; r++) {
                     const activeStakeSum = BigNumber.from(0)
                     for (const transcoder of activeTranscoders) {
-                        const [stake] = await bondingVotes.getBondingStateAt(
-                            transcoder.address,
-                            r
-                        )
+                        const [stake] =
+                            await bondingVotes.getVotesAndDelegateAtRoundStart(
+                                transcoder.address,
+                                r
+                            )
                         activeStakeSum = activeStakeSum.add(stake)
                     }
 
@@ -458,10 +469,10 @@ describe("BondingVotes", () => {
             await nextRound()
         })
 
-        describe("getBondingStateAt", () => {
+        describe("getVotesAndDelegateAtRoundStart", () => {
             const stakeAt = (account, round) =>
                 bondingVotes
-                    .getBondingStateAt(account.address, round)
+                    .getVotesAndDelegateAtRoundStart(account.address, round)
                     .then(n => n[0].toString())
             const expectStakeAt = async (account, round, expected) => {
                 assert.equal(
@@ -608,10 +619,11 @@ describe("BondingVotes", () => {
         })
 
         const expectStakeAt = async (account, round, expected, delegate) => {
-            const stakeAndAddress = await bondingVotes.getBondingStateAt(
-                account.address,
-                round
-            )
+            const stakeAndAddress =
+                await bondingVotes.getVotesAndDelegateAtRoundStart(
+                    account.address,
+                    round
+                )
             assert.equal(
                 stakeAndAddress[0].toString(),
                 expected.toString(),

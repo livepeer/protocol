@@ -463,7 +463,10 @@ describe("BondingVotes", () => {
 
             assert.deepEqual(
                 await bondingVotes
-                    .getBondingStateAt(transcoder.address, currentRound + 1)
+                    .getVotesAndDelegateAtRoundStart(
+                        transcoder.address,
+                        currentRound + 1
+                    )
                     .then(t => t.map(v => v.toString())),
                 ["1000", transcoder.address]
             )
@@ -493,7 +496,10 @@ describe("BondingVotes", () => {
 
             assert.deepEqual(
                 await bondingVotes
-                    .getBondingStateAt(transcoder.address, currentRound + 1)
+                    .getVotesAndDelegateAtRoundStart(
+                        transcoder.address,
+                        currentRound + 1
+                    )
                     .then(t => t.map(v => v.toString())),
                 ["2000", transcoder.address]
             )
@@ -738,7 +744,7 @@ describe("BondingVotes", () => {
         })
     })
 
-    describe("getBondingStateAt", () => {
+    describe("getVotesAndDelegateAtRoundStart", () => {
         let transcoder
         let delegator
         let currentRound
@@ -752,7 +758,7 @@ describe("BondingVotes", () => {
         })
 
         it("should fail if round is after the next round", async () => {
-            const tx = bondingVotes.getBondingStateAt(
+            const tx = bondingVotes.getVotesAndDelegateAtRoundStart(
                 delegator.address,
                 currentRound + 2
             )
@@ -782,7 +788,10 @@ describe("BondingVotes", () => {
             const expectZeroCheckpoint = async queryRound => {
                 expect(
                     await bondingVotes
-                        .getBondingStateAt(delegator.address, queryRound)
+                        .getVotesAndDelegateAtRoundStart(
+                            delegator.address,
+                            queryRound
+                        )
                         .then(t => t.map(v => v.toString()))
                 ).to.deep.equal(["0", constants.NULL_ADDRESS])
             }
@@ -838,7 +847,10 @@ describe("BondingVotes", () => {
 
                 assert.deepEqual(
                     await bondingVotes
-                        .getBondingStateAt(transcoder.address, currentRound - 2)
+                        .getVotesAndDelegateAtRoundStart(
+                            transcoder.address,
+                            currentRound - 2
+                        )
                         .then(t => t.map(v => v.toString())),
                     ["0", constants.NULL_ADDRESS]
                 )
@@ -849,7 +861,10 @@ describe("BondingVotes", () => {
 
                 assert.deepEqual(
                     await bondingVotes
-                        .getBondingStateAt(transcoder.address, currentRound)
+                        .getVotesAndDelegateAtRoundStart(
+                            transcoder.address,
+                            currentRound
+                        )
                         .then(t => t.map(v => v.toString())),
                     ["1000", transcoder.address]
                 )
@@ -861,14 +876,20 @@ describe("BondingVotes", () => {
 
                 assert.deepEqual(
                     await bondingVotes
-                        .getBondingStateAt(transcoder.address, currentRound - 7)
+                        .getVotesAndDelegateAtRoundStart(
+                            transcoder.address,
+                            currentRound - 7
+                        )
                         .then(t => t.map(v => v.toString())),
                     ["1000", transcoder.address]
                 )
 
                 assert.deepEqual(
                     await bondingVotes
-                        .getBondingStateAt(transcoder.address, currentRound)
+                        .getVotesAndDelegateAtRoundStart(
+                            transcoder.address,
+                            currentRound
+                        )
                         .then(t => t.map(v => v.toString())),
                     ["2000", transcoder.address]
                 )
@@ -962,7 +983,10 @@ describe("BondingVotes", () => {
 
                 assert.deepEqual(
                     await bondingVotes
-                        .getBondingStateAt(delegator.address, currentRound)
+                        .getVotesAndDelegateAtRoundStart(
+                            delegator.address,
+                            currentRound
+                        )
                         .then(t => t.map(v => v.toString())),
                     ["0", constants.NULL_ADDRESS]
                 )
@@ -978,7 +1002,10 @@ describe("BondingVotes", () => {
 
                 assert.deepEqual(
                     await bondingVotes
-                        .getBondingStateAt(delegator.address, currentRound)
+                        .getVotesAndDelegateAtRoundStart(
+                            delegator.address,
+                            currentRound
+                        )
                         .then(t => t.map(v => v.toString())),
                     ["1000", transcoder.address]
                 )
@@ -1001,14 +1028,20 @@ describe("BondingVotes", () => {
 
                 assert.deepEqual(
                     await bondingVotes
-                        .getBondingStateAt(delegator.address, currentRound - 7)
+                        .getVotesAndDelegateAtRoundStart(
+                            delegator.address,
+                            currentRound - 7
+                        )
                         .then(t => t.map(v => v.toString())),
                     ["1000", transcoder.address]
                 )
 
                 assert.deepEqual(
                     await bondingVotes
-                        .getBondingStateAt(delegator.address, currentRound)
+                        .getVotesAndDelegateAtRoundStart(
+                            delegator.address,
+                            currentRound
+                        )
                         .then(t => t.map(v => v.toString())),
                     ["2000", transcoder2.address]
                 )
@@ -1040,7 +1073,10 @@ describe("BondingVotes", () => {
 
                 assert.deepEqual(
                     await bondingVotes
-                        .getBondingStateAt(delegator.address, currentRound)
+                        .getVotesAndDelegateAtRoundStart(
+                            delegator.address,
+                            currentRound
+                        )
                         .then(t => t.map(v => v.toString())),
                     ["1000", transcoder.address]
                 )
@@ -1066,7 +1102,7 @@ describe("BondingVotes", () => {
                 })
                 // no earning pool for currentRound - 2
 
-                const tx = bondingVotes.getBondingStateAt(
+                const tx = bondingVotes.getVotesAndDelegateAtRoundStart(
                     delegator.address,
                     currentRound
                 )
@@ -1103,7 +1139,10 @@ describe("BondingVotes", () => {
 
                 assert.deepEqual(
                     await bondingVotes
-                        .getBondingStateAt(delegator.address, currentRound)
+                        .getVotesAndDelegateAtRoundStart(
+                            delegator.address,
+                            currentRound
+                        )
                         .then(t => t.map(v => v.toString())),
                     ["3000", transcoder.address]
                 )
@@ -1131,7 +1170,10 @@ describe("BondingVotes", () => {
 
                 assert.deepEqual(
                     await bondingVotes
-                        .getBondingStateAt(delegator.address, currentRound)
+                        .getVotesAndDelegateAtRoundStart(
+                            delegator.address,
+                            currentRound
+                        )
                         .then(t => t.map(v => v.toString())),
                     ["5000", transcoder.address]
                 )
@@ -1212,7 +1254,10 @@ describe("BondingVotes", () => {
                 [expectedAmount, expectedDelegate]
             ) => {
                 const actual = await bondingVotes
-                    .getBondingStateAt(delegator.address, currentRound)
+                    .getVotesAndDelegateAtRoundStart(
+                        delegator.address,
+                        currentRound
+                    )
                     .then(t => t.map(v => v.toString()))
                 const expected = [
                     expectedAmount.toString(),
@@ -1337,7 +1382,7 @@ describe("BondingVotes", () => {
 
         // Same implementation as the BondingVotesERC5805Mock
         const mock = {
-            getBondingStateAt: (_account, _round) => {
+            getVotesAndDelegateAtRoundStart: (_account, _round) => {
                 const intAddr = BigNumber.from(_account)
 
                 // lowest 4 bytes of address + _round
@@ -1382,8 +1427,8 @@ describe("BondingVotes", () => {
         })
 
         describe("getVotes", () => {
-            it("should proxy to getBondingStateAt with the next round", async () => {
-                const [expected] = mock.getBondingStateAt(
+            it("should proxy to getVotesAndDelegateAtRoundStart with the next round", async () => {
+                const [expected] = mock.getVotesAndDelegateAtRoundStart(
                     signers[0].address,
                     currentRound + 1
                 )
@@ -1402,9 +1447,9 @@ describe("BondingVotes", () => {
                 await expect(tx).to.be.revertedWith("FutureLookup(1000, 999)")
             })
 
-            it("should proxy to getBondingStateAt with next round", async () => {
+            it("should proxy to getVotesAndDelegateAtRoundStart with next round", async () => {
                 const testOnce = async (account, round) => {
-                    const [expected] = mock.getBondingStateAt(
+                    const [expected] = mock.getVotesAndDelegateAtRoundStart(
                         account.address,
                         round + 1
                     )
@@ -1424,8 +1469,8 @@ describe("BondingVotes", () => {
         })
 
         describe("delegates", () => {
-            it("should proxy to getBondingStateAt with the next round", async () => {
-                const [, expected] = mock.getBondingStateAt(
+            it("should proxy to getVotesAndDelegateAtRoundStart with the next round", async () => {
+                const [, expected] = mock.getVotesAndDelegateAtRoundStart(
                     signers[5].address,
                     currentRound + 1
                 )
@@ -1437,9 +1482,9 @@ describe("BondingVotes", () => {
         })
 
         describe("delegatedAt", () => {
-            it("should proxy to getBondingStateAt with next round", async () => {
+            it("should proxy to getVotesAndDelegateAtRoundStart with next round", async () => {
                 const testOnce = async (account, round) => {
-                    const [, expected] = mock.getBondingStateAt(
+                    const [, expected] = mock.getVotesAndDelegateAtRoundStart(
                         account.address,
                         round + 1
                     )

@@ -107,7 +107,7 @@ contract BondingVotes is ManagerProxyTarget, IBondingVotes {
     constructor(address _controller) Manager(_controller) {}
 
     // IVotes interface implementation.
-    // These should not access any storage directly but proxy to the bonding state functions.
+    // These should not access any storage directly but proxy to the historical stake functions below.
 
     /**
      * @notice Returns the name of the virtual token implemented by this.
@@ -149,28 +149,21 @@ contract BondingVotes is ManagerProxyTarget, IBondingVotes {
     /**
      * @notice Returns the current amount of votes that `_account` has.
      *
-     * The value returned by this function can be equivalently calculated using {BondingManager} functions as follows:
-     * `isRegisteredTranscoder(_account) ? transcoderTotalStake(_account) : pendingStake(_account, 0)`
-     *
-     * @dev Keep in mind that since this function should return the votes at the end of the current round, we need to
-     * fetch the bonding state at the next round instead. That because the bonding state reflects the active stake in
-     * the current round, which is the snapshotted stake from the end of the previous round.
+     * The voting power for a delegator is the amount they are delegating to a transcoder, while for transcoders it is
+     * all the stake delegated to them. If an account is not a registered transcoder
+     * ({BondingManager-isRegisteredTranscoder}), the voting power of itself and of all its delegators will be zero.
      */
     function getVotes(address _account) external view returns (uint256) {
-        (uint256 amount, ) = getBondingStateAt(_account, clock() + 1);
-        return amount;
+        (uint256 votes, ) = getVotesAndDelegateAtRoundStart(_account, clock() + 1);
+        return votes;
     }
 
     /**
-     * @notice Returns the amount of votes that `_account` had at a specific moment in the past. If the `clock()` is
-     * configured to use block numbers, this will return the value at the end of the corresponding block.
-     * @dev Keep in mind that since this function should return the votes at the end of the _round (or timepoint in OZ
-     * terms), we need to fetch the bonding state at the next round instead. That because the bonding state reflects the
-     * active stake in the current round, which is the snapshotted stake from the end of the previous round.
+     * @notice Returns the amount of votes that `_account` had at the end of the provided past `_round`.
      */
     function getPastVotes(address _account, uint256 _round) external view onlyPastRounds(_round) returns (uint256) {
-        (uint256 amount, ) = getBondingStateAt(_account, _round + 1);
-        return amount;
+        (uint256 votes, ) = getVotesAndDelegateAtRoundStart(_account, _round + 1);
+        return votes;
     }
 
     /**
@@ -178,22 +171,16 @@ contract BondingVotes is ManagerProxyTarget, IBondingVotes {
      * @dev This value is the sum of all *active* stake, which is not necessarily the sum of all voting power.
      * Bonded stake that is not part of the top 100 active transcoder set is still given voting power, but is not
      * considered here.
-     * @dev Keep in mind that since this function should return the votes at the end of the current round, we need to
-     * fetch the total active stake at the next round instead. That because the active stake in the current round is the
-     * snapshotted stake from the end of the previous round.
      */
     function totalSupply() external view returns (uint256) {
         return getTotalActiveStakeAt(clock() + 1);
     }
 
     /**
-     * @notice Returns the total supply of votes available at a specific round in the past.
+     * @notice Returns the total supply of votes available at the end of the provided past `_round`.
      * @dev This value is the sum of all *active* stake, which is not necessarily the sum of all voting power.
      * Bonded stake that is not part of the top 100 active transcoder set is still given voting power, but is not
      * considered here.
-     * @dev Keep in mind that since this function should return the votes at the end of the _round (or timepoint in OZ
-     * terms), we need to fetch the total active stake at the next round instead. That because the active stake in the
-     * current round is the snapshotted stake from the end of the previous round.
      */
     function getPastTotalSupply(uint256 _round) external view onlyPastRounds(_round) returns (uint256) {
         return getTotalActiveStakeAt(_round + 1);
@@ -202,25 +189,19 @@ contract BondingVotes is ManagerProxyTarget, IBondingVotes {
     /**
      * @notice Returns the delegate that _account has chosen. This means the delegated transcoder address in case of
      * delegators, and the account's own address for transcoders (self-delegated).
-     * @dev Keep in mind that since this function should return the delegate at the end of the current round, we need to
-     * fetch the bonding state at the next round instead. That because the bonding state reflects the active stake in
-     * the current round, or the snapshotted stake from the end of the previous round.
      */
     function delegates(address _account) external view returns (address) {
-        (, address delegateAddress) = getBondingStateAt(_account, clock() + 1);
+        (, address delegateAddress) = getVotesAndDelegateAtRoundStart(_account, clock() + 1);
         return delegateAddress;
     }
 
     /**
-     * @notice Returns the delegate that _account had chosen in a specific round in the past.
+     * @notice Returns the delegate that _account had chosen at the end of the provided past `_round`.
      * @dev This is an addition to the IERC5805 interface to support our custom vote counting logic that allows
      * delegators to override their transcoders votes. See {GovernorCountingOverridable-_handleVoteOverrides}.
-     * @dev Keep in mind that since this function should return the delegate at the end of the _round (or timepoint in
-     * OZ terms), we need to fetch the bonding state at the next round instead. That because the bonding state reflects
-     * the active stake in the current round, which is the snapshotted stake from the end of the previous round.
      */
     function delegatedAt(address _account, uint256 _round) external view onlyPastRounds(_round) returns (address) {
-        (, address delegateAddress) = getBondingStateAt(_account, _round + 1);
+        (, address delegateAddress) = getVotesAndDelegateAtRoundStart(_account, _round + 1);
         return delegateAddress;
     }
 
@@ -323,7 +304,11 @@ contract BondingVotes is ManagerProxyTarget, IBondingVotes {
     // Historical stake access functions
 
     /**
-     * @dev Gets the checkpointed total active stake at a given round.
+     * @notice Get the total active stake at the start of a given round.
+     *
+     * Notice that this function is different from the {IERC5805Upgradeable} functions above that return the state at
+     * the *end* of the round. The state at the end of a round is equal to the state at the start of the next round, so
+     * to get the same result here, call this function with `round+1` instead.
      * @param _round The round for which we want to get the total active stake.
      */
     function getTotalActiveStakeAt(uint256 _round) public view virtual returns (uint256) {
@@ -353,34 +338,41 @@ contract BondingVotes is ManagerProxyTarget, IBondingVotes {
     }
 
     /**
-     * @notice Gets the bonding state of an account at a given round.
-     * @dev In the case of delegators it is the amount they are delegating to a transcoder, while for transcoders this
-     * includes all the stake that has been delegated to them (including self-delegated).
-     * @param _account The account whose bonding state we want to get.
-     * @param _round The round for which we want to get the bonding state. Normally a proposal's vote start round.
-     * @return amount The active stake of the account at the given round including any accrued rewards. In case of
-     * transcoders this also includes all the amount delegated towards them by other delegators.
-     * @return delegateAddress The address the account delegated to. Will be equal to _account in case of transcoders.
+     * @notice Gets the voting power and delegate of an account at the start of a given round.
+     *
+     * Notice that this function is different from the {IERC5805Upgradeable} functions above that return the state at
+     * the *end* of the round. The state at the end of a round is equal to the state at the start of the next round, so
+     * to get the same result here, call this function with `round+1` instead.
+     * @dev The value returned by this can also be calculated with the following logic using BondingManager functions at
+     * the start of the corresponding round:
+     * - If `isRegisteredTranscoder(_account)`, the result is `(_account, transcoderTotalStake(_account))`
+     * - Otherwise, the `delegate` is obtained from `getDelegator(_account).delegateAddress`
+     *  - If `isRegisteredTranscoder(delegate)`, the result is `(delegate, pendingStake(_account, 0))`
+     *  - Otherwise, the result is `(delegate, 0)`
+     * @param _account The account to get the voting power and delegate from.
+     * @param _round The round at which to get the account state (at round start).
+     * @return votes The voting power of the account at the start of the given round.
+     * @return delegateAddress The address the account delegated to at the start of the given round.
      */
-    function getBondingStateAt(address _account, uint256 _round)
+    function getVotesAndDelegateAtRoundStart(address _account, uint256 _round)
         public
         view
         virtual
-        returns (uint256 amount, address delegateAddress)
+        returns (uint256 votes, address delegateAddress)
     {
         BondingCheckpoint storage bond = getBondingCheckpointAt(_account, _round);
 
         delegateAddress = bond.delegateAddress;
 
         if (bond.bondedAmount == 0) {
-            amount = 0;
+            votes = 0;
         } else if (isRegisteredTranscoder(_account, bond)) {
             // Address is a registered transcoder so we use its delegated amount. This includes self and delegated stake
             // as well as any accrued rewards, even unclaimed ones
-            amount = bond.delegatedAmount;
+            votes = bond.delegatedAmount;
         } else {
             // Address is NOT a registered transcoder so we calculate its cumulative stake for the voting power
-            amount = delegatorCumulativeStakeAt(bond, _round);
+            votes = delegatorVotesAtRoundStart(bond, _round);
         }
     }
 
@@ -453,14 +445,17 @@ contract BondingVotes is ManagerProxyTarget, IBondingVotes {
     }
 
     /**
-     * @dev Gets the cumulative stake of a delegator at any given round. Differently from the bonding manager
-     * implementation, we can calculate the stake at any round through the use of the checkpointed state. It works by
-     * re-using the bonding manager logic while changing only the way that we find the earning pool for the end round.
+     * @dev Gets the voting power of a delegator at the start of the given round. This is done through cumulative
+     * rewards calculation on top of the bonding state.
+     *
+     * Differently from the bonding manager implementation, we can calculate the stake at any round through the use of
+     * the checkpointed state. It works by re-using the bonding manager logic while changing only the way that we find
+     * the earning pool for the end round.
      * @param bond The {BondingCheckpoint} of the delegator at the given round.
-     * @param _round The round for which we want to get the cumulative stake.
-     * @return The cumulative stake of the delegator at the given round.
+     * @param _round The round at which we want the delegator votes (at round start).
+     * @return The cumulative stake of the delegator at the start of the given round.
      */
-    function delegatorCumulativeStakeAt(BondingCheckpoint storage bond, uint256 _round)
+    function delegatorVotesAtRoundStart(BondingCheckpoint storage bond, uint256 _round)
         internal
         view
         returns (uint256)
