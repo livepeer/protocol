@@ -442,6 +442,49 @@ describe("GovernorCountingOverridable", () => {
                     })
                 })
             })
+
+            describe("should not override non self-delegating accounts", () => {
+                let brokenDelegator
+
+                beforeEach(async () => {
+                    brokenDelegator = signers[22]
+
+                    await initVoter({
+                        signer: brokenDelegator,
+                        amount: ethers.utils.parseEther("3"),
+                        // delegate to another delegator
+                        delegateAddress: delegators[0].address
+                    })
+                })
+
+                it("when voting before delegate", async () => {
+                    await governor
+                        .connect(brokenDelegator)
+                        .castVote(proposalId, VoteType.Against)
+
+                    await expectVotes([3, 0, 0])
+
+                    await governor
+                        .connect(delegators[0])
+                        .castVote(proposalId, VoteType.For)
+
+                    await expectVotes([3, 1, 0])
+                })
+
+                it("when voting after delegate", async () => {
+                    await governor
+                        .connect(delegators[0])
+                        .castVote(proposalId, VoteType.For)
+
+                    await expectVotes([0, 1, 0])
+
+                    await governor
+                        .connect(brokenDelegator)
+                        .castVote(proposalId, VoteType.Against)
+
+                    await expectVotes([3, 1, 0])
+                })
+            })
         })
     })
 })

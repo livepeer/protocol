@@ -181,11 +181,17 @@ abstract contract GovernorCountingOverridable is Initializable, GovernorUpgradea
         uint256 timepoint = proposalSnapshot(_proposalId);
         address delegate = votes().delegatedAt(_account, timepoint);
 
-        bool isTranscoder = _account == delegate;
-        if (isTranscoder) {
-            // deduce weight from any previous delegators for this transcoder to
-            // make a vote
+        bool isSelfDelegated = _account == delegate;
+        if (isSelfDelegated) {
+            // deduce weight from any previous delegators for this self-delegating account to cast a vote
             return _weight - _voter.deductions;
+        }
+
+        bool isDelegateSelfDelegated = delegate == votes().delegatedAt(delegate, timepoint);
+        if (!isDelegateSelfDelegated) {
+            // do not override votes of non-self-delegating accounts since those don't get their voting power from the
+            // sum of delegations to them, so the override logic doesn't apply.
+            return _weight;
         }
 
         // this is a delegator, so add a deduction to the delegated transcoder
@@ -213,6 +219,10 @@ abstract contract GovernorCountingOverridable is Initializable, GovernorUpgradea
 
     /**
      * @dev Implement in inheriting contract to provide the voting power provider.
+     *
+     * The most important expectation for the voting power provided by this contract is that, if an account delegates to
+     * itself (self-delegation) its voting power MUST be greater than or equal to the sum of all voting power from other
+     * accounts that delegate to it. If this invariant is broken, the vote overriding logic will break.
      */
     function votes() public view virtual returns (IVotes);
 
