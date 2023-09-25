@@ -384,7 +384,9 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     }
 
     /**
-     * @notice Slash a transcoder. Only callable by the Verifier
+     * @notice Slash a transcoder. Only callable by the Verifier.
+     * @dev DEPRECATED: This function is not currently used in the protocol and the Verifier role is not configured. Its
+     * implementation is not compatible with the rest of the BondingManager code anymore.
      * @param _transcoder Transcoder address
      * @param _finder Finder that proved a transcoder violated a slashing condition. Null address if there is no finder
      * @param _slashAmount Percentage of transcoder bond to be slashed
