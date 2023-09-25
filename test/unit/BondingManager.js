@@ -2234,6 +2234,22 @@ describe("BondingManager", () => {
                     )
                 })
 
+                it("should fail to make a bond for the zero address", async () => {
+                    const tx = bondingManager
+                        .connect(thirdParty)
+                        .bondForWithHint(
+                            1000,
+                            ethers.constants.AddressZero,
+                            transcoder1.address,
+                            ethers.constants.AddressZero,
+                            ethers.constants.AddressZero,
+                            ethers.constants.AddressZero,
+                            ethers.constants.AddressZero
+                        )
+
+                    await expect(tx).to.be.revertedWith("INVALID_DELEGATOR")
+                })
+
                 it("should increase delegated amount for a delegator without changing delegate", async () => {
                     const delegate = (
                         await bondingManager.getDelegator(delegator2.address)
