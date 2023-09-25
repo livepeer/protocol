@@ -4419,6 +4419,23 @@ describe("BondingManager", () => {
                 .to.emit(bondingManager, "WithdrawFees")
                 .withArgs(transcoder0.address, recipient.address, amount)
         })
+
+        it("should checkpoint the caller state", async () => {
+            const amount = 500
+            const tx = await bondingManager
+                .connect(transcoder0)
+                .withdrawFees(recipient.address, amount)
+
+            await expectCheckpoints(fixture, tx, {
+                account: transcoder0.address,
+                startRound: currentRound + 2,
+                bondedAmount: 1000,
+                delegateAddress: transcoder0.address,
+                delegatedAmount: 1000,
+                lastClaimRound: currentRound + 1,
+                lastRewardRound: 0
+            })
+        })
     })
 
     describe("reward", () => {
