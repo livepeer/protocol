@@ -441,8 +441,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
     /**
      * @notice Claim token pools shares for a delegator from its lastClaimRound through the end round
-     * @param _endRound Unused, represented the last round for which to claim token pools shares for a delegator.
-     * Currently, the earnings are always claimed until the current round instead.
+     * @param _endRound Unused, but used to represented the last round for which to claim token pools shares for a
+     * delegator. Currently, the earnings are always claimed until the current round instead.
      */
     function claimEarnings(uint256 _endRound)
         external
@@ -587,7 +587,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             delegationAmount = delegationAmount.add(currentBondedAmount);
 
             decreaseTotalStake(currentDelegate, currentBondedAmount, _oldDelegateNewPosPrev, _oldDelegateNewPosNext);
-            // currentDelegate is always different than msg.sender so no need to avoid double checkpointing
+            // no need to prevent double checkpointing since _owner is not a transcoder (i.e. currentDelegate != _owner)
             _checkpointBondingState(currentDelegate, delegators[currentDelegate], transcoders[currentDelegate]);
         }
 
@@ -912,8 +912,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     /**
      * @notice Returns pending bonded stake for a delegator from its lastClaimRound through an end round
      * @param _delegator Address of delegator
-     * @param _endRound Unused, but represented the last round to compute pending stake from. Currently, the pending
-     * stake is always calculated for the current round instead.
+     * @param _endRound Unused, but used to represent the last round to compute pending stake from. Currently, the
+     * pending stake is always calculated for the current round instead.
      * @return Pending bonded stake for '_delegator' since last claiming rewards
      */
     function pendingStake(address _delegator, uint256 _endRound) public view returns (uint256) {
@@ -928,7 +928,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     /**
      * @notice Returns pending fees for a delegator from its lastClaimRound through an end round
      * @param _delegator Address of delegator
-     * @param _endRound The last round to compute pending fees from
+     * @param _endRound Unused, but used to represent the last round to compute pending fees from. Currently, the
+     * pending fees are always calculated for the current round instead.
      * @return Pending fees for '_delegator' since last claiming fees
      */
     function pendingFees(address _delegator, uint256 _endRound) public view returns (uint256) {
