@@ -57,7 +57,7 @@ abstract contract GovernorCountingOverridable is Initializable, GovernorUpgradea
     mapping(uint256 => ProposalTally) private _proposalTallies;
 
     /**
-     * @notice The required percentage of "for" votes in relation to the total opinionated votes (for and abstain) for
+     * @notice The required percentage of "for" votes in relation to the total opinionated votes (for and against) for
      * a proposal to succeed. Represented as a MathUtils percentage value (e.g. 6 decimal places).
      */
     uint256 public quota;

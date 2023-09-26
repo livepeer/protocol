@@ -62,7 +62,7 @@ contract BondingVotes is ManagerProxyTarget, IBondingVotes {
     }
 
     /**
-     * @dev Stores a list of checkpoints for the total active stake, queryable and mapped by round. Notce that
+     * @dev Stores a list of checkpoints for the total active stake, queryable and mapped by round. Notice that
      * differently from bonding checkpoints, it's only accessible on the specific round. To access the checkpoint for a
      * given round, look for the checkpoint in the {data}} and if it's zero ensure the round was actually checkpointed on
      * the {rounds} array ({SortedArrays-findLowerBound}).
@@ -402,8 +402,14 @@ contract BondingVotes is ManagerProxyTarget, IBondingVotes {
 
         // Always send delegator events since transcoders are delegators themselves. The way our rewards work, the
         // delegator voting power calculated from events will only reflect their claimed stake without pending rewards.
-        if (previous.bondedAmount != current.bondedAmount) {
-            emit DelegatorBondedAmountChanged(_account, previous.bondedAmount, current.bondedAmount);
+        if (previous.bondedAmount != current.bondedAmount || previous.lastClaimRound != current.lastClaimRound) {
+            emit DelegatorBondedAmountChanged(
+                _account,
+                previous.bondedAmount,
+                previous.lastClaimRound,
+                current.bondedAmount,
+                current.lastClaimRound
+            );
         }
     }
 
@@ -474,8 +480,8 @@ contract BondingVotes is ManagerProxyTarget, IBondingVotes {
         }
 
         if (transcoderBond.lastRewardRound < bond.lastClaimRound) {
-            // If the transcoder hasn't called reward() since the last time the delegator claimed earnings, there wil be
-            // no rewards to add to the delegator's stake so we just return the originally bonded amount.
+            // If the transcoder hasn't called reward() since the last time the delegator claimed earnings, there will
+            // be no rewards to add to the delegator's stake so we just return the originally bonded amount.
             return bond.bondedAmount;
         }
 

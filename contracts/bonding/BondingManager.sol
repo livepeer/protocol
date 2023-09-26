@@ -41,7 +41,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         uint256 feeShare; // % of fees paid to delegators by transcoder
         mapping(uint256 => EarningsPool.Data) earningsPoolPerRound; // Mapping of round => earnings pool for the round
         uint256 lastActiveStakeUpdateRound; // Round for which the stake was last updated while the transcoder is active
-        uint256 activationRound; // Round in which the transcoder became active - 0 if inactive
+        uint256 activationRound; // Round in which the transcoder became active - if inactive will be 0 or <=deactivationRound
         uint256 deactivationRound; // Round in which the transcoder will become inactive
         uint256 activeCumulativeRewards; // The transcoder's cumulative rewards that are active in the current round
         uint256 cumulativeRewards; // The transcoder's cumulative rewards (earned via the its active staked rewards and its reward cut).
@@ -143,7 +143,6 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * should be used to initialize state variables post-deployment:
      * - setUnbondingPeriod()
      * - setNumActiveTranscoders()
-     * - setMaxEarningsClaimsRounds()
      * @param _controller Address of Controller that this contract will be registered with
      */
     constructor(address _controller) Manager(_controller) {}
@@ -386,7 +385,9 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     }
 
     /**
-     * @notice Slash a transcoder. Only callable by the Verifier
+     * @notice Slash a transcoder. Only callable by the Verifier.
+     * @dev DEPRECATED: This function is not currently used in the protocol and the Verifier role is not configured. Its
+     * implementation is not compatible with the rest of the BondingManager code anymore.
      * @param _transcoder Transcoder address
      * @param _finder Finder that proved a transcoder violated a slashing condition. Null address if there is no finder
      * @param _slashAmount Percentage of transcoder bond to be slashed
@@ -443,7 +444,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
     /**
      * @notice Claim token pools shares for a delegator from its lastClaimRound through the end round
-     * @param _endRound The last round for which to claim token pools shares for a delegator
+     * @param _endRound Unused, but used to represented the last round for which to claim token pools shares for a
+     * delegator. Currently, the earnings are always claimed until the current round instead.
      */
     function claimEarnings(uint256 _endRound)
         external
@@ -558,11 +560,14 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
         // Requirements for a third party caller that is not the L2Migrator
         if (msg.sender != _owner && msg.sender != l2Migrator()) {
-            // Does not trigger self-delegation
-            // Does not change the delegate if it is already non-null
+            // Does not bond for the zero address
+            require(_owner != address(0), "INVALID_DELEGATOR");
+
             if (delegatorStatus(_owner) == DelegatorStatus.Unbonded) {
+                // Does not trigger self-delegation
                 require(_to != _owner, "INVALID_DELEGATE");
             } else {
+                // Does not change the delegate if it is already non-null
                 require(currentDelegate == _to, "INVALID_DELEGATE_CHANGE");
             }
         }
@@ -588,6 +593,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             delegationAmount = delegationAmount.add(currentBondedAmount);
 
             decreaseTotalStake(currentDelegate, currentBondedAmount, _oldDelegateNewPosPrev, _oldDelegateNewPosNext);
+            // no need to prevent double checkpointing since _owner is not a transcoder (i.e. currentDelegate != _owner)
+            _checkpointBondingState(currentDelegate, delegators[currentDelegate], transcoders[currentDelegate]);
         }
 
         {
@@ -611,6 +618,10 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         del.bondedAmount = currentBondedAmount.add(_amount);
 
         increaseTotalStake(_to, delegationAmount, _currDelegateNewPosPrev, _currDelegateNewPosNext);
+        if (_to != _owner) {
+            // Avoid double checkpointing of the transcoder if it's a self-bond
+            _checkpointBondingState(_to, delegators[_to], transcoders[_to]);
+        }
 
         if (_amount > 0) {
             // Transfer the LPT to the Minter
@@ -721,6 +732,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             // Requirements for caller
             // Does not trigger self-delegation
             require(oldDelDelegate != _delegator, "INVALID_DELEGATOR");
+            // Does not transfer bond to the zero address
+            require(address(0) != _delegator, "INVALID_DELEGATOR");
 
             newDel.delegateAddress = oldDelDelegate;
         }
@@ -780,6 +793,10 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
         // If msg.sender was resigned this statement will only decrease delegators[currentDelegate].delegatedAmount
         decreaseTotalStake(currentDelegate, _amount, _newPosPrev, _newPosNext);
+        if (currentDelegate != msg.sender) {
+            // Avoid double checkpointing of the transcoder if it's a self-unbond
+            _checkpointBondingState(currentDelegate, delegators[currentDelegate], transcoders[currentDelegate]);
+        }
 
         emit Unbond(currentDelegate, msg.sender, unbondingLockId, _amount, withdrawRound);
     }
@@ -903,7 +920,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     /**
      * @notice Returns pending bonded stake for a delegator from its lastClaimRound through an end round
      * @param _delegator Address of delegator
-     * @param _endRound The last round to compute pending stake from
+     * @param _endRound Unused, but used to represent the last round to compute pending stake from. Currently, the
+     * pending stake is always calculated for the current round instead.
      * @return Pending bonded stake for '_delegator' since last claiming rewards
      */
     function pendingStake(address _delegator, uint256 _endRound) public view returns (uint256) {
@@ -918,7 +936,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     /**
      * @notice Returns pending fees for a delegator from its lastClaimRound through an end round
      * @param _delegator Address of delegator
-     * @param _endRound The last round to compute pending fees from
+     * @param _endRound Unused, but used to represent the last round to compute pending fees from. Currently, the
+     * pending fees are always calculated for the current round instead.
      * @return Pending fees for '_delegator' since last claiming fees
      */
     function pendingFees(address _delegator, uint256 _endRound) public view returns (uint256) {
@@ -1288,24 +1307,12 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     }
 
     /**
-     * @dev Increase the total stake for a delegate and updates its 'lastActiveStakeUpdateRound'
+     * @dev Increase the total stake for a delegate and updates its 'lastActiveStakeUpdateRound'. Notice that this
+     * function does not checkpoint the delegate and callers should take care of it themselves.
      * @param _delegate The delegate to increase the stake for
      * @param _amount The amount to increase the stake for '_delegate' by
      */
     function increaseTotalStake(
-        address _delegate,
-        uint256 _amount,
-        address _newPosPrev,
-        address _newPosNext
-    ) internal autoCheckpoint(_delegate) {
-        return increaseTotalStakeUncheckpointed(_delegate, _amount, _newPosPrev, _newPosNext);
-    }
-
-    /**
-     * @dev Implementation of increaseTotalStake that does not checkpoint the caller, to be used by functions that
-     * guarantee the checkpointing themselves.
-     */
-    function increaseTotalStakeUncheckpointed(
         address _delegate,
         uint256 _amount,
         address _newPosPrev,
@@ -1355,7 +1362,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         uint256 _amount,
         address _newPosPrev,
         address _newPosNext
-    ) internal autoCheckpoint(_delegate) {
+    ) internal {
         Transcoder storage t = transcoders[_delegate];
 
         uint256 currStake = transcoderTotalStake(_delegate);
@@ -1486,7 +1493,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // the earnings claiming algorithm and instead that amount is accounted for in the transcoder's cumulativeRewards field
         earningsPool.updateCumulativeRewardFactor(prevEarningsPool, delegatorsRewards);
         // Update transcoder's total stake with rewards
-        increaseTotalStakeUncheckpointed(_transcoder, _rewards, _newPosPrev, _newPosNext);
+        increaseTotalStake(_transcoder, _rewards, _newPosPrev, _newPosNext);
     }
 
     /**
@@ -1580,9 +1587,15 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // Delete lock
         delete del.unbondingLocks[_unbondingLockId];
 
-        increaseTotalStake(del.delegateAddress, amount, _newPosPrev, _newPosNext);
+        address delegate = del.delegateAddress;
 
-        emit Rebond(del.delegateAddress, _delegator, _unbondingLockId, amount);
+        increaseTotalStake(delegate, amount, _newPosPrev, _newPosNext);
+        if (delegate != _delegator) {
+            // Avoid double checkpointing of the transcoder if it's a self-rebond
+            _checkpointBondingState(delegate, delegators[delegate], transcoders[delegate]);
+        }
+
+        emit Rebond(delegate, _delegator, _unbondingLockId, amount);
     }
 
     /**

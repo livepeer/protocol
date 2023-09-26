@@ -522,7 +522,8 @@ describe("BondingVotes", () => {
                 account,
                 delegateAddress,
                 bondedAmount,
-                delegatedAmount
+                delegatedAmount,
+                lastClaimRound = currentRound
             ) => {
                 const functionData = encodeCheckpointBondingState({
                     account,
@@ -530,7 +531,7 @@ describe("BondingVotes", () => {
                     bondedAmount,
                     delegateAddress,
                     delegatedAmount,
-                    lastClaimRound: currentRound,
+                    lastClaimRound,
                     lastRewardRound: 0
                 })
                 return await fixture.bondingManager.execute(
@@ -563,7 +564,7 @@ describe("BondingVotes", () => {
                     )
                 await expect(tx)
                     .to.emit(bondingVotes, "DelegatorBondedAmountChanged")
-                    .withArgs(delegator.address, 0, 1000)
+                    .withArgs(delegator.address, 0, 0, 1000, currentRound)
 
                 // Changing only bondedAmount
                 tx = await makeCheckpoint(
@@ -576,7 +577,13 @@ describe("BondingVotes", () => {
                 await expect(tx).not.to.emit(bondingVotes, "DelegateChanged")
                 await expect(tx)
                     .to.emit(bondingVotes, "DelegatorBondedAmountChanged")
-                    .withArgs(delegator.address, 1000, 2000)
+                    .withArgs(
+                        delegator.address,
+                        1000,
+                        currentRound,
+                        2000,
+                        currentRound
+                    )
 
                 // Changing only delegateAddress
                 tx = await makeCheckpoint(
@@ -596,6 +603,37 @@ describe("BondingVotes", () => {
                         delegator.address,
                         transcoder.address,
                         transcoder2.address
+                    )
+            })
+
+            it("should send BondedAmount event when only lastClaimRound changes", async () => {
+                // Changing both bondedAmount and delegateAddress
+                let tx = await makeCheckpoint(
+                    delegator.address,
+                    transcoder.address,
+                    1000,
+                    0,
+                    currentRound - 2
+                )
+
+                // Changing only lastClaimRound
+                tx = await makeCheckpoint(
+                    delegator.address,
+                    transcoder.address,
+                    1000,
+                    0,
+                    currentRound
+                )
+
+                await expect(tx).not.to.emit(bondingVotes, "DelegateChanged")
+                await expect(tx)
+                    .to.emit(bondingVotes, "DelegatorBondedAmountChanged")
+                    .withArgs(
+                        delegator.address,
+                        1000,
+                        currentRound - 2,
+                        1000,
+                        currentRound
                     )
             })
 
@@ -621,7 +659,7 @@ describe("BondingVotes", () => {
                 // Still emits a delegator event
                 await expect(tx)
                     .to.emit(bondingVotes, "DelegatorBondedAmountChanged")
-                    .withArgs(transcoder.address, 0, 20000)
+                    .withArgs(transcoder.address, 0, 0, 20000, currentRound)
 
                 // Changing only delegatedAmount
                 tx = await makeCheckpoint(
