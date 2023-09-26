@@ -16,7 +16,7 @@ contract BondingVotesERC5805Harness is BondingVotes {
      * @return amount lowest 4 bytes of address + _round
      * @return delegateAddress (_account << 4) | _round.
      */
-    function getBondingStateAt(address _account, uint256 _round)
+    function getVotesAndDelegateAtRoundStart(address _account, uint256 _round)
         public
         pure
         override

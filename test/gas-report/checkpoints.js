@@ -111,31 +111,41 @@ describe("checkpoint bonding state gas report", () => {
         })
     })
 
-    describe("getBondingStateAt", () => {
+    describe("getVotesAndDelegateAtRoundStart", () => {
         beforeEach(async () => {
             await bondingManager.checkpointBondingState(transcoder.address)
             await bondingManager.checkpointBondingState(delegator.address)
             await bondingManager.checkpointBondingState(signers[99].address)
         })
 
-        const gasGetBondingStateAt = async (address, round) => {
-            const tx = await bondingVotes.populateTransaction.getBondingStateAt(
-                address,
-                round
-            )
+        const gasGetVotesAndDelegateAtRoundStart = async (address, round) => {
+            const tx =
+                await bondingVotes.populateTransaction.getVotesAndDelegateAtRoundStart(
+                    address,
+                    round
+                )
             await signers[0].sendTransaction(tx)
         }
 
         it("delegator", async () => {
-            await gasGetBondingStateAt(delegator.address, currentRound + 1)
+            await gasGetVotesAndDelegateAtRoundStart(
+                delegator.address,
+                currentRound + 1
+            )
         })
 
         it("transcoder", async () => {
-            await gasGetBondingStateAt(transcoder.address, currentRound + 1)
+            await gasGetVotesAndDelegateAtRoundStart(
+                transcoder.address,
+                currentRound + 1
+            )
         })
 
         it("non-participant", async () => {
-            await gasGetBondingStateAt(signers[99].address, currentRound + 1)
+            await gasGetVotesAndDelegateAtRoundStart(
+                signers[99].address,
+                currentRound + 1
+            )
         })
     })
 })
