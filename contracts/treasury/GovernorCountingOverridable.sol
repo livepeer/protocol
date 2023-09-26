@@ -16,7 +16,8 @@ import "./IVotes.sol";
 /**
  * @title GovernorCountingOverridable
  * @notice Implements the Counting module from OpenZeppelin Governor with support for delegators overriding their
- * delegated transcoder's vote. This module is used through inheritance by the Governor contract.
+ * delegated transcoder's vote. This module is used through inheritance by the Governor contract, which must implement
+ * the `votes()` function to provide an instance of the IVotes interface.
  */
 abstract contract GovernorCountingOverridable is Initializable, GovernorUpgradeable {
     error InvalidVoteType(uint8 voteType);
@@ -118,7 +119,7 @@ abstract contract GovernorCountingOverridable is Initializable, GovernorUpgradea
     function _voteSucceeded(uint256 _proposalId) internal view virtual override returns (bool) {
         (uint256 againstVotes, uint256 forVotes, ) = proposalVotes(_proposalId);
 
-        // we ignore abstain votes for vote succeeded calculation
+        // We ignore abstain votes for vote succeeded calculation
         uint256 opinionatedVotes = againstVotes + forVotes;
 
         return forVotes >= MathUtils.percOf(opinionatedVotes, quota);
@@ -181,25 +182,30 @@ abstract contract GovernorCountingOverridable is Initializable, GovernorUpgradea
         uint256 timepoint = proposalSnapshot(_proposalId);
         address delegate = votes().delegatedAt(_account, timepoint);
 
+        // Notice that we don't need to check if the voting power is greater than zero to trigger the override logic
+        // here, which would be the equivalent of the `bondedAmount > 0` check in {BondingVotes-isRegisteredTranscoder}.
+        // This is because if the account has zero `bondedAmount`, then it and all its delegators will also have zero
+        // voting power, meaning the `votes()` invariant still holds (`0 >= sum(N*0)`).
         bool isSelfDelegated = _account == delegate;
         if (isSelfDelegated) {
-            // deduce weight from any previous delegators for this self-delegating account to cast a vote
+            // Deduce weight from any previous delegators for this self-delegating account to cast a vote.
             return _weight - _voter.deductions;
         }
 
+        // Same as above, all we need to check here is for a self-delegation due to the `votes()` invariant.
         bool isDelegateSelfDelegated = delegate == votes().delegatedAt(delegate, timepoint);
         if (!isDelegateSelfDelegated) {
-            // do not override votes of non-self-delegating accounts since those don't get their voting power from the
+            // Do not override votes of non-self-delegating accounts since those don't get their voting power from the
             // sum of delegations to them, so the override logic doesn't apply.
             return _weight;
         }
 
-        // this is a delegator, so add a deduction to the delegated transcoder
+        // This is a delegator, so add a deduction to the delegated transcoder
         ProposalVoterState storage delegateVoter = _tally.voters[delegate];
         delegateVoter.deductions += _weight;
 
         if (delegateVoter.hasVoted) {
-            // this is a delegator overriding its delegated transcoder vote,
+            // This is a delegator overriding its delegated transcoder vote,
             // we need to update the current totals to move the weight of
             // the delegator vote to the right outcome.
             VoteType delegateSupport = delegateVoter.support;
@@ -218,11 +224,10 @@ abstract contract GovernorCountingOverridable is Initializable, GovernorUpgradea
     }
 
     /**
-     * @dev Implement in inheriting contract to provide the voting power provider.
-     *
-     * The most important expectation for the voting power provided by this contract is that, if an account delegates to
-     * itself (self-delegation) its voting power MUST be greater than or equal to the sum of all voting power from other
-     * accounts that delegate to it. If this invariant is broken, the vote overriding logic will break.
+     * @notice Provides the IVotes contract for all voting power handling logics.
+     * @dev The returned contract must guarantee this invariant at any given timepoint: if an `_account` delegates to
+     * itself (self-delegation), then its voting power must be greater than or equal to the sum of the voting power of
+     * all its delegators. In pseudo-code: `votes(_account) >= sum(votes(delegators(_account)))`
      */
     function votes() public view virtual returns (IVotes);
 
