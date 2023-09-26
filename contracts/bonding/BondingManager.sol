@@ -518,11 +518,14 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
         // Requirements for a third party caller that is not the L2Migrator
         if (msg.sender != _owner && msg.sender != l2Migrator()) {
-            // Does not trigger self-delegation
-            // Does not change the delegate if it is already non-null
+            // Does not bond for the zero address
+            require(_owner != address(0), "INVALID_DELEGATOR");
+
             if (delegatorStatus(_owner) == DelegatorStatus.Unbonded) {
+                // Does not trigger self-delegation
                 require(_to != _owner, "INVALID_DELEGATE");
             } else {
+                // Does not change the delegate if it is already non-null
                 require(currentDelegate == _to, "INVALID_DELEGATE_CHANGE");
             }
         }
@@ -681,6 +684,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             // Requirements for caller
             // Does not trigger self-delegation
             require(oldDelDelegate != _delegator, "INVALID_DELEGATOR");
+            // Does not transfer bond to the zero address
+            require(address(0) != _delegator, "INVALID_DELEGATOR");
 
             newDel.delegateAddress = oldDelDelegate;
         }
