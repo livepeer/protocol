@@ -719,13 +719,14 @@ describe("BondingVotes", () => {
                         constants.NULL_ADDRESS,
                         transcoder.address
                     )
+                // this is still emitted because lastClaimRound changed
+                await expect(tx)
+                    .to.emit(bondingVotes, "DelegatorBondedAmountChanged")
+                    .withArgs(transcoder.address, 0, 0, 0, currentRound)
+
                 await expect(tx).not.to.emit(
                     bondingVotes,
                     "DelegateVotesChanged"
-                )
-                await expect(tx).not.to.emit(
-                    bondingVotes,
-                    "DelegatorBondedAmountChanged"
                 )
             })
         })
