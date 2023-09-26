@@ -1853,7 +1853,7 @@ describe("BondingManager", () => {
         })
 
         it("should checkpoint the delegator and transcoder states", async () => {
-            // make sure trancoder has a non-null `lastRewardRound`
+            // make sure transcoder has a non-null `lastRewardRound`
             await bondingManager.connect(transcoder0).reward()
 
             const tx = await bondingManager
@@ -1870,7 +1870,7 @@ describe("BondingManager", () => {
                     delegateAddress: transcoder0.address,
                     delegatedAmount: 2000,
                     lastClaimRound: currentRound - 1,
-                    lastRewardRound: 100
+                    lastRewardRound: currentRound
                 },
                 {
                     account: delegator.address,
@@ -1882,6 +1882,25 @@ describe("BondingManager", () => {
                     lastRewardRound: 0
                 }
             )
+        })
+
+        it("should checkpoint transcoder only once on self-bond", async () => {
+            // make sure transcoder has a non-null `lastRewardRound`
+            await bondingManager.connect(transcoder0).reward()
+
+            const tx = await bondingManager
+                .connect(transcoder0)
+                .bond(1000, transcoder0.address)
+
+            await expectCheckpoints(fixture, tx, {
+                account: transcoder0.address,
+                startRound: currentRound + 1,
+                bondedAmount: 2000,
+                delegateAddress: transcoder0.address,
+                delegatedAmount: 2000,
+                lastClaimRound: currentRound,
+                lastRewardRound: currentRound
+            })
         })
     })
 
@@ -2577,6 +2596,22 @@ describe("BondingManager", () => {
             )
         })
 
+        it("should checkpoint transcoder only once on self-unbond", async () => {
+            // make sure transcoder has a non-null `lastRewardRound`
+            await bondingManager.connect(transcoder).reward()
+            const tx = await bondingManager.connect(transcoder).unbond(500)
+
+            await expectCheckpoints(fixture, tx, {
+                account: transcoder.address,
+                startRound: currentRound + 2,
+                bondedAmount: 500,
+                delegateAddress: transcoder.address,
+                delegatedAmount: 1500,
+                lastClaimRound: currentRound + 1,
+                lastRewardRound: currentRound + 1
+            })
+        })
+
         describe("partial unbonding", () => {
             it("should create an unbonding lock for a partial unbond", async () => {
                 const unbondingLockID = (
@@ -3217,6 +3252,28 @@ describe("BondingManager", () => {
                     lastRewardRound: 0
                 }
             )
+        })
+
+        it("should checkpoint transcoder only once on self-rebond", async () => {
+            // make sure transcoder has a non-null `lastRewardRound`
+            await bondingManager.connect(transcoder).reward()
+
+            // unbonding lock id will be the same
+            await bondingManager.connect(transcoder).unbond(500)
+
+            const tx = await bondingManager
+                .connect(transcoder)
+                .rebond(unbondingLockID)
+
+            await expectCheckpoints(fixture, tx, {
+                account: transcoder.address,
+                startRound: currentRound + 2,
+                bondedAmount: 1000,
+                delegateAddress: transcoder.address,
+                delegatedAmount: 1500,
+                lastClaimRound: currentRound + 1,
+                lastRewardRound: currentRound + 1
+            })
         })
 
         describe("current delegate is a registered transcoder", () => {
@@ -4075,6 +4132,45 @@ describe("BondingManager", () => {
                             delegatedAmount: 0,
                             lastClaimRound: currentRound + 3,
                             lastRewardRound: 0
+                        }
+                    )
+                })
+
+                it("should checkpoint transcoders only once", async () => {
+                    // make sure trancoder has a non-null `lastRewardRound`
+                    await bondingManager.connect(transcoder0).reward()
+
+                    const tx = await bondingManager
+                        .connect(transcoder1)
+                        .transferBond(
+                            transcoder0.address,
+                            999,
+                            ZERO_ADDRESS,
+                            ZERO_ADDRESS,
+                            ZERO_ADDRESS,
+                            ZERO_ADDRESS
+                        )
+
+                    await expectCheckpoints(
+                        fixture,
+                        tx,
+                        {
+                            account: transcoder1.address,
+                            startRound: currentRound + 4,
+                            bondedAmount: 1001,
+                            delegateAddress: transcoder1.address,
+                            delegatedAmount: 3001,
+                            lastClaimRound: currentRound + 3,
+                            lastRewardRound: 0
+                        },
+                        {
+                            account: transcoder0.address,
+                            startRound: currentRound + 4,
+                            bondedAmount: 1999,
+                            delegateAddress: transcoder0.address,
+                            delegatedAmount: 3999,
+                            lastClaimRound: currentRound + 3,
+                            lastRewardRound: currentRound + 3
                         }
                     )
                 })
