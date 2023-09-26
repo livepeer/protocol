@@ -108,7 +108,7 @@ contract BondingVotesStateInitialization is GovernorBaseTest {
         uint256 currentRound = ROUNDS_MANAGER.currentRound();
 
         for (uint256 i = 0; i < _testAddresses.length; i++) {
-            (uint256 checkedAmount, address checkedDelegate) = bondingVotes.getBondingStateAt(
+            (uint256 checkedAmount, address checkedDelegate) = bondingVotes.getVotesAndDelegateAtRoundStart(
                 _testAddresses[i],
                 currentRound
             );
@@ -128,11 +128,11 @@ contract BondingVotesStateInitialization is GovernorBaseTest {
 
             // Still returns zero checkpoint in the current round, checkpoint is made for the next.
             // We don't check delegatedAmount for simplicity here, it is checked in the other tests.
-            (, address checkedDelegate) = bondingVotes.getBondingStateAt(addr, currentRound);
+            (, address checkedDelegate) = bondingVotes.getVotesAndDelegateAtRoundStart(addr, currentRound);
             assertEq(checkedDelegate, address(0));
 
             // Allows querying up to the next round.
-            (, checkedDelegate) = bondingVotes.getBondingStateAt(addr, currentRound + 1);
+            (, checkedDelegate) = bondingVotes.getVotesAndDelegateAtRoundStart(addr, currentRound + 1);
             assertEq(
                 checkedDelegate,
                 addr == DELEGATOR || addr == DELEGATOR_DELEGATE ? DELEGATOR_DELEGATE : addr == TRANSCODER
@@ -144,7 +144,7 @@ contract BondingVotesStateInitialization is GovernorBaseTest {
             CHEATS.expectRevert(
                 abi.encodeWithSelector(IBondingVotes.FutureLookup.selector, currentRound + 2, currentRound + 1)
             );
-            bondingVotes.getBondingStateAt(addr, currentRound + 2);
+            bondingVotes.getVotesAndDelegateAtRoundStart(addr, currentRound + 2);
         }
     }
 
@@ -154,7 +154,10 @@ contract BondingVotesStateInitialization is GovernorBaseTest {
 
         BONDING_MANAGER.checkpointBondingState(TRANSCODER);
 
-        (uint256 checkedAmount, address checkedDelegate) = bondingVotes.getBondingStateAt(TRANSCODER, currentRound + 1);
+        (uint256 checkedAmount, address checkedDelegate) = bondingVotes.getVotesAndDelegateAtRoundStart(
+            TRANSCODER,
+            currentRound + 1
+        );
         assertEq(checkedAmount, delegatedAmount);
         assertEq(checkedDelegate, TRANSCODER);
     }
@@ -170,7 +173,10 @@ contract BondingVotesStateInitialization is GovernorBaseTest {
         // the delegate also needs to be checkpointed in case of delegators
         BONDING_MANAGER.checkpointBondingState(DELEGATOR_DELEGATE);
 
-        (uint256 checkedAmount, address checkedDelegate) = bondingVotes.getBondingStateAt(DELEGATOR, currentRound + 1);
+        (uint256 checkedAmount, address checkedDelegate) = bondingVotes.getVotesAndDelegateAtRoundStart(
+            DELEGATOR,
+            currentRound + 1
+        );
 
         assertEq(checkedAmount, pendingStake);
         assertEq(checkedDelegate, DELEGATOR_DELEGATE);

@@ -463,7 +463,10 @@ describe("BondingVotes", () => {
 
             assert.deepEqual(
                 await bondingVotes
-                    .getBondingStateAt(transcoder.address, currentRound + 1)
+                    .getVotesAndDelegateAtRoundStart(
+                        transcoder.address,
+                        currentRound + 1
+                    )
                     .then(t => t.map(v => v.toString())),
                 ["1000", transcoder.address]
             )
@@ -493,7 +496,10 @@ describe("BondingVotes", () => {
 
             assert.deepEqual(
                 await bondingVotes
-                    .getBondingStateAt(transcoder.address, currentRound + 1)
+                    .getVotesAndDelegateAtRoundStart(
+                        transcoder.address,
+                        currentRound + 1
+                    )
                     .then(t => t.map(v => v.toString())),
                 ["2000", transcoder.address]
             )
@@ -696,6 +702,33 @@ describe("BondingVotes", () => {
                     "DelegatorBondedAmountChanged"
                 )
             })
+
+            it("should not emit DelegateVotesChanged for a 0 amount self-delegating account", async () => {
+                // Has a self-delegation and delegatedAmount but no bondedAmount
+                const tx = await makeCheckpoint(
+                    transcoder.address,
+                    transcoder.address,
+                    0,
+                    50000
+                )
+
+                await expect(tx)
+                    .to.emit(bondingVotes, "DelegateChanged")
+                    .withArgs(
+                        transcoder.address,
+                        constants.NULL_ADDRESS,
+                        transcoder.address
+                    )
+                // this is still emitted because lastClaimRound changed
+                await expect(tx)
+                    .to.emit(bondingVotes, "DelegatorBondedAmountChanged")
+                    .withArgs(transcoder.address, 0, 0, 0, currentRound)
+
+                await expect(tx).not.to.emit(
+                    bondingVotes,
+                    "DelegateVotesChanged"
+                )
+            })
         })
     })
 
@@ -750,7 +783,7 @@ describe("BondingVotes", () => {
         })
     })
 
-    describe("getBondingStateAt", () => {
+    describe("getVotesAndDelegateAtRoundStart", () => {
         let transcoder
         let delegator
         let currentRound
@@ -764,7 +797,7 @@ describe("BondingVotes", () => {
         })
 
         it("should fail if round is after the next round", async () => {
-            const tx = bondingVotes.getBondingStateAt(
+            const tx = bondingVotes.getVotesAndDelegateAtRoundStart(
                 delegator.address,
                 currentRound + 2
             )
@@ -794,7 +827,10 @@ describe("BondingVotes", () => {
             const expectZeroCheckpoint = async queryRound => {
                 expect(
                     await bondingVotes
-                        .getBondingStateAt(delegator.address, queryRound)
+                        .getVotesAndDelegateAtRoundStart(
+                            delegator.address,
+                            queryRound
+                        )
                         .then(t => t.map(v => v.toString()))
                 ).to.deep.equal(["0", constants.NULL_ADDRESS])
             }
@@ -850,7 +886,10 @@ describe("BondingVotes", () => {
 
                 assert.deepEqual(
                     await bondingVotes
-                        .getBondingStateAt(transcoder.address, currentRound - 2)
+                        .getVotesAndDelegateAtRoundStart(
+                            transcoder.address,
+                            currentRound - 2
+                        )
                         .then(t => t.map(v => v.toString())),
                     ["0", constants.NULL_ADDRESS]
                 )
@@ -861,7 +900,10 @@ describe("BondingVotes", () => {
 
                 assert.deepEqual(
                     await bondingVotes
-                        .getBondingStateAt(transcoder.address, currentRound)
+                        .getVotesAndDelegateAtRoundStart(
+                            transcoder.address,
+                            currentRound
+                        )
                         .then(t => t.map(v => v.toString())),
                     ["1000", transcoder.address]
                 )
@@ -873,14 +915,20 @@ describe("BondingVotes", () => {
 
                 assert.deepEqual(
                     await bondingVotes
-                        .getBondingStateAt(transcoder.address, currentRound - 7)
+                        .getVotesAndDelegateAtRoundStart(
+                            transcoder.address,
+                            currentRound - 7
+                        )
                         .then(t => t.map(v => v.toString())),
                     ["1000", transcoder.address]
                 )
 
                 assert.deepEqual(
                     await bondingVotes
-                        .getBondingStateAt(transcoder.address, currentRound)
+                        .getVotesAndDelegateAtRoundStart(
+                            transcoder.address,
+                            currentRound
+                        )
                         .then(t => t.map(v => v.toString())),
                     ["2000", transcoder.address]
                 )
@@ -899,7 +947,7 @@ describe("BondingVotes", () => {
                     const functionData = encodeCheckpointBondingState({
                         account,
                         startRound,
-                        bondedAmount: 0, // not used in these tests
+                        bondedAmount: 1, // required to be considered a registered transcoder
                         delegateAddress: account,
                         delegatedAmount: 0, // not used in these tests
                         lastClaimRound: startRound - 1,
@@ -974,7 +1022,10 @@ describe("BondingVotes", () => {
 
                 assert.deepEqual(
                     await bondingVotes
-                        .getBondingStateAt(delegator.address, currentRound)
+                        .getVotesAndDelegateAtRoundStart(
+                            delegator.address,
+                            currentRound
+                        )
                         .then(t => t.map(v => v.toString())),
                     ["0", constants.NULL_ADDRESS]
                 )
@@ -990,7 +1041,10 @@ describe("BondingVotes", () => {
 
                 assert.deepEqual(
                     await bondingVotes
-                        .getBondingStateAt(delegator.address, currentRound)
+                        .getVotesAndDelegateAtRoundStart(
+                            delegator.address,
+                            currentRound
+                        )
                         .then(t => t.map(v => v.toString())),
                     ["1000", transcoder.address]
                 )
@@ -1013,14 +1067,20 @@ describe("BondingVotes", () => {
 
                 assert.deepEqual(
                     await bondingVotes
-                        .getBondingStateAt(delegator.address, currentRound - 7)
+                        .getVotesAndDelegateAtRoundStart(
+                            delegator.address,
+                            currentRound - 7
+                        )
                         .then(t => t.map(v => v.toString())),
                     ["1000", transcoder.address]
                 )
 
                 assert.deepEqual(
                     await bondingVotes
-                        .getBondingStateAt(delegator.address, currentRound)
+                        .getVotesAndDelegateAtRoundStart(
+                            delegator.address,
+                            currentRound
+                        )
                         .then(t => t.map(v => v.toString())),
                     ["2000", transcoder2.address]
                 )
@@ -1052,7 +1112,10 @@ describe("BondingVotes", () => {
 
                 assert.deepEqual(
                     await bondingVotes
-                        .getBondingStateAt(delegator.address, currentRound)
+                        .getVotesAndDelegateAtRoundStart(
+                            delegator.address,
+                            currentRound
+                        )
                         .then(t => t.map(v => v.toString())),
                     ["1000", transcoder.address]
                 )
@@ -1078,7 +1141,7 @@ describe("BondingVotes", () => {
                 })
                 // no earning pool for currentRound - 2
 
-                const tx = bondingVotes.getBondingStateAt(
+                const tx = bondingVotes.getVotesAndDelegateAtRoundStart(
                     delegator.address,
                     currentRound
                 )
@@ -1115,7 +1178,10 @@ describe("BondingVotes", () => {
 
                 assert.deepEqual(
                     await bondingVotes
-                        .getBondingStateAt(delegator.address, currentRound)
+                        .getVotesAndDelegateAtRoundStart(
+                            delegator.address,
+                            currentRound
+                        )
                         .then(t => t.map(v => v.toString())),
                     ["3000", transcoder.address]
                 )
@@ -1143,10 +1209,151 @@ describe("BondingVotes", () => {
 
                 assert.deepEqual(
                     await bondingVotes
-                        .getBondingStateAt(delegator.address, currentRound)
+                        .getVotesAndDelegateAtRoundStart(
+                            delegator.address,
+                            currentRound
+                        )
                         .then(t => t.map(v => v.toString())),
                     ["5000", transcoder.address]
                 )
+            })
+        })
+
+        describe("zero bonded amount with non-transcoder delegates", () => {
+            let nonParticipant
+            let otherDelegator
+            let slashedTranscoder
+            let unbondedTranscoder
+
+            const checkpoint = ({
+                account,
+                startRound,
+                bondedAmount,
+                delegateAddress,
+                delegatedAmount = 0
+            }) =>
+                inRound(startRound - 1, async () => {
+                    const functionData = encodeCheckpointBondingState({
+                        account,
+                        startRound,
+                        bondedAmount,
+                        delegateAddress,
+                        delegatedAmount,
+                        lastClaimRound: startRound - 1,
+                        lastRewardRound: 0 // not used in these tests
+                    })
+                    await fixture.bondingManager.execute(
+                        bondingVotes.address,
+                        functionData
+                    )
+                })
+
+            beforeEach(async () => {
+                nonParticipant = signers[3]
+                otherDelegator = signers[4]
+                slashedTranscoder = signers[5]
+                unbondedTranscoder = signers[6]
+
+                const startRound = currentRound - 10
+
+                await checkpoint({
+                    account: transcoder.address,
+                    startRound,
+                    bondedAmount: 1000,
+                    delegateAddress: transcoder.address,
+                    delegatedAmount: 2000
+                })
+                await checkpoint({
+                    account: otherDelegator.address,
+                    startRound,
+                    bondedAmount: 1000,
+                    delegateAddress: transcoder.address
+                })
+
+                // Transcoders that get slashed 100% end up with a 0 `bondedAmount` but a non-zero `delegateAddress`
+                await checkpoint({
+                    account: slashedTranscoder.address,
+                    startRound,
+                    bondedAmount: 0,
+                    delegateAddress: slashedTranscoder.address,
+                    delegatedAmount: 1000
+                })
+                // While transcoders that unbond get zeroed `bondedAmount` and `delegateAddress`
+                await checkpoint({
+                    account: unbondedTranscoder.address,
+                    startRound,
+                    bondedAmount: 0,
+                    delegateAddress: constants.NULL_ADDRESS,
+                    delegatedAmount: 1000
+                })
+            })
+
+            const expectBondingState = async (
+                delegator,
+                [expectedAmount, expectedDelegate]
+            ) => {
+                const actual = await bondingVotes
+                    .getVotesAndDelegateAtRoundStart(
+                        delegator.address,
+                        currentRound
+                    )
+                    .then(t => t.map(v => v.toString()))
+                const expected = [
+                    expectedAmount.toString(),
+                    expectedDelegate?.address ?? constants.NULL_ADDRESS
+                ]
+                assert.deepEqual(actual, expected)
+            }
+
+            it("non-participant", async () => {
+                await checkpoint({
+                    account: delegator.address,
+                    startRound: currentRound,
+                    bondedAmount: 1000,
+                    delegateAddress: nonParticipant.address
+                })
+
+                await expectBondingState(delegator, [0, nonParticipant])
+                await expectBondingState(nonParticipant, [0, null])
+            })
+
+            it("another delegator", async () => {
+                await checkpoint({
+                    account: delegator.address,
+                    startRound: currentRound,
+                    bondedAmount: 1000,
+                    delegateAddress: otherDelegator.address
+                })
+
+                await expectBondingState(delegator, [0, otherDelegator])
+                await expectBondingState(otherDelegator, [1000, transcoder])
+            })
+
+            it("slashed transcoder", async () => {
+                await checkpoint({
+                    account: delegator.address,
+                    startRound: currentRound,
+                    bondedAmount: 1000,
+                    delegateAddress: slashedTranscoder.address
+                })
+
+                await expectBondingState(delegator, [0, slashedTranscoder])
+                await expectBondingState(slashedTranscoder, [
+                    0,
+                    slashedTranscoder
+                ])
+            })
+
+            it("unbonded transcoder", async () => {
+                await checkpoint({
+                    account: delegator.address,
+                    startRound: currentRound,
+                    bondedAmount: 1000,
+                    delegateAddress: unbondedTranscoder.address
+                })
+
+                await expectBondingState(delegator, [0, unbondedTranscoder])
+                await expectBondingState(unbondedTranscoder, [0, null])
             })
         })
     })
@@ -1214,7 +1421,7 @@ describe("BondingVotes", () => {
 
         // Same implementation as the BondingVotesERC5805Mock
         const mock = {
-            getBondingStateAt: (_account, _round) => {
+            getVotesAndDelegateAtRoundStart: (_account, _round) => {
                 const intAddr = BigNumber.from(_account)
 
                 // lowest 4 bytes of address + _round
@@ -1259,8 +1466,8 @@ describe("BondingVotes", () => {
         })
 
         describe("getVotes", () => {
-            it("should proxy to getBondingStateAt with the next round", async () => {
-                const [expected] = mock.getBondingStateAt(
+            it("should proxy to getVotesAndDelegateAtRoundStart with the next round", async () => {
+                const [expected] = mock.getVotesAndDelegateAtRoundStart(
                     signers[0].address,
                     currentRound + 1
                 )
@@ -1279,9 +1486,9 @@ describe("BondingVotes", () => {
                 await expect(tx).to.be.revertedWith("FutureLookup(1000, 999)")
             })
 
-            it("should proxy to getBondingStateAt with next round", async () => {
+            it("should proxy to getVotesAndDelegateAtRoundStart with next round", async () => {
                 const testOnce = async (account, round) => {
-                    const [expected] = mock.getBondingStateAt(
+                    const [expected] = mock.getVotesAndDelegateAtRoundStart(
                         account.address,
                         round + 1
                     )
@@ -1301,8 +1508,8 @@ describe("BondingVotes", () => {
         })
 
         describe("delegates", () => {
-            it("should proxy to getBondingStateAt with the next round", async () => {
-                const [, expected] = mock.getBondingStateAt(
+            it("should proxy to getVotesAndDelegateAtRoundStart with the next round", async () => {
+                const [, expected] = mock.getVotesAndDelegateAtRoundStart(
                     signers[5].address,
                     currentRound + 1
                 )
@@ -1314,9 +1521,9 @@ describe("BondingVotes", () => {
         })
 
         describe("delegatedAt", () => {
-            it("should proxy to getBondingStateAt with next round", async () => {
+            it("should proxy to getVotesAndDelegateAtRoundStart with next round", async () => {
                 const testOnce = async (account, round) => {
-                    const [, expected] = mock.getBondingStateAt(
+                    const [, expected] = mock.getVotesAndDelegateAtRoundStart(
                         account.address,
                         round + 1
                     )

@@ -52,7 +52,7 @@ interface IBondingVotes is IVotes {
 
     function getTotalActiveStakeAt(uint256 _round) external view returns (uint256);
 
-    function getBondingStateAt(address _account, uint256 _round)
+    function getVotesAndDelegateAtRoundStart(address _account, uint256 _round)
         external
         view
         returns (uint256 amount, address delegateAddress);
