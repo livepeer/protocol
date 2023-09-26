@@ -345,10 +345,10 @@ contract BondingVotes is ManagerProxyTarget, IBondingVotes {
      * to get the same result here, call this function with `round+1` instead.
      * @dev The value returned by this can also be calculated with the following logic using BondingManager functions at
      * the start of the corresponding round:
-     * - If `isRegisteredTranscoder(_account)`, the result is `(_account, transcoderTotalStake(_account))`
+     * - If `isRegisteredTranscoder(_account)`, the result is `(transcoderTotalStake(_account), _account)`
      * - Otherwise, the `delegate` is obtained from `getDelegator(_account).delegateAddress`
-     *  - If `isRegisteredTranscoder(delegate)`, the result is `(delegate, pendingStake(_account, 0))`
-     *  - Otherwise, the result is `(delegate, 0)`
+     *  - If `isRegisteredTranscoder(delegate)`, the result is `(pendingStake(_account, 0), delegate)`
+     *  - Otherwise, the result is `(0, delegate)`
      * @param _account The account to get the voting power and delegate from.
      * @param _round The round at which to get the account state (at round start).
      * @return votes The voting power of the account at the start of the given round.
