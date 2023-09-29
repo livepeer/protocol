@@ -139,8 +139,9 @@ const arbitrumMainnet = {
     },
     bondingManager: {
         numActiveTranscoders: 100,
-        // Rounds
-        unbondingPeriod: 7
+        unbondingPeriod: 7, // 7 rounds
+        treasuryRewardCutRate: 100000, // 10%
+        treasuryBalanceCeiling: ethers.utils.parseEther("750000") // 750k LPT
     },
     broker: {
         // Rounds

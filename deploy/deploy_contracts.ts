@@ -248,6 +248,21 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
         )
     ).wait()
 
+    if (config.bondingManager.treasuryRewardCutRate) {
+        await (
+            await BondingManager.setTreasuryRewardCutRate(
+                config.bondingManager.treasuryRewardCutRate
+            )
+        ).wait()
+    }
+    if (config.bondingManager.treasuryBalanceCeiling) {
+        await (
+            await BondingManager.setTreasuryBalanceCeiling(
+                config.bondingManager.treasuryBalanceCeiling
+            )
+        ).wait()
+    }
+
     // Set RoundsManager parameters
     const RoundsManager: RoundsManager = (await ethers.getContractAt(
         "RoundsManager",
