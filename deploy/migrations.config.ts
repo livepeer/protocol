@@ -139,8 +139,9 @@ const arbitrumMainnet = {
     },
     bondingManager: {
         numActiveTranscoders: 100,
-        // Rounds
-        unbondingPeriod: 7
+        unbondingPeriod: 7, // 7 rounds
+        treasuryRewardCutRate: 100000, // 10%
+        treasuryBalanceCeiling: ethers.utils.parseEther("750000") // 750k LPT
     },
     broker: {
         // Rounds
@@ -161,6 +162,16 @@ const arbitrumMainnet = {
         inflation: 218500,
         inflationChange: 500,
         targetBondingRate: 500000000
+    },
+    treasury: {
+        minDelay: 0 // 0s initial proposal execution delay
+    },
+    livepeerGovernor: {
+        initialVotingDelay: 1, // 1 round
+        initialVotingPeriod: 10, // 10 rounds
+        initialProposalThreshold: ethers.utils.parseEther("100"), // 100 LPT
+        initialQuorum: 333300, // 33%
+        quota: 500000 // 50%
     }
 }
 
