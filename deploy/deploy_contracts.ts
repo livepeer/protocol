@@ -161,6 +161,8 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
             proxy: true,
             args: [Controller.address]
         })
+        // tests expect it to be saved as AdjustableRoundsManager as well
+        await deployments.save("AdjustableRoundsManager", roundsManager)
     } else {
         roundsManager = await contractDeployer.deployAndRegister({
             contract: "RoundsManager",

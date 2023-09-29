@@ -18,18 +18,27 @@ export default class ContractDeployer {
     deployments: DeploymentsExtension
     controller: Controller | undefined
 
+    /**
+     * skipRegister is used to skip the registration on the protocol controller (`setContractInfo`) of contracts
+     * deployed with this deployer instance. It is used when the deployer account is not the controller owner, which is
+     * the case in prod networks. In production, the registration has to be done through proceeding governance actions.
+     */
+    readonly skipRegister: boolean
+
     constructor(
         deploy: (name: string, options: DeployOptions) => Promise<DeployResult>,
         deployer: string,
-        deployments: DeploymentsExtension
+        deployments: DeploymentsExtension,
+        skipRegister = false
     ) {
         this.deploy = deploy
         this.deployer = deployer
         this.deployments = deployments
         this.controller = undefined
+        this.skipRegister = skipRegister
     }
 
-    private async getGitHeadCommitHash(): Promise<string> {
+    async getGitHeadCommitHash(): Promise<string> {
         const {stdout, stderr} = await exec("git rev-parse HEAD")
         if (stderr) {
             throw new Error(stderr)
@@ -86,54 +95,54 @@ export default class ContractDeployer {
         libraries?: Libraries | undefined
     }): Promise<DeployResult> {
         const {contract, name, proxy, args, libraries} = config
-        const targetName = `${name}Target`
 
+        const shouldRegister = this.controller && !this.skipRegister
         const gitHash = await this.getGitHeadCommitHash()
 
-        const target = await this.deploy(contract, {
+        // if there's no proxy, the target is just the contract itself
+        const targetName = proxy ? `${name}Target` : name
+        const target = await this.deploy(targetName, {
+            contract,
             from: this.deployer,
             log: true,
             args: [...args],
             libraries: libraries
         })
-
-        if (proxy) {
-            await (
-                await this.controller?.setContractInfo(
-                    this.contractId(targetName),
-                    target.address,
-                    gitHash
-                )
-            )?.wait()
-        } else {
-            await (
-                await this.controller?.setContractInfo(
-                    this.contractId(name),
-                    target.address,
-                    gitHash
-                )
-            )?.wait()
-            await deployments.save(name, target)
-            return target
+        if (shouldRegister) {
+            await this.controller!.setContractInfo(
+                this.contractId(targetName),
+                target.address,
+                gitHash
+            ).then(tx => tx.wait())
         }
 
-        // proxy == true, proceed with proxy deployment and registration
-        const managerProxy = await this.deploy("ManagerProxy", {
+        if (!proxy) {
+            return target
+        }
+        if (!this.controller) {
+            throw new Error("Controller not initialized for proxy deploy")
+        }
+
+        // proxy == true, proceed with proxy deployment and registration as the actual contract `name`
+        const managerProxy = await this.deploy(name, {
+            contract: "ManagerProxy",
             from: this.deployer,
             log: true,
             args: [this.controller?.address, this.contractId(targetName)]
         })
 
-        await (
-            await this.controller?.setContractInfo(
-                this.contractId(name),
-                managerProxy.address,
-                gitHash
-            )
-        )?.wait()
-        await deployments.save(`${contract}Target`, target)
-        await deployments.save(`${contract}Proxy`, managerProxy)
-        await deployments.save(contract, managerProxy)
+        if (shouldRegister) {
+            await this.controller
+                .setContractInfo(
+                    this.contractId(name),
+                    managerProxy.address,
+                    gitHash
+                )
+                .then(tx => tx.wait())
+        }
+
+        // additionally, save the proxy deployment with a "Proxy" suffix
+        await deployments.save(`${name}Proxy`, managerProxy)
 
         return managerProxy
     }
