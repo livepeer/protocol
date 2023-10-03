@@ -87,6 +87,10 @@ const config: HardhatUserConfig = {
             url: `https://arbitrum-rinkeby.infura.io/v3/${INFURA_KEY}`,
             accounts: PRIVATE_KEY ? [`0x${PRIVATE_KEY}`] : undefined
         },
+        arbitrumGoerliDevnet: {
+            url: `https://arbitrum-goerli.infura.io/v3/${INFURA_KEY}`,
+            accounts: PRIVATE_KEY ? [`0x${PRIVATE_KEY}`] : undefined
+        },
         localhost: {
             url: "http://127.0.0.1:8545"
         },
