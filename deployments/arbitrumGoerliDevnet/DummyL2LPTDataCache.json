@@ -1,0 +1,54 @@
+{
+  "address": "0x9EAA9CCB09F4f687471bc0dDfa638cbEC6bFd397",
+  "abi": [
+    {
+      "inputs": [],
+      "name": "l1CirculatingSupply",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "pure",
+      "type": "function"
+    }
+  ],
+  "transactionHash": "0x77a0ea641cfc3d2c4df6b160d365a3e38e74b7eb1db9e155bfbfaa4d778fb88b",
+  "receipt": {
+    "to": null,
+    "from": "0xa7BeA8108b77905113c0b22c16806672c38d040b",
+    "contractAddress": "0x9EAA9CCB09F4f687471bc0dDfa638cbEC6bFd397",
+    "transactionIndex": 1,
+    "gasUsed": "79135",
+    "logsBloom": "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+    "blockHash": "0x25d625c486176b911d295d2ba49ab4d2d3a6396dd3e849836e259159fbac5f40",
+    "transactionHash": "0x77a0ea641cfc3d2c4df6b160d365a3e38e74b7eb1db9e155bfbfaa4d778fb88b",
+    "logs": [],
+    "blockNumber": 35154717,
+    "cumulativeGasUsed": "79135",
+    "status": 1,
+    "byzantium": true
+  },
+  "args": [],
+  "numDeployments": 1,
+  "solcInputHash": "48be6767cec16ab6dc64fbad1774557e",
+  "metadata": "{\"compiler\":{\"version\":\"0.8.9+commit.e5eed63a\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"inputs\":[],\"name\":\"l1CirculatingSupply\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"pure\",\"type\":\"function\"}],\"devdoc\":{\"kind\":\"dev\",\"methods\":{},\"version\":1},\"userdoc\":{\"kind\":\"user\",\"methods\":{},\"version\":1}},\"settings\":{\"compilationTarget\":{\"contracts/arbitrum/DummyL2LPTDataCache.sol\":\"DummyL2LPTDataCache\"},\"evmVersion\":\"london\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"ipfs\",\"useLiteralContent\":true},\"optimizer\":{\"enabled\":true,\"runs\":200},\"remappings\":[]},\"sources\":{\"contracts/arbitrum/DummyL2LPTDataCache.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity 0.8.9;\\n\\ncontract DummyL2LPTDataCache {\\n    function l1CirculatingSupply() external pure returns (uint256) {\\n        return 0;\\n    }\\n}\\n\",\"keccak256\":\"0x815520ad3eb3229db86a66eba6457dfbae3b91e9f3e6459c7f0549fcbbde0d7d\",\"license\":\"MIT\"}},\"version\":1}",
+  "bytecode": "0x6080604052348015600f57600080fd5b50607780601d6000396000f3fe6080604052348015600f57600080fd5b506004361060285760003560e01c8063fb1c5ee914602d575b600080fd5b600060405190815260200160405180910390f3fea26469706673582212200de1a51c77ebe24d521203e4b6c862890178d7f3ac997070135eae941d1069b564736f6c63430008090033",
+  "deployedBytecode": "0x6080604052348015600f57600080fd5b506004361060285760003560e01c8063fb1c5ee914602d575b600080fd5b600060405190815260200160405180910390f3fea26469706673582212200de1a51c77ebe24d521203e4b6c862890178d7f3ac997070135eae941d1069b564736f6c63430008090033",
+  "devdoc": {
+    "kind": "dev",
+    "methods": {},
+    "version": 1
+  },
+  "userdoc": {
+    "kind": "user",
+    "methods": {},
+    "version": 1
+  },
+  "storageLayout": {
+    "storage": [],
+    "types": null
+  }
+}

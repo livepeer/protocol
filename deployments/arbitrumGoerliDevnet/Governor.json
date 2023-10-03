@@ -1,0 +1,435 @@
+{
+  "address": "0x5E793Bc84f8C7bbE91446fbc583dCD4df3E270dc",
+  "abi": [
+    {
+      "inputs": [],
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "previousOwner",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "newOwner",
+          "type": "address"
+        }
+      ],
+      "name": "OwnershipTransferred",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "components": [
+            {
+              "internalType": "address[]",
+              "name": "target",
+              "type": "address[]"
+            },
+            {
+              "internalType": "uint256[]",
+              "name": "value",
+              "type": "uint256[]"
+            },
+            {
+              "internalType": "bytes[]",
+              "name": "data",
+              "type": "bytes[]"
+            },
+            {
+              "internalType": "uint256",
+              "name": "nonce",
+              "type": "uint256"
+            }
+          ],
+          "indexed": false,
+          "internalType": "struct Governor.Update",
+          "name": "update",
+          "type": "tuple"
+        }
+      ],
+      "name": "UpdateCancelled",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "components": [
+            {
+              "internalType": "address[]",
+              "name": "target",
+              "type": "address[]"
+            },
+            {
+              "internalType": "uint256[]",
+              "name": "value",
+              "type": "uint256[]"
+            },
+            {
+              "internalType": "bytes[]",
+              "name": "data",
+              "type": "bytes[]"
+            },
+            {
+              "internalType": "uint256",
+              "name": "nonce",
+              "type": "uint256"
+            }
+          ],
+          "indexed": false,
+          "internalType": "struct Governor.Update",
+          "name": "update",
+          "type": "tuple"
+        }
+      ],
+      "name": "UpdateExecuted",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "components": [
+            {
+              "internalType": "address[]",
+              "name": "target",
+              "type": "address[]"
+            },
+            {
+              "internalType": "uint256[]",
+              "name": "value",
+              "type": "uint256[]"
+            },
+            {
+              "internalType": "bytes[]",
+              "name": "data",
+              "type": "bytes[]"
+            },
+            {
+              "internalType": "uint256",
+              "name": "nonce",
+              "type": "uint256"
+            }
+          ],
+          "indexed": false,
+          "internalType": "struct Governor.Update",
+          "name": "update",
+          "type": "tuple"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "delay",
+          "type": "uint256"
+        }
+      ],
+      "name": "UpdateStaged",
+      "type": "event"
+    },
+    {
+      "inputs": [
+        {
+          "components": [
+            {
+              "internalType": "address[]",
+              "name": "target",
+              "type": "address[]"
+            },
+            {
+              "internalType": "uint256[]",
+              "name": "value",
+              "type": "uint256[]"
+            },
+            {
+              "internalType": "bytes[]",
+              "name": "data",
+              "type": "bytes[]"
+            },
+            {
+              "internalType": "uint256",
+              "name": "nonce",
+              "type": "uint256"
+            }
+          ],
+          "internalType": "struct Governor.Update",
+          "name": "_update",
+          "type": "tuple"
+        }
+      ],
+      "name": "cancel",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "components": [
+            {
+              "internalType": "address[]",
+              "name": "target",
+              "type": "address[]"
+            },
+            {
+              "internalType": "uint256[]",
+              "name": "value",
+              "type": "uint256[]"
+            },
+            {
+              "internalType": "bytes[]",
+              "name": "data",
+              "type": "bytes[]"
+            },
+            {
+              "internalType": "uint256",
+              "name": "nonce",
+              "type": "uint256"
+            }
+          ],
+          "internalType": "struct Governor.Update",
+          "name": "_update",
+          "type": "tuple"
+        }
+      ],
+      "name": "execute",
+      "outputs": [],
+      "stateMutability": "payable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "owner",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "components": [
+            {
+              "internalType": "address[]",
+              "name": "target",
+              "type": "address[]"
+            },
+            {
+              "internalType": "uint256[]",
+              "name": "value",
+              "type": "uint256[]"
+            },
+            {
+              "internalType": "bytes[]",
+              "name": "data",
+              "type": "bytes[]"
+            },
+            {
+              "internalType": "uint256",
+              "name": "nonce",
+              "type": "uint256"
+            }
+          ],
+          "internalType": "struct Governor.Update",
+          "name": "_update",
+          "type": "tuple"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_delay",
+          "type": "uint256"
+        }
+      ],
+      "name": "stage",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "newOwner",
+          "type": "address"
+        }
+      ],
+      "name": "transferOwnership",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "name": "updates",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ],
+  "transactionHash": "0xf63ba5ce22daf2168d169198273bae493d3037c28dc67fe2737ba0dad9326cc1",
+  "receipt": {
+    "to": null,
+    "from": "0xa7BeA8108b77905113c0b22c16806672c38d040b",
+    "contractAddress": "0x5E793Bc84f8C7bbE91446fbc583dCD4df3E270dc",
+    "transactionIndex": 1,
+    "gasUsed": "786181",
+    "logsBloom": "0x00000000000000000000000000000000000000000000000000800000000100000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000001000000000000000000000000000000000000020000000000000000000800000000000000000000800000000010400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010000020000000000000000000000000000000000000200000000000000000000000000000",
+    "blockHash": "0xf016ce50de2f00705b0c05055859cde93450acf4ad32b856db5b66e84af31e08",
+    "transactionHash": "0xf63ba5ce22daf2168d169198273bae493d3037c28dc67fe2737ba0dad9326cc1",
+    "logs": [
+      {
+        "transactionIndex": 1,
+        "blockNumber": 35154498,
+        "transactionHash": "0xf63ba5ce22daf2168d169198273bae493d3037c28dc67fe2737ba0dad9326cc1",
+        "address": "0x5E793Bc84f8C7bbE91446fbc583dCD4df3E270dc",
+        "topics": [
+          "0x8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e0",
+          "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "0x000000000000000000000000a7bea8108b77905113c0b22c16806672c38d040b"
+        ],
+        "data": "0x",
+        "logIndex": 0,
+        "blockHash": "0xf016ce50de2f00705b0c05055859cde93450acf4ad32b856db5b66e84af31e08"
+      }
+    ],
+    "blockNumber": 35154498,
+    "cumulativeGasUsed": "786181",
+    "status": 1,
+    "byzantium": true
+  },
+  "args": [],
+  "numDeployments": 1,
+  "solcInputHash": "8d767bf23267fd0b4e34029f9fbd8e3a",
+  "metadata": "{\"compiler\":{\"version\":\"0.8.9+commit.e5eed63a\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"inputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"previousOwner\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"newOwner\",\"type\":\"address\"}],\"name\":\"OwnershipTransferred\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"components\":[{\"internalType\":\"address[]\",\"name\":\"target\",\"type\":\"address[]\"},{\"internalType\":\"uint256[]\",\"name\":\"value\",\"type\":\"uint256[]\"},{\"internalType\":\"bytes[]\",\"name\":\"data\",\"type\":\"bytes[]\"},{\"internalType\":\"uint256\",\"name\":\"nonce\",\"type\":\"uint256\"}],\"indexed\":false,\"internalType\":\"struct Governor.Update\",\"name\":\"update\",\"type\":\"tuple\"}],\"name\":\"UpdateCancelled\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"components\":[{\"internalType\":\"address[]\",\"name\":\"target\",\"type\":\"address[]\"},{\"internalType\":\"uint256[]\",\"name\":\"value\",\"type\":\"uint256[]\"},{\"internalType\":\"bytes[]\",\"name\":\"data\",\"type\":\"bytes[]\"},{\"internalType\":\"uint256\",\"name\":\"nonce\",\"type\":\"uint256\"}],\"indexed\":false,\"internalType\":\"struct Governor.Update\",\"name\":\"update\",\"type\":\"tuple\"}],\"name\":\"UpdateExecuted\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"components\":[{\"internalType\":\"address[]\",\"name\":\"target\",\"type\":\"address[]\"},{\"internalType\":\"uint256[]\",\"name\":\"value\",\"type\":\"uint256[]\"},{\"internalType\":\"bytes[]\",\"name\":\"data\",\"type\":\"bytes[]\"},{\"internalType\":\"uint256\",\"name\":\"nonce\",\"type\":\"uint256\"}],\"indexed\":false,\"internalType\":\"struct Governor.Update\",\"name\":\"update\",\"type\":\"tuple\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"delay\",\"type\":\"uint256\"}],\"name\":\"UpdateStaged\",\"type\":\"event\"},{\"inputs\":[{\"components\":[{\"internalType\":\"address[]\",\"name\":\"target\",\"type\":\"address[]\"},{\"internalType\":\"uint256[]\",\"name\":\"value\",\"type\":\"uint256[]\"},{\"internalType\":\"bytes[]\",\"name\":\"data\",\"type\":\"bytes[]\"},{\"internalType\":\"uint256\",\"name\":\"nonce\",\"type\":\"uint256\"}],\"internalType\":\"struct Governor.Update\",\"name\":\"_update\",\"type\":\"tuple\"}],\"name\":\"cancel\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"address[]\",\"name\":\"target\",\"type\":\"address[]\"},{\"internalType\":\"uint256[]\",\"name\":\"value\",\"type\":\"uint256[]\"},{\"internalType\":\"bytes[]\",\"name\":\"data\",\"type\":\"bytes[]\"},{\"internalType\":\"uint256\",\"name\":\"nonce\",\"type\":\"uint256\"}],\"internalType\":\"struct Governor.Update\",\"name\":\"_update\",\"type\":\"tuple\"}],\"name\":\"execute\",\"outputs\":[],\"stateMutability\":\"payable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"owner\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"components\":[{\"internalType\":\"address[]\",\"name\":\"target\",\"type\":\"address[]\"},{\"internalType\":\"uint256[]\",\"name\":\"value\",\"type\":\"uint256[]\"},{\"internalType\":\"bytes[]\",\"name\":\"data\",\"type\":\"bytes[]\"},{\"internalType\":\"uint256\",\"name\":\"nonce\",\"type\":\"uint256\"}],\"internalType\":\"struct Governor.Update\",\"name\":\"_update\",\"type\":\"tuple\"},{\"internalType\":\"uint256\",\"name\":\"_delay\",\"type\":\"uint256\"}],\"name\":\"stage\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"newOwner\",\"type\":\"address\"}],\"name\":\"transferOwnership\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"name\":\"updates\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"}],\"devdoc\":{\"details\":\"The Governor holds the rights to stage and execute contract calls i.e. changing Livepeer protocol parameters.\",\"kind\":\"dev\",\"methods\":{\"cancel((address[],uint256[],bytes[],uint256))\":{\"details\":\"Reverts if an update does not exist.Reverts if the 'msg.sender' is not the 'owner'\",\"params\":{\"_update\":\"Update to be cancelled.\"}},\"constructor\":{\"details\":\"The Ownable constructor sets the original `owner` of the contract to the sender account.\"},\"execute((address[],uint256[],bytes[],uint256))\":{\"details\":\"Updates are authorized during staging.Reverts if a transaction can not be executed.\",\"params\":{\"_update\":\"Update to be staged.\"}},\"stage((address[],uint256[],bytes[],uint256),uint256)\":{\"details\":\"Reverts if the 'msg.sender' is not the 'owner'Reverts if an update is already staged\",\"params\":{\"_delay\":\"(uint256) Delay (in number of blocks) for the update.\",\"_update\":\"Update to be staged.\"}},\"transferOwnership(address)\":{\"details\":\"Can only be called through stage/execute, will revert if the caller is not this contract's address.\",\"params\":{\"newOwner\":\"The address to transfer ownership to.\"}}},\"stateVariables\":{\"updates\":{\"details\":\"mapping of updateHash (keccak256(update) => executeBlock (block.number + delay)\"}},\"title\":\"Governor\",\"version\":1},\"userdoc\":{\"kind\":\"user\",\"methods\":{\"cancel((address[],uint256[],bytes[],uint256))\":{\"notice\":\"Cancel a staged update.\"},\"execute((address[],uint256[],bytes[],uint256))\":{\"notice\":\"Execute a staged update.\"},\"stage((address[],uint256[],bytes[],uint256),uint256)\":{\"notice\":\"Stage a batch of updates to be executed.\"},\"transferOwnership(address)\":{\"notice\":\"Allows the current owner to transfer control of the contract to a newOwner.\"}},\"version\":1}},\"settings\":{\"compilationTarget\":{\"contracts/governance/Governor.sol\":\"Governor\"},\"evmVersion\":\"london\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"ipfs\",\"useLiteralContent\":true},\"optimizer\":{\"enabled\":true,\"runs\":200},\"remappings\":[]},\"sources\":{\"@openzeppelin/contracts/utils/math/SafeMath.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\n// OpenZeppelin Contracts (last updated v4.9.0) (utils/math/SafeMath.sol)\\n\\npragma solidity ^0.8.0;\\n\\n// CAUTION\\n// This version of SafeMath should only be used with Solidity 0.8 or later,\\n// because it relies on the compiler's built in overflow checks.\\n\\n/**\\n * @dev Wrappers over Solidity's arithmetic operations.\\n *\\n * NOTE: `SafeMath` is generally not needed starting with Solidity 0.8, since the compiler\\n * now has built in overflow checking.\\n */\\nlibrary SafeMath {\\n    /**\\n     * @dev Returns the addition of two unsigned integers, with an overflow flag.\\n     *\\n     * _Available since v3.4._\\n     */\\n    function tryAdd(uint256 a, uint256 b) internal pure returns (bool, uint256) {\\n        unchecked {\\n            uint256 c = a + b;\\n            if (c < a) return (false, 0);\\n            return (true, c);\\n        }\\n    }\\n\\n    /**\\n     * @dev Returns the subtraction of two unsigned integers, with an overflow flag.\\n     *\\n     * _Available since v3.4._\\n     */\\n    function trySub(uint256 a, uint256 b) internal pure returns (bool, uint256) {\\n        unchecked {\\n            if (b > a) return (false, 0);\\n            return (true, a - b);\\n        }\\n    }\\n\\n    /**\\n     * @dev Returns the multiplication of two unsigned integers, with an overflow flag.\\n     *\\n     * _Available since v3.4._\\n     */\\n    function tryMul(uint256 a, uint256 b) internal pure returns (bool, uint256) {\\n        unchecked {\\n            // Gas optimization: this is cheaper than requiring 'a' not being zero, but the\\n            // benefit is lost if 'b' is also tested.\\n            // See: https://github.com/OpenZeppelin/openzeppelin-contracts/pull/522\\n            if (a == 0) return (true, 0);\\n            uint256 c = a * b;\\n            if (c / a != b) return (false, 0);\\n            return (true, c);\\n        }\\n    }\\n\\n    /**\\n     * @dev Returns the division of two unsigned integers, with a division by zero flag.\\n     *\\n     * _Available since v3.4._\\n     */\\n    function tryDiv(uint256 a, uint256 b) internal pure returns (bool, uint256) {\\n        unchecked {\\n            if (b == 0) return (false, 0);\\n            return (true, a / b);\\n        }\\n    }\\n\\n    /**\\n     * @dev Returns the remainder of dividing two unsigned integers, with a division by zero flag.\\n     *\\n     * _Available since v3.4._\\n     */\\n    function tryMod(uint256 a, uint256 b) internal pure returns (bool, uint256) {\\n        unchecked {\\n            if (b == 0) return (false, 0);\\n            return (true, a % b);\\n        }\\n    }\\n\\n    /**\\n     * @dev Returns the addition of two unsigned integers, reverting on\\n     * overflow.\\n     *\\n     * Counterpart to Solidity's `+` operator.\\n     *\\n     * Requirements:\\n     *\\n     * - Addition cannot overflow.\\n     */\\n    function add(uint256 a, uint256 b) internal pure returns (uint256) {\\n        return a + b;\\n    }\\n\\n    /**\\n     * @dev Returns the subtraction of two unsigned integers, reverting on\\n     * overflow (when the result is negative).\\n     *\\n     * Counterpart to Solidity's `-` operator.\\n     *\\n     * Requirements:\\n     *\\n     * - Subtraction cannot overflow.\\n     */\\n    function sub(uint256 a, uint256 b) internal pure returns (uint256) {\\n        return a - b;\\n    }\\n\\n    /**\\n     * @dev Returns the multiplication of two unsigned integers, reverting on\\n     * overflow.\\n     *\\n     * Counterpart to Solidity's `*` operator.\\n     *\\n     * Requirements:\\n     *\\n     * - Multiplication cannot overflow.\\n     */\\n    function mul(uint256 a, uint256 b) internal pure returns (uint256) {\\n        return a * b;\\n    }\\n\\n    /**\\n     * @dev Returns the integer division of two unsigned integers, reverting on\\n     * division by zero. The result is rounded towards zero.\\n     *\\n     * Counterpart to Solidity's `/` operator.\\n     *\\n     * Requirements:\\n     *\\n     * - The divisor cannot be zero.\\n     */\\n    function div(uint256 a, uint256 b) internal pure returns (uint256) {\\n        return a / b;\\n    }\\n\\n    /**\\n     * @dev Returns the remainder of dividing two unsigned integers. (unsigned integer modulo),\\n     * reverting when dividing by zero.\\n     *\\n     * Counterpart to Solidity's `%` operator. This function uses a `revert`\\n     * opcode (which leaves remaining gas untouched) while Solidity uses an\\n     * invalid opcode to revert (consuming all remaining gas).\\n     *\\n     * Requirements:\\n     *\\n     * - The divisor cannot be zero.\\n     */\\n    function mod(uint256 a, uint256 b) internal pure returns (uint256) {\\n        return a % b;\\n    }\\n\\n    /**\\n     * @dev Returns the subtraction of two unsigned integers, reverting with custom message on\\n     * overflow (when the result is negative).\\n     *\\n     * CAUTION: This function is deprecated because it requires allocating memory for the error\\n     * message unnecessarily. For custom revert reasons use {trySub}.\\n     *\\n     * Counterpart to Solidity's `-` operator.\\n     *\\n     * Requirements:\\n     *\\n     * - Subtraction cannot overflow.\\n     */\\n    function sub(uint256 a, uint256 b, string memory errorMessage) internal pure returns (uint256) {\\n        unchecked {\\n            require(b <= a, errorMessage);\\n            return a - b;\\n        }\\n    }\\n\\n    /**\\n     * @dev Returns the integer division of two unsigned integers, reverting with custom message on\\n     * division by zero. The result is rounded towards zero.\\n     *\\n     * Counterpart to Solidity's `/` operator. Note: this function uses a\\n     * `revert` opcode (which leaves remaining gas untouched) while Solidity\\n     * uses an invalid opcode to revert (consuming all remaining gas).\\n     *\\n     * Requirements:\\n     *\\n     * - The divisor cannot be zero.\\n     */\\n    function div(uint256 a, uint256 b, string memory errorMessage) internal pure returns (uint256) {\\n        unchecked {\\n            require(b > 0, errorMessage);\\n            return a / b;\\n        }\\n    }\\n\\n    /**\\n     * @dev Returns the remainder of dividing two unsigned integers. (unsigned integer modulo),\\n     * reverting with custom message when dividing by zero.\\n     *\\n     * CAUTION: This function is deprecated because it requires allocating memory for the error\\n     * message unnecessarily. For custom revert reasons use {tryMod}.\\n     *\\n     * Counterpart to Solidity's `%` operator. This function uses a `revert`\\n     * opcode (which leaves remaining gas untouched) while Solidity uses an\\n     * invalid opcode to revert (consuming all remaining gas).\\n     *\\n     * Requirements:\\n     *\\n     * - The divisor cannot be zero.\\n     */\\n    function mod(uint256 a, uint256 b, string memory errorMessage) internal pure returns (uint256) {\\n        unchecked {\\n            require(b > 0, errorMessage);\\n            return a % b;\\n        }\\n    }\\n}\\n\",\"keccak256\":\"0x58b21219689909c4f8339af00813760337f7e2e7f169a97fe49e2896dcfb3b9a\",\"license\":\"MIT\"},\"contracts/governance/Governor.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity 0.8.9;\\n\\nimport \\\"@openzeppelin/contracts/utils/math/SafeMath.sol\\\";\\n\\n/**\\n * @title Governor\\n * @dev The Governor holds the rights to stage and execute contract calls i.e. changing Livepeer protocol parameters.\\n */\\ncontract Governor {\\n    using SafeMath for uint256;\\n\\n    address public owner;\\n\\n    /// @dev mapping of updateHash (keccak256(update) => executeBlock (block.number + delay)\\n    mapping(bytes32 => uint256) public updates;\\n\\n    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);\\n\\n    event UpdateStaged(Update update, uint256 delay);\\n\\n    event UpdateExecuted(Update update);\\n\\n    event UpdateCancelled(Update update);\\n\\n    struct Update {\\n        address[] target;\\n        uint256[] value;\\n        bytes[] data;\\n        uint256 nonce;\\n    }\\n\\n    /// @notice Throws if called by any account other than the owner.\\n    modifier onlyOwner() {\\n        require(msg.sender == owner, \\\"unauthorized: msg.sender not owner\\\");\\n        _;\\n    }\\n\\n    /// @notice Throws if called by any account other than this contract.\\n    /// @dev Forces the `stage/execute` path to be used to call functions with this modifier instead of directly.\\n    modifier onlyThis() {\\n        require(msg.sender == address(this), \\\"unauthorized: msg.sender not Governor\\\");\\n        _;\\n    }\\n\\n    /// @dev The Ownable constructor sets the original `owner` of the contract to the sender account.\\n    constructor() {\\n        owner = msg.sender;\\n        emit OwnershipTransferred(address(0), msg.sender);\\n    }\\n\\n    /// @notice Allows the current owner to transfer control of the contract to a newOwner.\\n    /// @dev Can only be called through stage/execute, will revert if the caller is not this contract's address.\\n    /// @param newOwner The address to transfer ownership to.\\n    function transferOwnership(address newOwner) public onlyThis {\\n        require(newOwner != address(0), \\\"newOwner is a null address\\\");\\n        emit OwnershipTransferred(owner, newOwner);\\n        owner = newOwner;\\n    }\\n\\n    /// @notice Stage a batch of updates to be executed.\\n    /// @dev Reverts if the 'msg.sender' is not the 'owner'\\n    /// @dev Reverts if an update is already staged\\n    /// @param _update Update to be staged.\\n    /// @param _delay (uint256) Delay (in number of blocks) for the update.\\n    function stage(Update memory _update, uint256 _delay) public onlyOwner {\\n        bytes32 updateHash = keccak256(abi.encode(_update));\\n\\n        require(updates[updateHash] == 0, \\\"update already staged\\\");\\n\\n        updates[updateHash] = block.number.add(_delay);\\n\\n        emit UpdateStaged(_update, _delay);\\n    }\\n\\n    /// @notice Execute a staged update.\\n    /// @dev Updates are authorized during staging.\\n    /// @dev Reverts if a transaction can not be executed.\\n    /// @param _update  Update to be staged.\\n    function execute(Update memory _update) public payable {\\n        bytes32 updateHash = keccak256(abi.encode(_update));\\n        uint256 executeBlock = updates[updateHash];\\n\\n        require(executeBlock != 0, \\\"update is not staged\\\");\\n        require(block.number >= executeBlock, \\\"delay for update not expired\\\");\\n\\n        // prevent re-entry and replay\\n        delete updates[updateHash];\\n        for (uint256 i = 0; i < _update.target.length; i++) {\\n            /* solium-disable-next-line */\\n            (bool success, bytes memory returnData) = _update.target[i].call{ value: _update.value[i] }(\\n                _update.data[i]\\n            );\\n            require(success, string(returnData));\\n        }\\n\\n        emit UpdateExecuted(_update);\\n    }\\n\\n    /// @notice Cancel a staged update.\\n    /// @dev Reverts if an update does not exist.\\n    /// @dev Reverts if the 'msg.sender' is not the 'owner'\\n    /// @param _update Update to be cancelled.\\n    function cancel(Update memory _update) public onlyOwner {\\n        bytes32 updateHash = keccak256(abi.encode(_update));\\n        uint256 executeBlock = updates[updateHash];\\n\\n        require(executeBlock != 0, \\\"update is not staged\\\");\\n        delete updates[updateHash];\\n\\n        emit UpdateCancelled(_update);\\n    }\\n}\\n\",\"keccak256\":\"0x3cd6590d86acff039d8a14e986537536ce2888293603d6de12534d42084e6d41\",\"license\":\"MIT\"}},\"version\":1}",
+  "bytecode": "0x608060405234801561001057600080fd5b50600080546001600160a01b0319163390811782556040519091907f8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e0908290a3610cd18061005f6000396000f3fe6080604052600436106100555760003560e01c80630d1e4bd31461005a5780636b8ace711461007c57806376ad65291461008f5780638da5cb5b146100af578063d877bc7f146100ec578063f2fde38b14610127575b600080fd5b34801561006657600080fd5b5061007a610075366004610964565b610147565b005b61007a61008a3660046109a9565b610255565b34801561009b57600080fd5b5061007a6100aa3660046109a9565b610460565b3480156100bb57600080fd5b506000546100cf906001600160a01b031681565b6040516001600160a01b0390911681526020015b60405180910390f35b3480156100f857600080fd5b506101196101073660046109e6565b60016020526000908152604090205481565b6040519081526020016100e3565b34801561013357600080fd5b5061007a6101423660046109ff565b61054a565b6000546001600160a01b0316331461017a5760405162461bcd60e51b815260040161017190610a1a565b60405180910390fd5b60008260405160200161018d9190610bd8565b60408051601f19818403018152918152815160209283012060008181526001909352912054909150156101fa5760405162461bcd60e51b81526020600482015260156024820152741d5c19185d1948185b1c9958591e481cdd1859d959605a1b6044820152606401610171565b6102044383610658565b6000828152600160205260409081902091909155517faf91f635f78d93ffa603808c9abd3099887413bc3e144b4b64c1fb966d6519c1906102489085908590610beb565b60405180910390a1505050565b6000816040516020016102689190610bd8565b60408051601f19818403018152918152815160209283012060008181526001909352912054909150806102d45760405162461bcd60e51b81526020600482015260146024820152731d5c19185d19481a5cc81b9bdd081cdd1859d95960621b6044820152606401610171565b804310156103245760405162461bcd60e51b815260206004820152601c60248201527f64656c617920666f7220757064617465206e6f742065787069726564000000006044820152606401610171565b60008281526001602052604081208190555b835151811015610430576000808560000151838151811061035957610359610c0d565b60200260200101516001600160a01b03168660200151848151811061038057610380610c0d565b60200260200101518760400151858151811061039e5761039e610c0d565b60200260200101516040516103b39190610c23565b60006040518083038185875af1925050503d80600081146103f0576040519150601f19603f3d011682016040523d82523d6000602084013e6103f5565b606091505b509150915081819061041a5760405162461bcd60e51b81526004016101719190610c3f565b505050808061042890610c68565b915050610336565b507f5cda31e1476d59bb0aad65b6f4d0b2151029b59e9af9872141f16c8fcaf6a45b836040516102489190610bd8565b6000546001600160a01b0316331461048a5760405162461bcd60e51b815260040161017190610a1a565b60008160405160200161049d9190610bd8565b60408051601f19818403018152918152815160209283012060008181526001909352912054909150806105095760405162461bcd60e51b81526020600482015260146024820152731d5c19185d19481a5cc81b9bdd081cdd1859d95960621b6044820152606401610171565b60008281526001602052604080822091909155517fb1a3479c973dd630e159980ce42bb5da45e167cf7bce9a8b51b1dac8f398419590610248908590610bd8565b3330146105a75760405162461bcd60e51b815260206004820152602560248201527f756e617574686f72697a65643a206d73672e73656e646572206e6f7420476f7660448201526432b93737b960d91b6064820152608401610171565b6001600160a01b0381166105fd5760405162461bcd60e51b815260206004820152601a60248201527f6e65774f776e65722069732061206e756c6c20616464726573730000000000006044820152606401610171565b600080546040516001600160a01b03808516939216917f8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e091a3600080546001600160a01b0319166001600160a01b0392909216919091179055565b60006106648284610c83565b9392505050565b634e487b7160e01b600052604160045260246000fd5b6040516080810167ffffffffffffffff811182821017156106a4576106a461066b565b60405290565b604051601f8201601f1916810167ffffffffffffffff811182821017156106d3576106d361066b565b604052919050565b600067ffffffffffffffff8211156106f5576106f561066b565b5060051b60200190565b80356001600160a01b038116811461071657600080fd5b919050565b600082601f83011261072c57600080fd5b8135602061074161073c836106db565b6106aa565b82815260059290921b8401810191818101908684111561076057600080fd5b8286015b8481101561077b5780358352918301918301610764565b509695505050505050565b6000601f838184011261079857600080fd5b823560206107a861073c836106db565b82815260059290921b850181019181810190878411156107c757600080fd5b8287015b8481101561085e57803567ffffffffffffffff808211156107ec5760008081fd5b818a0191508a603f8301126108015760008081fd5b858201356040828211156108175761081761066b565b610828828b01601f191689016106aa565b92508183528c8183860101111561083f5760008081fd5b81818501898501375060009082018701528452509183019183016107cb565b50979650505050505050565b60006080828403121561087c57600080fd5b610884610681565b9050813567ffffffffffffffff8082111561089e57600080fd5b818401915084601f8301126108b257600080fd5b813560206108c261073c836106db565b82815260059290921b840181019181810190888411156108e157600080fd5b948201945b83861015610906576108f7866106ff565b825294820194908201906108e6565b8652508581013593508284111561091c57600080fd5b6109288785880161071b565b9085015250604084013591508082111561094157600080fd5b5061094e84828501610786565b6040830152506060820135606082015292915050565b6000806040838503121561097757600080fd5b823567ffffffffffffffff81111561098e57600080fd5b61099a8582860161086a565b95602094909401359450505050565b6000602082840312156109bb57600080fd5b813567ffffffffffffffff8111156109d257600080fd5b6109de8482850161086a565b949350505050565b6000602082840312156109f857600080fd5b5035919050565b600060208284031215610a1157600080fd5b610664826106ff565b60208082526022908201527f756e617574686f72697a65643a206d73672e73656e646572206e6f74206f776e60408201526132b960f11b606082015260800190565b600081518084526020808501945080840160005b83811015610a8c57815187529582019590820190600101610a70565b509495945050505050565b60005b83811015610ab2578181015183820152602001610a9a565b83811115610ac1576000848401525b50505050565b60008151808452610adf816020860160208601610a97565b601f01601f19169290920160200192915050565b600081518084526020808501808196508360051b8101915082860160005b85811015610b3b578284038952610b29848351610ac7565b98850198935090840190600101610b11565b5091979650505050505050565b8051608080845281519084018190526000916020919082019060a0860190845b81811015610b8d5783516001600160a01b031683529284019291840191600101610b68565b505082850151915085810383870152610ba68183610a5c565b9250505060408301518482036040860152610bc18282610af3565b915050606083015160608501528091505092915050565b6020815260006106646020830184610b48565b604081526000610bfe6040830185610b48565b90508260208301529392505050565b634e487b7160e01b600052603260045260246000fd5b60008251610c35818460208701610a97565b9190910192915050565b6020815260006106646020830184610ac7565b634e487b7160e01b600052601160045260246000fd5b6000600019821415610c7c57610c7c610c52565b5060010190565b60008219821115610c9657610c96610c52565b50019056fea2646970667358221220ab05b0b10f44a11a1d54a7fed0134386d5839ca3c61619173e1a6cdf1e1c84f364736f6c63430008090033",
+  "deployedBytecode": "0x6080604052600436106100555760003560e01c80630d1e4bd31461005a5780636b8ace711461007c57806376ad65291461008f5780638da5cb5b146100af578063d877bc7f146100ec578063f2fde38b14610127575b600080fd5b34801561006657600080fd5b5061007a610075366004610964565b610147565b005b61007a61008a3660046109a9565b610255565b34801561009b57600080fd5b5061007a6100aa3660046109a9565b610460565b3480156100bb57600080fd5b506000546100cf906001600160a01b031681565b6040516001600160a01b0390911681526020015b60405180910390f35b3480156100f857600080fd5b506101196101073660046109e6565b60016020526000908152604090205481565b6040519081526020016100e3565b34801561013357600080fd5b5061007a6101423660046109ff565b61054a565b6000546001600160a01b0316331461017a5760405162461bcd60e51b815260040161017190610a1a565b60405180910390fd5b60008260405160200161018d9190610bd8565b60408051601f19818403018152918152815160209283012060008181526001909352912054909150156101fa5760405162461bcd60e51b81526020600482015260156024820152741d5c19185d1948185b1c9958591e481cdd1859d959605a1b6044820152606401610171565b6102044383610658565b6000828152600160205260409081902091909155517faf91f635f78d93ffa603808c9abd3099887413bc3e144b4b64c1fb966d6519c1906102489085908590610beb565b60405180910390a1505050565b6000816040516020016102689190610bd8565b60408051601f19818403018152918152815160209283012060008181526001909352912054909150806102d45760405162461bcd60e51b81526020600482015260146024820152731d5c19185d19481a5cc81b9bdd081cdd1859d95960621b6044820152606401610171565b804310156103245760405162461bcd60e51b815260206004820152601c60248201527f64656c617920666f7220757064617465206e6f742065787069726564000000006044820152606401610171565b60008281526001602052604081208190555b835151811015610430576000808560000151838151811061035957610359610c0d565b60200260200101516001600160a01b03168660200151848151811061038057610380610c0d565b60200260200101518760400151858151811061039e5761039e610c0d565b60200260200101516040516103b39190610c23565b60006040518083038185875af1925050503d80600081146103f0576040519150601f19603f3d011682016040523d82523d6000602084013e6103f5565b606091505b509150915081819061041a5760405162461bcd60e51b81526004016101719190610c3f565b505050808061042890610c68565b915050610336565b507f5cda31e1476d59bb0aad65b6f4d0b2151029b59e9af9872141f16c8fcaf6a45b836040516102489190610bd8565b6000546001600160a01b0316331461048a5760405162461bcd60e51b815260040161017190610a1a565b60008160405160200161049d9190610bd8565b60408051601f19818403018152918152815160209283012060008181526001909352912054909150806105095760405162461bcd60e51b81526020600482015260146024820152731d5c19185d19481a5cc81b9bdd081cdd1859d95960621b6044820152606401610171565b60008281526001602052604080822091909155517fb1a3479c973dd630e159980ce42bb5da45e167cf7bce9a8b51b1dac8f398419590610248908590610bd8565b3330146105a75760405162461bcd60e51b815260206004820152602560248201527f756e617574686f72697a65643a206d73672e73656e646572206e6f7420476f7660448201526432b93737b960d91b6064820152608401610171565b6001600160a01b0381166105fd5760405162461bcd60e51b815260206004820152601a60248201527f6e65774f776e65722069732061206e756c6c20616464726573730000000000006044820152606401610171565b600080546040516001600160a01b03808516939216917f8be0079c531659141344cd1fd0a4f28419497f9722a3daafe3b4186f6b6457e091a3600080546001600160a01b0319166001600160a01b0392909216919091179055565b60006106648284610c83565b9392505050565b634e487b7160e01b600052604160045260246000fd5b6040516080810167ffffffffffffffff811182821017156106a4576106a461066b565b60405290565b604051601f8201601f1916810167ffffffffffffffff811182821017156106d3576106d361066b565b604052919050565b600067ffffffffffffffff8211156106f5576106f561066b565b5060051b60200190565b80356001600160a01b038116811461071657600080fd5b919050565b600082601f83011261072c57600080fd5b8135602061074161073c836106db565b6106aa565b82815260059290921b8401810191818101908684111561076057600080fd5b8286015b8481101561077b5780358352918301918301610764565b509695505050505050565b6000601f838184011261079857600080fd5b823560206107a861073c836106db565b82815260059290921b850181019181810190878411156107c757600080fd5b8287015b8481101561085e57803567ffffffffffffffff808211156107ec5760008081fd5b818a0191508a603f8301126108015760008081fd5b858201356040828211156108175761081761066b565b610828828b01601f191689016106aa565b92508183528c8183860101111561083f5760008081fd5b81818501898501375060009082018701528452509183019183016107cb565b50979650505050505050565b60006080828403121561087c57600080fd5b610884610681565b9050813567ffffffffffffffff8082111561089e57600080fd5b818401915084601f8301126108b257600080fd5b813560206108c261073c836106db565b82815260059290921b840181019181810190888411156108e157600080fd5b948201945b83861015610906576108f7866106ff565b825294820194908201906108e6565b8652508581013593508284111561091c57600080fd5b6109288785880161071b565b9085015250604084013591508082111561094157600080fd5b5061094e84828501610786565b6040830152506060820135606082015292915050565b6000806040838503121561097757600080fd5b823567ffffffffffffffff81111561098e57600080fd5b61099a8582860161086a565b95602094909401359450505050565b6000602082840312156109bb57600080fd5b813567ffffffffffffffff8111156109d257600080fd5b6109de8482850161086a565b949350505050565b6000602082840312156109f857600080fd5b5035919050565b600060208284031215610a1157600080fd5b610664826106ff565b60208082526022908201527f756e617574686f72697a65643a206d73672e73656e646572206e6f74206f776e60408201526132b960f11b606082015260800190565b600081518084526020808501945080840160005b83811015610a8c57815187529582019590820190600101610a70565b509495945050505050565b60005b83811015610ab2578181015183820152602001610a9a565b83811115610ac1576000848401525b50505050565b60008151808452610adf816020860160208601610a97565b601f01601f19169290920160200192915050565b600081518084526020808501808196508360051b8101915082860160005b85811015610b3b578284038952610b29848351610ac7565b98850198935090840190600101610b11565b5091979650505050505050565b8051608080845281519084018190526000916020919082019060a0860190845b81811015610b8d5783516001600160a01b031683529284019291840191600101610b68565b505082850151915085810383870152610ba68183610a5c565b9250505060408301518482036040860152610bc18282610af3565b915050606083015160608501528091505092915050565b6020815260006106646020830184610b48565b604081526000610bfe6040830185610b48565b90508260208301529392505050565b634e487b7160e01b600052603260045260246000fd5b60008251610c35818460208701610a97565b9190910192915050565b6020815260006106646020830184610ac7565b634e487b7160e01b600052601160045260246000fd5b6000600019821415610c7c57610c7c610c52565b5060010190565b60008219821115610c9657610c96610c52565b50019056fea2646970667358221220ab05b0b10f44a11a1d54a7fed0134386d5839ca3c61619173e1a6cdf1e1c84f364736f6c63430008090033",
+  "devdoc": {
+    "details": "The Governor holds the rights to stage and execute contract calls i.e. changing Livepeer protocol parameters.",
+    "kind": "dev",
+    "methods": {
+      "cancel((address[],uint256[],bytes[],uint256))": {
+        "details": "Reverts if an update does not exist.Reverts if the 'msg.sender' is not the 'owner'",
+        "params": {
+          "_update": "Update to be cancelled."
+        }
+      },
+      "constructor": {
+        "details": "The Ownable constructor sets the original `owner` of the contract to the sender account."
+      },
+      "execute((address[],uint256[],bytes[],uint256))": {
+        "details": "Updates are authorized during staging.Reverts if a transaction can not be executed.",
+        "params": {
+          "_update": "Update to be staged."
+        }
+      },
+      "stage((address[],uint256[],bytes[],uint256),uint256)": {
+        "details": "Reverts if the 'msg.sender' is not the 'owner'Reverts if an update is already staged",
+        "params": {
+          "_delay": "(uint256) Delay (in number of blocks) for the update.",
+          "_update": "Update to be staged."
+        }
+      },
+      "transferOwnership(address)": {
+        "details": "Can only be called through stage/execute, will revert if the caller is not this contract's address.",
+        "params": {
+          "newOwner": "The address to transfer ownership to."
+        }
+      }
+    },
+    "stateVariables": {
+      "updates": {
+        "details": "mapping of updateHash (keccak256(update) => executeBlock (block.number + delay)"
+      }
+    },
+    "title": "Governor",
+    "version": 1
+  },
+  "userdoc": {
+    "kind": "user",
+    "methods": {
+      "cancel((address[],uint256[],bytes[],uint256))": {
+        "notice": "Cancel a staged update."
+      },
+      "execute((address[],uint256[],bytes[],uint256))": {
+        "notice": "Execute a staged update."
+      },
+      "stage((address[],uint256[],bytes[],uint256),uint256)": {
+        "notice": "Stage a batch of updates to be executed."
+      },
+      "transferOwnership(address)": {
+        "notice": "Allows the current owner to transfer control of the contract to a newOwner."
+      }
+    },
+    "version": 1
+  },
+  "storageLayout": {
+    "storage": [
+      {
+        "astId": 24424,
+        "contract": "contracts/governance/Governor.sol:Governor",
+        "label": "owner",
+        "offset": 0,
+        "slot": "0",
+        "type": "t_address"
+      },
+      {
+        "astId": 24429,
+        "contract": "contracts/governance/Governor.sol:Governor",
+        "label": "updates",
+        "offset": 0,
+        "slot": "1",
+        "type": "t_mapping(t_bytes32,t_uint256)"
+      }
+    ],
+    "types": {
+      "t_address": {
+        "encoding": "inplace",
+        "label": "address",
+        "numberOfBytes": "20"
+      },
+      "t_bytes32": {
+        "encoding": "inplace",
+        "label": "bytes32",
+        "numberOfBytes": "32"
+      },
+      "t_mapping(t_bytes32,t_uint256)": {
+        "encoding": "mapping",
+        "key": "t_bytes32",
+        "label": "mapping(bytes32 => uint256)",
+        "numberOfBytes": "32",
+        "value": "t_uint256"
+      },
+      "t_uint256": {
+        "encoding": "inplace",
+        "label": "uint256",
+        "numberOfBytes": "32"
+      }
+    }
+  }
+}
