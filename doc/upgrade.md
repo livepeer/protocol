@@ -31,10 +31,10 @@ After deployment, a file in the `deployments` directory containing the latest ad
 Verify the contract code on arbiscan.io.
 
 ```
-npx hardhat etherscan-verify --network arbitrumMainnet --license MIT --sleep
+npx hardhat verify --network arbitrumMainnet DEPLOYED_CONTRACT_ADDRESS "Constructor argument 1" ...
 ```
 
-The `etherscan-verify` task might return an error for certain contracts. If this happens, an alternative approach is to generate a single "flattened" (contains code from all files that the contract depends on) `.sol` file that can be manually submitted on arbiscan.io.
+The `verify` task might return an error for certain contracts. If this happens, an alternative approach is to generate a single "flattened" (contains code from all files that the contract depends on) `.sol` file that can be manually submitted on arbiscan.io.
 
 ```
 npx hardhat flatten contracts/bonding/BondingManager.sol > flattened.sol
@@ -42,7 +42,7 @@ npx hardhat flatten contracts/bonding/BondingManager.sol > flattened.sol
 
 You can use https://arbiscan.io/verifyContract to manually submit contract code for public verification.
 
-- The compiler config (i.e. version, optimizer runs, etc.) can be found in `hardhat.config.ts`  under `solidity.compilers`.
+- The compiler config (i.e. version, optimizer runs, etc.) can be found in `hardhat.config.ts` under `solidity.compilers`.
 - For Compiler Type, select "Solidity (Single File)".
 - For Open Source License Type, select "MIT"
 
@@ -51,6 +51,16 @@ When prompted for the code, you can copy and paste the contents of `flattened.so
 You can also use Tenderly to manually submit contract code for [private verification](https://docs.tenderly.co/monitoring/smart-contract-verification/verifying-a-smart-contract).
 
 If you see an error related to multiple SPDX license identifiers, remove all SPDX license identifiers from `flattened.sol` except for a single one.
+
+## Task
+
+Alternatively, you can also run the `etherscan-verify-deployments` task from this repository available as a `yarn` script:
+
+```
+yarn etherscan-verify --network arbitrumMainnet Contract1 Contract2 ...
+```
+
+Additionally, you can omit the contract names to verify all the contracts deployed on the specified network.
 
 ## View Contract Diff
 

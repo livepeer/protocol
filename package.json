@@ -10,6 +10,7 @@
     "deploy": "npx hardhat deploy --tags Contracts,Poll",
     "deploy:poll": "npx hardhat deploy --tags Poll",
     "deploy:contracts": "npx hardhat deploy --tags Contracts",
+    "etherscan-verify": "npx hardhat etherscan-verify-deployments",
     "lint": "yarn eslint && yarn solhint",
     "eslint:fix": "eslint . --ext .js,.ts --fix",
     "eslint": "eslint . --ext .js,.ts",
