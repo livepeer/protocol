@@ -63,6 +63,7 @@
     "chai": "^4.3.4",
     "child_process": "^1.0.2",
     "coveralls": "^3.0.2",
+    "dotenv": "^16.3.1",
     "eslint": "^7.32.0",
     "eslint-config-google": "^0.14.0",
     "ethereum-waffle": "^3.4.0",

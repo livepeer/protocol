@@ -1,3 +1,6 @@
+import * as dotenv from "dotenv"
+dotenv.config()
+
 import "@nomiclabs/hardhat-ethers"
 import "@nomiclabs/hardhat-web3"
 import "@typechain/hardhat"
