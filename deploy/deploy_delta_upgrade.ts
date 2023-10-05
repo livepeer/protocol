@@ -91,7 +91,7 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
     await Treasury.initialize(
         config.treasury.minDelay,
         [], // governor will be added as a proposer later
-        [ethers.constants.AddressZero], // let anyone execute proposals
+        [], // governor will be added as an executor later
         deployer // temporary admin role for deployer
     ).then(tx => tx.wait())
 

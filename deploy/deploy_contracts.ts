@@ -1,7 +1,7 @@
 import {HardhatRuntimeEnvironment} from "hardhat/types"
 import {DeployFunction} from "hardhat-deploy/types"
 import {ethers} from "hardhat"
-import {Contract, constants} from "ethers"
+import {Contract} from "ethers"
 import {DeployResult, Export} from "hardhat-deploy/dist/types"
 import fs from "fs"
 
@@ -303,7 +303,7 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
     await Treasury.initialize(
         config.treasury.minDelay,
         [], // governor will be added as a proposer later
-        [constants.AddressZero], // let anyone execute proposals
+        [], // governor will be added as an executor later
         deployer // temporary admin role for deployer
     ).then(tx => tx.wait())
 
