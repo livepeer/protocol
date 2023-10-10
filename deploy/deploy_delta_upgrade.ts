@@ -134,8 +134,6 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
         )
     }
 
-    await Treasury.renounceRole(roles.admin, deployer).then(tx => tx.wait())
-
     const LivepeerGovernor: LivepeerGovernor = await ethers.getContractAt(
         "LivepeerGovernor",
         livepeerGovernor.address
@@ -200,6 +198,8 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
         console.log("Pending governance actions:")
         console.log(JSON.stringify(governanceActions, null, 2))
     }
+
+    // deployer MUST renounce ADMIN role from the Treasury afterwards
 }
 
 func.tags = ["DELTA_UPGRADE"]

@@ -28,7 +28,17 @@ After deployment, a file in the `deployments` directory containing the latest ad
 
 ## Verify Contract Code
 
-Verify the contract code on arbiscan.io.
+You can run the `etherscan-verify-deployments` task from this repository available as a `yarn` script:
+
+```
+yarn etherscan-verify --network arbitrumMainnet Contract1 Contract2 ...
+```
+
+Additionally, you can omit the contract names to verify all the contracts that have been deployed on the specified network.
+
+## Manual Verification
+
+If the above script does not work, you can manually verify the contract code on arbiscan.io with the `hardhat-verify` plugin:
 
 ```
 npx hardhat verify --network arbitrumMainnet DEPLOYED_CONTRACT_ADDRESS "Constructor argument 1" ...
@@ -51,16 +61,6 @@ When prompted for the code, you can copy and paste the contents of `flattened.so
 You can also use Tenderly to manually submit contract code for [private verification](https://docs.tenderly.co/monitoring/smart-contract-verification/verifying-a-smart-contract).
 
 If you see an error related to multiple SPDX license identifiers, remove all SPDX license identifiers from `flattened.sol` except for a single one.
-
-## Task
-
-Alternatively, you can also run the `etherscan-verify-deployments` task from this repository available as a `yarn` script:
-
-```
-yarn etherscan-verify --network arbitrumMainnet Contract1 Contract2 ...
-```
-
-Additionally, you can omit the contract names to verify all the contracts deployed on the specified network.
 
 ## View Contract Diff
 
