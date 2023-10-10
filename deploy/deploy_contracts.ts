@@ -65,7 +65,7 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
 
     const config = getNetworkConfig(hre.network.name)
 
-    const contractDeployer = new ContractDeployer(deploy, deployer, deployments)
+    const contractDeployer = new ContractDeployer(deployer, deployments)
 
     const Controller: Controller = await contractDeployer.deployController()
 

@@ -39,29 +39,27 @@ const setContractInfoAction = (
 // for already existing contracts, and skips registering them in the controller in case it's a production network.
 const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
     const {deployments, getNamedAccounts} = hre // Get the deployments and getNamedAccounts which are provided by hardhat-deploy
-    const {deploy} = deployments // the deployments object itself contains the deploy function
 
     const network = hre.network.name
     const config = getNetworkConfig(network)
 
     const {deployer} = await getNamedAccounts() // Fetch named accounts from hardhat.config.ts
 
+    const contractDeployer = new ContractDeployer(deployer, deployments)
+    const controller = await contractDeployer.fetchDeployedController()
+
     // on prod networks, deploy contracts here but registration is done later through governance
     // on test networks, the deployer must also be the controller owner so we can register here
     const skipRegister = isProdNetwork(network)
-    const contractDeployer = new ContractDeployer(
-        deploy,
-        deployer,
-        deployments,
-        skipRegister
-    )
-    const controller = await contractDeployer.fetchDeployedController()
+    const deploy = skipRegister ?
+        contractDeployer.deploy.bind(contractDeployer) :
+        contractDeployer.deployAndRegister.bind(contractDeployer)
 
     const gitCommitHash = await contractDeployer.getGitHeadCommitHash()
     const governanceActions = []
 
     // Deploy contracts
-    await contractDeployer.deployAndRegister({
+    await deploy({
         contract: "BondingVotes",
         name: "BondingVotes",
         args: [controller.address],
@@ -72,7 +70,7 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
         setContractInfoAction(network, gitCommitHash, "BondingVotes")
     )
 
-    const treasury = await contractDeployer.deployAndRegister({
+    const treasury = await deploy({
         contract: "Treasury",
         name: "Treasury",
         args: [],
@@ -95,7 +93,7 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
         deployer // temporary admin role for deployer
     ).then(tx => tx.wait())
 
-    const livepeerGovernor = await contractDeployer.deployAndRegister({
+    const livepeerGovernor = await deploy({
         contract: "LivepeerGovernor",
         name: "LivepeerGovernor",
         args: [controller.address],
@@ -108,7 +106,7 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
 
     const llDeployment = await deployments.get("SortedDoublyLL")
 
-    await contractDeployer.deployAndRegister({
+    await deploy({
         contract: "BondingManager",
         name: "BondingManagerTarget",
         libraries: {
