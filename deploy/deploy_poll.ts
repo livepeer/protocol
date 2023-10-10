@@ -13,7 +13,7 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
 
     const bondingManager = await get("BondingManager")
 
-    await contractDeployer.deployAndRegister({
+    await contractDeployer.deploy({
         contract: "PollCreator",
         name: "PollCreator",
         args: [bondingManager.address]
