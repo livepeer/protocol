@@ -76,7 +76,7 @@ const config: HardhatUserConfig = {
             accounts: PRIVATE_KEY ? [`0x${PRIVATE_KEY}`] : undefined
         },
         arbitrumMainnet: {
-            url: `https://arbitrum-mainnet.infura.io/v3/${INFURA_KEY}`,
+            url: "https://rpc.tenderly.co/fork/2f6f7f38-4c86-4b24-a165-2b535747ba26",
             accounts: PRIVATE_KEY ? [`0x${PRIVATE_KEY}`] : undefined
         },
         arbitrumRinkeby: {
