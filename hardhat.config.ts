@@ -1,9 +1,12 @@
+import * as dotenv from "dotenv"
+dotenv.config()
+
 import "@nomiclabs/hardhat-ethers"
 import "@nomiclabs/hardhat-web3"
 import "@typechain/hardhat"
 import "@nomiclabs/hardhat-waffle"
 import "hardhat-gas-reporter"
-import "@nomiclabs/hardhat-etherscan"
+import "@nomicfoundation/hardhat-verify"
 import "hardhat-abi-exporter"
 
 // deployment plugins
@@ -96,7 +99,8 @@ const config: HardhatUserConfig = {
         enabled: process.env.REPORT_GAS ? true : false
     },
     etherscan: {
-        apiKey: process.env.ETHERSCAN_API_KEY
+        apiKey: process.env.ETHERSCAN_API_KEY,
+        customChains: []
     },
     abiExporter: {
         path: "./abi",

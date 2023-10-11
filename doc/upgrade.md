@@ -28,13 +28,23 @@ After deployment, a file in the `deployments` directory containing the latest ad
 
 ## Verify Contract Code
 
-Verify the contract code on arbiscan.io.
+You can run the `etherscan-verify-deployments` task from this repository available as a `yarn` script:
 
 ```
-npx hardhat etherscan-verify --network arbitrumMainnet --license MIT --sleep
+yarn etherscan-verify --network arbitrumMainnet Contract1 Contract2 ...
 ```
 
-The `etherscan-verify` task might return an error for certain contracts. If this happens, an alternative approach is to generate a single "flattened" (contains code from all files that the contract depends on) `.sol` file that can be manually submitted on arbiscan.io.
+Additionally, you can omit the contract names to verify all the contracts that have been deployed on the specified network.
+
+## Manual Verification
+
+If the above script does not work, you can manually verify the contract code on arbiscan.io with the `hardhat-verify` plugin:
+
+```
+npx hardhat verify --network arbitrumMainnet DEPLOYED_CONTRACT_ADDRESS "Constructor argument 1" ...
+```
+
+The `verify` task might return an error for certain contracts. If this happens, an alternative approach is to generate a single "flattened" (contains code from all files that the contract depends on) `.sol` file that can be manually submitted on arbiscan.io.
 
 ```
 npx hardhat flatten contracts/bonding/BondingManager.sol > flattened.sol
@@ -42,7 +52,7 @@ npx hardhat flatten contracts/bonding/BondingManager.sol > flattened.sol
 
 You can use https://arbiscan.io/verifyContract to manually submit contract code for public verification.
 
-- The compiler config (i.e. version, optimizer runs, etc.) can be found in `hardhat.config.ts`  under `solidity.compilers`.
+- The compiler config (i.e. version, optimizer runs, etc.) can be found in `hardhat.config.ts` under `solidity.compilers`.
 - For Compiler Type, select "Solidity (Single File)".
 - For Open Source License Type, select "MIT"
 

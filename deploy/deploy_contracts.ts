@@ -11,7 +11,9 @@ import {
     RoundsManager,
     TicketBroker,
     LivepeerToken,
-    Governor
+    Governor,
+    LivepeerGovernor,
+    Treasury
 } from "../typechain"
 
 import ContractDeployer from "../utils/deployer"
@@ -63,7 +65,7 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
 
     const config = getNetworkConfig(hre.network.name)
 
-    const contractDeployer = new ContractDeployer(deploy, deployer, deployments)
+    const contractDeployer = new ContractDeployer(deployer, deployments)
 
     const Controller: Controller = await contractDeployer.deployController()
 
@@ -159,6 +161,8 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
             proxy: true,
             args: [Controller.address]
         })
+        // tests expect it to be saved as AdjustableRoundsManager as well
+        await deployments.save("AdjustableRoundsManager", roundsManager)
     } else {
         roundsManager = await contractDeployer.deployAndRegister({
             contract: "RoundsManager",
@@ -212,6 +216,21 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
     await (await Governor.stage(transferOwnershipUpdate, 0)).wait()
     await (await Governor.execute(transferOwnershipUpdate)).wait()
 
+    // Treasury (LivepeerGovernor)
+
+    const treasury = await contractDeployer.deployAndRegister({
+        contract: "Treasury",
+        name: "Treasury",
+        args: []
+    })
+
+    const livepeerGovernor = await contractDeployer.deployAndRegister({
+        contract: "LivepeerGovernor",
+        name: "LivepeerGovernor",
+        args: [Controller.address],
+        proxy: true
+    })
+
     // Set BondingManager parameters
     const BondingManager: BondingManager = (await ethers.getContractAt(
         "BondingManager",
@@ -228,6 +247,21 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
             config.bondingManager.numActiveTranscoders
         )
     ).wait()
+
+    if (config.bondingManager.treasuryRewardCutRate) {
+        await (
+            await BondingManager.setTreasuryRewardCutRate(
+                config.bondingManager.treasuryRewardCutRate
+            )
+        ).wait()
+    }
+    if (config.bondingManager.treasuryBalanceCeiling) {
+        await (
+            await BondingManager.setTreasuryBalanceCeiling(
+                config.bondingManager.treasuryBalanceCeiling
+            )
+        ).wait()
+    }
 
     // Set RoundsManager parameters
     const RoundsManager: RoundsManager = (await ethers.getContractAt(
@@ -258,6 +292,48 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
             ).wait()
         }
     }
+
+    // Initialize Treasury and LivepeerGovernor
+
+    const Treasury: Treasury = await ethers.getContractAt(
+        "Treasury",
+        treasury.address
+    )
+
+    await Treasury.initialize(
+        config.treasury.minDelay,
+        [], // governor will be added as a proposer later
+        [], // governor will be added as an executor later
+        deployer // temporary admin role for deployer
+    ).then(tx => tx.wait())
+
+    const LivepeerGovernor: LivepeerGovernor = await ethers.getContractAt(
+        "LivepeerGovernor",
+        livepeerGovernor.address
+    )
+
+    await LivepeerGovernor.initialize(
+        config.livepeerGovernor.initialVotingDelay,
+        config.livepeerGovernor.initialVotingPeriod,
+        config.livepeerGovernor.initialProposalThreshold,
+        config.livepeerGovernor.initialQuorum,
+        config.livepeerGovernor.quota
+    ).then(tx => tx.wait())
+
+    // Now grant proposer and executor roles to governor and renounce deployer admin role
+    const roles = {
+        proposer: await Treasury.PROPOSER_ROLE(),
+        canceller: await Treasury.CANCELLER_ROLE(),
+        executor: await Treasury.EXECUTOR_ROLE(),
+        admin: await Treasury.TIMELOCK_ADMIN_ROLE()
+    }
+    for (const role of [roles.proposer, roles.canceller, roles.executor]) {
+        await Treasury.grantRole(role, LivepeerGovernor.address).then(tx =>
+            tx.wait()
+        )
+    }
+
+    await Treasury.renounceRole(roles.admin, deployer).then(tx => tx.wait())
 
     // Set TicketBroker parameters
     const Broker: TicketBroker = (await ethers.getContractAt(
