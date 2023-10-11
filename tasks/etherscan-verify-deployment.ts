@@ -8,7 +8,10 @@ task(
     "etherscan-verify-deployments",
     "Verifies all contracts in the deployments folder"
 )
-    .addVariadicPositionalParam("contracts", "List of contracts to verify")
+    .addOptionalVariadicPositionalParam(
+        "contracts",
+        "List of contracts to verify"
+    )
     .setAction(async (taskArgs, hre) => {
         const etherscan = await etherscanClient(hre)
         let deployments = Object.entries(await hre.deployments.all())
