@@ -1,6 +1,5 @@
 import {task} from "hardhat/config"
-import {Controller, Treasury} from "../typechain"
-import {contractId} from "../utils/helpers"
+import {Treasury} from "../typechain"
 
 task(
     "treasury-renounce-admin-role",
@@ -10,14 +9,11 @@ task(
 
     const {deployer} = await hre.getNamedAccounts()
 
-    const controller = await deployments.get("Controller")
-    const Controller: Controller = await hre.ethers.getContractAt(
-        "Controller",
-        controller.address
+    const treasury = await deployments.get("Treasury")
+    const Treasury: Treasury = await ethers.getContractAt(
+        "Treasury",
+        treasury.address
     )
-
-    const address = await Controller.getContract(contractId("Treasury"))
-    const Treasury: Treasury = await ethers.getContractAt("Treasury", address)
 
     const adminRole = await Treasury.TIMELOCK_ADMIN_ROLE()
     let hasAdminRole = await Treasury.hasRole(adminRole, deployer)
