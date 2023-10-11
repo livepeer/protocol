@@ -199,7 +199,8 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
         console.log(JSON.stringify(governanceActions, null, 2))
     }
 
-    // deployer MUST renounce ADMIN role from the Treasury afterwards
+    console.log("Deployer must renounce ADMIN role from the Treasury with:")
+    console.log(`npx hardhat treasury-renounce-admin-role --network ${network}`)
 }
 
 func.tags = ["DELTA_UPGRADE"]
