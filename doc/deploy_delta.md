@@ -100,3 +100,7 @@ less risky as we can iterate quickly. Open PRs:
 
 - https://github.com/livepeer/subgraph/pull/157
 - https://github.com/livepeer/explorer/pull/224
+
+## Step 11: Update public docs on contract addresses
+
+Update the public docs with the new contract addresses. The list lives [here](https://github.com/livepeer/docs/blob/129b966d32883233f1c7a1c351714575306ff89b/pages/reference/deployed-contract-addresses.en-US.mdx#L17).
