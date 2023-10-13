@@ -961,7 +961,6 @@ describe("BondingVotes", () => {
                 const creationRound = await roundsManager.currentRound()
                 const creationRoundBlockHash =
                     await roundsManager.blockHashForRound(creationRound)
-                console.log(creationRoundBlockHash)
                 const auxData = ethers.utils.solidityPack(
                     ["uint256", "bytes32"],
                     [creationRound, creationRoundBlockHash]

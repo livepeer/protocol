@@ -70,4 +70,67 @@ contract TestEarningsPoolLIP36 {
         fixture.updateCumulativeRewardFactor(1000);
         Assert.equal(expRewardFactor, fixture.getCumulativeRewardFactor(), "incorrect cumulative reward factor");
     }
+
+    function test_delegatorCumulativeFees() public {
+        uint256 stake = 1000;
+        uint256 fees = 10;
+
+        // all zeroed factors, should just return current fees
+        Assert.equal(10, fixture.delegatorCumulativeFees(stake, fees), "incorrect delegator cumulative fees");
+
+        fixture.setPrevPoolEarningsFactors(3, 2);
+        fixture.setEarningsFactors(3, 2);
+
+        // no increased fee factor yet, should still return current fees
+        Assert.equal(10, fixture.delegatorCumulativeFees(stake, fees), "incorrect delegator cumulative fees");
+
+        fixture.setEarningsFactors(6, 0); // end pool reward factor should not be used, set as 0
+
+        // earned fees = 1000 * (6 - 3) / 2 = 1500
+        Assert.equal(1510, fixture.delegatorCumulativeFees(stake, fees), "incorrect delegator cumulative fees");
+    }
+
+    function test_delegatorCumulativeStake() public {
+        uint256 stake = 1000;
+
+        // all zeroed factors, should just return current stake
+        Assert.equal(1000, fixture.delegatorCumulativeStake(stake), "incorrect delegator cumulative stake");
+
+        fixture.setPrevPoolEarningsFactors(0, 4);
+        fixture.setEarningsFactors(0, 4);
+
+        // no increased reward factor yet, should still return current stake
+        Assert.equal(1000, fixture.delegatorCumulativeStake(stake), "incorrect delegator cumulative stake");
+
+        fixture.setEarningsFactors(0, 10);
+
+        // stake = 1000 * 10 / 4 = 2500
+        Assert.equal(2500, fixture.delegatorCumulativeStake(stake), "incorrect delegator cumulative stake");
+    }
+
+    function test_delegatorCumulativeStakeAndFees() public {
+        uint256 stake = 1000;
+        uint256 fees = 10;
+
+        // all zeroed factors, should just return current stake
+        (uint256 cStake, uint256 cFees) = fixture.delegatorCumulativeStakeAndFees(stake, fees);
+        Assert.equal(1000, cStake, "incorrect delegator cumulative stake");
+        Assert.equal(10, cFees, "incorrect delegator cumulative fee");
+
+        fixture.setPrevPoolEarningsFactors(2, 5);
+        fixture.setEarningsFactors(2, 5);
+
+        // no increased factors yet, should still return current values
+        (cStake, cFees) = fixture.delegatorCumulativeStakeAndFees(stake, fees);
+        Assert.equal(1000, cStake, "incorrect delegator cumulative stake");
+        Assert.equal(10, cFees, "incorrect delegator cumulative fee");
+
+        fixture.setEarningsFactors(5, 15);
+
+        (cStake, cFees) = fixture.delegatorCumulativeStakeAndFees(stake, fees);
+        // stake = 1000 * 15 / 5 = 3000
+        Assert.equal(3000, cStake, "incorrect delegator cumulative stake");
+        // earned fees = 1000 * (5 - 2) / 5 = 600
+        Assert.equal(610, cFees, "incorrect delegator cumulative fee");
+    }
 }
