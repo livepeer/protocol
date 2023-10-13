@@ -485,13 +485,7 @@ contract BondingVotes is ManagerProxyTarget, IBondingVotes {
             return bond.bondedAmount;
         }
 
-        (uint256 stakeWithRewards, ) = EarningsPoolLIP36.delegatorCumulativeStakeAndFees(
-            startPool,
-            endPool,
-            bond.bondedAmount,
-            0
-        );
-        return stakeWithRewards;
+        return EarningsPoolLIP36.delegatorCumulativeStake(startPool, endPool, bond.bondedAmount);
     }
 
     /**

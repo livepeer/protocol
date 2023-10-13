@@ -60,10 +60,11 @@ library EarningsPoolLIP36 {
 
     /**
      * @notice Calculates a delegator's cumulative stake and fees using the LIP-36 earnings claiming algorithm.
+     * @dev This internally calls {delegatorCumulativeStake} and {delegatorCumulativeFees} to calculate stake and fees.
      * @param _startPool The earning pool from the start round for the start cumulative factors. Normally this is the
-     * earning pool from the {Delegator-lastclaimRound}+1 round, as the round where `bondedAmount` was measured.
+     * earning pool from the {Delegator-lastClaimRound} round, as the round where `_stake` was measured.
      * @param _endPool The earning pool from the end round for the end cumulative factors
-     * @param _stake The delegator initial stake before including earned rewards. Normally the {Delegator-bondedAmount}
+     * @param _stake The delegator stake at the start round, before earned rewards. Normally {Delegator-bondedAmount}.
      * @param _fees The delegator's initial fees before including earned fees
      * @return cStake , cFees where cStake is the delegator's cumulative stake including earned rewards and cFees is the
      * delegator's cumulative fees including earned fees
@@ -74,6 +75,23 @@ library EarningsPoolLIP36 {
         uint256 _stake,
         uint256 _fees
     ) internal pure returns (uint256 cStake, uint256 cFees) {
+        cStake = delegatorCumulativeStake(_startPool, _endPool, _stake);
+        cFees = delegatorCumulativeFees(_startPool, _endPool, _stake, _fees);
+    }
+
+    /**
+     * @notice Calculates a delegator's cumulative stake using the LIP-36 earnings claiming algorithm.
+     * @param _startPool The earning pool from the start round for the start cumulative factors. Normally this is the
+     * earning pool from the {Delegator-lastClaimRound} round, as the round where `_stake` was measured.
+     * @param _endPool The earning pool from the end round for the end cumulative factors.
+     * @param _stake The delegator stake at the start round, before earned rewards. Normally {Delegator-bondedAmount}.
+     * @return The delegator's cumulative stake including earned rewards.
+     */
+    function delegatorCumulativeStake(
+        EarningsPool.Data memory _startPool,
+        EarningsPool.Data memory _endPool,
+        uint256 _stake
+    ) internal pure returns (uint256) {
         // If the start cumulativeRewardFactor is 0 set the default value to PreciseMathUtils.percPoints(1, 1)
         if (_startPool.cumulativeRewardFactor == 0) {
             _startPool.cumulativeRewardFactor = PreciseMathUtils.percPoints(1, 1);
@@ -84,16 +102,39 @@ library EarningsPoolLIP36 {
             _endPool.cumulativeRewardFactor = PreciseMathUtils.percPoints(1, 1);
         }
 
-        cFees = _fees.add(
-            PreciseMathUtils.percOf(
-                _stake,
-                _endPool.cumulativeFeeFactor.sub(_startPool.cumulativeFeeFactor),
-                _startPool.cumulativeRewardFactor
-            )
+        return PreciseMathUtils.percOf(_stake, _endPool.cumulativeRewardFactor, _startPool.cumulativeRewardFactor);
+    }
+
+    /**
+     * @notice Calculates a delegator's cumulative fees using the LIP-36 earnings claiming algorithm.
+     * @param _startPool The earning pool from the start round for the start cumulative factors. Normally this is the
+     * earning pool from the {Delegator-lastClaimRound} round, as the round where `_stake` was measured.
+     * @param _endPool The earning pool from the end round for the end cumulative factors.
+     * @param _stake The delegator stake at the start round, before earned rewards. Normally {Delegator-bondedAmount}.
+     * @param _fees The delegator's initial fees before including earned fees.
+     * @return The delegator's cumulative fees including earned fees.
+     */
+    function delegatorCumulativeFees(
+        EarningsPool.Data memory _startPool,
+        EarningsPool.Data memory _endPool,
+        uint256 _stake,
+        uint256 _fees
+    ) internal pure returns (uint256) {
+        // If the start cumulativeRewardFactor is 0 set the default value to PreciseMathUtils.percPoints(1, 1)
+        if (_startPool.cumulativeRewardFactor == 0) {
+            _startPool.cumulativeRewardFactor = PreciseMathUtils.percPoints(1, 1);
+        }
+
+        // If the end cumulativeRewardFactor is 0 set the default value to PreciseMathUtils.percPoints(1, 1)
+        if (_endPool.cumulativeRewardFactor == 0) {
+            _endPool.cumulativeRewardFactor = PreciseMathUtils.percPoints(1, 1);
+        }
+
+        uint256 earnedFees = PreciseMathUtils.percOf(
+            _stake,
+            _endPool.cumulativeFeeFactor.sub(_startPool.cumulativeFeeFactor),
+            _startPool.cumulativeRewardFactor
         );
-
-        cStake = PreciseMathUtils.percOf(_stake, _endPool.cumulativeRewardFactor, _startPool.cumulativeRewardFactor);
-
-        return (cStake, cFees);
+        return _fees.add(earnedFees);
     }
 }
