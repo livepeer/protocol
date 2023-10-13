@@ -125,11 +125,6 @@ library EarningsPoolLIP36 {
             _startPool.cumulativeRewardFactor = PreciseMathUtils.percPoints(1, 1);
         }
 
-        // If the end cumulativeRewardFactor is 0 set the default value to PreciseMathUtils.percPoints(1, 1)
-        if (_endPool.cumulativeRewardFactor == 0) {
-            _endPool.cumulativeRewardFactor = PreciseMathUtils.percPoints(1, 1);
-        }
-
         uint256 earnedFees = PreciseMathUtils.percOf(
             _stake,
             _endPool.cumulativeFeeFactor.sub(_startPool.cumulativeFeeFactor),
