@@ -962,7 +962,8 @@ describe("BondingVotes", () => {
             const setEarningPoolRewardFactor = async (
                 address,
                 round,
-                factor
+                rewardFactor,
+                feeFactor = 0
             ) => {
                 await fixture.bondingManager.setMockTranscoderEarningsPoolForRound(
                     address,
@@ -970,8 +971,8 @@ describe("BondingVotes", () => {
                     0,
                     0,
                     0,
-                    factor,
-                    0
+                    rewardFactor,
+                    feeFactor
                 )
             }
 
@@ -1149,6 +1150,43 @@ describe("BondingVotes", () => {
                     `MissingEarningsPool("${transcoder.address}", ${
                         currentRound - 2
                     })`
+                )
+            })
+
+            it("should not fail if there's no cumulativeFeeFactor on the lastRewardRound", async () => {
+                await checkpointDelegator({
+                    startRound: currentRound - 9,
+                    bondedAmount: 1000,
+                    delegateAddress: transcoder.address,
+                    lastClaimRound: currentRound - 10
+                })
+                await setEarningPoolRewardFactor(
+                    transcoder.address,
+                    currentRound - 10,
+                    PERC_DIVISOR,
+                    PERC_DIVISOR.mul(11).div(10) // 1.1 fee factor
+                )
+
+                await checkpointTranscoder({
+                    account: transcoder.address,
+                    startRound: currentRound - 1,
+                    lastRewardRound: currentRound - 2
+                })
+                await setEarningPoolRewardFactor(
+                    transcoder.address,
+                    currentRound - 2,
+                    PERC_DIVISOR,
+                    0 // uninitialized fee factor
+                )
+
+                assert.deepEqual(
+                    await bondingVotes
+                        .getVotesAndDelegateAtRoundStart(
+                            delegator.address,
+                            currentRound
+                        )
+                        .then(t => t.map(v => v.toString())),
+                    ["1000", transcoder.address]
                 )
             })
 
