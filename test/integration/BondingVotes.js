@@ -1,5 +1,7 @@
 import RPC from "../../utils/rpc"
 import setupIntegrationTest from "../helpers/setupIntegrationTest"
+import {createWinningTicket, getTicketHash} from "../helpers/ticket"
+import signMsg from "../helpers/signMsg"
 
 import chai, {assert} from "chai"
 import {ethers} from "hardhat"
@@ -18,9 +20,11 @@ describe("BondingVotes", () => {
     let bondingVotes
     let bondingManager
     let roundsManager
-    let roundLength
+    let ticketBroker
     let token
     let minter
+
+    let roundLength
 
     const PERC_DIVISOR = 1000000
     const PERC_MULTIPLIER = PERC_DIVISOR / 100
@@ -59,6 +63,11 @@ describe("BondingVotes", () => {
         )
         roundLength = (await roundsManager.roundLength()).toNumber()
 
+        ticketBroker = await ethers.getContractAt(
+            "TicketBroker",
+            fixture.TicketBroker.address
+        )
+
         const controller = await ethers.getContractAt(
             "Controller",
             fixture.Controller.address
@@ -87,6 +96,9 @@ describe("BondingVotes", () => {
 
     const nextRound = async (rounds = 1) => {
         await roundsManager.mineBlocks(rounds * roundLength)
+        await roundsManager.setBlockHash(
+            ethers.utils.solidityKeccak256(["string"], ["bar"])
+        )
         await roundsManager.initializeRound()
         const currRound = (await roundsManager.currentRound()).toNumber()
         mintableTokens[currRound] = await minter.currentMintableTokens()
@@ -920,6 +932,129 @@ describe("BondingVotes", () => {
                 for (const [r, expStake, expDel] of testCases) {
                     await expectStakeAt(delegator, r, expStake, expDel)
                 }
+            })
+        })
+
+        describe("transcoder with uninitialized fee factor", () => {
+            let broadcaster
+
+            before(async () => {
+                broadcaster = signers[2]
+
+                // Round R
+
+                // broadcaster sets up deposit/reserve
+                const deposit = ethers.utils.parseEther("1")
+                await ticketBroker
+                    .connect(broadcaster)
+                    .fundDeposit({value: deposit})
+
+                const reserve = ethers.utils.parseEther("1")
+                await ticketBroker
+                    .connect(broadcaster)
+                    .fundReserve({value: reserve})
+
+                // Round R+1
+                await nextRound()
+
+                // Now redeem a ticket for the transcoder
+                const creationRound = await roundsManager.currentRound()
+                const creationRoundBlockHash =
+                    await roundsManager.blockHashForRound(creationRound)
+                console.log(creationRoundBlockHash)
+                const auxData = ethers.utils.solidityPack(
+                    ["uint256", "bytes32"],
+                    [creationRound, creationRoundBlockHash]
+                )
+                const recipientRand = 5
+                const faceValue = 1000
+                const ticket = createWinningTicket(
+                    transcoder.address,
+                    broadcaster.address,
+                    recipientRand,
+                    faceValue,
+                    auxData
+                )
+                const senderSig = await signMsg(
+                    getTicketHash(ticket),
+                    broadcaster.address
+                )
+
+                await ticketBroker
+                    .connect(transcoder)
+                    .redeemWinningTicket(ticket, senderSig, recipientRand)
+
+                // delegator bonds to transcoder
+                await bond(delegator, lptAmount(1), transcoder)
+            })
+
+            it("should be in round currentRound+1", async () => {
+                const curr = await roundsManager.currentRound()
+                expect(curr).to.equal(currentRound + 1)
+            })
+
+            it("should have a non-zero cumulativeFeeFactor for transcoder", async () => {
+                const earningsPool =
+                    await bondingManager.getTranscoderEarningsPoolForRound(
+                        transcoder.address,
+                        currentRound + 1
+                    )
+                expect(earningsPool.cumulativeFeeFactor).to.not.equal(0)
+            })
+
+            it("should be able to calculate votes on the current round", async () => {
+                await expectStakeAt(
+                    delegator,
+                    currentRound + 1,
+                    0,
+                    constants.AddressZero
+                )
+                await expectStakeAt(
+                    delegator,
+                    currentRound + 2,
+                    lptAmount(1),
+                    transcoder.address
+                )
+            })
+
+            describe("in a round with cumulativeFeeFactor not initialized", async () => {
+                before(async () => {
+                    // R+2
+                    await nextRound()
+
+                    await bondingManager.connect(transcoder).reward()
+                })
+
+                it("should not have initialized cumulativeFeeFactor", async () => {
+                    const earningsPool =
+                        await bondingManager.getTranscoderEarningsPoolForRound(
+                            transcoder.address,
+                            currentRound + 2
+                        )
+                    expect(earningsPool.cumulativeFeeFactor).to.equal(0)
+                    expect(earningsPool.cumulativeRewardFactor).not.to.equal(0)
+                })
+
+                it("should be able to calculate votes on next round", async () => {
+                    await expectStakeAt(
+                        delegator,
+                        currentRound + 1,
+                        0,
+                        constants.AddressZero
+                    )
+                    await expectStakeAt(
+                        delegator,
+                        currentRound + 2,
+                        lptAmount(1),
+                        transcoder.address
+                    )
+                    await expectStakeAt(
+                        delegator,
+                        currentRound + 3,
+                        "1234396725000000000", // 1 LPT + rewards
+                        transcoder.address
+                    )
+                })
             })
         })
     })
