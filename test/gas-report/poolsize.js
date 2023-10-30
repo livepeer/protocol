@@ -492,6 +492,7 @@ describe("transcoder pool size gas report", () => {
                         await bondingManager
                             .connect(transcoders[0])
                             .rewardWithHint(
+                                transcoders[0].address,
                                 transcoders[1].address,
                                 ethers.constants.AddressZero
                             )
