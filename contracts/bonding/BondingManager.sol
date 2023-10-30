@@ -298,7 +298,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * @notice Mint token rewards for an active transcoder and its delegators
      * @param _transcoder Address of the transcoder to call reward as
     */
-    function reward(address _transcoder) external {
+    function rewardAs(address _transcoder) external {
         rewardWithHint(_transcoder, address(0), address(0));
     }
 
