@@ -3742,6 +3742,113 @@ describe("BondingManager", () => {
             })
         })
 
+        describe("set delegate earnings pool factors if not initialized", () => {
+            beforeEach(async () => {
+                // Delegator unbonds rest of tokens transitioning to the Unbonded state
+                await bondingManager.connect(delegator).unbond(500)
+            })
+
+            it("sets cumulativeRewardFactor if value is zero", async () => {
+                let round = currentRound + 1
+
+                await bondingManager.connect(transcoder).reward()
+                const epPrevRound =
+                    await bondingManager.getTranscoderEarningsPoolForRound(
+                        transcoder.address,
+                        round
+                    )
+
+                assert.notEqual(
+                    epPrevRound.cumulativeRewardFactor.toString(),
+                    "0"
+                )
+
+                round++
+
+                await fixture.roundsManager.setMockUint256(
+                    functionSig("currentRound()"),
+                    round
+                )
+                const epCurrentRoundPreRebond =
+                    await bondingManager.getTranscoderEarningsPoolForRound(
+                        transcoder.address,
+                        round
+                    )
+
+                assert.equal(
+                    epCurrentRoundPreRebond.cumulativeRewardFactor.toString(),
+                    "0"
+                )
+
+                await bondingManager
+                    .connect(delegator)
+                    .rebondFromUnbonded(transcoder.address, unbondingLockID)
+
+                const epCurrentRoundPostRebond =
+                    await bondingManager.getTranscoderEarningsPoolForRound(
+                        transcoder.address,
+                        round
+                    )
+
+                assert.equal(
+                    epCurrentRoundPostRebond.cumulativeRewardFactor.toString(),
+                    epPrevRound.cumulativeRewardFactor.toString()
+                )
+            })
+
+            it("sets cumulativeFeeFactor if value is zero", async () => {
+                let round = currentRound + 1
+
+                await fixture.ticketBroker.execute(
+                    bondingManager.address,
+                    functionEncodedABI(
+                        "updateTranscoderWithFees(address,uint256,uint256)",
+                        ["address", "uint256", "uint256"],
+                        [transcoder.address, "1000000000000000000", round]
+                    )
+                )
+                const epPrevRound =
+                    await bondingManager.getTranscoderEarningsPoolForRound(
+                        transcoder.address,
+                        round
+                    )
+
+                assert.notEqual(epPrevRound.cumulativeFeeFactor.toString(), "0")
+
+                round++
+
+                await fixture.roundsManager.setMockUint256(
+                    functionSig("currentRound()"),
+                    round
+                )
+                const epCurrentRoundPreRebond =
+                    await bondingManager.getTranscoderEarningsPoolForRound(
+                        transcoder.address,
+                        round
+                    )
+
+                assert.equal(
+                    epCurrentRoundPreRebond.cumulativeFeeFactor.toString(),
+                    "0"
+                )
+
+                await bondingManager
+                    .connect(delegator)
+                    .rebondFromUnbonded(transcoder.address, unbondingLockID)
+
+                const epCurrentRoundPostRebond =
+                    await bondingManager.getTranscoderEarningsPoolForRound(
+                        transcoder.address,
+                        round
+                    )
+
+                assert.equal(
+                    epCurrentRoundPostRebond.cumulativeFeeFactor.toString(),
+                    epPrevRound.cumulativeFeeFactor.toString()
+                )
+            })
+        })
+
         it("should create a Rebond event", async () => {
             // Delegator unbonds rest of tokens transitioning to the Unbonded state
             await bondingManager.connect(delegator).unbond(500)

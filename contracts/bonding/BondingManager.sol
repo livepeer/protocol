@@ -600,18 +600,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             _checkpointBondingState(currentDelegate, delegators[currentDelegate], transcoders[currentDelegate]);
         }
 
-        {
-            Transcoder storage newDelegate = transcoders[_to];
-            EarningsPool.Data storage currPool = newDelegate.earningsPoolPerRound[currentRound];
-            if (currPool.cumulativeRewardFactor == 0) {
-                currPool.cumulativeRewardFactor = cumulativeFactorsPool(newDelegate, newDelegate.lastRewardRound)
-                    .cumulativeRewardFactor;
-            }
-            if (currPool.cumulativeFeeFactor == 0) {
-                currPool.cumulativeFeeFactor = cumulativeFactorsPool(newDelegate, newDelegate.lastFeeRound)
-                    .cumulativeFeeFactor;
-            }
-        }
+        ensureInitializedCumulativeFactorsPool(_to, currentRound);
 
         // cannot delegate to someone without having bonded stake
         require(delegationAmount > 0, "delegation amount must be greater than 0");
@@ -738,6 +727,10 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             // Does not transfer bond to the zero address
             require(address(0) != _delegator, "INVALID_DELEGATOR");
 
+            // We do not need to call ensureInitializedCumulativeFactorsPool() here for oldDelDelegate because
+            // the _autoClaimEarnings() call at the top of this function will already include a sub-call to
+            // ensureInitializedCumulativeFactorsPool() for oldDelDelegate and the current round.
+
             newDel.delegateAddress = oldDelDelegate;
         }
 
@@ -844,8 +837,12 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     ) public whenSystemNotPaused currentRoundInitialized autoClaimEarnings(msg.sender) {
         require(delegatorStatus(msg.sender) == DelegatorStatus.Unbonded, "caller must be unbonded");
 
+        uint256 currentRound = roundsManager().currentRound();
+
+        ensureInitializedCumulativeFactorsPool(_to, currentRound);
+
         // Set delegator's start round and transition into Pending state
-        delegators[msg.sender].startRound = roundsManager().currentRound().add(1);
+        delegators[msg.sender].startRound = currentRound.add(1);
         // Set delegator's delegate
         delegators[msg.sender].delegateAddress = _to;
         // Process rebond using unbonding lock
@@ -1526,23 +1523,11 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             // Check whether the endEarningsPool is initialised
             // If it is not initialised set it's cumulative factors so that they can be used when a delegator
             // next claims earnings as the start cumulative factors (see delegatorCumulativeStakeAndFees())
-            Transcoder storage t = transcoders[del.delegateAddress];
-            EarningsPool.Data storage endEarningsPool = t.earningsPoolPerRound[_endRound];
-            if (endEarningsPool.cumulativeRewardFactor == 0) {
-                uint256 lastRewardRound = t.lastRewardRound;
-                if (lastRewardRound < _endRound) {
-                    endEarningsPool.cumulativeRewardFactor = cumulativeFactorsPool(t, lastRewardRound)
-                        .cumulativeRewardFactor;
-                }
-            }
-            if (endEarningsPool.cumulativeFeeFactor == 0) {
-                uint256 lastFeeRound = t.lastFeeRound;
-                if (lastFeeRound < _endRound) {
-                    endEarningsPool.cumulativeFeeFactor = cumulativeFactorsPool(t, lastFeeRound).cumulativeFeeFactor;
-                }
-            }
+            address delegate = del.delegateAddress;
+            ensureInitializedCumulativeFactorsPool(delegate, _endRound);
 
             if (del.delegateAddress == _delegator) {
+                Transcoder storage t = transcoders[delegate];
                 t.cumulativeFees = 0;
                 t.cumulativeRewards = 0;
                 // activeCumulativeRewards is not cleared here because the next reward() call will set it to cumulativeRewards
@@ -1599,6 +1584,23 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         }
 
         emit Rebond(delegate, _delegator, _unbondingLockId, amount);
+    }
+
+    function ensureInitializedCumulativeFactorsPool(address _transcoder, uint256 _round) internal {
+        Transcoder storage t = transcoders[_transcoder];
+        EarningsPool.Data storage pool = t.earningsPoolPerRound[_round];
+        if (pool.cumulativeRewardFactor == 0) {
+            uint256 lastRewardRound = t.lastRewardRound;
+            if (lastRewardRound < _round) {
+                pool.cumulativeRewardFactor = cumulativeFactorsPool(t, lastRewardRound).cumulativeRewardFactor;
+            }
+        }
+        if (pool.cumulativeFeeFactor == 0) {
+            uint256 lastFeeRound = t.lastFeeRound;
+            if (lastFeeRound < _round) {
+                pool.cumulativeFeeFactor = cumulativeFactorsPool(t, lastFeeRound).cumulativeFeeFactor;
+            }
+        }
     }
 
     /**
