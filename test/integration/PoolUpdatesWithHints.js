@@ -152,6 +152,7 @@ describe("PoolUpdatesWithHints", () => {
             await bondingManager
                 .connect(transcoders[size - 1])
                 .rewardWithHint(
+                    transcoders[size - 1].address,
                     transcoders[size - 2].address,
                     ethers.constants.AddressZero
                 )
