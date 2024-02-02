@@ -1,0 +1,65 @@
+name: Run test suite for the project
+
+on:
+  pull_request:
+  push:
+    branches:
+      - delta
+      - confluence
+      - streamflow
+      - next
+      - master
+
+jobs:
+  test:
+    name: Test with coverage
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          # Check https://github.com/livepeer/go-livepeer/pull/1891
+          # for ref value discussion
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - uses: actions/setup-node@v3
+        with:
+          node-version: "16"
+          cache: "yarn"
+
+      - name: Install dependencies
+        run: yarn install
+
+      - name: Run linter
+        run: yarn lint
+
+      - name: Compile contracts
+        run: yarn compile
+
+      - name: 💡 Run contract tests with coverage reporting
+        run: yarn test:coverage
+
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage/lcov.info
+          name: protocol
+          token: ${{ secrets.CI_CODECOV_TOKEN }}
+
+  editorconfig:
+    name: Run editorconfig checker
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4.1.1
+        with:
+          # Check https://github.com/livepeer/go-livepeer/pull/1891
+          # for ref value discussion
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Install editorconfig-checker
+        uses: editorconfig-checker/action-editorconfig-checker@main
+
+      - name: Run editorconfig checker against the repo
+        run: editorconfig-checker
