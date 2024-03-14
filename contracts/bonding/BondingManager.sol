@@ -550,6 +550,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         address _currDelegateNewPosNext
     ) public whenSystemNotPaused currentRoundInitialized {
         // the `autoClaimEarnings` modifier has been replaced with its internal function as a `Stack too deep` error work-around
+        _checkThirdPartClaimEarnings(_owner);
         _autoClaimEarnings(_owner);
         Delegator storage del = delegators[_owner];
 
@@ -689,6 +690,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         address _newDelegateNewPosNext
     ) public whenSystemNotPaused currentRoundInitialized {
         // the `autoClaimEarnings` modifier has been replaced with its internal function as a `Stack too deep` error work-around
+        _checkThirdPartClaimEarnings(_delegator);
         _autoClaimEarnings(msg.sender);
         Delegator storage oldDel = delegators[msg.sender];
         Delegator storage newDel = delegators[_delegator];
@@ -1689,5 +1691,26 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         if (lastClaimRound < currentRound) {
             updateDelegatorWithEarnings(_delegator, currentRound, lastClaimRound);
         }
+    }
+
+    /**
+     * @notice Disallow a third party from triggering an illegal claimRewards on another delegator. Currently this means
+     * to force a delegator to lose the current round rewards by claiming earnings before reward() is called. This was
+     * implemented as a security patch to prevent griefing attacks and should be replaced with a more general solution.
+     */
+    function _checkThirdPartClaimEarnings(address _owner) internal view {
+        if (msg.sender == _owner || msg.sender == l2Migrator() || delegatorStatus(_owner) == DelegatorStatus.Unbonded) {
+            return;
+        }
+
+        uint256 currentRound = roundsManager().currentRound();
+        Delegator storage del = delegators[_owner];
+        if (del.delegateAddress == _owner || !isActiveTranscoder(del.delegateAddress)) {
+            // Only delegators to active transcoders are subject to this accounting issue.
+            return;
+        }
+
+        Transcoder storage t = transcoders[del.delegateAddress];
+        require(t.lastRewardRound == currentRound || del.lastClaimRound == currentRound, "ILLEGAL_CLAIM_EARNINGS");
     }
 }
