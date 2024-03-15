@@ -2,7 +2,7 @@
 *.swo
 node_modules/
 build/
-.DS_Store/
+.DS_Store
 bin/
 abi/
 coverageEnv/
