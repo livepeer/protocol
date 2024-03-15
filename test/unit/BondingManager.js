@@ -2080,6 +2080,9 @@ describe("BondingManager", () => {
                 functionSig("currentRound()"),
                 currentRound
             )
+
+            await bondingManager.connect(transcoder0).reward()
+            await bondingManager.connect(transcoder1).reward()
         })
 
         describe("caller is unbonded", () => {
@@ -2279,6 +2282,69 @@ describe("BondingManager", () => {
                     await expect(tx).to.be.revertedWith("INVALID_DELEGATOR")
                 })
 
+                describe("before delegate has called reward", () => {
+                    it("should fail to make a bond", async () => {
+                        await fixture.roundsManager.setMockUint256(
+                            functionSig("currentRound()"),
+                            currentRound + 1
+                        )
+
+                        const tx = bondingManager
+                            .connect(thirdParty)
+                            .bondForWithHint(
+                                1000,
+                                delegator1.address,
+                                transcoder0.address,
+                                ethers.constants.AddressZero,
+                                ethers.constants.AddressZero,
+                                ethers.constants.AddressZero,
+                                ethers.constants.AddressZero
+                            )
+
+                        await expect(tx).to.be.revertedWith(
+                            "ILLEGAL_CLAIM_EARNINGS"
+                        )
+                    })
+
+                    it("should allow bond if delegator has already claimed earnings", async () => {
+                        await fixture.roundsManager.setMockUint256(
+                            functionSig("currentRound()"),
+                            currentRound + 1
+                        )
+
+                        await bondingManager
+                            .connect(delegator1)
+                            .claimEarnings(currentRound + 1)
+
+                        const startBondedAmount = (
+                            await bondingManager.getDelegator(
+                                delegator1.address
+                            )
+                        ).bondedAmount
+
+                        await bondingManager
+                            .connect(thirdParty)
+                            .bondForWithHint(
+                                1000,
+                                delegator1.address,
+                                transcoder0.address,
+                                ethers.constants.AddressZero,
+                                ethers.constants.AddressZero,
+                                ethers.constants.AddressZero,
+                                ethers.constants.AddressZero
+                            )
+
+                        const endBondedAmount = (
+                            await bondingManager.getDelegator(
+                                delegator1.address
+                            )
+                        ).bondedAmount
+                        expect(endBondedAmount.sub(startBondedAmount)).to.equal(
+                            1000
+                        )
+                    })
+                })
+
                 it("should increase delegated amount for a delegator without changing delegate", async () => {
                     const delegate = (
                         await bondingManager.getDelegator(delegator2.address)
@@ -2388,6 +2454,69 @@ describe("BondingManager", () => {
                             "INVALID_DELEGATE_CHANGE"
                         )
                     })
+
+                    describe("before delegate has called reward", () => {
+                        it("should fail to make a bond", async () => {
+                            await fixture.roundsManager.setMockUint256(
+                                functionSig("currentRound()"),
+                                currentRound + 1
+                            )
+
+                            const tx = bondingManager
+                                .connect(thirdParty)
+                                .bondForWithHint(
+                                    1000,
+                                    delegator1.address,
+                                    transcoder0.address,
+                                    ethers.constants.AddressZero,
+                                    ethers.constants.AddressZero,
+                                    ethers.constants.AddressZero,
+                                    ethers.constants.AddressZero
+                                )
+
+                            await expect(tx).to.be.revertedWith(
+                                "ILLEGAL_CLAIM_EARNINGS"
+                            )
+                        })
+
+                        it("should allow bond if delegator has already claimed earnings", async () => {
+                            await fixture.roundsManager.setMockUint256(
+                                functionSig("currentRound()"),
+                                currentRound + 1
+                            )
+
+                            await bondingManager
+                                .connect(delegator1)
+                                .claimEarnings(currentRound + 1)
+
+                            const startBondedAmount = (
+                                await bondingManager.getDelegator(
+                                    delegator1.address
+                                )
+                            ).bondedAmount
+
+                            await bondingManager
+                                .connect(thirdParty)
+                                .bondForWithHint(
+                                    1000,
+                                    delegator1.address,
+                                    transcoder0.address,
+                                    ethers.constants.AddressZero,
+                                    ethers.constants.AddressZero,
+                                    ethers.constants.AddressZero,
+                                    ethers.constants.AddressZero
+                                )
+
+                            const endBondedAmount = (
+                                await bondingManager.getDelegator(
+                                    delegator1.address
+                                )
+                            ).bondedAmount
+                            expect(
+                                endBondedAmount.sub(startBondedAmount)
+                            ).to.equal(1000)
+                        })
+                    })
                 })
 
                 it("should update the state only for the provided delegator and not for the caller", async () => {
@@ -2480,9 +2609,6 @@ describe("BondingManager", () => {
         })
 
         it("should checkpoint the delegator and transcoder states", async () => {
-            // make sure trancoder has a non-null `lastRewardRound`
-            await bondingManager.connect(transcoder0).reward()
-
             const {bondedAmount: startBondedAmount} =
                 await bondingManager.getDelegator(delegator1.address)
             const {
@@ -3932,6 +4058,8 @@ describe("BondingManager", () => {
                     functionSig("currentRound()"),
                     currentRound + 2
                 )
+
+                await bondingManager.connect(transcoder0).reward()
             })
 
             it("should emit Unbond, TransferBond and Rebond events", async () => {
@@ -4135,6 +4263,7 @@ describe("BondingManager", () => {
                         functionSig("currentRound()"),
                         currentRound + 3
                     )
+                    await bondingManager.connect(transcoder0).reward()
                 })
 
                 it("should transfer the bond to receiver", async () => {
@@ -4210,6 +4339,64 @@ describe("BondingManager", () => {
                     expect(d1LastClaimRound).to.equal(currentRound + 3)
                     expect(d2LastClaimRound).to.equal(currentRound + 3)
                 })
+
+                describe("before receiver's transcoder has called reward", () => {
+                    beforeEach(async () => {
+                        await fixture.roundsManager.setMockUint256(
+                            functionSig("currentRound()"),
+                            currentRound + 4
+                        )
+                    })
+
+                    it("should disallow transfer", async () => {
+                        const tx = bondingManager
+                            .connect(delegator1)
+                            .transferBond(
+                                delegator2.address,
+                                1800,
+                                ZERO_ADDRESS,
+                                ZERO_ADDRESS,
+                                ZERO_ADDRESS,
+                                ZERO_ADDRESS
+                            )
+
+                        await expect(tx).to.be.revertedWith(
+                            "ILLEGAL_CLAIM_EARNINGS"
+                        )
+                    })
+
+                    it("should allow transfer if receiver has already claimed earnings", async () => {
+                        await bondingManager
+                            .connect(delegator2)
+                            .claimEarnings(currentRound + 4)
+
+                        const startBondedAmount = (
+                            await bondingManager.getDelegator(
+                                delegator2.address
+                            )
+                        ).bondedAmount
+
+                        await bondingManager
+                            .connect(delegator1)
+                            .transferBond(
+                                delegator2.address,
+                                1800,
+                                ZERO_ADDRESS,
+                                ZERO_ADDRESS,
+                                ZERO_ADDRESS,
+                                ZERO_ADDRESS
+                            )
+
+                        const endBondedAmount = (
+                            await bondingManager.getDelegator(
+                                delegator2.address
+                            )
+                        ).bondedAmount
+                        expect(endBondedAmount.sub(startBondedAmount)).to.equal(
+                            1800
+                        )
+                    })
+                })
             })
 
             describe("receiver is bonded to a different transcoder", () => {
@@ -4221,6 +4408,7 @@ describe("BondingManager", () => {
                         functionSig("currentRound()"),
                         currentRound + 3
                     )
+                    await bondingManager.connect(transcoder1).reward()
                 })
 
                 it("should transfer the bond to receiver", async () => {
@@ -4347,7 +4535,7 @@ describe("BondingManager", () => {
                             delegateAddress: transcoder1.address,
                             delegatedAmount: 5800,
                             lastClaimRound: currentRound - 1,
-                            lastRewardRound: 0
+                            lastRewardRound: currentRound + 3
                         },
                         {
                             account: delegator2.address,
@@ -4386,7 +4574,7 @@ describe("BondingManager", () => {
                             delegateAddress: transcoder1.address,
                             delegatedAmount: 3001,
                             lastClaimRound: currentRound + 3,
-                            lastRewardRound: 0
+                            lastRewardRound: currentRound + 3
                         },
                         {
                             account: transcoder0.address,
@@ -4398,6 +4586,67 @@ describe("BondingManager", () => {
                             lastRewardRound: currentRound + 3
                         }
                     )
+                })
+
+                describe("before receiver's transcoder has called reward", () => {
+                    beforeEach(async () => {
+                        await fixture.roundsManager.setMockUint256(
+                            functionSig("currentRound()"),
+                            currentRound + 4
+                        )
+
+                        // call reward on the caller's transcoder, but not the receiver's
+                        await bondingManager.connect(transcoder0).reward()
+                    })
+
+                    it("should disallow transfer", async () => {
+                        const tx = bondingManager
+                            .connect(delegator1)
+                            .transferBond(
+                                delegator2.address,
+                                1800,
+                                ZERO_ADDRESS,
+                                ZERO_ADDRESS,
+                                ZERO_ADDRESS,
+                                ZERO_ADDRESS
+                            )
+
+                        await expect(tx).to.be.revertedWith(
+                            "ILLEGAL_CLAIM_EARNINGS"
+                        )
+                    })
+
+                    it("should allow transfer if receiver has already claimed earnings", async () => {
+                        await bondingManager
+                            .connect(delegator2)
+                            .claimEarnings(currentRound + 4)
+
+                        const startBondedAmount = (
+                            await bondingManager.getDelegator(
+                                delegator2.address
+                            )
+                        ).bondedAmount
+
+                        await bondingManager
+                            .connect(delegator1)
+                            .transferBond(
+                                delegator2.address,
+                                1800,
+                                ZERO_ADDRESS,
+                                ZERO_ADDRESS,
+                                ZERO_ADDRESS,
+                                ZERO_ADDRESS
+                            )
+
+                        const endBondedAmount = (
+                            await bondingManager.getDelegator(
+                                delegator2.address
+                            )
+                        ).bondedAmount
+                        expect(endBondedAmount.sub(startBondedAmount)).to.equal(
+                            1800
+                        )
+                    })
                 })
             })
 
