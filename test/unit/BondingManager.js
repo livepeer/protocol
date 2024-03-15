@@ -168,6 +168,16 @@ describe("BondingManager", () => {
             ).to.be.revertedWith("caller must be Controller owner")
         })
 
+        it("should fail if cut rate is not a valid precise perc", async () => {
+            const invalidPerc = math.precise.percPoints(
+                BigNumber.from(101),
+                100
+            )
+            await expect(
+                bondingManager.setTreasuryRewardCutRate(invalidPerc)
+            ).to.be.revertedWith("_cutRate is invalid precise percentage")
+        })
+
         it("should set only nextRoundTreasuryRewardCutRate", async () => {
             const tx = await bondingManager.setTreasuryRewardCutRate(FIFTY_PCT)
             await expect(tx)
