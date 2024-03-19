@@ -550,7 +550,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         address _currDelegateNewPosNext
     ) public whenSystemNotPaused currentRoundInitialized {
         // the `autoClaimEarnings` modifier has been replaced with its internal function as a `Stack too deep` error work-around
-        _checkThirdPartClaimEarnings(_owner);
+        _authorizeClaimEarnings(_owner);
         _autoClaimEarnings(_owner);
         Delegator storage del = delegators[_owner];
 
@@ -690,7 +690,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         address _newDelegateNewPosNext
     ) public whenSystemNotPaused currentRoundInitialized {
         // the `autoClaimEarnings` modifier has been replaced with its internal function as a `Stack too deep` error work-around
-        _checkThirdPartClaimEarnings(_delegator);
+        _authorizeClaimEarnings(_delegator);
         _autoClaimEarnings(msg.sender);
         Delegator storage oldDel = delegators[msg.sender];
         Delegator storage newDel = delegators[_delegator];
@@ -1694,18 +1694,20 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     }
 
     /**
-     * @notice Disallow a third party from triggering an illegal claimRewards on another delegator. Currently this means
-     * to force a delegator to lose the current round rewards by claiming earnings before reward() is called. This was
-     * implemented as a security patch to prevent griefing attacks and should be replaced with a more general solution.
+     * @notice Check whether the msg.sender should be able to trigger earnings claiming for an address.
+     * @dev This function currently restricts a third party from being able to trigger earnings claiming before a
+     * delegator's active transcoder calls reward in a round. This is to ensure the delegator controls the timing of
+     * reward claiming so they don't miss on round rewards. This function could be updated in a future LIP to support
+     * more flexible authorization logic.
      */
-    function _checkThirdPartClaimEarnings(address _owner) internal view {
+    function _authorizeClaimEarnings(address _owner) internal view {
         if (msg.sender == _owner || msg.sender == l2Migrator() || delegatorStatus(_owner) == DelegatorStatus.Unbonded) {
             return;
         }
 
         uint256 currentRound = roundsManager().currentRound();
         Delegator storage del = delegators[_owner];
-        if (del.delegateAddress == _owner || !isActiveTranscoder(del.delegateAddress)) {
+        if (!isActiveTranscoder(del.delegateAddress)) {
             // Only delegators to active transcoders are subject to this accounting issue.
             return;
         }
