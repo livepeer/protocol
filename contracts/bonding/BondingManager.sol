@@ -1705,14 +1705,15 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             return;
         }
 
-        uint256 currentRound = roundsManager().currentRound();
         Delegator storage del = delegators[_owner];
-        if (!isActiveTranscoder(del.delegateAddress)) {
+        address delegate = del.delegateAddress;
+        if (!isActiveTranscoder(delegate)) {
             // Only delegators to active transcoders are subject to this accounting issue.
             return;
         }
 
-        Transcoder storage t = transcoders[del.delegateAddress];
+        uint256 currentRound = roundsManager().currentRound();
+        Transcoder storage t = transcoders[delegate];
         require(t.lastRewardRound == currentRound || del.lastClaimRound == currentRound, "ILLEGAL_CLAIM_EARNINGS");
     }
 }
