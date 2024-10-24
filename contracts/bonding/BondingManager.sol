@@ -1325,34 +1325,32 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         uint256 currStake = transcoderTotalStake(_delegate);
         uint256 newStake = currStake.add(_amount);
 
-        if (isRegisteredTranscoder(_delegate)) {
-            uint256 currRound = roundsManager().currentRound();
-            uint256 nextRound = currRound.add(1);
+        uint256 currRound = roundsManager().currentRound();
+        uint256 nextRound = currRound.add(1);
 
-            bool isActiveInCurrentRound = isActiveTranscoder(_delegate);
-            bool isActiveInNextRound = transcoderPool.contains(_delegate);
-            // If transcoder will be active on next round, update its position in the pool and next round total active stake
-            if (isActiveInNextRound) {
-                transcoderPool.updateKey(_delegate, newStake, _newPosPrev, _newPosNext);
-                nextRoundTotalActiveStake = nextRoundTotalActiveStake.add(_amount);
-            } else {
-                // Otherwise, check if it is eligible to join the active set. This will already handle updating the
-                // earning pools and next round total active stakein case it does join the pool.
-                tryToJoinActiveSet(_delegate, newStake, nextRound, _newPosPrev, _newPosNext);
+        bool isActiveInCurrentRound = isActiveTranscoder(_delegate);
+        bool isActiveInNextRound = transcoderPool.contains(_delegate);
+        // If transcoder will be active on next round, update its position in the pool and next round total active stake
+        if (isActiveInNextRound) {
+            transcoderPool.updateKey(_delegate, newStake, _newPosPrev, _newPosNext);
+            nextRoundTotalActiveStake = nextRoundTotalActiveStake.add(_amount);
+        } else {
+            // Otherwise, check if it is eligible to join the active set. This will already handle updating the
+            // earning pools and next round total active stakein case it does join the pool.
+            tryToJoinActiveSet(_delegate, newStake, nextRound, _newPosPrev, _newPosNext);
+        }
+        // If transcoder is or will be active, update its earning pools
+        if (isActiveInCurrentRound || isActiveInNextRound) {
+            // currStake (the transcoder's delegatedAmount field) will reflect the transcoder's stake from lastActiveStakeUpdateRound
+            // because it is updated every time lastActiveStakeUpdateRound is updated
+            // The current active total stake is set to currStake to ensure that the value can be used in updateTranscoderWithRewards()
+            // and updateTranscoderWithFees() when lastActiveStakeUpdateRound > currentRound
+            if (t.lastActiveStakeUpdateRound < currRound) {
+                t.earningsPoolPerRound[currRound].setStake(currStake);
             }
-            // If transcoder is or will be active, update its earning pools
-            if (isActiveInCurrentRound || isActiveInNextRound) {
-                // currStake (the transcoder's delegatedAmount field) will reflect the transcoder's stake from lastActiveStakeUpdateRound
-                // because it is updated every time lastActiveStakeUpdateRound is updated
-                // The current active total stake is set to currStake to ensure that the value can be used in updateTranscoderWithRewards()
-                // and updateTranscoderWithFees() when lastActiveStakeUpdateRound > currentRound
-                if (t.lastActiveStakeUpdateRound < currRound) {
-                    t.earningsPoolPerRound[currRound].setStake(currStake);
-                }
 
-                t.earningsPoolPerRound[nextRound].setStake(newStake);
-                t.lastActiveStakeUpdateRound = nextRound;
-            }
+            t.earningsPoolPerRound[nextRound].setStake(newStake);
+            t.lastActiveStakeUpdateRound = nextRound;
         }
 
         // Increase delegate's delegated amount
