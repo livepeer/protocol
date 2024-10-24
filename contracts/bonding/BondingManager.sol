@@ -1330,8 +1330,10 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             uint256 nextRound = currRound.add(1);
 
             // If the transcoder is already in the active set update its stake and return
-            if (transcoderPool.contains(_delegate)) {
-                transcoderPool.updateKey(_delegate, newStake, _newPosPrev, _newPosNext);
+            if (isActiveTranscoder(_delegate)) {
+                if (transcoderPool.contains(_delegate)) {
+                    transcoderPool.updateKey(_delegate, newStake, _newPosPrev, _newPosNext);
+                }
                 nextRoundTotalActiveStake = nextRoundTotalActiveStake.add(_amount);
 
                 // currStake (the transcoder's delegatedAmount field) will reflect the transcoder's stake from lastActiveStakeUpdateRound
@@ -1370,11 +1372,13 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         uint256 currStake = transcoderTotalStake(_delegate);
         uint256 newStake = currStake.sub(_amount);
 
-        if (transcoderPool.contains(_delegate)) {
+        if (isActiveTranscoder(_delegate)) {
             uint256 currRound = roundsManager().currentRound();
             uint256 nextRound = currRound.add(1);
 
-            transcoderPool.updateKey(_delegate, newStake, _newPosPrev, _newPosNext);
+            if (transcoderPool.contains(_delegate)) {
+                transcoderPool.updateKey(_delegate, newStake, _newPosPrev, _newPosNext);
+            }
             nextRoundTotalActiveStake = nextRoundTotalActiveStake.sub(_amount);
 
             // currStake (the transcoder's delegatedAmount field) will reflect the transcoder's stake from lastActiveStakeUpdateRound
