@@ -30,5 +30,11 @@ interface ICheatCodes {
 
     function deal(address, uint256) external;
 
-    function sign(uint key, bytes32 hash) external returns (uint8 v, bytes32 r, bytes32 s);
+    function sign(uint256 key, bytes32 hash)
+        external
+        returns (
+            uint8 v,
+            bytes32 r,
+            bytes32 s
+        );
 }
