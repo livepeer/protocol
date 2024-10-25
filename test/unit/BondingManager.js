@@ -2987,6 +2987,151 @@ describe("BondingManager", () => {
             assert.equal(pool.totalStake.toString(), lastActiveStake.toString())
         })
 
+        describe("should update next earningsPool totalStake", () => {
+            beforeEach(async () => {
+                // initialize next round earnings pool
+                await bondingManager.connect(transcoder).reward()
+            })
+
+            it("for active transcoder", async () => {
+                const startActiveStake = (
+                    await bondingManager.getTranscoderEarningsPoolForRound(
+                        transcoder.address,
+                        currentRound + 2
+                    )
+                ).totalStake
+
+                await bondingManager.connect(delegator).unbond(1000)
+
+                const endActiveStake = (
+                    await bondingManager.getTranscoderEarningsPoolForRound(
+                        transcoder.address,
+                        currentRound + 2
+                    )
+                ).totalStake
+                assert.equal(
+                    startActiveStake.sub(endActiveStake),
+                    1000,
+                    "wrong change in next round earnings pool totalStake"
+                )
+            })
+
+            it("for deactivating transcoder", async () => {
+                // add 2 transcoders with much higher stake to kick the existing transcoder out of the active pool
+                for (let i = 0; i < NUM_ACTIVE_TRANSCODERS; i++) {
+                    const newTranscoder = signers[10 + i]
+                    await bondingManager
+                        .connect(newTranscoder)
+                        .bond(10000, newTranscoder.address)
+                    await bondingManager
+                        .connect(newTranscoder)
+                        .transcoder(50 * PERC_MULTIPLIER, 10)
+                }
+                const {deactivationRound} =
+                    await bondingManager.getTranscoder(transcoder.address)
+                assert.equal(
+                    deactivationRound.toNumber(),
+                    currentRound + 2,
+                    "transcoder should be deactivating"
+                )
+
+                const startActiveStake = (
+                    await bondingManager.getTranscoderEarningsPoolForRound(
+                        transcoder.address,
+                        currentRound + 2
+                    )
+                ).totalStake
+
+                await bondingManager.connect(delegator).unbond(1000)
+
+                const endActiveStake = (
+                    await bondingManager.getTranscoderEarningsPoolForRound(
+                        transcoder.address,
+                        currentRound + 2
+                    )
+                ).totalStake
+                assert.equal(
+                    startActiveStake.sub(endActiveStake),
+                    1000,
+                    "wrong change in next round earnings pool totalStake"
+                )
+            })
+
+            it("for deactivating and unregistered transcoder", async () => {
+                // full unbond to resign transcoder from active pool
+                await bondingManager.connect(transcoder).unbond(1000) // rewards are 0 so its still 1000 stake
+                assert.isTrue(
+                    await bondingManager.isActiveTranscoder(transcoder.address)
+                )
+                assert.isFalse(
+                    await bondingManager.isRegisteredTranscoder(
+                        transcoder.address
+                    )
+                )
+
+                const startActiveStake = (
+                    await bondingManager.getTranscoderEarningsPoolForRound(
+                        transcoder.address,
+                        currentRound + 2
+                    )
+                ).totalStake
+
+                await bondingManager.connect(delegator).unbond(1000)
+
+                const endActiveStake = (
+                    await bondingManager.getTranscoderEarningsPoolForRound(
+                        transcoder.address,
+                        currentRound + 2
+                    )
+                ).totalStake
+                assert.equal(
+                    startActiveStake.sub(endActiveStake),
+                    1000,
+                    "wrong change in next round earnings pool totalStake"
+                )
+            })
+
+            it("for activating transcoder", async () => {
+                // full unbond to resign transcoder from active pool
+                await bondingManager.connect(transcoder).unbond(1000) // rewards are 0 so its still 1000 stake
+                await fixture.roundsManager.setMockUint256(
+                    functionSig("currentRound()"),
+                    currentRound + 2
+                )
+                // rebond so transcoder becomes registered but not active yet
+                await bondingManager
+                    .connect(transcoder)
+                    .bond(1000, transcoder.address)
+                assert.isFalse(
+                    await bondingManager.isActiveTranscoder(transcoder.address)
+                )
+                assert.isTrue(
+                    await bondingManager.isRegisteredTranscoder(
+                        transcoder.address
+                    )
+                )
+
+                const {totalStake: startActiveStake} =
+                    await bondingManager.getTranscoderEarningsPoolForRound(
+                        transcoder.address,
+                        currentRound + 3
+                    )
+
+                await bondingManager.connect(delegator).unbond(1000)
+
+                const {totalStake: endActiveStake} =
+                    await bondingManager.getTranscoderEarningsPoolForRound(
+                        transcoder.address,
+                        currentRound + 3
+                    )
+                assert.equal(
+                    startActiveStake.sub(endActiveStake),
+                    1000,
+                    "wrong change in next round earnings pool totalStake"
+                )
+            })
+        })
+
         it("should not update current earningsPool totalStake when lastActiveStakeUpdateRound = currentRound", async () => {
             assert.equal(
                 (
@@ -5419,7 +5564,7 @@ describe("BondingManager", () => {
 
             it("when caller is deactivating on the next round", async () => {
                 // add 2 transcoders with much higher stake to kick the existing transcoder out of the active pool
-                for (let i = 0; i < 2; i++) {
+                for (let i = 0; i < NUM_ACTIVE_TRANSCODERS; i++) {
                     const newTranscoder = signers[10 + i]
                     await bondingManager
                         .connect(newTranscoder)
