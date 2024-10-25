@@ -365,7 +365,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
             );
         }
         // Make sure there's no accounting error on transcoder rewards state
-        assert(activeCumulativeRewards < totalStake);
+        assert(activeCumulativeRewards <= totalStake);
 
         uint256 delegatorsFees = MathUtils.percOf(_fees, earningsPool.transcoderFeeShare);
         uint256 transcoderCommissionFees = _fees.sub(delegatorsFees);
@@ -1490,7 +1490,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         t.activeCumulativeRewards = t.cumulativeRewards;
 
         // Make sure there's no accounting error on transcoder rewards state
-        assert(t.activeCumulativeRewards < earningsPool.totalStake);
+        assert(t.activeCumulativeRewards <= earningsPool.totalStake);
         uint256 transcoderCommissionRewards = MathUtils.percOf(_rewards, earningsPool.transcoderRewardCut);
         uint256 delegatorsRewards = _rewards.sub(transcoderCommissionRewards);
         // Calculate the rewards earned by the transcoder's earned rewards
