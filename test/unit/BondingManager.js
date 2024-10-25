@@ -1,17 +1,16 @@
-import Fixture from "./helpers/Fixture"
+import chai, {assert} from "chai"
+import {solidity} from "ethereum-waffle"
+import {ethers, web3} from "hardhat"
+import {constants} from "../../utils/constants"
 import {
     contractId,
-    functionSig,
-    functionEncodedABI
+    functionEncodedABI,
+    functionSig
 } from "../../utils/helpers"
-import expectCheckpoints from "./helpers/expectCheckpoints"
-import {constants} from "../../utils/constants"
 import math from "../helpers/math"
-import {assert} from "chai"
-import {ethers, web3} from "hardhat"
+import expectCheckpoints from "./helpers/expectCheckpoints"
+import Fixture from "./helpers/Fixture"
 const BigNumber = ethers.BigNumber
-import chai from "chai"
-import {solidity} from "ethereum-waffle"
 
 chai.use(solidity)
 const {expect} = chai
@@ -1595,6 +1594,235 @@ describe("BondingManager", () => {
                                     "wrong change in next total stake"
                                 )
                             })
+                        })
+                    })
+                    describe("new delegate is activating on the next round", () => {
+                        beforeEach(async () => {
+                            await bondingManager
+                                .connect(transcoder2)
+                                .bond(10000, transcoder2.address)
+                            await bondingManager
+                                .connect(transcoder2)
+                                .transcoder(5, 10)
+
+                            const {activationRound} =
+                                await bondingManager.getTranscoder(
+                                    transcoder2.address
+                                )
+                            assert.equal(
+                                activationRound,
+                                currentRound + 1,
+                                "transcoder2 should be activating"
+                            )
+                        })
+                        describe("old delegate is active transcoder", () => {
+                            it("should not change next total stake", async () => {
+                                const startNextTotalStake =
+                                    await bondingManager.nextRoundTotalActiveStake()
+                                await bondingManager
+                                    .connect(delegator)
+                                    .bond(0, transcoder2.address)
+                                const endNextTotalStake =
+                                    await bondingManager.nextRoundTotalActiveStake()
+                                assert.equal(
+                                    endNextTotalStake.sub(startNextTotalStake),
+                                    0,
+                                    "wrong change in next total stake"
+                                )
+                            })
+                            it("should update transcoder earnings pool", async () => {
+                                await bondingManager
+                                    .connect(delegator)
+                                    .bond(0, transcoder2.address)
+                                const pool =
+                                    await bondingManager.getTranscoderEarningsPoolForRound(
+                                        transcoder2.address,
+                                        currentRound + 1
+                                    )
+                                assert.equal(
+                                    pool.totalStake,
+                                    12000,
+                                    "wrong totalStake in earnings pool"
+                                )
+                            })
+                        })
+                        describe("old delegate is not active transcoder", () => {
+                            beforeEach(async () => {
+                                // Delegate to non-transcoder
+                                await bondingManager
+                                    .connect(delegator)
+                                    .bond(0, nonTranscoder.address)
+                            })
+                            it("should increase next total stake", async () => {
+                                const startNextTotalStake =
+                                    await bondingManager.nextRoundTotalActiveStake()
+                                await bondingManager
+                                    .connect(delegator)
+                                    .bond(0, transcoder2.address)
+                                const endNextTotalStake =
+                                    await bondingManager.nextRoundTotalActiveStake()
+                                assert.equal(
+                                    endNextTotalStake.sub(startNextTotalStake),
+                                    2000,
+                                    "wrong change in next total stake"
+                                )
+                            })
+                            it("should update transcoder earnings pool", async () => {
+                                await bondingManager
+                                    .connect(delegator)
+                                    .bond(0, transcoder2.address)
+                                const pool =
+                                    await bondingManager.getTranscoderEarningsPoolForRound(
+                                        transcoder2.address,
+                                        currentRound + 1
+                                    )
+                                assert.equal(
+                                    pool.totalStake,
+                                    12000,
+                                    "wrong totalStake in earnings pool"
+                                )
+                            })
+                        })
+                    })
+                    describe("new delegate is deactivating on the next round", () => {
+                        beforeEach(async () => {
+                            // add another transcoder so transcoder1 gets kicked out
+                            await bondingManager
+                                .connect(transcoder2)
+                                .bond(10000, transcoder2.address)
+                            await bondingManager
+                                .connect(transcoder2)
+                                .transcoder(5, 10)
+                            // bond more on transcoder0 so it doesn't get kicked out when delegator moves
+                            await bondingManager
+                                .connect(transcoder0)
+                                .bond(10000, transcoder0.address)
+
+                            const {deactivationRound} =
+                                await bondingManager.getTranscoder(
+                                    transcoder1.address
+                                )
+                            assert.equal(
+                                deactivationRound,
+                                currentRound + 1,
+                                "transcoder1 should be deactivating"
+                            )
+                        })
+
+                        const runTests = () => {
+                            describe("old delegate is active transcoder", () => {
+                                it("should decrease next total stake", async () => {
+                                    const startNextTotalStake =
+                                        await bondingManager.nextRoundTotalActiveStake()
+                                    await bondingManager
+                                        .connect(delegator)
+                                        .bond(0, transcoder1.address)
+                                    const endNextTotalStake =
+                                        await bondingManager.nextRoundTotalActiveStake()
+                                    assert.equal(
+                                        startNextTotalStake.sub(
+                                            endNextTotalStake
+                                        ),
+                                        2000,
+                                        "wrong change in next total stake"
+                                    )
+                                })
+                                it("should update transcoder earnings pool", async () => {
+                                    const prevTotalStake =
+                                        await bondingManager.transcoderTotalStake(
+                                            transcoder1.address
+                                        )
+                                    await bondingManager
+                                        .connect(delegator)
+                                        .bond(0, transcoder1.address)
+                                    const pool =
+                                        await bondingManager.getTranscoderEarningsPoolForRound(
+                                            transcoder1.address,
+                                            currentRound + 1
+                                        )
+                                    assert.equal(
+                                        pool.totalStake
+                                            .sub(prevTotalStake)
+                                            .toString(),
+                                        2000,
+                                        "wrong totalStake in earnings pool"
+                                    )
+                                })
+                            })
+                            describe("old delegate is not active transcoder", () => {
+                                beforeEach(async () => {
+                                    // Delegate to non-transcoder
+                                    await bondingManager
+                                        .connect(delegator)
+                                        .bond(0, nonTranscoder.address)
+                                })
+                                it("should not change next total stake", async () => {
+                                    const startNextTotalStake =
+                                        await bondingManager.nextRoundTotalActiveStake()
+                                    await bondingManager
+                                        .connect(delegator)
+                                        .bond(0, transcoder1.address)
+                                    const endNextTotalStake =
+                                        await bondingManager.nextRoundTotalActiveStake()
+                                    assert.equal(
+                                        endNextTotalStake.sub(
+                                            startNextTotalStake
+                                        ),
+                                        0,
+                                        "wrong change in next total stake"
+                                    )
+                                })
+                                it("should update transcoder earnings pool", async () => {
+                                    const prevTotalStake =
+                                        await bondingManager.transcoderTotalStake(
+                                            transcoder1.address
+                                        )
+                                    await bondingManager
+                                        .connect(delegator)
+                                        .bond(0, transcoder1.address)
+                                    const pool =
+                                        await bondingManager.getTranscoderEarningsPoolForRound(
+                                            transcoder1.address,
+                                            currentRound + 1
+                                        )
+                                    assert.equal(
+                                        pool.totalStake
+                                            .sub(prevTotalStake)
+                                            .toString(),
+                                        2000,
+                                        "wrong totalStake in earnings pool"
+                                    )
+                                })
+                            })
+                        }
+
+                        describe("delegate is registered transcoder", () => {
+                            runTests()
+                        })
+
+                        describe("delegate is not registered transcoder", () => {
+                            beforeEach(async () => {
+                                // additionally, unbond the entire self-bond so it becomes a non registered T
+                                await bondingManager
+                                    .connect(transcoder1)
+                                    .unbond(2000)
+
+                                // double-check it's still active but not registered
+                                assert.isTrue(
+                                    await bondingManager.isActiveTranscoder(
+                                        transcoder1.address
+                                    ),
+                                    "transcoder1 should be active"
+                                )
+                                assert.isFalse(
+                                    await bondingManager.isRegisteredTranscoder(
+                                        transcoder1.address
+                                    ),
+                                    "transcoder1 should not be registered"
+                                )
+                            })
+
+                            runTests()
                         })
                     })
                     describe("old delegate is registered transcoder", () => {
