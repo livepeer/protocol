@@ -1334,7 +1334,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         if (isActiveInNextRound) {
             transcoderPool.updateKey(_delegate, newStake, _newPosPrev, _newPosNext);
             nextRoundTotalActiveStake = nextRoundTotalActiveStake.add(_amount);
-        } else {
+        } else if (isRegisteredTranscoder(_delegate)) {
             // Otherwise, check if it is eligible to join the active set. This will already handle updating the
             // earning pools and next round total active stakein case it does join the pool.
             tryToJoinActiveSet(_delegate, newStake, nextRound, _newPosPrev, _newPosNext);
