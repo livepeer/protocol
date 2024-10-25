@@ -5326,9 +5326,19 @@ describe("BondingManager", () => {
             ).to.be.revertedWith("current round is not initialized")
         })
 
-        it("should fail if caller is not an active transcoder for the current round", async () => {
+        it("should fail if caller is not a transcoder", async () => {
             await expect(
                 bondingManager.connect(nonTranscoder).reward()
+            ).to.be.revertedWith("caller must be an active transcoder")
+        })
+
+        it("should fail if caller is registered but not an active transcoder yet in the current round", async () => {
+            await fixture.roundsManager.setMockUint256(
+                functionSig("currentRound()"),
+                currentRound
+            )
+            await expect(
+                bondingManager.connect(transcoder).reward()
             ).to.be.revertedWith("caller must be an active transcoder")
         })
 
@@ -5342,57 +5352,250 @@ describe("BondingManager", () => {
             )
         })
 
-        it("should update caller with rewards", async () => {
-            const startDelegatedAmount = (
-                await bondingManager.getDelegator(transcoder.address)
-            )[3]
-            const startTotalStake = await bondingManager.transcoderTotalStake(
-                transcoder.address
-            )
-            const startNextTotalStake =
-                await bondingManager.nextRoundTotalActiveStake()
-            await bondingManager.connect(transcoder).reward()
-            const endDelegatedAmount = (
-                await bondingManager.getDelegator(transcoder.address)
-            )[3]
-            const endTotalStake = await bondingManager.transcoderTotalStake(
-                transcoder.address
-            )
-            const endNextTotalStake =
-                await bondingManager.nextRoundTotalActiveStake()
-
-            const earningsPool =
-                await bondingManager.getTranscoderEarningsPoolForRound(
-                    transcoder.address,
-                    currentRound + 1
+        describe("should update caller with rewards", () => {
+            it("when caller is active and registered", async () => {
+                const startDelegatedAmount = (
+                    await bondingManager.getDelegator(transcoder.address)
+                )[3]
+                const startTotalStake =
+                    await bondingManager.transcoderTotalStake(
+                        transcoder.address
+                    )
+                const startNextTotalStake =
+                    await bondingManager.nextRoundTotalActiveStake()
+                await bondingManager.connect(transcoder).reward()
+                const endDelegatedAmount = (
+                    await bondingManager.getDelegator(transcoder.address)
+                )[3]
+                const endTotalStake = await bondingManager.transcoderTotalStake(
+                    transcoder.address
                 )
-            const expRewardFactor = constants.PERC_DIVISOR_PRECISE.add(
-                math.precise.percPoints(
-                    BigNumber.from(500),
-                    BigNumber.from(1000)
-                )
-            )
-            assert.equal(
-                earningsPool.cumulativeRewardFactor.toString(),
-                expRewardFactor.toString(),
-                "should update cumulativeRewardFactor in earningsPool"
-            )
+                const endNextTotalStake =
+                    await bondingManager.nextRoundTotalActiveStake()
 
-            assert.equal(
-                endDelegatedAmount.sub(startDelegatedAmount),
-                1000,
-                "should update delegatedAmount with new rewards"
-            )
-            assert.equal(
-                endTotalStake.sub(startTotalStake),
-                1000,
-                "should update transcoder's total stake in the pool with new rewards"
-            )
-            assert.equal(
-                endNextTotalStake.sub(startNextTotalStake),
-                1000,
-                "should update next total stake with new rewards"
-            )
+                const earningsPool =
+                    await bondingManager.getTranscoderEarningsPoolForRound(
+                        transcoder.address,
+                        currentRound + 1
+                    )
+                const nextRoundEarningsPool =
+                    await bondingManager.getTranscoderEarningsPoolForRound(
+                        transcoder.address,
+                        currentRound + 2
+                    )
+                const expRewardFactor = constants.PERC_DIVISOR_PRECISE.add(
+                    math.precise.percPoints(
+                        BigNumber.from(500),
+                        BigNumber.from(1000)
+                    )
+                )
+                assert.equal(
+                    earningsPool.cumulativeRewardFactor.toString(),
+                    expRewardFactor.toString(),
+                    "should update cumulativeRewardFactor in earningsPool"
+                )
+                assert.equal(
+                    nextRoundEarningsPool.totalStake.sub(endTotalStake),
+                    0,
+                    "should update next round earnings pool totalStake"
+                )
+
+                assert.equal(
+                    endDelegatedAmount.sub(startDelegatedAmount),
+                    1000,
+                    "should update delegatedAmount with new rewards"
+                )
+                assert.equal(
+                    endTotalStake.sub(startTotalStake),
+                    1000,
+                    "should update transcoder's total stake in the pool with new rewards"
+                )
+                assert.equal(
+                    endNextTotalStake.sub(startNextTotalStake),
+                    1000,
+                    "should update next total stake with new rewards"
+                )
+            })
+
+            it("when caller is deactivating on the next round", async () => {
+                // add 2 transcoders with much higher stake to kick the existing transcoder out of the active pool
+                for (let i = 0; i < 2; i++) {
+                    const newTranscoder = signers[10 + i]
+                    await bondingManager
+                        .connect(newTranscoder)
+                        .bond(10000, newTranscoder.address)
+                    await bondingManager
+                        .connect(newTranscoder)
+                        .transcoder(50 * PERC_MULTIPLIER, 10)
+                }
+                let {deactivationRound} = await bondingManager.getTranscoder(
+                    transcoder.address
+                )
+                assert.equal(
+                    deactivationRound.toNumber(),
+                    currentRound + 2,
+                    "transcoder should be deactivating"
+                )
+
+                const startDelegatedAmount = (
+                    await bondingManager.getDelegator(transcoder.address)
+                )[3]
+                const startTotalStake =
+                    await bondingManager.transcoderTotalStake(
+                        transcoder.address
+                    )
+                const startNextTotalStake =
+                    await bondingManager.nextRoundTotalActiveStake()
+
+                await bondingManager.connect(transcoder).reward()
+                const endDelegatedAmount = (
+                    await bondingManager.getDelegator(transcoder.address)
+                )[3]
+                const endTotalStake = await bondingManager.transcoderTotalStake(
+                    transcoder.address
+                )
+                const endNextTotalStake =
+                    await bondingManager.nextRoundTotalActiveStake()
+
+                const earningsPool =
+                    await bondingManager.getTranscoderEarningsPoolForRound(
+                        transcoder.address,
+                        currentRound + 1
+                    )
+                const nextRoundEarningsPool =
+                    await bondingManager.getTranscoderEarningsPoolForRound(
+                        transcoder.address,
+                        currentRound + 2
+                    )
+                ;({deactivationRound} = await bondingManager.getTranscoder(
+                    transcoder.address
+                ))
+
+                assert.equal(
+                    deactivationRound.toNumber(),
+                    currentRound + 2,
+                    "transcoder should still be deactivating"
+                )
+
+                const expRewardFactor = constants.PERC_DIVISOR_PRECISE.add(
+                    math.precise.percPoints(
+                        BigNumber.from(500),
+                        BigNumber.from(1000)
+                    )
+                )
+                assert.equal(
+                    earningsPool.cumulativeRewardFactor.toString(),
+                    expRewardFactor.toString(),
+                    "should update cumulativeRewardFactor in earningsPool"
+                )
+                assert.equal(
+                    nextRoundEarningsPool.totalStake.sub(endTotalStake),
+                    0,
+                    "should update next round earnings pool totalStake"
+                )
+
+                assert.equal(
+                    endDelegatedAmount.sub(startDelegatedAmount),
+                    1000,
+                    "should update delegatedAmount with new rewards"
+                )
+                assert.equal(
+                    endTotalStake.sub(startTotalStake),
+                    1000,
+                    "should update transcoder's total stake in the pool with new rewards"
+                )
+                assert.equal(
+                    endNextTotalStake.sub(startNextTotalStake),
+                    0,
+                    "should not update next total stake since the transcoder will not be active"
+                )
+            })
+
+            it("when caller is deactivating but not registered", async () => {
+                // full unbond to resign transcoder from active pool
+                await bondingManager.connect(transcoder).unbond(1000)
+                assert.isTrue(
+                    await bondingManager.isActiveTranscoder(transcoder.address)
+                )
+                assert.isFalse(
+                    await bondingManager.isRegisteredTranscoder(
+                        transcoder.address
+                    )
+                )
+
+                const startDelegatedAmount = (
+                    await bondingManager.getDelegator(transcoder.address)
+                )[3]
+                const startTotalStake =
+                    await bondingManager.transcoderTotalStake(
+                        transcoder.address
+                    )
+                const startNextTotalStake =
+                    await bondingManager.nextRoundTotalActiveStake()
+
+                await bondingManager.connect(transcoder).reward()
+
+                const endDelegatedAmount = (
+                    await bondingManager.getDelegator(transcoder.address)
+                )[3]
+                const endTotalStake = await bondingManager.transcoderTotalStake(
+                    transcoder.address
+                )
+                const endNextTotalStake =
+                    await bondingManager.nextRoundTotalActiveStake()
+
+                const earningsPool =
+                    await bondingManager.getTranscoderEarningsPoolForRound(
+                        transcoder.address,
+                        currentRound + 1
+                    )
+                const nextRoundEarningsPool =
+                    await bondingManager.getTranscoderEarningsPoolForRound(
+                        transcoder.address,
+                        currentRound + 2
+                    )
+
+                const {deactivationRound} =
+                    await bondingManager.getTranscoder(transcoder.address)
+                assert.equal(
+                    deactivationRound.toNumber(),
+                    currentRound + 2,
+                    "transcoder should still be deactivating"
+                )
+
+                const expRewardFactor = constants.PERC_DIVISOR_PRECISE.add(
+                    math.precise.percPoints(
+                        BigNumber.from(500),
+                        BigNumber.from(1000)
+                    )
+                )
+                assert.equal(
+                    earningsPool.cumulativeRewardFactor.toString(),
+                    expRewardFactor.toString(),
+                    "should update cumulativeRewardFactor in earningsPool"
+                )
+                assert.equal(
+                    nextRoundEarningsPool.totalStake.sub(endTotalStake),
+                    0,
+                    "should update next round earnings pool totalStake"
+                )
+
+                assert.equal(
+                    endDelegatedAmount.sub(startDelegatedAmount),
+                    1000,
+                    "should update delegatedAmount with new rewards"
+                )
+                assert.equal(
+                    endTotalStake.sub(startTotalStake),
+                    1000,
+                    "should update transcoder's total stake in the pool with new rewards"
+                )
+                assert.equal(
+                    endNextTotalStake.sub(startNextTotalStake),
+                    0,
+                    "should not update next total stake since the transcoder will not be active"
+                )
+            })
         })
 
         it("should checkpoint the caller state", async () => {
