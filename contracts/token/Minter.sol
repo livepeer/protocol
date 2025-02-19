@@ -23,6 +23,10 @@ contract Minter is Manager, IMinter {
 
     // Per round inflation rate
     uint256 public inflation;
+    // Max per round inflation rate
+    uint256 public maxInflation;
+    // Min per round inflation rate
+    uint256 public minInflation;
     // Change in inflation rate per round until the target bonding rate is achieved
     uint256 public inflationChange;
     // Target bonding rate
@@ -70,15 +74,26 @@ contract Minter is Manager, IMinter {
      * @param _inflation Base inflation rate as a percentage of current total token supply
      * @param _inflationChange Change in inflation rate each round (increase or decrease) if target bonding rate is not achieved
      * @param _targetBondingRate Target bonding rate as a percentage of total bonded tokens / total token supply
+     * @param _maxInflation Inflation rate ceiling as a percentage of current total token supply
+     * @param _minInflation Inflation rate floor as a percentage of current total token supply
      */
     constructor(
         address _controller,
         uint256 _inflation,
         uint256 _inflationChange,
-        uint256 _targetBondingRate
+        uint256 _targetBondingRate,
+        uint256 _maxInflation,
+        uint256 _minInflation
     ) Manager(_controller) {
         // Inflation must be valid percentage
         require(MathUtils.validPerc(_inflation), "_inflation is invalid percentage");
+        // Inflation bounds must be valid percentages
+        require(MathUtils.validPerc(_maxInflation), "_maxInflation is invalid percentage");
+        require(MathUtils.validPerc(_minInflation), "_minInflation is invalid percentage");
+        // Inflation floor should be >= 0
+        require(_minInflation >= 0, "_minInflation must be >= 0");
+        // Inflation floor should be lower or equal to the ceiling
+        require(_minInflation <= _maxInflation, "_minInflation must be <= _maxInflation");
         // Inflation change must be valid percentage
         require(MathUtils.validPerc(_inflationChange), "_inflationChange is invalid percentage");
         // Target bonding rate must be valid percentage
@@ -87,6 +102,8 @@ contract Minter is Manager, IMinter {
         inflation = _inflation;
         inflationChange = _inflationChange;
         targetBondingRate = _targetBondingRate;
+        maxInflation = _maxInflation;
+        minInflation = _minInflation;
     }
 
     /**
@@ -113,6 +130,38 @@ contract Minter is Manager, IMinter {
         inflationChange = _inflationChange;
 
         emit ParameterUpdate("inflationChange");
+    }
+
+    /**
+     * @notice Set maxInflation. Only callable by Controller owner
+     * @param _maxInflation New inflation cap as a percentage of total token supply
+     */
+    function setMaxInflation(uint256 _maxInflation) external onlyControllerOwner {
+        // Must be valid percentage
+        require(MathUtils.validPerc(_maxInflation), "_maxInflation is invalid percentage");
+        // Inflation ceiling should be higher or equal to the floor
+        require(_maxInflation >= minInflation, "_maxInflation must be >= minInflation");
+
+        maxInflation = _maxInflation;
+
+        emit ParameterUpdate("maxInflation");
+    }
+
+    /**
+     * @notice Set minInflation. Only callable by Controller owner
+     * @param _minInflation New inflation floor as a percentage of total token supply
+     */
+    function setMinInflation(uint256 _minInflation) external onlyControllerOwner {
+        // Must be valid percentage
+        require(MathUtils.validPerc(_minInflation), "_minInflation is invalid percentage");
+        // Inflation floor should be >= 0
+        require(_minInflation >= 0, "_minInflation must be >= 0");
+        // Inflation floor should be lower or equal to the ceiling
+        require(_minInflation <= maxInflation, "_minInflation must be <= maxInflation");
+
+        minInflation = _minInflation;
+
+        emit ParameterUpdate("minInflation");
     }
 
     /**
@@ -240,13 +289,20 @@ contract Minter is Manager, IMinter {
             currentBondingRate = MathUtils.percPoints(totalBonded, totalSupply);
         }
 
-        if (currentBondingRate < targetBondingRate) {
+        // Adjust inflation based on current bonding rate and target bonding rate, ensuring it stays within the floor and ceiling
+        if ((currentBondingRate < targetBondingRate && inflation < maxInflation) || inflation < minInflation) {
             // Bonding rate is below the target - increase inflation
-            inflation = inflation.add(inflationChange);
-        } else if (currentBondingRate > targetBondingRate) {
+            if (inflation.add(inflationChange) > maxInflation) {
+                // If inflation would go above the ceiling, set it to the ceiling
+                inflation = maxInflation;
+            } else {
+                inflation = inflation.add(inflationChange);
+            }
+        } else if ((currentBondingRate > targetBondingRate && inflation > minInflation) || inflation > maxInflation) {
             // Bonding rate is above the target - decrease inflation
-            if (inflationChange > inflation) {
-                inflation = 0;
+            if (minInflation.add(inflationChange) > inflation) {
+                // If inflation would go below the floor, set it to the floor
+                inflation = minInflation;
             } else {
                 inflation = inflation.sub(inflationChange);
             }
