@@ -90,8 +90,6 @@ contract Minter is Manager, IMinter {
         // Inflation bounds must be valid percentages
         require(MathUtils.validPerc(_maxInflation), "_maxInflation is invalid percentage");
         require(MathUtils.validPerc(_minInflation), "_minInflation is invalid percentage");
-        // Inflation floor should be >= 0
-        require(_minInflation >= 0, "_minInflation must be >= 0");
         // Inflation floor should be lower or equal to the ceiling
         require(_minInflation <= _maxInflation, "_minInflation must be <= _maxInflation");
         // Inflation change must be valid percentage
@@ -154,8 +152,6 @@ contract Minter is Manager, IMinter {
     function setMinInflation(uint256 _minInflation) external onlyControllerOwner {
         // Must be valid percentage
         require(MathUtils.validPerc(_minInflation), "_minInflation is invalid percentage");
-        // Inflation floor should be >= 0
-        require(_minInflation >= 0, "_minInflation must be >= 0");
         // Inflation floor should be lower or equal to the ceiling
         require(_minInflation <= maxInflation, "_minInflation must be <= maxInflation");
 
@@ -185,6 +181,21 @@ contract Minter is Manager, IMinter {
         livepeerToken().transfer(address(_newMinter), livepeerToken().balanceOf(address(this)));
         // Transfer current Minter's ETH balance to new Minter
         _newMinter.depositETH{ value: address(this).balance }();
+    }
+
+    /**
+     * @notice Migrate state variables affected by RoundsManager from the old Minter
+     * @dev Only callable by Controller owner
+     */
+    function migrateOldMinterState() external onlyControllerOwner {
+        IMinter oldMinter = IMinter(controller.getContract(keccak256("Minter")));
+        // Old Minter cannot be the current Minter
+        require(address(oldMinter) != address(this), "old Minter cannot be current Minter");
+
+        // Transfer state from old Minter
+        currentMintableTokens = oldMinter.currentMintableTokens();
+        currentMintedTokens = oldMinter.currentMintedTokens();
+        inflation = oldMinter.inflation();
     }
 
     /**

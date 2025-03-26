@@ -147,60 +147,77 @@ describe("MinterUpgrade", () => {
     })
 
     it("Minter upgrade is executed", async () => {
-        const inflation = await minter.inflation()
         const inflationChange = await minter.inflationChange()
-        const targetBondingRate = await minter.targetBondingRate()
         const tokenBal = await token.balanceOf(minter.address)
         const ethBal = await ethers.provider.getBalance(minter.address)
 
         // Sanity check
         assert.notOk(inflationChange.eq(NEW_INFLATION_CHANGE))
 
+        const targetBondingRate = await minter.targetBondingRate()
+        const maxInflation = await minter.maxInflation()
+        const minInflation = await minter.minInflation()
+
         // Deploy the new Minter
         const newMinter = await (
             await ethers.getContractFactory("Minter")
         ).deploy(
             controller.address,
-            inflation,
+            0,
             NEW_INFLATION_CHANGE,
-            targetBondingRate
+            targetBondingRate,
+            maxInflation,
+            minInflation
         )
 
         // Migrate from old Minter to new Minter
         await minter.migrateToNewMinter(newMinter.address)
 
-        // Register the new Minter
+        // Migrate variables affected by RoundsManager from old Minter to new Minter
+        await newMinter.migrateOldMinterState()
+
+        // Register the new MinterinflationChange
         await controller.setContractInfo(
             contractId("Minter"),
             newMinter.address,
             "0x3031323334353637383930313233343536373839"
         )
 
-        // Check new Minter parameters and balances
-        assert.equal(
-            (await newMinter.inflation()).toString(),
-            inflation.toString()
-        )
-        assert.equal(
-            (await newMinter.targetBondingRate()).toString(),
-            targetBondingRate.toString()
-        )
+        // Check that the new Minter has the correct inflationChange value
         assert.equal(
             (await newMinter.inflationChange()).toString(),
-            NEW_INFLATION_CHANGE.toString()
+            NEW_INFLATION_CHANGE.toString(),
+            "inflationChange mismatch"
         )
+
+        // Migrating balances is done correctly
         assert.equal(
             (await token.balanceOf(newMinter.address)).toString(),
-            tokenBal.toString()
+            tokenBal.toString(),
+            "Token balance mismatch"
         )
         assert.equal(
             (await ethers.provider.getBalance(newMinter.address)).toString(),
-            ethBal.toString()
+            ethBal.toString(),
+            "ETH balance mismatch"
         )
 
-        // Check that internal state is reset
-        assert.equal((await newMinter.currentMintableTokens()).toString(), "0")
-        assert.equal((await newMinter.currentMintedTokens()).toString(), "0")
+        // Migrating old state variables are done correctly
+        assert.equal(
+            (await newMinter.currentMintableTokens()).toString(),
+            (await minter.currentMintableTokens()).toString(),
+            "currentMintableTokens mismatch"
+        )
+        assert.equal(
+            (await newMinter.currentMintedTokens()).toString(),
+            (await minter.currentMintedTokens()).toString(),
+            "currentMintedTokens mismatch"
+        )
+        assert.equal(
+            (await newMinter.inflation()).toString(),
+            (await minter.inflation()).toString(),
+            "inflation mismatch"
+        )
 
         // Grant new Minter minting rights
         await token.grantRole(
@@ -212,7 +229,7 @@ describe("MinterUpgrade", () => {
         minter = newMinter
     })
 
-    it("transcoder 2 calls reward post-upgrade in the same round and receives nothing", async () => {
+    it("transcoder 2 calls reward post-upgrade in the same round and receives reward", async () => {
         const startStake = await bondingManager.transcoderTotalStake(
             transcoder2.address
         )
@@ -223,7 +240,7 @@ describe("MinterUpgrade", () => {
             transcoder2.address
         )
 
-        assert.equal(endStake.sub(startStake).toString(), "0")
+        expect(endStake.sub(startStake)).to.be.gt(ethers.constants.Zero)
     })
 
     it("new round is initialized and inflation is set based on new inflation change value", async () => {

@@ -23,7 +23,9 @@ const gethDev = {
     minter: {
         inflation: 137,
         inflationChange: 3,
-        targetBondingRate: 500000
+        targetBondingRate: 500000,
+        maxInflation: 200,
+        minInflation: 100
     }
 }
 
@@ -51,7 +53,9 @@ const defaultConfig = {
     minter: {
         inflation: 137,
         inflationChange: 3,
-        targetBondingRate: 500000
+        targetBondingRate: 500000,
+        maxInflation: 200,
+        minInflation: 100
     },
     treasury: {
         minDelay: 0 // 0s initial proposal execution delay
@@ -99,7 +103,9 @@ const rinkeby = {
     minter: {
         inflation: 137,
         inflationChange: 3,
-        targetBondingRate: 0
+        targetBondingRate: 0,
+        maxInflation: 200,
+        minInflation: 100
     }
 }
 
@@ -126,7 +132,9 @@ const arbitrumRinkeby = {
     minter: {
         inflation: 137,
         inflationChange: 3,
-        targetBondingRate: 0
+        targetBondingRate: 0,
+        maxInflation: 200,
+        minInflation: 100
     }
 }
 
@@ -161,7 +169,9 @@ const arbitrumMainnet = {
         // The inflation at the start of that round will be 218500 - 500 = 218000
         inflation: 218500,
         inflationChange: 500,
-        targetBondingRate: 500000000
+        targetBondingRate: 500000000,
+        maxInflation: 250000,
+        minInflation: 5000
     },
     treasury: {
         minDelay: 0 // 0s initial proposal execution delay
