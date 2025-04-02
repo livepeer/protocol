@@ -261,8 +261,7 @@ describe("Minter", () => {
         })
 
         it("should fail if provided minInflation is greater than maxInflation", async () => {
-            const maxInflation = await minter.maxInflation()
-            await expect(minter.setMinInflation(maxInflation + 1)).to.be
+            await expect(minter.setMinInflation(MAX_INFLATION + 1)).to.be
                 .reverted
         })
 
@@ -283,12 +282,11 @@ describe("Minter", () => {
         })
 
         it("should set minInflation to the same value as maxInflation", async () => {
-            const maxInflation = await minter.maxInflation()
-            await minter.setMinInflation(maxInflation.toNumber())
+            await minter.setMinInflation(MAX_INFLATION)
 
             assert.equal(
                 await minter.minInflation(),
-                maxInflation.toNumber(),
+                MAX_INFLATION,
                 "minInflation did not match maxInflation"
             )
         })
@@ -308,8 +306,7 @@ describe("Minter", () => {
         })
 
         it("should fail if provided maxInflation is less than minInflation", async () => {
-            const minInflation = await minter.minInflation()
-            await expect(minter.setMaxInflation(minInflation - 1)).to.be
+            await expect(minter.setMaxInflation(MIN_INFLATION - 1)).to.be
                 .reverted
         })
 
@@ -324,12 +321,11 @@ describe("Minter", () => {
         })
 
         it("should set maxInflation to the same value as minInflation", async () => {
-            const minInflation = await minter.minInflation()
-            await minter.setMaxInflation(minInflation.toNumber())
+            await minter.setMaxInflation(MIN_INFLATION)
 
             assert.equal(
                 await minter.maxInflation(),
-                minInflation.toNumber(),
+                MIN_INFLATION,
                 "maxInflation did not match minInflation"
             )
         })
