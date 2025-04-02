@@ -470,9 +470,16 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     function setCurrentRoundTotalActiveStake() external onlyRoundsManager {
         currentRoundTotalActiveStake = nextRoundTotalActiveStake;
 
-        if (nextRoundTreasuryRewardCutRate != treasuryRewardCutRate) {
+        // Set the treasury cut to 0 while the treasury balance is above the ceiling
+        uint256 treasuryBalance = livepeerToken().balanceOf(treasury());
+        if (treasuryBalanceCeiling > 0 && treasuryBalance >= treasuryBalanceCeiling) {
+            if (treasuryRewardCutRate > 0) {
+                treasuryRewardCutRate = 0;
+                emit ParameterUpdate("treasuryRewardCutRate");
+            }
+        } else if (nextRoundTreasuryRewardCutRate != treasuryRewardCutRate) {
+            // Reset to the desired treasury cut rate
             treasuryRewardCutRate = nextRoundTreasuryRewardCutRate;
-            // The treasury cut rate changes in a delayed fashion so we want to emit the parameter update event here
             emit ParameterUpdate("treasuryRewardCutRate");
         }
 
@@ -888,14 +895,6 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         uint256 lastUpdateRound = t.lastActiveStakeUpdateRound;
         if (lastUpdateRound < currentRound) {
             earningsPool.setStake(t.earningsPoolPerRound[lastUpdateRound].totalStake);
-        }
-
-        if (treasuryBalanceCeiling > 0) {
-            uint256 treasuryBalance = livepeerToken().balanceOf(treasury());
-            if (treasuryBalance >= treasuryBalanceCeiling && nextRoundTreasuryRewardCutRate > 0) {
-                // halt treasury contributions until the cut rate param is updated again
-                _setTreasuryRewardCutRate(0);
-            }
         }
 
         // Create reward based on active transcoder's stake relative to the total active stake
