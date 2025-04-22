@@ -170,6 +170,7 @@ const arbitrumMainnet = {
         inflation: 218500,
         inflationChange: 500,
         targetBondingRate: 500000000,
+        // TODO: update `maxInflation` and `minInflation` values to match ones agreed by the community
         maxInflation: 250000,
         minInflation: 5000
     },
