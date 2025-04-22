@@ -958,7 +958,8 @@ describe("Minter", () => {
 
             // Set total supply to 0
             await fixture.token.setMockUint256(functionSig("totalSupply()"), 0)
-            // Call setCurrentRewardTokens via RoundsManager
+
+            // Trigger inflation update via roundsManager
             await fixture.roundsManager.execute(
                 minter.address,
                 functionSig("setCurrentRewardTokens()")
@@ -976,12 +977,13 @@ describe("Minter", () => {
         it("should increase the inflation rate if the current bonding rate is below the target bonding rate", async () => {
             const startInflation = await minter.inflation()
 
-            // Set total bonded tokens
+            // Set total bonded tokens to be below target, to supposedely increase the inflation
             await fixture.bondingManager.setMockUint256(
                 functionSig("getTotalBonded()"),
                 400
             )
-            // Call setCurrentRewardTokens via RoundsManager
+
+            // Trigger inflation update via roundsManager
             await fixture.roundsManager.execute(
                 minter.address,
                 functionSig("setCurrentRewardTokens()")
@@ -1026,7 +1028,7 @@ describe("Minter", () => {
 
             const startInflation = await minter.inflation()
 
-            // Call setCurrentRewardTokens via RoundsManager
+            // Trigger inflation update via roundsManager
             await fixture.roundsManager.execute(
                 minter.address,
                 functionSig("setCurrentRewardTokens()")
@@ -1043,12 +1045,13 @@ describe("Minter", () => {
         it("should decrease the inflation rate if the current bonding rate is above the target bonding rate", async () => {
             const startInflation = await minter.inflation()
 
-            // Set total bonded tokens
+            // Set total bonded tokens to be above target, to supposedely decrease the inflation
             await fixture.bondingManager.setMockUint256(
                 functionSig("getTotalBonded()"),
                 600
             )
-            // Call setCurrentRewardTokens via RoundsManager
+
+            // Trigger inflation update via roundsManager
             await fixture.roundsManager.execute(
                 minter.address,
                 functionSig("setCurrentRewardTokens()")
@@ -1069,14 +1072,19 @@ describe("Minter", () => {
             await minter.setInflationChange(
                 maxInflation.toNumber() - startInflation.toNumber() + 1
             )
+
+            // Set total bonded tokens to be below target, to supposedely increase the inflation
             await fixture.bondingManager.setMockUint256(
                 functionSig("getTotalBonded()"),
                 400
             )
+
+            // Trigger inflation update via roundsManager
             await fixture.roundsManager.execute(
                 minter.address,
                 functionSig("setCurrentRewardTokens()")
             )
+
             const endInflation = await minter.inflation()
             assert.equal(
                 endInflation.toNumber(),
@@ -1085,57 +1093,69 @@ describe("Minter", () => {
             )
         })
 
-        it("inflation is increased IF inflation < minInflation (independent from bonding rate)", async () => {
-            const startInflation = await minter.inflation()
+        // Ensure the logic is unaffected by the target bonding rate
+        for (const targetBondingRate of [400, 500, 600]) {
+            it("inflation is increased IF inflation < minInflation (independent from bonding rate)", async () => {
+                const startInflation = await minter.inflation()
 
-            // Set minInflation to current inflation rate + 1
-            await minter.setMinInflation(
-                startInflation.add(BigNumber.from(PERC_MULTIPLIER)).toNumber()
-            )
+                // Set minInflation to current inflation rate + 1
+                await minter.setMinInflation(
+                    startInflation
+                        .add(BigNumber.from(PERC_MULTIPLIER))
+                        .toNumber()
+                )
+                const minInflation = await minter.minInflation()
+                assert.isBelow(
+                    startInflation.toNumber(),
+                    minInflation.toNumber(),
+                    "inflation rate is below minInflation"
+                )
 
-            const minInflation = await minter.minInflation()
-            assert.isBelow(
-                startInflation.toNumber(),
-                minInflation.toNumber(),
-                "inflation rate is below minInflation"
-            )
+                // Set inflation total bonded tokens to be above, below or equal the target
+                await fixture.bondingManager.setMockUint256(
+                    functionSig("getTotalBonded()"),
+                    targetBondingRate
+                )
 
-            // Set total bonded tokens
-            await fixture.bondingManager.setMockUint256(
-                functionSig("getTotalBonded()"),
-                600
-            )
-            // Call setCurrentRewardTokens via RoundsManager
-            await fixture.roundsManager.execute(
-                minter.address,
-                functionSig("setCurrentRewardTokens()")
-            )
+                // Trigger inflation update via roundsManager
+                await fixture.roundsManager.execute(
+                    minter.address,
+                    functionSig("setCurrentRewardTokens()")
+                )
 
-            const endInflation = await minter.inflation()
-            assert.equal(
-                endInflation.sub(startInflation).toNumber(),
-                await minter.inflationChange(),
-                "inflation rate did not increase correctly"
-            )
-        })
+                // Ensure inflation doesn't change
+                const endInflation = await minter.inflation()
+                assert.isAbove(
+                    endInflation.toNumber(),
+                    startInflation.toNumber(),
+                    `inflation did not increase when target bonding rate is ${targetBondingRate}`
+                )
+                assert.equal(
+                    endInflation.toNumber(),
+                    startInflation.add(INFLATION_CHANGE).toNumber(),
+                    `inflation did not increase when target bonding rate is ${targetBondingRate}`
+                )
+            })
+        }
 
         it("inflation is decreased down to minInflation IF current > targetBondingRate", async () => {
             const startInflation = await minter.inflation()
             const minInflation = await minter.minInflation()
             await minter.setInflationChange(startInflation.toNumber() + 1)
-            // Set total bonded tokens
+
+            // Set total bonded tokens to be above target, to supposedely decrease the inflation
             await fixture.bondingManager.setMockUint256(
                 functionSig("getTotalBonded()"),
                 600
             )
-            // Call setCurrentRewardTokens via RoundsManager
+
+            // Trigger inflation update via roundsManager
             await fixture.roundsManager.execute(
                 minter.address,
                 functionSig("setCurrentRewardTokens()")
             )
 
             const endInflation = await minter.inflation()
-
             assert.equal(
                 endInflation.toNumber(),
                 minInflation.toNumber(),
@@ -1143,55 +1163,67 @@ describe("Minter", () => {
             )
         })
 
-        it("inflation is decreased IF inflation > maxInflation (independent from bonding rate)", async () => {
-            const startInflation = await minter.inflation()
+        // Ensure the logic is unaffected by the target bonding rate
+        for (const targetBondingRate of [400, 500, 600]) {
+            it("inflation is decreased IF inflation > maxInflation (independent from bonding rate)", async () => {
+                const startInflation = await minter.inflation()
 
-            // Set maxInflation to current inflation rate - 1
-            await minter.setMaxInflation(
-                startInflation.sub(BigNumber.from(PERC_MULTIPLIER)).toNumber()
-            )
+                // Set maxInflation to current inflation rate - 1
+                await minter.setMaxInflation(
+                    startInflation
+                        .sub(BigNumber.from(PERC_MULTIPLIER))
+                        .toNumber()
+                )
+                const maxInflation = await minter.maxInflation()
+                assert.isAbove(
+                    startInflation.toNumber(),
+                    maxInflation.toNumber(),
+                    "inflation is not above maxInflation"
+                )
 
-            const maxInflation = await minter.maxInflation()
-            assert.isAbove(
-                startInflation.toNumber(),
-                maxInflation.toNumber(),
-                "inflation is not above maxInflation"
-            )
+                // Set inflation total bonded tokens to be above, below or equal the target
+                await fixture.bondingManager.setMockUint256(
+                    functionSig("getTotalBonded()"),
+                    targetBondingRate
+                )
 
-            // Set total bonded tokens
-            await fixture.bondingManager.setMockUint256(
-                functionSig("getTotalBonded()"),
-                600
-            )
-            // Call setCurrentRewardTokens via RoundsManager
-            await fixture.roundsManager.execute(
-                minter.address,
-                functionSig("setCurrentRewardTokens()")
-            )
+                // Trigger inflation update via roundsManager
+                await fixture.roundsManager.execute(
+                    minter.address,
+                    functionSig("setCurrentRewardTokens()")
+                )
 
-            const endInflation = await minter.inflation()
-            assert.equal(
-                startInflation.sub(endInflation).toNumber(),
-                await minter.inflationChange(),
-                "inflation rate did decrease correctly"
-            )
-        })
+                // Ensure inflation doesn't change
+                const endInflation = await minter.inflation()
+                assert.isBelow(
+                    endInflation.toNumber(),
+                    startInflation.toNumber(),
+                    `inflation did not decrease when target bonding rate is ${targetBondingRate}`
+                )
+                assert.equal(
+                    endInflation.toNumber(),
+                    startInflation.sub(INFLATION_CHANGE).toNumber(),
+                    `inflation did not decrease when target bonding rate is ${targetBondingRate}`
+                )
+            })
+        }
 
         it("inflation is maintained IF current = targetBondingRate AND within minInflation and maxInflation", async () => {
             const startInflation = await minter.inflation()
 
+            // Set total bonded tokens to match the target, to supposedely maintain the inflation
             await fixture.bondingManager.setMockUint256(
                 functionSig("getTotalBonded()"),
                 500
             )
-            // Call setCurrentRewardTokens via RoundsManager
+
+            // Trigger inflation update via roundsManager
             await fixture.roundsManager.execute(
                 minter.address,
                 functionSig("setCurrentRewardTokens()")
             )
 
             const endInflation = await minter.inflation()
-
             assert.equal(
                 startInflation.sub(endInflation).toNumber(),
                 0,
@@ -1199,41 +1231,42 @@ describe("Minter", () => {
             )
         })
 
-        it("inflation is maintained IF minInflation = maxInflation(independent from bonding rate)", async () => {
-            const TARGET_BONDING_RATES_OPTIONS = [400, 500, 600]
-            let inflation = await minter.inflation()
-            await minter.setMinInflation(inflation)
-            await minter.setMaxInflation(inflation)
+        // Ensure the logic is unaffected by the target bonding rate
+        for (const targetBondingRate of [400, 500, 600]) {
+            it("inflation is maintained IF minInflation = maxInflation (independent from bonding rate)", async () => {
+                const inflation = await minter.inflation()
+                await minter.setMinInflation(inflation)
+                await minter.setMaxInflation(inflation)
 
-            for (const TARGET_BONDING_RATE of TARGET_BONDING_RATES_OPTIONS) {
+                // Set inflation total bonded tokens to be above, below or equal the target
                 await fixture.bondingManager.setMockUint256(
                     functionSig("getTotalBonded()"),
-                    TARGET_BONDING_RATE
+                    targetBondingRate
                 )
+
+                // Trigger inflation update via roundsManager
                 await fixture.roundsManager.execute(
                     minter.address,
                     functionSig("setCurrentRewardTokens()")
                 )
 
-                // Update inflation to current value
-                inflation = await minter.inflation()
-            }
-
-            const endInflation = await minter.inflation()
-
-            assert.equal(
-                endInflation.toNumber(),
-                inflation,
-                "inflation did not reach maxInflation"
-            )
-        })
+                // Ensure inflation doesn't change
+                const endInflation = await minter.inflation()
+                assert.equal(
+                    endInflation.toNumber(),
+                    inflation,
+                    "inflation unexpectedly changed"
+                )
+            })
+        }
 
         it("should set currentMintableTokens based on the current inflation and current total token supply", async () => {
-            // Set total bonded tokens - we are at the target bonding rate so inflation does not move
+            // Set total bonded tokens to match the target, to supposedely maintain the inflation
             await fixture.bondingManager.setMockUint256(
                 functionSig("getTotalBonded()"),
                 500
             )
+
             // Set global total supply
             const l1CirculatingSupply = 200
             await fixture.l2LPTDataCache.setMockUint256(
@@ -1245,7 +1278,7 @@ describe("Minter", () => {
                 1000 + l1CirculatingSupply
             )
 
-            // Call setCurrentRewardTokens via RoundsManager
+            // Trigger inflation update via roundsManager
             await fixture.roundsManager.execute(
                 minter.address,
                 functionSig("setCurrentRewardTokens()")
@@ -1333,12 +1366,13 @@ describe("Minter", () => {
         })
 
         it("should set currentMintedTokens = 0", async () => {
-            // Set total bonded tokens - we are at the target bonding rate so inflation does not move
+            // Set total bonded tokens to match the target, to supposedely maintain the inflation
             await fixture.bondingManager.setMockUint256(
                 functionSig("getTotalBonded()"),
                 500
             )
-            // Call setCurrentRewardTokens via RoundsManager
+
+            // Trigger inflation update via roundsManager
             await fixture.roundsManager.execute(
                 minter.address,
                 functionSig("setCurrentRewardTokens()")
