@@ -118,8 +118,8 @@ describe("Governor update", () => {
 
         let migrateData
         let migrateTarget
-        let transferStateData
-        let transferStateTarget
+        let migrateOldMinterStateData
+        let migrateOldMinterStateTarget
         let grantRoleData
         let grantRoleTarget
         let revokeRoleData
@@ -144,10 +144,10 @@ describe("Governor update", () => {
             )
             migrateTarget = minter.address
 
-            transferStateData = newMinter.interface.encodeFunctionData(
+            migrateOldMinterStateData = newMinter.interface.encodeFunctionData(
                 "migrateOldMinterState"
             )
-            transferStateTarget = newMinter.address
+            migrateOldMinterStateTarget = newMinter.address
 
             setInfoData = controller.interface.encodeFunctionData(
                 "setContractInfo",
@@ -187,7 +187,7 @@ describe("Governor update", () => {
             const update = {
                 target: [
                     migrateTarget,
-                    transferStateTarget,
+                    migrateOldMinterStateTarget,
                     grantRoleTarget,
                     revokeRoleTarget,
                     setInfoTarget
@@ -195,7 +195,7 @@ describe("Governor update", () => {
                 value: ["0", "0", "0", "0", "0"],
                 data: [
                     migrateData,
-                    transferStateData,
+                    migrateOldMinterStateData,
                     grantRoleData,
                     revokeRoleData,
                     setInfoData
@@ -219,7 +219,7 @@ describe("Governor update", () => {
             const update = {
                 target: [
                     migrateTarget,
-                    transferStateTarget,
+                    migrateOldMinterStateTarget,
                     grantRoleTarget,
                     revokeRoleTarget,
                     setInfoTarget
@@ -227,7 +227,7 @@ describe("Governor update", () => {
                 value: ["0", "0", "0", "0", "0"],
                 data: [
                     migrateData,
-                    transferStateData,
+                    migrateOldMinterStateData,
                     grantRoleData,
                     revokeRoleData,
                     setInfoData
@@ -252,7 +252,7 @@ describe("Governor update", () => {
             const update = {
                 target: [
                     migrateTarget,
-                    transferStateTarget,
+                    migrateOldMinterStateTarget,
                     grantRoleTarget,
                     revokeRoleTarget,
                     setInfoTarget
@@ -260,7 +260,7 @@ describe("Governor update", () => {
                 value: ["0", "0", "0", "0", "0"],
                 data: [
                     migrateData,
-                    transferStateData,
+                    migrateOldMinterStateData,
                     grantRoleData,
                     revokeRoleData,
                     setInfoData
@@ -275,7 +275,7 @@ describe("Governor update", () => {
             )
         })
 
-        it("step 2 'transferStateData' fails: wrong target", async () => {
+        it("step 2 'migrateOldMinterState' fails: wrong target", async () => {
             const update = {
                 target: [
                     migrateTarget,
@@ -287,7 +287,7 @@ describe("Governor update", () => {
                 value: ["0", "0", "0", "0", "0"],
                 data: [
                     migrateData,
-                    transferStateData,
+                    migrateOldMinterStateData,
                     grantRoleData,
                     revokeRoleData,
                     setInfoData
@@ -304,7 +304,7 @@ describe("Governor update", () => {
             const update = {
                 target: [
                     migrateTarget,
-                    transferStateTarget,
+                    migrateOldMinterStateTarget,
                     grantRoleTarget,
                     revokeRoleTarget,
                     setInfoTarget
@@ -312,7 +312,7 @@ describe("Governor update", () => {
                 value: ["0", "0", "0", "0", "0"],
                 data: [
                     migrateData,
-                    transferStateData,
+                    migrateOldMinterStateData,
                     grantRoleData,
                     revokeRoleData,
                     setInfoData
