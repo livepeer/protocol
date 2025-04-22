@@ -297,7 +297,9 @@ describe("Governor update", () => {
 
             // Run the migrate to new minter update
             await governor.stage(update, "0")
-            await expect(governor.execute(update)).to.be.reverted
+            await expect(governor.execute(update)).to.be.revertedWith(
+                "Minter cannot be current Minter"
+            )
         })
 
         it("succesfully executes all updates", async () => {
