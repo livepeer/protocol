@@ -24,8 +24,8 @@ const gethDev = {
         inflation: 137,
         inflationChange: 3,
         targetBondingRate: 500000,
-        maxInflation: 200,
-        minInflation: 100
+        inflationCeiling: 200,
+        inflationFloor: 100
     }
 }
 
@@ -54,8 +54,8 @@ const defaultConfig = {
         inflation: 137,
         inflationChange: 3,
         targetBondingRate: 500000,
-        maxInflation: 200,
-        minInflation: 100
+        inflationCeiling: 200,
+        inflationFloor: 100
     },
     treasury: {
         minDelay: 0 // 0s initial proposal execution delay
@@ -104,8 +104,8 @@ const rinkeby = {
         inflation: 137,
         inflationChange: 3,
         targetBondingRate: 0,
-        maxInflation: 200,
-        minInflation: 100
+        inflationCeiling: 200,
+        inflationFloor: 100
     }
 }
 
@@ -133,8 +133,8 @@ const arbitrumRinkeby = {
         inflation: 137,
         inflationChange: 3,
         targetBondingRate: 0,
-        maxInflation: 200,
-        minInflation: 100
+        inflationCeiling: 200,
+        inflationFloor: 100
     }
 }
 
@@ -170,9 +170,9 @@ const arbitrumMainnet = {
         inflation: 218500,
         inflationChange: 500,
         targetBondingRate: 500000000,
-        // TODO: update `maxInflation` and `minInflation` values to match ones agreed by the community
-        maxInflation: 250000,
-        minInflation: 5000
+        // TODO: update `inflationCeiling` and `inflationFloor` values to match ones agreed by the community
+        inflationCeiling: 250000,
+        inflationFloor: 5000
     },
     treasury: {
         minDelay: 0 // 0s initial proposal execution delay

@@ -29,9 +29,9 @@ interface IMinter {
 
     function inflation() external view returns (uint256);
 
-    function maxInflation() external view returns (uint256);
+    function inflationCeiling() external view returns (uint256);
 
-    function minInflation() external view returns (uint256);
+    function inflationFloor() external view returns (uint256);
 
     function inflationChange() external view returns (uint256);
 

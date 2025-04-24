@@ -155,8 +155,8 @@ describe("MinterUpgrade", () => {
         assert.notOk(inflationChange.eq(NEW_INFLATION_CHANGE))
 
         const targetBondingRate = await minter.targetBondingRate()
-        const maxInflation = await minter.maxInflation()
-        const minInflation = await minter.minInflation()
+        const inflationCeiling = await minter.inflationCeiling()
+        const inflationFloor = await minter.inflationFloor()
 
         // Deploy the new Minter
         const newMinter = await (
@@ -166,8 +166,8 @@ describe("MinterUpgrade", () => {
             0,
             NEW_INFLATION_CHANGE,
             targetBondingRate,
-            maxInflation,
-            minInflation
+            inflationCeiling,
+            inflationFloor
         )
 
         // Migrate from old Minter to new Minter

@@ -74,7 +74,7 @@ describe("Minter", () => {
             ).to.be.revertedWith("_targetBondingRate is invalid percentage")
         })
 
-        it("should fail if provided maxInflation > 100%", async () => {
+        it("should fail if provided inflationCeiling > 100%", async () => {
             await expect(
                 minterFac.deploy(
                     signers[0].address,
@@ -84,10 +84,10 @@ describe("Minter", () => {
                     PERC_DIVISOR + 1,
                     MIN_INFLATION
                 )
-            ).to.be.revertedWith("_maxInflation is invalid percentage")
+            ).to.be.revertedWith("_inflationCeiling is invalid percentage")
         })
 
-        it("should fail if provided minInflation > 100%", async () => {
+        it("should fail if provided inflationFloor > 100%", async () => {
             await expect(
                 minterFac.deploy(
                     signers[0].address,
@@ -97,10 +97,10 @@ describe("Minter", () => {
                     MAX_INFLATION,
                     PERC_DIVISOR + 1
                 )
-            ).to.be.revertedWith("_minInflation is invalid percentage")
+            ).to.be.revertedWith("_inflationFloor is invalid percentage")
         })
 
-        it("should fail if provided minInflation > maxInflation", async () => {
+        it("should fail if provided inflationFloor > inflationCeiling", async () => {
             await expect(
                 minterFac.deploy(
                     signers[0].address,
@@ -110,10 +110,10 @@ describe("Minter", () => {
                     MIN_INFLATION,
                     MAX_INFLATION
                 )
-            ).to.be.revertedWith("_minInflation must be <= _maxInflation")
+            ).to.be.revertedWith("_inflationFloor must be <= _inflationCeiling")
         })
 
-        it("should be able to set minInflation and maxInflation to 0", async () => {
+        it("should be able to set inflationFloor and inflationCeiling to 0", async () => {
             const minter = await minterFac.deploy(
                 signers[0].address,
                 INFLATION,
@@ -124,14 +124,14 @@ describe("Minter", () => {
             )
 
             assert.equal(
-                await minter.maxInflation(),
+                await minter.inflationCeiling(),
                 0,
-                "should set maxInflation"
+                "should set inflationCeiling"
             )
             assert.equal(
-                await minter.minInflation(),
+                await minter.inflationFloor(),
                 0,
-                "should set minInflation"
+                "should set inflationFloor"
             )
         })
 
@@ -166,14 +166,14 @@ describe("Minter", () => {
                 "should set targetBondingRate"
             )
             assert.equal(
-                await minter.maxInflation(),
+                await minter.inflationCeiling(),
                 MAX_INFLATION,
-                "should set maxInflation"
+                "should set inflationCeiling"
             )
             assert.equal(
-                await minter.minInflation(),
+                await minter.inflationFloor(),
                 MIN_INFLATION,
-                "should set minInflation"
+                "should set inflationFloor"
             )
         })
     })
@@ -248,93 +248,103 @@ describe("Minter", () => {
         })
     })
 
-    describe("setMinInflation", () => {
+    describe("setinflationFloor", () => {
         it("should fail if caller is not Controller owner", async () => {
-            await expect(minter.connect(signers[1]).setMinInflation(0)).to.be
+            await expect(minter.connect(signers[1]).setinflationFloor(0)).to.be
                 .reverted
         })
 
-        it("should fail if provided minInflation is not a valid percentage", async () => {
+        it("should fail if provided inflationFloor is not a valid percentage", async () => {
             await expect(
-                minter.setMinInflation(PERC_DIVISOR + 1)
-            ).to.be.revertedWith("_minInflation is invalid percentage")
+                minter.setinflationFloor(PERC_DIVISOR + 1)
+            ).to.be.revertedWith("_inflationFloor is invalid percentage")
         })
 
-        it("should fail if provided minInflation is greater than maxInflation", async () => {
-            await expect(minter.setMinInflation(MAX_INFLATION + 1)).to.be
+        it("should fail if provided inflationFloor is greater than inflationCeiling", async () => {
+            await expect(minter.setinflationFloor(MAX_INFLATION + 1)).to.be
                 .reverted
         })
 
-        it("should set minInflation", async () => {
-            await minter.setMinInflation(10 * PERC_MULTIPLIER)
+        it("should set inflationFloor", async () => {
+            await minter.setinflationFloor(10 * PERC_MULTIPLIER)
 
             assert.equal(
-                await minter.minInflation(),
+                await minter.inflationFloor(),
                 10 * PERC_MULTIPLIER,
-                "wrong minInflation"
+                "wrong inflationFloor"
             )
         })
 
-        it("should set minInflation to 0", async () => {
-            await minter.setMinInflation(0)
-
-            assert.equal(await minter.minInflation(), 0, "minInflation not 0")
-        })
-
-        it("should set minInflation to the same value as maxInflation", async () => {
-            await minter.setMinInflation(MAX_INFLATION)
+        it("should set inflationFloor to 0", async () => {
+            await minter.setinflationFloor(0)
 
             assert.equal(
-                await minter.minInflation(),
+                await minter.inflationFloor(),
+                0,
+                "inflationFloor not 0"
+            )
+        })
+
+        it("should set inflationFloor to the same value as inflationCeiling", async () => {
+            await minter.setinflationFloor(MAX_INFLATION)
+
+            assert.equal(
+                await minter.inflationFloor(),
                 MAX_INFLATION,
-                "minInflation did not match maxInflation"
+                "inflationFloor did not match inflationCeiling"
             )
         })
     })
 
-    describe("setMaxInflation", () => {
+    describe("setinflationCeiling", () => {
         it("should fail if caller is not Controller owner", async () => {
             await expect(
-                minter.connect(signers[1]).setMaxInflation(30 * PERC_MULTIPLIER)
+                minter
+                    .connect(signers[1])
+                    .setinflationCeiling(30 * PERC_MULTIPLIER)
             ).to.be.reverted
         })
 
-        it("should fail if provided maxInflation is not a valid percentage", async () => {
+        it("should fail if provided inflationCeiling is not a valid percentage", async () => {
             await expect(
-                minter.setMaxInflation(PERC_DIVISOR + 1)
-            ).to.be.revertedWith("_maxInflation is invalid percentage")
+                minter.setinflationCeiling(PERC_DIVISOR + 1)
+            ).to.be.revertedWith("_inflationCeiling is invalid percentage")
         })
 
-        it("should fail if provided maxInflation is less than minInflation", async () => {
-            await expect(minter.setMaxInflation(MIN_INFLATION - 1)).to.be
+        it("should fail if provided inflationCeiling is less than inflationFloor", async () => {
+            await expect(minter.setinflationCeiling(MIN_INFLATION - 1)).to.be
                 .reverted
         })
 
-        it("should set maxInflation", async () => {
-            await minter.setMaxInflation(30 * PERC_MULTIPLIER)
+        it("should set inflationCeiling", async () => {
+            await minter.setinflationCeiling(30 * PERC_MULTIPLIER)
 
             assert.equal(
-                await minter.maxInflation(),
+                await minter.inflationCeiling(),
                 30 * PERC_MULTIPLIER,
-                "wrong maxInflation"
+                "wrong inflationCeiling"
             )
         })
 
-        it("should set maxInflation to the same value as minInflation", async () => {
-            await minter.setMaxInflation(MIN_INFLATION)
+        it("should set inflationCeiling to the same value as inflationFloor", async () => {
+            await minter.setinflationCeiling(MIN_INFLATION)
 
             assert.equal(
-                await minter.maxInflation(),
+                await minter.inflationCeiling(),
                 MIN_INFLATION,
-                "maxInflation did not match minInflation"
+                "inflationCeiling did not match inflationFloor"
             )
         })
 
-        it("should set maxInflation to 0", async () => {
-            await minter.setMinInflation(0)
-            await minter.setMaxInflation(0)
+        it("should set inflationCeiling to 0", async () => {
+            await minter.setinflationFloor(0)
+            await minter.setinflationCeiling(0)
 
-            assert.equal(await minter.maxInflation(), 0, "maxInflation not 0")
+            assert.equal(
+                await minter.inflationCeiling(),
+                0,
+                "inflationCeiling not 0"
+            )
         })
     })
 
@@ -430,8 +440,8 @@ describe("Minter", () => {
                 await minter.inflation(),
                 await minter.inflationChange(),
                 await minter.targetBondingRate(),
-                await minter.maxInflation(),
-                await minter.minInflation()
+                await minter.inflationCeiling(),
+                await minter.inflationFloor()
             ]
             const newMinter = await (
                 await ethers.getContractFactory("Minter")
@@ -471,8 +481,8 @@ describe("Minter", () => {
                 0, // inflation will be overwritten by migrateOldMinterState
                 await minter.inflationChange(),
                 await minter.targetBondingRate(),
-                await minter.maxInflation(),
-                await minter.minInflation()
+                await minter.inflationCeiling(),
+                await minter.inflationFloor()
             ]
             const newMinter = await (
                 await ethers.getContractFactory("Minter")
@@ -1066,11 +1076,11 @@ describe("Minter", () => {
             )
         })
 
-        it("inflation is increased up to maxInflation IF current < targetBondingRate", async () => {
+        it("inflation is increased up to inflationCeiling IF current < targetBondingRate", async () => {
             const startInflation = await minter.inflation()
-            const maxInflation = await minter.maxInflation()
+            const inflationCeiling = await minter.inflationCeiling()
             await minter.setInflationChange(
-                maxInflation.toNumber() - startInflation.toNumber() + 1
+                inflationCeiling.toNumber() - startInflation.toNumber() + 1
             )
 
             // Set total bonded tokens to be below target, to supposedely increase the inflation
@@ -1088,27 +1098,27 @@ describe("Minter", () => {
             const endInflation = await minter.inflation()
             assert.equal(
                 endInflation.toNumber(),
-                maxInflation.toNumber(),
-                "inflation rate did not set to maxInflation"
+                inflationCeiling.toNumber(),
+                "inflation rate did not set to inflationCeiling"
             )
         })
 
         // Ensure the logic is unaffected by the target bonding rate
         for (const targetBondingRate of [400, 500, 600]) {
-            it("inflation is increased IF inflation < minInflation (independent from bonding rate)", async () => {
+            it("inflation is increased IF inflation < inflationFloor (independent from bonding rate)", async () => {
                 const startInflation = await minter.inflation()
 
-                // Set minInflation to current inflation rate + 1
-                await minter.setMinInflation(
+                // Set inflationFloor to current inflation rate + 1
+                await minter.setinflationFloor(
                     startInflation
                         .add(BigNumber.from(PERC_MULTIPLIER))
                         .toNumber()
                 )
-                const minInflation = await minter.minInflation()
+                const inflationFloor = await minter.inflationFloor()
                 assert.isBelow(
                     startInflation.toNumber(),
-                    minInflation.toNumber(),
-                    "inflation rate is below minInflation"
+                    inflationFloor.toNumber(),
+                    "inflation rate is below inflationFloor"
                 )
 
                 // Set inflation total bonded tokens to be above, below or equal the target
@@ -1138,9 +1148,9 @@ describe("Minter", () => {
             })
         }
 
-        it("inflation is decreased down to minInflation IF current > targetBondingRate", async () => {
+        it("inflation is decreased down to inflationFloor IF current > targetBondingRate", async () => {
             const startInflation = await minter.inflation()
-            const minInflation = await minter.minInflation()
+            const inflationFloor = await minter.inflationFloor()
             await minter.setInflationChange(startInflation.toNumber() + 1)
 
             // Set total bonded tokens to be above target, to supposedely decrease the inflation
@@ -1158,27 +1168,27 @@ describe("Minter", () => {
             const endInflation = await minter.inflation()
             assert.equal(
                 endInflation.toNumber(),
-                minInflation.toNumber(),
-                "inflation did not set to minInflation"
+                inflationFloor.toNumber(),
+                "inflation did not set to inflationFloor"
             )
         })
 
         // Ensure the logic is unaffected by the target bonding rate
         for (const targetBondingRate of [400, 500, 600]) {
-            it("inflation is decreased IF inflation > maxInflation (independent from bonding rate)", async () => {
+            it("inflation is decreased IF inflation > inflationCeiling (independent from bonding rate)", async () => {
                 const startInflation = await minter.inflation()
 
-                // Set maxInflation to current inflation rate - 1
-                await minter.setMaxInflation(
+                // Set inflationCeiling to current inflation rate - 1
+                await minter.setinflationCeiling(
                     startInflation
                         .sub(BigNumber.from(PERC_MULTIPLIER))
                         .toNumber()
                 )
-                const maxInflation = await minter.maxInflation()
+                const inflationCeiling = await minter.inflationCeiling()
                 assert.isAbove(
                     startInflation.toNumber(),
-                    maxInflation.toNumber(),
-                    "inflation is not above maxInflation"
+                    inflationCeiling.toNumber(),
+                    "inflation is not above inflationCeiling"
                 )
 
                 // Set inflation total bonded tokens to be above, below or equal the target
@@ -1208,7 +1218,7 @@ describe("Minter", () => {
             })
         }
 
-        it("inflation is maintained IF current = targetBondingRate AND within minInflation and maxInflation", async () => {
+        it("inflation is maintained IF current = targetBondingRate AND within inflationFloor and inflationCeiling", async () => {
             const startInflation = await minter.inflation()
 
             // Set total bonded tokens to match the target, to supposedely maintain the inflation
@@ -1233,10 +1243,10 @@ describe("Minter", () => {
 
         // Ensure the logic is unaffected by the target bonding rate
         for (const targetBondingRate of [400, 500, 600]) {
-            it("inflation is maintained IF minInflation = maxInflation (independent from bonding rate)", async () => {
+            it("inflation is maintained IF inflationFloor = inflationCeiling (independent from bonding rate)", async () => {
                 const inflation = await minter.inflation()
-                await minter.setMinInflation(inflation)
-                await minter.setMaxInflation(inflation)
+                await minter.setinflationFloor(inflation)
+                await minter.setinflationCeiling(inflation)
 
                 // Set inflation total bonded tokens to be above, below or equal the target
                 await fixture.bondingManager.setMockUint256(
@@ -1303,8 +1313,8 @@ describe("Minter", () => {
             const inflation = 0.0455 * PERC_MULTIPLIER
             const targetBondingRate = 50 * PERC_MULTIPLIER
             const currentBondingRate = 51 * PERC_MULTIPLIER
-            const maxInflation = 0.1 * PERC_MULTIPLIER
-            const minInflation = 0.01 * PERC_MULTIPLIER
+            const inflationCeiling = 0.1 * PERC_MULTIPLIER
+            const inflationFloor = 0.01 * PERC_MULTIPLIER
             const totalBonded = totalSupply
                 .mul(BigNumber.from(currentBondingRate))
                 .div(BigNumber.from(PERC_DIVISOR))
@@ -1327,8 +1337,8 @@ describe("Minter", () => {
                 inflation,
                 inflationChange,
                 targetBondingRate,
-                maxInflation,
-                minInflation
+                inflationCeiling,
+                inflationFloor
             )
 
             await fixture.roundsManager.execute(
@@ -1348,8 +1358,8 @@ describe("Minter", () => {
                 inflation,
                 inflationChange,
                 targetBondingRate,
-                maxInflation,
-                minInflation
+                inflationCeiling,
+                inflationFloor
             )
 
             await fixture.roundsManager.execute(

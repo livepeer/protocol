@@ -77,8 +77,8 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
             config.minter.inflation,
             config.minter.inflationChange,
             config.minter.targetBondingRate,
-            config.minter.maxInflation,
-            config.minter.minInflation
+            config.minter.inflationCeiling,
+            config.minter.inflationFloor
         ]
     })
 
