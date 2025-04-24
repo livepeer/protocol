@@ -162,17 +162,11 @@ const arbitrumMainnet = {
         roundLockAmount: 100000
     },
     minter: {
-        // As of L1 round 2460 inflation was 221500 and bonding rate > 50% so inflation was declining
-        // The switch to L2 projected to occur in L1 round 2466
-        // If inflation continues to decrease inflation projected to be 221500 - (6 * 500) = 218500 in L1 round 2466
-        // No reward calls will happen on L2 until the round after migrations start since it takes a round for orchestrators to become active
-        // The inflation at the start of that round will be 218500 - 500 = 218000
-        inflation: 218500,
-        inflationChange: 500,
+        inflation: 651000, // Current value at round 3766, but is overwritten by `migrateOldMinterState`
+        inflationChange: 1000, // Set according to LIP-100
         targetBondingRate: 500000000,
-        // TODO: update `inflationCeiling` and `inflationFloor` values to match ones agreed by the community
-        inflationCeiling: 250000,
-        inflationFloor: 5000
+        inflationCeiling: 750000, // Set according to LIP-100
+        inflationFloor: 50000 // Set according to LIP-100
     },
     treasury: {
         minDelay: 0 // 0s initial proposal execution delay

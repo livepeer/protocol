@@ -20,7 +20,6 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
     )) as Minter
 
     const inflation = await minter.inflation()
-    const inflationChange = await minter.inflationChange()
     const targetBondingRate = await minter.targetBondingRate()
 
     await deploy("Minter", {
@@ -28,7 +27,7 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
         args: [
             controllerDeployment.address,
             inflation,
-            inflationChange,
+            config.minter.inflationChange,
             targetBondingRate,
             config.minter.inflationCeiling,
             config.minter.inflationFloor
