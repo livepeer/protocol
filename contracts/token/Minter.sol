@@ -134,7 +134,7 @@ contract Minter is Manager, IMinter {
      * @notice Set inflationCeiling. Only callable by Controller owner
      * @param _inflationCeiling New inflation cap as a percentage of total token supply
      */
-    function setinflationCeiling(uint256 _inflationCeiling) external onlyControllerOwner {
+    function setInflationCeiling(uint256 _inflationCeiling) external onlyControllerOwner {
         // Must be valid percentage
         require(MathUtils.validPerc(_inflationCeiling), "_inflationCeiling is invalid percentage");
         // Inflation ceiling should be higher or equal to the floor
@@ -149,7 +149,7 @@ contract Minter is Manager, IMinter {
      * @notice Set inflationFloor. Only callable by Controller owner
      * @param _inflationFloor New inflation floor as a percentage of total token supply
      */
-    function setinflationFloor(uint256 _inflationFloor) external onlyControllerOwner {
+    function setInflationFloor(uint256 _inflationFloor) external onlyControllerOwner {
         // Must be valid percentage
         require(MathUtils.validPerc(_inflationFloor), "_inflationFloor is invalid percentage");
         // Inflation floor should be lower or equal to the ceiling
