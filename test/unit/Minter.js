@@ -1105,7 +1105,7 @@ describe("Minter", () => {
 
         // Ensure the logic is unaffected by the target bonding rate
         for (const targetBondingRate of [400, 500, 600]) {
-            it("inflation is increased IF inflation < inflationFloor (independent from bonding rate)", async () => {
+            it(`inflation is increased IF inflation < inflationFloor (targetBondingRate=${targetBondingRate})`, async () => {
                 const startInflation = await minter.inflation()
 
                 // Set inflationFloor to current inflation rate + 1
@@ -1175,7 +1175,7 @@ describe("Minter", () => {
 
         // Ensure the logic is unaffected by the target bonding rate
         for (const targetBondingRate of [400, 500, 600]) {
-            it("inflation is decreased IF inflation > inflationCeiling (independent from bonding rate)", async () => {
+            it(`inflation is decreased IF inflation > inflationCeiling (targetBondingRate=${targetBondingRate})`, async () => {
                 const startInflation = await minter.inflation()
 
                 // Set inflationCeiling to current inflation rate - 1
@@ -1243,7 +1243,7 @@ describe("Minter", () => {
 
         // Ensure the logic is unaffected by the target bonding rate
         for (const targetBondingRate of [400, 500, 600]) {
-            it("inflation is maintained IF inflationFloor = inflationCeiling (independent from bonding rate)", async () => {
+            it(`inflation is maintained IF inflationFloor = inflationCeiling (targetBondingRate=${targetBondingRate})`, async () => {
                 const inflation = await minter.inflation()
                 await minter.setInflationFloor(inflation)
                 await minter.setInflationCeiling(inflation)
