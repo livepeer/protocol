@@ -27,8 +27,8 @@ describe("Minter", () => {
     const INFLATION = 26 * PERC_MULTIPLIER
     const INFLATION_CHANGE = 0.02 * PERC_MULTIPLIER
     const TARGET_BONDING_RATE = 50 * PERC_MULTIPLIER
-    const MAX_INFLATION = 28 * PERC_MULTIPLIER
-    const MIN_INFLATION = 20 * PERC_MULTIPLIER
+    const INFLATION_CEILING = 28 * PERC_MULTIPLIER
+    const INFLATION_FLOOR = 20 * PERC_MULTIPLIER
 
     before(async () => {
         signers = await ethers.getSigners()
@@ -42,8 +42,8 @@ describe("Minter", () => {
                     PERC_DIVISOR + 1,
                     INFLATION_CHANGE,
                     TARGET_BONDING_RATE,
-                    MAX_INFLATION,
-                    MIN_INFLATION
+                    INFLATION_CEILING,
+                    INFLATION_FLOOR
                 )
             ).to.be.revertedWith("_inflation is invalid percentage")
         })
@@ -55,8 +55,8 @@ describe("Minter", () => {
                     INFLATION,
                     PERC_DIVISOR + 1,
                     TARGET_BONDING_RATE,
-                    MAX_INFLATION,
-                    MIN_INFLATION
+                    INFLATION_CEILING,
+                    INFLATION_FLOOR
                 )
             ).to.be.revertedWith("_inflationChange is invalid percentage")
         })
@@ -68,8 +68,8 @@ describe("Minter", () => {
                     INFLATION,
                     INFLATION_CHANGE,
                     PERC_DIVISOR + 1,
-                    MAX_INFLATION,
-                    MIN_INFLATION
+                    INFLATION_CEILING,
+                    INFLATION_FLOOR
                 )
             ).to.be.revertedWith("_targetBondingRate is invalid percentage")
         })
@@ -82,7 +82,7 @@ describe("Minter", () => {
                     INFLATION_CHANGE,
                     TARGET_BONDING_RATE,
                     PERC_DIVISOR + 1,
-                    MIN_INFLATION
+                    INFLATION_FLOOR
                 )
             ).to.be.revertedWith("_inflationCeiling is invalid percentage")
         })
@@ -94,7 +94,7 @@ describe("Minter", () => {
                     INFLATION,
                     INFLATION_CHANGE,
                     TARGET_BONDING_RATE,
-                    MAX_INFLATION,
+                    INFLATION_CEILING,
                     PERC_DIVISOR + 1
                 )
             ).to.be.revertedWith("_inflationFloor is invalid percentage")
@@ -107,8 +107,8 @@ describe("Minter", () => {
                     INFLATION,
                     INFLATION_CHANGE,
                     TARGET_BONDING_RATE,
-                    MIN_INFLATION,
-                    MAX_INFLATION
+                    INFLATION_FLOOR,
+                    INFLATION_CEILING
                 )
             ).to.be.revertedWith("_inflationFloor must be <= _inflationCeiling")
         })
@@ -141,8 +141,8 @@ describe("Minter", () => {
                 INFLATION,
                 INFLATION_CHANGE,
                 TARGET_BONDING_RATE,
-                MAX_INFLATION,
-                MIN_INFLATION
+                INFLATION_CEILING,
+                INFLATION_FLOOR
             )
 
             assert.equal(
@@ -167,12 +167,12 @@ describe("Minter", () => {
             )
             assert.equal(
                 await minter.inflationCeiling(),
-                MAX_INFLATION,
+                INFLATION_CEILING,
                 "should set inflationCeiling"
             )
             assert.equal(
                 await minter.inflationFloor(),
-                MIN_INFLATION,
+                INFLATION_FLOOR,
                 "should set inflationFloor"
             )
         })
@@ -189,8 +189,8 @@ describe("Minter", () => {
             INFLATION,
             INFLATION_CHANGE,
             TARGET_BONDING_RATE,
-            MAX_INFLATION,
-            MIN_INFLATION
+            INFLATION_CEILING,
+            INFLATION_FLOOR
         )
     })
 
@@ -261,7 +261,7 @@ describe("Minter", () => {
         })
 
         it("should fail if provided inflationFloor is greater than inflationCeiling", async () => {
-            await expect(minter.setInflationFloor(MAX_INFLATION + 1)).to.be
+            await expect(minter.setInflationFloor(INFLATION_CEILING + 1)).to.be
                 .reverted
         })
 
@@ -286,11 +286,11 @@ describe("Minter", () => {
         })
 
         it("should set inflationFloor to the same value as inflationCeiling", async () => {
-            await minter.setInflationFloor(MAX_INFLATION)
+            await minter.setInflationFloor(INFLATION_CEILING)
 
             assert.equal(
                 await minter.inflationFloor(),
-                MAX_INFLATION,
+                INFLATION_CEILING,
                 "inflationFloor did not match inflationCeiling"
             )
         })
@@ -312,7 +312,7 @@ describe("Minter", () => {
         })
 
         it("should fail if provided inflationCeiling is less than inflationFloor", async () => {
-            await expect(minter.setInflationCeiling(MIN_INFLATION - 1)).to.be
+            await expect(minter.setInflationCeiling(INFLATION_FLOOR - 1)).to.be
                 .reverted
         })
 
@@ -327,11 +327,11 @@ describe("Minter", () => {
         })
 
         it("should set inflationCeiling to the same value as inflationFloor", async () => {
-            await minter.setInflationCeiling(MIN_INFLATION)
+            await minter.setInflationCeiling(INFLATION_FLOOR)
 
             assert.equal(
                 await minter.inflationCeiling(),
-                MIN_INFLATION,
+                INFLATION_FLOOR,
                 "inflationCeiling did not match inflationFloor"
             )
         })
