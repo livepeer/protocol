@@ -6169,6 +6169,38 @@ describe("BondingManager", () => {
                     "caller must be an active transcoder or rewardCaller"
                 )
             })
+
+            it("impossible to set the same RewardCaller twice", async () => {
+                const setRewardCallerTx = bondingManager
+                    .connect(transcoder)
+                    .setRewardCaller(nonTranscoder.address)
+                await expect(setRewardCallerTx)
+                    .to.emit(bondingManager, "RewardCallerSet")
+                    .withArgs(transcoder.address, nonTranscoder.address)
+
+                const setRewardCallerTx2 = bondingManager
+                    .connect(transcoder)
+                    .setRewardCaller(nonTranscoder.address)
+                await expect(setRewardCallerTx2).to.be.revertedWith(
+                    "reward caller is already set"
+                )
+            })
+
+            it("impossible to unset the RewardCaller for another transcoder", async () => {
+                const setRewardCallerTx = bondingManager
+                    .connect(transcoder)
+                    .setRewardCaller(nonTranscoder.address)
+                await expect(setRewardCallerTx)
+                    .to.emit(bondingManager, "RewardCallerSet")
+                    .withArgs(transcoder.address, nonTranscoder.address)
+
+                const unsetRewardCallerTx = bondingManager
+                    .connect(nonTranscoder)
+                    .unsetRewardCaller(nonTranscoder.address)
+                await expect(unsetRewardCallerTx).to.be.revertedWith(
+                    "only relevant transcoder can unset"
+                )
+            })
         })
     })
 
