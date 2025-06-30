@@ -192,12 +192,25 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     }
 
     /**
-     * @notice Set (or unset using 0 address) a reward caller for a transcoder
-     * @param _rewardCaller Address of a trusted reward caller
+     * @notice Set a reward caller for a transcoder
+     * @param _rewardCaller Address of the new reward caller
      */
     function setRewardCaller(address _rewardCaller) external whenSystemNotPaused {
+        address transcoder = rewardCallerToTranscoder[_rewardCaller];
+        require(transcoder == address(0), "reward caller is already set");
         rewardCallerToTranscoder[_rewardCaller] = msg.sender;
-        emit RewardCallerUpdated(_rewardCaller, msg.sender);
+        emit RewardCallerSet(msg.sender, _rewardCaller);
+    }
+
+    /**
+     * @notice Unset a reward caller for a transcoder
+     * @param _rewardCaller Address of the existing reward caller
+     */
+    function unsetRewardCaller(address _rewardCaller) external whenSystemNotPaused {
+        address transcoder = rewardCallerToTranscoder[_rewardCaller];
+        require(transcoder == msg.sender, "only relevant transcoder can unset");
+        rewardCallerToTranscoder[_rewardCaller] = address(0);
+        emit RewardCallerUnset(msg.sender, _rewardCaller);
     }
 
     /**
@@ -884,7 +897,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         address transcoderAddress = msg.sender;
         if (!isActiveTranscoder(transcoderAddress)) {
             transcoderAddress = rewardCallerToTranscoder[msg.sender];
-            require(isActiveTranscoder(transcoderAddress), "caller must be an active transcoder");
+            require(isActiveTranscoder(transcoderAddress), "caller must be an active transcoder or rewardCaller");
         }
         require(
             transcoders[transcoderAddress].lastRewardRound != currentRound,
