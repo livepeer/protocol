@@ -44,6 +44,7 @@ interface IBondingManager {
         uint256 startRound,
         uint256 endRound
     );
+    event RewardCallerUpdated(address indexed rewardCaller, address indexed transcoder);
 
     // Deprecated events
     // These event signatures can be used to construct the appropriate topic hashes to filter for past logs corresponding
