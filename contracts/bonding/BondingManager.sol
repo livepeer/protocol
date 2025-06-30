@@ -196,8 +196,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * @param _rewardCaller Address of the new reward caller
      */
     function setRewardCaller(address _rewardCaller) external whenSystemNotPaused {
-        address transcoder = rewardCallerToTranscoder[_rewardCaller];
-        require(transcoder == address(0), "reward caller is already set");
+        require(rewardCallerToTranscoder[_rewardCaller] == address(0), "reward caller is already set");
         rewardCallerToTranscoder[_rewardCaller] = msg.sender;
         emit RewardCallerSet(msg.sender, _rewardCaller);
     }
@@ -207,8 +206,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * @param _rewardCaller Address of the existing reward caller
      */
     function unsetRewardCaller(address _rewardCaller) external whenSystemNotPaused {
-        address transcoder = rewardCallerToTranscoder[_rewardCaller];
-        require(transcoder == msg.sender, "only relevant transcoder can unset");
+        require(rewardCallerToTranscoder[_rewardCaller] == msg.sender, "only relevant transcoder can unset");
         rewardCallerToTranscoder[_rewardCaller] = address(0);
         emit RewardCallerUnset(msg.sender, _rewardCaller);
     }
