@@ -6100,6 +6100,42 @@ describe("BondingManager", () => {
                 atCeilingTest("when above limit", 1500)
             })
         })
+
+        describe("reward delegation", () => {
+            const transcoderRewards = 1000
+
+            it("should allow a RewardCaller to call reward", async () => {
+                // Transcoder should be able to set a non-transcoder as a reward caller
+                const setRewardCallerTx = bondingManager
+                    .connect(transcoder)
+                    .setRewardCaller(nonTranscoder.address)
+                await expect(setRewardCallerTx)
+                    .to.emit(bondingManager, "RewardCallerUpdated")
+                    .withArgs(nonTranscoder.address, transcoder.address)
+
+                // Non-transcoder should now be able to call reward on behalf of the transcoder
+                const rewardTx = bondingManager.connect(nonTranscoder).reward()
+                await expect(rewardTx)
+                    .to.emit(bondingManager, "Reward")
+                    .withArgs(transcoder.address, transcoderRewards)
+            })
+
+            it("should allow a transcoder to call reward even if RewardCaller is set", async () => {
+                // Transcoder should be able to set a non-transcoder as a reward caller
+                const setRewardCallerTx = bondingManager
+                    .connect(transcoder)
+                    .setRewardCaller(nonTranscoder.address)
+                await expect(setRewardCallerTx)
+                    .to.emit(bondingManager, "RewardCallerUpdated")
+                    .withArgs(nonTranscoder.address, transcoder.address)
+
+                // Non-transcoder should now be able to call reward on behalf of the transcoder
+                const rewardTx = bondingManager.connect(transcoder).reward()
+                await expect(rewardTx)
+                    .to.emit(bondingManager, "Reward")
+                    .withArgs(transcoder.address, transcoderRewards)
+            })
+        })
     })
 
     describe("updateTranscoderWithFees", () => {
