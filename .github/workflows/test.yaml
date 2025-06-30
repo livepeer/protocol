@@ -47,6 +47,9 @@ jobs:
           name: ${{ github.event.repository.name }}
           token: ${{ secrets.CI_CODECOV_TOKEN }}
 
+      - name: Enforce test coverage threshold
+        run: yarn test:coverage:check
+
   editorconfig:
     name: Run editorconfig checker
     runs-on: ubuntu-latest
