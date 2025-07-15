@@ -564,6 +564,21 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // Current bonded amount
         uint256 currentBondedAmount = del.bondedAmount;
 
+        {
+            Transcoder storage t = transcoders[_to];
+            if (
+                t.activationRound <= currentRound &&
+                currentRound < t.deactivationRound &&
+                t.deactivationRound != MAX_FUTURE_ROUND &&
+                t.deactivationRound != 0
+            ) {
+                require(
+                    t.lastRewardRound == currentRound,
+                    "transcoder has not yet called reward for the current round"
+                );
+            }
+        }
+
         // Requirements for a third party caller that is not the L2Migrator
         if (msg.sender != _owner && msg.sender != l2Migrator()) {
             // Does not bond for the zero address

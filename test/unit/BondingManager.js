@@ -1709,14 +1709,31 @@ describe("BondingManager", () => {
                             )
                         })
 
+                        const bondToTranscoder1CallingReward = async () => {
+                            // A deactivated transcoder must call `reward` before it can be `bond`ed again
+                            const bond0ToTranscoder1 = () =>
+                                bondingManager
+                                    .connect(delegator)
+                                    .bond(0, transcoder1.address)
+
+                            await expect(
+                                bond0ToTranscoder1()
+                            ).to.be.revertedWith(
+                                "transcoder has not yet called reward for the current round"
+                            )
+
+                            await bondingManager.connect(transcoder1).reward()
+                            await bond0ToTranscoder1()
+                        }
+
                         const runTests = () => {
                             describe("old delegate is active transcoder", () => {
                                 it("should decrease next total stake", async () => {
                                     const startNextTotalStake =
                                         await bondingManager.nextRoundTotalActiveStake()
-                                    await bondingManager
-                                        .connect(delegator)
-                                        .bond(0, transcoder1.address)
+
+                                    await bondToTranscoder1CallingReward()
+
                                     const endNextTotalStake =
                                         await bondingManager.nextRoundTotalActiveStake()
                                     assert.equal(
@@ -1732,9 +1749,9 @@ describe("BondingManager", () => {
                                         await bondingManager.transcoderTotalStake(
                                             transcoder1.address
                                         )
-                                    await bondingManager
-                                        .connect(delegator)
-                                        .bond(0, transcoder1.address)
+
+                                    await bondToTranscoder1CallingReward()
+
                                     const pool =
                                         await bondingManager.getTranscoderEarningsPoolForRound(
                                             transcoder1.address,
@@ -1759,9 +1776,9 @@ describe("BondingManager", () => {
                                 it("should not change next total stake", async () => {
                                     const startNextTotalStake =
                                         await bondingManager.nextRoundTotalActiveStake()
-                                    await bondingManager
-                                        .connect(delegator)
-                                        .bond(0, transcoder1.address)
+
+                                    await bondToTranscoder1CallingReward()
+
                                     const endNextTotalStake =
                                         await bondingManager.nextRoundTotalActiveStake()
                                     assert.equal(
@@ -1777,9 +1794,9 @@ describe("BondingManager", () => {
                                         await bondingManager.transcoderTotalStake(
                                             transcoder1.address
                                         )
-                                    await bondingManager
-                                        .connect(delegator)
-                                        .bond(0, transcoder1.address)
+
+                                    await bondToTranscoder1CallingReward()
+
                                     const pool =
                                         await bondingManager.getTranscoderEarningsPoolForRound(
                                             transcoder1.address,
