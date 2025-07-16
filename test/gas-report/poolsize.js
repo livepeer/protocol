@@ -408,6 +408,7 @@ describe("transcoder pool size gas report", () => {
 
                 const unbondingLockID = 0
 
+                // A deactivated transcoder must call `reward` before it can be `rebond`ed again in the same round
                 const ensureRewardIsCalledAndThen = async (
                     delegate,
                     callback
