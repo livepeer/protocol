@@ -564,7 +564,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // Current bonded amount
         uint256 currentBondedAmount = del.bondedAmount;
 
-        _rewardWasCalled(_to);
+        _ensureNewlyDeactivatedTranscoderCalledReward(_to);
 
         // Requirements for a third party caller that is not the L2Migrator
         if (msg.sender != _owner && msg.sender != l2Migrator()) {
@@ -1593,7 +1593,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
         address delegate = del.delegateAddress;
 
-        _rewardWasCalled(delegate);
+        _ensureNewlyDeactivatedTranscoderCalledReward(delegate);
 
         increaseTotalStake(delegate, amount, _newPosPrev, _newPosNext);
         if (delegate != _delegator) {
@@ -1702,17 +1702,12 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     }
 
     /**
-     * A deactivated transcoder must call reward before it can be bonded again in the same round
+     * Ensure the transcoder called reward, if it was deactivated in the current round
      */
-    function _rewardWasCalled(address _transcoder) internal view {
+    function _ensureNewlyDeactivatedTranscoderCalledReward(address _transcoder) internal view {
         Transcoder storage t = transcoders[_transcoder];
         uint256 currentRound = roundsManager().currentRound();
-        if (
-            t.activationRound <= currentRound &&
-            currentRound < t.deactivationRound &&
-            t.deactivationRound != MAX_FUTURE_ROUND &&
-            t.deactivationRound != 0
-        ) {
+        if (isActiveTranscoder(_transcoder) && t.deactivationRound != MAX_FUTURE_ROUND) {
             require(t.lastRewardRound == currentRound, "transcoder has not yet called reward for the current round");
         }
     }

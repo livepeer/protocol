@@ -417,10 +417,21 @@ describe("PoolUpdatesWithHints", () => {
         // After (expected):
         // (transcoders[size - 4], 4) -> (transcoders[size - 3], 3) -> (transcoders[size - 2], 2) -> (transcoders[size - 1], 1)
 
+        // Ensure the transcoder called reward, if it was deactivated in the current round
+        const ensureRewardIsCalledAndThen = async (delegate, callback) => {
+            await expect(callback()).to.be.revertedWith(
+                "transcoder has not yet called reward for the current round"
+            )
+            await bondingManager.connect(delegate).reward()
+            return await callback()
+        }
+
         const txResNoHint = await (
-            await bondingManager
-                .connect(transcoders[size - 4])
-                .rebondFromUnbonded(transcoders[size - 4].address, 0)
+            await ensureRewardIsCalledAndThen(transcoders[size - 4], () =>
+                bondingManager
+                    .connect(transcoders[size - 4])
+                    .rebondFromUnbonded(transcoders[size - 4].address, 0)
+            )
         ).wait()
         assert.equal(
             await transcoderAtPoolPos(size - 4),
@@ -430,14 +441,16 @@ describe("PoolUpdatesWithHints", () => {
         await rpc.revert(testSnapshotId)
 
         const txResHint = await (
-            await bondingManager
-                .connect(transcoders[size - 4])
-                .rebondFromUnbondedWithHint(
-                    transcoders[size - 4].address,
-                    0,
-                    transcoders[size - 5].address,
-                    transcoders[size - 3].address
-                )
+            await ensureRewardIsCalledAndThen(transcoders[size - 4], () =>
+                bondingManager
+                    .connect(transcoders[size - 4])
+                    .rebondFromUnbondedWithHint(
+                        transcoders[size - 4].address,
+                        0,
+                        transcoders[size - 5].address,
+                        transcoders[size - 3].address
+                    )
+            )
         ).wait()
         assert.equal(
             await transcoderAtPoolPos(size - 4),
