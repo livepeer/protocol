@@ -17,7 +17,7 @@ contract GovernorBaseTest is Test {
     uint256 public testAccountCtr = 1;
 
     function newAddr() public returns (address) {
-        address addr = vm.addr(testAccountCtr);
+        address addr = CHEATS.addr(testAccountCtr);
         testAccountCtr++;
         return addr;
     }
@@ -36,7 +36,7 @@ contract GovernorBaseTest is Test {
         IGovernor.Update memory update = IGovernor.Update({ target: targets, value: values, data: data, nonce: 0 });
 
         // Impersonate Governor owner
-        vm.prank(GOVERNOR_OWNER);
+        CHEATS.prank(GOVERNOR_OWNER);
         GOVERNOR.stage(update, 0);
         GOVERNOR.execute(update);
     }
@@ -49,10 +49,10 @@ contract GovernorBaseTest is Test {
         IGovernor.Update memory update = IGovernor.Update({ target: _target, value: _value, data: _data, nonce: 0 });
 
         // Impersonate Governor owner
-        vm.startPrank(GOVERNOR_OWNER);
+        CHEATS.startPrank(GOVERNOR_OWNER);
         GOVERNOR.stage(update, 0);
         GOVERNOR.execute(update);
-        vm.stopPrank();
+        CHEATS.stopPrank();
     }
 
     function fetchContractInfo(bytes32 _targetId) internal view returns (address, bytes20) {

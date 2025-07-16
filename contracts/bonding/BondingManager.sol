@@ -1701,6 +1701,9 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         require(roundsManager().currentRoundInitialized(), "current round is not initialized");
     }
 
+    /**
+     * A deactivated transcoder must call reward before it can be bonded again in the same round
+     */
     function _rewardWasCalled(address _transcoder) internal view {
         Transcoder storage t = transcoders[_transcoder];
         uint256 currentRound = roundsManager().currentRound();

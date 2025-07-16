@@ -1710,7 +1710,7 @@ describe("BondingManager", () => {
                         })
 
                         const bondToTranscoder1CallingReward = async () => {
-                            // A deactivated transcoder must call `reward` before it can be `bond`ed again
+                            // A deactivated transcoder must call `reward` before it can be `bond`ed again in the same round
                             const bond0ToTranscoder1 = () =>
                                 bondingManager
                                     .connect(delegator)
