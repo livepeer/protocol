@@ -564,20 +564,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // Current bonded amount
         uint256 currentBondedAmount = del.bondedAmount;
 
-        {
-            Transcoder storage t = transcoders[_to];
-            if (
-                t.activationRound <= currentRound &&
-                currentRound < t.deactivationRound &&
-                t.deactivationRound != MAX_FUTURE_ROUND &&
-                t.deactivationRound != 0
-            ) {
-                require(
-                    t.lastRewardRound == currentRound,
-                    "transcoder has not yet called reward for the current round"
-                );
-            }
-        }
+        _rewardWasCalled(_to);
 
         // Requirements for a third party caller that is not the L2Migrator
         if (msg.sender != _owner && msg.sender != l2Migrator()) {
@@ -1606,6 +1593,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
         address delegate = del.delegateAddress;
 
+        _rewardWasCalled(delegate);
+
         increaseTotalStake(delegate, amount, _newPosPrev, _newPosNext);
         if (delegate != _delegator) {
             // Avoid double checkpointing of the transcoder if it's a self-rebond
@@ -1710,6 +1699,19 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
     function _currentRoundInitialized() internal view {
         require(roundsManager().currentRoundInitialized(), "current round is not initialized");
+    }
+
+    function _rewardWasCalled(address _transcoder) internal view {
+        Transcoder storage t = transcoders[_transcoder];
+        uint256 currentRound = roundsManager().currentRound();
+        if (
+            t.activationRound <= currentRound &&
+            currentRound < t.deactivationRound &&
+            t.deactivationRound != MAX_FUTURE_ROUND &&
+            t.deactivationRound != 0
+        ) {
+            require(t.lastRewardRound == currentRound, "transcoder has not yet called reward for the current round");
+        }
     }
 
     function _autoClaimEarnings(address _delegator) internal {
