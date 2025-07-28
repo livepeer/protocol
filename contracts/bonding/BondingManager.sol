@@ -564,7 +564,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // Current bonded amount
         uint256 currentBondedAmount = del.bondedAmount;
 
-        _ensureNewlyDeactivatedTranscoderCalledReward(_to);
+        _ensurePendingDeactivationTranscoderCalledReward(_to);
 
         // Requirements for a third party caller that is not the L2Migrator
         if (msg.sender != _owner && msg.sender != l2Migrator()) {
@@ -1593,7 +1593,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
         address delegate = del.delegateAddress;
 
-        _ensureNewlyDeactivatedTranscoderCalledReward(delegate);
+        _ensurePendingDeactivationTranscoderCalledReward(delegate);
 
         increaseTotalStake(delegate, amount, _newPosPrev, _newPosNext);
         if (delegate != _delegator) {
@@ -1704,7 +1704,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     /**
      * Ensure the transcoder called reward, if it was deactivated in the current round
      */
-    function _ensureNewlyDeactivatedTranscoderCalledReward(address _transcoder) internal view {
+    function _ensurePendingDeactivationTranscoderCalledReward(address _transcoder) internal view {
         Transcoder storage t = transcoders[_transcoder];
         uint256 currentRound = roundsManager().currentRound();
         if (isActiveTranscoder(_transcoder) && t.deactivationRound != MAX_FUTURE_ROUND) {
