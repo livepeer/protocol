@@ -3945,6 +3945,45 @@ describe("BondingManager", () => {
                 )
             })
 
+            it("should prevent griefing by ensuring (re-)bonding is not possible until reward is called", async () => {
+                // Evict transcoder from the round
+                await bondingManager
+                    .connect(transcoder1)
+                    .bond(1900, transcoder1.address)
+                await bondingManager.connect(transcoder1).transcoder(5, 10)
+                await bondingManager
+                    .connect(transcoder2)
+                    .bond(1800, transcoder2.address)
+                await bondingManager.connect(transcoder2).transcoder(5, 10)
+
+                // Not possible to rebond before reward call
+                await expect(
+                    bondingManager
+                        .connect(delegator)
+                        .rebond(unbondingLockID)
+                ).to.be.revertedWith(
+                    "transcoder has not yet called reward for the current round"
+                )
+
+                // Not possible to bond before reward call
+                await expect(
+                    bondingManager
+                        .connect(transcoder)
+                        .bond(1000, transcoder.address)
+                ).to.be.revertedWith(
+                    "transcoder has not yet called reward for the current round"
+                )
+
+                // Should not fail anymore after reward call
+                await bondingManager.connect(transcoder).reward()
+                await bondingManager
+                    .connect(delegator)
+                    .rebond(unbondingLockID)
+                await bondingManager
+                    .connect(transcoder)
+                    .bond(1000, transcoder.address)
+            })
+
             it("should evict when rebonding and pool is full", async () => {
                 await bondingManager
                     .connect(transcoder1)
