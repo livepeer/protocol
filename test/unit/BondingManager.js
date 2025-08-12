@@ -3958,9 +3958,7 @@ describe("BondingManager", () => {
 
                 // Not possible to rebond before reward call
                 await expect(
-                    bondingManager
-                        .connect(delegator)
-                        .rebond(unbondingLockID)
+                    bondingManager.connect(delegator).rebond(unbondingLockID)
                 ).to.be.revertedWith(
                     "transcoder has not yet called reward for the current round"
                 )
@@ -3976,9 +3974,7 @@ describe("BondingManager", () => {
 
                 // Should not fail anymore after reward call
                 await bondingManager.connect(transcoder).reward()
-                await bondingManager
-                    .connect(delegator)
-                    .rebond(unbondingLockID)
+                await bondingManager.connect(delegator).rebond(unbondingLockID)
                 await bondingManager
                     .connect(transcoder)
                     .bond(1000, transcoder.address)
