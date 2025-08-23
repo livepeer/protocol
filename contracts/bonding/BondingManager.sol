@@ -307,7 +307,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // Silence unused param compiler warning
         _round;
 
-        require(isRegisteredTranscoder(_transcoder), "transcoder must be registered");
+        require(isActiveTranscoder(_transcoder), "transcoder must be active");
 
         uint256 currentRound = roundsManager().currentRound();
 

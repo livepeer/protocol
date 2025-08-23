@@ -6173,7 +6173,25 @@ describe("BondingManager", () => {
                         [nonTranscoder.address, 1000, currentRound + 1]
                     )
                 )
-            ).to.be.revertedWith("transcoder must be registered")
+            ).to.be.revertedWith("transcoder must be active")
+        })
+
+        it("should fail if transcoder is registered but not active", async () => {
+            // nonTranscoder bonds to itself and becomes registered but not active until next round
+            await bondingManager
+                .connect(nonTranscoder)
+                .bond(1000, nonTranscoder.address)
+
+            await expect(
+                fixture.ticketBroker.execute(
+                    bondingManager.address,
+                    functionEncodedABI(
+                        "updateTranscoderWithFees(address,uint256,uint256)",
+                        ["address", "uint256", "uint256"],
+                        [nonTranscoder.address, 1000, currentRound + 1]
+                    )
+                )
+            ).to.be.revertedWith("transcoder must be active")
         })
 
         it("should update transcoder's pendingFees when lastActiveStakeUpdateRound > currentRound when stake increases before function call", async () => {
