@@ -103,7 +103,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     uint256 public treasuryBalanceCeiling;
 
     // Allow reward() calls from one pre-defined address per transcoder
-    mapping(address => address) private transcoderToRewardCaller;
+    mapping(address => address) public transcoderToRewardCaller;
 
     // Check if sender is TicketBroker
     modifier onlyTicketBroker() {
