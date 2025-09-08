@@ -102,8 +102,11 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     // If the balance of the treasury in LPT is above this value, automatic treasury contributions will halt.
     uint256 public treasuryBalanceCeiling;
 
-    // Allow reward() calls by pre-defined set of addresses
-    mapping(address => address) private rewardCallerToTranscoder;
+    // Transcoder addresses proposed by the RewardCallers
+    mapping(address => address) public rewardCallerToTranscoderProposed;
+
+    // Transcoder addresses confirmed by the transcoders
+    mapping(address => address) public rewardCallerToTranscoderConfirmed;
 
     // Check if sender is TicketBroker
     modifier onlyTicketBroker() {
@@ -192,23 +195,36 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     }
 
     /**
-     * @notice Set a reward caller for a transcoder
-     * @param _rewardCaller Address of the new reward caller
+     * @notice Propose a transcoder for a reward caller
+     * @param _transcoder Address of the transcoder
+     * @dev Only callable by the RewardCaller
      */
-    function setRewardCaller(address _rewardCaller) external whenSystemNotPaused {
-        require(rewardCallerToTranscoder[_rewardCaller] == address(0), "reward caller is already set");
-        rewardCallerToTranscoder[_rewardCaller] = msg.sender;
-        emit RewardCallerSet(msg.sender, _rewardCaller);
+    function proposeRewardCaller(address _transcoder) external whenSystemNotPaused {
+        rewardCallerToTranscoderProposed[msg.sender] = _transcoder;
+        emit RewardCallerProposed(_transcoder, msg.sender);
     }
 
     /**
-     * @notice Unset a reward caller for a transcoder
-     * @param _rewardCaller Address of the existing reward caller
+     * @notice Confirm a reward caller for a transcoder
+     * @param _rewardCaller Address of the new reward caller
+     * @dev Only callable by the transcoder, after RewardCaller was proposed via proposeRewardCaller
      */
-    function unsetRewardCaller(address _rewardCaller) external whenSystemNotPaused {
-        require(rewardCallerToTranscoder[_rewardCaller] == msg.sender, "only relevant transcoder can unset");
-        rewardCallerToTranscoder[_rewardCaller] = address(0);
-        emit RewardCallerUnset(msg.sender, _rewardCaller);
+    function confirmRewardCaller(address _rewardCaller) external whenSystemNotPaused {
+        require(rewardCallerToTranscoderProposed[_rewardCaller] == msg.sender, "reward caller was not proposed");
+        rewardCallerToTranscoderProposed[_rewardCaller] = address(0);
+        rewardCallerToTranscoderConfirmed[_rewardCaller] = msg.sender;
+        emit RewardCallerConfirmed(msg.sender, _rewardCaller);
+    }
+
+    /**
+     * @notice Remove a reward caller for a transcoder
+     * @param _rewardCaller Address of the existing reward caller
+     * @dev Only callable by the transcoder, when the _rewardCaller was already proposed
+     */
+    function removeRewardCaller(address _rewardCaller) external whenSystemNotPaused {
+        require(rewardCallerToTranscoderConfirmed[_rewardCaller] == msg.sender, "only relevant transcoder can unset");
+        rewardCallerToTranscoderConfirmed[_rewardCaller] = address(0);
+        emit RewardCallerRemoved(msg.sender, _rewardCaller);
     }
 
     /**
@@ -888,21 +904,20 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         public
         whenSystemNotPaused
         currentRoundInitialized
-        autoCheckpoint(msg.sender)
     {
         uint256 currentRound = roundsManager().currentRound();
 
-        address transcoderAddress = msg.sender;
-        if (!isActiveTranscoder(transcoderAddress)) {
-            transcoderAddress = rewardCallerToTranscoder[msg.sender];
-            require(isActiveTranscoder(transcoderAddress), "caller must be an active transcoder or rewardCaller");
+        address transcoder = msg.sender;
+        if (!isActiveTranscoder(transcoder)) {
+            transcoder = rewardCallerToTranscoderConfirmed[msg.sender];
+            require(isActiveTranscoder(transcoder), "caller must be an active transcoder or rewardCaller");
         }
         require(
-            transcoders[transcoderAddress].lastRewardRound != currentRound,
+            transcoders[transcoder].lastRewardRound != currentRound,
             "caller has already called reward for the current round"
         );
 
-        Transcoder storage t = transcoders[transcoderAddress];
+        Transcoder storage t = transcoders[transcoder];
         EarningsPool.Data storage earningsPool = t.earningsPoolPerRound[currentRound];
 
         // Set last round that transcoder called reward
@@ -935,17 +950,20 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
             mtr.trustedTransferTokens(trsry, treasuryRewards);
 
-            emit TreasuryReward(transcoderAddress, trsry, treasuryRewards);
+            emit TreasuryReward(transcoder, trsry, treasuryRewards);
         }
 
         uint256 transcoderRewards = totalRewardTokens.sub(treasuryRewards);
 
-        updateTranscoderWithRewards(transcoderAddress, transcoderRewards, currentRound, _newPosPrev, _newPosNext);
+        updateTranscoderWithRewards(transcoder, transcoderRewards, currentRound, _newPosPrev, _newPosNext);
 
         // Set last round that transcoder called reward
         t.lastRewardRound = currentRound;
 
-        emit Reward(transcoderAddress, transcoderRewards);
+        emit Reward(transcoder, transcoderRewards);
+
+        // Manual execution of the `autoCheckpoint` modifier due to conditional nature of `transcoder`
+        _checkpointBondingState(transcoder, delegators[transcoder], transcoders[transcoder]);
     }
 
     /**

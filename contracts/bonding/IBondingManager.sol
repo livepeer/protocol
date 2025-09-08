@@ -44,8 +44,9 @@ interface IBondingManager {
         uint256 startRound,
         uint256 endRound
     );
-    event RewardCallerSet(address indexed transcoder, address indexed rewardCaller);
-    event RewardCallerUnset(address indexed transcoder, address indexed rewardCaller);
+    event RewardCallerProposed(address indexed transcoder, address indexed rewardCaller);
+    event RewardCallerConfirmed(address indexed transcoder, address indexed rewardCaller);
+    event RewardCallerRemoved(address indexed transcoder, address indexed rewardCaller);
 
     // Deprecated events
     // These event signatures can be used to construct the appropriate topic hashes to filter for past logs corresponding
