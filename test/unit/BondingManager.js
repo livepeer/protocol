@@ -6169,6 +6169,25 @@ describe("BondingManager", () => {
                     "caller must be a reward caller set by the transcoder"
                 )
             })
+
+            it("should always checkpoint the reward recipient, not the RewardCaller", async () => {
+                await bondingManager
+                    .connect(transcoder)
+                    .setRewardCaller(nonTranscoder.address)
+                const rewardCallerTx = await bondingManager
+                    .connect(nonTranscoder)
+                    .rewardForTranscoder(transcoder.address)
+
+                await expectCheckpoints(fixture, rewardCallerTx, {
+                    account: transcoder.address,
+                    startRound: currentRound + 2,
+                    bondedAmount: 1000,
+                    delegateAddress: transcoder.address,
+                    delegatedAmount: 2000,
+                    lastClaimRound: currentRound,
+                    lastRewardRound: currentRound + 1
+                })
+            })
         })
     })
 
