@@ -889,13 +889,13 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
     /**
      * @notice Mint token rewards for an active transcoder and its delegators and update the transcoder pool using an optional list hint if needed
-     * @dev If the caller is in the transcoder pool, the caller can provide an optional hint for its insertion position in the
+     * @dev If the `_transcoder` is in the transcoder pool, the caller can provide an optional hint for its insertion position in the
      * pool via the `_newPosPrev` and `_newPosNext` params. A linear search will be executed starting at the hint to find the correct position.
      * In the best case, the hint is the correct position so no search is executed. See SortedDoublyLL.sol for details on list hints
      * @dev Only callable by trusted rewardCaller
      * @param _transcoder Address of the transcoder on behalf of which the reward is called
-     * @param _newPosPrev Address of previous transcoder in pool if the caller is in the pool
-     * @param _newPosNext Address of next transcoder in pool if the caller is in the pool
+     * @param _newPosPrev Address of previous transcoder in pool if the `_transcoder` is in the pool
+     * @param _newPosNext Address of previous transcoder in pool if the `_transcoder` is in the pool
      */
     function rewardForTranscoderWithHint(
         address _transcoder,
@@ -909,7 +909,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
     /**
      * @notice Mint token rewards for an active transcoder and its delegators and update the transcoder pool using an optional list hint if needed
-     * @dev If the caller is in the transcoder pool, the caller can provide an optional hint for its insertion position in the
+     * @dev If the `_transcoder` is in the transcoder pool, the caller can provide an optional hint for its insertion position in the
      * pool via the `_newPosPrev` and `_newPosNext` params. A linear search will be executed starting at the hint to find the correct position.
      * In the best case, the hint is the correct position so no search is executed. See SortedDoublyLL.sol for details on list hints
      * @param _transcoder Address of the transcoder on behalf of which the reward is called
