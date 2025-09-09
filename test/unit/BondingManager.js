@@ -5474,7 +5474,7 @@ describe("BondingManager", () => {
         it("should fail if caller is not a transcoder", async () => {
             await expect(
                 bondingManager.connect(nonTranscoder).reward()
-            ).to.be.revertedWith("transcoder must be an active")
+            ).to.be.revertedWith("transcoder must be active")
         })
 
         it("should fail if caller is registered but not an active transcoder yet in the current round", async () => {
@@ -5484,7 +5484,7 @@ describe("BondingManager", () => {
             )
             await expect(
                 bondingManager.connect(transcoder).reward()
-            ).to.be.revertedWith("transcoder must be an active")
+            ).to.be.revertedWith("transcoder must be active")
         })
 
         it("should fail if caller already called reward during the current round", async () => {

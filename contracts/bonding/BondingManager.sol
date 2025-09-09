@@ -923,7 +923,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     ) private whenSystemNotPaused currentRoundInitialized autoCheckpoint(_transcoder) {
         uint256 currentRound = roundsManager().currentRound();
 
-        require(isActiveTranscoder(_transcoder), "transcoder must be an active");
+        require(isActiveTranscoder(_transcoder), "transcoder must be active");
         require(
             transcoders[_transcoder].lastRewardRound != currentRound,
             "caller has already called reward for the current round"
