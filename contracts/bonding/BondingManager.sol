@@ -910,7 +910,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         address transcoder = msg.sender;
         if (!isActiveTranscoder(transcoder)) {
             transcoder = rewardCallerToTranscoderConfirmed[msg.sender];
-            require(isActiveTranscoder(transcoder), "caller must be an active transcoder or rewardCaller");
+            require(isActiveTranscoder(transcoder), "transcoder must be active");
         }
         require(
             transcoders[transcoder].lastRewardRound != currentRound,
