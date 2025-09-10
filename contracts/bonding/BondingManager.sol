@@ -913,8 +913,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * pool via the `_newPosPrev` and `_newPosNext` params. A linear search will be executed starting at the hint to find the correct position.
      * In the best case, the hint is the correct position so no search is executed. See SortedDoublyLL.sol for details on list hints
      * @param _transcoder Address of the transcoder on behalf of which the reward is called
-     * @param _newPosPrev Address of previous transcoder in pool if the caller is in the pool
-     * @param _newPosNext Address of next transcoder in pool if the caller is in the pool
+     * @param _newPosPrev Address of previous transcoder in pool if `_transcoder` is in the pool
+     * @param _newPosNext Address of next transcoder in pool if `_transcoder` is in the pool
      */
     function _rewardWithHint(
         address _transcoder,
