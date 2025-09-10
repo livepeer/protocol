@@ -211,6 +211,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      */
     function confirmRewardCaller(address _rewardCaller) external whenSystemNotPaused {
         require(rewardCallerToTranscoderProposed[_rewardCaller] == msg.sender, "reward caller was not proposed");
+        require(rewardCallerToTranscoderConfirmed[_rewardCaller] == address(0), "reward caller is already set");
         rewardCallerToTranscoderProposed[_rewardCaller] = address(0);
         rewardCallerToTranscoderConfirmed[_rewardCaller] = msg.sender;
         emit RewardCallerConfirmed(msg.sender, _rewardCaller);
@@ -222,7 +223,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * @dev Only callable by the transcoder, when the _rewardCaller was already proposed
      */
     function removeRewardCaller(address _rewardCaller) external whenSystemNotPaused {
-        require(rewardCallerToTranscoderConfirmed[_rewardCaller] == msg.sender, "only relevant transcoder can unset");
+        require(rewardCallerToTranscoderConfirmed[_rewardCaller] == msg.sender, "only relevant transcoder can remove");
         rewardCallerToTranscoderConfirmed[_rewardCaller] = address(0);
         emit RewardCallerRemoved(msg.sender, _rewardCaller);
     }

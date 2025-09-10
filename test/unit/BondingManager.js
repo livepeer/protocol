@@ -5414,12 +5414,14 @@ describe("BondingManager", () => {
 
     describe("reward", () => {
         let transcoder
+        let transcoder2
         let nonTranscoder
         let currentRound
 
         beforeEach(async () => {
             transcoder = signers[0]
-            nonTranscoder = signers[1]
+            transcoder2 = signers[1]
+            nonTranscoder = signers[2]
             currentRound = 100
 
             await fixture.roundsManager.setMockBool(
@@ -6208,7 +6210,26 @@ describe("BondingManager", () => {
                     .connect(nonTranscoder)
                     .removeRewardCaller(nonTranscoder.address)
                 await expect(removeRewardCallerTx).to.be.revertedWith(
-                    "only relevant transcoder can unset"
+                    "only relevant transcoder can remove"
+                )
+            })
+
+            it("impossible to confirm RewardCaller for a second transcoder", async () => {
+                await bondingManager
+                    .connect(nonTranscoder)
+                    .proposeTranscoderForRewardCaller(transcoder.address)
+                await bondingManager
+                    .connect(transcoder)
+                    .confirmRewardCaller(nonTranscoder.address)
+                await bondingManager
+                    .connect(nonTranscoder)
+                    .proposeTranscoderForRewardCaller(transcoder2.address)
+
+                const removeRewardCallerTx = bondingManager
+                    .connect(transcoder2)
+                    .confirmRewardCaller(nonTranscoder.address)
+                await expect(removeRewardCallerTx).to.be.revertedWith(
+                    "reward caller is already set"
                 )
             })
 
