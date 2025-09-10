@@ -105,7 +105,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     // Transcoder addresses proposed by the RewardCallers
     mapping(address => address) public rewardCallerToTranscoderProposed;
 
-    // Transcoder addresses confirmed by the transcoders
+    // RewardCaller addresses confirmed by the transcoders
     mapping(address => address) public rewardCallerToTranscoderConfirmed;
 
     // Check if sender is TicketBroker
