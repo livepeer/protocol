@@ -6170,6 +6170,41 @@ describe("BondingManager", () => {
                 )
             })
 
+            it("should fail if system is paused", async () => {
+                await bondingManager
+                    .connect(transcoder)
+                    .setRewardCaller(nonTranscoder.address)
+
+                await fixture.controller.pause()
+                const setRewardCallerTx = bondingManager
+                    .connect(transcoder)
+                    .setRewardCaller(nonTranscoder.address)
+                await expect(setRewardCallerTx).to.be.revertedWith(
+                    "system is paused"
+                )
+
+                const rewardTx = bondingManager
+                    .connect(nonTranscoder)
+                    .rewardForTranscoder(transcoder.address)
+                await expect(rewardTx).to.be.revertedWith("system is paused")
+            })
+
+            it("should fail if current round is not initialized", async () => {
+                await bondingManager
+                    .connect(transcoder)
+                    .setRewardCaller(nonTranscoder.address)
+                await fixture.roundsManager.setMockBool(
+                    functionSig("currentRoundInitialized()"),
+                    false
+                )
+                const rewardTx = bondingManager
+                    .connect(nonTranscoder)
+                    .rewardForTranscoder(transcoder.address)
+                await expect(rewardTx).to.be.revertedWith(
+                    "current round is not initialized"
+                )
+            })
+
             it("should always checkpoint the reward recipient, not the RewardCaller", async () => {
                 await bondingManager
                     .connect(transcoder)
