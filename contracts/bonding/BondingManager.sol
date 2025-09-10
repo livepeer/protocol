@@ -199,7 +199,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * @param _transcoder Address of the transcoder
      * @dev Only callable by the RewardCaller
      */
-    function proposeRewardCaller(address _transcoder) external whenSystemNotPaused {
+    function proposeTranscoderForRewardCaller(address _transcoder) external whenSystemNotPaused {
         rewardCallerToTranscoderProposed[msg.sender] = _transcoder;
         emit RewardCallerProposed(_transcoder, msg.sender);
     }
@@ -207,7 +207,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     /**
      * @notice Confirm a reward caller for a transcoder
      * @param _rewardCaller Address of the new reward caller
-     * @dev Only callable by the transcoder, after RewardCaller was proposed via proposeRewardCaller
+     * @dev Only callable by the transcoder, after RewardCaller was proposed via proposeTranscoderForRewardCaller
      */
     function confirmRewardCaller(address _rewardCaller) external whenSystemNotPaused {
         require(rewardCallerToTranscoderProposed[_rewardCaller] == msg.sender, "reward caller was not proposed");

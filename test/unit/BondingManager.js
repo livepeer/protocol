@@ -6105,10 +6105,10 @@ describe("BondingManager", () => {
             const transcoderRewards = 1000
 
             it("should allow a transcoder to call reward even if RewardCaller is set", async () => {
-                const proposeRewardCallerTx = bondingManager
+                const proposeTranscoderForRewardCallerTx = bondingManager
                     .connect(nonTranscoder)
-                    .proposeRewardCaller(transcoder.address)
-                await expect(proposeRewardCallerTx)
+                    .proposeTranscoderForRewardCaller(transcoder.address)
+                await expect(proposeTranscoderForRewardCallerTx)
                     .to.emit(bondingManager, "RewardCallerProposed")
                     .withArgs(transcoder.address, nonTranscoder.address)
                 const confirmRewardCallerTx = bondingManager
@@ -6145,7 +6145,7 @@ describe("BondingManager", () => {
             it("should allow a RewardCaller to call reward only after confirmation", async () => {
                 await bondingManager
                     .connect(nonTranscoder)
-                    .proposeRewardCaller(transcoder.address)
+                    .proposeTranscoderForRewardCaller(transcoder.address)
                 const rewardTx1 = bondingManager.connect(nonTranscoder).reward()
                 await expect(rewardTx1).to.be.revertedWith(
                     "transcoder must be active"
@@ -6175,7 +6175,7 @@ describe("BondingManager", () => {
             it("should not allow a RewardCaller to be confirmed more than once", async () => {
                 await bondingManager
                     .connect(nonTranscoder)
-                    .proposeRewardCaller(transcoder.address)
+                    .proposeTranscoderForRewardCaller(transcoder.address)
                 await bondingManager
                     .connect(transcoder)
                     .confirmRewardCaller(nonTranscoder.address)
@@ -6199,7 +6199,7 @@ describe("BondingManager", () => {
             it("impossible to remove the RewardCaller for another transcoder", async () => {
                 await bondingManager
                     .connect(nonTranscoder)
-                    .proposeRewardCaller(transcoder.address)
+                    .proposeTranscoderForRewardCaller(transcoder.address)
                 await bondingManager
                     .connect(transcoder)
                     .confirmRewardCaller(nonTranscoder.address)
@@ -6215,7 +6215,7 @@ describe("BondingManager", () => {
             it("should always checkpoint the reward recipient, not the RewardCaller", async () => {
                 await bondingManager
                     .connect(nonTranscoder)
-                    .proposeRewardCaller(transcoder.address)
+                    .proposeTranscoderForRewardCaller(transcoder.address)
                 await bondingManager
                     .connect(transcoder)
                     .confirmRewardCaller(nonTranscoder.address)
