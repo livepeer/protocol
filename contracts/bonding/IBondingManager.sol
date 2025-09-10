@@ -74,6 +74,16 @@ interface IBondingManager {
 
     function setCurrentRoundTotalActiveStake() external;
 
+    function proposeTranscoderForRewardCaller(address _transcoder) external;
+
+    function confirmRewardCaller(address _rewardCaller) external;
+
+    function removeRewardCaller(address _rewardCaller) external;
+
+    function reward() external;
+
+    function rewardWithHint(address _newPosPrev, address _newPosNext) external;
+
     // Public functions
     function getTranscoderPoolSize() external view returns (uint256);
 
