@@ -341,12 +341,12 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
         uint256 totalStake = earningsPool.totalStake;
         if (prevEarningsPool.cumulativeRewardFactor == 0 && lastRewardRound == currentRound) {
-            // if transcoder called reward for 'currentRound' but not for 'currentRound - 1' (missed reward call)
-            // retroactively calculate what its cumulativeRewardFactor would have been for 'currentRound - 1' (cfr. previous lastRewardRound for transcoder)
-            // based on rewards for currentRound
+            // if transcoder called reward for 'currentRound' but skipped 'currentRound - 1' (missed reward call)
+            // retroactively estimate what the cumulativeRewardFactor would have been for 'currentRound - 1'
+            // based on the current round's mintable rewards and stake proportions.
             IMinter mtr = minter();
             uint256 rewards = PreciseMathUtils.percOf(
-                mtr.currentMintableTokens().add(mtr.currentMintedTokens()),
+                mtr.currentMintableTokens(),
                 totalStake,
                 currentRoundTotalActiveStake
             );

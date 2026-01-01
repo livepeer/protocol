@@ -8291,10 +8291,6 @@ describe("BondingManager", () => {
             )
             await fixture.minter.setMockUint256(
                 functionSig("currentMintableTokens()"),
-                0
-            )
-            await fixture.minter.setMockUint256(
-                functionSig("currentMintedTokens()"),
                 1000
             )
             await fixture.roundsManager.execute(
