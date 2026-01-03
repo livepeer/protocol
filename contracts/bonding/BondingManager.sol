@@ -15,16 +15,22 @@ import "../snapshots/IMerkleSnapshot.sol";
 import "./IBondingVotes.sol";
 
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 
 /**
  * @title BondingManager
  * @notice Manages bonding, transcoder and rewards/fee accounting related operations of the Livepeer protocol
  */
-contract BondingManager is ManagerProxyTarget, IBondingManager {
+contract BondingManager is ManagerProxyTarget, IBondingManager, EIP712 {
     using SafeMath for uint256;
     using SortedDoublyLL for SortedDoublyLL.Data;
     using EarningsPool for EarningsPool.Data;
     using EarningsPoolLIP36 for EarningsPool.Data;
+    using ECDSA for bytes32;
+
+    bytes32 private constant REWARD_CALLER_TYPEHASH =
+        keccak256("RewardCallerApproval(address rewardCaller,address transcoder)");
 
     // Constants
     // Occurances are replaced at compile time
@@ -148,7 +154,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * - setNumActiveTranscoders()
      * @param _controller Address of Controller that this contract will be registered with
      */
-    constructor(address _controller) Manager(_controller) {}
+    constructor(address _controller) Manager(_controller) EIP712("BondingManager", "1") {}
 
     /**
      * @notice Set unbonding period. Only callable by Controller owner
@@ -194,9 +200,14 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     /**
      * @notice Set a reward caller for a transcoder
      * @param _rewardCaller Address of the new reward caller
+     * @param _sig Signature from _rewardCaller approving msg.sender
      */
-    function setRewardCaller(address _rewardCaller) external whenSystemNotPaused {
+    function setRewardCaller(address _rewardCaller, bytes calldata _sig) external whenSystemNotPaused {
         require(rewardCallerToTranscoder[_rewardCaller] == address(0), "reward caller is already set");
+        bytes32 structHash = keccak256(abi.encode(REWARD_CALLER_TYPEHASH, _rewardCaller, msg.sender));
+        bytes32 digest = _hashTypedDataV4(structHash);
+        address signer = ECDSA.recover(digest, _sig);
+        require(signer == _rewardCaller, "invalid reward caller signature");
         rewardCallerToTranscoder[_rewardCaller] = msg.sender;
         emit RewardCallerSet(msg.sender, _rewardCaller);
     }
@@ -210,6 +221,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         rewardCallerToTranscoder[_rewardCaller] = address(0);
         emit RewardCallerUnset(msg.sender, _rewardCaller);
     }
+
 
     /**
      * @notice Sets commission rates as a transcoder and if the caller is not in the transcoder pool tries to add it
