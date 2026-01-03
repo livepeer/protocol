@@ -5474,7 +5474,9 @@ describe("BondingManager", () => {
         it("should fail if caller is not a transcoder", async () => {
             await expect(
                 bondingManager.connect(nonTranscoder).reward()
-            ).to.be.revertedWith("caller must be an active transcoder")
+            ).to.be.revertedWith(
+                "caller must be an active transcoder or rewardCaller"
+            )
         })
 
         it("should fail if caller is registered but not an active transcoder yet in the current round", async () => {
@@ -5484,7 +5486,9 @@ describe("BondingManager", () => {
             )
             await expect(
                 bondingManager.connect(transcoder).reward()
-            ).to.be.revertedWith("caller must be an active transcoder")
+            ).to.be.revertedWith(
+                "caller must be an active transcoder or rewardCaller"
+            )
         })
 
         it("should fail if caller already called reward during the current round", async () => {
@@ -6098,6 +6102,150 @@ describe("BondingManager", () => {
 
                 atCeilingTest("when at limit", 1000)
                 atCeilingTest("when above limit", 1500)
+            })
+        })
+
+        describe("reward delegation", () => {
+            const transcoderRewards = 1000
+
+            it("should only allow active transcoders to set a RewardCaller", async () => {
+                const registeredTranscoder = signers[2]
+                await bondingManager
+                    .connect(registeredTranscoder)
+                    .bond(1000, registeredTranscoder.address)
+                await bondingManager
+                    .connect(registeredTranscoder)
+                    .transcoder(5, 10)
+
+                const registeredTranscoderTx = bondingManager
+                    .connect(registeredTranscoder)
+                    .setRewardCaller(nonTranscoder.address)
+
+                await expect(registeredTranscoderTx).to.be.revertedWith(
+                    "caller must be an active transcoder"
+                )
+
+                const activeTranscoderTx = bondingManager
+                    .connect(transcoder)
+                    .setRewardCaller(nonTranscoder.address)
+
+                await expect(activeTranscoderTx)
+                    .to.emit(bondingManager, "RewardCallerSet")
+                    .withArgs(transcoder.address, nonTranscoder.address)
+            })
+
+            it("should allow a transcoder to call reward even if RewardCaller is set", async () => {
+                const setRewardCallerTx = bondingManager
+                    .connect(transcoder)
+                    .setRewardCaller(nonTranscoder.address)
+                await expect(setRewardCallerTx)
+                    .to.emit(bondingManager, "RewardCallerSet")
+                    .withArgs(transcoder.address, nonTranscoder.address)
+
+                const rewardTx = bondingManager.connect(transcoder).reward()
+                await expect(rewardTx)
+                    .to.emit(bondingManager, "Reward")
+                    .withArgs(transcoder.address, transcoderRewards)
+
+                await fixture.roundsManager.setMockUint256(
+                    functionSig("currentRound()"),
+                    currentRound + 3
+                )
+
+                const unsetRewardCallerTx = bondingManager
+                    .connect(transcoder)
+                    .unsetRewardCaller(nonTranscoder.address)
+                await expect(unsetRewardCallerTx)
+                    .to.emit(bondingManager, "RewardCallerUnset")
+                    .withArgs(transcoder.address, nonTranscoder.address)
+
+                const rewardTx2 = bondingManager.connect(transcoder).reward()
+                await expect(rewardTx2)
+                    .to.emit(bondingManager, "Reward")
+                    .withArgs(transcoder.address, transcoderRewards)
+            })
+
+            it("should allow a RewardCaller to call reward", async () => {
+                const setRewardCallerTx = bondingManager
+                    .connect(transcoder)
+                    .setRewardCaller(nonTranscoder.address)
+                await expect(setRewardCallerTx)
+                    .to.emit(bondingManager, "RewardCallerSet")
+                    .withArgs(transcoder.address, nonTranscoder.address)
+
+                const rewardTx = bondingManager.connect(nonTranscoder).reward()
+                await expect(rewardTx)
+                    .to.emit(bondingManager, "Reward")
+                    .withArgs(transcoder.address, transcoderRewards)
+
+                await fixture.roundsManager.setMockUint256(
+                    functionSig("currentRound()"),
+                    currentRound + 3
+                )
+
+                const unsetRewardCallerTx = bondingManager
+                    .connect(transcoder)
+                    .unsetRewardCaller(nonTranscoder.address)
+                await expect(unsetRewardCallerTx)
+                    .to.emit(bondingManager, "RewardCallerUnset")
+                    .withArgs(transcoder.address, nonTranscoder.address)
+
+                const rewardTx2 = bondingManager.connect(nonTranscoder).reward()
+                await expect(rewardTx2).to.be.revertedWith(
+                    "caller must be an active transcoder or rewardCaller"
+                )
+            })
+
+            it("impossible to set the same RewardCaller twice", async () => {
+                const setRewardCallerTx = bondingManager
+                    .connect(transcoder)
+                    .setRewardCaller(nonTranscoder.address)
+                await expect(setRewardCallerTx)
+                    .to.emit(bondingManager, "RewardCallerSet")
+                    .withArgs(transcoder.address, nonTranscoder.address)
+
+                const setRewardCallerTx2 = bondingManager
+                    .connect(transcoder)
+                    .setRewardCaller(nonTranscoder.address)
+                await expect(setRewardCallerTx2).to.be.revertedWith(
+                    "reward caller is already set"
+                )
+            })
+
+            it("impossible to unset the RewardCaller for another transcoder", async () => {
+                const setRewardCallerTx = bondingManager
+                    .connect(transcoder)
+                    .setRewardCaller(nonTranscoder.address)
+                await expect(setRewardCallerTx)
+                    .to.emit(bondingManager, "RewardCallerSet")
+                    .withArgs(transcoder.address, nonTranscoder.address)
+
+                const unsetRewardCallerTx = bondingManager
+                    .connect(nonTranscoder)
+                    .unsetRewardCaller(nonTranscoder.address)
+                await expect(unsetRewardCallerTx).to.be.revertedWith(
+                    "only relevant transcoder can unset"
+                )
+            })
+
+            it("should always checkpoint the reward recipient, not the RewardCaller", async () => {
+                await bondingManager
+                    .connect(transcoder)
+                    .setRewardCaller(nonTranscoder.address)
+
+                const rewardCallerTx = await bondingManager
+                    .connect(nonTranscoder)
+                    .reward()
+
+                await expectCheckpoints(fixture, rewardCallerTx, {
+                    account: transcoder.address,
+                    startRound: currentRound + 2,
+                    bondedAmount: 1000,
+                    delegateAddress: transcoder.address,
+                    delegatedAmount: 2000,
+                    lastClaimRound: currentRound,
+                    lastRewardRound: currentRound + 1
+                })
             })
         })
     })
