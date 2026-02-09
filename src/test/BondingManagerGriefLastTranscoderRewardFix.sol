@@ -25,11 +25,11 @@ contract BondingManagerGriefLastTranscoderRewardFix is BondingManagerGriefLastTr
         address attacker = newAddr();
         address lastTranscoder = _getLastTranscoder();
 
-        // Attacker needs 450 + 2 lpt to execute the attack
+        // Attacker needs lastTranscoderTotalStake + 2 lpt to execute the attack
         vm.prank(minter);
-        lpt.mint(attacker, 450 * 1e18 + 2);
+        lpt.mint(attacker, lastTranscoderTotalStake + 2);
 
-        // ---------------------- ROUND = 45816 ----------------------
+        // ---------------------- ROUND ONE ----------------------
         _skipToNextRound();
 
         // Attacker bonds for themself to make their status in the next round become "Bonded"
@@ -38,12 +38,12 @@ contract BondingManagerGriefLastTranscoderRewardFix is BondingManagerGriefLastTr
         bondingManager.bond(1, attacker);
         vm.stopPrank();
 
-        // ---------------------- ROUND = 45817 ----------------------
+        // ---------------------- ROUND TWO ----------------------
         _skipToNextRound();
 
         // Attacker bonds more than the last transcoder and kicks them out of the `transcoderPool`
         vm.startPrank(attacker);
-        bondingManager.bond(450 * 1e18, attacker);
+        bondingManager.bond(lastTranscoderTotalStake, attacker);
         assertEq(attacker, _getLastTranscoder());
 
         // Attacker unbonds all to make the `transcoderPool` not full
@@ -63,7 +63,7 @@ contract BondingManagerGriefLastTranscoderRewardFix is BondingManagerGriefLastTr
             "lastTranscoder should not be deactivated"
         );
 
-        // The `lastTranscoder` is able to claim the reward for ROUND = 3640 because it is considered as active
+        // The `lastTranscoder` is able to claim the reward for ROUND TWO because it is considered as active
         vm.prank(lastTranscoder);
         bondingManager.reward();
         console.log(_getTranscoderData(lastTranscoder).deactivationRound);
@@ -90,13 +90,13 @@ contract BondingManagerGriefLastTranscoderRewardFix is BondingManagerGriefLastTr
         address attackerForRebond = newAddr();
         address lastTranscoder = _getLastTranscoder();
 
-        // Attacker needs 450 + 3 lpt to execute the attack
+        // Attacker needs lastTranscoderTotalStake + 5 lpt to execute the attack
         vm.startPrank(minter);
-        lpt.mint(attacker, 450 * 1e18 + 1);
+        lpt.mint(attacker, lastTranscoderTotalStake + 3);
         lpt.mint(attackerForRebond, 2);
         vm.stopPrank();
 
-        // ---------------------- ROUND = 45816 ----------------------
+        // ---------------------- ROUND ONE ----------------------
         _skipToNextRound();
 
         // Attacker bonds to the last transcoder and immediately unbonds
@@ -111,12 +111,12 @@ contract BondingManagerGriefLastTranscoderRewardFix is BondingManagerGriefLastTr
         bondingManager.bond(1, attacker);
         vm.stopPrank();
 
-        // ---------------------- ROUND = 45817 ----------------------
+        // ---------------------- ROUND TWO ----------------------
         _skipToNextRound();
 
         // Attacker bonds more than the last transcoder and kick them out of the `transcoderPool`
         vm.startPrank(attacker);
-        bondingManager.bond(450 * 1e18, attacker);
+        bondingManager.bond(lastTranscoderTotalStake + 2, attacker);
         assertEq(attacker, _getLastTranscoder());
 
         // Attacker unbonds all to make the `transcoderPool` not full
@@ -134,7 +134,7 @@ contract BondingManagerGriefLastTranscoderRewardFix is BondingManagerGriefLastTr
 
         assertNotEq(_getTranscoderData(lastTranscoder).activationRound, roundsManager.currentRound() + 1);
 
-        // The `lastTranscoder` is able to claim the reward for ROUND = 3640 because it is considered as active
+        // The `lastTranscoder` is able to claim the reward for ROUND TWO because it is considered as active
         vm.prank(lastTranscoder);
         bondingManager.reward();
         console.log(_getTranscoderData(lastTranscoder).deactivationRound);
