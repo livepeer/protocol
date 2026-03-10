@@ -28,9 +28,9 @@ contract Minter is Manager, IMinter {
     // Target bonding rate
     uint256 public targetBondingRate;
 
-    // Current number of mintable tokens. Reset every round
+    // Number of mintable tokens. Recalculated on each round change
     uint256 public currentMintableTokens;
-    // Current number of minted tokens. Reset every round
+    // Number of minted tokens. Increased with every reward. Reset to 0 on each round change
     uint256 public currentMintedTokens;
 
     // Checks if caller is BondingManager
