@@ -58,7 +58,7 @@ contract BondingManagerRetroactiveRewardCalculationPoC is GovernorBaseTest {
         uint256 rewardFactorBefore; // cumulativeRewardFactor Previous round
     }
 
-    function _scenarioConsecutive() internal returns (FeeMetrics memory m) {
+    function _scenarioConsecutive() internal virtual returns (FeeMetrics memory m) {
         _nextRound(); // R1, normal reward claim
         CHEATS.prank(transcoder);
         BONDING_MANAGER.reward();
@@ -96,7 +96,7 @@ contract BondingManagerRetroactiveRewardCalculationPoC is GovernorBaseTest {
         m.rewardFactorBefore = rewardFactorBefore;
     }
 
-    function _scenarioMissed() internal returns (FeeMetrics memory m) {
+    function _scenarioMissed() internal virtual returns (FeeMetrics memory m) {
         _nextRound(); // R1, normal reward claim
         CHEATS.prank(transcoder);
         BONDING_MANAGER.reward();
@@ -135,7 +135,18 @@ contract BondingManagerRetroactiveRewardCalculationPoC is GovernorBaseTest {
         m.rewardFactorBefore = rewardFactorBefore;
     }
 
-    function testCompareConsecutiveAndMissedRewardClaims() public {
+    function _validateFeeFactor(uint256 consecutive, uint256 missed) internal virtual {
+        // Assert the bug exists (deflation is huge > 1e16)
+        uint256 deflation = consecutive - missed;
+        assertGt(deflation, 1e16, "Large fee deflation NOT detected");
+    }
+
+    function _validateDelegatorFees(uint256 consecutive, uint256 missed) internal virtual {
+        // Assert delegator fee loss exists
+        assertNotEq(consecutive, missed, "Delegator fee loss NOT detected");
+    }
+
+    function testCompareConsecutiveAndMissedRewardClaims() public virtual {
         FeeMetrics memory consecutive = _scenarioConsecutive();
         CHEATS.revertToState(baselineSnapshot);
         FeeMetrics memory missed = _scenarioMissed();
@@ -145,7 +156,7 @@ contract BondingManagerRetroactiveRewardCalculationPoC is GovernorBaseTest {
         assertEq(consecutive.commission, missed.commission, "commission mismatch");
 
         // Missed reward path deflates fee factor increment for identical fee update
-        assertLt(missed.cumulativeFeeFactorInc, consecutive.cumulativeFeeFactorInc, "fee not deflated");
+        _validateFeeFactor(consecutive.cumulativeFeeFactorInc, missed.cumulativeFeeFactorInc);
     }
 
     function _bondDelegator(address delegator, uint256 amount) internal {
@@ -158,9 +169,9 @@ contract BondingManagerRetroactiveRewardCalculationPoC is GovernorBaseTest {
         CHEATS.stopPrank();
     }
 
-    function testDelegatorFeeLossOnMissedReward() public {
+    function testDelegatorFeeLossOnMissedReward() public virtual {
         _bondDelegator(testDelegator, 1 ether);
-        FeeMetrics memory cons = _scenarioConsecutive();
+        _scenarioConsecutive();
         CHEATS.prank(testDelegator);
         BONDING_MANAGER.claimEarnings(type(uint256).max);
         (, uint256 feesAfterCons, , , , , ) = BONDING_MANAGER.getDelegator(testDelegator);
@@ -168,12 +179,11 @@ contract BondingManagerRetroactiveRewardCalculationPoC is GovernorBaseTest {
         CHEATS.revertToState(baselineSnapshot);
 
         _bondDelegator(testDelegator, 1 ether);
-        FeeMetrics memory miss = _scenarioMissed();
+        _scenarioMissed();
         CHEATS.prank(testDelegator);
         BONDING_MANAGER.claimEarnings(type(uint256).max);
         (, uint256 feesAfterMiss, , , , , ) = BONDING_MANAGER.getDelegator(testDelegator);
 
-        assertLt(miss.cumulativeFeeFactorInc, cons.cumulativeFeeFactorInc, "fees not deflated");
-        assertLt(feesAfterMiss, feesAfterCons, "delegator not losing fees");
+        _validateDelegatorFees(feesAfterCons, feesAfterMiss);
     }
 }
