@@ -142,8 +142,11 @@ contract BondingManagerRetroactiveRewardCalculationPoC is GovernorBaseTest {
     }
 
     function _validateDelegatorFees(uint256 consecutive, uint256 missed) internal virtual {
-        // Assert delegator fee loss exists
-        assertNotEq(consecutive, missed, "Delegator fee loss NOT detected");
+        // Calculate the absolute difference
+        uint256 diff = consecutive > missed ? consecutive - missed : missed - consecutive;
+
+        // Assert that the fee loss is greater than 1e1 wei
+        assertGt(diff, 1e1, "Delegator fee loss is negligible (<= 10 wei)");
     }
 
     function testCompareConsecutiveAndMissedRewardClaims() public virtual {
