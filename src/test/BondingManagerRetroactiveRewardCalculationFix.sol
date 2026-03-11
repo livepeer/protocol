@@ -38,7 +38,7 @@ contract BondingManagerRetroactiveRewardCalculationFix is BondingManagerRetroact
     }
 
     function _validateFeeFactor(uint256 consecutive, uint256 missed) internal override {
-        // We use 1e12 as a safe tolerance for rounding noise
+        // We use 1e12 as a safe tolerance for the estimated fee factor
         assertApproxEqAbs(consecutive, missed, 1e12, "Fee factor deflation persists");
     }
 
