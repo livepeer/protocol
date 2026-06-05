@@ -44,44 +44,42 @@ contract TicketBrokerDustDepositGriefingFix is TicketBrokerDustDepositGriefingPo
         CHEATS.expectRevert("sender deposit and reserve insufficient to cover ticket face value");
         TICKET_BROKER.redeemWinningTicket(ticket, sig, rand);
 
-        assertFalse(TICKET_BROKER.usedTickets(_getTicketHash(ticket)));
+        assertFalse(TICKET_BROKER.usedTickets(TICKET_BROKER.getTicketHash(ticket)));
     }
 
     function testFixRaceConditionPartialPayout() public {
         _upgradeTicketBroker();
 
-        address transcoder2 = BONDING_MANAGER.getNextTranscoderInPool(victimTranscoder);
+        address anotherTranscoder = BONDING_MANAGER.getNextTranscoderInPool(victimTranscoder);
         uint256 faceValue = 1 ether;
 
         CHEATS.prank(sender);
         TICKET_BROKER.fundDepositAndReserve{ value: faceValue + faceValue / 2 }(faceValue + faceValue / 2, 0);
 
-        (MTicketBrokerCore.Ticket memory ticket1, bytes memory sig1, uint256 rand1) = _createSignedTicketWithNonce(
+        (MTicketBrokerCore.Ticket memory ticket1, bytes memory sig1, uint256 rand1) = _createSignedTicket(
+            anotherTranscoder,
+            sender,
+            faceValue
+        );
+        (MTicketBrokerCore.Ticket memory ticket2, bytes memory sig2, uint256 rand2) = _createSignedTicket(
             victimTranscoder,
             sender,
-            faceValue,
-            0
-        );
-        (MTicketBrokerCore.Ticket memory ticket2, bytes memory sig2, uint256 rand2) = _createSignedTicketWithNonce(
-            transcoder2,
-            sender,
-            faceValue,
-            1
+            faceValue
         );
 
         CHEATS.expectEmit(true, true, true, true);
-        emit WinningTicketTransfer(sender, victimTranscoder, faceValue);
-        CHEATS.prank(victimTranscoder);
+        emit WinningTicketTransfer(sender, anotherTranscoder, faceValue);
+        CHEATS.prank(anotherTranscoder);
         TICKET_BROKER.redeemWinningTicket(ticket1, sig1, rand1);
 
         (MixinTicketBrokerCore.Sender memory info, ) = TICKET_BROKER.getSenderInfo(sender);
         assertEq(info.deposit, faceValue / 2);
 
-        CHEATS.prank(transcoder2);
+        CHEATS.prank(victimTranscoder);
         CHEATS.expectRevert("sender deposit and reserve insufficient to cover ticket face value");
         TICKET_BROKER.redeemWinningTicket(ticket2, sig2, rand2);
 
-        assertFalse(TICKET_BROKER.usedTickets(_getTicketHash(ticket2)));
+        assertFalse(TICKET_BROKER.usedTickets(TICKET_BROKER.getTicketHash(ticket2)));
     }
 
     function testNormalRedemption() public {
@@ -103,7 +101,7 @@ contract TicketBrokerDustDepositGriefingFix is TicketBrokerDustDepositGriefingPo
         CHEATS.prank(victimTranscoder);
         TICKET_BROKER.redeemWinningTicket(ticket, sig, rand);
 
-        assertTrue(TICKET_BROKER.usedTickets(_getTicketHash(ticket)));
+        assertTrue(TICKET_BROKER.usedTickets(TICKET_BROKER.getTicketHash(ticket)));
 
         (MixinTicketBrokerCore.Sender memory info, ) = TICKET_BROKER.getSenderInfo(sender);
         assertEq(info.deposit, 0);
