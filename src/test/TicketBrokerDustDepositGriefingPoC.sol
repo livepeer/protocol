@@ -10,6 +10,7 @@ import "./interfaces/ICheatCodes.sol";
 
 interface IBondingManagerExtended {
     function getFirstTranscoderInPool() external view returns (address);
+
     function getNextTranscoderInPool(address _transcoder) external view returns (address);
 }
 
@@ -86,10 +87,18 @@ contract TicketBrokerDustDepositGriefingPoC is GovernorBaseTest {
         assertEq(info.deposit, faceValue + faceValue / 2);
 
         // Two valid winning tickets from the same sender to two different transcoders
-        (MTicketBrokerCore.Ticket memory ticket1, bytes memory sig1, uint256 rand1) =
-            _createSignedTicketWithNonce(victimTranscoder, sender, faceValue, 0);
-        (MTicketBrokerCore.Ticket memory ticket2, bytes memory sig2, uint256 rand2) =
-            _createSignedTicketWithNonce(transcoder2, sender, faceValue, 1);
+        (MTicketBrokerCore.Ticket memory ticket1, bytes memory sig1, uint256 rand1) = _createSignedTicketWithNonce(
+            victimTranscoder,
+            sender,
+            faceValue,
+            0
+        );
+        (MTicketBrokerCore.Ticket memory ticket2, bytes memory sig2, uint256 rand2) = _createSignedTicketWithNonce(
+            transcoder2,
+            sender,
+            faceValue,
+            1
+        );
 
         // Transcoder 1 redeems first and receives full face value
         CHEATS.expectEmit(true, true, true, true);
