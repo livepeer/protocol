@@ -16,7 +16,7 @@ contract TicketBrokerDustDepositGriefingFix is TicketBrokerDustDepositGriefingPo
                 CONTROLLER.setContractInfo.selector,
                 keccak256(abi.encodePacked("TicketBrokerTarget")),
                 address(newTicketBrokerTarget),
-                bytes32(0)
+                bytes20(0)
             )
         );
     }
