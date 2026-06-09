@@ -1,26 +1,26 @@
+// SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.9;
 
-import "ds-test/test.sol";
 import "./base/GovernorBaseTest.sol";
 import "contracts/pm/TicketBroker.sol";
 import "contracts/pm/mixins/MixinTicketBrokerCore.sol";
 import "contracts/pm/mixins/interfaces/MTicketBrokerCore.sol";
-import "contracts/rounds/IRoundsManager.sol";
-import "./interfaces/ICheatCodes.sol";
-
-interface IBondingManagerExtended {
-    function getFirstTranscoderInPool() external view returns (address);
-
-    function getNextTranscoderInPool(address _transcoder) external view returns (address);
-}
+import "contracts/rounds/RoundsManager.sol";
+import "contracts/bonding/BondingManager.sol";
 
 // forge test --match-contract TicketBrokerDustDepositGriefingPoC --fork-url <ARB_MAINNET_RPC_URL> -vvv
 contract TicketBrokerDustDepositGriefingPoC is GovernorBaseTest {
+    TicketBroker public immutable TICKET_BROKER;
+    RoundsManager public immutable ROUNDS_MANAGER;
+    BondingManager public immutable BONDING_MANAGER;
+
     event WinningTicketTransfer(address indexed sender, address indexed recipient, uint256 amount);
-    TicketBroker public constant TICKET_BROKER = TicketBroker(0xa8bB618B1520E284046F3dFc448851A1Ff26e41B);
-    IRoundsManager public constant ROUNDS_MANAGER = IRoundsManager(0xdd6f56DcC28D3F5f27084381fE8Df634985cc39f);
-    IBondingManagerExtended public constant BONDING_MANAGER =
-        IBondingManagerExtended(0x35Bcf3c30594191d53231E4FF333E8A770453e40);
+
+    constructor() {
+        TICKET_BROKER = TicketBroker(getContract("TicketBroker"));
+        ROUNDS_MANAGER = RoundsManager(getContract("RoundsManager"));
+        BONDING_MANAGER = BondingManager(getContract("BondingManager"));
+    }
 
     uint256 senderPrivateKey = 0xb0b;
     address sender;
