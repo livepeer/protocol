@@ -106,7 +106,7 @@ abstract contract MixinTicketBrokerCore is MixinContractRegistry, MReserve, MTic
 
     /**
      * @notice Redeems a winning ticket that has been signed by a sender and reveals the
-     recipient recipientRand that corresponds to the recipientRandHash included in the ticket.
+     * recipient recipientRand that corresponds to the recipientRandHash included in the ticket.
      * The sender's deposit and reserve combined must fully cover the ticket face value,
      * otherwise the call reverts and the ticket is not consumed.
      * @param _ticket Winning ticket to be redeemed in order to claim payment
