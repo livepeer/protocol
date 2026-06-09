@@ -987,7 +987,7 @@ describe("TicketBroker", () => {
             )
         })
 
-        it("reverts if faceValue exceeds deposit and reserve combined", async () => {
+        it("reverts if faceValue exceeds deposit and reserve combined, but succeeds after topping up deposit", async () => {
             const deposit = 500
             const reserve = 300
             await broker.fundDeposit({value: deposit})
@@ -995,6 +995,14 @@ describe("TicketBroker", () => {
             await fixture.roundsManager.setMockUint256(
                 functionSig("currentRound()"),
                 currentRound
+            )
+            await fixture.bondingManager.setMockUint256(
+                functionSig("getTranscoderPoolSize()"),
+                1
+            )
+            await fixture.bondingManager.setMockBool(
+                functionSig("isActiveTranscoder(address)"),
+                true
             )
 
             const recipientRand = 5
@@ -1013,6 +1021,75 @@ describe("TicketBroker", () => {
                     .redeemWinningTicket(ticket, senderSig, recipientRand)
             ).to.be.revertedWith(
                 "sender deposit and reserve insufficient to cover ticket face value"
+            )
+
+            await broker.fundDeposit({value: 1})
+            await broker
+                .connect(signers[1])
+                .redeemWinningTicket(ticket, senderSig, recipientRand)
+
+            const endDeposit = (
+                await broker.getSenderInfo(sender)
+            ).sender.deposit.toString()
+            assert.equal(endDeposit, "0")
+            assert.equal(
+                (
+                    await broker.getSenderInfo(sender)
+                ).reserve.fundsRemaining.toString(),
+                "0"
+            )
+        })
+
+        it("reverts if faceValue exceeds deposit and reserve combined, but succeeds after topping up reserve", async () => {
+            const deposit = 500
+            const reserve = 300
+            await broker.fundDeposit({value: deposit})
+            await broker.fundReserve({value: reserve})
+            await fixture.roundsManager.setMockUint256(
+                functionSig("currentRound()"),
+                currentRound
+            )
+            await fixture.bondingManager.setMockUint256(
+                functionSig("getTranscoderPoolSize()"),
+                1
+            )
+            await fixture.bondingManager.setMockBool(
+                functionSig("isActiveTranscoder(address)"),
+                true
+            )
+
+            const recipientRand = 5
+            const faceValue = deposit + reserve + 1
+            const ticket = createWinningTicket(
+                recipient,
+                sender,
+                recipientRand,
+                faceValue
+            )
+            const senderSig = await signMsg(getTicketHash(ticket), sender)
+
+            await expect(
+                broker
+                    .connect(signers[1])
+                    .redeemWinningTicket(ticket, senderSig, recipientRand)
+            ).to.be.revertedWith(
+                "sender deposit and reserve insufficient to cover ticket face value"
+            )
+
+            await broker.fundReserve({value: 1})
+            await broker
+                .connect(signers[1])
+                .redeemWinningTicket(ticket, senderSig, recipientRand)
+
+            const endDeposit = (
+                await broker.getSenderInfo(sender)
+            ).sender.deposit.toString()
+            assert.equal(endDeposit, "0")
+            assert.equal(
+                (
+                    await broker.getSenderInfo(sender)
+                ).reserve.fundsRemaining.toString(),
+                "0"
             )
         })
 
