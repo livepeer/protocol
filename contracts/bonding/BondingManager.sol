@@ -329,7 +329,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         // Silence unused param compiler warning
         _round;
 
-        require(isRegisteredTranscoder(_transcoder), "transcoder must be registered");
+        require(isActiveTranscoder(_transcoder), "transcoder must be active");
 
         uint256 currentRound = roundsManager().currentRound();
 
@@ -363,12 +363,12 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
         uint256 totalStake = earningsPool.totalStake;
         if (prevEarningsPool.cumulativeRewardFactor == 0 && lastRewardRound == currentRound) {
-            // if transcoder called reward for 'currentRound' but not for 'currentRound - 1' (missed reward call)
-            // retroactively calculate what its cumulativeRewardFactor would have been for 'currentRound - 1' (cfr. previous lastRewardRound for transcoder)
-            // based on rewards for currentRound
+            // if transcoder called reward for 'currentRound' but skipped 'currentRound - 1' (missed reward call)
+            // retroactively estimate what the cumulativeRewardFactor would have been for 'currentRound - 1'
+            // based on the current round's mintable rewards and stake proportions.
             IMinter mtr = minter();
             uint256 rewards = PreciseMathUtils.percOf(
-                mtr.currentMintableTokens().add(mtr.currentMintedTokens()),
+                mtr.currentMintableTokens(),
                 totalStake,
                 currentRoundTotalActiveStake
             );
@@ -585,6 +585,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         address currentDelegate = del.delegateAddress;
         // Current bonded amount
         uint256 currentBondedAmount = del.bondedAmount;
+
+        _ensurePendingDeactivationTranscoderCalledReward(_to);
 
         // Requirements for a third party caller that is not the L2Migrator
         if (msg.sender != _owner && msg.sender != l2Migrator()) {
@@ -1645,6 +1647,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
         address delegate = del.delegateAddress;
 
+        _ensurePendingDeactivationTranscoderCalledReward(delegate);
+
         increaseTotalStake(delegate, amount, _newPosPrev, _newPosNext);
         if (delegate != _delegator) {
             // Avoid double checkpointing of the transcoder if it's a self-rebond
@@ -1749,6 +1753,17 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
     function _currentRoundInitialized() internal view {
         require(roundsManager().currentRoundInitialized(), "current round is not initialized");
+    }
+
+    /**
+     * Ensure the transcoder called reward, if it was deactivated in the current round
+     */
+    function _ensurePendingDeactivationTranscoderCalledReward(address _transcoder) internal view {
+        Transcoder storage t = transcoders[_transcoder];
+        uint256 currentRound = roundsManager().currentRound();
+        if (isActiveTranscoder(_transcoder) && t.deactivationRound != MAX_FUTURE_ROUND) {
+            require(t.lastRewardRound == currentRound, "transcoder has not yet called reward for the current round");
+        }
     }
 
     function _autoClaimEarnings(address _delegator) internal {

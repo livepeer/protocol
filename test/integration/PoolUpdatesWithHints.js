@@ -409,6 +409,13 @@ describe("PoolUpdatesWithHints", () => {
         const size = transcoders.length
         await bondingManager.connect(transcoders[size - 4]).unbond(4)
 
+        // Ensure all the transcoders called reward.
+        // `transcoder[size - 4]` gets deactivated, therefore it cannot rebond before calling reward.
+        // However, if it alone calls reward, pool ordering changes.
+        for (const transcoder of transcoders) {
+            await bondingManager.connect(transcoder).reward()
+        }
+
         const testSnapshotId = await rpc.snapshot()
 
         // Pool ordering (descending)

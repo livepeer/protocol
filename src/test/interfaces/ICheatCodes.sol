@@ -37,4 +37,8 @@ interface ICheatCodes {
             bytes32 r,
             bytes32 s
         );
+
+    function snapshotState() external returns (uint256);
+
+    function revertToState(uint256) external returns (bool);
 }

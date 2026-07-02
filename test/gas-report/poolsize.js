@@ -2,7 +2,7 @@ import RPC from "../../utils/rpc"
 import {web3, ethers} from "hardhat"
 import setupIntegrationTest from "../helpers/setupIntegrationTest"
 
-import chai from "chai"
+import chai, {expect} from "chai"
 import {solidity} from "ethereum-waffle"
 chai.use(solidity)
 
@@ -408,6 +408,18 @@ describe("transcoder pool size gas report", () => {
 
                 const unbondingLockID = 0
 
+                // A deactivated transcoder must call `reward` before it can be `rebond`ed again in the same round
+                const ensureRewardIsCalledAndThen = async (
+                    delegate,
+                    callback
+                ) => {
+                    await expect(callback()).to.be.revertedWith(
+                        "transcoder has not yet called reward for the current round"
+                    )
+                    await bondingManager.connect(delegate).reward()
+                    await callback()
+                }
+
                 describe("last transcoder is unbonded", () => {
                     beforeEach(async () => {
                         // The last transcoder's stake is 1 so unbonding 1 will remove it from the pool
@@ -415,23 +427,27 @@ describe("transcoder pool size gas report", () => {
                     })
 
                     it("inserts a transcoder back into the last spot", async () => {
-                        await bondingManager
-                            .connect(transcoders[0])
-                            .rebondFromUnbonded(
-                                transcoders[0].address,
-                                unbondingLockID
-                            )
+                        await ensureRewardIsCalledAndThen(transcoders[0], () =>
+                            bondingManager
+                                .connect(transcoders[0])
+                                .rebondFromUnbonded(
+                                    transcoders[0].address,
+                                    unbondingLockID
+                                )
+                        )
                     })
 
                     it("inserts a transcoder back into the last spot (with hint)", async () => {
-                        await bondingManager
-                            .connect(transcoders[0])
-                            .rebondFromUnbondedWithHint(
-                                transcoders[0].address,
-                                unbondingLockID,
-                                transcoders[1].address,
-                                ethers.constants.AddressZero
-                            )
+                        await ensureRewardIsCalledAndThen(transcoders[0], () =>
+                            bondingManager
+                                .connect(transcoders[0])
+                                .rebondFromUnbondedWithHint(
+                                    transcoders[0].address,
+                                    unbondingLockID,
+                                    transcoders[1].address,
+                                    ethers.constants.AddressZero
+                                )
+                        )
                     })
                 })
 
@@ -444,23 +460,31 @@ describe("transcoder pool size gas report", () => {
                     })
 
                     it("inserts a transcoder back into the first spot", async () => {
-                        await bondingManager
-                            .connect(transcoders[size - 1])
-                            .rebondFromUnbonded(
-                                signers[size - 1].address,
-                                unbondingLockID
-                            )
+                        await ensureRewardIsCalledAndThen(
+                            signers[size - 1],
+                            () =>
+                                bondingManager
+                                    .connect(transcoders[size - 1])
+                                    .rebondFromUnbonded(
+                                        signers[size - 1].address,
+                                        unbondingLockID
+                                    )
+                        )
                     })
 
                     it("inserts a transcoder back into the first spot (with hint)", async () => {
-                        await bondingManager
-                            .connect(transcoders[size - 1])
-                            .rebondFromUnbondedWithHint(
-                                signers[size - 1].address,
-                                unbondingLockID,
-                                ethers.constants.AddressZero,
-                                transcoders[size - 2].address
-                            )
+                        await ensureRewardIsCalledAndThen(
+                            signers[size - 1],
+                            () =>
+                                bondingManager
+                                    .connect(transcoders[size - 1])
+                                    .rebondFromUnbondedWithHint(
+                                        signers[size - 1].address,
+                                        unbondingLockID,
+                                        ethers.constants.AddressZero,
+                                        transcoders[size - 2].address
+                                    )
+                        )
                     })
                 })
             })

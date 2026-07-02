@@ -176,7 +176,7 @@ describe("TicketFrontRun", () => {
             broadcaster.address
         )
 
-        // Ticket redemption by evilSybilAccount fails because it is not a registered transcoder
+        // Ticket redemption by evilSybilAccount fails because it is not an active transcoder
         await expect(
             broker
                 .connect(evilSybilAccount)
@@ -185,7 +185,7 @@ describe("TicketFrontRun", () => {
                     secondTicketSig,
                     recipientRand
                 )
-        ).to.be.revertedWith("transcoder must be registered")
+        ).to.be.revertedWith("transcoder must be active")
 
         // Ticket redemption by honestTranscoder confirms on-chain
         await broker
@@ -239,8 +239,7 @@ describe("TicketFrontRun", () => {
             broadcaster.address
         )
 
-        // Ticket redemption by evilNonActiveTranscoder fails because a non-active transcoder has no totalStake on it's earningsPool
-        // This results in division by zero when calculating earnings cumulatively (LIP-36)
+        // Ticket redemption by evilNonActiveTranscoder fails because it is not an active transcoder
         await expect(
             broker
                 .connect(evilNonActiveTranscoder)
@@ -249,9 +248,7 @@ describe("TicketFrontRun", () => {
                     secondTicketSig,
                     recipientRand
                 )
-        ).to.be.revertedWith(
-            "panic code 0x12 (Division or modulo division by zero)"
-        )
+        ).to.be.revertedWith("transcoder must be active")
 
         let info = await broker.getSenderInfo(broadcaster.address)
 
