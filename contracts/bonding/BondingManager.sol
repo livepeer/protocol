@@ -295,6 +295,15 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     }
 
     /**
+     * @notice Mint token rewards for an active transcoder and its delegators
+     * @param _transcoder Address of the transcoder on behalf of which the reward is called
+     * @dev Permissionless: callable by any address on behalf of any active transcoder
+     */
+    function rewardForTranscoder(address _transcoder) external {
+        rewardForTranscoderWithHint(_transcoder, address(0), address(0));
+    }
+
+    /**
      * @notice Update transcoder's fee pool. Only callable by the TicketBroker
      * @param _transcoder Transcoder address
      * @param _fees Fees to be added to the fee pool
@@ -863,21 +872,52 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * @param _newPosPrev Address of previous transcoder in pool if the caller is in the pool
      * @param _newPosNext Address of next transcoder in pool if the caller is in the pool
      */
-    function rewardWithHint(address _newPosPrev, address _newPosNext)
-        public
-        whenSystemNotPaused
-        currentRoundInitialized
-        autoCheckpoint(msg.sender)
-    {
+    function rewardWithHint(address _newPosPrev, address _newPosNext) public {
+        _rewardWithHint(msg.sender, _newPosPrev, _newPosNext);
+    }
+
+    /**
+     * @notice Mint token rewards for an active transcoder and its delegators and update the transcoder pool using an optional list hint if needed
+     * @dev If the `_transcoder` is in the transcoder pool, the caller can provide an optional hint for its insertion position in the
+     * pool via the `_newPosPrev` and `_newPosNext` params. A linear search will be executed starting at the hint to find the correct position.
+     * In the best case, the hint is the correct position so no search is executed. See SortedDoublyLL.sol for details on list hints
+     * @dev Permissionless: callable by any address on behalf of any active transcoder. Rewards always accrue to and are
+     * checkpointed for `_transcoder`, never the caller, so an unauthorized call can only benefit the transcoder.
+     * @param _transcoder Address of the transcoder on behalf of which the reward is called
+     * @param _newPosPrev Address of previous transcoder in pool if the `_transcoder` is in the pool
+     * @param _newPosNext Address of previous transcoder in pool if the `_transcoder` is in the pool
+     */
+    function rewardForTranscoderWithHint(
+        address _transcoder,
+        address _newPosPrev,
+        address _newPosNext
+    ) public {
+        _rewardWithHint(_transcoder, _newPosPrev, _newPosNext);
+    }
+
+    /**
+     * @notice Mint token rewards for an active transcoder and its delegators and update the transcoder pool using an optional list hint if needed
+     * @dev If the `_transcoder` is in the transcoder pool, the caller can provide an optional hint for its insertion position in the
+     * pool via the `_newPosPrev` and `_newPosNext` params. A linear search will be executed starting at the hint to find the correct position.
+     * In the best case, the hint is the correct position so no search is executed. See SortedDoublyLL.sol for details on list hints
+     * @param _transcoder Address of the transcoder on behalf of which the reward is called
+     * @param _newPosPrev Address of previous transcoder in pool if `_transcoder` is in the pool
+     * @param _newPosNext Address of next transcoder in pool if `_transcoder` is in the pool
+     */
+    function _rewardWithHint(
+        address _transcoder,
+        address _newPosPrev,
+        address _newPosNext
+    ) private whenSystemNotPaused currentRoundInitialized autoCheckpoint(_transcoder) {
         uint256 currentRound = roundsManager().currentRound();
 
-        require(isActiveTranscoder(msg.sender), "caller must be an active transcoder");
+        require(isActiveTranscoder(_transcoder), "transcoder must be active");
         require(
-            transcoders[msg.sender].lastRewardRound != currentRound,
+            transcoders[_transcoder].lastRewardRound != currentRound,
             "caller has already called reward for the current round"
         );
 
-        Transcoder storage t = transcoders[msg.sender];
+        Transcoder storage t = transcoders[_transcoder];
         EarningsPool.Data storage earningsPool = t.earningsPoolPerRound[currentRound];
 
         // Set last round that transcoder called reward
@@ -910,17 +950,17 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
 
             mtr.trustedTransferTokens(trsry, treasuryRewards);
 
-            emit TreasuryReward(msg.sender, trsry, treasuryRewards);
+            emit TreasuryReward(_transcoder, trsry, treasuryRewards);
         }
 
         uint256 transcoderRewards = totalRewardTokens.sub(treasuryRewards);
 
-        updateTranscoderWithRewards(msg.sender, transcoderRewards, currentRound, _newPosPrev, _newPosNext);
+        updateTranscoderWithRewards(_transcoder, transcoderRewards, currentRound, _newPosPrev, _newPosNext);
 
         // Set last round that transcoder called reward
         t.lastRewardRound = currentRound;
 
-        emit Reward(msg.sender, transcoderRewards);
+        emit Reward(_transcoder, transcoderRewards);
     }
 
     /**
