@@ -872,8 +872,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * @dev If the `_transcoder` is in the transcoder pool, the caller can provide an optional hint for its insertion position in the
      * pool via the `_newPosPrev` and `_newPosNext` params. A linear search will be executed starting at the hint to find the correct position.
      * In the best case, the hint is the correct position so no search is executed. See SortedDoublyLL.sol for details on list hints
-     * @dev Permissionless: callable by any address on behalf of any active transcoder. Rewards always accrue to and are
-     * checkpointed for `_transcoder`, never the caller, so an unauthorized call can only benefit the transcoder.
+     * @dev Permissionless: callable by anyone for any active transcoder. Rewards always accrue to and are checkpointed
+     * for `_transcoder`, never the caller, so a call can only ever benefit the transcoder.
      * @param _transcoder Address of the transcoder on behalf of which the reward is called
      * @param _newPosPrev Address of previous transcoder in pool if the `_transcoder` is in the pool
      * @param _newPosNext Address of next transcoder in pool if the `_transcoder` is in the pool
