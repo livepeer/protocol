@@ -75,8 +75,6 @@ interface IBondingManager {
 
     function rewardWithHint(address _newPosPrev, address _newPosNext) external;
 
-    function rewardForTranscoder(address _transcoder) external;
-
     function rewardForTranscoderWithHint(
         address _transcoder,
         address _newPosPrev,
