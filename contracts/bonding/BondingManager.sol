@@ -898,7 +898,7 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
      * @dev Only callable by trusted rewardCaller
      * @param _transcoder Address of the transcoder on behalf of which the reward is called
      * @param _newPosPrev Address of previous transcoder in pool if the `_transcoder` is in the pool
-     * @param _newPosNext Address of previous transcoder in pool if the `_transcoder` is in the pool
+     * @param _newPosNext Address of next transcoder in pool if the `_transcoder` is in the pool
      */
     function rewardForTranscoderWithHint(
         address _transcoder,
