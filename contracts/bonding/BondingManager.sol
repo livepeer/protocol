@@ -102,7 +102,8 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     // If the balance of the treasury in LPT is above this value, automatic treasury contributions will halt.
     uint256 public treasuryBalanceCeiling;
 
-    // Allow reward() calls from one pre-defined address per transcoder
+    // Allow reward() calls from one pre-defined address per transcoder.
+    // @dev Since the setter is callable by any address, a mapping key does not guarantee to be a registered or active transcoder.
     mapping(address => address) public transcoderToRewardCaller;
 
     // Check if sender is TicketBroker
@@ -194,7 +195,6 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     /**
      * @notice Set a reward caller for a transcoder
      * @param _rewardCaller Address of the new reward caller
-     * @dev Since the setter is callable by any address, a mapping key does not guarantee to be a registered or active transcoder
      * @dev By providing address(0) the reward caller can be unset
      */
     function setRewardCaller(address _rewardCaller) external whenSystemNotPaused {
