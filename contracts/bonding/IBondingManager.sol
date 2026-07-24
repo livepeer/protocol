@@ -44,6 +44,7 @@ interface IBondingManager {
         uint256 startRound,
         uint256 endRound
     );
+    event RewardCallerSet(address indexed transcoder, address indexed rewardCaller);
 
     // Deprecated events
     // These event signatures can be used to construct the appropriate topic hashes to filter for past logs corresponding
@@ -70,6 +71,20 @@ interface IBondingManager {
     ) external;
 
     function setCurrentRoundTotalActiveStake() external;
+
+    function setRewardCaller(address _rewardCaller) external;
+
+    function reward() external;
+
+    function rewardWithHint(address _newPosPrev, address _newPosNext) external;
+
+    function rewardForTranscoder(address _transcoder) external;
+
+    function rewardForTranscoderWithHint(
+        address _transcoder,
+        address _newPosPrev,
+        address _newPosNext
+    ) external;
 
     // Public functions
     function getTranscoderPoolSize() external view returns (uint256);
