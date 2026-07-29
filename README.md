@@ -1,5 +1,6 @@
 [![CircleCI](https://img.shields.io/circleci/project/github/RedSparr0w/node-csgo-parser.svg)](https://circleci.com/gh/livepeer/protocol/tree/master)
 [![Coverage Status](https://coveralls.io/repos/github/livepeer/protocol/badge.svg)](https://coveralls.io/github/livepeer/protocol)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/livepeer/protocol)
 
 # Livepeer Protocol
 
