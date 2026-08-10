@@ -972,12 +972,169 @@ describe("TicketBroker", () => {
 
         it("reverts if sender's deposit and reserve are zero", async () => {
             const recipientRand = 5
-            const ticket = createWinningTicket(recipient, sender, recipientRand)
+            const ticket = createWinningTicket(
+                recipient,
+                sender,
+                recipientRand,
+                1
+            )
             const senderSig = await signMsg(getTicketHash(ticket), sender)
 
             await expect(
                 broker.redeemWinningTicket(ticket, senderSig, recipientRand)
-            ).to.be.revertedWith("sender deposit and reserve are zero")
+            ).to.be.revertedWith(
+                "sender deposit and reserve insufficient to cover ticket face value"
+            )
+        })
+
+        it("reverts if faceValue exceeds deposit and reserve combined, but succeeds after topping up deposit", async () => {
+            const deposit = 500
+            const reserve = 300
+            await broker.fundDeposit({value: deposit})
+            await broker.fundReserve({value: reserve})
+            await fixture.roundsManager.setMockUint256(
+                functionSig("currentRound()"),
+                currentRound
+            )
+            await fixture.bondingManager.setMockUint256(
+                functionSig("getTranscoderPoolSize()"),
+                1
+            )
+            await fixture.bondingManager.setMockBool(
+                functionSig("isActiveTranscoder(address)"),
+                true
+            )
+
+            const recipientRand = 5
+            const faceValue = deposit + reserve + 1
+            const ticket = createWinningTicket(
+                recipient,
+                sender,
+                recipientRand,
+                faceValue
+            )
+            const senderSig = await signMsg(getTicketHash(ticket), sender)
+
+            await expect(
+                broker
+                    .connect(signers[1])
+                    .redeemWinningTicket(ticket, senderSig, recipientRand)
+            ).to.be.revertedWith(
+                "sender deposit and reserve insufficient to cover ticket face value"
+            )
+
+            await broker.fundDeposit({value: 1})
+            await broker
+                .connect(signers[1])
+                .redeemWinningTicket(ticket, senderSig, recipientRand)
+
+            const endDeposit = (
+                await broker.getSenderInfo(sender)
+            ).sender.deposit.toString()
+            assert.equal(endDeposit, "0")
+            assert.equal(
+                (
+                    await broker.getSenderInfo(sender)
+                ).reserve.fundsRemaining.toString(),
+                "0"
+            )
+        })
+
+        it("reverts if faceValue exceeds deposit and reserve combined, but succeeds after topping up reserve", async () => {
+            const deposit = 500
+            const reserve = 300
+            await broker.fundDeposit({value: deposit})
+            await broker.fundReserve({value: reserve})
+            await fixture.roundsManager.setMockUint256(
+                functionSig("currentRound()"),
+                currentRound
+            )
+            await fixture.bondingManager.setMockUint256(
+                functionSig("getTranscoderPoolSize()"),
+                1
+            )
+            await fixture.bondingManager.setMockBool(
+                functionSig("isActiveTranscoder(address)"),
+                true
+            )
+
+            const recipientRand = 5
+            const faceValue = deposit + reserve + 1
+            const ticket = createWinningTicket(
+                recipient,
+                sender,
+                recipientRand,
+                faceValue
+            )
+            const senderSig = await signMsg(getTicketHash(ticket), sender)
+
+            await expect(
+                broker
+                    .connect(signers[1])
+                    .redeemWinningTicket(ticket, senderSig, recipientRand)
+            ).to.be.revertedWith(
+                "sender deposit and reserve insufficient to cover ticket face value"
+            )
+
+            await broker.fundReserve({value: 1})
+            await broker
+                .connect(signers[1])
+                .redeemWinningTicket(ticket, senderSig, recipientRand)
+
+            const endDeposit = (
+                await broker.getSenderInfo(sender)
+            ).sender.deposit.toString()
+            assert.equal(endDeposit, "0")
+            assert.equal(
+                (
+                    await broker.getSenderInfo(sender)
+                ).reserve.fundsRemaining.toString(),
+                "0"
+            )
+        })
+
+        it("succeeds when faceValue equals deposit and reserve combined", async () => {
+            const deposit = 500
+            const reserve = 300
+            await broker.fundDeposit({value: deposit})
+            await broker.fundReserve({value: reserve})
+            await fixture.roundsManager.setMockUint256(
+                functionSig("currentRound()"),
+                currentRound
+            )
+            await fixture.bondingManager.setMockUint256(
+                functionSig("getTranscoderPoolSize()"),
+                1
+            )
+            await fixture.bondingManager.setMockBool(
+                functionSig("isActiveTranscoder(address)"),
+                true
+            )
+
+            const recipientRand = 5
+            const faceValue = deposit + reserve
+            const ticket = createWinningTicket(
+                recipient,
+                sender,
+                recipientRand,
+                faceValue
+            )
+            const senderSig = await signMsg(getTicketHash(ticket), sender)
+
+            await broker
+                .connect(signers[1])
+                .redeemWinningTicket(ticket, senderSig, recipientRand)
+
+            const endDeposit = (
+                await broker.getSenderInfo(sender)
+            ).sender.deposit.toString()
+            assert.equal(endDeposit, "0")
+            assert.equal(
+                (
+                    await broker.getSenderInfo(sender)
+                ).reserve.fundsRemaining.toString(),
+                "0"
+            )
         })
 
         describe("only legacy long-signatures are supported by the protocol ", () => {
@@ -1554,7 +1711,7 @@ describe("TicketBroker", () => {
                         recipient2.address,
                         sender,
                         recipientRand,
-                        faceValue + 15
+                        allocation
                     )
                     const senderSig2 = await signMsg(
                         getTicketHash(ticket2),
@@ -1627,7 +1784,7 @@ describe("TicketBroker", () => {
                         await broker.fundDeposit({value: deposit})
 
                         const recipientRand = 5
-                        const faceValue = 1000
+                        const faceValue = deposit
                         const ticket = createWinningTicket(
                             recipient,
                             sender,

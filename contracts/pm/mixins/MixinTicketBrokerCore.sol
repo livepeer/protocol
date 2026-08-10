@@ -106,7 +106,9 @@ abstract contract MixinTicketBrokerCore is MixinContractRegistry, MReserve, MTic
 
     /**
      * @notice Redeems a winning ticket that has been signed by a sender and reveals the
-     recipient recipientRand that corresponds to the recipientRandHash included in the ticket
+     * recipient recipientRand that corresponds to the recipientRandHash included in the ticket.
+     * The sender's deposit and reserve combined must fully cover the ticket face value,
+     * otherwise the call reverts and the ticket is not consumed.
      * @param _ticket Winning ticket to be redeemed in order to claim payment
      * @param _sig Sender's signature over the hash of `_ticket`
      * @param _recipientRand The preimage for the recipientRandHash included in `_ticket`
@@ -125,8 +127,11 @@ abstract contract MixinTicketBrokerCore is MixinContractRegistry, MReserve, MTic
 
         // Require sender to be locked
         require(isLocked(sender), "sender is unlocked");
-        // Require either a non-zero deposit or non-zero reserve for the sender
-        require(sender.deposit > 0 || remainingReserve(_ticket.sender) > 0, "sender deposit and reserve are zero");
+        // Require sender deposit and reserve to fully cover the ticket face value
+        require(
+            sender.deposit.add(remainingReserve(_ticket.sender)) >= _ticket.faceValue,
+            "sender deposit and reserve insufficient to cover ticket face value"
+        );
 
         // Mark ticket as used to prevent replay attacks involving redeeming
         // the same winning ticket multiple times
