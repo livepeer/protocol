@@ -798,22 +798,79 @@ describe("TicketBroker", () => {
             ).to.be.revertedWith("ticket sender is null address")
         })
 
-        it("reverts if ticket auxData != 64 bytes", async () => {
-            const auxData = ethers.constants.HashZero
-
+        it("reverts if ticket auxData length is less than 64 bytes", async () => {
             await expect(
                 broker.redeemWinningTicket(
                     createTicket({
                         recipient,
                         sender,
-                        auxData
+                        auxData: ethers.constants.HashZero
                     }),
                     web3.utils.asciiToHex("sig"),
                     5
                 )
             ).to.be.revertedWith(
-                "invalid length for ticket auxData: must be 64 bytes"
+                "invalid length for ticket auxData: must be between 64 and 96 bytes"
             )
+        })
+
+        it("reverts if ticket auxData is greater than 96 bytes", async () => {
+            await expect(
+                broker.redeemWinningTicket(
+                    createTicket({
+                        recipient,
+                        sender,
+                        auxData: ethers.utils.hexConcat([
+                            createAuxData(
+                                currentRound,
+                                DUMMY_TICKET_CREATION_ROUND_BLOCK_HASH
+                            ),
+                            ethers.constants.HashZero,
+                            ethers.constants.HashZero
+                        ])
+                    }),
+                    web3.utils.asciiToHex("sig"),
+                    5
+                )
+            ).to.be.revertedWith(
+                "invalid length for ticket auxData: must be between 64 and 96 bytes"
+            )
+        })
+
+        it("accepts 96-byte ticket auxData", async () => {
+            const recipientRand = 5
+            const faceValue = 1
+
+            await broker.fundDeposit({value: faceValue})
+            const auxData = ethers.utils.hexConcat([
+                createAuxData(
+                    currentRound,
+                    DUMMY_TICKET_CREATION_ROUND_BLOCK_HASH
+                ),
+                ethers.constants.HashZero
+            ])
+
+            const ticket = createWinningTicket(
+                recipient,
+                sender,
+                recipientRand,
+                faceValue,
+                auxData
+            )
+            const senderSig = await signMsg(getTicketHash(ticket), sender)
+
+            try {
+                await broker.redeemWinningTicket(
+                    ticket,
+                    senderSig,
+                    recipientRand
+                )
+            } catch (error) {
+                console.log(
+                    error.reason || error.error?.message || error.message
+                )
+                throw error
+            }
         })
 
         it("reverts if block hash for ticket creationRound is null", async () => {
