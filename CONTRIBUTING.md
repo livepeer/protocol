@@ -20,3 +20,7 @@ specifier is not provided.
 Prefer `external` to `public` if you know a function will only be called externally. If there is a possibility
 of a function being called internally as well as externally, the function should be `public`. `external` functions can be more
 efficient when a function parameter is a large array of data.
+
+## Development Environment
+
+For easy development, we recommend using [Visual Studio Code](https://code.visualstudio.com/) with the [Hardhat extension](https://hardhat.org/hardhat-vscode/docs/overview). This will provide you with syntax highlighting, code completion, debugging capabilities, and an easy-to-use test explorer.
