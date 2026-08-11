@@ -23,6 +23,10 @@ contract Minter is Manager, IMinter {
 
     // Per round inflation rate
     uint256 public inflation;
+    // Target maximum inflation rate
+    uint256 public inflationCeiling;
+    // Target minimum inflation rate
+    uint256 public inflationFloor;
     // Change in inflation rate per round until the target bonding rate is achieved
     uint256 public inflationChange;
     // Target bonding rate
@@ -70,15 +74,24 @@ contract Minter is Manager, IMinter {
      * @param _inflation Base inflation rate as a percentage of current total token supply
      * @param _inflationChange Change in inflation rate each round (increase or decrease) if target bonding rate is not achieved
      * @param _targetBondingRate Target bonding rate as a percentage of total bonded tokens / total token supply
+     * @param _inflationCeiling Inflation rate ceiling as a percentage of current total token supply
+     * @param _inflationFloor Inflation rate floor as a percentage of current total token supply
      */
     constructor(
         address _controller,
         uint256 _inflation,
         uint256 _inflationChange,
-        uint256 _targetBondingRate
+        uint256 _targetBondingRate,
+        uint256 _inflationCeiling,
+        uint256 _inflationFloor
     ) Manager(_controller) {
         // Inflation must be valid percentage
         require(MathUtils.validPerc(_inflation), "_inflation is invalid percentage");
+        // Inflation bounds must be valid percentages
+        require(MathUtils.validPerc(_inflationCeiling), "_inflationCeiling is invalid percentage");
+        require(MathUtils.validPerc(_inflationFloor), "_inflationFloor is invalid percentage");
+        // Inflation floor should be lower or equal to the ceiling
+        require(_inflationFloor <= _inflationCeiling, "_inflationFloor must be <= _inflationCeiling");
         // Inflation change must be valid percentage
         require(MathUtils.validPerc(_inflationChange), "_inflationChange is invalid percentage");
         // Target bonding rate must be valid percentage
@@ -87,6 +100,8 @@ contract Minter is Manager, IMinter {
         inflation = _inflation;
         inflationChange = _inflationChange;
         targetBondingRate = _targetBondingRate;
+        inflationCeiling = _inflationCeiling;
+        inflationFloor = _inflationFloor;
     }
 
     /**
@@ -116,6 +131,36 @@ contract Minter is Manager, IMinter {
     }
 
     /**
+     * @notice Set inflationCeiling. Only callable by Controller owner
+     * @param _inflationCeiling New inflation cap as a percentage of total token supply
+     */
+    function setInflationCeiling(uint256 _inflationCeiling) external onlyControllerOwner {
+        // Must be valid percentage
+        require(MathUtils.validPerc(_inflationCeiling), "_inflationCeiling is invalid percentage");
+        // Inflation ceiling should be higher or equal to the floor
+        require(_inflationCeiling >= inflationFloor, "_inflationCeiling must be >= inflationFloor");
+
+        inflationCeiling = _inflationCeiling;
+
+        emit ParameterUpdate("inflationCeiling");
+    }
+
+    /**
+     * @notice Set inflationFloor. Only callable by Controller owner
+     * @param _inflationFloor New inflation floor as a percentage of total token supply
+     */
+    function setInflationFloor(uint256 _inflationFloor) external onlyControllerOwner {
+        // Must be valid percentage
+        require(MathUtils.validPerc(_inflationFloor), "_inflationFloor is invalid percentage");
+        // Inflation floor should be lower or equal to the ceiling
+        require(_inflationFloor <= inflationCeiling, "_inflationFloor must be <= inflationCeiling");
+
+        inflationFloor = _inflationFloor;
+
+        emit ParameterUpdate("inflationFloor");
+    }
+
+    /**
      * @notice Migrate to a new Minter by transferring the current Minter's LPT + ETH balance to the new Minter
      * @dev Only callable by Controller owner
      * @param _newMinter Address of new Minter
@@ -136,6 +181,21 @@ contract Minter is Manager, IMinter {
         livepeerToken().transfer(address(_newMinter), livepeerToken().balanceOf(address(this)));
         // Transfer current Minter's ETH balance to new Minter
         _newMinter.depositETH{ value: address(this).balance }();
+    }
+
+    /**
+     * @notice Migrate state variables affected by RoundsManager from the old Minter
+     * @dev Only callable by Controller owner
+     */
+    function migrateOldMinterState() external onlyControllerOwner {
+        IMinter oldMinter = IMinter(controller.getContract(keccak256("Minter")));
+        // Old Minter cannot be the current Minter
+        require(address(oldMinter) != address(this), "old Minter cannot be current Minter");
+
+        // Transfer state from old Minter
+        currentMintableTokens = oldMinter.currentMintableTokens();
+        currentMintedTokens = oldMinter.currentMintedTokens();
+        inflation = oldMinter.inflation();
     }
 
     /**
@@ -240,13 +300,22 @@ contract Minter is Manager, IMinter {
             currentBondingRate = MathUtils.percPoints(totalBonded, totalSupply);
         }
 
-        if (currentBondingRate < targetBondingRate) {
+        // Adjust inflation based on current bonding rate and target bonding rate, ensuring it stays within the floor and ceiling
+        if ((currentBondingRate < targetBondingRate && inflation < inflationCeiling) || inflation < inflationFloor) {
             // Bonding rate is below the target - increase inflation
-            inflation = inflation.add(inflationChange);
-        } else if (currentBondingRate > targetBondingRate) {
+            if (inflation.add(inflationChange) > inflationCeiling) {
+                // If inflation would go above the ceiling, set it to the ceiling
+                inflation = inflationCeiling;
+            } else {
+                inflation = inflation.add(inflationChange);
+            }
+        } else if (
+            (currentBondingRate > targetBondingRate && inflation > inflationFloor) || inflation > inflationCeiling
+        ) {
             // Bonding rate is above the target - decrease inflation
-            if (inflationChange > inflation) {
-                inflation = 0;
+            if (inflationFloor.add(inflationChange) > inflation) {
+                // If inflation would go below the floor, set it to the floor
+                inflation = inflationFloor;
             } else {
                 inflation = inflation.sub(inflationChange);
             }

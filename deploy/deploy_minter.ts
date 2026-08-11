@@ -2,10 +2,12 @@ import {HardhatRuntimeEnvironment} from "hardhat/types"
 import {DeployFunction} from "hardhat-deploy/types"
 import {ethers} from "hardhat"
 import {Minter} from "../typechain"
+import getNetworkConfig from "./migrations.config"
 
 const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
     const {deployments, getNamedAccounts} = hre // Get the deployments and getNamedAccounts which are provided by hardhat-deploy
     const {deploy} = deployments // the deployments object itself contains the deploy function
+    const config = getNetworkConfig(hre.network.name)
 
     const {deployer} = await getNamedAccounts() // Fetch named accounts from hardhat.config.ts
 
@@ -18,7 +20,6 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
     )) as Minter
 
     const inflation = await minter.inflation()
-    const inflationChange = await minter.inflationChange()
     const targetBondingRate = await minter.targetBondingRate()
 
     await deploy("Minter", {
@@ -26,8 +27,10 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
         args: [
             controllerDeployment.address,
             inflation,
-            inflationChange,
-            targetBondingRate
+            config.minter.inflationChange,
+            targetBondingRate,
+            config.minter.inflationCeiling,
+            config.minter.inflationFloor
         ]
     })
 }

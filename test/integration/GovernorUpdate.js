@@ -9,11 +9,13 @@ chai.use(solidity)
 
 describe("Governor update", () => {
     let controller
+    let livepeerToken
     let bondingManager
     let governor
     let minter
 
     let signers
+    const DEFAULT_ADMIN_ROLE = ethers.constants.HashZero
 
     before(async () => {
         signers = await ethers.getSigners()
@@ -27,10 +29,14 @@ describe("Governor update", () => {
             fixture.BondingManager.address
         )
         minter = await ethers.getContractAt("Minter", fixture.Minter.address)
-        const governorFac = await ethers.getContractFactory(
-            "contracts/governance/Governor.sol:Governor"
+        governor = await ethers.getContractAt(
+            "Governor",
+            fixture.Governor.address
         )
-        governor = await governorFac.deploy()
+        livepeerToken = await ethers.getContractAt(
+            "LivepeerToken",
+            fixture.LivepeerToken.address
+        )
 
         await controller.unpause()
         // Transfer Controller ownership to Governor
@@ -43,6 +49,12 @@ describe("Governor update", () => {
 
     it("governor has the correct owner", async () => {
         assert.equal(await governor.owner(), signers[0].address)
+    })
+
+    it("governor has livepeer token admin role", async () => {
+        assert.isTrue(
+            await livepeerToken.hasRole(DEFAULT_ADMIN_ROLE, governor.address)
+        )
     })
 
     describe("single param change", () => {
@@ -70,7 +82,7 @@ describe("Governor update", () => {
             )
         })
 
-        it("succesfully executes a single param change", async () => {
+        it("successfully executes a single param change", async () => {
             const data = await bondingManager.interface.encodeFunctionData(
                 "setNumActiveTranscoders",
                 [30]
@@ -97,14 +109,21 @@ describe("Governor update", () => {
 
     describe("complex update: migrate to new Minter", () => {
         // Minter upgrade steps
-        // 1. Pause the protocol
-        // 2. call migrateToNewMinter
-        // 3. register the new Minter
-        // 4. Unpause the protocol
+        // 1. Call migrateToNewMinter on previous Minter
+        // 2. Call migrateOldMinterState on new Minter
+        // 3. Grant MINTER_ROLE to new Minter
+        // 4. Revoke MINTER_ROLE from previous Minter
+        // 5. Register new Minter in Controller
         let newMinter
 
         let migrateData
         let migrateTarget
+        let migrateOldMinterStateData
+        let migrateOldMinterStateTarget
+        let grantRoleData
+        let grantRoleTarget
+        let revokeRoleData
+        let revokeRoleTarget
         let setInfoData
         let setInfoTarget
 
@@ -114,7 +133,9 @@ describe("Governor update", () => {
                 controller.address,
                 "100",
                 "1",
-                "500000"
+                "500000",
+                "150",
+                "50"
             )
 
             migrateData = minter.interface.encodeFunctionData(
@@ -122,6 +143,11 @@ describe("Governor update", () => {
                 [newMinter.address]
             )
             migrateTarget = minter.address
+
+            migrateOldMinterStateData = newMinter.interface.encodeFunctionData(
+                "migrateOldMinterState"
+            )
+            migrateOldMinterStateTarget = newMinter.address
 
             setInfoData = controller.interface.encodeFunctionData(
                 "setContractInfo",
@@ -132,22 +158,52 @@ describe("Governor update", () => {
                 ]
             )
             setInfoTarget = controller.address
+
+            grantRoleData = livepeerToken.interface.encodeFunctionData(
+                "grantRole",
+                [
+                    ethers.utils.solidityKeccak256(["string"], ["MINTER_ROLE"]),
+                    newMinter.address
+                ]
+            )
+            grantRoleTarget = livepeerToken.address
+
+            revokeRoleData = livepeerToken.interface.encodeFunctionData(
+                "revokeRole",
+                [
+                    ethers.utils.solidityKeccak256(["string"], ["MINTER_ROLE"]),
+                    minter.address
+                ]
+            )
+            revokeRoleTarget = livepeerToken.address
         })
 
         it("step 1 'migrateToNewMinter' fails: new Minter cannot be current Minter", async () => {
-            migrateData = minter.interface.encodeFunctionData(
+            const migrateData = minter.interface.encodeFunctionData(
                 "migrateToNewMinter",
                 [minter.address]
             )
 
             const update = {
-                target: [migrateTarget, setInfoTarget],
-                value: ["0", "0"],
-                data: [migrateData, setInfoData],
+                target: [
+                    migrateTarget,
+                    migrateOldMinterStateTarget,
+                    grantRoleTarget,
+                    revokeRoleTarget,
+                    setInfoTarget
+                ],
+                value: ["0", "0", "0", "0", "0"],
+                data: [
+                    migrateData,
+                    migrateOldMinterStateData,
+                    grantRoleData,
+                    revokeRoleData,
+                    setInfoData
+                ],
                 nonce: 0
             }
 
-            // run the migrate to new minter update
+            // Run the migrate to new minter update
             await governor.stage(update, "0")
             await expect(governor.execute(update)).to.be.revertedWith(
                 "new Minter cannot be current Minter"
@@ -155,52 +211,118 @@ describe("Governor update", () => {
         })
 
         it("step 1 'migrateToNewMinter' fails: new Minter cannot be null address", async () => {
-            migrateData = minter.interface.encodeFunctionData(
+            const migrateData = minter.interface.encodeFunctionData(
                 "migrateToNewMinter",
                 [ethers.constants.AddressZero]
             )
 
             const update = {
-                target: [migrateTarget, setInfoTarget],
-                value: ["0", "0"],
-                data: [migrateData, setInfoData],
+                target: [
+                    migrateTarget,
+                    migrateOldMinterStateTarget,
+                    grantRoleTarget,
+                    revokeRoleTarget,
+                    setInfoTarget
+                ],
+                value: ["0", "0", "0", "0", "0"],
+                data: [
+                    migrateData,
+                    migrateOldMinterStateData,
+                    grantRoleData,
+                    revokeRoleData,
+                    setInfoData
+                ],
                 nonce: 0
             }
 
-            // run the migrate to new minter update
+            // Run the migrate to new minter update
             await governor.stage(update, "0")
             await expect(governor.execute(update)).to.be.revertedWith(
                 "new Minter cannot be null address"
             )
         })
 
-        it("step 2 'setContractInfo' fails: wrong target", async () => {
-            migrateData = minter.interface.encodeFunctionData(
+        it("step 1 'migrateToNewMinter' fails: new Minter must be registered", async () => {
+            const migrateTarget = newMinter.address
+            const migrateData = minter.interface.encodeFunctionData(
                 "migrateToNewMinter",
-                [newMinter.address]
+                // Minter is currently registered in Controller
+                [minter.address]
             )
-
             const update = {
-                target: [migrateTarget, migrateTarget],
-                value: ["0", "0"],
-                data: [migrateData, setInfoData],
+                target: [
+                    migrateTarget,
+                    migrateOldMinterStateTarget,
+                    grantRoleTarget,
+                    revokeRoleTarget,
+                    setInfoTarget
+                ],
+                value: ["0", "0", "0", "0", "0"],
+                data: [
+                    migrateData,
+                    migrateOldMinterStateData,
+                    grantRoleData,
+                    revokeRoleData,
+                    setInfoData
+                ],
                 nonce: 0
             }
 
-            // run the migrate to new minter update
+            // Run the migrate to new minter update
             await governor.stage(update, "0")
-            await expect(governor.execute(update)).to.be.reverted
+            await expect(governor.execute(update)).to.be.revertedWith(
+                "new Minter must be registered"
+            )
+        })
+
+        it("step 2 'migrateOldMinterState' fails: wrong target", async () => {
+            const update = {
+                target: [
+                    migrateTarget,
+                    migrateTarget,
+                    grantRoleTarget,
+                    revokeRoleTarget,
+                    setInfoTarget
+                ],
+                value: ["0", "0", "0", "0", "0"],
+                data: [
+                    migrateData,
+                    migrateOldMinterStateData,
+                    grantRoleData,
+                    revokeRoleData,
+                    setInfoData
+                ],
+                nonce: 0
+            }
+
+            // Run the migrate to new minter update
+            await governor.stage(update, "0")
+            await expect(governor.execute(update)).to.be.revertedWith(
+                "Minter cannot be current Minter"
+            )
         })
 
         it("succesfully executes all updates", async () => {
             const update = {
-                target: [migrateTarget, setInfoTarget],
-                value: ["0", "0"],
-                data: [migrateData, setInfoData],
+                target: [
+                    migrateTarget,
+                    migrateOldMinterStateTarget,
+                    grantRoleTarget,
+                    revokeRoleTarget,
+                    setInfoTarget
+                ],
+                value: ["0", "0", "0", "0", "0"],
+                data: [
+                    migrateData,
+                    migrateOldMinterStateData,
+                    grantRoleData,
+                    revokeRoleData,
+                    setInfoData
+                ],
                 nonce: 0
             }
 
-            // run the migrate to new minter update
+            // Run the migrate to new minter update
             await governor.stage(update, "0")
             await governor.execute(update)
 
