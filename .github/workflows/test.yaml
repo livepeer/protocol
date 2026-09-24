@@ -63,6 +63,7 @@ jobs:
 
       - name: Install editorconfig-checker
         uses: editorconfig-checker/action-editorconfig-checker@main
+        with:
           version: v4.0.2
 
       - name: Run editorconfig checker against the repo
