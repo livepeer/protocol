@@ -2,7 +2,7 @@
   "Verbose": false,
   "Debug": false,
   "IgnoreDefaults": false,
-  "SpacesAfterTabs": false,
+  "SpacesAftertabs": false,
   "NoColor": false,
   "Exclude": [
     "deployments/.*/.chainId",
