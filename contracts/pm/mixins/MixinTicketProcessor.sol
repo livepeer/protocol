@@ -74,7 +74,10 @@ abstract contract MixinTicketProcessor is MixinContractRegistry, MTicketProcesso
         pure
         returns (uint256 creationRound, bytes32 creationRoundBlockHash)
     {
-        require(_auxData.length == 64, "invalid length for ticket auxData: must be 64 bytes");
+        require(
+            _auxData.length >= 64 && _auxData.length <= 96,
+            "invalid length for ticket auxData: must be between 64 and 96 bytes"
+        );
 
         // _auxData format:
         // Bytes [0:31] = creationRound
