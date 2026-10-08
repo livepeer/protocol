@@ -16,14 +16,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out code
-        uses: actions/checkout@v3
+        # https://github.com/actions/checkout/releases/tag/v3.7.0
+        uses: actions/checkout@a37ce9120846195fa4ece8f58b268e6043cb2f26
         with:
           fetch-depth: 0
           # Check https://github.com/livepeer/go-livepeer/pull/1891
           # for ref value discussion
           ref: ${{ github.event.pull_request.head.sha }}
 
-      - uses: actions/setup-node@v3
+        # https://github.com/actions/setup-node/releases/tag/v3.9.1
+      - uses: actions/setup-node@3235b876344d2a9aa001b8d1453c930bba69e610
         with:
           node-version: "16"
           cache: "yarn"
@@ -41,7 +43,8 @@ jobs:
         run: yarn test:coverage
 
       - name: Upload coverage reports
-        uses: codecov/codecov-action@v4
+        # https://github.com/codecov/codecov-action/releases/tag/v4.6.0
+        uses: codecov/codecov-action@b9fd7d16f6d7d1b5d2bec1a2887e65ceed900238
         with:
           files: ./coverage/lcov.info
           name: ${{ github.event.repository.name }}
@@ -55,14 +58,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out code
-        uses: actions/checkout@v4.1.1
+        # https://github.com/actions/checkout/releases/tag/v4.1.1
+        uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
           # Check https://github.com/livepeer/go-livepeer/pull/1891
           # for ref value discussion
           ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Install editorconfig-checker
-        uses: editorconfig-checker/action-editorconfig-checker@main
+        # https://github.com/editorconfig-checker/action-editorconfig-checker/releases/tag/v2.3.0
+        uses: editorconfig-checker/action-editorconfig-checker@7b3ae4aa4c2245e1296bfeb7690729093697f5b3
 
       - name: Run editorconfig checker against the repo
         run: editorconfig-checker
