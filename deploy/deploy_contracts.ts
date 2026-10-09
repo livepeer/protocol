@@ -76,7 +76,9 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
             Controller.address,
             config.minter.inflation,
             config.minter.inflationChange,
-            config.minter.targetBondingRate
+            config.minter.targetBondingRate,
+            config.minter.inflationCeiling,
+            config.minter.inflationFloor
         ]
     })
 
@@ -371,6 +373,8 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
     }
 
     await (await Token.grantRole(MINTER_ROLE, minter.address)).wait()
+
+    await (await Token.grantRole(DEFAULT_ADMIN_ROLE, governor.address)).wait()
 
     // Controller is owned by the deployer at this point
     // transferOwnership() needs to be called separately to give ownership to the Governor

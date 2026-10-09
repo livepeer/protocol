@@ -27,6 +27,16 @@ interface IMinter {
 
     function currentMintedTokens() external view returns (uint256);
 
+    function inflation() external view returns (uint256);
+
+    function inflationCeiling() external view returns (uint256);
+
+    function inflationFloor() external view returns (uint256);
+
+    function inflationChange() external view returns (uint256);
+
+    function targetBondingRate() external view returns (uint256);
+
     // Public functions
     function getController() external view returns (IController);
 }
