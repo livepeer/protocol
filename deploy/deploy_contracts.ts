@@ -63,6 +63,14 @@ const func: DeployFunction = async function(hre: HardhatRuntimeEnvironment) {
 
     const {deployer} = await getNamedAccounts() // Fetch named accounts from hardhat.config.ts
 
+    if (!deployer) {
+        throw new Error(
+            `No deployer account configured for network "${hre.network.name}". ` +
+                "Set the PRIVATE_KEY environment variable, or add an \"accounts\" " +
+                "entry for this network in hardhat.config.ts."
+        )
+    }
+
     const config = getNetworkConfig(hre.network.name)
 
     const contractDeployer = new ContractDeployer(deployer, deployments)
