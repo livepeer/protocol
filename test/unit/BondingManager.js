@@ -2267,6 +2267,137 @@ describe("BondingManager", () => {
         })
     })
 
+    describe("setThirdPartyBonderAuthorization", () => {
+        let delegator
+        let thirdParty
+        let otherThirdParty
+
+        beforeEach(async () => {
+            delegator = signers[0]
+            thirdParty = signers[1]
+            otherThirdParty = signers[2]
+        })
+
+        it("should fail if system is paused", async () => {
+            await fixture.controller.pause()
+
+            await expect(
+                bondingManager
+                    .connect(delegator)
+                    .setThirdPartyBonderAuthorization(thirdParty.address, true)
+            ).to.be.revertedWith("system is paused")
+        })
+
+        it("should return false for an address that was never authorized", async () => {
+            assert.isFalse(
+                await bondingManager.isThirdPartyBonderAuthorized(
+                    delegator.address,
+                    thirdParty.address
+                )
+            )
+        })
+
+        it("should authorize a third party bonder", async () => {
+            const tx = bondingManager
+                .connect(delegator)
+                .setThirdPartyBonderAuthorization(thirdParty.address, true)
+
+            await expect(tx)
+                .to.emit(bondingManager, "ThirdPartyBonderAuthorization")
+                .withArgs(delegator.address, thirdParty.address, true)
+
+            assert.isTrue(
+                await bondingManager.isThirdPartyBonderAuthorized(
+                    delegator.address,
+                    thirdParty.address
+                )
+            )
+        })
+
+        it("should revoke a previously granted authorization", async () => {
+            await bondingManager
+                .connect(delegator)
+                .setThirdPartyBonderAuthorization(thirdParty.address, true)
+
+            const tx = bondingManager
+                .connect(delegator)
+                .setThirdPartyBonderAuthorization(thirdParty.address, false)
+
+            await expect(tx)
+                .to.emit(bondingManager, "ThirdPartyBonderAuthorization")
+                .withArgs(delegator.address, thirdParty.address, false)
+
+            assert.isFalse(
+                await bondingManager.isThirdPartyBonderAuthorized(
+                    delegator.address,
+                    thirdParty.address
+                )
+            )
+        })
+
+        it("should not emit an event when authorizing an already authorized bonder", async () => {
+            await bondingManager
+                .connect(delegator)
+                .setThirdPartyBonderAuthorization(thirdParty.address, true)
+
+            const tx = bondingManager
+                .connect(delegator)
+                .setThirdPartyBonderAuthorization(thirdParty.address, true)
+
+            await expect(tx).to.not.emit(
+                bondingManager,
+                "ThirdPartyBonderAuthorization"
+            )
+
+            assert.isTrue(
+                await bondingManager.isThirdPartyBonderAuthorized(
+                    delegator.address,
+                    thirdParty.address
+                )
+            )
+        })
+
+        it("should allow a delegator to authorize multiple bonders", async () => {
+            await bondingManager
+                .connect(delegator)
+                .setThirdPartyBonderAuthorization(thirdParty.address, true)
+            await bondingManager
+                .connect(delegator)
+                .setThirdPartyBonderAuthorization(otherThirdParty.address, true)
+
+            assert.isTrue(
+                await bondingManager.isThirdPartyBonderAuthorized(
+                    delegator.address,
+                    thirdParty.address
+                )
+            )
+            assert.isTrue(
+                await bondingManager.isThirdPartyBonderAuthorized(
+                    delegator.address,
+                    otherThirdParty.address
+                )
+            )
+
+            // Revoking one authorization leaves the other intact
+            await bondingManager
+                .connect(delegator)
+                .setThirdPartyBonderAuthorization(thirdParty.address, false)
+
+            assert.isFalse(
+                await bondingManager.isThirdPartyBonderAuthorized(
+                    delegator.address,
+                    thirdParty.address
+                )
+            )
+            assert.isTrue(
+                await bondingManager.isThirdPartyBonderAuthorized(
+                    delegator.address,
+                    otherThirdParty.address
+                )
+            )
+        })
+    })
+
     describe("bondForWithHint", () => {
         let transcoder0
         let transcoder1

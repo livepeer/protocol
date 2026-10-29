@@ -45,6 +45,7 @@ interface IBondingManager {
         uint256 endRound
     );
     event RewardCallerSet(address indexed transcoder, address indexed rewardCaller);
+    event ThirdPartyBonderAuthorization(address indexed delegator, address indexed bonder, bool authorized);
 
     // Deprecated events
     // These event signatures can be used to construct the appropriate topic hashes to filter for past logs corresponding
@@ -87,6 +88,10 @@ interface IBondingManager {
     ) external;
 
     // Public functions
+    function setThirdPartyBonderAuthorization(address _bonder, bool _authorized) external;
+
+    function isThirdPartyBonderAuthorized(address _delegator, address _bonder) external view returns (bool);
+
     function getTranscoderPoolSize() external view returns (uint256);
 
     function transcoderTotalStake(address _transcoder) external view returns (uint256);
