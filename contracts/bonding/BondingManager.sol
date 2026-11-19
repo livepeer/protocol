@@ -106,6 +106,9 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
     // @dev Since the setter is callable by any address, a mapping key does not guarantee to be a registered or active transcoder.
     mapping(address => address) public transcoderToRewardCaller;
 
+    // Tracks which addresses a delegator has authorized to perform third-party bonding actions on their behalf.
+    mapping(address => mapping(address => bool)) private authorizedThirdPartyBonders;
+
     // Check if sender is TicketBroker
     modifier onlyTicketBroker() {
         _onlyTicketBroker();
@@ -546,6 +549,28 @@ contract BondingManager is ManagerProxyTarget, IBondingManager {
         }
 
         emit TranscoderUpdate(msg.sender, _rewardCut, _feeShare);
+    }
+
+    /**
+     * @notice Authorize or deauthorize an address to perform third-party bonding actions (bondForWithHint, transferBond) on
+     * behalf of the delegator.
+     * @param _bonder Address to authorize or deauthorize for third-party bonding
+     * @param _authorized `true` to authorize `_bonder`, `false` to revoke a previously granted authorization
+     */
+    function setThirdPartyBonderAuthorization(address _bonder, bool _authorized) external whenSystemNotPaused {
+        if (authorizedThirdPartyBonders[msg.sender][_bonder] != _authorized) {
+            authorizedThirdPartyBonders[msg.sender][_bonder] = _authorized;
+            emit ThirdPartyBonderAuthorization(msg.sender, _bonder, _authorized);
+        }
+    }
+
+    /**
+     * @notice Returns whether `_bonder` is authorized to perform third-party bonding actions on behalf of `_delegator`.
+     * @param _delegator The delegator whose authorization is being queried
+     * @param _bonder The third-party bonder being checked
+     */
+    function isThirdPartyBonderAuthorized(address _delegator, address _bonder) external view returns (bool) {
+        return authorizedThirdPartyBonders[_delegator][_bonder];
     }
 
     /**
